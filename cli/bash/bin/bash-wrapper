@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+resolve_script_path() {
+    local source_path="${1:-}" link_dir target
+
+    [[ -n "$source_path" ]] || return 1
+
+    if [[ "$source_path" != */* ]]; then
+        source_path="$(command -v -- "$source_path" 2>/dev/null || true)"
+        [[ -n "$source_path" ]] || return 1
+    fi
+
+    while [[ -L "$source_path" ]]; do
+        link_dir="$(cd "$(dirname "$source_path")" && pwd -P)"
+        target="$(readlink "$source_path")"
+        if [[ "$target" == /* ]]; then
+            source_path="$target"
+        else
+            source_path="$link_dir/$target"
+        fi
+    done
+
+    link_dir="$(cd "$(dirname "$source_path")" && pwd -P)"
+    printf '%s/%s\n' "$link_dir" "$(basename "$source_path")"
+}
+
+normalize_command_name() {
+    local command_name="${1:-}"
+
+    if [[ "$command_name" == *.sh && "$command_name" != ".sh" ]]; then
+        command_name="${command_name%.sh}"
+    fi
+
+    printf '%s\n' "$command_name"
+}
+
+list_commands() {
+    local commands_dir="$1"
+    local command_dir command_name found=0
+
+    [[ -d "$commands_dir" ]] || return 0
+
+    while IFS= read -r command_dir; do
+        [[ -d "$command_dir" ]] || continue
+        command_name="$(basename "$command_dir")"
+        if [[ -f "$command_dir/${command_name}.sh" ]]; then
+            printf '  %s.sh\n' "$command_name"
+            found=1
+        fi
+    done < <(find "$commands_dir" -mindepth 1 -maxdepth 1 -type d | sort)
+
+    ((found)) || printf '  (none yet)\n'
+}
+
+print_usage() {
+    local wrapper_name="$1"
+    local commands_dir="$2"
+
+    cat <<EOF
+Usage:
+  ${wrapper_name} <command> [args...]
+  <command> [args...]
+
+Behavior:
+  - When invoked as 'bash-wrapper', the first argument is treated as the command name.
+  - Bash entrypoint symlinks are expected to end in '.sh'; the wrapper maps '<name>.sh' to command '<name>'.
+  - When invoked through a symlink, the symlink name is treated as the command name.
+  - Commands are resolved under cli/bash/commands/<name>/<name>.sh.
+
+Available commands:
+EOF
+    list_commands "$commands_dir"
+}
+
+main() {
+    local invoked_as wrapper_path bin_dir bash_root cli_root repo_root commands_dir stdlib_path env_script
+    local command_name command_dir command_script
+
+    invoked_as="$(basename "$0")"
+    wrapper_path="$(resolve_script_path "$0")" || die "Unable to resolve wrapper path for '$0'."
+    bin_dir="$(cd "$(dirname "$wrapper_path")" && pwd -P)"
+    bash_root="$(cd "$bin_dir/.." && pwd -P)"
+    cli_root="$(cd "$bash_root/.." && pwd -P)"
+    repo_root="$(cd "$cli_root/.." && pwd -P)"
+    commands_dir="$bash_root/commands"
+
+    if [[ "$invoked_as" == "bash-wrapper" ]]; then
+        case "${1:-}" in
+            "" )
+                print_usage "$invoked_as" "$commands_dir"
+                exit 1
+                ;;
+            -h|--help|help )
+                print_usage "$invoked_as" "$commands_dir"
+                exit 0
+                ;;
+            --list|list )
+                list_commands "$commands_dir"
+                exit 0
+                ;;
+        esac
+
+        command_name="$1"
+        shift
+    else
+        command_name="$invoked_as"
+    fi
+
+    command_name="$(normalize_command_name "$command_name")"
+
+    case "$command_name" in
+        ""|.|..|*/* )
+            die "Invalid command name '$command_name'."
+            ;;
+    esac
+
+    env_script="$cli_root/env/banyanenv.sh"
+    [[ -f "$env_script" ]] || die "Required environment bootstrap '$env_script' was not found."
+    source "$env_script" || die "Failed to initialize Banyan CLI environment from '$env_script'."
+
+    bash_root="${BANYAN_BASH_ROOT:-$bash_root}"
+    cli_root="${BANYAN_CLI_ROOT:-$cli_root}"
+    repo_root="${BANYAN_REPO_ROOT:-$repo_root}"
+    bin_dir="${BANYAN_BASH_BIN_DIR:-$bin_dir}"
+    commands_dir="${BANYAN_BASH_COMMANDS_DIR:-$commands_dir}"
+    env_script="${BANYAN_CLI_ENV_SCRIPT:-$env_script}"
+
+    command_dir="$commands_dir/$command_name"
+    if [[ -f "$command_dir/${command_name}.sh" ]]; then
+        command_script="$command_dir/${command_name}.sh"
+    else
+        die "Command '$command_name' was not found under '$command_dir'."
+    fi
+
+    export BANYAN_REPO_ROOT="$repo_root"
+    export BANYAN_CLI_ROOT="$cli_root"
+    export BANYAN_BASH_ROOT="$bash_root"
+    export BANYAN_BASH_BIN_DIR="$bin_dir"
+    export BANYAN_CLI_ENV_SCRIPT="$env_script"
+    export BANYAN_BASH_COMMAND_NAME="$command_name"
+    export BANYAN_BASH_COMMAND_DIR="$command_dir"
+    export BANYAN_BASH_COMMAND_SCRIPT="$command_script"
+
+    stdlib_path="$bash_root/lib/std/lib_std.sh"
+    [[ -f "$stdlib_path" ]] || die "Required stdlib '$stdlib_path' was not found."
+
+    export BANYAN_BASH_BOOTSTRAP_SOURCE="$command_script"
+    # Source the stdlib in the wrapper shell so command scripts inherit the shared helpers.
+    source "$stdlib_path"
+    unset BANYAN_BASH_BOOTSTRAP_SOURCE
+
+    # Source the command in the same shell so it can use stdlib helpers without per-command boilerplate.
+    source "$command_script"
+}
+
+main "$@"
