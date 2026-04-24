@@ -19,8 +19,17 @@ normalize_tty_output() {
 
 run_tty_script() {
     local script_path="$1"
+    local command
     shift
-    bats_run script -q /dev/null "$script_path" "$@"
+
+    command -v script >/dev/null 2>&1 || skip "The 'script' command is required for tty tests."
+
+    if script --version >/dev/null 2>&1; then
+        printf -v command '%q ' "$script_path" "$@"
+        bats_run script -q -e -c "${command% }" /dev/null
+    else
+        bats_run script -q /dev/null "$script_path" "$@"
+    fi
 }
 
 setup() {

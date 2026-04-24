@@ -129,16 +129,15 @@ git_update_repo() {
 #
 git_get_current_branch() {
     local target_dir="$1"
+    local result_var_name="${2:-}"
 
     # --- Argument Validation ---
-    if [[ -z "$target_dir" || -z "${2:-}" ]]; then
+    if [[ -z "$target_dir" || -z "$result_var_name" ]]; then
         log_error "Usage: get_git_branch <directory> <result_variable_name>"
         return 1
     fi
 
-    # Create a name reference to the variable name passed as the second argument.
-    local -n result_var="$2"
-    result_var=""
+    printf -v "$result_var_name" '%s' ""
 
     if [[ ! -d "$target_dir" ]]; then
         return 1
@@ -165,10 +164,10 @@ git_get_current_branch() {
     local branch_name
     if branch_name=$(git symbolic-ref --short -q HEAD); then
         # Success: We are on a named branch.
-        result_var="$branch_name"
+        printf -v "$result_var_name" '%s' "$branch_name"
     else
         # Failure: We are in a detached HEAD state.
-        result_var="detached head"
+        printf -v "$result_var_name" '%s' "detached head"
     fi
 
     popd >/dev/null || return 1
@@ -232,7 +231,7 @@ check_script_up_to_date() {
     fi
 
     local upstream behind ahead
-    upstream=$(git -C "$repo_root" rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null) || {
+    upstream=$(git -C "$repo_root" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || {
         log_info "No upstream branch configured; skipping latest-version check."
         return 0
     }
