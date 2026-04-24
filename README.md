@@ -1,142 +1,194 @@
-# **What is Base?**
+# Base
 
+Base is a foundational developer tooling repo for a multi-project workspace.
+
+Its job is not to be a product repo, a service repo, or a monorepo. Its job is
+to provide the common layer that sits above individual project repositories and
+makes them easier to set up, run, and test in a consistent way.
+
+This repository already existed as a shell-focused project. The next version of
+Base is a deliberate refactor of that idea into a broader workspace bootstrap
+and execution layer.
+
+## Why Base Exists
+
+Most real engineering environments are not a single repository.
+
+A developer may need:
+
+- one repo for shared tooling
+- several project repos checked out side by side
+- a consistent shell environment across machines
+- common shell and Python helper libraries
+- a clean way to run project commands through wrappers instead of directly
+
+Base exists to provide that missing common layer.
+
+## Top Goals
+
+Base is being refactored around three primary goals.
+
+### 1. Umbrella Interface for Multi-Project Setup and Test
+
+Base should give the user one entry point for setting up and validating a
+workspace that contains multiple project repositories.
+
+Examples of the kind of interface Base should provide:
+
+- `base setup`
+- `base setup <project>`
+- `base test`
+- `base test <project>`
+- `base doctor`
+- `base projects list`
+
+The important idea is that the user should not need to memorize a different
+bootstrap story for every repository in the workspace.
+
+Base should be able to discover participating project repositories checked out
+next to it under a shared parent directory, for example:
+
+```text
+~/work/
+  base/
+  banyanlabs/
+  bankbuddy/
+  blend/
+  brew/
 ```
-                Great things are done by a series of small things brought together.
-                                                                 - Vincent van Gogh
+
+Over time, each project repo can declare how Base should interact with it,
+likely through a small project manifest or well-defined conventions.
+
+### 2. Shell Environment Management
+
+Base should manage shell environments at two levels:
+
+- global environment shared across the whole workspace
+- project-specific environment layered on top for an individual repo
+
+That includes things like:
+
+- common shell initialization
+- PATH management
+- shared environment variables
+- host and OS detection
+- project-local activation hooks
+- predictable loading order
+
+The goal is to make shell behavior explicit, inspectable, and repeatable instead
+of depending on a fragile mix of ad hoc dotfiles and one-off scripts.
+
+### 3. Common Shell and Python Libraries and Wrappers
+
+Base should provide a stable foundation for controlled CLI execution.
+
+That includes:
+
+- shell libraries for logging, errors, files, Git, networking, and standard
+  helpers
+- Python wrappers for running Python-based tooling with the right environment
+- shell wrappers for sourcing shared libraries and normalizing execution context
+- a consistent convention for passing arguments, setting environment variables,
+  and reporting failures
+
+The wrapper model matters because it keeps command behavior predictable. A CLI
+should run inside a known environment instead of relying on whoever happened to
+invoke it from whatever shell state they already had.
+
+## What Base Is Responsible For
+
+Base owns the shared developer-platform layer of the workspace.
+
+That means Base should be responsible for:
+
+- bootstrapping the developer environment
+- discovering participating project repos
+- orchestrating setup and test flows across repos
+- managing shared shell initialization
+- providing common shell and Python helper libraries
+- providing wrappers and execution conventions for CLIs
+
+## What Base Is Not Responsible For
+
+Base should not absorb project-specific logic that belongs inside individual
+repositories.
+
+Each project repo should still own:
+
+- its own source code
+- its own business logic
+- its own build details
+- its own runtime details
+- its own tests
+- its own project-specific setup steps
+
+Base should orchestrate those things, not replace them.
+
+## Mental Model
+
+Think of Base as the workspace control plane for local development.
+
+Each project repo remains independent. Base sits beside those repos and offers:
+
+- one place to bootstrap the workspace
+- one place to manage shared environments
+- one place to host common execution libraries and wrappers
+
+That gives a multi-repo setup some of the ergonomic benefits people often reach
+for in a monorepo, without forcing unrelated codebases into a single repository.
+
+## Likely Workspace Shape
+
+The target shape looks roughly like this:
+
+```text
+work/
+  base/
+    README.md
+    cli/
+      bash/
+      env/
+      python/
+    lib/
+    manifests/
+  project-a/
+  project-b/
+  infra/
 ```
-Base is a sharing platform for shell settings, libraries, and light-weight tools. It gives a structured way for Bash users to organize the following across multiple hosts:
 
-* .bash_profile
-* .bashrc
-* generic Bash libraries and commands
-* company specific Bash libraries, commands, and configuration
-* team specific Bash libraries, commands, and configuration
-* user specific settings (aliases, functions, Bash settings)
-* Bash libraries, commands, and configuration that are shared across teams
+Projects should be able to opt into Base with minimal coupling. The exact
+mechanism is still being designed, but the intent is clear:
 
-It can benefit anyone who engages with Mac/Linux command line to get their work done.
+- Base discovers projects in the shared workspace
+- projects expose a small contract to Base
+- Base provides common orchestration on top
 
-# **Requirements**
+## Design Principles
 
-Base needs Bash version 4.2 or above.
+The refactor should follow a few simple principles.
 
-# **How can I get set up?**
+1. Keep project repos independent.
+2. Prefer explicit conventions over hidden shell magic.
+3. Keep wrappers thin but reliable.
+4. Make setup and test flows idempotent where possible.
+5. Let Base provide the common layer without turning into a dumping ground for
+   project-specific behavior.
 
-Set up is easy.  Essentially, this is what you have to do:
+## Status
 
-* Check out Base. The standard location for Base is $HOME/base.  In case your git directory is elsewhere, symlink `$HOME/git` to it or specify the path by setting `BASE_HOME` in `$HOME/.baserc` file.
-* Consolidate your individual settings from your current `.bash_profile` and `.bashrc` into `$USER.sh` file.  Place this file under `base/user` directory and check it in to git.
-* Make a backup of your `.bash_profile`.  Replace this file with a symlink to `base/lib/bash_profile`.
-* Make a backup of your `.bashrc`.  Replace this file with a symlink to `base/lib/bashrc`.
+This repository is being repositioned and refactored.
 
-Log out and log back in or just do `exec bash` and you are all set!
+The current contents include useful shell-oriented building blocks from the
+older version of Base. The goal now is to evolve those foundations into a more
+general multi-project workspace tool.
 
-Here is an example:
+The first migration pass has already started: the shared Bash wrapper,
+environment bootstrap, setup command, and Bash libraries formerly living in the
+`banyanlabs` repo now live under `base/cli/`.
 
-    cd $HOME
-    mkdir git && cd git
-    git clone git@github.com:codeforester/base.git
-    cd $HOME
-    mv .bash_profile .bash_profile.safe && ln -sf $HOME/base/lib/bash_profile .bash_profile
-    mv .bashrc       .bashrc.safe       && ln -sf $HOME/base/lib/bashrc       .bashrc
-    cp $USER.sh $HOME/base/user
-    cd $HOME/base
-    git add user/$USER.sh
-    git commit -m "Adding the initial version of $USER.sh"
-    git push
-    
-If you don't want to disturb your `.bash_profile` and `.bashrc`, you can still use Base in a less full-fledged manner.  See the FAQ section for details.
+## Short Version
 
-# **How does Base work?**
-
-In a typical setting, `.bashrc` sources in `$BASE_HOME/base_init.sh` which does the following:
-
-* source in `lib/stdlib.sh`
-* source in `company/lib/company.sh` if it exists
-* source in `company/lib/bashrc` if it exists, if the shell is interactive
-* source in `user/$USER.sh` if it exists and if the shell is interactive
-* source in team specific bashrc from `team/<team>/lib/bashrc` for each team defined in `BASE_TEAM` and `BASE_SHARED_TEAMS` variables, if the shell is interactive.  Note that `BASE_TEAM` and `BASE_SHARED_TEAMS` should be ideally set in `user/$USER.sh`.
-* source in team specific library from `team/<team>/lib/<team>.sh` for each team defined in `BASE_TEAM` and `BASE_SHARED_TEAMS` variables, if they exist
-* update `$PATH` to include the relevant `bin` directories
-    * `$BASE_HOME/bin` is always added
-    * `$BASE_HOME/team/$BASE_TEAM/bin` is added if `$BASE_TEAM` is set in `user/$USER.sh`
-    * `$BASE_HOME/team/$BASE_TEAM/bin` is added for each team defined in `$BASE_SHARED_TEAMS` (space-separated string), set in `user/$USER.sh`
-    * `$BASE_HOME/company/bin` is always added
-
-# **Directory structure**
-
-[![Screenshot of directory structure](./docs/img/directory_structure.png)](./docs/img/directory_structure.png)
-
-# **Environment variables**
-
-* BASE_HOME
-* BASE_DEBUG
-* BASE_TEAM
-* BASE_SHARED_TEAMS
-* BASE_OS
-* BASE_HOST
-* BASE_SOURCES
-
-# **Functions exported by base_init.sh**
-
-* import       - sources in libraries from any place under `BASE_HOME` directory
-* base_update  - does a `git pull` on Base git directory; add it to `user/<user>.sh` to "auto update" Base
-
-# **FAQ**
-
-## My git location is not `$HOME/base`.  What should I do?
-
-You can either
-
-* specify your Base location in `$HOME/.baserc`, like
-      
-  BASE_HOME=/path/to/base
-
-* symlink `$HOME/base` to the right place
-
-You need to do this on every host where you want Base.
-
-## I want to keep my personal settings private, and not in git.  What should I do?
-
-* write a one-liner in `user/$USER.sh` like this:
-
-    source /path/to/your.settings
-
-You would need to manage this file outside of Base.
-
-## I do want to use the default settings.  What should I do?
-
-Add this to your `user/$USER.sh` file:
-
-    import lib/base_defaults.sh
-
-## I want to make sure I keep my Base repository updated always.  How can I do it?
-
-Add this to your `user/$USER.sh` file:
-
-    base_update
-
-## I don't want to reorganize my `.bash_profile` or `.bashrc`.  Can I still use Base?
-
-Yes, you can, though you will lose the flexibility of keeping your `.bash_profile` and `.bashrc` synced across hosts in case you are working with multiple hosts.
-
-To turn on Base upon login, add this to your `.bash_profile`:
-
-    export BASE_HOME=/path/to/base
-    source "$BASE_HOME/base_init.sh"
-
-after making sure you have the base repo checked out under `$BASE_HOME` directory.
-
-If you don't want to change your `.bash_profile` at all, you can still turn Base on and off as needed. First, make sure BASE_HOME is set appropriately, ideally in your `.bash_profile`.
-
-Run this command to get a shell with Base turned on:
-
-    $BASE_HOME/base.sh shell
-
-or
-    $BASE_HOME/base.sh
-
-# **Debugging**
-
-* You can turn on debug mode by touching `$HOME/.base_debug` file.  You can also do the same by setting environment variable `BASE_DEBUG` to 1.
-* You can add `set -x` to `$HOME/.baserc` file to trace the execution in detail.
+Base is the repo you check out once per workspace so that all the other repos
+in that workspace become easier to set up, easier to test, and easier to run in
+a controlled shell environment.
