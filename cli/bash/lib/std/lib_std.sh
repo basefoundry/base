@@ -62,9 +62,10 @@ readonly __LIB_STD_PATH__="${BASH_SOURCE[0]}"
 #
 readonly __SCRIPT_ARGS__=("$@")
 __new_args__=()
-readonly __SCRIPT_DIR__=$(
+__SCRIPT_DIR__=$(
     cd -- "$(dirname -- "${BANYAN_BASH_BOOTSTRAP_SOURCE:-${BASH_SOURCE[1]}}" )" &>/dev/null && pwd -P
 )
+readonly __SCRIPT_DIR__
 
 ############################################ BASH VERSION CHECKER #######################################################
 
