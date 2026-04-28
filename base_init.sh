@@ -1,33 +1,63 @@
 #!/usr/bin/env bash
 
 #
-# base_init.sh: top level script that should be sourced in by login/interactive shells
+# base_init.sh
+#     Shared Base shell bootstrap loaded after the shell-specific startup files
+#     have already decided that Base should be activated for the current shell.
 #
-# lib/bashrc invokes this
+# Purpose:
+#     - validate the current shell/runtime expectations
+#     - establish Base-wide environment variables such as BASE_HOME, BASE_OS,
+#       BASE_HOST, and BASE_SOURCES
+#     - source shared libraries and optional team/user/company layers
+#     - extend PATH with Base-managed command directories
+#
+# Call chain:
+#     lib/bashrc or lib/zshrc
+#         -> lib/shell_startup.sh
+#             -> base_init.sh
+#
+# What belongs here:
+#     - shell-agnostic Base bootstrap logic
+#     - shared environment and library loading
+#     - Base-level path management and activation rules
+#
+# What does not belong here:
+#     - aliases, prompts, keybindings, or other interactive shell cosmetics
+#       (those belong in base_defaults.sh / zsh_defaults.sh or user-specific
+#       startup files)
+#
+# See also:
+#     README.md section "Shell Startup Files"
 #
 
 [[ $__base_init_sourced__ ]] && return
 __base_init_sourced__=1
 
-check_bash_version() {
+check_shell_version() {
     local major=${1:-4}
-    local minor=$2
+    local minor=${2:-2}
     local rc=0
     local num_re='^[0-9]+$'
 
-    if [[ ! $major =~ $num_re ]] || [[ $minor && ! $minor =~ $num_re ]]; then
+    if [[ -n "${ZSH_VERSION:-}" ]]; then
+        return 0
+    fi
+
+    if [[ -z "${BASH_VERSION:-}" ]]; then
+        printf '%s\n' "ERROR: Unsupported shell - need Bash or zsh" >&2
+        return 1
+    fi
+
+    if [[ ! $major =~ $num_re ]] || [[ ! $minor =~ $num_re ]]; then
         printf '%s\n' "ERROR: version numbers should be numeric"
         return 1
     fi
-    if [[ $minor ]]; then
-        local bv=${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}
-        local vstring=$major.$minor
-        local vnum=$major$minor
-    else
-        local bv=${BASH_VERSINFO[0]}
-        local vstring=$major
-        local vnum=$major
-    fi
+
+    local bv=${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}
+    local vstring=$major.$minor
+    local vnum=$major$minor
+
     ((bv < vnum)) && {
         printf '%s\n' "ERROR: Base needs Bash version $vstring or above, your version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
         rc=1
@@ -43,11 +73,8 @@ do_init() {
         base_debug() { [[ $BASE_DEBUG ]] && printf '%(%Y-%m-%d:%H:%M:%S)T %s\n' -1 "DEBUG ${BASH_SOURCE[0]}:${BASH_LINENO[1]} $@" >&2; }
         base_error() {                      printf '%(%Y-%m-%d:%H:%M:%S)T %s\n' -1 "ERROR ${BASH_SOURCE[0]}:${BASH_LINENO[1]} $@" >&2; }
     elif [[ $ZSH_VERSION ]]; then
-        #
-        # for zsh - it doesn't support time in printf
-        #
-        base_debug() { [[ $BASE_DEBUG ]] && printf '%s\n' "$(date) DEBUG ${BASH_SOURCE[0]}:${BASH_LINENO[1]} $@" >&2; }
-        base_error() {                      printf '%s\n' "$(date) ERROR ${BASH_SOURCE[0]}:${BASH_LINENO[1]} $@" >&2; }
+        base_debug() { [[ $BASE_DEBUG ]] && printf '%s\n' "$(date) DEBUG base_init.sh $*" >&2; }
+        base_error() {                      printf '%s\n' "$(date) ERROR base_init.sh $*" >&2; }
     else
         printf '%s\n' "ERROR: Unsupported shell - need Bash or zsh" >&2
         rc=1
@@ -147,7 +174,7 @@ base_update() (
 )
 
 base_main() {
-    check_bash_version 4 2 || return $?
+    check_shell_version 4 2 || return $?
     do_init || return $?
     [[ $- = *i* ]] && _interactive=1 || _interactive=0
     set_base_home
@@ -161,7 +188,9 @@ base_main() {
     #
     # these functions need to be available to user's subprocesses
     #
-    export -f base_update import
+    if [[ -n "${BASH_VERSION:-}" ]]; then
+        export -f base_update import
+    fi
 }
 
 #
