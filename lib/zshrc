@@ -1,9 +1,43 @@
-[[ $- != *i* ]] && return 0
-[[ -n "${__base_bashrc_sourced__:-}" ]] && return 0
-readonly __base_bashrc_sourced__=1
+#
+# .zshrc
+#     Base-managed interactive Zsh startup file.
+#
+# Purpose:
+#     - run only for interactive Zsh shells
+#     - guard against repeated sourcing
+#     - determine BASE_HOME from ~/.baserc or from the resolved path of this
+#       file when it is symlinked from the user's home directory
+#     - hand off to lib/shell_startup.sh, which applies optional shell defaults
+#       and then sources base_init.sh
+#
+# Expected usage:
+#     symlink ~/.zshrc -> /path/to/base/lib/zshrc
+#
+# What belongs here:
+#     - interactive-shell guards
+#     - BASE_HOME discovery for Zsh
+#     - loading the shared Base shell bootstrap
+#
+# What does not belong here:
+#     - login-only behavior (that belongs in lib/zprofile)
+#     - large sets of aliases or prompt customizations
+#       (those belong in zsh_defaults.sh or user-specific files)
+#
+# See also:
+#     lib/zprofile
+#     lib/shell_startup.sh
+#     base_init.sh
+#     README.md section "Shell Startup Files"
+#
+[[ ! -o interactive ]] && return 0
+[[ -n "${__base_zshrc_sourced__:-}" ]] && return 0
+readonly __base_zshrc_sourced__=1
 
-base_bashrc_source_path() {
-    local source_path="${BASH_SOURCE[0]}" link_dir target
+base_zshrc_source_path() {
+    local source_path link_dir target
+
+    source_path="$(eval 'printf "%s\n" "${(%):-%x}"')" || return 1
+    [[ -n "$source_path" ]] || return 1
 
     while [[ -L "$source_path" ]]; do
         link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
@@ -19,10 +53,10 @@ base_bashrc_source_path() {
     printf '%s/%s\n' "$link_dir" "$(basename "$source_path")"
 }
 
-base_bashrc_set_base_home() {
+base_zshrc_set_base_home() {
     local source_path lib_dir candidate
 
-    source_path="$(base_bashrc_source_path)" || return 1
+    source_path="$(base_zshrc_source_path)" || return 1
     lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
     candidate="$(cd -- "$lib_dir/.." && pwd -P)" || return 1
 
@@ -47,9 +81,7 @@ base_bashrc_set_base_home() {
     export BASE_HOME
 }
 
-[[ -f /etc/bashrc ]] && source /etc/bashrc
-
-base_bashrc_set_base_home || {
+base_zshrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME.\n' >&2
     return 1
 }
@@ -61,8 +93,8 @@ base_bashrc_set_base_home || {
 
 # shellcheck source=/dev/null
 source "$BASE_HOME/lib/shell_startup.sh"
-base_shell_startup_interactive bash || return 1
+base_shell_startup_interactive zsh || return 1
 
-unset -f base_bashrc_source_path base_bashrc_set_base_home
+unset -f base_zshrc_source_path base_zshrc_set_base_home
 unset -f base_shell_error base_shell_source_defaults
 unset -f base_shell_source_base_init base_shell_startup_interactive

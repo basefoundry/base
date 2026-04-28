@@ -96,6 +96,97 @@ The wrapper model matters because it keeps command behavior predictable. A CLI
 should run inside a known environment instead of relying on whoever happened to
 invoke it from whatever shell state they already had.
 
+## Shell Startup Files
+
+Base now ships managed startup files under `lib/` for both Bash and Zsh:
+
+- `lib/bash_profile`
+- `lib/bashrc`
+- `lib/zprofile`
+- `lib/zshrc`
+
+The division of responsibility is intentional.
+
+### Login Profiles
+
+`bash_profile` and `zprofile` should stay thin.
+
+They are responsible for:
+
+- one-time setup for a login shell
+- handing off to the interactive rc file
+
+They should not be the main place for aliases, prompt settings, shell editing
+mode, completion, or project activation logic.
+
+### Interactive RC Files
+
+`bashrc` and `zshrc` are where interactive shell behavior belongs.
+
+They are responsible for:
+
+- guarding against non-interactive execution
+- guarding against repeated sourcing
+- locating `BASE_HOME`
+- sourcing `~/.baserc` for machine-local overrides
+- sourcing `base_init.sh`
+- optionally enabling shared shell defaults
+
+This is where Base becomes active for day-to-day terminal use.
+
+### Standard Shell Defaults
+
+Reusable, opinionated shell defaults should live outside the profile files
+themselves.
+
+Current default-setting scripts are:
+
+- `lib/base_defaults.sh` for Bash
+- `lib/zsh_defaults.sh` for Zsh
+
+These are intentionally optional. Users can opt in by setting:
+
+```bash
+BASE_ENABLE_SHELL_DEFAULTS=true
+```
+
+in `~/.baserc`.
+
+That keeps the startup files focused on shell bootstrap while letting Base also
+house standard interactive settings such as:
+
+- aliases like `rm -i`, `cp -i`, `mv -i`
+- vi-style command editing
+- editor defaults
+- prompt defaults
+- history behavior
+
+### Machine-Local Overrides
+
+`~/.baserc` is the right place for machine-local settings that should not be
+hard-coded into the shared startup files, such as:
+
+- `BASE_HOME`
+- `BASE_ENABLE_SHELL_DEFAULTS`
+- host-specific overrides
+- local experimental toggles
+
+### Adoption
+
+The expected setup is to symlink your shell startup files to the Base-managed
+versions:
+
+```bash
+ln -sf /path/to/base/lib/bash_profile ~/.bash_profile
+ln -sf /path/to/base/lib/bashrc ~/.bashrc
+ln -sf /path/to/base/lib/zprofile ~/.zprofile
+ln -sf /path/to/base/lib/zshrc ~/.zshrc
+```
+
+When the files are symlinked, the rc files can infer `BASE_HOME` from their own
+resolved path. When they are copied instead of symlinked, `~/.baserc` should
+set `BASE_HOME` explicitly.
+
 ## What Base Is Responsible For
 
 Base owns the shared developer-platform layer of the workspace.
