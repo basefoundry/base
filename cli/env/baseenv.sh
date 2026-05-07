@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
 #
-# banyanenv.sh
+# baseenv.sh
 #     Sets up the Base CLI shell environment.
 #     Source this file from base-wrapper or from ~/.bashrc / ~/.zshrc:
-#         source /path/to/base/cli/env/banyanenv.sh
+#         source /path/to/base/cli/env/baseenv.sh
 #     Compatible with both bash and zsh.
 #
 
-banyanenv_error() {
+baseenv_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
 
-banyanenv_is_sourced() {
+baseenv_is_sourced() {
     if [[ -n "${BASH_VERSION:-}" ]]; then
         [[ "${BASH_SOURCE[0]}" != "$0" ]]
         return
@@ -26,7 +26,7 @@ banyanenv_is_sourced() {
     return 1
 }
 
-banyanenv_get_source_path() {
+baseenv_get_source_path() {
     if [[ -n "${BASH_VERSION:-}" ]]; then
         printf '%s\n' "${BASH_SOURCE[0]}"
         return 0
@@ -40,7 +40,7 @@ banyanenv_get_source_path() {
     return 1
 }
 
-banyanenv_prepend_path() {
+baseenv_prepend_path() {
     local dir="$1"
 
     [[ -n "$dir" && -d "$dir" ]] || return 0
@@ -58,59 +58,60 @@ banyanenv_prepend_path() {
     esac
 }
 
-banyanenv_main() {
+baseenv_main() {
     local source_path env_dir cli_root repo_root bash_root python_root
 
-    source_path="$(banyanenv_get_source_path)" || {
-        banyanenv_error "Unable to determine the path to banyanenv.sh."
+    source_path="$(baseenv_get_source_path)" || {
+        baseenv_error "Unable to determine the path to baseenv.sh."
         return 1
     }
     [[ -n "$source_path" ]] || {
-        banyanenv_error "Unable to determine the path to banyanenv.sh."
+        baseenv_error "Unable to determine the path to baseenv.sh."
         return 1
     }
 
     env_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || {
-        banyanenv_error "Unable to resolve cli/env root from '$source_path'."
+        baseenv_error "Unable to resolve cli/env root from '$source_path'."
         return 1
     }
     cli_root="$(cd -- "$env_dir/.." && pwd -P)" || {
-        banyanenv_error "Unable to resolve cli root from '$env_dir'."
+        baseenv_error "Unable to resolve cli root from '$env_dir'."
         return 1
     }
     repo_root="$(cd -- "$cli_root/.." && pwd -P)" || {
-        banyanenv_error "Unable to resolve repository root from '$cli_root'."
+        baseenv_error "Unable to resolve repository root from '$cli_root'."
         return 1
     }
 
     bash_root="$cli_root/bash"
     python_root="$cli_root/python"
 
-    export BANYAN_REPO_ROOT="$repo_root"
-    export BANYAN_CLI_ROOT="$cli_root"
-    export BANYAN_CLI_ENV_DIR="$env_dir"
-    export BANYAN_CLI_ENV_SCRIPT="$env_dir/banyanenv.sh"
-    export BANYAN_BASH_ROOT="$bash_root"
-    export BANYAN_BASH_BIN_DIR="$bash_root/bin"
-    export BANYAN_BASH_LIB_DIR="$bash_root/lib"
-    export BANYAN_BASH_COMMANDS_DIR="$bash_root/commands"
-    export BANYAN_PYTHON_ROOT="$python_root"
+    export BASE_REPO_ROOT="$repo_root"
+    export BASE_CLI_ROOT="$cli_root"
+    export BASE_CLI_ENV_SCRIPT="$env_dir/baseenv.sh"
+    export BASE_BASH_ROOT="$bash_root"
+    export BASE_PYTHON_ROOT="$python_root"
 
-    banyanenv_prepend_path "$BANYAN_BASH_BIN_DIR"
+    BASE_CLI_ENV_DIR="$env_dir"
+    BASE_BASH_BIN_DIR="$bash_root/bin"
+    BASE_BASH_LIB_DIR="$bash_root/lib"
+    BASE_BASH_COMMANDS_DIR="$bash_root/commands"
+
+    baseenv_prepend_path "$BASE_BASH_BIN_DIR"
 
     return 0
 }
 
-if ! banyanenv_is_sourced; then
-    banyanenv_error "banyanenv.sh must be sourced, not executed."
-    banyanenv_error "Use: source /path/to/base/cli/env/banyanenv.sh"
+if ! baseenv_is_sourced; then
+    baseenv_error "baseenv.sh must be sourced, not executed."
+    baseenv_error "Use: source /path/to/base/cli/env/baseenv.sh"
     exit 1
 fi
 
-banyanenv_main
-_banyanenv_rc=$?
-unset -f banyanenv_error banyanenv_is_sourced banyanenv_get_source_path banyanenv_prepend_path banyanenv_main
-if [[ $_banyanenv_rc -ne 0 ]]; then
-    return "$_banyanenv_rc"
+baseenv_main
+_baseenv_rc=$?
+unset -f baseenv_error baseenv_is_sourced baseenv_get_source_path baseenv_prepend_path baseenv_main
+if [[ $_baseenv_rc -ne 0 ]]; then
+    return "$_baseenv_rc"
 fi
-unset _banyanenv_rc
+unset _baseenv_rc

@@ -33,27 +33,27 @@ Behavior:
 
 Before sourcing the command script, `base-wrapper`:
 
-- sources `../../env/banyanenv.sh` to initialize the shared CLI environment
+- sources `../../env/baseenv.sh` to initialize the shared CLI environment
 - resolves the repository, CLI, and Bash root directories
-- exports wrapper metadata:
-  - `BANYAN_REPO_ROOT`
-  - `BANYAN_CLI_ROOT`
-  - `BANYAN_BASH_ROOT`
-  - `BANYAN_BASH_BIN_DIR`
-  - `BANYAN_CLI_ENV_SCRIPT`
-  - `BANYAN_BASH_COMMAND_NAME`
-  - `BANYAN_BASH_COMMAND_DIR`
-  - `BANYAN_BASH_COMMAND_SCRIPT`
+- makes wrapper metadata available to sourced command scripts:
+  - `BASE_REPO_ROOT`
+  - `BASE_CLI_ROOT`
+  - `BASE_BASH_ROOT`
+  - `BASE_BASH_BIN_DIR`
+  - `BASE_CLI_ENV_SCRIPT`
+  - `BASE_BASH_COMMAND_NAME`
+  - `BASE_BASH_COMMAND_DIR`
+  - `BASE_BASH_COMMAND_SCRIPT`
 - preloads `../lib/std/lib_std.sh`
 
-That means command scripts inherit both the shared environment and the stdlib helpers without having to source them directly.
+That means command scripts inherit both the shared environment and the stdlib helpers without having to source them directly. The wrapper metadata is available in the wrapper shell because Base commands are sourced, but it is not part of the stable exported environment contract for child processes.
 
-The wrapper also sets `BANYAN_BASH_BOOTSTRAP_SOURCE` before loading the stdlib so stdlib path detection still treats the command script as the real caller.
+The wrapper also sets `BASE_BASH_BOOTSTRAP_SOURCE` before loading the stdlib so stdlib path detection still treats the command script as the real caller.
 
-`banyanenv.sh` is also meant to be sourced from a user's shell startup file:
+`baseenv.sh` is also meant to be sourced from a user's shell startup file:
 
 ```bash
-source /path/to/base/cli/env/banyanenv.sh
+source /path/to/base/cli/env/baseenv.sh
 ```
 
 That keeps interactive shells and wrapper-launched commands on the same environment contract.

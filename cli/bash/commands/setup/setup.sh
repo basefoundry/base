@@ -7,7 +7,7 @@ Usage:
 
 Commands:
   install
-    Install Homebrew, Xcode Command Line Tools, Python, BATS, and ~/.banyanlabs.d/.venv.
+    Install Homebrew, Xcode Command Line Tools, Python, BATS, and ~/.base.d/.venv.
   check
     Verify the required local CLI setup without making changes.
   update-profile
@@ -26,14 +26,14 @@ Install does:
   2. Install Xcode Command Line Tools if needed.
   3. Install Python 3.13 via Homebrew if needed.
   4. Install BATS via Homebrew if needed.
-  5. Create ~/.banyanlabs.d/.venv if it does not already exist.
+  5. Create ~/.base.d/.venv if it does not already exist.
 
 Check does:
   1. Verify Homebrew is installed.
   2. Verify Xcode Command Line Tools are installed.
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify BATS is installed via Homebrew.
-  5. Verify ~/.banyanlabs.d/.venv exists.
+  5. Verify ~/.base.d/.venv exists.
 
 Notes:
   - This command is intentionally idempotent.
@@ -53,39 +53,39 @@ setup_virtualenv_exists() {
 }
 
 setup_venv_dir() {
-    printf '%s\n' "${BANYAN_SETUP_VENV_DIR:-$HOME/.banyanlabs.d/.venv}"
+    printf '%s\n' "${BASE_SETUP_VENV_DIR:-$HOME/.base.d/.venv}"
 }
 
 setup_python_formula() {
-    printf '%s\n' "${BANYAN_SETUP_PYTHON_FORMULA:-python@3.13}"
+    printf '%s\n' "${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 }
 
 setup_bats_formula() {
-    printf '%s\n' "${BANYAN_SETUP_BATS_FORMULA:-bats-core}"
+    printf '%s\n' "${BASE_SETUP_BATS_FORMULA:-bats-core}"
 }
 
 setup_xcode_tools_dir() {
-    printf '%s\n' "${BANYAN_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR:-/Library/Developer/CommandLineTools}"
+    printf '%s\n' "${BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR:-/Library/Developer/CommandLineTools}"
 }
 
 setup_xcode_wait_timeout_seconds() {
-    printf '%s\n' "${BANYAN_SETUP_XCODE_WAIT_TIMEOUT_SECONDS:-1800}"
+    printf '%s\n' "${BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS:-1800}"
 }
 
 setup_xcode_wait_interval_seconds() {
-    printf '%s\n' "${BANYAN_SETUP_XCODE_WAIT_INTERVAL_SECONDS:-5}"
+    printf '%s\n' "${BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS:-5}"
 }
 
 setup_allow_noninteractive_xcode_install() {
-    [[ "${BANYAN_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL:-false}" == true ]]
+    [[ "${BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL:-false}" == true ]]
 }
 
 setup_find_brew_bin() {
     local candidate
 
-    if [[ -n "${BANYAN_SETUP_BREW_BIN+x}" ]]; then
-        if [[ -x "${BANYAN_SETUP_BREW_BIN}" ]]; then
-            printf '%s\n' "${BANYAN_SETUP_BREW_BIN}"
+    if [[ -n "${BASE_SETUP_BREW_BIN+x}" ]]; then
+        if [[ -x "${BASE_SETUP_BREW_BIN}" ]]; then
+            printf '%s\n' "${BASE_SETUP_BREW_BIN}"
             return 0
         fi
         return 1
@@ -129,8 +129,8 @@ setup_install_homebrew() {
 
     log_info "Installing Homebrew."
 
-    if [[ -n "${BANYAN_SETUP_HOMEBREW_INSTALLER_SCRIPT:-}" ]]; then
-        run "$BANYAN_SETUP_HOMEBREW_INSTALLER_SCRIPT"
+    if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT:-}" ]]; then
+        run "$BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT"
     else
         command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install Homebrew."
         /bin/bash -c "$(curl -fsSL "$installer_url")"
@@ -247,8 +247,8 @@ setup_install_bats() {
 setup_find_python_bin() {
     local formula prefix candidate candidates=()
 
-    if [[ -n "${BANYAN_SETUP_PYTHON_BIN:-}" && -x "${BANYAN_SETUP_PYTHON_BIN}" ]]; then
-        printf '%s\n' "${BANYAN_SETUP_PYTHON_BIN}"
+    if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" && -x "${BASE_SETUP_PYTHON_BIN}" ]]; then
+        printf '%s\n' "${BASE_SETUP_PYTHON_BIN}"
         return 0
     fi
 

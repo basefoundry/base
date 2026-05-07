@@ -4,8 +4,8 @@ load ../../../tests/test_helper.bash
 
 setup() {
     setup_test_tmpdir
-    source "$BANYAN_BASH_DIR/lib/std/lib_std.sh"
-    source "$BANYAN_BASH_DIR/lib/git/lib_git.sh"
+    source "$BASE_BASH_DIR/lib/std/lib_std.sh"
+    source "$BASE_BASH_DIR/lib/git/lib_git.sh"
 }
 
 @test "git_get_current_branch returns the current branch name" {
