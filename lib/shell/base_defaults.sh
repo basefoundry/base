@@ -8,7 +8,7 @@
 #       settings, and history behavior for interactive Bash shells
 #
 # How it is loaded:
-#     - sourced indirectly from lib/shell_startup.sh
+#     - sourced indirectly from lib/shell/shell_startup.sh
 #     - only when BASE_ENABLE_SHELL_DEFAULTS=true
 #     - only for interactive Bash shells
 #

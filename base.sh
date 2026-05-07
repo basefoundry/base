@@ -96,7 +96,7 @@ verify_base() {
             return 1
         fi
         local file missing=()
-        for file in base_init.sh lib/bash_profile lib/bashrc; do
+        for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc; do
             if [[ ! -f $BASE_HOME/$file ]]; then
                 missing+=($file)
             fi
@@ -180,8 +180,8 @@ do_embrace() {
     if ! verify_base; then
         error_exit "$glb_error_message"
     fi
-    local base_bash_profile=$BASE_HOME/lib/bash_profile
-    local base_bashrc=$BASE_HOME/lib/bashrc
+    local base_bash_profile=$BASE_HOME/lib/shell/bash_profile
+    local base_bashrc=$BASE_HOME/lib/shell/bashrc
     local bash_profile=$HOME/.bash_profile
     local bashrc=$HOME/.bashrc
     if [[ -L $bash_profile ]]; then
@@ -253,7 +253,7 @@ do_status() {
 }
 
 do_shell() {
-    local base_bash_profile=$BASE_HOME/lib/bash_profile
+    local base_bash_profile=$BASE_HOME/lib/shell/bash_profile
     if [[ -d $BASE_HOME && -f $base_bash_profile ]]; then
         export BASE_SHELL=1
         exec bash --rcfile "$base_bash_profile"

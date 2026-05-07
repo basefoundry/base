@@ -4,7 +4,7 @@ File-oriented Bash helpers shared by CLI commands.
 
 ## Dependency
 
-Source `lib/std/lib_std.sh` before this library so logging and error helpers are available.
+Source `lib/bash/std/lib_std.sh` before this library so logging and error helpers are available.
 
 ## Public API
 
@@ -14,8 +14,8 @@ Source `lib/std/lib_std.sh` before this library so logging and error helpers are
 ## Usage
 
 ```bash
-source "/absolute/path/to/cli/bash/lib/std/lib_std.sh"
-source "/absolute/path/to/cli/bash/lib/file/lib_file.sh"
+source "/absolute/path/to/lib/bash/std/lib_std.sh"
+source "/absolute/path/to/lib/bash/file/lib_file.sh"
 
 update_file_section ~/.bash_profile "# BEGIN APP" "# END APP" \
     "export APP_HOME=/opt/app" \

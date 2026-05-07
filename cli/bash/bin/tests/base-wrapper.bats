@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../tests/test_helper.bash
+load ../../../../lib/bash/tests/test_helper.bash
 
 create_bare_wrapper_layout() {
     local layout_root="$1"
@@ -9,10 +9,10 @@ create_bare_wrapper_layout() {
     cli_root="$(dirname "$layout_root")"
     repo_root="$(dirname "$cli_root")"
 
-    mkdir -p "$repo_root/bin" "$layout_root/bin" "$layout_root/commands" "$layout_root/lib/std" "$cli_root/env" "$cli_root/python"
+    mkdir -p "$repo_root/bin" "$layout_root/bin" "$layout_root/commands" "$repo_root/lib/bash/std" "$cli_root/env" "$cli_root/python"
     cp "$BASE_REPO_ROOT/cli/env/baseenv.sh" "$cli_root/env/baseenv.sh"
     cp "$BASE_REPO_ROOT/bin/base-wrapper" "$repo_root/bin/base-wrapper"
-    cp "$BASE_BASH_DIR/lib/std/lib_std.sh" "$layout_root/lib/std/lib_std.sh"
+    cp "$BASE_BASH_DIR/std/lib_std.sh" "$repo_root/lib/bash/std/lib_std.sh"
     chmod +x "$repo_root/bin/base-wrapper"
     ln -s ../../../bin/base-wrapper "$layout_root/bin/base-wrapper"
 }
@@ -214,7 +214,7 @@ EOF
     local layout="$repo_root/cli/bash"
 
     create_wrapper_layout "$layout" demo
-    rm -f "$layout/lib/std/lib_std.sh"
+    rm -f "$repo_root/lib/bash/std/lib_std.sh"
 
     run "$layout/bin/base-wrapper" demo
 

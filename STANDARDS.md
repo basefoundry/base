@@ -100,7 +100,7 @@ Libraries should also live in per-library directories.
 Recommended layout:
 
 ```text
-cli/bash/lib/
+lib/bash/
   std/
     lib_std.sh
     README.md
@@ -131,7 +131,7 @@ Even though commands and libraries live in per-module directories, keep
 high-level index READMEs at the parent level when helpful, for example:
 
 - `cli/bash/bin/README.md`
-- `cli/bash/lib/README.md`
+- `lib/bash/README.md`
 - `cli/bash/commands/README.md`
 
 Those top-level READMEs should act as catalogs and maps, while each module's
