@@ -93,9 +93,9 @@ __log_init__() {
         # colors for logging in interactive mode
         [[ $COLOR_BOLD ]]   || COLOR_BOLD="\033[1m"
         [[ $COLOR_RED ]]    || COLOR_RED="\033[0;31m"
-        [[ $COLOR_GREEN ]]  || COLOR_GREEN="\033[0;34m"
+        [[ $COLOR_GREEN ]]  || COLOR_GREEN="\033[0;32m"
         [[ $COLOR_YELLOW ]] || COLOR_YELLOW="\033[0;33m"
-        [[ $COLOR_BLUE ]]   || COLOR_BLUE="\033[0;32m"
+        [[ $COLOR_BLUE ]]   || COLOR_BLUE="\033[0;34m"
         [[ $COLOR_OFF ]]    || COLOR_OFF="\033[0m"
     else
         # no colors to be used if non-interactive
