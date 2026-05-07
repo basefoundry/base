@@ -9,7 +9,7 @@ The command is intentionally small and idempotent.
 ## Commands
 
 - `install`
-  Installs Homebrew, Xcode Command Line Tools, Python 3.13, BATS, and creates `$HOME/.banyanlabs.d/.venv`.
+  Installs Homebrew, Xcode Command Line Tools, Python 3.13, BATS, and creates `$HOME/.base.d/.venv`.
 - `check`
   Verifies the required local CLI setup without making changes. Exits non-zero if anything is missing.
 - `update-profile`
@@ -23,10 +23,7 @@ The `install` command performs these steps:
 2. install Xcode Command Line Tools if they are not already installed
 3. install Python 3.13 via Homebrew if it is not already installed
 4. install BATS via Homebrew if it is not already installed
-5. create `$HOME/.banyanlabs.d/.venv` if it does not already exist
-
-The current implementation still uses `.banyanlabs.d` as its state directory
-for compatibility during the migration into `base`.
+5. create `$HOME/.base.d/.venv` if it does not already exist
 
 ## Check Behavior
 
@@ -36,7 +33,7 @@ The `check` command verifies the same base requirements as `install`:
 2. Xcode Command Line Tools are installed
 3. Python 3.13 is installed via Homebrew
 4. BATS is installed via Homebrew
-5. `$HOME/.banyanlabs.d/.venv` exists
+5. `$HOME/.base.d/.venv` exists
 
 It exits with status `0` when everything is present and `1` when any required item is missing.
 
@@ -88,13 +85,13 @@ cli/bash/bin/setup.sh -v install
 
 The command supports a few environment-variable overrides, mainly for automation and tests:
 
-- `BANYAN_SETUP_VENV_DIR`
-- `BANYAN_SETUP_PYTHON_FORMULA`
-- `BANYAN_SETUP_BATS_FORMULA`
-- `BANYAN_SETUP_PYTHON_BIN`
-- `BANYAN_SETUP_BREW_BIN`
-- `BANYAN_SETUP_HOMEBREW_INSTALLER_SCRIPT`
-- `BANYAN_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR`
+- `BASE_SETUP_VENV_DIR`
+- `BASE_SETUP_PYTHON_FORMULA`
+- `BASE_SETUP_BATS_FORMULA`
+- `BASE_SETUP_PYTHON_BIN`
+- `BASE_SETUP_BREW_BIN`
+- `BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT`
+- `BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR`
 
 ## Tests
 

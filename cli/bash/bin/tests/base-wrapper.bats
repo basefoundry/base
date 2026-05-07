@@ -10,9 +10,9 @@ create_bare_wrapper_layout() {
     repo_root="$(dirname "$cli_root")"
 
     mkdir -p "$repo_root/bin" "$layout_root/bin" "$layout_root/commands" "$layout_root/lib/std" "$cli_root/env" "$cli_root/python"
-    cp "$BANYAN_REPO_ROOT/cli/env/banyanenv.sh" "$cli_root/env/banyanenv.sh"
-    cp "$BANYAN_REPO_ROOT/bin/base-wrapper" "$repo_root/bin/base-wrapper"
-    cp "$BANYAN_BASH_DIR/lib/std/lib_std.sh" "$layout_root/lib/std/lib_std.sh"
+    cp "$BASE_REPO_ROOT/cli/env/baseenv.sh" "$cli_root/env/baseenv.sh"
+    cp "$BASE_REPO_ROOT/bin/base-wrapper" "$repo_root/bin/base-wrapper"
+    cp "$BASE_BASH_DIR/lib/std/lib_std.sh" "$layout_root/lib/std/lib_std.sh"
     chmod +x "$repo_root/bin/base-wrapper"
     ln -s ../../../bin/base-wrapper "$layout_root/bin/base-wrapper"
 }
@@ -29,14 +29,17 @@ create_wrapper_layout() {
 #!/usr/bin/env bash
 printf 'script_dir=%s\n' "${__SCRIPT_DIR__:-}"
 printf 'orig_args=%s\n' "${__SCRIPT_ARGS__[*]:-}"
-printf 'command=%s\n' "${BANYAN_BASH_COMMAND_NAME:-}"
-printf 'repo=%s\n' "${BANYAN_REPO_ROOT:-}"
-printf 'bash_root=%s\n' "${BANYAN_BASH_ROOT:-}"
-printf 'bin_dir=%s\n' "${BANYAN_BASH_BIN_DIR:-}"
-printf 'env_script=%s\n' "${BANYAN_CLI_ENV_SCRIPT:-}"
-printf 'script=%s\n' "${BANYAN_BASH_COMMAND_SCRIPT:-}"
+printf 'command=%s\n' "${BASE_BASH_COMMAND_NAME:-}"
+printf 'repo=%s\n' "${BASE_REPO_ROOT:-}"
+printf 'bash_root=%s\n' "${BASE_BASH_ROOT:-}"
+printf 'bin_dir=%s\n' "${BASE_BASH_BIN_DIR:-}"
+printf 'env_script=%s\n' "${BASE_CLI_ENV_SCRIPT:-}"
+printf 'script=%s\n' "${BASE_BASH_COMMAND_SCRIPT:-}"
+printf 'command_exported=%s\n' "$(env | grep -c '^BASE_BASH_COMMAND_NAME=')"
+printf 'script_exported=%s\n' "$(env | grep -c '^BASE_BASH_COMMAND_SCRIPT=')"
+printf 'bin_dir_exported=%s\n' "$(env | grep -c '^BASE_BASH_BIN_DIR=')"
 case ":$PATH:" in
-    *":${BANYAN_BASH_BIN_DIR:-__missing__}:"*) printf 'path_has_bin=yes\n' ;;
+    *":${BASE_BASH_BIN_DIR:-__missing__}:"*) printf 'path_has_bin=yes\n' ;;
     *) printf 'path_has_bin=no\n' ;;
 esac
 printf 'argv=%s\n' "$*"
@@ -54,7 +57,7 @@ EOF
     expected_repo_root="$(cd "$repo_root" && pwd -P)"
     expected_bash_root="$(cd "$layout" && pwd -P)"
     expected_bin_dir="$(cd "$layout/bin" && pwd -P)"
-    expected_env_script="$(cd "$repo_root/cli/env" && pwd -P)/banyanenv.sh"
+    expected_env_script="$(cd "$repo_root/cli/env" && pwd -P)/baseenv.sh"
     expected_command_dir="$(cd "$layout/commands/demo" && pwd -P)"
     expected_script_path="$(cd "$layout/commands/demo" && pwd -P)/demo.sh"
 
@@ -69,6 +72,9 @@ EOF
     [[ "$output" == *"bin_dir=$expected_bin_dir"* ]]
     [[ "$output" == *"env_script=$expected_env_script"* ]]
     [[ "$output" == *"script=$expected_script_path"* ]]
+    [[ "$output" == *"command_exported=0"* ]]
+    [[ "$output" == *"script_exported=0"* ]]
+    [[ "$output" == *"bin_dir_exported=0"* ]]
     [[ "$output" == *"path_has_bin=yes"* ]]
     [[ "$output" == *"argv=alpha beta"* ]]
 }
@@ -216,12 +222,12 @@ EOF
     [[ "$output" == *"Required stdlib"* ]]
 }
 
-@test "wrapper errors when banyanenv is missing" {
+@test "wrapper errors when baseenv is missing" {
     local repo_root="$BATS_TEST_TMPDIR/repo"
     local layout="$repo_root/cli/bash"
 
     create_wrapper_layout "$layout" demo
-    rm -f "$repo_root/cli/env/banyanenv.sh"
+    rm -f "$repo_root/cli/env/baseenv.sh"
 
     run "$layout/bin/base-wrapper" demo
 
@@ -302,18 +308,18 @@ EOF
     cat > "$external_script" <<'EOF'
 #!/usr/bin/env bash
 printf 'script_dir=%s\n' "${__SCRIPT_DIR__:-}"
-printf 'command=%s\n' "${BANYAN_BASH_COMMAND_NAME:-}"
-printf 'repo=%s\n' "${BANYAN_REPO_ROOT:-}"
-printf 'bin_dir=%s\n' "${BANYAN_BASH_BIN_DIR:-}"
-printf 'env_script=%s\n' "${BANYAN_CLI_ENV_SCRIPT:-}"
-printf 'script=%s\n' "${BANYAN_BASH_COMMAND_SCRIPT:-}"
+printf 'command=%s\n' "${BASE_BASH_COMMAND_NAME:-}"
+printf 'repo=%s\n' "${BASE_REPO_ROOT:-}"
+printf 'bin_dir=%s\n' "${BASE_BASH_BIN_DIR:-}"
+printf 'env_script=%s\n' "${BASE_CLI_ENV_SCRIPT:-}"
+printf 'script=%s\n' "${BASE_BASH_COMMAND_SCRIPT:-}"
 printf 'argv=%s\n' "$*"
 EOF
     chmod +x "$external_script"
 
     expected_repo_root="$(cd "$repo_root" && pwd -P)"
     expected_bin_dir="$(cd "$layout/bin" && pwd -P)"
-    expected_env_script="$(cd "$repo_root/cli/env" && pwd -P)/banyanenv.sh"
+    expected_env_script="$(cd "$repo_root/cli/env" && pwd -P)/baseenv.sh"
     expected_script="$(cd "$external_dir" && pwd -P)/external-demo.sh"
 
     run "$repo_root/bin/base-wrapper" "$external_script" alpha beta

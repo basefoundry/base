@@ -123,7 +123,7 @@ Small framework-level singleton files may remain flat when they are not really
 "modules" in the same sense. Examples include:
 
 - `cli/bash/bin/base-wrapper`
-- `cli/env/banyanenv.sh`
+- `cli/env/baseenv.sh`
 
 ### Index documentation
 

@@ -4,8 +4,8 @@ load ../../../tests/test_helper.bash
 
 setup() {
     setup_test_tmpdir
-    source "$BANYAN_BASH_DIR/lib/std/lib_std.sh"
-    source "$BANYAN_BASH_DIR/lib/file/lib_file.sh"
+    source "$BASE_BASH_DIR/lib/std/lib_std.sh"
+    source "$BASE_BASH_DIR/lib/file/lib_file.sh"
 }
 
 @test "update_file_section appends a new marked block when markers are absent" {

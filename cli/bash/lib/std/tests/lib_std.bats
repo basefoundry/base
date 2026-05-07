@@ -2,7 +2,7 @@
 
 load ../../../tests/test_helper.bash
 
-readonly STDLIB_PATH="$BANYAN_BASH_DIR/lib/std/lib_std.sh"
+readonly STDLIB_PATH="$BASE_BASH_DIR/lib/std/lib_std.sh"
 
 create_script() {
     local script_path="$1"
@@ -34,13 +34,13 @@ run_tty_script() {
 
 setup() {
     setup_test_tmpdir
-    PATH="$BANYAN_TEST_ORIG_PATH"
-    unset DRY_RUN dry_run LOG_DEBUG LOG_UTC BANYAN_BASH_BOOTSTRAP_SOURCE
+    PATH="$BASE_TEST_ORIG_PATH"
+    unset DRY_RUN dry_run LOG_DEBUG LOG_UTC BASE_BASH_BOOTSTRAP_SOURCE
     source "$STDLIB_PATH"
 }
 
 teardown() {
-    PATH="$BANYAN_TEST_ORIG_PATH"
+    PATH="$BASE_TEST_ORIG_PATH"
 }
 
 @test "sourcing stdlib preserves original args and strips wrapper flags" {
@@ -75,7 +75,7 @@ EOF
 
     create_script "$script" <<EOF
 #!/usr/bin/env bash
-export BANYAN_BASH_BOOTSTRAP_SOURCE="$command_dir/demo.sh"
+export BASE_BASH_BOOTSTRAP_SOURCE="$command_dir/demo.sh"
 source "$STDLIB_PATH"
 printf 'script_dir=%s\n' "\$__SCRIPT_DIR__"
 EOF

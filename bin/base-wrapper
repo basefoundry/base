@@ -121,7 +121,7 @@ resolve_base_paths() {
     CLI_ROOT="$REPO_ROOT/cli"
     BASH_ROOT="$CLI_ROOT/bash"
     COMMANDS_DIR="$BASH_ROOT/commands"
-    ENV_SCRIPT="$CLI_ROOT/env/banyanenv.sh"
+    ENV_SCRIPT="$CLI_ROOT/env/baseenv.sh"
 }
 
 resolve_dispatch_target() {
@@ -191,22 +191,22 @@ load_base_environment() {
     [[ -f "$ENV_SCRIPT" ]] || die "Required environment bootstrap '$ENV_SCRIPT' was not found."
     source "$ENV_SCRIPT" || die "Failed to initialize Base CLI environment from '$ENV_SCRIPT'."
 
-    BASH_ROOT="${BANYAN_BASH_ROOT:-$BASH_ROOT}"
-    CLI_ROOT="${BANYAN_CLI_ROOT:-$CLI_ROOT}"
-    REPO_ROOT="${BANYAN_REPO_ROOT:-$REPO_ROOT}"
-    BASH_BIN_DIR="${BANYAN_BASH_BIN_DIR:-$CLI_ROOT/bash/bin}"
-    COMMANDS_DIR="${BANYAN_BASH_COMMANDS_DIR:-$COMMANDS_DIR}"
-    ENV_SCRIPT="${BANYAN_CLI_ENV_SCRIPT:-$ENV_SCRIPT}"
+    BASH_ROOT="${BASE_BASH_ROOT:-$BASH_ROOT}"
+    CLI_ROOT="${BASE_CLI_ROOT:-$CLI_ROOT}"
+    REPO_ROOT="${BASE_REPO_ROOT:-$REPO_ROOT}"
+    BASH_BIN_DIR="${BASE_BASH_BIN_DIR:-$CLI_ROOT/bash/bin}"
+    COMMANDS_DIR="${BASE_BASH_COMMANDS_DIR:-$COMMANDS_DIR}"
+    ENV_SCRIPT="${BASE_CLI_ENV_SCRIPT:-$ENV_SCRIPT}"
 
-    export BANYAN_REPO_ROOT="$REPO_ROOT"
-    export BANYAN_CLI_ROOT="$CLI_ROOT"
-    export BANYAN_BASH_ROOT="$BASH_ROOT"
-    export BANYAN_BASH_BIN_DIR="$BASH_BIN_DIR"
-    export BANYAN_BASH_COMMANDS_DIR="$COMMANDS_DIR"
-    export BANYAN_CLI_ENV_SCRIPT="$ENV_SCRIPT"
-    export BANYAN_BASH_COMMAND_NAME="$COMMAND_NAME"
-    export BANYAN_BASH_COMMAND_DIR="$COMMAND_DIR"
-    export BANYAN_BASH_COMMAND_SCRIPT="$COMMAND_SCRIPT"
+    BASE_REPO_ROOT="$REPO_ROOT"
+    BASE_CLI_ROOT="$CLI_ROOT"
+    BASE_BASH_ROOT="$BASH_ROOT"
+    BASE_BASH_BIN_DIR="$BASH_BIN_DIR"
+    BASE_BASH_COMMANDS_DIR="$COMMANDS_DIR"
+    BASE_CLI_ENV_SCRIPT="$ENV_SCRIPT"
+    BASE_BASH_COMMAND_NAME="$COMMAND_NAME"
+    BASE_BASH_COMMAND_DIR="$COMMAND_DIR"
+    BASE_BASH_COMMAND_SCRIPT="$COMMAND_SCRIPT"
 
     STDLIB_PATH="$BASH_ROOT/lib/std/lib_std.sh"
     [[ -f "$STDLIB_PATH" ]] || die "Required stdlib '$STDLIB_PATH' was not found."
@@ -223,9 +223,9 @@ main() {
     set -- "${COMMAND_ARGS[@]}"
     load_base_environment
 
-    export BANYAN_BASH_BOOTSTRAP_SOURCE="$COMMAND_SCRIPT"
+    BASE_BASH_BOOTSTRAP_SOURCE="$COMMAND_SCRIPT"
     source "$STDLIB_PATH"
-    unset BANYAN_BASH_BOOTSTRAP_SOURCE
+    unset BASE_BASH_BOOTSTRAP_SOURCE
 
     source "$COMMAND_SCRIPT" "$@"
 }

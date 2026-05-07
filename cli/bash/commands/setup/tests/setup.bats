@@ -16,8 +16,8 @@ setup() {
 create_xcode_stubs() {
     cat > "$TEST_MOCKBIN/xcode-select" <<'EOF'
 #!/usr/bin/env bash
-tools_dir="${BANYAN_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR:?}"
-state_dir="${BANYAN_SETUP_TEST_STATE_DIR:?}"
+tools_dir="${BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR:?}"
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 installed_file="$state_dir/xcode-installed"
 
 case "${1:-}" in
@@ -43,7 +43,7 @@ EOF
 
     cat > "$TEST_MOCKBIN/xcrun" <<'EOF'
 #!/usr/bin/env bash
-state_dir="${BANYAN_SETUP_TEST_STATE_DIR:?}"
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 installed_file="$state_dir/xcode-installed"
 
 if [[ "${1:-}" == "-f" && "${2:-}" == "clang" && -f "$installed_file" ]]; then
@@ -59,10 +59,10 @@ EOF
 create_brew_stub() {
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/usr/bin/env bash
-state_dir="${BANYAN_SETUP_TEST_STATE_DIR:?}"
-python_prefix="${BANYAN_SETUP_TEST_PYTHON_PREFIX:?}"
-python_formula="${BANYAN_SETUP_PYTHON_FORMULA:-python@3.13}"
-bats_formula="${BANYAN_SETUP_BATS_FORMULA:-bats-core}"
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
+python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
+python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
+bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
 
 case "${1:-}" in
     list)
@@ -126,13 +126,13 @@ create_homebrew_installer_stub() {
 
     cat > "$installer" <<'EOF'
 #!/usr/bin/env bash
-touch "${BANYAN_SETUP_TEST_STATE_DIR:?}/homebrew-install-ran"
-cat > "${BANYAN_SETUP_TEST_MOCKBIN:?}/brew" <<'BREWEOF'
+touch "${BASE_SETUP_TEST_STATE_DIR:?}/homebrew-install-ran"
+cat > "${BASE_SETUP_TEST_MOCKBIN:?}/brew" <<'BREWEOF'
 #!/usr/bin/env bash
-state_dir="${BANYAN_SETUP_TEST_STATE_DIR:?}"
-python_prefix="${BANYAN_SETUP_TEST_PYTHON_PREFIX:?}"
-python_formula="${BANYAN_SETUP_PYTHON_FORMULA:-python@3.13}"
-bats_formula="${BANYAN_SETUP_BATS_FORMULA:-bats-core}"
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
+python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
+python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
+bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
 
 case "${1:-}" in
     list)
@@ -188,7 +188,7 @@ PYEOF
         ;;
 esac
 BREWEOF
-chmod +x "${BANYAN_SETUP_TEST_MOCKBIN:?}/brew"
+chmod +x "${BASE_SETUP_TEST_MOCKBIN:?}/brew"
 EOF
     chmod +x "$installer"
 
@@ -203,18 +203,18 @@ run_setup() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE="${OSTYPE_OVERRIDE:-darwin24}" \
-        BANYAN_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
-        BANYAN_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        BANYAN_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
-        BANYAN_SETUP_TEST_PYTHON_PREFIX="$python_prefix" \
-        BANYAN_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
-        BANYAN_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
-        BANYAN_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$python_prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
+        BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
+        BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
         "$@"
 }
 
 @test "setup prints usage for help" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" --help
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
@@ -224,7 +224,7 @@ run_setup() {
 }
 
 @test "setup requires an explicit command" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh"
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh"
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"A setup command is required."* ]]
@@ -233,14 +233,14 @@ run_setup() {
 @test "setup fails on unsupported operating systems" {
     OSTYPE_OVERRIDE="linux-gnu"
 
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" install
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"supports macOS only"* ]]
 }
 
 @test "setup is idempotent when brew, xcode tools, python, and the venv already exist" {
-    local venv_dir="$TEST_HOME/.banyanlabs.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
     create_xcode_stubs
@@ -251,7 +251,7 @@ run_setup() {
     mkdir -p "$venv_dir/bin"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
 
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" install
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Homebrew is already installed."* ]]
@@ -263,17 +263,17 @@ run_setup() {
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
 }
 
-@test "setup installs missing dependencies and creates the Banyan virtual environment" {
+@test "setup installs missing dependencies and creates the Base virtual environment" {
     local installer
-    local venv_dir="$TEST_HOME/.banyanlabs.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_xcode_stubs
     installer="$(create_homebrew_installer_stub)"
 
     run_setup \
-        BANYAN_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
-        BANYAN_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
-        "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" install
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing Homebrew."* ]]
@@ -290,20 +290,20 @@ run_setup() {
 }
 
 @test "setup install supports dry-run without making changes" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" install --dry-run
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would install Homebrew using the official installer."* ]]
     [[ "$output" == *"[DRY-RUN] Would wait for Xcode Command Line Tools installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
-    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.banyanlabs.d/.venv'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
-    [ ! -e "$TEST_HOME/.banyanlabs.d/.venv" ]
+    [ ! -e "$TEST_HOME/.base.d/.venv" ]
 }
 
 @test "setup check passes when all required components are present" {
-    local venv_dir="$TEST_HOME/.banyanlabs.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
     create_xcode_stubs
@@ -314,7 +314,7 @@ run_setup() {
     mkdir -p "$venv_dir/bin"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
 
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" check
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" check
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Homebrew is installed."* ]]
@@ -326,19 +326,19 @@ run_setup() {
 }
 
 @test "setup check fails when required components are missing" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" check
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" check
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Homebrew is not installed."* ]]
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is not installed via Homebrew."* ]]
     [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
-    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.banyanlabs.d/.venv'."* ]]
+    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/.venv'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
 @test "setup install enables DEBUG logs with -v" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" -v install --dry-run
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" -v install --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"DEBUG"* ]]
@@ -346,7 +346,7 @@ run_setup() {
 }
 
 @test "setup update-profile is reserved for later work" {
-    run_setup "$BANYAN_REPO_ROOT/cli/bash/bin/setup.sh" update-profile
+    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" update-profile
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"update-profile"* ]]

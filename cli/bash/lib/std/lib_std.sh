@@ -40,7 +40,7 @@
 #
 # Notes:
 #   - Global options --debug-wrapper/--verbose-wrapper/--utc-wrapper/--color are stripped from "$@" automatically.
-#   - Wrappers may override the caller path seen by this library through BANYAN_BASH_BOOTSTRAP_SOURCE.
+#   - Wrappers may override the caller path seen by this library through BASE_BASH_BOOTSTRAP_SOURCE.
 #
 
 ################################################# INITIALIZATION #######################################################
@@ -58,12 +58,12 @@ readonly __LIB_STD_PATH__="${BASH_SOURCE[0]}"
 # This allows the library to parse global options before the main script does.
 # We retain the original arguments in __SCRIPT_ARGS__ and the script source directory in __SCRIPT_DIR__ as readonly
 # variables which could be used by the caller. When a wrapper preloads this library on behalf of another script, it can
-# provide BANYAN_BASH_BOOTSTRAP_SOURCE so __SCRIPT_DIR__ still resolves to the real command script.
+# provide BASE_BASH_BOOTSTRAP_SOURCE so __SCRIPT_DIR__ still resolves to the real command script.
 #
 readonly __SCRIPT_ARGS__=("$@")
 __new_args__=()
 __SCRIPT_DIR__=$(
-    cd -- "$(dirname -- "${BANYAN_BASH_BOOTSTRAP_SOURCE:-${BASH_SOURCE[1]}}" )" &>/dev/null && pwd -P
+    cd -- "$(dirname -- "${BASE_BASH_BOOTSTRAP_SOURCE:-${BASH_SOURCE[1]}}" )" &>/dev/null && pwd -P
 )
 readonly __SCRIPT_DIR__
 
