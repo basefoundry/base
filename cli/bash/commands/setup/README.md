@@ -51,7 +51,7 @@ It exits with status `0` when everything is present and `1` when any required it
 Via the wrapper:
 
 ```bash
-cli/bash/bin/bash-wrapper setup.sh install
+base-wrapper setup.sh install
 ```
 
 Via the symlinked entrypoint:

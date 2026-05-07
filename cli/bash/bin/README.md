@@ -4,32 +4,34 @@ This directory holds the user-facing Bash entrypoints.
 
 ## Layout
 
-- `bash-wrapper`
-  The shared dispatcher used to launch Bash commands.
+- `base-wrapper`
+  A symlink to the canonical wrapper at `../../../bin/base-wrapper`.
 - `<command>.sh` symlinks
-  Each command symlink points to `bash-wrapper`. The wrapper uses the invoked filename to decide which command to run.
+  Each command symlink points to `base-wrapper`. The wrapper uses the invoked filename to decide which command to run.
 - `tests/`
-  Wrapper-specific BATS coverage for `bash-wrapper`.
+  Wrapper-specific BATS coverage for `base-wrapper`.
 
-## How `bash-wrapper` Works
+## How `base-wrapper` Works
 
 The wrapper supports two invocation styles:
 
 ```bash
-bash-wrapper <command>.sh [args...]
+base-wrapper <command>.sh [args...]
+base-wrapper ./path/to/script.sh [args...]
 <command>.sh [args...]
 ```
 
 Behavior:
 
-- When invoked as `bash-wrapper`, the first argument is treated as the command name.
+- When invoked as `base-wrapper`, the first argument is treated as either a Base-owned command name or an explicit script path.
 - Bash entrypoint symlinks are expected to end in `.sh`.
 - When invoked through a symlink, the wrapper strips the `.sh` suffix and uses the remaining name as the command name.
 - Commands are resolved under `../commands/<name>/<name>.sh`.
+- Script paths that contain `/` are executed directly after Base bootstraps the environment and stdlib.
 
 ## What the Wrapper Provides
 
-Before sourcing the command script, `bash-wrapper`:
+Before sourcing the command script, `base-wrapper`:
 
 - sources `../../env/banyanenv.sh` to initialize the shared CLI environment
 - resolves the repository, CLI, and Bash root directories
@@ -61,14 +63,20 @@ That keeps interactive shells and wrapper-launched commands on the same environm
 Direct dispatch:
 
 ```bash
-cli/bash/bin/bash-wrapper my-command.sh --flag value
+base-wrapper my-command.sh --flag value
 ```
 
 Symlink dispatch:
 
 ```bash
-ln -s bash-wrapper cli/bash/bin/my-command.sh
+ln -s base-wrapper cli/bash/bin/my-command.sh
 cli/bash/bin/my-command.sh --flag value
+```
+
+Explicit script-path dispatch:
+
+```bash
+base-wrapper ./tools/my-script.sh --flag value
 ```
 
 ## Tests
@@ -77,5 +85,5 @@ Run the wrapper test suite with:
 
 ```bash
 cd cli/bash
-bats bin/tests/bash-wrapper.bats
+bats bin/tests/base-wrapper.bats
 ```

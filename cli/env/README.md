@@ -9,7 +9,7 @@ migration from the old `banyanlabs` repo into `base`.
 
 `banyanenv.sh` defines the common shell environment used by:
 
-- `cli/bash/bin/bash-wrapper`
+- `cli/bash/bin/base-wrapper`
 - interactive shells that source it from `~/.bashrc` or `~/.zshrc`
 - future Bash and Python CLIs that want a single, shared environment contract
 

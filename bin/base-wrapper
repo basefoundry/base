@@ -1,97 +1,233 @@
 #!/usr/bin/env bash
 
 #
-# base_wrapper
+# base-wrapper
+#     Canonical Base wrapper for Bash commands.
 #
-# This script is meant to be used in the shebang line of Base scripts, like this:
+# Supported modes:
+#     1. Base-owned command dispatch by convention:
+#            base-wrapper setup.sh [args...]
+#            setup.sh [args...]            # when setup.sh is a symlink to base-wrapper
 #
-# #!/usr/bin/env base-wrapper
+#     2. Explicit script-path dispatch for wrapped scripts outside Base:
+#            base-wrapper ./path/to/script.sh [args...]
+#            ./path/to/script.sh           # when the script uses #!/usr/bin/env base-wrapper
 #
-# What does this wrapper do?
-#
-# It discovers base_init and sources it.  It also looks at the command line options and interprets a few of those,
-# like --debug, --help, --describe etc.  It calls the main function with the special options removed from the argument list.
-# The main function is expected to be defined by the wrapped script.
+# In both cases, this wrapper:
+#     - initializes the shared Base CLI environment
+#     - preloads the Bash stdlib
+#     - exposes wrapper metadata through environment variables
+#     - sources the target command/script in the current shell
 #
 
-_bw_name="base-wrapper"
-_bw_description="Run shell scripts in a standardized environment enriched with Base features"
-_bw_check_and_execute() {
-    local cmd=$1; shift
-    if command -v -- "$cmd" &>/dev/null; then
-        "$cmd" "$@"
-        exit $?
-    else
-        print_error "Function '$cmd' not implemented"
-        exit 1
+die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+ensure_supported_bash() {
+    local current_version="${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}"
+    local candidate
+
+    ((current_version >= 42)) && return 0
+
+    for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+        [[ -x "$candidate" ]] || continue
+        [[ "$candidate" == "${BASH:-}" ]] && continue
+        exec "$candidate" "$0" "$@"
+    done
+
+    die "base-wrapper requires Bash 4.2 or newer; current version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}."
+}
+
+resolve_script_path() {
+    local source_path="${1:-}" link_dir target
+
+    [[ -n "$source_path" ]] || return 1
+
+    if [[ "$source_path" != */* ]]; then
+        source_path="$(command -v -- "$source_path" 2>/dev/null || true)"
+        [[ -n "$source_path" ]] || return 1
     fi
-}
 
-_bw_describe() {
-    printf '%s\n' "$_bw_description"
-}
-
-_bw_usage() {
-    printf '%s\n' "$_bw_name: $_bw_description"
-    printf '%s\n' "Usage: $_bw_name [options] script [args]"
-    cat << EOF
-Options:
--debug|--debug             - Turn on DEBUG logging
--shell-debug|--shell-debug - Turn shell debug on through 'set -x'
--describe|--describe       - Invoke base_describe function if defined in script
--help|--help               - Invoke base_help function if defined in script; if no script specified, show this help
-EOF
-}
-
-base_wrapper() {
-    local arg args script
-
-    ##
-    ## Do Base set up
-    ##
-
-    [[ $1 = "-d" ]] && { grab_debug=1; shift; }
-    [[ $BASE_HOME ]]    || { printf '%s\n' "ERROR: BASE_HOME is not set" >&2; exit 1; }
-    [[ -d $BASE_HOME ]] || { printf '%s\n' "ERROR: BASE_HOME '$BASE_HOME'is not a directory or is not readable" >&2; exit 1; }
-    script=$BASE_HOME/base_init.sh
-    [[ -f $script ]]    || { printf '%s\n' "ERROR: base_init script '$script'is not present or is not readable" >&2; exit 1; }
-    # shellcheck source=/dev/null
-    source "$script"
-    import lib/stdlib.sh
-
-    ##
-    ## Execute the script after processing the special command line arguments
-    ##
-
-    script=$1
-    if [[ ! $script || $script = -* ]]; then
-        _bw_usage >&2
-        exit 2
-    elif [[ ! -f $script ]]; then
-        print_error "Script '$script' does not exist"
-        _bw_usage >&2
-        exit 1
-    fi
-    source "$1"
-    shift
-    for arg; do
-        if [[ $arg =~ ^-debug$|^--debug$ ]]; then
-            export BASE_DEBUG=1
-            set_log_level DEBUG
-        elif [[ $arg =~ ^-shell-debug$|^--shell-debug$ ]]; then
-            set -x
-        elif [[ $arg =~ ^-describe$|^--describe$|^-desc$|^--desc$ ]]; then
-            _bw_check_and_execute base_describe
-        elif [[ $arg =~ ^-help$|^--help$|^-h$|^--help$ ]]; then
-            _bw_check_and_execute base_help
+    while [[ -L "$source_path" ]]; do
+        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)"
+        target="$(readlink "$source_path")"
+        if [[ "$target" == /* ]]; then
+            source_path="$target"
         else
-            args+=("$arg")
+            source_path="$link_dir/$target"
         fi
     done
 
-    set -- "${args[@]}"
-    log_debug "Invoking 'main' with arguments: $@"
-    _bw_check_and_execute main "$@"
+    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)"
+    printf '%s/%s\n' "$link_dir" "$(basename "$source_path")"
 }
 
-base_wrapper "$@"
+normalize_command_name() {
+    local command_name="${1:-}"
+
+    if [[ "$command_name" == *.sh && "$command_name" != ".sh" ]]; then
+        command_name="${command_name%.sh}"
+    fi
+
+    printf '%s\n' "$command_name"
+}
+
+list_commands() {
+    local commands_dir="$1"
+    local command_dir command_name found=0
+
+    [[ -d "$commands_dir" ]] || return 0
+
+    while IFS= read -r command_dir; do
+        [[ -d "$command_dir" ]] || continue
+        command_name="$(basename "$command_dir")"
+        if [[ -f "$command_dir/${command_name}.sh" ]]; then
+            printf '  %s.sh\n' "$command_name"
+            found=1
+        fi
+    done < <(find "$commands_dir" -mindepth 1 -maxdepth 1 -type d | sort)
+
+    ((found)) || printf '  (none yet)\n'
+}
+
+print_usage() {
+    local wrapper_name="$1"
+    local commands_dir="$2"
+
+    cat <<EOF
+Usage:
+  ${wrapper_name} <command> [args...]
+  ${wrapper_name} /path/to/script.sh [args...]
+  <command>.sh [args...]
+
+Behavior:
+  - When invoked as 'base-wrapper', the first argument is treated as either:
+      * a Base command name resolved under cli/bash/commands/<name>/<name>.sh
+      * a script path when the argument contains a '/'
+  - Base entrypoint symlinks are expected to end in '.sh'; the wrapper maps '<name>.sh' to command '<name>'.
+  - When invoked through a symlink, the symlink name is treated as the command name.
+
+Available Base-owned commands:
+EOF
+    list_commands "$commands_dir"
+}
+
+resolve_base_paths() {
+    WRAPPER_PATH="$(resolve_script_path "$0")" || die "Unable to resolve wrapper path for '$0'."
+    WRAPPER_BIN_DIR="$(cd -- "$(dirname -- "$WRAPPER_PATH")" && pwd -P)"
+    REPO_ROOT="$(cd -- "$WRAPPER_BIN_DIR/.." && pwd -P)"
+    CLI_ROOT="$REPO_ROOT/cli"
+    BASH_ROOT="$CLI_ROOT/bash"
+    COMMANDS_DIR="$BASH_ROOT/commands"
+    ENV_SCRIPT="$CLI_ROOT/env/banyanenv.sh"
+}
+
+resolve_dispatch_target() {
+    local invoked_as="$1"
+    local commands_dir="$2"
+    local script_arg=""
+
+    COMMAND_NAME=""
+    COMMAND_DIR=""
+    COMMAND_SCRIPT=""
+    COMMAND_ARGS=()
+    shift 2
+
+    if [[ "$invoked_as" == "base-wrapper" ]]; then
+        case "${1:-}" in
+            "" )
+                print_usage "$invoked_as" "$commands_dir"
+                exit 1
+                ;;
+            -h|--help|help )
+                print_usage "$invoked_as" "$commands_dir"
+                exit 0
+                ;;
+            --list|list )
+                list_commands "$commands_dir"
+                exit 0
+                ;;
+        esac
+
+        if [[ "${1:-}" == */* ]]; then
+            script_arg="$1"
+            shift 1
+        else
+            COMMAND_NAME="$1"
+            shift 1
+        fi
+    else
+        COMMAND_NAME="$invoked_as"
+    fi
+
+    if [[ -n "$script_arg" ]]; then
+        COMMAND_SCRIPT="$(resolve_script_path "$script_arg")" || die "Wrapped script '$script_arg' was not found."
+        [[ -f "$COMMAND_SCRIPT" ]] || die "Wrapped script '$script_arg' was not found."
+        COMMAND_NAME="$(normalize_command_name "$(basename "$COMMAND_SCRIPT")")"
+        COMMAND_DIR="$(cd -- "$(dirname -- "$COMMAND_SCRIPT")" && pwd -P)"
+    else
+        COMMAND_NAME="$(normalize_command_name "$COMMAND_NAME")"
+
+        case "$COMMAND_NAME" in
+            ""|.|..|*/* )
+                die "Invalid command name '$COMMAND_NAME'."
+                ;;
+        esac
+
+        COMMAND_DIR="$commands_dir/$COMMAND_NAME"
+        if [[ -f "$COMMAND_DIR/${COMMAND_NAME}.sh" ]]; then
+            COMMAND_SCRIPT="$COMMAND_DIR/${COMMAND_NAME}.sh"
+        else
+            die "Command '$COMMAND_NAME' was not found under '$COMMAND_DIR'."
+        fi
+    fi
+
+    COMMAND_ARGS=("$@")
+}
+
+load_base_environment() {
+    [[ -f "$ENV_SCRIPT" ]] || die "Required environment bootstrap '$ENV_SCRIPT' was not found."
+    source "$ENV_SCRIPT" || die "Failed to initialize Base CLI environment from '$ENV_SCRIPT'."
+
+    BASH_ROOT="${BANYAN_BASH_ROOT:-$BASH_ROOT}"
+    CLI_ROOT="${BANYAN_CLI_ROOT:-$CLI_ROOT}"
+    REPO_ROOT="${BANYAN_REPO_ROOT:-$REPO_ROOT}"
+    BASH_BIN_DIR="${BANYAN_BASH_BIN_DIR:-$CLI_ROOT/bash/bin}"
+    COMMANDS_DIR="${BANYAN_BASH_COMMANDS_DIR:-$COMMANDS_DIR}"
+    ENV_SCRIPT="${BANYAN_CLI_ENV_SCRIPT:-$ENV_SCRIPT}"
+
+    export BANYAN_REPO_ROOT="$REPO_ROOT"
+    export BANYAN_CLI_ROOT="$CLI_ROOT"
+    export BANYAN_BASH_ROOT="$BASH_ROOT"
+    export BANYAN_BASH_BIN_DIR="$BASH_BIN_DIR"
+    export BANYAN_BASH_COMMANDS_DIR="$COMMANDS_DIR"
+    export BANYAN_CLI_ENV_SCRIPT="$ENV_SCRIPT"
+    export BANYAN_BASH_COMMAND_NAME="$COMMAND_NAME"
+    export BANYAN_BASH_COMMAND_DIR="$COMMAND_DIR"
+    export BANYAN_BASH_COMMAND_SCRIPT="$COMMAND_SCRIPT"
+
+    STDLIB_PATH="$BASH_ROOT/lib/std/lib_std.sh"
+    [[ -f "$STDLIB_PATH" ]] || die "Required stdlib '$STDLIB_PATH' was not found."
+}
+
+main() {
+    local invoked_as
+
+    ensure_supported_bash "$@"
+    invoked_as="$(basename "$0")"
+    resolve_base_paths
+
+    resolve_dispatch_target "$invoked_as" "$COMMANDS_DIR" "$@"
+    set -- "${COMMAND_ARGS[@]}"
+    load_base_environment
+
+    export BANYAN_BASH_BOOTSTRAP_SOURCE="$COMMAND_SCRIPT"
+    source "$STDLIB_PATH"
+    unset BANYAN_BASH_BOOTSTRAP_SOURCE
+
+    source "$COMMAND_SCRIPT" "$@"
+}
+
+main "$@"
