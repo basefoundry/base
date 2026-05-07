@@ -20,7 +20,7 @@ Shared foundation library for Bash code under `cli/bash`.
 Standalone script usage:
 
 ```bash
-source "/absolute/path/to/cli/bash/lib/std/lib_std.sh"
+source "/absolute/path/to/lib/bash/std/lib_std.sh"
 
 add_to_path -p "/opt/my-tools/bin"
 set_log_level DEBUG

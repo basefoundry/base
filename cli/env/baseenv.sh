@@ -94,7 +94,7 @@ baseenv_main() {
 
     BASE_CLI_ENV_DIR="$env_dir"
     BASE_BASH_BIN_DIR="$bash_root/bin"
-    BASE_BASH_LIB_DIR="$bash_root/lib"
+    BASE_BASH_LIB_DIR="$repo_root/lib/bash"
     BASE_BASH_COMMANDS_DIR="$bash_root/commands"
 
     baseenv_prepend_path "$BASE_BASH_BIN_DIR"

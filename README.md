@@ -98,12 +98,12 @@ invoke it from whatever shell state they already had.
 
 ## Shell Startup Files
 
-Base now ships managed startup files under `lib/` for both Bash and Zsh:
+Base now ships managed startup files under `lib/shell/` for both Bash and Zsh:
 
-- `lib/bash_profile`
-- `lib/bashrc`
-- `lib/zprofile`
-- `lib/zshrc`
+- `lib/shell/bash_profile`
+- `lib/shell/bashrc`
+- `lib/shell/zprofile`
+- `lib/shell/zshrc`
 
 The division of responsibility is intentional.
 
@@ -141,8 +141,8 @@ themselves.
 
 Current default-setting scripts are:
 
-- `lib/base_defaults.sh` for Bash
-- `lib/zsh_defaults.sh` for Zsh
+- `lib/shell/base_defaults.sh` for Bash
+- `lib/shell/zsh_defaults.sh` for Zsh
 
 These are intentionally optional. Users can opt in by setting:
 
@@ -177,10 +177,10 @@ The expected setup is to symlink your shell startup files to the Base-managed
 versions:
 
 ```bash
-ln -sf /path/to/base/lib/bash_profile ~/.bash_profile
-ln -sf /path/to/base/lib/bashrc ~/.bashrc
-ln -sf /path/to/base/lib/zprofile ~/.zprofile
-ln -sf /path/to/base/lib/zshrc ~/.zshrc
+ln -sf /path/to/base/lib/shell/bash_profile ~/.bash_profile
+ln -sf /path/to/base/lib/shell/bashrc ~/.bashrc
+ln -sf /path/to/base/lib/shell/zprofile ~/.zprofile
+ln -sf /path/to/base/lib/shell/zshrc ~/.zshrc
 ```
 
 When the files are symlinked, the rc files can infer `BASE_HOME` from their own

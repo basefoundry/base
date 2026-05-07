@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
-load ../../../tests/test_helper.bash
+load ../../tests/test_helper.bash
 
 setup() {
     setup_test_tmpdir
-    source "$BASE_BASH_DIR/lib/std/lib_std.sh"
-    source "$BASE_BASH_DIR/lib/file/lib_file.sh"
+    source "$BASE_BASH_DIR/std/lib_std.sh"
+    source "$BASE_BASH_DIR/file/lib_file.sh"
 }
 
 @test "update_file_section appends a new marked block when markers are absent" {

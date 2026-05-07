@@ -12,8 +12,8 @@
 #     - extend PATH with Base-managed command directories
 #
 # Call chain:
-#     lib/bashrc or lib/zshrc
-#         -> lib/shell_startup.sh
+#     lib/shell/bashrc or lib/shell/zshrc
+#         -> lib/shell/shell_startup.sh
 #             -> base_init.sh
 #
 # What belongs here:
@@ -131,7 +131,7 @@ import_libs_and_profiles() {
     local lib script team
     local -A teams
 
-    source_it    "$BASE_HOME/lib/stdlib.sh"          # common library
+    source_it    "$BASE_HOME/lib/base/stdlib.sh"     # common library
     source_it -i "$HOME/.baserc-$USER"               # user specific bashrc outside the repo for interactive shells
 
     #

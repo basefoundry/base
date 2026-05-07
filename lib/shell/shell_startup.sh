@@ -12,8 +12,8 @@ base_shell_source_defaults() {
     [[ "${BASE_ENABLE_SHELL_DEFAULTS:-false}" == true ]] || return 0
 
     case "$shell_name" in
-        bash) defaults_script="$BASE_HOME/lib/base_defaults.sh" ;;
-        zsh)  defaults_script="$BASE_HOME/lib/zsh_defaults.sh" ;;
+        bash) defaults_script="$BASE_HOME/lib/shell/base_defaults.sh" ;;
+        zsh)  defaults_script="$BASE_HOME/lib/shell/zsh_defaults.sh" ;;
         *)
             base_shell_error "Unknown shell '$shell_name' for default settings."
             return 1

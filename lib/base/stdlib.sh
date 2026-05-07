@@ -30,7 +30,7 @@ __stdlib_init__() {
 #
 # import: source a library from $BASE_HOME
 # Example:
-#     import lib/assertions.sh company/lib/xyz.sh ...
+#     import lib/base/assertions.sh company/lib/xyz.sh ...
 #
 # IMPORTANT NOTE: If your library has global variables declared with 'declare' statement, you need to add -g flag to those.
 #                 Since the library gets sourced inside the `import` function, globals declared without the -g option would

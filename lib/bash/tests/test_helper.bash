@@ -8,6 +8,7 @@ fi
 readonly BASE_BASH_TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly BASE_BASH_DIR="$(cd "$BASE_BASH_TESTS_DIR/.." && pwd -P)"
 readonly BASE_REPO_ROOT="$(cd "$BASE_BASH_DIR/../.." && pwd -P)"
+readonly BASE_CLI_BASH_DIR="$BASE_REPO_ROOT/cli/bash"
 readonly BASE_TEST_ORIG_PATH="$PATH"
 
 setup_test_tmpdir() {

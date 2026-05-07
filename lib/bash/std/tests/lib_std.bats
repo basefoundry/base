@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
-load ../../../tests/test_helper.bash
+load ../../tests/test_helper.bash
 
-readonly STDLIB_PATH="$BASE_BASH_DIR/lib/std/lib_std.sh"
+readonly STDLIB_PATH="$BASE_BASH_DIR/std/lib_std.sh"
 
 create_script() {
     local script_path="$1"

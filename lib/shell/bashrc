@@ -24,7 +24,7 @@ base_bashrc_set_base_home() {
 
     source_path="$(base_bashrc_source_path)" || return 1
     lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    candidate="$(cd -- "$lib_dir/.." && pwd -P)" || return 1
+    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
 
     if [[ -f "$HOME/.baserc" && -z "${__base_user_baserc_sourced__:-}" ]]; then
         # shellcheck source=/dev/null
@@ -54,13 +54,13 @@ base_bashrc_set_base_home || {
     return 1
 }
 
-[[ -f "$BASE_HOME/lib/shell_startup.sh" ]] || {
-    printf "ERROR: Base shell startup helper '%s/lib/shell_startup.sh' was not found.\n" "$BASE_HOME" >&2
+[[ -f "$BASE_HOME/lib/shell/shell_startup.sh" ]] || {
+    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.\n" "$BASE_HOME" >&2
     return 1
 }
 
 # shellcheck source=/dev/null
-source "$BASE_HOME/lib/shell_startup.sh"
+source "$BASE_HOME/lib/shell/shell_startup.sh"
 base_shell_startup_interactive bash || return 1
 
 unset -f base_bashrc_source_path base_bashrc_set_base_home

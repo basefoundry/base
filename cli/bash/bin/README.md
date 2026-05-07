@@ -44,7 +44,7 @@ Before sourcing the command script, `base-wrapper`:
   - `BASE_BASH_COMMAND_NAME`
   - `BASE_BASH_COMMAND_DIR`
   - `BASE_BASH_COMMAND_SCRIPT`
-- preloads `../lib/std/lib_std.sh`
+- preloads `../../../lib/bash/std/lib_std.sh`
 
 That means command scripts inherit both the shared environment and the stdlib helpers without having to source them directly. The wrapper metadata is available in the wrapper shell because Base commands are sourced, but it is not part of the stable exported environment contract for child processes.
 

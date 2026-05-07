@@ -195,6 +195,7 @@ load_base_environment() {
     CLI_ROOT="${BASE_CLI_ROOT:-$CLI_ROOT}"
     REPO_ROOT="${BASE_REPO_ROOT:-$REPO_ROOT}"
     BASH_BIN_DIR="${BASE_BASH_BIN_DIR:-$CLI_ROOT/bash/bin}"
+    BASH_LIB_DIR="${BASE_BASH_LIB_DIR:-$REPO_ROOT/lib/bash}"
     COMMANDS_DIR="${BASE_BASH_COMMANDS_DIR:-$COMMANDS_DIR}"
     ENV_SCRIPT="${BASE_CLI_ENV_SCRIPT:-$ENV_SCRIPT}"
 
@@ -208,7 +209,7 @@ load_base_environment() {
     BASE_BASH_COMMAND_DIR="$COMMAND_DIR"
     BASE_BASH_COMMAND_SCRIPT="$COMMAND_SCRIPT"
 
-    STDLIB_PATH="$BASH_ROOT/lib/std/lib_std.sh"
+    STDLIB_PATH="$BASH_LIB_DIR/std/lib_std.sh"
     [[ -f "$STDLIB_PATH" ]] || die "Required stdlib '$STDLIB_PATH' was not found."
 }
 

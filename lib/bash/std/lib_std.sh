@@ -17,7 +17,7 @@
 # Quick Reference
 # --------------------------------------------------------------------------------------------------------------------
 # Sourcing:
-#   source "<repo>/cli/bash/lib/std/lib_std.sh"
+#   source "<repo>/lib/bash/std/lib_std.sh"
 #
 # Caller-visible globals:
 #   __SCRIPT_ARGS__   Original "$@" before lib_std consumed global flags.

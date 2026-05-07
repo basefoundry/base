@@ -8,7 +8,7 @@
 #     - hand off to ~/.zshrc so that interactive setup happens in one place
 #
 # Expected usage:
-#     symlink ~/.zprofile -> /path/to/base/lib/zprofile
+#     symlink ~/.zprofile -> /path/to/base/lib/shell/zprofile
 #
 # What belongs here:
 #     - login-shell bridging into ~/.zshrc
@@ -19,10 +19,10 @@
 #
 # Design note:
 #     Keeping zprofile small makes the startup chain easier to reason about and
-#     keeps interactive behavior centralized in lib/zshrc.
+#     keeps interactive behavior centralized in lib/shell/zshrc.
 #
 # See also:
-#     lib/zshrc
+#     lib/shell/zshrc
 #     README.md section "Shell Startup Files"
 #
 [[ -n "${__base_zprofile_sourced__:-}" ]] && return 0

@@ -2,7 +2,7 @@
 # networking related functions
 #
 
-import lib/assertions.sh
+import lib/base/assertions.sh
 
 #
 # check if $1 is a valid IPV4 address; return 0 if true, 1 otherwise

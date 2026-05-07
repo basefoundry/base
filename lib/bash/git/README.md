@@ -4,7 +4,7 @@ Git helpers for Bash commands that need lightweight repository inspection or upd
 
 ## Dependency
 
-Source `lib/std/lib_std.sh` before this library so logging and shared error handling are available.
+Source `lib/bash/std/lib_std.sh` before this library so logging and shared error handling are available.
 
 ## Public API
 
@@ -23,8 +23,8 @@ Source `lib/std/lib_std.sh` before this library so logging and shared error hand
 ## Usage
 
 ```bash
-source "/absolute/path/to/cli/bash/lib/std/lib_std.sh"
-source "/absolute/path/to/cli/bash/lib/git/lib_git.sh"
+source "/absolute/path/to/lib/bash/std/lib_std.sh"
+source "/absolute/path/to/lib/bash/git/lib_git.sh"
 
 branch=""
 git_get_current_branch "$PWD" branch

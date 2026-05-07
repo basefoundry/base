@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
 
-load ../../bash/tests/test_helper.bash
+load ../../../lib/bash/tests/test_helper.bash
 
 readonly BASE_ENV_SCRIPT="$BASE_REPO_ROOT/cli/env/baseenv.sh"
 
 create_env_layout() {
     local repo_root="$1"
 
-    mkdir -p "$repo_root/cli/env" "$repo_root/cli/bash/bin" "$repo_root/cli/bash/lib" "$repo_root/cli/bash/commands" "$repo_root/cli/python"
+    mkdir -p "$repo_root/cli/env" "$repo_root/cli/bash/bin" "$repo_root/cli/bash/commands" "$repo_root/cli/python" "$repo_root/lib/bash"
     cp "$BASE_ENV_SCRIPT" "$repo_root/cli/env/baseenv.sh"
 }
 
