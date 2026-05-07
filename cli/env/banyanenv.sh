@@ -3,7 +3,7 @@
 #
 # banyanenv.sh
 #     Sets up the Base CLI shell environment.
-#     Source this file from bash-wrapper or from ~/.bashrc / ~/.zshrc:
+#     Source this file from base-wrapper or from ~/.bashrc / ~/.zshrc:
 #         source /path/to/base/cli/env/banyanenv.sh
 #     Compatible with both bash and zsh.
 #

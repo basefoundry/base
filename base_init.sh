@@ -9,7 +9,6 @@
 #     - validate the current shell/runtime expectations
 #     - establish Base-wide environment variables such as BASE_HOME, BASE_OS,
 #       BASE_HOST, and BASE_SOURCES
-#     - source shared libraries and optional team/user/company layers
 #     - extend PATH with Base-managed command directories
 #
 # Call chain:
@@ -133,9 +132,6 @@ import_libs_and_profiles() {
     local -A teams
 
     source_it    "$BASE_HOME/lib/stdlib.sh"          # common library
-    source_it    "$BASE_HOME/company/lib/company.sh" # company specific library
-    source_it -i "$BASE_HOME/company/lib/bashrc"     # company specific bashrc for interactive shells
-    source_it -i "$BASE_HOME/user/$USER.sh"          # user specific bashrc in the repo for interactive shells
     source_it -i "$HOME/.baserc-$USER"               # user specific bashrc outside the repo for interactive shells
 
     #
