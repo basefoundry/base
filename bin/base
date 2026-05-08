@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+base_bin_dir() {
+    local script_dir
+
+    script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" || return 1
+    printf '%s\n' "$script_dir"
+}
+
+main() {
+    local script_dir
+
+    script_dir="$(base_bin_dir)" || {
+        printf 'ERROR: Unable to resolve the Base bin directory.\n' >&2
+        exit 1
+    }
+
+    exec "$script_dir/base-wrapper" base "$@"
+}
+
+main "$@"
