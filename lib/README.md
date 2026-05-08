@@ -5,7 +5,7 @@ Top-level library namespace for Base.
 ## Layout
 
 - `lib/base/`
-  Shared Base shell libraries used by `base_init.sh`, `base.sh`, and other
+  Shared Base shell libraries used by `base_init.sh`, the `base` CLI, and other
   repo-level shell code.
 - `lib/bash/`
   Base Bash CLI libraries such as `std`, `git`, and `file`.

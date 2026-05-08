@@ -45,6 +45,12 @@ It exits with status `0` when everything is present and `1` when any required it
 
 ## Usage
 
+Preferred umbrella CLI usage:
+
+```bash
+base setup install
+```
+
 Via the wrapper:
 
 ```bash
