@@ -19,29 +19,15 @@ Commands:
     Install Base into BASE_HOME.
   embrace
     Symlink shell startup files from Base into the user's home directory.
-  update
-    Run git pull in BASE_HOME.
-  run <command> [args...]
-    Initialize Base and run the given command.
-  status
-    Check whether Base is installed at BASE_HOME.
   shell
     Start an interactive Bash shell using Base's managed startup files.
-  set-team TEAM
-    Set BASE_TEAM in ~/.baserc.
-  set-shared-teams TEAM...
-    Set BASE_SHARED_TEAMS in ~/.baserc.
   version
     Show the Base CLI version.
-  man
-    Print one-line summaries for wrapped Base scripts.
   help
     Show this help text.
 
 Options:
   -b DIR   Use DIR as BASE_HOME.
-  -t TEAM  Use TEAM as BASE_TEAM.
-  -s TEAM  Use TEAM as BASE_SHARED_TEAMS (space-delimited for multiple teams).
   -f       Force install by moving aside an existing BASE_HOME directory.
   -v       Enable DEBUG logging for the selected command.
   -V       Show the CLI version.
@@ -262,9 +248,7 @@ base_cli_do_install() {
     }
     printf "Installed Base at '%s'\n" "$BASE_HOME"
 
-    BASE_TEAM="${base_team:-${BASE_TEAM:-}}"
-    BASE_SHARED_TEAMS="${base_shared_teams:-${BASE_SHARED_TEAMS:-}}"
-    base_cli_patch_baserc BASE_HOME BASE_TEAM BASE_SHARED_TEAMS || return 1
+    base_cli_patch_baserc BASE_HOME || return 1
 
     return 0
 }
@@ -332,56 +316,6 @@ base_cli_do_embrace() {
     return 0
 }
 
-base_cli_do_update() {
-    if ! base_cli_verify_repo "$BASE_HOME"; then
-        if base_cli_verify_repo "$BASE_REPO_ROOT"; then
-            BASE_HOME="$BASE_REPO_ROOT"
-            export BASE_HOME
-        else
-            base_cli_error "$BASE_CLI_ERROR_MESSAGE"
-            return 1
-        fi
-    fi
-
-    git -C "$BASE_HOME" pull
-}
-
-base_cli_do_run() {
-    local repo_root
-
-    (($# > 0)) || {
-        base_cli_usage_error "Usage: base run COMMAND [ARGS ...]"
-        return $?
-    }
-
-    repo_root="$(base_cli_runtime_repo_root)" || {
-        base_cli_error "$BASE_CLI_ERROR_MESSAGE"
-        return 1
-    }
-
-    BASE_HOME="$repo_root"
-    export BASE_HOME
-
-    # shellcheck source=/dev/null
-    source "$repo_root/base_init.sh" || return 1
-    "$@"
-}
-
-base_cli_do_status() {
-    if [[ ! -d "$BASE_HOME" ]]; then
-        printf "Base is not installed at '%s'\n" "$BASE_HOME"
-        return 1
-    fi
-
-    if ! base_cli_verify_repo "$BASE_HOME"; then
-        base_cli_error "$BASE_CLI_ERROR_MESSAGE"
-        return 1
-    fi
-
-    printf 'Base is installed at %s\n' "$BASE_HOME"
-    return 0
-}
-
 base_cli_do_shell() {
     local shell_profile
 
@@ -396,83 +330,6 @@ base_cli_do_shell() {
     exec bash --rcfile "$shell_profile"
 }
 
-base_cli_do_man() {
-    local repo_root dir bin desc team
-    local -a dirs
-    local -A teams=()
-
-    repo_root="$(base_cli_runtime_repo_root)" || {
-        base_cli_error "$BASE_CLI_ERROR_MESSAGE"
-        return 1
-    }
-
-    add_to_path -p "$repo_root/bin"
-    if ! command -v base-wrapper >/dev/null 2>&1; then
-        base_cli_error "base-wrapper needs to be in your PATH to run this command."
-        return 1
-    fi
-
-    dirs=(bin company/bin)
-    [[ -n "${base_team:-}" ]] || base_team="${BASE_TEAM:-}"
-    if [[ -n "${base_team:-}" ]]; then
-        dirs+=(team/"$base_team"/bin)
-        teams["$base_team"]=1
-    fi
-
-    for team in ${BASE_SHARED_TEAMS:-} "${BASE_SHARED_TEAMS[@]:-}"; do
-        [[ -n "$team" ]] || continue
-        [[ -n "${teams[$team]:-}" ]] && continue
-        dirs+=(team/"$team"/bin)
-        teams["$team"]=1
-    done
-
-    for dir in "${dirs[@]}"; do
-        dir="$repo_root/$dir"
-        [[ -d "$dir" ]] || continue
-        cd -- "$dir" || continue
-        printf '%s\n' "${dir#$repo_root/}:"
-        for bin in *; do
-            [[ -f "$bin" ]] || continue
-            if head -1 "$bin" | grep -Eq '!/usr/bin/env[[:space:]]+base-wrapper[[:space:]]*'; then
-                desc="$(./"$bin" --describe 2>/dev/null || true)"
-                printf '\t\t%s\n' "$bin: $desc"
-            fi
-        done
-    done
-}
-
-base_cli_do_set_team() {
-    if (($# > 1)); then
-        base_cli_usage_error "Got too many arguments for set-team."
-        return $?
-    fi
-
-    if (($# == 1)); then
-        BASE_TEAM="$1"
-    else
-        BASE_TEAM="${base_team:-}"
-    fi
-
-    [[ -n "${BASE_TEAM:-}" ]] || {
-        base_cli_usage_error "Usage: base set-team TEAM"
-        return $?
-    }
-
-    base_cli_patch_baserc BASE_TEAM
-}
-
-base_cli_do_set_shared_teams() {
-    if (($# > 0)); then
-        BASE_SHARED_TEAMS="$*"
-    elif [[ -n "${base_shared_teams:-}" ]]; then
-        BASE_SHARED_TEAMS="$base_shared_teams"
-    else
-        base_cli_usage_error "Usage: base set-shared-teams TEAM ..."
-        return $?
-    fi
-
-    base_cli_patch_baserc BASE_SHARED_TEAMS
-}
 
 base_cli_main() {
     local base_debug=0 bash_version current_time_fmt command=""
@@ -503,11 +360,9 @@ base_cli_main() {
     fi
 
     OPTIND=1
-    while getopts "fhb:s:t:vVx" opt; do
+    while getopts "fhb:vVx" opt; do
         case "$opt" in
             b) export BASE_HOME="$OPTARG" ;;
-            t) export base_team="$OPTARG" ;;
-            s) export base_shared_teams="$OPTARG" ;;
             f) force_install=1 ;;
             v) base_debug=1 ;;
             V)
@@ -540,13 +395,7 @@ base_cli_main() {
         embrace)          base_cli_do_embrace ;;
         help)             base_cli_show_help ;;
         install)          base_cli_do_install ;;
-        man)              base_cli_do_man ;;
-        run)              base_cli_do_run "$@" ;;
-        set-shared-teams) base_cli_do_set_shared_teams "$@" ;;
-        set-team)         base_cli_do_set_team "$@" ;;
         shell)            base_cli_do_shell ;;
-        status)           base_cli_do_status ;;
-        update)           base_cli_do_update ;;
         update-profile)   base_cli_do_update_profile "$@" ;;
         version)          base_cli_do_version ;;
         "")

@@ -275,6 +275,9 @@ The current contents include useful shell-oriented building blocks from the
 older version of Base. The goal now is to evolve those foundations into a more
 general multi-project workspace tool.
 
+For the evolving architecture and product-direction notes behind that refactor,
+see [docs/design.md](docs/design.md).
+
 The first migration pass has already started: the shared Bash wrapper,
 environment bootstrap, setup command, and Bash libraries formerly living in the
 `banyanlabs` repo now live under `base/cli/`.
