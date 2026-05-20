@@ -1,44 +1,34 @@
 #!/usr/bin/env bash
 
-setup_usage() {
-    cat <<'EOF'
-Usage:
-  setup [options] <command>
+#
+# setup_common.sh
+#     Shared implementation for Base CLI environment bootstrap subcommands.
+#
+# This file houses the reusable setup/check helpers that back:
+#   - `base setup`
+#   - `base check`
+#   - `base update-profile`
+#
+# It is meant to be sourced by the umbrella `base` command, not invoked
+# directly through `base-wrapper`.
+#
 
-Commands:
-  install
-    Install Homebrew, Xcode Command Line Tools, Python, BATS, and ~/.base.d/.venv.
-  check
-    Verify the required local CLI setup without making changes.
-  update-profile
-    Reserved for future shell profile updates.
+[[ -n "${_base_setup_common_sourced:-}" ]] && return
+_base_setup_common_sourced=1
+readonly _base_setup_common_sourced
 
-Options:
-  --dry-run   Log what would happen without making changes.
-  -v          Enable DEBUG logging for this command.
-  -h, --help  Show this help text.
+setup_clear_run_state() {
+    unset dry_run
+}
 
-Purpose:
-  Prepare and verify the local Base CLI environment on macOS.
+setup_enable_dry_run() {
+    dry_run=true
+    export DRY_RUN=true
+}
 
-Install does:
-  1. Install Homebrew if needed.
-  2. Install Xcode Command Line Tools if needed.
-  3. Install Python 3.13 via Homebrew if needed.
-  4. Install BATS via Homebrew if needed.
-  5. Create ~/.base.d/.venv if it does not already exist.
-
-Check does:
-  1. Verify Homebrew is installed.
-  2. Verify Xcode Command Line Tools are installed.
-  3. Verify Python 3.13 is installed via Homebrew.
-  4. Verify BATS is installed via Homebrew.
-  5. Verify ~/.base.d/.venv exists.
-
-Notes:
-  - This command is intentionally idempotent.
-  - It does not support uninstall yet.
-EOF
+setup_enable_debug_logging() {
+    set_log_level DEBUG
+    export LOG_DEBUG=1
 }
 
 setup_is_dry_run() {
@@ -245,7 +235,8 @@ setup_install_bats() {
 }
 
 setup_find_python_bin() {
-    local formula prefix candidate candidates=()
+    local formula prefix candidate
+    local candidates=()
 
     if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" && -x "${BASE_SETUP_PYTHON_BIN}" ]]; then
         printf '%s\n' "${BASE_SETUP_PYTHON_BIN}"
@@ -369,63 +360,6 @@ setup_run_install() {
 }
 
 setup_run_update_profile() {
-    print_warn "The 'update-profile' subcommand is not implemented yet."
+    print_warn "The 'base update-profile' subcommand is not implemented yet."
     return 1
 }
-
-setup_main() {
-    local command=""
-
-    while (($#)); do
-        case "$1" in
-            -h|--help|help)
-                setup_usage
-                return 0
-                ;;
-            --dry-run)
-                dry_run=true
-                export DRY_RUN=true
-                ;;
-            -v)
-                set_log_level DEBUG
-                export LOG_DEBUG=1
-                ;;
-            install|check|update-profile)
-                if [[ -n "$command" ]]; then
-                    print_error "Only one setup command may be provided."
-                    setup_usage >&2
-                    return 1
-                fi
-                command="$1"
-                ;;
-            *)
-                print_error "Unknown option or command '$1'."
-                setup_usage >&2
-                return 1
-                ;;
-        esac
-        shift
-    done
-
-    if [[ -z "$command" ]]; then
-        print_error "A setup command is required."
-        setup_usage >&2
-        return 1
-    fi
-
-    log_debug "Running setup command '$command' (dry_run=${dry_run:-false})."
-
-    case "$command" in
-        install)
-            setup_run_install
-            ;;
-        check)
-            setup_run_check
-            ;;
-        update-profile)
-            setup_run_update_profile
-            ;;
-    esac
-}
-
-setup_main "$@"

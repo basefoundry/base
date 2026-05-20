@@ -19,6 +19,8 @@ Bash stdlib loading path as other wrapped commands.
 ## Current subcommands
 
 - `setup`
+- `check`
+- `update-profile`
 - `install`
 - `embrace`
 - `update`
@@ -33,7 +35,7 @@ Bash stdlib loading path as other wrapped commands.
 
 ## Notes
 
-- `base setup ...` currently delegates to the existing `setup` command.
-- This command is the long-term home for the umbrella Base CLI surface.
-- More modular per-subcommand organization can be introduced underneath this
-  command as the CLI grows.
+- `base setup` is the default local bootstrap path.
+- `base check` verifies the same local requirements without making changes.
+- Base-specific bootstrap subcommands live under `cli/bash/commands/base/subcommands/`.
+- Shared tests for Base subcommands live under `cli/bash/commands/tests/`.

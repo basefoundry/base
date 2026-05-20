@@ -11,6 +11,10 @@ This directory holds the user-facing Bash entrypoints.
 - `tests/`
   Wrapper-specific BATS coverage for `base-wrapper`.
 
+Not every Base workflow needs its own `<command>.sh` symlink. The umbrella
+`base` command is the primary user-facing entrypoint for Base-owned workflows
+such as `base setup` and `base check`.
+
 ## How `base-wrapper` Works
 
 The wrapper supports two invocation styles:

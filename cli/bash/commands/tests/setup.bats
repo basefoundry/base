@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../../../../lib/bash/tests/test_helper.bash
+load ../../../../lib/bash/tests/test_helper.bash
 
 setup() {
     setup_test_tmpdir
@@ -195,9 +195,20 @@ EOF
     printf '%s\n' "$installer"
 }
 
-run_setup() {
+run_base_command() {
+    local arg
+    local env_args=()
+    local command_args=()
     local python_prefix="$TEST_TMPDIR/python-prefix"
     local xcode_dir="$TEST_TMPDIR/CommandLineTools"
+
+    for arg in "$@"; do
+        if [[ ${#command_args[@]} -eq 0 && "$arg" == *=* ]]; then
+            env_args+=("$arg")
+        else
+            command_args+=("$arg")
+        fi
+    done
 
     run env \
         HOME="$TEST_HOME" \
@@ -210,36 +221,38 @@ run_setup() {
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
         BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
-        "$@"
+        "${env_args[@]}" \
+        "$BASE_REPO_ROOT/bin/base" "${command_args[@]}"
 }
 
-@test "setup prints usage for help" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" --help
+@test "base setup prints usage for help" {
+    run_base_command setup --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"setup [options] <command>"* ]]
-    [[ "$output" == *"check"* ]]
-    [[ "$output" == *"Prepare and verify the local Base CLI environment on macOS."* ]]
+    [[ "$output" == *"base setup [options]"* ]]
+    [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
-@test "setup requires an explicit command" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh"
+@test "base check prints usage for help" {
+    run_base_command check --help
 
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"A setup command is required."* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"base check [options]"* ]]
+    [[ "$output" == *"Verify the local Base CLI environment on macOS without making changes."* ]]
 }
 
-@test "setup fails on unsupported operating systems" {
+@test "base setup fails on unsupported operating systems" {
     OSTYPE_OVERRIDE="linux-gnu"
 
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
+    run_base_command setup
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"supports macOS only"* ]]
 }
 
-@test "setup is idempotent when brew, xcode tools, python, and the venv already exist" {
+@test "base setup is idempotent when brew, xcode tools, python, and the venv already exist" {
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
@@ -251,7 +264,7 @@ run_setup() {
     mkdir -p "$venv_dir/bin"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
 
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
+    run_base_command setup
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Homebrew is already installed."* ]]
@@ -263,17 +276,17 @@ run_setup() {
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
 }
 
-@test "setup installs missing dependencies and creates the Base virtual environment" {
+@test "base setup installs missing dependencies and creates the Base virtual environment" {
     local installer
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_xcode_stubs
     installer="$(create_homebrew_installer_stub)"
 
-    run_setup \
+    run_base_command \
         BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
         BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
-        "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install
+        setup
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing Homebrew."* ]]
@@ -289,8 +302,8 @@ run_setup() {
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
-@test "setup install supports dry-run without making changes" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" install --dry-run
+@test "base setup supports dry-run without making changes" {
+    run_base_command setup --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would install Homebrew using the official installer."* ]]
@@ -302,7 +315,7 @@ run_setup() {
     [ ! -e "$TEST_HOME/.base.d/.venv" ]
 }
 
-@test "setup check passes when all required components are present" {
+@test "base check passes when all required components are present" {
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
@@ -314,7 +327,7 @@ run_setup() {
     mkdir -p "$venv_dir/bin"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
 
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" check
+    run_base_command check
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Homebrew is installed."* ]]
@@ -325,8 +338,8 @@ run_setup() {
     [[ "$output" == *"Base CLI environment check passed."* ]]
 }
 
-@test "setup check fails when required components are missing" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" check
+@test "base check fails when required components are missing" {
+    run_base_command check
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Homebrew is not installed."* ]]
@@ -337,16 +350,25 @@ run_setup() {
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
-@test "setup install enables DEBUG logs with -v" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" -v install --dry-run
+@test "base -v setup enables DEBUG logs" {
+    run_base_command -v setup --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"DEBUG"* ]]
-    [[ "$output" == *"Running setup command 'install'"* ]]
+    [[ "$output" == *"Running base command 'setup'"* ]]
+    [[ "$output" == *"Running 'base setup'"* ]]
 }
 
-@test "setup update-profile is reserved for later work" {
-    run_setup "$BASE_REPO_ROOT/cli/bash/bin/setup.sh" update-profile
+@test "base setup -v also enables DEBUG logs" {
+    run_base_command setup -v --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"DEBUG"* ]]
+    [[ "$output" == *"Running 'base setup'"* ]]
+}
+
+@test "base update-profile is reserved for later work" {
+    run_base_command update-profile
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"update-profile"* ]]

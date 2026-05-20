@@ -5,14 +5,19 @@
 1. Use four spaces for indentation. No tabs.
 2. Shell/local variables and function names follow `snake_case`:
    only lowercase letters, underscores, and digits.
-3. Environment variables use all-uppercase names. For example:
-   `BASE_HOME`, `BASE_HOST`, `BASE_OS`, `BASE_SOURCES`.
-4. In rare cases of global variables being shared between library functions and
-   their callers, use all-uppercase names. For example: `OUTPUT` and
-   `OUTPUT_ARRAY`.
-5. Place most code inside functions and invoke the main function at the bottom
+3. Reserve all-uppercase names for:
+   - exported environment variables
+   - constants
+   - globals intentionally shared across scripts, sourced modules, or subshells
+4. Use a common prefix for exported environment variables whenever practical.
+   For example: `BASE_HOME`, `BASE_HOST`, `BASE_OS`, `BASE_SOURCES`.
+5. Do not use all-uppercase names for ordinary script-local variables.
+6. Use a leading underscore for private variables and functions, especially in
+   libraries or sourced modules where internal names might otherwise collide.
+7. Avoid `camelCase` in shell code.
+8. Place most code inside functions and invoke the main function at the bottom
    of the script.
-6. In libraries, have top-level code that prevents the file from being sourced
+9. In libraries, have top-level code that prevents the file from being sourced
    more than once. For example:
 
    ```bash
@@ -20,15 +25,15 @@
    __stdlib_sourced__=1
    ```
 
-7. Make sure all local variables inside functions are declared `local`.
-8. Use `__func__` naming convention for special-purpose variables and
-   functions. Use a leading underscore for "private" variables and functions.
-9. Double-quote all variable expansions, except:
+10. Make sure all local variables inside functions are declared `local`.
+11. Use `__func__` naming convention for special-purpose variables and
+    functions when a shared framework-level convention already exists.
+12. Double-quote all variable expansions, except:
    - inside `[[ ]]` or `(( ))`
    - places where we need word splitting to take place
-10. Use `[[ $var ]]` to check if `var` has non-zero length, instead of
+13. Use `[[ $var ]]` to check if `var` has non-zero length, instead of
     `[[ -n $var ]]`.
-11. Use "compact" style for if statements and loops:
+14. Use "compact" style for if statements and loops:
 
     ```bash
     if condition; then
@@ -44,7 +49,7 @@
     done
     ```
 
-12. Make sure the code passes ShellCheck checks.
+15. Make sure the code passes ShellCheck checks.
 
 ## 2. Error-handling standards
 
@@ -92,6 +97,21 @@ Why:
 - command code, docs, and tests stay together
 - each command can grow without cluttering a shared flat directory
 - the structure scales cleanly as Base adds more commands
+
+For umbrella commands such as `base`, keep the wrapper-facing entry script in
+the command directory itself and place internal subcommand modules underneath
+that command. For example:
+
+```text
+cli/bash/commands/base/
+  base.sh
+  subcommands/
+    setup.sh
+    check.sh
+```
+
+Command-level integration tests for those subcommands can live under a shared
+directory such as `cli/bash/commands/tests/`.
 
 ### Libraries
 

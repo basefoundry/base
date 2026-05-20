@@ -36,6 +36,7 @@ workspace that contains multiple project repositories.
 Examples of the kind of interface Base should provide:
 
 - `base setup`
+- `base check`
 - `base setup <project>`
 - `base test`
 - `base test <project>`
