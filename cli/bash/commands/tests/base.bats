@@ -21,7 +21,8 @@ run_base() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: base [options] <command> [args...]"* ]]
-    [[ "$output" == *"setup [args...]"* ]]
+    [[ "$output" == *"setup [options]"* ]]
+    [[ "$output" == *"check"* ]]
 }
 
 @test "base prints help when no command is given in a non-interactive shell" {
@@ -31,23 +32,24 @@ run_base() {
     [[ "$output" == *"Usage: base [options] <command> [args...]"* ]]
 }
 
-@test "base version uses BASE_VERSION when provided" {
+@test "base --version uses BASE_VERSION when provided" {
     run env \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_VERSION="test-version" \
-        "$BASE_REPO_ROOT/bin/base" version
+        "$BASE_REPO_ROOT/bin/base" --version
 
     [ "$status" -eq 0 ]
     [[ "$output" == "base version test-version" ]]
 }
 
-@test "base delegates setup help to the setup command" {
+@test "base setup prints setup-specific help" {
     run_base setup --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"setup [options] <command>"* ]]
+    [[ "$output" == *"base setup [options]"* ]]
+    [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
 @test "base status reports a valid Base checkout" {

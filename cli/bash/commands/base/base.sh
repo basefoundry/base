@@ -9,8 +9,12 @@ base_cli_show_help() {
 Usage: base [options] <command> [args...]
 
 Commands:
-  setup [args...]
-    Delegate to the Base setup command.
+  setup [options]
+    Install and bootstrap the local Base CLI environment on macOS.
+  check [options]
+    Verify the local Base CLI environment without making changes.
+  update-profile [options]
+    Reserved for future shell profile updates.
   install
     Install Base into BASE_HOME.
   embrace
@@ -39,12 +43,14 @@ Options:
   -t TEAM  Use TEAM as BASE_TEAM.
   -s TEAM  Use TEAM as BASE_SHARED_TEAMS (space-delimited for multiple teams).
   -f       Force install by moving aside an existing BASE_HOME directory.
-  -v       Show the CLI version.
+  -v       Enable DEBUG logging for the selected command.
+  -V       Show the CLI version.
   -x       Enable Bash xtrace before running the command.
   -h       Show this help text.
 
 Notes:
-  - `base setup ...` is the preferred entrypoint for machine bootstrap.
+  - `base setup` is the preferred entrypoint for machine bootstrap.
+  - `base check` verifies the same local requirements without making changes.
   - Invoking `base` with no command opens an interactive shell when attached to
     a terminal; otherwise it prints this help text.
 EOF
@@ -199,15 +205,37 @@ base_cli_do_version() {
     printf 'base version %s\n' "$(base_cli_version_value)"
 }
 
-base_cli_do_setup() {
-    local setup_bin="$BASE_CLI_ROOT/bash/bin/setup.sh"
+base_cli_enable_debug_logging() {
+    set_log_level DEBUG
+    export LOG_DEBUG=1
+}
 
-    [[ -e "$setup_bin" ]] || {
-        base_cli_error "Setup command '$setup_bin' was not found."
+base_cli_source_subcommand_module() {
+    local module_name="$1"
+    local subcommand_script="$__SCRIPT_DIR__/subcommands/${module_name}.sh"
+
+    [[ -f "$subcommand_script" ]] || {
+        base_cli_error "Subcommand module '$subcommand_script' was not found."
         return 1
     }
 
-    "$setup_bin" "$@"
+    # shellcheck source=/dev/null
+    source "$subcommand_script"
+}
+
+base_cli_do_setup() {
+    base_cli_source_subcommand_module setup || return 1
+    base_setup_subcommand_main "$@"
+}
+
+base_cli_do_check() {
+    base_cli_source_subcommand_module check || return 1
+    base_check_subcommand_main "$@"
+}
+
+base_cli_do_update_profile() {
+    base_cli_source_subcommand_module update_profile || return 1
+    base_update_profile_subcommand_main "$@"
 }
 
 base_cli_do_install() {
@@ -447,7 +475,7 @@ base_cli_do_set_shared_teams() {
 }
 
 base_cli_main() {
-    local bash_version current_time_fmt command=""
+    local base_debug=0 bash_version current_time_fmt command=""
     local opt
 
     if [[ "${1:-}" =~ ^(-h|--help|-help|help)$ ]]; then
@@ -455,7 +483,7 @@ base_cli_main() {
         return 0
     fi
 
-    if [[ "${1:-}" =~ ^(--version|-version|-v)$ ]]; then
+    if [[ "${1:-}" =~ ^(--version|-version|-V)$ ]]; then
         base_cli_do_version
         return 0
     fi
@@ -475,13 +503,14 @@ base_cli_main() {
     fi
 
     OPTIND=1
-    while getopts "fhb:s:t:vx" opt; do
+    while getopts "fhb:s:t:vVx" opt; do
         case "$opt" in
             b) export BASE_HOME="$OPTARG" ;;
             t) export base_team="$OPTARG" ;;
             s) export base_shared_teams="$OPTARG" ;;
             f) force_install=1 ;;
-            v)
+            v) base_debug=1 ;;
+            V)
                 base_cli_do_version
                 return 0
                 ;;
@@ -502,8 +531,11 @@ base_cli_main() {
     [[ -n "$command" ]] && shift
 
     base_cli_get_base_home || return 1
+    ((base_debug)) && base_cli_enable_debug_logging
+    log_debug "Running base command '${command:-<none>}' with args: $*"
 
     case "$command" in
+        check)            base_cli_do_check "$@" ;;
         setup)            base_cli_do_setup "$@" ;;
         embrace)          base_cli_do_embrace ;;
         help)             base_cli_show_help ;;
@@ -515,6 +547,7 @@ base_cli_main() {
         shell)            base_cli_do_shell ;;
         status)           base_cli_do_status ;;
         update)           base_cli_do_update ;;
+        update-profile)   base_cli_do_update_profile "$@" ;;
         version)          base_cli_do_version ;;
         "")
             if is_interactive; then
