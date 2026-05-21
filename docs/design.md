@@ -1,414 +1,286 @@
-# Base — Design Document
+# Base
 
-## Overview
+Base is a foundational developer tooling repo for a multi-project workspace.
 
-Base is an opinionated Mac development orchestrator. It provides a unified, declarative
-foundation for bootstrapping a Mac development environment and managing multiple projects
-through a single CLI interface. Base is Mac-only by deliberate design choice. Windows
-support is not in scope.
+Its job is not to be a product repo, a service repo, or a monorepo. Its job is
+to provide the common layer that sits above individual project repositories and
+makes them easier to set up, run, and test in a consistent way.
 
-The governing philosophy: **solve your own problem elegantly first**. Base is built for
-a specific workflow — multiple peer GitHub repositories under a shared parent directory,
-each declaring their dependencies through a simple manifest, all managed through a
-unified interface. If it works well for its author, it will work well for others with
-similar constraints.
+This repository already existed as a shell-focused project. The next version of
+Base is a deliberate refactor of that idea into a broader workspace bootstrap
+and execution layer.
 
----
+## Why Base Exists
 
-## Core Principles
+Most real engineering environments are not a single repository.
 
-- **Opinionated over flexible** — Base makes decisions for you. Fewer choices means
-  less complexity and easier maintenance. If you disagree with the decisions, use a
-  different tool.
-- **Problem-first** — technology choices follow real problems encountered during
-  development, not the other way around.
-- **Ship incrementally** — start minimal, use it yourself, let the tool grow organically
-  through real use.
-- **Idempotent by design** — running any setup command multiple times should produce
-  the same result safely.
+A developer may need:
 
----
+- one repo for shared tooling
+- several project repos checked out side by side
+- a consistent shell environment across machines
+- common shell and Python helper libraries
+- a clean way to run project commands through wrappers instead of directly
 
-## Repository Structure
+Base exists to provide that missing common layer.
 
-Base is a public GitHub repository. All projects managed by Base are also GitHub
-repositories, checked out as peers under a shared parent directory:
+## Top Goals
 
-```
-~/projects/          ← shared parent directory
-  base/              ← the Base repository itself
-  myproject-a/       ← peer project with a base manifest
-  myproject-b/       ← peer project with a base manifest
-  banyanlabs/        ← peer project with a base manifest
-```
+Base is being refactored around three primary goals.
 
-Base discovers peer repositories by scanning the parent directory for repos that contain
-a base manifest file.
+### 1. Umbrella Interface for Multi-Project Setup and Test
 
----
+Base should give the user one entry point for setting up and validating a
+workspace that contains multiple project repositories.
 
-## Shell Support
-
-Base supports two shells:
-
-- **bash** — primary scripting shell. All orchestration scripts run in bash. Default for
-  all base internals.
-- **zsh** — supported for interactive use. Power users who prefer zsh for their
-  interactive shell are accommodated.
-
-Fish, tcsh, ksh, and other shells are explicitly out of scope for now. If real demand
-emerges, support can be added later.
-
----
-
-## Command Surface — `base` First
-
-The most important command-surface decision in Base: **one canonical public command**.
-
-### `base` — The Primary CLI
-
-`base` is the public entrypoint. It is a normal executable command that runs through the
-Base wrapper/bootstrap path. This keeps the product surface simple:
+Examples of the kind of interface Base should provide:
 
 - `base setup`
 - `base check`
-- `base install`
-- `base update-profile`
-- `base shell`
-- future commands such as `base projects list`, `base test`, and `base activate`
+- `base setup <project>`
+- `base test`
+- `base test <project>`
+- `base doctor`
+- `base projects list`
 
-For now, Base does **not** introduce a separate `basectl` command. A second top-level
-name adds conceptual weight before we have a real need for it.
+The important idea is that the user should not need to memorize a different
+bootstrap story for every repository in the workspace.
 
-### Why a Separate `basectl` Is Not Needed Yet
+Base should be able to discover participating project repositories checked out
+next to it under a shared parent directory, for example:
 
-Most orchestration work does not need to mutate the current shell, so a normal CLI is
-sufficient. Even project activation can still be initiated from the `base` executable if
-it works by validating the target project and spawning a subshell with the desired
-project environment.
-
-That means the important split is not between two product names. The important split is
-between:
-
-- commands that perform orchestration and exit normally
-- commands that may launch a subshell for interactive project work
-
-Both can still live under the same `base` command surface.
-
-### Optional Future Shell Function
-
-If Base later needs functionality that truly must mutate the current shell process, an
-optional shell function can be added. If that happens, it should be a thin wrapper around
-`base`, not a separate conceptual tool with a different name.
-
----
-
-## Project Activation Model — Subshell Design
-
-### Why Subshells
-
-Activating a project environment means setting shell variables, aliases, functions, and
-activating a Python virtual environment. The naive approach of activate/deactivate
-(like Python venv) does not scale to the full richness of a shell environment. Tracking
-and restoring arbitrary shell state on deactivation is complex and error-prone.
-
-The solution: **spawn a subshell** when activating a project. The project environment
-lives inside the subshell. The user works in that subshell. When done, they `exit` (or
-Ctrl-D) and return to their base shell. No deactivation logic required. No state
-restoration complexity.
-
-This does not require a distinct shell function. A normal `base activate <project>`
-command can validate the target and launch the configured subshell.
-
-### Activation Flow
-
-```
-base activate myproject
-  ↓
-1. Look up BASE_HOME, scan known projects
-2. Validate myproject exists and has a valid manifest
-3. Set BASE_PROJECT=myproject
-4. Spawn a new subshell
-5. In the subshell: source the project's shell environment script
-6. In the subshell: activate the project's Python virtual environment
-7. Update the prompt to reflect the active project
-8. User works in subshell
-9. User exits → returns to base shell, prompt resets
+```text
+~/work/
+  base/
+  banyanlabs/
+  bankbuddy/
+  blend/
+  brew/
 ```
 
-### `base activate` — Intelligence
+Over time, each project repo can declare how Base should interact with it,
+likely through a small project manifest or well-defined conventions.
 
-- Takes a project name as argument (not a directory path)
-- Works from any current directory — the user does not need to be in the project folder
-- Base looks in `$BASE_HOME` to locate and validate the project
-- Validates that the target is a recognized Base project with a valid manifest
+### 2. Shell Environment Management
 
----
+Base should manage shell environments at two levels:
 
-## Shell Environment Layers
+- global environment shared across the whole workspace
+- project-specific environment layered on top for an individual repo
 
-There are two layers of shell environment, clearly separated:
+That includes things like:
 
-### Layer 1 — Base Global Environment
+- common shell initialization
+- PATH management
+- shared environment variables
+- host and OS detection
+- project-local activation hooks
+- predictable loading order
 
-Applied once when the shell starts, using Base-managed startup files and machine-local overrides.
-Contains:
-- Shell prompt (PS1) defaults
-- History settings (size, format, file location)
-- Default aliases and utility functions
-- PATH additions for Base's own tools
-- Shell options appropriate for bash or zsh
-- `BASE_PROJECT` set to `"base"` by default
-- `BASE_HOME` pointing to the base project root
+The goal is to make shell behavior explicit, inspectable, and repeatable instead
+of depending on a fragile mix of ad hoc dotfiles and one-off scripts.
 
-This layer is currently installed by running `base update-profile`, which creates or updates Base-managed sections in the user's Bash and Zsh dotfiles. Base owns only its marked sections, not the whole dotfile.
+### 3. Common Shell and Python Libraries and Wrappers
 
-### Layer 2 — Project-Specific Environment
+Base should provide a stable foundation for controlled CLI execution.
 
-Applied inside the project subshell when `base activate <project>` is run.
-Contains:
-- Project-specific PATH additions
-- Project-specific environment variables
-- Project-specific aliases and functions
-- Project-specific Python virtual environment activation
-- `BASE_PROJECT` updated to the project name
+That includes:
 
-Project-specific settings layer on top of the base global environment. Settings not
-overridden by the project inherit from the base global layer. When the subshell exits,
-the project layer disappears naturally — no explicit deactivation needed.
+- shell libraries for logging, errors, files, Git, networking, and standard
+  helpers
+- Python wrappers for running Python-based tooling with the right environment
+- shell wrappers for sourcing shared libraries and normalizing execution context
+- a consistent convention for passing arguments, setting environment variables,
+  and reporting failures
 
-### Dotfile Management
+The wrapper model matters because it keeps command behavior predictable. A CLI
+should run inside a known environment instead of relying on whoever happened to
+invoke it from whatever shell state they already had.
 
-Base updates the user's real dotfiles by managing small marked sections. The preferred adoption model is:
+## Shell Startup Files
+
+Base integrates with Bash and Zsh through small managed sections in the user's
+real dotfiles. Base does not take over whole dotfiles.
+
+The command that installs or refreshes those sections is:
 
 ```bash
 base update-profile
 ```
 
-By default, Base updates all four files:
+By default it updates all four startup files:
 
-| Dotfile | Base snippet | Purpose |
-|---|---|---|
-| `~/.bash_profile` | `lib/shell/bash_profile` | Login Bash bridge into `~/.bashrc` |
-| `~/.bashrc` | `lib/shell/bashrc` | Interactive Bash startup |
-| `~/.zprofile` | `lib/shell/zprofile` | Thin Zsh login startup |
-| `~/.zshrc` | `lib/shell/zshrc` | Interactive Zsh startup |
+- `~/.bash_profile`
+- `~/.bashrc`
+- `~/.zprofile`
+- `~/.zshrc`
 
-Base does not symlink over the user's dotfiles and does not own content outside its marked sections. Optional Base shell defaults are enabled explicitly with `base update-profile --defaults`.
-
----
-
-## Directory Change Behavior
-
-**Changing directory does not trigger environment changes.**
-
-This is a deliberate design decision. Auto-activating environments on `cd` is confusing
-because the intent behind a `cd` is ambiguous — the user may be casually navigating,
-not intending to switch project context. Background logic running on every `cd` also
-slows the shell and is error-prone.
-
-The only things that change on `cd`:
-- `$PWD` updates (built-in shell behavior)
-- The directory portion of the prompt updates
-- The git branch portion of the prompt updates dynamically (see Prompt section)
-
-Everything else stays stable until the user explicitly runs `base activate <project>`.
-
----
-
-## Prompt Design
-
-The prompt shows three things, always:
-
-```
-[myproject: main] ~/projects/myproject/src $
-```
-
-| Element | Source | Behavior |
-|---|---|---|
-| Project name | `$BASE_PROJECT` | Static — set at activation, stays until subshell exits |
-| Git branch | Dynamic query | Updates on every prompt render |
-| Current directory | `$PWD` | Updates on every `cd` |
-
-### Project Name in Prompt
-
-`BASE_PROJECT` is set by `base activate`. Default value is `"base"`. It does not change
-based on directory. Once you activate a project, the project name shows consistently
-regardless of where you `cd` inside the subshell.
-
-### Git Branch in Prompt
-
-The git branch is **not stored in a variable**. It is queried dynamically each time the
-prompt renders. This ensures the prompt reflects reality when the user runs `git
-checkout` to switch branches inside the subshell.
-
-Implementation in PS1:
+Missing files are created. Existing files keep their non-Base content; Base only
+adds or replaces its marked section. Base-managed sections use explicit markers
+such as:
 
 ```bash
-_base_git_branch() {
-  git -C "$BASE_PROJECT_ROOT" symbolic-ref --short HEAD 2>/dev/null || echo "detached"
-}
-
-PS1='[${BASE_PROJECT}: $(_base_git_branch)] \w $ '
+# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---
+# ... Base-managed content ...
+# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---
 ```
 
-Key decision: the branch is always queried against `$BASE_PROJECT_ROOT` (the project's
-root directory), not the current working directory. This means even if you `cd /tmp`,
-the prompt shows the project's branch, not whatever git repo happens to be at `/tmp`.
+### Base Snippets
 
-### Why Not Show Python Venv in Prompt
+The managed sections source matching snippets under `lib/shell/`:
 
-The project name in the prompt implies the Python virtual environment — if a project is
-active, its venv is active. Showing both would be redundant. The prompt stays clean.
+- `lib/shell/bash_profile` for `~/.bash_profile`
+- `lib/shell/bashrc` for `~/.bashrc`
+- `lib/shell/zprofile` for `~/.zprofile`
+- `lib/shell/zshrc` for `~/.zshrc`
 
----
+The names intentionally mirror the dotfiles they support, without leading dots
+inside the repository.
 
-## Python Virtual Environments
+### Login Profiles
 
-### Base Venv
+`bash_profile` and `zprofile` stay thin.
 
-- Created once during `base setup`
-- Lives at `~/.base.d/.venv`
-- Used to run Base's own Python orchestration code (manifest parsing, project discovery,
-  etc.)
-- Not activated in the user's interactive shell by default — it runs internally when
-  Base needs it
+For Bash, Base makes the login-shell bridge explicit: the Bash profile snippet
+sources `~/.bashrc` with a guardrail. Bash needs this because login Bash shells
+do not automatically read `~/.bashrc`.
 
-### Project Venv
+For Zsh, Base does not source `~/.zshrc` from `zprofile`. Zsh already reads
+`~/.zshrc` for interactive shells.
 
-- Created per project during `base setup <project>` or `base setup` when scanning
-  all projects
-- Lives inside the project directory (e.g., `.venv/`)
-- Activated automatically when `base activate <project>` spawns the project subshell
-- Deactivated automatically when the subshell exits
+### Interactive RC Files
 
-### Key Distinction
+`bashrc` and `zshrc` are where interactive shell behavior belongs.
 
-Only one Python venv can be active at a time. Base venv runs quietly in the background
-for Base's own tools. Project venv is what the user interacts with. The two never
-conflict because Base venv is not surfaced in the interactive shell.
+They are responsible for:
 
----
+- guarding against non-interactive execution
+- guarding against repeated sourcing
+- validating or inferring `BASE_HOME`
+- sourcing `base_init.sh` through the shared startup helper
+- optionally enabling shared shell defaults
 
-## Project Manifest
+### Standard Shell Defaults
 
-Each Base-managed project declares its dependencies in a YAML manifest file at the
-project root. Base reads this manifest to know what to install and configure.
+Base can provide optional, opinionated shell defaults, but they are not enabled
+by plain `base update-profile`.
 
-File: `base.yaml` (name TBD)
+Current default-setting scripts are:
 
-Conceptual structure:
+- `lib/shell/bash_defaults.sh` for Bash
+- `lib/shell/zsh_defaults.sh` for Zsh
 
-```yaml
-project:
-  name: myproject
-  description: A short description
+Users can opt in during profile updates with:
 
-dependencies:
-  system:
-    - kubernetes
-    - terraform
-    - docker
-  python:
-    - version: "3.12"
-      packages:
-        - requests
-        - rich
-  go:
-    - version: "1.22"
-
-shell:
-  env:
-    MY_PROJECT_ENV: production
-  path:
-    - ./bin
+```bash
+base update-profile --defaults
 ```
 
-The Python layer interprets this declarative manifest and translates each item into
-concrete installation actions. Base knows how to install system tools via Homebrew,
-manage Python versions and packages, and handle language-specific package managers.
+Those defaults are intended to stay conservative:
 
-Version conflicts across projects are a known complexity — addressed in a later
-iteration, not in the initial build.
+- aliases like `rm -i`, `cp -i`, `mv -i`
+- vi-style command editing
+- editor defaults
+- prompt defaults
+- history behavior
 
----
+## What Base Is Responsible For
 
-## Mac Bootstrap Sequence
+Base owns the shared developer-platform layer of the workspace.
 
-When `base setup` runs on a fresh Mac:
+That means Base should be responsible for:
 
-1. Check for Homebrew — install if missing
-2. Check for Xcode CLI tools — install if missing
-3. Install Python (target version) via Homebrew
-4. Create Base's own virtual environment at `~/.base.d/.venv`
-5. Install Base's Python dependencies into `~/.base.d/.venv`
-6. Prepare the managed shell startup model with `base update-profile`
-7. Scan the parent directory for peer repos with base manifests
-8. For each discovered project, run project-level setup (install declared dependencies,
-   create project venv)
+- bootstrapping the developer environment
+- discovering participating project repos
+- orchestrating setup and test flows across repos
+- managing shared shell initialization
+- providing common shell and Python helper libraries
+- providing wrappers and execution conventions for CLIs
 
----
+## What Base Is Not Responsible For
 
-## GitHub and Repository Conventions
+Base should not absorb project-specific logic that belongs inside individual
+repositories.
 
-- Base is a public GitHub repository
-- Issues are the official communication channel for bug reports and feedback
-- The README contains a clear "Issues and Feedback" section pointing users to GitHub
-  Issues
-- A stable release tag (e.g. `v0.9.0`) marks the last version of the old Base design
-  before the current rewrite begins
-- The README includes a notice that active development is happening on master and the
-  API is changing significantly
-- Users who want stability should pin to the stable release tag
+Each project repo should still own:
 
----
+- its own source code
+- its own business logic
+- its own build details
+- its own runtime details
+- its own tests
+- its own project-specific setup steps
 
-## Utility Scripts and Extras
+Base should orchestrate those things, not replace them.
 
-Base ships with a small collection of utility scripts useful for day-to-day Mac
-development:
+## Mental Model
 
-- Shell helper functions for common operations
-- Python library utilities for unified CLI development (shared across Base-managed
-  projects)
-- Git convenience helpers (branch management, PR workflows)
-- Potentially: a base-provided Python CLI framework so that projects built within the
-  Base ecosystem share a consistent CLI style
+Think of Base as the workspace control plane for local development.
 
-These extras emerge organically from real needs — they are not designed upfront.
+Each project repo remains independent. Base sits beside those repos and offers:
 
----
+- one place to bootstrap the workspace
+- one place to manage shared environments
+- one place to host common execution libraries and wrappers
 
-## What Base Is Not
+That gives a multi-repo setup some of the ergonomic benefits people often reach
+for in a monorepo, without forcing unrelated codebases into a single repository.
 
-- Not a replacement for Docker or dev containers — those solve a different problem
-  (containerization). Base is Mac-native and lightweight.
-- Not cross-platform — Windows is explicitly out of scope.
-- Not a universal package manager — Homebrew handles that. Base orchestrates on top
-  of Homebrew.
-- Not trying to solve every edge case — version conflict handling across projects,
-  language runtimes beyond Python, and container integration are future considerations.
+## Likely Workspace Shape
 
----
+The target shape looks roughly like this:
 
-## Open Questions (To Resolve Through Use)
+```text
+work/
+  base/
+    README.md
+    cli/
+      bash/
+      env/
+      python/
+    lib/
+    manifests/
+  project-a/
+  project-b/
+  infra/
+```
 
-- Exact manifest file name (`base.yaml`, `.base.yaml`, `base_manifest.yaml`)
-- Version conflict resolution strategy across projects with different dependency versions
-- Docker/dev container integration path for banyanlabs
-- How Base handles projects that don't use Python at all
-- Fish shell support — revisit if real demand emerges
+Projects should be able to opt into Base with minimal coupling. The exact
+mechanism is still being designed, but the intent is clear:
 
----
+- Base discovers projects in the shared workspace
+- projects expose a small contract to Base
+- Base provides common orchestration on top
 
-## Relationship to Banyanlabs
+## Design Principles
 
-Base is the prerequisite for banyanlabs. Banyanlabs (a multi-cloud, polyglot DevOps
-learning environment) will be a Base-managed project — it will have a base manifest
-declaring all its infrastructure tool dependencies. Base handles the bootstrapping.
-Banyanlabs handles the learning environment. Base must ship first.
+The refactor should follow a few simple principles.
 
----
+1. Keep project repos independent.
+2. Prefer explicit conventions over hidden shell magic.
+3. Keep wrappers thin but reliable.
+4. Make setup and test flows idempotent where possible.
+5. Let Base provide the common layer without turning into a dumping ground for
+   project-specific behavior.
 
-*This document reflects design decisions made in May 2026. It is a living document —
-update it as the design evolves through real implementation experience.*
+## Status
+
+This repository is being repositioned and refactored.
+
+The current contents include useful shell-oriented building blocks from the
+older version of Base. The goal now is to evolve those foundations into a more
+general multi-project workspace tool.
+
+For the evolving architecture and product-direction notes behind that refactor,
+see [docs/design.md](docs/design.md). For ecosystem boundary and integration
+decisions, see [docs/tool-boundaries.md](docs/tool-boundaries.md).
+
+The first migration pass has already started: the shared Bash wrapper,
+environment bootstrap, setup command, and Bash libraries formerly living in the
+`banyanlabs` repo now live under `base/cli/`.
+
+## Short Version
+
+Base is the repo you check out once per workspace so that all the other repos
+in that workspace become easier to set up, easier to test, and easier to run in
+a controlled shell environment.

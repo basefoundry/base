@@ -371,20 +371,21 @@ run_base_command() {
     run_base_command update-profile
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Updated Base-managed shell startup sections."* ]]
+    [[ "$output" == *"Updating '$TEST_HOME/.bash_profile'"* ]]
+    [[ "$output" == *"Updating '$TEST_HOME/.bashrc'"* ]]
 
     for dotfile in .bash_profile .bashrc .zprofile .zshrc; do
         [ -f "$TEST_HOME/$dotfile" ]
         [[ "$(cat "$TEST_HOME/$dotfile")" == *"export BASE_HOME=$BASE_REPO_ROOT"* ]]
     done
 
-    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# >>> base bash_profile >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# --- BEGIN base bash_profile MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.bash_profile")" == *'source "$BASE_HOME/lib/shell/bash_profile"'* ]]
-    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# >>> base bashrc >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *'source "$BASE_HOME/lib/shell/bashrc"'* ]]
-    [[ "$(cat "$TEST_HOME/.zprofile")" == *"# >>> base zprofile >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"# --- BEGIN base zprofile MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *'source "$BASE_HOME/lib/shell/zprofile"'* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" == *"# >>> base zshrc >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"# --- BEGIN base zshrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *'source "$BASE_HOME/lib/shell/zshrc"'* ]]
 }
 
@@ -398,9 +399,24 @@ run_base_command() {
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    [ "$(grep -c '# >>> base bashrc >>>' "$TEST_HOME/.bashrc")" -eq 1 ]
-    [ "$(grep -c '# <<< base bashrc <<<' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [ "$(grep -c '# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [ "$(grep -c '# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line before"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *$'user line before
+
+# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---'* ]]
+}
+
+@test "base update-profile --dry-run does not create dotfiles" {
+    run_base_command update-profile --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.bash_profile'"* ]]
+    [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.bashrc'"* ]]
+    [ ! -e "$TEST_HOME/.bash_profile" ]
+    [ ! -e "$TEST_HOME/.bashrc" ]
+    [ ! -e "$TEST_HOME/.zprofile" ]
+    [ ! -e "$TEST_HOME/.zshrc" ]
 }
 
 @test "base update-profile --defaults enables defaults only in interactive rc files" {

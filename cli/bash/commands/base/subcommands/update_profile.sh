@@ -15,6 +15,7 @@ Usage:
 
 Options:
   --defaults  Enable Base's optional Bash/Zsh shell defaults in managed rc sections.
+  --dry-run   Show what would be updated without changing dotfiles.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
 
@@ -66,28 +67,61 @@ base_update_profile_section_lines() {
     printf 'source "$BASE_HOME/lib/shell/%s"\n' "$snippet_name"
 }
 
+base_update_profile_prepare_section_spacing() {
+    local target_file="$1"
+    local start_marker="$2"
+    local last_line=""
+
+    [[ -s "$target_file" ]] || return 0
+    grep -qF -- "$start_marker" "$target_file" && return 0
+
+    if [[ $(tail -c 1 "$target_file" 2>/dev/null | wc -l) -eq 0 ]]; then
+        printf '
+
+' >> "$target_file"
+        return 0
+    fi
+
+    last_line="$(tail -n 1 "$target_file" 2>/dev/null || true)"
+    [[ -z "$last_line" ]] && return 0
+
+    printf '
+' >> "$target_file"
+}
+
 base_update_profile_update_file() {
     local target_file="$1"
     local snippet_name="$2"
     local enable_defaults="$3"
-    local start_marker="# >>> base ${snippet_name} >>>"
-    local end_marker="# <<< base ${snippet_name} <<<"
+    local dry_run="$4"
+    local start_marker="# --- BEGIN base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
+    local end_marker="# --- END base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
     local lines=()
 
-    safe_touch "$target_file"
-
     mapfile -t lines < <(base_update_profile_section_lines "$snippet_name" "$enable_defaults") || return 1
+
+    if ((dry_run)); then
+        log_info "[DRY-RUN] Would update '$target_file' with section '$snippet_name'."
+        return 0
+    fi
+
+    safe_touch "$target_file"
+    base_update_profile_prepare_section_spacing "$target_file" "$start_marker" || return 1
     update_file_section "$target_file" "$start_marker" "$end_marker" "${lines[@]}"
 }
 
 base_update_profile_subcommand_main() {
     local enable_defaults=0
+    local dry_run=0
     local repo_root
 
     while (($#)); do
         case "$1" in
             --defaults)
                 enable_defaults=1
+                ;;
+            --dry-run)
+                dry_run=1
                 ;;
             -h|--help|help)
                 base_update_profile_subcommand_usage
@@ -116,10 +150,9 @@ base_update_profile_subcommand_main() {
 
     base_update_profile_source_file_library || return 1
 
-    base_update_profile_update_file "$HOME/.bash_profile" bash_profile 0 || return 1
-    base_update_profile_update_file "$HOME/.bashrc" bashrc "$enable_defaults" || return 1
-    base_update_profile_update_file "$HOME/.zprofile" zprofile 0 || return 1
-    base_update_profile_update_file "$HOME/.zshrc" zshrc "$enable_defaults" || return 1
+    base_update_profile_update_file "$HOME/.bash_profile" bash_profile 0 "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.bashrc" bashrc "$enable_defaults" "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.zprofile" zprofile 0 "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.zshrc" zshrc "$enable_defaults" "$dry_run" || return 1
 
-    print_success "Updated Base-managed shell startup sections."
 }
