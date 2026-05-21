@@ -14,11 +14,9 @@ Commands:
   check [options]
     Verify the local Base CLI environment without making changes.
   update-profile [options]
-    Reserved for future shell profile updates.
+    Create or update Base-managed sections in Bash and Zsh startup files.
   install
     Install Base into BASE_HOME.
-  embrace
-    Symlink shell startup files from Base into the user's home directory.
   shell
     Start an interactive Bash shell using Base's managed startup files.
   version
@@ -118,11 +116,11 @@ base_cli_runtime_repo_root() {
     return 1
 }
 
-base_cli_shell_profile_path() {
+base_cli_shell_rc_path() {
     local repo_root
 
     repo_root="$(base_cli_runtime_repo_root)" || return 1
-    printf '%s\n' "$repo_root/lib/shell/bash_profile"
+    printf '%s\n' "$repo_root/lib/shell/bashrc"
 }
 
 base_cli_patch_baserc() {
@@ -253,81 +251,18 @@ base_cli_do_install() {
     return 0
 }
 
-base_cli_do_embrace() {
-    local base_bash_profile base_bashrc
-    local bash_profile bashrc
-    local bash_profile_link="" bashrc_link=""
-    local bash_profile_backup="" bashrc_backup=""
-
-    if ! base_cli_verify_repo "$BASE_HOME"; then
-        if base_cli_verify_repo "$BASE_REPO_ROOT"; then
-            BASE_HOME="$BASE_REPO_ROOT"
-            export BASE_HOME
-        else
-            base_cli_error "$BASE_CLI_ERROR_MESSAGE"
-            return 1
-        fi
-    fi
-
-    base_bash_profile="$BASE_HOME/lib/shell/bash_profile"
-    base_bashrc="$BASE_HOME/lib/shell/bashrc"
-    bash_profile="$HOME/.bash_profile"
-    bashrc="$HOME/.bashrc"
-
-    [[ -L "$bash_profile" ]] && bash_profile_link="$(readlink "$bash_profile")"
-    [[ -L "$bashrc" ]] && bashrc_link="$(readlink "$bashrc")"
-
-    if [[ "$bash_profile_link" == "$base_bash_profile" ]]; then
-        printf '%s\n' "$bash_profile is already symlinked to $base_bash_profile"
-    else
-        if [[ -f "$bash_profile" ]]; then
-            bash_profile_backup="$HOME/.bash_profile.$current_time"
-            printf "Backing up %s to %s and overriding it with %s\n" "$bash_profile" "$bash_profile_backup" "$base_bash_profile"
-            cp -- "$bash_profile" "$bash_profile_backup" || {
-                base_cli_error "Can't create a backup of $bash_profile."
-                return 1
-            }
-        fi
-        ln -sf -- "$base_bash_profile" "$bash_profile" || {
-            base_cli_error "Couldn't symlink '$bash_profile' to '$base_bash_profile'."
-            return 1
-        }
-        printf "Symlinked '%s' to '%s'\n" "$bash_profile" "$base_bash_profile"
-    fi
-
-    if [[ "$bashrc_link" == "$base_bashrc" ]]; then
-        printf '%s\n' "$bashrc is already symlinked to $base_bashrc"
-    else
-        if [[ -f "$bashrc" ]]; then
-            bashrc_backup="$HOME/.bashrc.$current_time"
-            printf "Backing up %s to %s and overriding it with %s\n" "$bashrc" "$bashrc_backup" "$base_bashrc"
-            cp -- "$bashrc" "$bashrc_backup" || {
-                base_cli_error "Can't create a backup of $bashrc."
-                return 1
-            }
-        fi
-        ln -sf -- "$base_bashrc" "$bashrc" || {
-            base_cli_error "Couldn't symlink '$bashrc' to '$base_bashrc'."
-            return 1
-        }
-        printf "Symlinked '%s' to '%s'\n" "$bashrc" "$base_bashrc"
-    fi
-
-    return 0
-}
-
 base_cli_do_shell() {
-    local shell_profile
+    local shell_rc
 
-    shell_profile="$(base_cli_shell_profile_path)" || {
+    shell_rc="$(base_cli_shell_rc_path)" || {
         base_cli_error "$BASE_CLI_ERROR_MESSAGE"
         return 1
     }
 
-    BASE_HOME="$(cd -- "$(dirname -- "$shell_profile")/../.." && pwd -P)"
+    BASE_HOME="$(cd -- "$(dirname -- "$shell_rc")/../.." && pwd -P)"
     export BASE_HOME
     export BASE_SHELL=1
-    exec bash --rcfile "$shell_profile"
+    exec bash --rcfile "$shell_rc"
 }
 
 
@@ -392,7 +327,6 @@ base_cli_main() {
     case "$command" in
         check)            base_cli_do_check "$@" ;;
         setup)            base_cli_do_setup "$@" ;;
-        embrace)          base_cli_do_embrace ;;
         help)             base_cli_show_help ;;
         install)          base_cli_do_install ;;
         shell)            base_cli_do_shell ;;

@@ -229,7 +229,7 @@ How Base should coexist:
 
 - users may use `dotbot` to install or link Base-managed shell startup files
 - Base does not need native `dotbot` integration beyond staying compatible with
-  symlink-based installation
+  ordinary dotfile management and marked sections
 
 Current stance: light coexistence, otherwise not a major design influence.
 

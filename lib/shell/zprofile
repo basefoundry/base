@@ -1,34 +1,14 @@
 #
-# .zprofile
-#     Base-managed login startup file for Zsh.
+# zprofile
+#     Base-managed login-shell snippet for Zsh.
 #
 # Purpose:
-#     - stay intentionally thin
-#     - run in login Zsh shells
-#     - hand off to ~/.zshrc so that interactive setup happens in one place
-#
-# Expected usage:
-#     symlink ~/.zprofile -> /path/to/base/lib/shell/zprofile
-#
-# What belongs here:
-#     - login-shell bridging into ~/.zshrc
-#
-# What does not belong here:
-#     - aliases, prompts, keybindings, completion setup, or Base activation
-#       logic beyond the handoff to ~/.zshrc
+#     - sourced from the Base-managed section in ~/.zprofile
+#     - keep Zsh login startup thin
 #
 # Design note:
-#     Keeping zprofile small makes the startup chain easier to reason about and
-#     keeps interactive behavior centralized in lib/shell/zshrc.
-#
-# See also:
-#     lib/shell/zshrc
-#     README.md section "Shell Startup Files"
+#     Zsh already reads ~/.zshrc for interactive shells. Base does not source
+#     ~/.zshrc from this file.
 #
 [[ -n "${__base_zprofile_sourced__:-}" ]] && return 0
 readonly __base_zprofile_sourced__=1
-
-[[ -f "$HOME/.zshrc" ]] || return 0
-
-# shellcheck source=/dev/null
-source "$HOME/.zshrc"

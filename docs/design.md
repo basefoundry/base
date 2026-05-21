@@ -73,7 +73,7 @@ Base wrapper/bootstrap path. This keeps the product surface simple:
 - `base setup`
 - `base check`
 - `base install`
-- `base embrace`
+- `base update-profile`
 - `base shell`
 - future commands such as `base projects list`, `base test`, and `base activate`
 
@@ -161,7 +161,7 @@ Contains:
 - `BASE_PROJECT` set to `"base"` by default
 - `BASE_HOME` pointing to the base project root
 
-This layer is currently installed by adopting the Base-managed startup files under `lib/shell/`, typically through symlinks or a helper such as `base embrace`. Machine-local overrides belong in `~/.baserc`.
+This layer is currently installed by running `base update-profile`, which creates or updates Base-managed sections in the user's Bash and Zsh dotfiles. Base owns only its marked sections, not the whole dotfile.
 
 ### Layer 2 — Project-Specific Environment
 
@@ -179,16 +179,22 @@ the project layer disappears naturally — no explicit deactivation needed.
 
 ### Dotfile Management
 
-Base currently ships managed shell startup files instead of injecting a large managed block into user dotfiles. The preferred adoption model is:
+Base updates the user's real dotfiles by managing small marked sections. The preferred adoption model is:
 
-| File | Purpose |
-|---|---|
-| `lib/shell/bashrc` | Interactive bash shell settings |
-| `lib/shell/bash_profile` | Login bash shell settings |
-| `lib/shell/zshrc` | Interactive zsh shell settings |
-| `lib/shell/zprofile` | Login zsh shell settings |
+```bash
+base update-profile
+```
 
-Users can symlink these into place, and Base can provide helper commands such as `base embrace` to make that easier. `~/.baserc` remains the machine-local override file for settings such as `BASE_HOME`.
+By default, Base updates all four files:
+
+| Dotfile | Base snippet | Purpose |
+|---|---|---|
+| `~/.bash_profile` | `lib/shell/bash_profile` | Login Bash bridge into `~/.bashrc` |
+| `~/.bashrc` | `lib/shell/bashrc` | Interactive Bash startup |
+| `~/.zprofile` | `lib/shell/zprofile` | Thin Zsh login startup |
+| `~/.zshrc` | `lib/shell/zshrc` | Interactive Zsh startup |
+
+Base does not symlink over the user's dotfiles and does not own content outside its marked sections. Optional Base shell defaults are enabled explicitly with `base update-profile --defaults`.
 
 ---
 
@@ -336,7 +342,7 @@ When `base setup` runs on a fresh Mac:
 3. Install Python (target version) via Homebrew
 4. Create Base's own virtual environment at `~/.base.d/.venv`
 5. Install Base's Python dependencies into `~/.base.d/.venv`
-6. Prepare the managed shell startup model (currently via Base-managed startup files and shell adoption helpers)
+6. Prepare the managed shell startup model with `base update-profile`
 7. Scan the parent directory for peer repos with base manifests
 8. For each discovered project, run project-level setup (install declared dependencies,
    create project venv)

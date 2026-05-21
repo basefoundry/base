@@ -359,7 +359,3 @@ setup_run_install() {
     fi
 }
 
-setup_run_update_profile() {
-    print_warn "The 'base update-profile' subcommand is not implemented yet."
-    return 1
-}

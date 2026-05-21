@@ -1,33 +1,23 @@
 #
-# .zshrc
-#     Base-managed interactive Zsh startup file.
+# zshrc
+#     Base-managed interactive-shell snippet for Zsh.
 #
 # Purpose:
+#     - sourced from the Base-managed section in ~/.zshrc
 #     - run only for interactive Zsh shells
-#     - guard against repeated sourcing
-#     - determine BASE_HOME from ~/.baserc or from the resolved path of this
-#       file when it is symlinked from the user's home directory
-#     - hand off to lib/shell/shell_startup.sh, which applies optional shell defaults
-#       and then sources base_init.sh
-#
-# Expected usage:
-#     symlink ~/.zshrc -> /path/to/base/lib/shell/zshrc
+#     - determine BASE_HOME from the managed dotfile section, with a fallback
+#       to this file's resolved location
+#     - hand off to lib/shell/shell_startup.sh
 #
 # What belongs here:
 #     - interactive-shell guards
-#     - BASE_HOME discovery for Zsh
+#     - BASE_HOME validation/fallback
 #     - loading the shared Base shell bootstrap
 #
 # What does not belong here:
-#     - login-only behavior (that belongs in lib/shell/zprofile)
-#     - large sets of aliases or prompt customizations
-#       (those belong in zsh_defaults.sh or user-specific files)
-#
-# See also:
-#     lib/shell/zprofile
-#     lib/shell/shell_startup.sh
-#     base_init.sh
-#     README.md section "Shell Startup Files"
+#     - login-shell behavior (that belongs in lib/shell/zprofile)
+#     - sourcing ~/.zprofile
+#     - machine-local configuration policy
 #
 [[ ! -o interactive ]] && return 0
 [[ -n "${__base_zshrc_sourced__:-}" ]] && return 0
@@ -50,44 +40,40 @@ base_zshrc_source_path() {
     done
 
     link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s\n' "$link_dir" "$(basename "$source_path")"
+    printf '%s/%s
+' "$link_dir" "$(basename "$source_path")"
 }
 
 base_zshrc_set_base_home() {
     local source_path lib_dir candidate
-
-    source_path="$(base_zshrc_source_path)" || return 1
-    lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
-
-    if [[ -f "$HOME/.baserc" && -z "${__base_user_baserc_sourced__:-}" ]]; then
-        # shellcheck source=/dev/null
-        source "$HOME/.baserc"
-        _baserc_sourced=1
-        readonly __base_user_baserc_sourced__=1
-    fi
 
     if [[ -n "${BASE_HOME:-}" && -f "$BASE_HOME/base_init.sh" ]]; then
         export BASE_HOME
         return 0
     fi
 
+    source_path="$(base_zshrc_source_path)" || return 1
+    lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
+
     if [[ -f "$candidate/base_init.sh" ]]; then
         BASE_HOME="$candidate"
-    else
-        BASE_HOME="$HOME/base"
+        export BASE_HOME
+        return 0
     fi
 
-    export BASE_HOME
+    return 1
 }
 
 base_zshrc_set_base_home || {
-    printf 'ERROR: Unable to determine BASE_HOME.\n' >&2
+    printf 'ERROR: Unable to determine BASE_HOME. Run base update-profile to refresh shell startup files.
+' >&2
     return 1
 }
 
 [[ -f "$BASE_HOME/lib/shell/shell_startup.sh" ]] || {
-    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.\n" "$BASE_HOME" >&2
+    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.
+" "$BASE_HOME" >&2
     return 1
 }
 

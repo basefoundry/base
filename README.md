@@ -99,26 +99,47 @@ invoke it from whatever shell state they already had.
 
 ## Shell Startup Files
 
-Base now ships managed startup files under `lib/shell/` for both Bash and Zsh:
+Base integrates with Bash and Zsh through small managed sections in the user's
+real dotfiles. Base does not take over whole dotfiles.
 
-- `lib/shell/bash_profile`
-- `lib/shell/bashrc`
-- `lib/shell/zprofile`
-- `lib/shell/zshrc`
+The command that installs or refreshes those sections is:
 
-The division of responsibility is intentional.
+```bash
+base update-profile
+```
+
+By default it updates all four startup files:
+
+- `~/.bash_profile`
+- `~/.bashrc`
+- `~/.zprofile`
+- `~/.zshrc`
+
+Missing files are created. Existing files keep their non-Base content; Base only
+adds or replaces its marked section.
+
+### Base Snippets
+
+The managed sections source matching snippets under `lib/shell/`:
+
+- `lib/shell/bash_profile` for `~/.bash_profile`
+- `lib/shell/bashrc` for `~/.bashrc`
+- `lib/shell/zprofile` for `~/.zprofile`
+- `lib/shell/zshrc` for `~/.zshrc`
+
+The names intentionally mirror the dotfiles they support, without leading dots
+inside the repository.
 
 ### Login Profiles
 
-`bash_profile` and `zprofile` should stay thin.
+`bash_profile` and `zprofile` stay thin.
 
-They are responsible for:
+For Bash, Base makes the login-shell bridge explicit: the Bash profile snippet
+sources `~/.bashrc` with a guardrail. Bash needs this because login Bash shells
+do not automatically read `~/.bashrc`.
 
-- one-time setup for a login shell
-- handing off to the interactive rc file
-
-They should not be the main place for aliases, prompt settings, shell editing
-mode, completion, or project activation logic.
+For Zsh, Base does not source `~/.zshrc` from `zprofile`. Zsh already reads
+`~/.zshrc` for interactive shells.
 
 ### Interactive RC Files
 
@@ -128,65 +149,33 @@ They are responsible for:
 
 - guarding against non-interactive execution
 - guarding against repeated sourcing
-- locating `BASE_HOME`
-- sourcing `~/.baserc` for machine-local overrides
-- sourcing `base_init.sh`
+- validating or inferring `BASE_HOME`
+- sourcing `base_init.sh` through the shared startup helper
 - optionally enabling shared shell defaults
-
-This is where Base becomes active for day-to-day terminal use.
 
 ### Standard Shell Defaults
 
-Reusable, opinionated shell defaults should live outside the profile files
-themselves.
+Base can provide optional, opinionated shell defaults, but they are not enabled
+by plain `base update-profile`.
 
 Current default-setting scripts are:
 
-- `lib/shell/base_defaults.sh` for Bash
+- `lib/shell/bash_defaults.sh` for Bash
 - `lib/shell/zsh_defaults.sh` for Zsh
 
-These are intentionally optional. Users can opt in by setting:
+Users can opt in during profile updates with:
 
 ```bash
-BASE_ENABLE_SHELL_DEFAULTS=true
+base update-profile --defaults
 ```
 
-in `~/.baserc`.
-
-That keeps the startup files focused on shell bootstrap while letting Base also
-house standard interactive settings such as:
+Those defaults are intended to stay conservative:
 
 - aliases like `rm -i`, `cp -i`, `mv -i`
 - vi-style command editing
 - editor defaults
 - prompt defaults
 - history behavior
-
-### Machine-Local Overrides
-
-`~/.baserc` is the right place for machine-local settings that should not be
-hard-coded into the shared startup files, such as:
-
-- `BASE_HOME`
-- `BASE_ENABLE_SHELL_DEFAULTS`
-- host-specific overrides
-- local experimental toggles
-
-### Adoption
-
-The expected setup is to symlink your shell startup files to the Base-managed
-versions:
-
-```bash
-ln -sf /path/to/base/lib/shell/bash_profile ~/.bash_profile
-ln -sf /path/to/base/lib/shell/bashrc ~/.bashrc
-ln -sf /path/to/base/lib/shell/zprofile ~/.zprofile
-ln -sf /path/to/base/lib/shell/zshrc ~/.zshrc
-```
-
-When the files are symlinked, the rc files can infer `BASE_HOME` from their own
-resolved path. When they are copied instead of symlinked, `~/.baserc` should
-set `BASE_HOME` explicitly.
 
 ## What Base Is Responsible For
 

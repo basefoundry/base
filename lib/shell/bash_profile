@@ -1,7 +1,24 @@
+#
+# bash_profile
+#     Base-managed login-shell snippet for Bash.
+#
+# Purpose:
+#     - sourced from the Base-managed section in ~/.bash_profile
+#     - keep Bash login startup thin
+#     - bridge interactive login Bash shells into ~/.bashrc with a guardrail
+#
+# Design note:
+#     Bash does not automatically source ~/.bashrc for login shells. Base makes
+#     that bridge explicit here. The flow is one-way: bash_profile may source
+#     bashrc, but bashrc must never source bash_profile.
+#
 [[ -n "${__base_bash_profile_sourced__:-}" ]] && return 0
 readonly __base_bash_profile_sourced__=1
 
+[[ -n "${__base_sourcing_bashrc_from_profile__:-}" ]] && return 0
 [[ -f "$HOME/.bashrc" ]] || return 0
 
+__base_sourcing_bashrc_from_profile__=1
 # shellcheck source=/dev/null
 source "$HOME/.bashrc"
+unset __base_sourcing_bashrc_from_profile__

@@ -22,7 +22,6 @@ Bash stdlib loading path as other wrapped commands.
 - `check`
 - `update-profile`
 - `install`
-- `embrace`
 - `shell`
 - `version`
 - `help`
@@ -31,6 +30,6 @@ Bash stdlib loading path as other wrapped commands.
 
 - `base setup` is the default local bootstrap path.
 - `base check` verifies the same local requirements without making changes.
-- `embrace` and `shell` are the remaining shell-management entrypoints.
+- `base update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - Base-specific bootstrap subcommands live under `cli/bash/commands/base/subcommands/`.
 - Shared tests for Base subcommands live under `cli/bash/commands/tests/`.
