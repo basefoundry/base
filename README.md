@@ -116,7 +116,14 @@ By default it updates all four startup files:
 - `~/.zshrc`
 
 Missing files are created. Existing files keep their non-Base content; Base only
-adds or replaces its marked section.
+adds or replaces its marked section. Base-managed sections use explicit markers
+such as:
+
+```bash
+# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---
+# ... Base-managed content ...
+# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---
+```
 
 ### Base Snippets
 

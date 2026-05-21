@@ -23,7 +23,7 @@
 #
 # What does not belong here:
 #     - aliases, prompts, keybindings, or other interactive shell cosmetics
-#       (those belong in base_defaults.sh / zsh_defaults.sh or user-specific
+#       (those belong in bash_defaults.sh / zsh_defaults.sh or user-specific
 #       startup files)
 #
 # See also:
@@ -87,20 +87,13 @@ do_init() {
 }
 
 set_base_home() {
-    script=$HOME/.baserc
-    [[ -f $script ]] && [[ -z $_baserc_sourced ]] && {
-        base_debug "Sourcing $script"
-        # shellcheck source=/dev/null
-        source "$script"
-        _baserc_sourced=1
-    }
-
-    # set BASE_HOME to default in case it is not set
-    [[ -z $BASE_HOME ]] && {
+    # base-wrapper and Base-managed dotfile sections set BASE_HOME before this
+    # file is sourced. Do not let older user config silently override it here.
+    if [[ -z ${BASE_HOME:-} ]]; then
         local dir=$HOME/base
         base_debug "BASE_HOME not set; defaulting it to '$dir'"
         BASE_HOME=$dir
-    }
+    fi
 
     export BASE_HOME
 }
@@ -131,32 +124,7 @@ import_libs_and_profiles() {
     local lib script team
     local -A teams
 
-    source_it    "$BASE_HOME/lib/base/stdlib.sh"     # common library
-    source_it -i "$HOME/.baserc-$USER"               # user specific bashrc outside the repo for interactive shells
-
-    #
-    # team specific actions
-    #
-    # Users choose teams by setting the "BASE_TEAM" variable in their user specific startup script
-    # For example: BASE_TEAM=teamX
-    #
-    # Users can also set "BASE_SHARED_TEAMS" to more teams so as to share from those teams.
-    # For example: BASE_SHARED_TEAMS="teamY teamZ" or
-    #              BASE_SHARED_TEAMS=(teamY teamZ)
-    #
-    # We source the team specific startup script add the team bin directory to PATH, in the same order
-    #
-    teams=()
-    for team in $BASE_TEAM $BASE_SHARED_TEAMS "${BASE_SHARED_TEAMS[@]}"; do
-        [[ ${teams[$team]} ]] && continue                    # skip if team was seen already
-        source_it    "$BASE_HOME/team/$team/lib/$team.sh"    # team specific library
-        source_it -i "$BASE_HOME/team/$team/lib/bashrc"      # team specific bashrc for interactive shells
-        add_to_path  "$BASE_HOME/team/$team/bin"             # add team bin to PATH (gets priority over company bin)
-        teams[$team]=1
-    done
-
-    # add company bin to PATH; team bins, if any, take priority over company bin
-    add_to_path  "$BASE_HOME/company/bin"
+    source_it "$BASE_HOME/lib/base/stdlib.sh"
 }
 
 #
@@ -185,7 +153,8 @@ base_main() {
     # these functions need to be available to user's subprocesses
     #
     if [[ -n "${BASH_VERSION:-}" ]]; then
-        export -f base_update import
+        export -f base_update
+        declare -F import >/dev/null 2>&1 && export -f import
     fi
 }
 
