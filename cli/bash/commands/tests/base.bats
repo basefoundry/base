@@ -31,6 +31,7 @@ run_base() {
     ! grep -Fqx '  set-team TEAM' <<<"$output"
     ! grep -Fqx '  set-shared-teams TEAM...' <<<"$output"
     ! grep -Fqx '  man' <<<"$output"
+    ! grep -Fqx '  embrace' <<<"$output"
 }
 
 @test "base prints help when no command is given in a non-interactive shell" {
@@ -59,7 +60,7 @@ run_base() {
 @test "base rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man; do
+    for legacy_command in status update run set-team set-shared-teams man embrace; do
         run_base "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]

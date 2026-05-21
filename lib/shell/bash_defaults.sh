@@ -1,5 +1,5 @@
 #
-# base_defaults.sh
+# bash_defaults.sh
 #     Optional Bash-specific interactive defaults for users who want Base to
 #     provide a standard shell experience in addition to the core bootstrap.
 #

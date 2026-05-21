@@ -1,3 +1,24 @@
+#
+# bashrc
+#     Base-managed interactive-shell snippet for Bash.
+#
+# Purpose:
+#     - sourced from the Base-managed section in ~/.bashrc
+#     - run only for interactive Bash shells
+#     - determine BASE_HOME from the managed dotfile section, with a fallback
+#       to this file's resolved location
+#     - hand off to lib/shell/shell_startup.sh
+#
+# What belongs here:
+#     - interactive-shell guards
+#     - BASE_HOME validation/fallback
+#     - loading the shared Base shell bootstrap
+#
+# What does not belong here:
+#     - login-shell bridging (that belongs in lib/shell/bash_profile)
+#     - sourcing ~/.bash_profile
+#     - machine-local configuration policy
+#
 [[ $- != *i* ]] && return 0
 [[ -n "${__base_bashrc_sourced__:-}" ]] && return 0
 readonly __base_bashrc_sourced__=1
@@ -16,46 +37,42 @@ base_bashrc_source_path() {
     done
 
     link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s\n' "$link_dir" "$(basename "$source_path")"
+    printf '%s/%s
+' "$link_dir" "$(basename "$source_path")"
 }
 
 base_bashrc_set_base_home() {
     local source_path lib_dir candidate
-
-    source_path="$(base_bashrc_source_path)" || return 1
-    lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
-
-    if [[ -f "$HOME/.baserc" && -z "${__base_user_baserc_sourced__:-}" ]]; then
-        # shellcheck source=/dev/null
-        source "$HOME/.baserc"
-        _baserc_sourced=1
-        readonly __base_user_baserc_sourced__=1
-    fi
 
     if [[ -n "${BASE_HOME:-}" && -f "$BASE_HOME/base_init.sh" ]]; then
         export BASE_HOME
         return 0
     fi
 
+    source_path="$(base_bashrc_source_path)" || return 1
+    lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
+
     if [[ -f "$candidate/base_init.sh" ]]; then
         BASE_HOME="$candidate"
-    else
-        BASE_HOME="$HOME/base"
+        export BASE_HOME
+        return 0
     fi
 
-    export BASE_HOME
+    return 1
 }
 
 [[ -f /etc/bashrc ]] && source /etc/bashrc
 
 base_bashrc_set_base_home || {
-    printf 'ERROR: Unable to determine BASE_HOME.\n' >&2
+    printf 'ERROR: Unable to determine BASE_HOME. Run base update-profile to refresh shell startup files.
+' >&2
     return 1
 }
 
 [[ -f "$BASE_HOME/lib/shell/shell_startup.sh" ]] || {
-    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.\n" "$BASE_HOME" >&2
+    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.
+" "$BASE_HOME" >&2
     return 1
 }
 

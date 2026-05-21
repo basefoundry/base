@@ -367,10 +367,48 @@ run_base_command() {
     [[ "$output" == *"Running 'base setup'"* ]]
 }
 
-@test "base update-profile is reserved for later work" {
+@test "base update-profile creates Base-managed sections in all shell dotfiles" {
     run_base_command update-profile
 
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"update-profile"* ]]
-    [[ "$output" == *"not implemented yet"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Updated Base-managed shell startup sections."* ]]
+
+    for dotfile in .bash_profile .bashrc .zprofile .zshrc; do
+        [ -f "$TEST_HOME/$dotfile" ]
+        [[ "$(cat "$TEST_HOME/$dotfile")" == *"export BASE_HOME=$BASE_REPO_ROOT"* ]]
+    done
+
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# >>> base bash_profile >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *'source "$BASE_HOME/lib/shell/bash_profile"'* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# >>> base bashrc >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *'source "$BASE_HOME/lib/shell/bashrc"'* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"# >>> base zprofile >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *'source "$BASE_HOME/lib/shell/zprofile"'* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"# >>> base zshrc >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *'source "$BASE_HOME/lib/shell/zshrc"'* ]]
+}
+
+@test "base update-profile preserves non-Base dotfile content and is idempotent" {
+    printf '%s
+' 'user line before' > "$TEST_HOME/.bashrc"
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    [ "$(grep -c '# >>> base bashrc >>>' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [ "$(grep -c '# <<< base bashrc <<<' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line before"* ]]
+}
+
+@test "base update-profile --defaults enables defaults only in interactive rc files" {
+    run_base_command update-profile --defaults
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"export BASE_ENABLE_SHELL_DEFAULTS=true"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"export BASE_ENABLE_SHELL_DEFAULTS=true"* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" != *"BASE_ENABLE_SHELL_DEFAULTS"* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" != *"BASE_ENABLE_SHELL_DEFAULTS"* ]]
 }
