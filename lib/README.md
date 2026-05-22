@@ -4,11 +4,9 @@ Top-level library namespace for Base.
 
 ## Layout
 
-- `lib/base/`
-  Shared Base shell libraries used by `base_init.sh`, the `basectl` CLI, and other
-  repo-level shell code.
 - `lib/bash/`
-  Base Bash CLI libraries such as `std`, `git`, and `file`.
+  Base Bash runtime libraries such as `std`, `git`, `file`, and runtime shell
+  startup files.
 - `lib/shell/`
   Base-managed Bash/Zsh startup files and optional shared interactive defaults.
 

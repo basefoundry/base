@@ -205,7 +205,9 @@ What Base should not do:
 How Base should coexist:
 
 - Base-managed startup files can be installed through `chezmoi`
-- `~/.baserc` remains Base's own machine-local override point
+- Base's current profile state lives in `~/.base.d/profile.conf`
+- broader machine-local override files are deferred until the core profile
+  contract is stable
 - users who already use `chezmoi` should be able to adopt Base cleanly
 
 Current stance: light coexistence, distinct responsibilities.
