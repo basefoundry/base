@@ -35,13 +35,13 @@ workspace that contains multiple project repositories.
 
 Examples of the kind of interface Base should provide:
 
-- `base setup`
-- `base check`
-- `base setup <project>`
-- `base test`
-- `base test <project>`
-- `base doctor`
-- `base projects list`
+- `basectl setup`
+- `basectl check`
+- `basectl setup <project>`
+- `basectl test`
+- `basectl test <project>`
+- `basectl doctor`
+- `basectl projects list`
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace.
@@ -97,6 +97,23 @@ The wrapper model matters because it keeps command behavior predictable. A CLI
 should run inside a known environment instead of relying on whoever happened to
 invoke it from whatever shell state they already had.
 
+## Public Command Surface
+
+Base exposes commands through a single public directory: `$BASE_HOME/bin`. That
+directory is added to `PATH` by Base's managed shell startup snippets.
+
+`bin/basectl` is the control-plane command. Additional public commands, when
+needed, are tiny real launcher files in `bin/` that delegate to `basectl`; their
+implementation remains under `cli/bash/commands/<command>/` or, in the future,
+`cli/python/commands/<command>/`.
+
+Example launcher:
+
+```bash
+#!/usr/bin/env bash
+exec "$(dirname "$0")/basectl" caff "$@"
+```
+
 ## Shell Startup Files
 
 Base integrates with Bash and Zsh through small managed sections in the user's
@@ -105,7 +122,7 @@ real dotfiles. Base does not take over whole dotfiles.
 The command that installs or refreshes those sections is:
 
 ```bash
-base update-profile
+basectl update-profile
 ```
 
 By default it updates all four startup files:
@@ -116,8 +133,14 @@ By default it updates all four startup files:
 - `~/.zshrc`
 
 Missing files are created. Existing files keep their non-Base content; Base only
-adds or replaces its marked section. Base-managed sections use explicit markers
-such as:
+adds or replaces its marked section.
+
+`basectl update-profile` also creates `~/.base.d/profile.conf`, which records
+whether the user has opted into Base's optional shell defaults. The managed
+dotfile sections stay minimal and defer PATH/default handling to the sourced
+Base snippets.
+
+Base-managed sections use explicit markers such as:
 
 ```bash
 # --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---
@@ -156,14 +179,19 @@ They are responsible for:
 
 - guarding against non-interactive execution
 - guarding against repeated sourcing
-- validating or inferring `BASE_HOME`
-- sourcing `base_init.sh` through the shared startup helper
-- optionally enabling shared shell defaults
+- deriving and exporting `BASE_HOME` from the sourced Base snippet
+- adding Base's `bin/` directory to `PATH` so `basectl` is available after login
+- keeping dotfile integration separate from the full Base runtime bootstrap
+- optionally enabling shared shell defaults when `basectl update-profile --defaults` is used
+
+They do not source `base_init.sh`. Base runtime setup happens only when the
+`basectl` command runs a Base command, runs an explicit script path, or starts a
+Base-enabled Bash shell.
 
 ### Standard Shell Defaults
 
 Base can provide optional, opinionated shell defaults, but they are not enabled
-by plain `base update-profile`.
+by plain `basectl update-profile`.
 
 Current default-setting scripts are:
 
@@ -173,7 +201,7 @@ Current default-setting scripts are:
 Users can opt in during profile updates with:
 
 ```bash
-base update-profile --defaults
+basectl update-profile --defaults
 ```
 
 Those defaults are intended to stay conservative:
@@ -236,7 +264,6 @@ work/
     README.md
     cli/
       bash/
-      env/
       python/
     lib/
     manifests/
@@ -275,9 +302,9 @@ For the evolving architecture and product-direction notes behind that refactor,
 see [docs/design.md](docs/design.md). For ecosystem boundary and integration
 decisions, see [docs/tool-boundaries.md](docs/tool-boundaries.md).
 
-The first migration pass has already started: the shared Bash wrapper,
-environment bootstrap, setup command, and Bash libraries formerly living in the
-`banyanlabs` repo now live under `base/cli/`.
+The first migration pass has already started: the Base CLI, runtime bootstrap,
+setup command, and Bash libraries formerly living in the `banyanlabs` repo now
+live under this repository.
 
 ## Short Version
 

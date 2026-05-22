@@ -8,21 +8,24 @@ setup() {
     mkdir -p "$TEST_HOME"
 }
 
-run_base() {
-    run env         HOME="$TEST_HOME"         PATH="/usr/bin:/bin:/usr/sbin:/sbin"         "$BASE_REPO_ROOT/bin/base" "$@"
+run_basectl() {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" "$@"
 }
 
-@test "base prints help with --help" {
-    run_base --help
+@test "basectl prints help with --help" {
+    run_basectl --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: base [options] <command> [args...]"* ]]
+    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
 }
 
-@test "base help omits legacy leftover commands" {
-    run_base --help
+@test "basectl help omits legacy leftover commands" {
+    run_basectl --help
 
     [ "$status" -eq 0 ]
     ! grep -Fqx '  update' <<<"$output"
@@ -34,35 +37,60 @@ run_base() {
     ! grep -Fqx '  embrace' <<<"$output"
 }
 
-@test "base prints help when no command is given in a non-interactive shell" {
-    run_base
+@test "basectl prints help when no command is given in a non-interactive shell" {
+    run_basectl
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: base [options] <command> [args...]"* ]]
+    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
-@test "base --version uses BASE_VERSION when provided" {
-    run env         HOME="$TEST_HOME"         PATH="/usr/bin:/bin:/usr/sbin:/sbin"         BASE_VERSION="test-version"         "$BASE_REPO_ROOT/bin/base" --version
+@test "basectl --version uses BASE_VERSION when provided" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_VERSION="test-version" \
+        "$BASE_REPO_ROOT/bin/basectl" --version
 
     [ "$status" -eq 0 ]
-    [[ "$output" == "base version test-version" ]]
+    [[ "$output" == "basectl version test-version" ]]
 }
 
-@test "base setup prints setup-specific help" {
-    run_base setup --help
+@test "basectl setup prints setup-specific help" {
+    run_basectl setup --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"base setup [options]"* ]]
+    [[ "$output" == *"basectl setup [options]"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
-@test "base rejects removed legacy commands" {
+@test "basectl rejects removed legacy commands" {
     local legacy_command
 
     for legacy_command in status update run set-team set-shared-teams man embrace; do
-        run_base "$legacy_command"
+        run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
     done
+}
+
+
+@test "basectl dispatches command implementations by command name" {
+    run_basectl test_cmd
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"I am starting"* ]]
+}
+
+@test "sort-in-place launcher delegates through basectl" {
+    local input_file="$TEST_TMPDIR/input.txt"
+
+    printf 'b\na\nb\n' > "$input_file"
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$BASE_REPO_ROOT/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        sort-in-place -u "$input_file"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$input_file")" = $'a\nb' ]
 }

@@ -11,11 +11,11 @@ source "$_base_setup_common_path"
 base_update_profile_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  base update-profile [options]
+  basectl update-profile [options]
 
 Options:
-  --defaults  Enable Base's optional Bash/Zsh shell defaults in managed rc sections.
-  --dry-run   Show what would be updated without changing dotfiles.
+  --defaults  Enable Base's optional Bash/Zsh shell defaults.
+  --dry-run   Show what would be updated without changing files.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
 
@@ -23,6 +23,7 @@ Purpose:
   Create or update Base-managed sections in Bash and Zsh startup files.
 
 Updated files:
+  ~/.base.d/profile.conf
   ~/.bash_profile
   ~/.bashrc
   ~/.zprofile
@@ -31,15 +32,7 @@ EOF
 }
 
 base_update_profile_source_file_library() {
-    local file_lib="${BASE_BASH_LIB_DIR:-$BASE_REPO_ROOT/lib/bash}/file/lib_file.sh"
-
-    [[ -f "$file_lib" ]] || {
-        print_error "File library '$file_lib' was not found."
-        return 1
-    }
-
-    # shellcheck source=/dev/null
-    source "$file_lib"
+    import_base_lib file/lib_file.sh
 }
 
 base_update_profile_quote() {
@@ -47,24 +40,21 @@ base_update_profile_quote() {
     printf '%q\n' "$value"
 }
 
+base_update_profile_source_line() {
+    local source_path="$1"
+    local quoted_source_path
+
+    quoted_source_path="$(base_update_profile_quote "$source_path")" || return 1
+    printf '%s\n' '# shellcheck source=/dev/null'
+    printf 'source %s\n' "$quoted_source_path"
+}
+
 base_update_profile_section_lines() {
     local snippet_name="$1"
-    local enable_defaults="$2"
-    local quoted_base_home
+    local snippet_path="$BASE_SHELL_DIR/$snippet_name"
 
-    quoted_base_home="$(base_update_profile_quote "$BASE_HOME")" || return 1
-
-    printf '%s\n' "# Managed by Base. Run 'base update-profile' to refresh this section."
-    printf 'export BASE_HOME=%s\n' "$quoted_base_home"
-
-    case "$snippet_name:$enable_defaults" in
-        bashrc:1|zshrc:1)
-            printf '%s\n' 'export BASE_ENABLE_SHELL_DEFAULTS=true'
-            ;;
-    esac
-
-    printf '%s\n' '# shellcheck source=/dev/null'
-    printf 'source "$BASE_HOME/lib/shell/%s"\n' "$snippet_name"
+    printf '%s\n' "# Managed by Base. Run 'basectl update-profile' to refresh this section."
+    base_update_profile_source_line "$snippet_path" || return 1
 }
 
 base_update_profile_prepare_section_spacing() {
@@ -76,29 +66,25 @@ base_update_profile_prepare_section_spacing() {
     grep -qF -- "$start_marker" "$target_file" && return 0
 
     if [[ $(tail -c 1 "$target_file" 2>/dev/null | wc -l) -eq 0 ]]; then
-        printf '
-
-' >> "$target_file"
+        printf '\n\n' >> "$target_file"
         return 0
     fi
 
     last_line="$(tail -n 1 "$target_file" 2>/dev/null || true)"
     [[ -z "$last_line" ]] && return 0
 
-    printf '
-' >> "$target_file"
+    printf '\n' >> "$target_file"
 }
 
 base_update_profile_update_file() {
     local target_file="$1"
     local snippet_name="$2"
-    local enable_defaults="$3"
-    local dry_run="$4"
+    local dry_run="$3"
     local start_marker="# --- BEGIN base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
     local end_marker="# --- END base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
     local lines=()
 
-    mapfile -t lines < <(base_update_profile_section_lines "$snippet_name" "$enable_defaults") || return 1
+    mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
 
     if ((dry_run)); then
         log_info "[DRY-RUN] Would update '$target_file' with section '$snippet_name'."
@@ -108,6 +94,63 @@ base_update_profile_update_file() {
     safe_touch "$target_file"
     base_update_profile_prepare_section_spacing "$target_file" "$start_marker" || return 1
     update_file_section "$target_file" "$start_marker" "$end_marker" "${lines[@]}"
+}
+
+base_update_profile_state_dir() {
+    printf '%s\n' "$HOME/.base.d"
+}
+
+base_update_profile_profile_conf() {
+    printf '%s/profile.conf\n' "$(base_update_profile_state_dir)"
+}
+
+base_update_profile_defaults_previously_enabled() {
+    local profile_conf
+
+    profile_conf="$(base_update_profile_profile_conf)" || return 1
+    [[ -f "$profile_conf" ]] || return 1
+
+    (
+        # shellcheck source=/dev/null
+        source "$profile_conf"
+        [[ "${BASE_ENABLE_BASH_DEFAULTS:-false}" == true || "${BASE_ENABLE_ZSH_DEFAULTS:-false}" == true ]]
+    )
+}
+
+base_update_profile_write_profile_conf() {
+    local enable_defaults="$1"
+    local dry_run="$2"
+    local state_dir
+    local profile_conf
+    local temp_file
+    local enable_value=false
+
+    state_dir="$(base_update_profile_state_dir)" || return 1
+    profile_conf="$(base_update_profile_profile_conf)" || return 1
+
+    if ((enable_defaults)) || base_update_profile_defaults_previously_enabled; then
+        enable_value=true
+    fi
+
+    if ((dry_run)); then
+        log_info "[DRY-RUN] Would update '$profile_conf'."
+        return 0
+    fi
+
+    safe_mkdir -p "$state_dir"
+    temp_file="$(mktemp "$profile_conf.XXXXXX")" || fatal_error "Unable to create temporary profile config for '$profile_conf'."
+
+    if ! {
+        printf '%s\n' '# Managed by Base. Run `basectl update-profile` to refresh this file.'
+        printf '%s\n' 'BASE_PROFILE_VERSION=1'
+        printf 'BASE_ENABLE_BASH_DEFAULTS=%s\n' "$enable_value"
+        printf 'BASE_ENABLE_ZSH_DEFAULTS=%s\n' "$enable_value"
+    } > "$temp_file"; then
+        rm -f -- "$temp_file"
+        fatal_error "Unable to write Base profile config '$profile_conf'."
+    fi
+
+    mv -f -- "$temp_file" "$profile_conf" || fatal_error "Unable to update Base profile config '$profile_conf'."
 }
 
 base_update_profile_subcommand_main() {
@@ -139,7 +182,7 @@ base_update_profile_subcommand_main() {
         shift
     done
 
-    log_debug "Running 'base update-profile'."
+    log_debug "Running 'basectl update-profile'."
 
     repo_root="$(base_cli_runtime_repo_root)" || {
         print_error "${BASE_CLI_ERROR_MESSAGE:-Unable to find the Base repository root.}"
@@ -149,10 +192,10 @@ base_update_profile_subcommand_main() {
     export BASE_HOME
 
     base_update_profile_source_file_library || return 1
+    base_update_profile_write_profile_conf "$enable_defaults" "$dry_run" || return 1
 
-    base_update_profile_update_file "$HOME/.bash_profile" bash_profile 0 "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.bashrc" bashrc "$enable_defaults" "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.zprofile" zprofile 0 "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.zshrc" zshrc "$enable_defaults" "$dry_run" || return 1
-
+    base_update_profile_update_file "$HOME/.bash_profile" bash_profile "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.bashrc" bashrc "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.zprofile" zprofile "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.zshrc" zshrc "$dry_run" || return 1
 }

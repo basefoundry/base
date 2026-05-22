@@ -26,8 +26,7 @@ Base is strongest when it stays focused on these responsibilities:
 - shared shell startup and shell-environment layering
 - peer-repo workspace discovery under a shared parent directory
 - workspace-level orchestration across sibling repositories
-- shared execution conventions through `base`, `base-wrapper`, and future
-  `base-python-wrapper`
+- shared execution conventions through `basectl` and a future `base-python-wrapper`
 - a small project manifest and command contract for participating repositories
 
 Base gets weaker when it drifts into becoming any of these:
@@ -76,7 +75,7 @@ What Base should not do:
 How Base should coexist:
 
 - allow a Base-managed project to declare that it uses `mise.toml`
-- let `base setup` or `base check` invoke `mise install`, `mise doctor`, or
+- let `basectl setup` or `basectl check` invoke `mise install`, `mise doctor`, or
   `mise run ...` when that is the project's chosen substrate
 - keep Base at the workspace-orchestration layer, not the per-language tool
   installation layer
@@ -153,8 +152,8 @@ What Base should not do:
 How Base should coexist:
 
 - a Base project can declare that its environment is provided by `devbox`
-- `base activate <project>` can eventually delegate to `devbox shell`
-- `base setup` and `base check` can validate that the expected `devbox`
+- `basectl activate <project>` can eventually delegate to `devbox shell`
+- `basectl setup` and `basectl check` can validate that the expected `devbox`
   workflow is available
 
 Current stance: strong coexistence, Base as orchestrator rather than shell
@@ -253,7 +252,7 @@ How Base should coexist:
 
 - a Base project can declare that testing is done through `task test` or
   `just test`
-- `base test <project>` should eventually delegate rather than duplicate
+- `basectl test <project>` should eventually delegate rather than duplicate
 - Base should provide the workspace-wide orchestration and selection layer
 
 Current stance: strong coexistence, borrow the explicit-command philosophy.
@@ -277,10 +276,10 @@ What Base should not do:
 
 How Base should coexist:
 
-- `base setup` should be able to run `brew bundle` where appropriate
+- `basectl setup` should be able to run `brew bundle` where appropriate
 - Base manifests can point to one or more `Brewfile`s instead of inventing a
   new package DSL too early
-- `base check` can validate that declared Homebrew dependencies are satisfied
+- `basectl check` can validate that declared Homebrew dependencies are satisfied
 
 Current stance: first-class integration candidate, but still as an orchestrator
 on top of Homebrew.
@@ -315,8 +314,8 @@ These are the lines worth defending as Base grows.
 
 - workspace discovery across peer repositories
 - the shared project manifest and command contract
-- umbrella commands such as `base setup`, `base check`, `base projects list`,
-  `base test`, and future `base activate`
+- umbrella commands such as `basectl setup`, `basectl check`, `basectl projects list`,
+  `basectl test`, and future `basectl activate`
 - shared shell startup and shell-environment layering
 - shared execution conventions for Bash and Python wrappers
 - workspace-level health checks and diagnostics

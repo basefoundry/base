@@ -1,30 +1,24 @@
 #
 # zshrc
-#     Base-managed interactive-shell snippet for Zsh.
+#     Base-managed interactive-shell integration for Zsh dotfiles.
 #
 # Purpose:
-#     - sourced from the Base-managed section in ~/.zshrc
-#     - run only for interactive Zsh shells
-#     - determine BASE_HOME from the managed dotfile section, with a fallback
-#       to this file's resolved location
-#     - hand off to lib/shell/shell_startup.sh
+#     - derive and export BASE_HOME from this snippet's location
+#     - make basectl available on PATH
+#     - source optional Zsh defaults when enabled in ~/.base.d/profile.conf
 #
-# What belongs here:
-#     - interactive-shell guards
-#     - BASE_HOME validation/fallback
-#     - loading the shared Base shell bootstrap
-#
-# What does not belong here:
-#     - login-shell behavior (that belongs in lib/shell/zprofile)
-#     - sourcing ~/.zprofile
-#     - machine-local configuration policy
+# Important:
+#     This file must not source base_init.sh. Base runtime setup belongs to the
+#     Bash-based basectl command path, not ordinary Zsh startup.
 #
 [[ ! -o interactive ]] && return 0
 [[ -n "${__base_zshrc_sourced__:-}" ]] && return 0
 readonly __base_zshrc_sourced__=1
 
 base_zshrc_source_path() {
-    local source_path link_dir target
+    local source_path
+    local link_dir
+    local target
 
     source_path="$(eval 'printf "%s\n" "${(%):-%x}"')" || return 1
     [[ -n "$source_path" ]] || return 1
@@ -40,47 +34,55 @@ base_zshrc_source_path() {
     done
 
     link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s
-' "$link_dir" "$(basename "$source_path")"
+    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
 }
 
 base_zshrc_set_base_home() {
-    local source_path lib_dir candidate
-
-    if [[ -n "${BASE_HOME:-}" && -f "$BASE_HOME/base_init.sh" ]]; then
-        export BASE_HOME
-        return 0
-    fi
+    local source_path
+    local snippet_dir
+    local base_home
 
     source_path="$(base_zshrc_source_path)" || return 1
-    lib_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    candidate="$(cd -- "$lib_dir/../.." && pwd -P)" || return 1
+    snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
 
-    if [[ -f "$candidate/base_init.sh" ]]; then
-        BASE_HOME="$candidate"
-        export BASE_HOME
-        return 0
-    fi
+    [[ -f "$base_home/base_init.sh" ]] || return 1
+    export BASE_HOME="$base_home"
+}
 
-    return 1
+base_zshrc_prepend_path() {
+    local bin_dir="$BASE_HOME/bin"
+
+    [[ -d "$bin_dir" ]] || return 0
+    case ":$PATH:" in
+        *:"$bin_dir":*) ;;
+        *) PATH="$bin_dir${PATH:+:$PATH}"; export PATH ;;
+    esac
+}
+
+base_zshrc_source_defaults() {
+    local profile_conf="$HOME/.base.d/profile.conf"
+    local enable_defaults=false
+
+    [[ -f "$profile_conf" ]] || return 0
+    # shellcheck source=/dev/null
+    source "$profile_conf"
+    enable_defaults="${BASE_ENABLE_ZSH_DEFAULTS:-false}"
+    unset BASE_PROFILE_VERSION BASE_ENABLE_BASH_DEFAULTS BASE_ENABLE_ZSH_DEFAULTS
+
+    [[ "$enable_defaults" == true ]] || return 0
+    [[ -f "$BASE_HOME/lib/shell/zsh_defaults.sh" ]] || return 0
+
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/lib/shell/zsh_defaults.sh"
 }
 
 base_zshrc_set_base_home || {
-    printf 'ERROR: Unable to determine BASE_HOME. Run base update-profile to refresh shell startup files.
-' >&2
+    printf 'ERROR: Unable to determine BASE_HOME from Base zshrc snippet. Run basectl update-profile.\n' >&2
     return 1
 }
-
-[[ -f "$BASE_HOME/lib/shell/shell_startup.sh" ]] || {
-    printf "ERROR: Base shell startup helper '%s/lib/shell/shell_startup.sh' was not found.
-" "$BASE_HOME" >&2
-    return 1
-}
-
-# shellcheck source=/dev/null
-source "$BASE_HOME/lib/shell/shell_startup.sh"
-base_shell_startup_interactive zsh || return 1
+base_zshrc_prepend_path
+base_zshrc_source_defaults || return 1
 
 unset -f base_zshrc_source_path base_zshrc_set_base_home
-unset -f base_shell_error base_shell_source_defaults
-unset -f base_shell_source_base_init base_shell_startup_interactive
+unset -f base_zshrc_prepend_path base_zshrc_source_defaults

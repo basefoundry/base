@@ -1,20 +1,24 @@
-# `base`
+# `basectl`
 
 Umbrella CLI for Base.
 
 ## Purpose
 
-`base` is the primary user-facing command for workspace-level Base behavior.
+`basectl` is the primary user-facing command for workspace-level Base behavior.
 
 It is invoked through:
 
 ```bash
-base <subcommand> [args...]
+basectl <subcommand> [args...]
 ```
 
-The public entrypoint lives at `bin/base` and delegates through `base-wrapper`,
-so Base command execution still goes through the same environment bootstrap and
-Bash stdlib loading path as other wrapped commands.
+The public entrypoint lives at `bin/basectl`. It sources `base_init.sh` to establish
+the Base runtime, then sources this command implementation and calls `main`.
+
+`basectl` also dispatches direct command names by convention. For example,
+`basectl caff` loads `cli/bash/commands/caff/caff.sh`. Public convenience
+commands in `$BASE_HOME/bin`, such as `bin/caff`, should remain tiny launchers
+that delegate to `basectl`.
 
 ## Current subcommands
 
@@ -28,8 +32,8 @@ Bash stdlib loading path as other wrapped commands.
 
 ## Notes
 
-- `base setup` is the default local bootstrap path.
-- `base check` verifies the same local requirements without making changes.
-- `base update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
+- `basectl setup` is the default local bootstrap path.
+- `basectl check` verifies the same local requirements without making changes.
+- `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - Base-specific bootstrap subcommands live under `cli/bash/commands/base/subcommands/`.
 - Shared tests for Base subcommands live under `cli/bash/commands/tests/`.

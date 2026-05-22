@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_setup_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  base setup [options]
+  basectl setup [options]
 
 Options:
   --dry-run   Log what would happen without making changes.
@@ -30,7 +30,7 @@ Setup does:
 
 Notes:
   - This command is intentionally idempotent.
-  - Use `base check` to verify the same requirements without making changes.
+  - Use `basectl check` to verify the same requirements without making changes.
 EOF
 }
 
@@ -58,6 +58,6 @@ base_setup_subcommand_main() {
         shift
     done
 
-    log_debug "Running 'base setup' (dry_run=${dry_run:-false})."
+    log_debug "Running 'basectl setup' (dry_run=${dry_run:-false})."
     setup_run_install
 }

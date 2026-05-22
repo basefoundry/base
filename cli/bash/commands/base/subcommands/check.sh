@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_check_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  base check [options]
+  basectl check [options]
 
 Options:
   -v          Enable DEBUG logging for this subcommand.
@@ -48,6 +48,6 @@ base_check_subcommand_main() {
         shift
     done
 
-    log_debug "Running 'base check'."
+    log_debug "Running 'basectl check'."
     setup_run_check
 }

@@ -61,45 +61,31 @@ emerges, support can be added later.
 
 ---
 
-## Command Surface — `base` First
+## Command Surface — `basectl` as Control Plane
 
-The most important command-surface decision in Base: **one canonical public command**.
+The most important command-surface decision in Base: **the product is Base, the
+control-plane command is `basectl`**.
 
-### `base` — The Primary CLI
+`basectl` is the public entrypoint. It is a normal executable command that
+establishes the Base runtime before dispatching to Bash scripts or future Python
+layers. This keeps the product name and the control-plane action separate:
 
-`base` is the public entrypoint. It is a normal executable command that runs through the
-Base wrapper/bootstrap path. This keeps the product surface simple:
+- `basectl setup`
+- `basectl check`
+- `basectl install`
+- `basectl update-profile`
+- `basectl shell`
+- future commands such as `basectl projects list`, `basectl test`, and
+  `basectl activate`
 
-- `base setup`
-- `base check`
-- `base install`
-- `base update-profile`
-- `base shell`
-- future commands such as `base projects list`, `base test`, and `base activate`
+Shebang-based Bash scripts can also use:
 
-For now, Base does **not** introduce a separate `basectl` command. A second top-level
-name adds conceptual weight before we have a real need for it.
+```bash
+#!/usr/bin/env basectl
+```
 
-### Why a Separate `basectl` Is Not Needed Yet
-
-Most orchestration work does not need to mutate the current shell, so a normal CLI is
-sufficient. Even project activation can still be initiated from the `base` executable if
-it works by validating the target project and spawning a subshell with the desired
-project environment.
-
-That means the important split is not between two product names. The important split is
-between:
-
-- commands that perform orchestration and exit normally
-- commands that may launch a subshell for interactive project work
-
-Both can still live under the same `base` command surface.
-
-### Optional Future Shell Function
-
-If Base later needs functionality that truly must mutate the current shell process, an
-optional shell function can be added. If that happens, it should be a thin wrapper around
-`base`, not a separate conceptual tool with a different name.
+In that mode, `basectl` wraps the script in the Base environment, sources it,
+and calls its `main` function.
 
 ---
 
@@ -117,13 +103,13 @@ lives inside the subshell. The user works in that subshell. When done, they `exi
 Ctrl-D) and return to their base shell. No deactivation logic required. No state
 restoration complexity.
 
-This does not require a distinct shell function. A normal `base activate <project>`
+This does not require a distinct shell function. A normal `basectl activate <project>`
 command can validate the target and launch the configured subshell.
 
 ### Activation Flow
 
 ```
-base activate myproject
+basectl activate myproject
   ↓
 1. Look up BASE_HOME, scan known projects
 2. Validate myproject exists and has a valid manifest
@@ -136,7 +122,7 @@ base activate myproject
 9. User exits → returns to base shell, prompt resets
 ```
 
-### `base activate` — Intelligence
+### `basectl activate` — Intelligence
 
 - Takes a project name as argument (not a directory path)
 - Works from any current directory — the user does not need to be in the project folder
@@ -147,25 +133,43 @@ base activate myproject
 
 ## Shell Environment Layers
 
-There are two layers of shell environment, clearly separated:
+Base separates ordinary shell startup from Base runtime activation.
 
-### Layer 1 — Base Global Environment
+### Layer 1 — Dotfile Integration
 
-Applied once when the shell starts, using Base-managed startup files and machine-local overrides.
+Applied by the user's normal Bash/Zsh startup files after running
+`basectl update-profile`.
+
 Contains:
-- Shell prompt (PS1) defaults
-- History settings (size, format, file location)
-- Default aliases and utility functions
-- PATH additions for Base's own tools
-- Shell options appropriate for bash or zsh
-- `BASE_PROJECT` set to `"base"` by default
-- `BASE_HOME` pointing to the base project root
+- login-shell handoff for Bash (`~/.bash_profile` sources `~/.bashrc` with guardrails)
+- interactive Bash/Zsh guardrails
+- `BASE_HOME` derived from the sourced Base snippet
+- Base `bin/` added to `PATH` so `basectl` is available after login
+- optional shell defaults when the user runs `basectl update-profile --defaults`
 
-This layer is currently installed by running `base update-profile`, which creates or updates Base-managed sections in the user's Bash and Zsh dotfiles. Base owns only its clearly marked managed sections, not the whole dotfile.
+This layer must not source `base_init.sh` and must not establish the full Base
+runtime contract. It is only about Bash/Zsh startup behavior plus launcher
+availability.
 
-### Layer 2 — Project-Specific Environment
+### Layer 2 — Base Runtime Environment
 
-Applied inside the project subshell when `base activate <project>` is run.
+Applied when the user invokes `basectl`, `basectl shell`, or `basectl /path/to/script.sh`.
+
+Contains:
+- exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`, and `BASE_BASH_LIB_DIR`
+- OS and host metadata such as `BASE_OS` and `BASE_HOST`
+- Base's Bash standard library
+- `import_base_lib` for convention-based Base Bash library imports
+- PATH additions for Base's own executable entrypoints
+
+This layer is established by `base_init.sh`, which is sourced only through the
+`basectl` command path.
+
+### Layer 3 — Project-Specific Environment
+
+Applied inside the project subshell when a future `basectl activate <project>` flow
+is run.
+
 Contains:
 - Project-specific PATH additions
 - Project-specific environment variables
@@ -173,16 +177,16 @@ Contains:
 - Project-specific Python virtual environment activation
 - `BASE_PROJECT` updated to the project name
 
-Project-specific settings layer on top of the base global environment. Settings not
-overridden by the project inherit from the base global layer. When the subshell exits,
-the project layer disappears naturally — no explicit deactivation needed.
+Project-specific settings layer on top of the Base runtime environment. Settings
+not overridden by the project inherit from Base. When the subshell exits, the
+project layer disappears naturally — no explicit deactivation needed.
 
 ### Dotfile Management
 
 Base updates the user's real dotfiles by managing small marked sections. The preferred adoption model is:
 
 ```bash
-base update-profile
+basectl update-profile
 ```
 
 By default, Base updates all four files:
@@ -201,7 +205,7 @@ Base does not symlink over the user's dotfiles and does not own content outside 
 # --- END base bashrc MANAGED SECTION - DO NOT EDIT ---
 ```
 
-Optional Base shell defaults are enabled explicitly with `base update-profile --defaults`.
+Optional Base shell defaults are enabled explicitly with `basectl update-profile --defaults`.
 
 ---
 
@@ -219,7 +223,7 @@ The only things that change on `cd`:
 - The directory portion of the prompt updates
 - The git branch portion of the prompt updates dynamically (see Prompt section)
 
-Everything else stays stable until the user explicitly runs `base activate <project>`.
+Everything else stays stable until the user explicitly runs `basectl activate <project>`.
 
 ---
 
@@ -239,7 +243,7 @@ The prompt shows three things, always:
 
 ### Project Name in Prompt
 
-`BASE_PROJECT` is set by `base activate`. Default value is `"base"`. It does not change
+`BASE_PROJECT` is set by `basectl activate`. Default value is `"base"`. It does not change
 based on directory. Once you activate a project, the project name shows consistently
 regardless of where you `cd` inside the subshell.
 
@@ -274,7 +278,7 @@ active, its venv is active. Showing both would be redundant. The prompt stays cl
 
 ### Base Venv
 
-- Created once during `base setup`
+- Created once during `basectl setup`
 - Lives at `~/.base.d/.venv`
 - Used to run Base's own Python orchestration code (manifest parsing, project discovery,
   etc.)
@@ -283,10 +287,10 @@ active, its venv is active. Showing both would be redundant. The prompt stays cl
 
 ### Project Venv
 
-- Created per project during `base setup <project>` or `base setup` when scanning
+- Created per project during `basectl setup <project>` or `basectl setup` when scanning
   all projects
 - Lives inside the project directory (e.g., `.venv/`)
-- Activated automatically when `base activate <project>` spawns the project subshell
+- Activated automatically when `basectl activate <project>` spawns the project subshell
 - Deactivated automatically when the subshell exits
 
 ### Key Distinction
@@ -342,14 +346,14 @@ iteration, not in the initial build.
 
 ## Mac Bootstrap Sequence
 
-When `base setup` runs on a fresh Mac:
+When `basectl setup` runs on a fresh Mac:
 
 1. Check for Homebrew — install if missing
 2. Check for Xcode CLI tools — install if missing
 3. Install Python (target version) via Homebrew
 4. Create Base's own virtual environment at `~/.base.d/.venv`
 5. Install Base's Python dependencies into `~/.base.d/.venv`
-6. Prepare the managed shell startup model with `base update-profile`
+6. Prepare the managed shell startup model with `basectl update-profile`
 7. Scan the parent directory for peer repos with base manifests
 8. For each discovered project, run project-level setup (install declared dependencies,
    create project venv)

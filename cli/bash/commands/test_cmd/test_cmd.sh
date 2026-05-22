@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
-log_info "I am starting"
+main() {
+    log_info "I am starting"
+}
