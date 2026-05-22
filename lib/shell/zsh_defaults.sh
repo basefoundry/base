@@ -1,7 +1,7 @@
 #
 # zsh_defaults.sh
 #     Optional Zsh-specific interactive defaults for users who want Base to
-#     provide a standard Zsh experience on top of the shared Base bootstrap.
+#     provide a standard Zsh experience.
 #
 # Purpose:
 #     - define a conservative shared set of aliases, editor defaults,
@@ -9,8 +9,8 @@
 #       shells
 #
 # How it is loaded:
-#     - sourced indirectly from lib/shell/shell_startup.sh
-#     - only when BASE_ENABLE_SHELL_DEFAULTS=true
+#     - sourced from the Base-managed ~/.zshrc section
+#     - only when the user runs `basectl update-profile --defaults`
 #     - only for interactive Zsh shells
 #
 # What belongs here:
@@ -23,10 +23,7 @@
 #     - BASE_HOME discovery
 #     - sourcing of base_init.sh
 #     - login-shell orchestration
-#     - machine-specific overrides (those belong in ~/.baserc)
-#
-# See also:
-#     README.md section "Shell Startup Files"
+#     - machine-specific overrides
 #
 [[ ! -o interactive ]] && return 0
 

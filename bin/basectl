@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+
+#
+# basectl
+#     Public control-plane command for Base.
+#
+# Responsibilities:
+#     - start a Bash shell with the Base runtime established
+#     - run the umbrella Base command implementation
+#     - run Base command implementations by convention
+#     - run explicit Bash script paths inside the Base runtime
+#
+# Runtime bootstrapping is centralized in base_init.sh. This file decides what
+# should run; base_init.sh decides what the Base environment means.
+#
+
+basectl_die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+basectl_resolve_path() {
+    local source_path="${1:-}"
+    local link_dir
+    local target
+
+    [[ -n "$source_path" ]] || return 1
+
+    if [[ "$source_path" != */* ]]; then
+        source_path="$(command -v -- "$source_path" 2>/dev/null || true)"
+        [[ -n "$source_path" ]] || return 1
+    fi
+
+    while [[ -L "$source_path" ]]; do
+        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+        target="$(readlink "$source_path")" || return 1
+        if [[ "$target" == /* ]]; then
+            source_path="$target"
+        else
+            source_path="$link_dir/$target"
+        fi
+    done
+
+    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
+}
+
+basectl_repo_root() {
+    local source_path
+    local bin_dir
+
+    source_path="$(basectl_resolve_path "$0")" || return 1
+    bin_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    cd -- "$bin_dir/.." && pwd -P
+}
+
+basectl_ensure_supported_bash() {
+    local current_version
+    local candidate
+
+    current_version="${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}"
+    ((current_version >= 42)) && return 0
+
+    for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+        [[ -x "$candidate" ]] || continue
+        [[ "$candidate" == "${BASH:-}" ]] && continue
+        exec "$candidate" "$0" "$@"
+    done
+
+    basectl_die "basectl requires Bash 4.2 or newer; current version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}."
+}
+
+basectl_is_script_argument() {
+    local candidate="${1:-}"
+    [[ "$candidate" == */* || -f "$candidate" ]]
+}
+
+basectl_normalize_script_name() {
+    local script_name="${1:-}"
+
+    if [[ "$script_name" == *.sh && "$script_name" != ".sh" ]]; then
+        script_name="${script_name%.sh}"
+    fi
+
+    printf '%s\n' "$script_name"
+}
+
+basectl_filter_runtime_args() {
+    basectl_runtime_args=()
+
+    while (($#)); do
+        case "$1" in
+            --debug-wrapper)
+                export LOG_DEBUG=1
+                ;;
+            --verbose-wrapper)
+                export LOG_DEBUG=1
+                ;;
+            --utc-wrapper)
+                export LOG_UTC=1
+                ;;
+            --color)
+                ;;
+            *)
+                basectl_runtime_args+=("$1")
+                ;;
+        esac
+        shift
+    done
+}
+
+basectl_run_bash_script() {
+    local repo_root="$1"
+    local script_path="$2"
+    local command_name="$3"
+    local command_dir
+    shift 3
+
+    [[ -f "$script_path" ]] || basectl_die "Script '$script_path' was not found."
+    command_dir="$(cd -- "$(dirname -- "$script_path")" && pwd -P)" || basectl_die "Unable to resolve script directory for '$script_path'."
+
+    basectl_filter_runtime_args "$@"
+
+    export BASE_HOME="$repo_root"
+    export BASE_BASH_COMMAND_NAME="$command_name"
+    export BASE_BASH_COMMAND_DIR="$command_dir"
+    export BASE_BASH_COMMAND_SCRIPT="$script_path"
+
+    BASE_BASH_BOOTSTRAP_SOURCE="$script_path"
+    # shellcheck source=/dev/null
+    source "$repo_root/base_init.sh" "$@" || exit $?
+    unset BASE_BASH_BOOTSTRAP_SOURCE
+
+    unset -f main
+
+    # shellcheck source=/dev/null
+    source "$script_path" "${basectl_runtime_args[@]}" || exit $?
+
+    if ! declare -F main >/dev/null 2>&1; then
+        fatal_error "Script '$script_path' did not define main()."
+    fi
+
+    main "${basectl_runtime_args[@]}"
+}
+
+basectl_start_shell() {
+    local repo_root="$1"
+    local shell_rc="$repo_root/lib/bash/runtime/bashrc"
+
+    [[ -f "$shell_rc" ]] || basectl_die "Base runtime Bash rcfile '$shell_rc' was not found."
+
+    export BASE_HOME="$repo_root"
+    export BASE_SHELL=1
+    exec "${BASH:-bash}" --rcfile "$shell_rc"
+}
+
+basectl_command_script() {
+    local repo_root="$1"
+    local command_name="${2:-}"
+    local script_path
+
+    [[ -n "$command_name" ]] || return 1
+
+    case "$command_name" in
+        */*|.*)
+            return 1
+            ;;
+    esac
+
+    script_path="$repo_root/cli/bash/commands/$command_name/$command_name.sh"
+    [[ -f "$script_path" ]] || return 1
+    printf '%s\n' "$script_path"
+}
+
+basectl_run_command_name() {
+    local repo_root="$1"
+    local command_name="$2"
+    local script_path
+    shift 2
+
+    script_path="$(basectl_command_script "$repo_root" "$command_name")" || return 1
+    basectl_run_bash_script "$repo_root" "$script_path" "$command_name" "$@"
+}
+
+basectl_run_control_command() {
+    local repo_root="$1"
+    local script_path="$repo_root/cli/bash/commands/base/base.sh"
+    shift
+
+    basectl_run_bash_script "$repo_root" "$script_path" basectl "$@"
+}
+
+main() {
+    local repo_root
+    local script_path
+    local command_name
+
+    basectl_ensure_supported_bash "$@"
+    repo_root="$(basectl_repo_root)" || basectl_die "Unable to resolve the Base repository root."
+
+    if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
+        basectl_start_shell "$repo_root"
+        return $?
+    fi
+
+    if basectl_is_script_argument "${1:-}"; then
+        script_path="$(basectl_resolve_path "$1")" || basectl_die "Script '$1' was not found."
+        command_name="$(basectl_normalize_script_name "$(basename -- "$script_path")")"
+        shift
+        basectl_run_bash_script "$repo_root" "$script_path" "$command_name" "$@"
+        return $?
+    fi
+
+    if [[ -n "${1:-}" ]] && basectl_command_script "$repo_root" "$1" >/dev/null; then
+        command_name="$1"
+        shift
+        basectl_run_command_name "$repo_root" "$command_name" "$@"
+        return $?
+    fi
+
+    basectl_run_control_command "$repo_root" "$@"
+}
+
+main "$@"

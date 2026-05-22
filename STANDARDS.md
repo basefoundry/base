@@ -10,7 +10,7 @@
    - constants
    - globals intentionally shared across scripts, sourced modules, or subshells
 4. Use a common prefix for exported environment variables whenever practical.
-   For example: `BASE_HOME`, `BASE_HOST`, `BASE_OS`, `BASE_SOURCES`.
+   For example: `BASE_HOME`, `BASE_HOST`, `BASE_OS`, `BASE_BASH_LIB_DIR`.
 5. Do not use all-uppercase names for ordinary script-local variables.
 6. Use a leading underscore for private variables and functions, especially in
    libraries or sourced modules where internal names might otherwise collide.
@@ -67,7 +67,7 @@ Rationale:
 
 - `set -e` interacts poorly with conditionals, pipelines, subshells, and
   sourced code.
-- Base is a wrapper- and library-heavy shell framework, so implicit exit rules
+- Base is a runtime- and library-heavy shell framework, so implicit exit rules
   make control flow harder to reason about.
 - Explicit error handling is more verbose, but much easier to debug and
   maintain.
@@ -98,7 +98,7 @@ Why:
 - each command can grow without cluttering a shared flat directory
 - the structure scales cleanly as Base adds more commands
 
-For umbrella commands such as `base`, keep the wrapper-facing entry script in
+For umbrella commands such as `basectl`, keep the entry script in
 the command directory itself and place internal subcommand modules underneath
 that command. For example:
 
@@ -109,6 +109,20 @@ cli/bash/commands/base/
     setup.sh
     check.sh
 ```
+
+`$BASE_HOME/bin` is the only public command surface that should be added to
+`PATH`. Do not create separate public `cli/bash/bin` or `cli/python/bin`
+surfaces. A direct public command in `bin/` should be a real launcher file, not
+a symlink, and should delegate to `basectl` in this form:
+
+```bash
+#!/usr/bin/env bash
+exec "$(dirname "$0")/basectl" caff "$@"
+```
+
+The command implementation still lives under
+`cli/bash/commands/<command>/<command>.sh` so code, docs, and tests stay with
+the command module.
 
 Command-level integration tests for those subcommands can live under a shared
 directory such as `cli/bash/commands/tests/`.
@@ -142,94 +156,58 @@ Why:
 Small framework-level singleton files may remain flat when they are not really
 "modules" in the same sense. Examples include:
 
-- `cli/bash/bin/base-wrapper`
-- `cli/env/baseenv.sh`
+- `bin/basectl`
+- `base_init.sh`
 
 ### Index documentation
 
 Even though commands and libraries live in per-module directories, keep
 high-level index READMEs at the parent level when helpful, for example:
 
-- `cli/bash/bin/README.md`
 - `lib/bash/README.md`
 - `cli/bash/commands/README.md`
 
 Those top-level READMEs should act as catalogs and maps, while each module's
 local `README.md` should document the module itself.
 
-## 4. Wrapper standards
+## 4. Runtime standards
 
-Base should support two wrapper modes, but they serve different purposes.
+`bin/basectl` is the public entrypoint for Base runtime execution.
 
-### A. Symlink-dispatched wrapper mode
+It owns three decisions:
 
-This is the default mode for commands owned by the Base repo.
+- run the umbrella Base command under `cli/bash/commands/base/base.sh`
+- run an explicit Bash script path inside the Base runtime
+- start an interactive Bash shell with the Base runtime already loaded
 
-Pattern:
+`base_init.sh` owns the runtime contract after `bin/basectl` chooses what should
+run. It must be the single place that establishes convention-based Base paths
+such as `BASE_HOME`, `BASE_BIN_DIR`, `BASE_BASH_COMMANDS_DIR`, and
+`BASE_BASH_LIB_DIR`.
 
-- `cli/bash/bin/<command>.sh` is a symlink to `base-wrapper`
-- `base-wrapper` resolves `<command>` by convention
-- the real script lives at `cli/bash/commands/<command>/<command>.sh`
+Bash scripts that run through Base should:
 
-Use this mode for:
+- define `main` as their entrypoint
+- keep ordinary code inside functions
+- call `import_base_lib path/to/lib.sh` for Base Bash libraries
+- rely on exported `BASE_*` variables rather than reconstructing Base's repo
+  layout locally
 
-- commands that are part of Base itself
-- commands that should appear as first-class Base entrypoints
-- commands that benefit from command discovery, listing, and strict layout
-
-Why this is the default:
-
-- it gives Base a consistent command surface
-- it works well with per-command docs and tests
-- it keeps user-facing entrypoints separate from implementation files
-
-### B. Shebang wrapper mode
-
-This mode should be supported for wrapped Bash commands that live outside the
-Base repo.
-
-Pattern:
-
-```bash
-#!/usr/bin/env base-wrapper
-```
-
-Use this mode for:
-
-- scripts in sibling repos that still want Base-managed execution behavior
-- standalone wrapped scripts that should not be forced into Base's internal
-  `commands/<name>/<name>.sh` layout
-
-Why this mode matters:
-
-- Base is intended to support multiple repos in one workspace
-- not every wrapped command should have to live physically inside Base
-- a shebang-based wrapper is the more portable cross-repo mechanism
-
-### Wrapper design decision
-
-The standard is:
-
-1. Use symlink-dispatched wrapper mode as the default for Base-owned commands.
-2. Support shebang wrapper mode for wrapped commands that live outside Base.
-3. Do not force every wrapped command in the workspace to be relocated into the
-   Base repo just to gain wrapper behavior.
-
-In other words, the symlink convention is the preferred in-repo ergonomics,
-while the shebang convention is the preferred cross-repo portability story.
+Shebang-based Bash scripts may use `#!/usr/bin/env basectl`. In that mode,
+`basectl` receives the script path as its first argument, establishes the Base
+runtime, sources the script, and calls its `main` function.
 
 ## 5. Shell startup standards
 
 Base-managed shell startup files follow this separation of concerns:
 
 - `bash_profile` / `zprofile`
-  - thin login-shell handoff
+  - thin login-shell behavior
 - `bashrc` / `zshrc`
-  - interactive shell bootstrap
-- `base_defaults.sh` / `zsh_defaults.sh`
+  - interactive shell guards and dotfile-only behavior
+  - Base `bin/` PATH availability for interactive shells
+- `bash_defaults.sh` / `zsh_defaults.sh`
   - optional shared interactive defaults
-- `~/.baserc`
-  - machine-local overrides
 
-Startup files should stay thin and predictable. Interactive shell behavior
-belongs in the rc files, not in the login profile files.
+Startup files should stay thin and predictable. They must not source
+`base_init.sh`; Base runtime setup belongs to the `basectl` command path.

@@ -1,0 +1,27 @@
+# shellcheck shell=bash
+
+#
+# lib/bash/runtime/bashrc
+#     Runtime rcfile used by `basectl` and `basectl shell`.
+#
+# Purpose:
+#     - start an interactive Bash shell with the Base runtime already loaded
+#     - keep runtime shell initialization separate from user dotfile integration
+#
+# This file is not installed into user dotfiles. It is passed to Bash with
+# `bash --rcfile` by the Base CLI.
+#
+
+[[ -n "${BASE_HOME:-}" ]] || {
+    printf 'ERROR: BASE_HOME is not set.\n' >&2
+    return 1
+}
+
+[[ -f "$BASE_HOME/base_init.sh" ]] || {
+    printf "ERROR: Base init script '%s/base_init.sh' was not found.\n" "$BASE_HOME" >&2
+    return 1
+}
+
+export BASE_SHELL=1
+# shellcheck source=/dev/null
+source "$BASE_HOME/base_init.sh" || return $?

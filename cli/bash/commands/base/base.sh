@@ -6,7 +6,7 @@ base_cli_error() {
 
 base_cli_show_help() {
     cat <<'EOF'
-Usage: base [options] <command> [args...]
+Usage: basectl [options] <command> [args...]
 
 Commands:
   setup [options]
@@ -18,7 +18,7 @@ Commands:
   install
     Install Base into BASE_HOME.
   shell
-    Start an interactive Bash shell using Base's managed startup files.
+    Start an interactive Bash shell with the Base runtime loaded.
   version
     Show the Base CLI version.
   help
@@ -33,9 +33,9 @@ Options:
   -h       Show this help text.
 
 Notes:
-  - `base setup` is the preferred entrypoint for machine bootstrap.
-  - `base check` verifies the same local requirements without making changes.
-  - Invoking `base` with no command opens an interactive shell when attached to
+  - `basectl setup` is the preferred entrypoint for machine bootstrap.
+  - `basectl check` verifies the same local requirements without making changes.
+  - Invoking `basectl` with no command opens an interactive shell when attached to
     a terminal; otherwise it prints this help text.
 EOF
 }
@@ -50,15 +50,6 @@ base_cli_usage_error() {
     return 2
 }
 
-base_cli_source_user_baserc() {
-    [[ -f "$HOME/.baserc" ]] || return 0
-    [[ -n "${__base_cli_user_baserc_sourced__:-}" ]] && return 0
-
-    # shellcheck source=/dev/null
-    source "$HOME/.baserc"
-    readonly __base_cli_user_baserc_sourced__=1
-}
-
 base_cli_get_base_home() {
     [[ -n "${HOME:-}" ]] || {
         base_cli_error "Environment variable 'HOME' is not set."
@@ -69,8 +60,14 @@ base_cli_get_base_home() {
         return 1
     }
 
-    base_cli_source_user_baserc || return 1
-    BASE_HOME="${BASE_HOME:-$HOME/base}"
+    [[ -n "${BASE_HOME:-}" ]] || {
+        base_cli_error "BASE_HOME is not set. Run this command through bin/basectl."
+        return 1
+    }
+    [[ -d "$BASE_HOME" ]] || {
+        base_cli_error "BASE_HOME '$BASE_HOME' is not a directory."
+        return 1
+    }
     export BASE_HOME
 }
 
@@ -88,7 +85,7 @@ base_cli_verify_repo() {
         return 1
     fi
 
-    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc bin/base-wrapper; do
+    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl; do
         if [[ ! -f "$repo_root/$file" ]]; then
             missing+=("$file")
         fi
@@ -108,11 +105,6 @@ base_cli_runtime_repo_root() {
         return 0
     fi
 
-    if base_cli_verify_repo "$BASE_REPO_ROOT"; then
-        printf '%s\n' "$BASE_REPO_ROOT"
-        return 0
-    fi
-
     return 1
 }
 
@@ -120,7 +112,7 @@ base_cli_shell_rc_path() {
     local repo_root
 
     repo_root="$(base_cli_runtime_repo_root)" || return 1
-    printf '%s\n' "$repo_root/lib/shell/bashrc"
+    printf '%s\n' "$repo_root/lib/bash/runtime/bashrc"
 }
 
 base_cli_patch_baserc() {
@@ -177,8 +169,8 @@ base_cli_version_value() {
         return 0
     fi
 
-    if git -C "$BASE_REPO_ROOT" rev-parse --short HEAD >/dev/null 2>&1; then
-        git -C "$BASE_REPO_ROOT" rev-parse --short HEAD
+    if git -C "$BASE_HOME" rev-parse --short HEAD >/dev/null 2>&1; then
+        git -C "$BASE_HOME" rev-parse --short HEAD
         return 0
     fi
 
@@ -186,7 +178,7 @@ base_cli_version_value() {
 }
 
 base_cli_do_version() {
-    printf 'base version %s\n' "$(base_cli_version_value)"
+    printf 'basectl version %s\n' "$(base_cli_version_value)"
 }
 
 base_cli_enable_debug_logging() {
@@ -259,10 +251,9 @@ base_cli_do_shell() {
         return 1
     }
 
-    BASE_HOME="$(cd -- "$(dirname -- "$shell_rc")/../.." && pwd -P)"
     export BASE_HOME
     export BASE_SHELL=1
-    exec bash --rcfile "$shell_rc"
+    exec "${BASH:-bash}" --rcfile "$shell_rc"
 }
 
 
@@ -322,7 +313,7 @@ base_cli_main() {
 
     base_cli_get_base_home || return 1
     ((base_debug)) && base_cli_enable_debug_logging
-    log_debug "Running base command '${command:-<none>}' with args: $*"
+    log_debug "Running basectl command '${command:-<none>}' with args: $*"
 
     case "$command" in
         check)            base_cli_do_check "$@" ;;
@@ -345,4 +336,10 @@ base_cli_main() {
     esac
 }
 
-base_cli_main "$@"
+main() {
+    base_cli_main "$@"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

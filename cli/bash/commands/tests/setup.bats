@@ -222,28 +222,28 @@ run_base_command() {
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
         BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
         "${env_args[@]}" \
-        "$BASE_REPO_ROOT/bin/base" "${command_args[@]}"
+        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
 }
 
-@test "base setup prints usage for help" {
+@test "basectl setup prints usage for help" {
     run_base_command setup --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"base setup [options]"* ]]
+    [[ "$output" == *"basectl setup [options]"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
-@test "base check prints usage for help" {
+@test "basectl check prints usage for help" {
     run_base_command check --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"base check [options]"* ]]
+    [[ "$output" == *"basectl check [options]"* ]]
     [[ "$output" == *"Verify the local Base CLI environment on macOS without making changes."* ]]
 }
 
-@test "base setup fails on unsupported operating systems" {
+@test "basectl setup fails on unsupported operating systems" {
     OSTYPE_OVERRIDE="linux-gnu"
 
     run_base_command setup
@@ -252,7 +252,7 @@ run_base_command() {
     [[ "$output" == *"supports macOS only"* ]]
 }
 
-@test "base setup is idempotent when brew, xcode tools, python, and the venv already exist" {
+@test "basectl setup is idempotent when brew, xcode tools, python, and the venv already exist" {
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
@@ -276,7 +276,7 @@ run_base_command() {
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
 }
 
-@test "base setup installs missing dependencies and creates the Base virtual environment" {
+@test "basectl setup installs missing dependencies and creates the Base virtual environment" {
     local installer
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
@@ -302,7 +302,7 @@ run_base_command() {
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
-@test "base setup supports dry-run without making changes" {
+@test "basectl setup supports dry-run without making changes" {
     run_base_command setup --dry-run
 
     [ "$status" -eq 0 ]
@@ -315,7 +315,7 @@ run_base_command() {
     [ ! -e "$TEST_HOME/.base.d/.venv" ]
 }
 
-@test "base check passes when all required components are present" {
+@test "basectl check passes when all required components are present" {
     local venv_dir="$TEST_HOME/.base.d/.venv"
 
     create_brew_stub
@@ -338,7 +338,7 @@ run_base_command() {
     [[ "$output" == *"Base CLI environment check passed."* ]]
 }
 
-@test "base check fails when required components are missing" {
+@test "basectl check fails when required components are missing" {
     run_base_command check
 
     [ "$status" -eq 1 ]
@@ -350,24 +350,24 @@ run_base_command() {
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
-@test "base -v setup enables DEBUG logs" {
+@test "basectl -v setup enables DEBUG logs" {
     run_base_command -v setup --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"DEBUG"* ]]
-    [[ "$output" == *"Running base command 'setup'"* ]]
-    [[ "$output" == *"Running 'base setup'"* ]]
+    [[ "$output" == *"Running basectl command 'setup'"* ]]
+    [[ "$output" == *"Running 'basectl setup'"* ]]
 }
 
-@test "base setup -v also enables DEBUG logs" {
+@test "basectl setup -v also enables DEBUG logs" {
     run_base_command setup -v --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"DEBUG"* ]]
-    [[ "$output" == *"Running 'base setup'"* ]]
+    [[ "$output" == *"Running 'basectl setup'"* ]]
 }
 
-@test "base update-profile creates Base-managed sections in all shell dotfiles" {
+@test "basectl update-profile creates Base-managed sections in all shell dotfiles" {
     run_base_command update-profile
 
     [ "$status" -eq 0 ]
@@ -376,20 +376,26 @@ run_base_command() {
 
     for dotfile in .bash_profile .bashrc .zprofile .zshrc; do
         [ -f "$TEST_HOME/$dotfile" ]
-        [[ "$(cat "$TEST_HOME/$dotfile")" == *"export BASE_HOME=$BASE_REPO_ROOT"* ]]
+        [[ "$(cat "$TEST_HOME/$dotfile")" != *"export BASE_HOME"* ]]
+        [[ "$(cat "$TEST_HOME/$dotfile")" != *"base_init.sh"* ]]
     done
 
     [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# --- BEGIN base bash_profile MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.bash_profile")" == *'source "$BASE_HOME/lib/shell/bash_profile"'* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source $BASE_REPO_ROOT/lib/shell/bash_profile"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.bashrc")" == *'source "$BASE_HOME/lib/shell/bashrc"'* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"source $BASE_REPO_ROOT/lib/shell/bashrc"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *"# --- BEGIN base zprofile MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.zprofile")" == *'source "$BASE_HOME/lib/shell/zprofile"'* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"source $BASE_REPO_ROOT/lib/shell/zprofile"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *"# --- BEGIN base zshrc MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" == *'source "$BASE_HOME/lib/shell/zshrc"'* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"source $BASE_REPO_ROOT/lib/shell/zshrc"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" != *"PATH="* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_PROFILE_VERSION=1"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=false"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
 }
 
-@test "base update-profile preserves non-Base dotfile content and is idempotent" {
+@test "basectl update-profile preserves non-Base dotfile content and is idempotent" {
     printf '%s
 ' 'user line before' > "$TEST_HOME/.bashrc"
 
@@ -407,24 +413,60 @@ run_base_command() {
 # --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---'* ]]
 }
 
-@test "base update-profile --dry-run does not create dotfiles" {
+@test "basectl update-profile makes basectl available in interactive Bash without runtime bootstrap" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "basectl update-profile --dry-run does not create dotfiles" {
     run_base_command update-profile --dry-run
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.base.d/profile.conf'"* ]]
     [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.bash_profile'"* ]]
     [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.bashrc'"* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
     [ ! -e "$TEST_HOME/.bash_profile" ]
     [ ! -e "$TEST_HOME/.bashrc" ]
     [ ! -e "$TEST_HOME/.zprofile" ]
     [ ! -e "$TEST_HOME/.zshrc" ]
 }
 
-@test "base update-profile --defaults enables defaults only in interactive rc files" {
+@test "basectl update-profile --defaults enables defaults through profile config" {
     run_base_command update-profile --defaults
 
     [ "$status" -eq 0 ]
-    [[ "$(cat "$TEST_HOME/.bashrc")" == *"export BASE_ENABLE_SHELL_DEFAULTS=true"* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" == *"export BASE_ENABLE_SHELL_DEFAULTS=true"* ]]
-    [[ "$(cat "$TEST_HOME/.bash_profile")" != *"BASE_ENABLE_SHELL_DEFAULTS"* ]]
-    [[ "$(cat "$TEST_HOME/.zprofile")" != *"BASE_ENABLE_SHELL_DEFAULTS"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=true"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=true"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"defaults.sh"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" != *"defaults.sh"* ]]
+
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "BASE_HOME=%s\n" "$BASE_HOME"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"alias cp='cp -i'"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "basectl update-profile preserves an existing defaults preference" {
+    run_base_command update-profile --defaults
+    [ "$status" -eq 0 ]
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=true"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=true"* ]]
 }

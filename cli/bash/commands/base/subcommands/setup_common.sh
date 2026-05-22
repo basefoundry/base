@@ -5,12 +5,12 @@
 #     Shared implementation for Base CLI environment bootstrap subcommands.
 #
 # This file houses the reusable setup/check helpers that back:
-#   - `base setup`
-#   - `base check`
-#   - `base update-profile`
+#   - `basectl setup`
+#   - `basectl check`
+#   - `basectl update-profile`
 #
-# It is meant to be sourced by the umbrella `base` command, not invoked
-# directly through `base-wrapper`.
+# It is meant to be sourced by the umbrella `basectl` command, not invoked
+# directly.
 #
 
 [[ -n "${_base_setup_common_sourced:-}" ]] && return
