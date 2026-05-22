@@ -115,53 +115,6 @@ base_cli_shell_rc_path() {
     printf '%s\n' "$repo_root/lib/bash/runtime/bashrc"
 }
 
-base_cli_patch_baserc() {
-    local var value marker baserc baserc_temp grep_expr=""
-    local base_text_array=()
-
-    marker="# BASE_MARKER, do not delete"
-    baserc="$HOME/.baserc"
-    baserc_temp="$HOME/.baserc.temp"
-
-    for var in "$@"; do
-        value="${!var:-}"
-        if [[ -n "$value" ]]; then
-            base_text_array+=("export $var=\"$value\" $marker")
-        fi
-        if [[ -n "$grep_expr" ]]; then
-            grep_expr="$grep_expr|$var=.*$marker"
-        else
-            grep_expr="$var=.*$marker"
-        fi
-    done
-
-    [[ -f "$baserc" ]] || safe_touch "$baserc"
-
-    rm -f -- "$baserc_temp"
-    if [[ -n "$grep_expr" ]]; then
-        grep -Ev -- "$grep_expr" "$baserc" > "$baserc_temp"
-    else
-        safe_touch "$baserc_temp"
-    fi
-    [[ -f "$baserc_temp" ]] || {
-        base_cli_error "Couldn't create '$baserc_temp'."
-        return 1
-    }
-
-    if (( ${#base_text_array[@]} > 0 )); then
-        printf '%s\n' "${base_text_array[@]}" >> "$baserc_temp" || {
-            base_cli_error "Couldn't append to '$baserc_temp'."
-            return 1
-        }
-    fi
-
-    mv -f -- "$baserc_temp" "$baserc" || {
-        base_cli_error "Couldn't overwrite '$baserc'."
-        return 1
-    }
-
-    return 0
-}
 
 base_cli_version_value() {
     if [[ -n "${BASE_VERSION:-}" ]]; then
@@ -237,8 +190,7 @@ base_cli_do_install() {
         return 1
     }
     printf "Installed Base at '%s'\n" "$BASE_HOME"
-
-    base_cli_patch_baserc BASE_HOME || return 1
+    printf "Run '%s/bin/basectl update-profile' to update shell startup files.\n" "$BASE_HOME"
 
     return 0
 }

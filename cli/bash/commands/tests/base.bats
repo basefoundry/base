@@ -76,10 +76,10 @@ run_basectl() {
 
 
 @test "basectl dispatches command implementations by command name" {
-    run_basectl test_cmd
+    run_basectl sort-in-place --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"I am starting"* ]]
+    [[ "$output" == *"Sort text files in place."* ]]
 }
 
 @test "sort-in-place launcher delegates through basectl" {
