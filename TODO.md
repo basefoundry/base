@@ -18,13 +18,14 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: `sort $unique_flag "$file"` violates the quoting standard and ShellCheck expectations.
   - Expected fix: use a flag array or `${unique_flag:+"$unique_flag"}`.
   - Verify existing `sort-in-place` BATS coverage still passes.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Ensure `update_file_section` cleans temp files on all write failures.
+- [x] Ensure `update_file_section` cleans temp files on all write failures.
   - File: `lib/bash/file/lib_file.sh`
   - Problem: in the markers-not-found path, failures after creating the temp file can leave an orphan temp file.
   - Expected fix: centralize cleanup for copy, newline append, content write, and move failures.
   - Add focused failure-path coverage in `lib/bash/file/tests/lib_file.bats` if practical.
+  - Done locally; pending commit.
 
 ## Design Issues
 

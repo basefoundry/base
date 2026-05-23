@@ -140,23 +140,37 @@ update_file_section() {
             rm -f "$temp_file"
             return 0
         else
-            cp "$target_file" "$temp_file"
-
-            if [[ $(tail -c 1 "$temp_file" 2>/dev/null | wc -l) -eq 0 ]]; then
-                printf '\n' >> "$temp_file"
+            if ! cp "$target_file" "$temp_file"; then
+                log_error "Failed to copy '$target_file' to '$temp_file'."
+                rm -f "$temp_file"
+                return 1
             fi
 
-            if {
+            if [[ $(tail -c 1 "$temp_file" 2>/dev/null | wc -l) -eq 0 ]]; then
+                if ! printf '\n' >> "$temp_file"; then
+                    log_error "Failed to add trailing newline to '$temp_file'."
+                    rm -f "$temp_file"
+                    return 1
+                fi
+            fi
+
+            if ! {
                 printf '%s\n' "$beginning_marker"
                 printf '%s' "$new_content_string"
                 printf '%s\n' "$end_marker"
-            } >> "$temp_file" && mv -f "$temp_file" "$target_file"; then
-                return 0
+            } >> "$temp_file"; then
+                log_error "Failed to add new section to '$target_file'."
+                rm -f "$temp_file"
+                return 1
             fi
 
-            log_error "Failed to add new section to '$target_file'."
-            rm -f "$temp_file"
-            return 1
+            if ! mv -f "$temp_file" "$target_file"; then
+                log_error "Failed to replace '$target_file' with '$temp_file'."
+                rm -f "$temp_file"
+                return 1
+            fi
+
+            return 0
         fi
     fi
 }

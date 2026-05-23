@@ -80,3 +80,21 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"When -r flag is used"* ]]
 }
+
+@test "update_file_section cleans up temp file when initial copy fails" {
+    local target="$TEST_TMPDIR/config.txt"
+    printf 'line-one' > "$target"
+
+    cp() {
+        : > "$2"
+        return 1
+    }
+
+    bats_run update_file_section "$target" "# BEGIN" "# END" "value"
+    unset -f cp
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Failed to copy"* ]]
+    [ "$(cat "$target")" = "line-one" ]
+    ! compgen -G "$target".'*' >/dev/null
+}
