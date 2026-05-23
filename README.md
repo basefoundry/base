@@ -186,6 +186,10 @@ whether the user has opted into Base's optional shell defaults. The managed
 dotfile sections stay minimal and defer PATH/default handling to the sourced
 Base snippets.
 
+Run `basectl update-profile --defaults` to enable those optional defaults, and
+run `basectl update-profile --no-defaults` to disable them again. Plain
+`basectl update-profile` preserves the existing preference.
+
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
 
@@ -311,6 +315,12 @@ Users can opt in during profile updates with:
 
 ```bash
 basectl update-profile --defaults
+```
+
+Users can opt out again with:
+
+```bash
+basectl update-profile --no-defaults
 ```
 
 Those defaults are intended to stay conservative:

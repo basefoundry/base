@@ -82,11 +82,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: consider `--format json`, `--quiet`, or a documented stdout/stderr contract.
   - Add tests for any new output mode.
 
-- [ ] Add a CLI path to disable profile defaults.
+- [x] Add a CLI path to disable profile defaults.
   - File: `cli/bash/commands/basectl/subcommands/update_profile.sh`
   - Problem: after `basectl update-profile --defaults`, later runs preserve defaults; disabling requires manual `profile.conf` edits.
   - Expected fix: add `--no-defaults` or an equivalent explicit disable flag, and document the behavior.
   - Cover default enable, preserve, and disable flows.
+  - Done locally; pending commit.
 
 - [ ] Decide whether BATS is a required or dev-only dependency.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`

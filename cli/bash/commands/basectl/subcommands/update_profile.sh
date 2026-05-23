@@ -15,6 +15,8 @@ Usage:
 
 Options:
   --defaults  Enable Base's optional Bash/Zsh shell defaults.
+  --no-defaults
+              Disable Base's optional Bash/Zsh shell defaults.
   --dry-run   Show what would be updated without changing files.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
@@ -119,7 +121,8 @@ base_update_profile_defaults_previously_enabled() {
 
 base_update_profile_write_profile_conf() {
     local enable_defaults="$1"
-    local dry_run="$2"
+    local disable_defaults="$2"
+    local dry_run="$3"
     local state_dir
     local profile_conf
     local temp_file
@@ -128,7 +131,9 @@ base_update_profile_write_profile_conf() {
     state_dir="$(base_update_profile_state_dir)" || return 1
     profile_conf="$(base_update_profile_profile_conf)" || return 1
 
-    if ((enable_defaults)) || base_update_profile_defaults_previously_enabled; then
+    if ((disable_defaults)); then
+        enable_value=false
+    elif ((enable_defaults)) || base_update_profile_defaults_previously_enabled; then
         enable_value=true
     fi
 
@@ -155,6 +160,7 @@ base_update_profile_write_profile_conf() {
 
 base_update_profile_subcommand_main() {
     local enable_defaults=0
+    local disable_defaults=0
     local dry_run=0
     local base_home
 
@@ -162,6 +168,9 @@ base_update_profile_subcommand_main() {
         case "$1" in
             --defaults)
                 enable_defaults=1
+                ;;
+            --no-defaults)
+                disable_defaults=1
                 ;;
             --dry-run)
                 dry_run=1
@@ -182,6 +191,12 @@ base_update_profile_subcommand_main() {
         shift
     done
 
+    if ((enable_defaults && disable_defaults)); then
+        print_error "Options '--defaults' and '--no-defaults' cannot be used together."
+        base_update_profile_subcommand_usage >&2
+        return 1
+    fi
+
     log_debug "Running 'basectl update-profile'."
 
     base_home="$(basectl_runtime_base_home)" || {
@@ -192,7 +207,7 @@ base_update_profile_subcommand_main() {
     export BASE_HOME
 
     base_update_profile_source_file_library || return 1
-    base_update_profile_write_profile_conf "$enable_defaults" "$dry_run" || return 1
+    base_update_profile_write_profile_conf "$enable_defaults" "$disable_defaults" "$dry_run" || return 1
 
     base_update_profile_update_file "$HOME/.bash_profile" bash_profile "$dry_run" || return 1
     base_update_profile_update_file "$HOME/.bashrc" bashrc "$dry_run" || return 1
