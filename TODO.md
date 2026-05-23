@@ -11,13 +11,14 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: dirty files under an allowed directory such as `shared/foo.txt` are compared to `shared` exactly, so allowed dirty directories are rejected.
   - Expected fix: accept either the exact allowed path or paths prefixed by `allowed_path/`.
   - Add or update BATS coverage in `lib/bash/git/tests/lib_git.bats`.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Quote or array-encode `sort-in-place` flags.
+- [x] Quote or array-encode `sort-in-place` flags.
   - File: `cli/bash/commands/sort-in-place/sort-in-place.sh`
   - Problem: `sort $unique_flag "$file"` violates the quoting standard and ShellCheck expectations.
   - Expected fix: use a flag array or `${unique_flag:+"$unique_flag"}`.
   - Verify existing `sort-in-place` BATS coverage still passes.
+  - Done locally; pending commit.
 
 - [ ] Ensure `update_file_section` cleans temp files on all write failures.
   - File: `lib/bash/file/lib_file.sh`

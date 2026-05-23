@@ -22,7 +22,7 @@ sort_in_place_describe() {
 }
 
 main() {
-    local unique_flag=""
+    local sort_args=()
     local file
     local temp_file
     local rc=0
@@ -37,7 +37,7 @@ main() {
             return 0
             ;;
         -u)
-            unique_flag="-u"
+            sort_args=(-u)
             shift
             ;;
     esac
@@ -60,7 +60,7 @@ main() {
             continue
         fi
 
-        if ! sort $unique_flag "$file" > "$temp_file"; then
+        if ! sort "${sort_args[@]}" "$file" > "$temp_file"; then
             print_error "Can't write to '$temp_file'."
             rc=1
             continue
