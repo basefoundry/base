@@ -486,13 +486,11 @@ run_base_command() {
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    printf '%s
-' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
+    printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
     run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash --norc -i -c 'source "$HOME/.bash_profile"; command -v basectl; printf "BASE_HOME=%s
-" "${BASE_HOME-unset}"'
+        bash --norc -i -c 'source "$HOME/.bash_profile"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_DEBUG bash_profile: sourced '$TEST_HOME/.baserc'"* ]]
@@ -512,6 +510,39 @@ run_base_command() {
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --rcfile "$TEST_HOME/.bashrc" -i -c 'printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ERROR: ~/.baserc must not set Base-owned variable 'BASE_HOME'."* ]]
+    [[ "$output" == *"BASE_HOME=unset"* ]]
+}
+
+@test "basectl update-profile makes basectl available in interactive Zsh without runtime bootstrap" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c 'source "$HOME/.zshrc"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "baserc cannot override BASE_HOME for Base-managed Zsh startup" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    printf '%s\n' 'BASE_HOME=/tmp/not-base' > "$TEST_HOME/.baserc"
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c 'source "$HOME/.zshrc"; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"ERROR: ~/.baserc must not set Base-owned variable 'BASE_HOME'."* ]]
