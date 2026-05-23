@@ -162,6 +162,17 @@ Base snippets.
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
 
+Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
+is user-managed and may be hand-edited. It is intended for simple,
+shell-startup-safe Base preferences such as `BASE_DEBUG=1`; it should not become
+a second `.bashrc` with arbitrary setup logic.
+
+`~/.baserc` must not set Base-owned runtime or profile variables such as
+`BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_SHELL`,
+`BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
+`BASE_ENABLE_ZSH_DEFAULTS`. Base startup snippets reject and restore those
+variables if `~/.baserc` tries to change them.
+
 Base-managed sections use explicit markers such as:
 
 ```bash
@@ -221,26 +232,26 @@ environment and final prompt.
 
 Set `BASE_DEBUG=1` to make Base-managed shell startup snippets print diagnostic
 messages while they run. This is intentionally independent of `base_init.sh` and
-stdlib logging, because dotfile debugging happens before the Base runtime is
+stdlib logging, because dotfile debugging can happen before the Base runtime is
 loaded.
 
-Examples:
+For normal terminal startup, put this in `~/.baserc`:
+
+```bash
+BASE_DEBUG=1
+```
+
+For one-off checks, use an environment variable:
 
 ```bash
 BASE_DEBUG=1 bash --rcfile ~/.bashrc -i
 BASE_DEBUG=1 zsh -i
-```
-
-For normal terminal startup, temporarily add this before the Base-managed section
-in the relevant dotfile:
-
-```bash
-export BASE_DEBUG=1
+BASE_DEBUG=1 basectl
 ```
 
 Diagnostics are printed to stderr and show which Base snippet loaded, how
-`BASE_HOME` was derived, whether `$BASE_HOME/bin` was added to `PATH`, and
-whether optional shell defaults were enabled.
+`BASE_HOME` was derived, whether `$BASE_HOME/bin` was added to `PATH`, whether
+optional shell defaults were enabled, and how the Base runtime shell was layered.
 
 ### Standard Shell Defaults
 

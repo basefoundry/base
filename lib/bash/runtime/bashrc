@@ -7,6 +7,7 @@
 # Purpose:
 #     - start an interactive Bash shell with the Base runtime already loaded
 #     - keep runtime shell initialization separate from user dotfile integration
+#     - source user-managed ~/.baserc preferences when present
 #     - source the user's ~/.bashrc with guardrails
 #     - provide a Base runtime prompt with time, host, venv, git branch, and cwd
 #
@@ -25,6 +26,72 @@ _base_runtime_debug() {
             ;;
     esac
 }
+
+_base_runtime_reject_baserc_owned_var() {
+    local var_name="$1"
+    local before_set="$2"
+    local before_value="$3"
+    local after_set
+    local after_value
+
+    eval "after_set=\"\${$var_name+x}\""
+    eval "after_value=\"\${$var_name-}\""
+
+    if [[ "$after_set" == "$before_set" && "$after_value" == "$before_value" ]]; then
+        return 0
+    fi
+
+    if [[ -n "$before_set" ]]; then
+        printf -v "$var_name" '%s' "$before_value"
+    else
+        unset "$var_name"
+    fi
+
+    printf "ERROR: ~/.baserc must not set Base-owned variable '%s'.\n" "$var_name" >&2
+    return 1
+}
+
+_base_runtime_source_baserc() {
+    local baserc="$HOME/.baserc"
+    local base_owned_vars="BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_ARCH BASE_HOST BASE_SHELL BASE_PROFILE_VERSION BASE_ENABLE_BASH_DEFAULTS BASE_ENABLE_ZSH_DEFAULTS"
+    local var_name
+    local snapshot_name
+    local before_set
+    local before_value
+    local baserc_status=0
+
+    [[ -n "${__base_baserc_sourced__:-}" ]] && return 0
+    [[ -f "$baserc" && -r "$baserc" ]] || return 0
+
+    for var_name in $base_owned_vars; do
+        snapshot_name="_base_runtime_before_$var_name"
+        eval "local ${snapshot_name}_set=\"\${$var_name+x}\""
+        eval "local ${snapshot_name}_value=\"\${$var_name-}\""
+    done
+
+    __base_baserc_sourced__=1
+    # shellcheck source=/dev/null
+    source "$baserc" || {
+        unset __base_baserc_sourced__
+        _base_runtime_error "Failed to source Base user config '$baserc'."
+        return 1
+    }
+
+    for var_name in $base_owned_vars; do
+        snapshot_name="_base_runtime_before_$var_name"
+        eval "before_set=\"\${${snapshot_name}_set}\""
+        eval "before_value=\"\${${snapshot_name}_value}\""
+        _base_runtime_reject_baserc_owned_var "$var_name" "$before_set" "$before_value" || baserc_status=1
+    done
+
+    if [[ "$baserc_status" -ne 0 ]]; then
+        unset __base_baserc_sourced__
+        return "$baserc_status"
+    fi
+
+    _base_runtime_debug "sourced '$baserc'"
+}
+
 
 _base_runtime_source_user_bashrc() {
     local user_bashrc="$HOME/.bashrc"
@@ -110,6 +177,7 @@ _base_runtime_main() {
     }
 
     export BASE_SHELL=1
+    _base_runtime_source_baserc || return $?
     _base_runtime_debug "loading"
     _base_runtime_source_user_bashrc || return $?
 

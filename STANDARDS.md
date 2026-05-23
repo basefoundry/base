@@ -211,3 +211,10 @@ Base-managed shell startup files follow this separation of concerns:
 
 Startup files should stay thin and predictable. They must not source
 `base_init.sh`; Base runtime setup belongs to the `basectl` command path.
+
+`~/.baserc` is user-managed input for simple Base preferences such as
+`BASE_DEBUG=1`. It must not set Base-owned runtime or profile state such as
+`BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_SHELL`,
+`BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
+`BASE_ENABLE_ZSH_DEFAULTS`. Shell startup code that sources `~/.baserc` should
+reject attempts to change those variables and restore the previous values.

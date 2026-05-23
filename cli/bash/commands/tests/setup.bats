@@ -444,6 +444,37 @@ run_base_command() {
     [[ "$output" == *"BASE_DEBUG bashrc: complete"* ]]
 }
 
+@test "baserc can enable BASE_DEBUG for Base-managed Bash startup" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'command -v basectl >/dev/null'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG bashrc: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: loading"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: complete"* ]]
+}
+
+@test "baserc cannot override BASE_HOME for Base-managed Bash startup" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    printf '%s\n' 'BASE_HOME=/tmp/not-base' > "$TEST_HOME/.baserc"
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ERROR: ~/.baserc must not set Base-owned variable 'BASE_HOME'."* ]]
+    [[ "$output" == *"BASE_HOME=unset"* ]]
+}
+
 @test "basectl update-profile --dry-run does not create dotfiles" {
     run_base_command update-profile --dry-run
 
