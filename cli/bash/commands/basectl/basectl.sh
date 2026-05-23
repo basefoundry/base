@@ -27,11 +27,19 @@ Options:
   -x       Enable Bash xtrace before running the command.
   -h       Show this help text.
 
+Wrapper options:
+  --debug-wrapper    Enable DEBUG logging before the Base runtime is loaded.
+  --verbose-wrapper  Enable verbose runtime argument handling before dispatch.
+  --utc-wrapper      Print wrapper/runtime log timestamps in UTC.
+  --color            Preserve color-aware wrapper argument handling.
+
 Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
   - Invoking `basectl` with no command opens an interactive shell when attached to
     a terminal; otherwise it prints this help text.
+  - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging
+    startup before command dispatch or Base runtime initialization.
 EOF
 }
 

@@ -22,6 +22,11 @@ run_basectl() {
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
+    [[ "$output" == *"Wrapper options:"* ]]
+    [[ "$output" == *"--debug-wrapper"* ]]
+    [[ "$output" == *"--verbose-wrapper"* ]]
+    [[ "$output" == *"--utc-wrapper"* ]]
+    [[ "$output" == *"--color"* ]]
 }
 
 @test "basectl help omits legacy leftover commands" {
