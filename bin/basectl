@@ -90,10 +90,11 @@ basectl_filter_runtime_args() {
 
     while (($#)); do
         case "$1" in
-            --debug-wrapper)
-                export LOG_DEBUG=1
-                ;;
-            --verbose-wrapper)
+            --debug-wrapper|--verbose-wrapper)
+                # base_init.sh receives the original arguments, so lib_std.sh still
+                # applies DEBUG vs VERBOSE precisely after it is sourced. Before
+                # stdlib exists, both modes only have the LOG_DEBUG environment
+                # contract available for downstream tools.
                 export LOG_DEBUG=1
                 ;;
             --utc-wrapper)

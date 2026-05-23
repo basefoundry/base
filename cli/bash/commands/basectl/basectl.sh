@@ -150,6 +150,10 @@ basectl_do_shell() {
     exec "${BASH:-bash}" --rcfile "$shell_rc"
 }
 
+basectl_should_start_shell() {
+    [[ -t 0 && -t 1 ]]
+}
+
 
 basectl_main() {
     local base_debug=0 command=""
@@ -208,7 +212,7 @@ basectl_main() {
         shell)            basectl_do_shell ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         "")
-            if is_interactive; then
+            if basectl_should_start_shell; then
                 basectl_do_shell
             else
                 basectl_show_help

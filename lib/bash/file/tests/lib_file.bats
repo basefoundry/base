@@ -17,6 +17,21 @@ setup() {
     [ "$(cat "$target")" = $'line-one\n# BEGIN\nfirst\nsecond\n# END' ]
 }
 
+@test "lib_file can be sourced more than once" {
+    source "$BASE_BASH_DIR/file/lib_file.sh"
+
+    [ "$(type -t update_file_section)" = "function" ]
+}
+
+@test "update_file_section writes option-like markers literally" {
+    local target="$TEST_TMPDIR/config.txt"
+    printf 'line-one' > "$target"
+
+    update_file_section "$target" "-n" "-e" "value"
+
+    [ "$(cat "$target")" = $'line-one\n-n\nvalue\n-e' ]
+}
+
 @test "update_file_section replaces the first matching section" {
     local target="$TEST_TMPDIR/config.txt"
     cat <<'EOF' > "$target"
