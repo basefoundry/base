@@ -156,7 +156,7 @@ base_update_profile_write_profile_conf() {
 base_update_profile_subcommand_main() {
     local enable_defaults=0
     local dry_run=0
-    local repo_root
+    local base_home
 
     while (($#)); do
         case "$1" in
@@ -184,11 +184,11 @@ base_update_profile_subcommand_main() {
 
     log_debug "Running 'basectl update-profile'."
 
-    repo_root="$(base_cli_runtime_repo_root)" || {
-        print_error "${BASE_CLI_ERROR_MESSAGE:-Unable to find the Base repository root.}"
+    base_home="$(base_cli_runtime_base_home)" || {
+        print_error "${BASE_CLI_ERROR_MESSAGE:-Unable to find Base home.}"
         return 1
     }
-    BASE_HOME="$repo_root"
+    BASE_HOME="$base_home"
     export BASE_HOME
 
     base_update_profile_source_file_library || return 1

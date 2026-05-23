@@ -35,6 +35,11 @@ run_basectl() {
     ! grep -Fqx '  set-shared-teams TEAM...' <<<"$output"
     ! grep -Fqx '  man' <<<"$output"
     ! grep -Fqx '  embrace' <<<"$output"
+    ! grep -Fqx '  install' <<<"$output"
+    ! grep -Fqx '  version' <<<"$output"
+    [[ "$output" != *"-b DIR"* ]]
+    [[ "$output" != *"Force install"* ]]
+    [[ "$output" != *"-V"* ]]
 }
 
 @test "basectl prints help when no command is given in a non-interactive shell" {
@@ -44,15 +49,11 @@ run_basectl() {
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
-@test "basectl --version uses BASE_VERSION when provided" {
-    run env \
-        HOME="$TEST_HOME" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        BASE_VERSION="test-version" \
-        "$BASE_REPO_ROOT/bin/basectl" --version
+@test "basectl rejects removed version option" {
+    run_basectl --version
 
-    [ "$status" -eq 0 ]
-    [[ "$output" == "basectl version test-version" ]]
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unknown option '--version'"* ]]
 }
 
 @test "basectl setup prints setup-specific help" {
@@ -67,11 +68,34 @@ run_basectl() {
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man embrace; do
+    for legacy_command in status update run set-team set-shared-teams man embrace install version; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
     done
+}
+
+@test "Base home verification does not require a git repository" {
+    local base_home="$TEST_TMPDIR/embedded/base"
+
+    mkdir -p \
+        "$base_home/bin" \
+        "$base_home/lib/shell" \
+        "$base_home/lib/bash/runtime" \
+        "$base_home/cli/bash/commands/base"
+    touch \
+        "$base_home/base_init.sh" \
+        "$base_home/lib/shell/bash_profile" \
+        "$base_home/lib/shell/bashrc" \
+        "$base_home/lib/bash/runtime/bashrc" \
+        "$base_home/bin/basectl" \
+        "$base_home/cli/bash/commands/base/base.sh"
+
+    run bash -c 'source "$1"; base_cli_verify_home "$2"' _ \
+        "$BASE_REPO_ROOT/cli/bash/commands/base/base.sh" \
+        "$base_home"
+
+    [ "$status" -eq 0 ]
 }
 
 
@@ -80,6 +104,21 @@ run_basectl() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Sort text files in place."* ]]
+}
+
+@test "basectl treats path-like arguments as scripts before command names" {
+    local script_path="$TEST_TMPDIR/sort-in-place"
+
+    cat > "$script_path" <<'EOF'
+main() {
+    printf 'script path wins: %s\n' "$1"
+}
+EOF
+
+    run_basectl "$script_path" arg1
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"script path wins: arg1"* ]]
 }
 
 @test "sort-in-place launcher delegates through basectl" {

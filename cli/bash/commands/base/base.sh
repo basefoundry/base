@@ -15,20 +15,13 @@ Commands:
     Verify the local Base CLI environment without making changes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
-  install
-    Install Base into BASE_HOME.
   shell
     Start an interactive Bash shell with the Base runtime loaded.
-  version
-    Show the Base CLI version.
   help
     Show this help text.
 
 Options:
-  -b DIR   Use DIR as BASE_HOME.
-  -f       Force install by moving aside an existing BASE_HOME directory.
   -v       Enable DEBUG logging for the selected command.
-  -V       Show the CLI version.
   -x       Enable Bash xtrace before running the command.
   -h       Show this help text.
 
@@ -71,36 +64,31 @@ base_cli_get_base_home() {
     export BASE_HOME
 }
 
-base_cli_verify_repo() {
-    local repo_root="$1"
+base_cli_verify_home() {
+    local base_home="$1"
     local file missing=()
 
-    if [[ ! -d "$repo_root" ]]; then
-        BASE_CLI_ERROR_MESSAGE="Base is not installed at '$repo_root'"
+    if [[ ! -d "$base_home" ]]; then
+        BASE_CLI_ERROR_MESSAGE="Base home '$base_home' is not a directory."
         return 1
     fi
 
-    if ! git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; then
-        BASE_CLI_ERROR_MESSAGE="Directory '$repo_root' is not a git repo; check if Base is installed."
-        return 1
-    fi
-
-    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl; do
-        if [[ ! -f "$repo_root/$file" ]]; then
+    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl cli/bash/commands/base/base.sh; do
+        if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi
     done
 
     if (( ${#missing[@]} > 0 )); then
-        BASE_CLI_ERROR_MESSAGE="Files missing in Base repo: ${missing[*]}"
+        BASE_CLI_ERROR_MESSAGE="Files missing in Base home '$base_home': ${missing[*]}"
         return 1
     fi
 
     return 0
 }
 
-base_cli_runtime_repo_root() {
-    if base_cli_verify_repo "$BASE_HOME"; then
+base_cli_runtime_base_home() {
+    if base_cli_verify_home "$BASE_HOME"; then
         printf '%s\n' "$BASE_HOME"
         return 0
     fi
@@ -109,30 +97,12 @@ base_cli_runtime_repo_root() {
 }
 
 base_cli_shell_rc_path() {
-    local repo_root
+    local base_home
 
-    repo_root="$(base_cli_runtime_repo_root)" || return 1
-    printf '%s\n' "$repo_root/lib/bash/runtime/bashrc"
+    base_home="$(base_cli_runtime_base_home)" || return 1
+    printf '%s\n' "$base_home/lib/bash/runtime/bashrc"
 }
 
-
-base_cli_version_value() {
-    if [[ -n "${BASE_VERSION:-}" ]]; then
-        printf '%s\n' "$BASE_VERSION"
-        return 0
-    fi
-
-    if git -C "$BASE_HOME" rev-parse --short HEAD >/dev/null 2>&1; then
-        git -C "$BASE_HOME" rev-parse --short HEAD
-        return 0
-    fi
-
-    printf '%s\n' "dev"
-}
-
-base_cli_do_version() {
-    printf 'basectl version %s\n' "$(base_cli_version_value)"
-}
 
 base_cli_enable_debug_logging() {
     set_log_level DEBUG
@@ -167,34 +137,6 @@ base_cli_do_update_profile() {
     base_update_profile_subcommand_main "$@"
 }
 
-base_cli_do_install() {
-    local repo_url="ssh://git@github.com:codeforester/base.git"
-    local base_home_backup=""
-
-    if [[ -d "$BASE_HOME" ]]; then
-        if (( force_install )); then
-            base_home_backup="$BASE_HOME.$current_time"
-            mv -- "$BASE_HOME" "$base_home_backup" || {
-                base_cli_error "Couldn't move current Base home directory '$BASE_HOME' to '$base_home_backup'."
-                return 1
-            }
-            printf "Moved current Base home directory '%s' to '%s'\n" "$BASE_HOME" "$base_home_backup"
-        else
-            printf "Base is already installed at '%s'\n" "$BASE_HOME"
-            return 0
-        fi
-    fi
-
-    git clone "$repo_url" "$BASE_HOME" || {
-        base_cli_error "Couldn't install Base."
-        return 1
-    }
-    printf "Installed Base at '%s'\n" "$BASE_HOME"
-    printf "Run '%s/bin/basectl update-profile' to update shell startup files.\n" "$BASE_HOME"
-
-    return 0
-}
-
 base_cli_do_shell() {
     local shell_rc
 
@@ -210,16 +152,11 @@ base_cli_do_shell() {
 
 
 base_cli_main() {
-    local base_debug=0 bash_version current_time_fmt command=""
+    local base_debug=0 command=""
     local opt
 
     if [[ "${1:-}" =~ ^(-h|--help|-help|help)$ ]]; then
         base_cli_show_help
-        return 0
-    fi
-
-    if [[ "${1:-}" =~ ^(--version|-version|-V)$ ]]; then
-        base_cli_do_version
         return 0
     fi
 
@@ -228,33 +165,30 @@ base_cli_main() {
         return 0
     fi
 
-    force_install=0
-    bash_version="${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}"
-    current_time_fmt="%Y-%m-%d:%H:%M:%S"
-    if (( bash_version >= 42 )); then
-        printf -v current_time "%($current_time_fmt)T" -1
-    else
-        current_time="$(date +"$current_time_fmt")"
-    fi
+    case "${1:-}" in
+        --*)
+            base_cli_usage_error "Unknown option '$1'"
+            return $?
+            ;;
+    esac
 
     OPTIND=1
-    while getopts "fhb:vVx" opt; do
+    OPTERR=0
+    while getopts ":hvx" opt; do
         case "$opt" in
-            b) export BASE_HOME="$OPTARG" ;;
-            f) force_install=1 ;;
             v) base_debug=1 ;;
-            V)
-                base_cli_do_version
-                return 0
-                ;;
             x) set -x ;;
             h)
                 base_cli_show_help
                 return 0
                 ;;
-            *)
-                base_cli_show_help >&2
-                return 2
+            \?)
+                base_cli_usage_error "Unknown option '-$OPTARG'"
+                return $?
+                ;;
+            :)
+                base_cli_usage_error "Option '-$OPTARG' requires an argument."
+                return $?
                 ;;
         esac
     done
@@ -271,10 +205,8 @@ base_cli_main() {
         check)            base_cli_do_check "$@" ;;
         setup)            base_cli_do_setup "$@" ;;
         help)             base_cli_show_help ;;
-        install)          base_cli_do_install ;;
         shell)            base_cli_do_shell ;;
         update-profile)   base_cli_do_update_profile "$@" ;;
-        version)          base_cli_do_version ;;
         "")
             if is_interactive; then
                 base_cli_do_shell

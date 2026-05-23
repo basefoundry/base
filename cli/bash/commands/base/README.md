@@ -12,8 +12,9 @@ It is invoked through:
 basectl <subcommand> [args...]
 ```
 
-The public entrypoint lives at `bin/basectl`. It sources `base_init.sh` to establish
-the Base runtime, then sources this command implementation and calls `main`.
+The public entrypoint lives at `bin/basectl`. It establishes the Base runtime
+for command implementations, then sources this command implementation and calls
+`main`.
 
 `basectl` also dispatches direct command names by convention. For example,
 `basectl caff` loads `cli/bash/commands/caff/caff.sh`. Public convenience
@@ -25,9 +26,7 @@ that delegate to `basectl`.
 - `setup`
 - `check`
 - `update-profile`
-- `install`
 - `shell`
-- `version`
 - `help`
 
 ## Notes
