@@ -114,6 +114,25 @@ Example launcher:
 exec "$(dirname "$0")/basectl" caff "$@"
 ```
 
+## Compatibility
+
+Base is currently macOS-first.
+
+Intended supported platforms are:
+
+- macOS on Apple Silicon
+- macOS on Intel Macs
+- at least one Linux variant, with the first target still to be decided
+
+The supported macOS version floor is still TBD. The current implementation
+assumes a modern macOS environment with Homebrew, Xcode Command Line Tools, a
+Homebrew-managed Bash, Git, and Python installed through Base setup.
+
+Linux support is a design target, but not yet an implemented or tested support
+contract. OS-specific behavior should stay isolated behind small helpers instead
+of being scattered through command code. For example, the Base runtime prompt can
+prefer macOS `scutil` names while still falling back to generic `hostname`.
+
 ## Shell Startup Files
 
 Base integrates with Bash and Zsh through small managed sections in the user's
@@ -139,6 +158,9 @@ adds or replaces its marked section.
 whether the user has opted into Base's optional shell defaults. The managed
 dotfile sections stay minimal and defer PATH/default handling to the sourced
 Base snippets.
+
+`BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
+is reserved for future migrations and is not intended to be edited by users.
 
 Base-managed sections use explicit markers such as:
 
@@ -187,6 +209,38 @@ They are responsible for:
 They do not source `base_init.sh`. Base runtime setup happens only when the
 `basectl` command runs a Base command, runs an explicit script path, or starts a
 Base-enabled Bash shell.
+
+When `basectl` starts an interactive Bash runtime shell, it uses Base's runtime
+rcfile rather than making Bash read `~/.bashrc` directly. That runtime rcfile
+sources the user's `~/.bashrc` once with guardrails, then loads `base_init.sh`,
+and finally sets the Base runtime prompt. This keeps user aliases and normal
+interactive Bash behavior available while still letting Base own the runtime
+environment and final prompt.
+
+### Debugging Shell Startup
+
+Set `BASE_DEBUG=1` to make Base-managed shell startup snippets print diagnostic
+messages while they run. This is intentionally independent of `base_init.sh` and
+stdlib logging, because dotfile debugging happens before the Base runtime is
+loaded.
+
+Examples:
+
+```bash
+BASE_DEBUG=1 bash --rcfile ~/.bashrc -i
+BASE_DEBUG=1 zsh -i
+```
+
+For normal terminal startup, temporarily add this before the Base-managed section
+in the relevant dotfile:
+
+```bash
+export BASE_DEBUG=1
+```
+
+Diagnostics are printed to stderr and show which Base snippet loaded, how
+`BASE_HOME` was derived, whether `$BASE_HOME/bin` was added to `PATH`, and
+whether optional shell defaults were enabled.
 
 ### Standard Shell Defaults
 

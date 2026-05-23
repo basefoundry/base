@@ -427,6 +427,23 @@ run_base_command() {
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
 }
 
+@test "BASE_DEBUG traces Base-managed Bash startup" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+        HOME="$TEST_HOME" \
+        BASE_DEBUG=1 \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'command -v basectl >/dev/null'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG bashrc: loading"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: prepended '$BASE_REPO_ROOT/bin' to PATH"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: complete"* ]]
+}
+
 @test "basectl update-profile --dry-run does not create dotfiles" {
     run_base_command update-profile --dry-run
 

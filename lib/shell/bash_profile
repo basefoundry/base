@@ -6,19 +6,45 @@
 #     - sourced from the Base-managed section in ~/.bash_profile
 #     - keep Bash login startup thin
 #     - bridge interactive login Bash shells into ~/.bashrc with a guardrail
+#     - print startup diagnostics when BASE_DEBUG=1 is set
 #
 # Design note:
 #     Bash does not automatically source ~/.bashrc for login shells. Base makes
 #     that bridge explicit here. The flow is one-way: bash_profile may source
 #     bashrc, but bashrc must never source bash_profile.
 #
-[[ -n "${__base_bash_profile_sourced__:-}" ]] && return 0
+base_bash_profile_debug() {
+    case "${BASE_DEBUG:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            printf 'BASE_DEBUG bash_profile: %s\n' "$*" >&2
+            ;;
+    esac
+}
+
+if [[ -n "${__base_bash_profile_sourced__:-}" ]]; then
+    base_bash_profile_debug "already sourced; skipping"
+    unset -f base_bash_profile_debug
+    return 0
+fi
 readonly __base_bash_profile_sourced__=1
+base_bash_profile_debug "loading"
 
-[[ -n "${__base_sourcing_bashrc_from_profile__:-}" ]] && return 0
-[[ -f "$HOME/.bashrc" ]] || return 0
+if [[ -n "${__base_sourcing_bashrc_from_profile__:-}" ]]; then
+    base_bash_profile_debug "bashrc bridge guard is active; skipping"
+    unset -f base_bash_profile_debug
+    return 0
+fi
 
+if [[ ! -f "$HOME/.bashrc" ]]; then
+    base_bash_profile_debug "'$HOME/.bashrc' not found; skipping"
+    unset -f base_bash_profile_debug
+    return 0
+fi
+
+base_bash_profile_debug "sourcing '$HOME/.bashrc'"
 __base_sourcing_bashrc_from_profile__=1
 # shellcheck source=/dev/null
 source "$HOME/.bashrc"
 unset __base_sourcing_bashrc_from_profile__
+base_bash_profile_debug "complete"
+unset -f base_bash_profile_debug

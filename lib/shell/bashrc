@@ -6,14 +6,33 @@
 #     - derive and export BASE_HOME from this snippet's location
 #     - make basectl available on PATH
 #     - source optional Bash defaults when enabled in ~/.base.d/profile.conf
+#     - print startup diagnostics when BASE_DEBUG=1 is set
 #
 # Important:
 #     This file must not source base_init.sh. Base runtime setup belongs to the
 #     basectl command path, not ordinary shell startup.
 #
-[[ $- != *i* ]] && return 0
-[[ -n "${__base_bashrc_sourced__:-}" ]] && return 0
+base_bashrc_debug() {
+    case "${BASE_DEBUG:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            printf 'BASE_DEBUG bashrc: %s\n' "$*" >&2
+            ;;
+    esac
+}
+
+if [[ $- != *i* ]]; then
+    base_bashrc_debug "non-interactive shell; skipping"
+    unset -f base_bashrc_debug
+    return 0
+fi
+
+if [[ -n "${__base_bashrc_sourced__:-}" ]]; then
+    base_bashrc_debug "already sourced; skipping"
+    unset -f base_bashrc_debug
+    return 0
+fi
 readonly __base_bashrc_sourced__=1
+base_bashrc_debug "loading"
 
 base_bashrc_source_path() {
     local source_path="${BASH_SOURCE[0]}"
@@ -45,15 +64,26 @@ base_bashrc_set_base_home() {
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
     export BASE_HOME="$base_home"
+    base_bashrc_debug "BASE_HOME=$BASE_HOME"
 }
 
 base_bashrc_prepend_path() {
     local bin_dir="$BASE_HOME/bin"
 
-    [[ -d "$bin_dir" ]] || return 0
+    [[ -d "$bin_dir" ]] || {
+        base_bashrc_debug "bin dir '$bin_dir' does not exist; PATH unchanged"
+        return 0
+    }
+
     case ":$PATH:" in
-        *:"$bin_dir":*) ;;
-        *) PATH="$bin_dir${PATH:+:$PATH}"; export PATH ;;
+        *:"$bin_dir":*)
+            base_bashrc_debug "PATH already contains '$bin_dir'"
+            ;;
+        *)
+            PATH="$bin_dir${PATH:+:$PATH}"
+            export PATH
+            base_bashrc_debug "prepended '$bin_dir' to PATH"
+            ;;
     esac
 }
 
@@ -61,25 +91,41 @@ base_bashrc_source_defaults() {
     local profile_conf="$HOME/.base.d/profile.conf"
     local enable_defaults=false
 
-    [[ -f "$profile_conf" ]] || return 0
+    if [[ ! -f "$profile_conf" ]]; then
+        base_bashrc_debug "profile config '$profile_conf' not found; defaults disabled"
+        return 0
+    fi
+
+    base_bashrc_debug "sourcing profile config '$profile_conf'"
     # shellcheck source=/dev/null
     source "$profile_conf"
     enable_defaults="${BASE_ENABLE_BASH_DEFAULTS:-false}"
     unset BASE_PROFILE_VERSION BASE_ENABLE_BASH_DEFAULTS BASE_ENABLE_ZSH_DEFAULTS
 
-    [[ "$enable_defaults" == true ]] || return 0
-    [[ -f "$BASE_HOME/lib/shell/bash_defaults.sh" ]] || return 0
+    if [[ "$enable_defaults" != true ]]; then
+        base_bashrc_debug "Bash defaults disabled"
+        return 0
+    fi
 
+    if [[ ! -f "$BASE_HOME/lib/shell/bash_defaults.sh" ]]; then
+        base_bashrc_debug "Bash defaults file not found; skipping"
+        return 0
+    fi
+
+    base_bashrc_debug "sourcing Bash defaults"
     # shellcheck source=/dev/null
     source "$BASE_HOME/lib/shell/bash_defaults.sh"
 }
 
 base_bashrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base bashrc snippet. Run basectl update-profile.\n' >&2
+    unset -f base_bashrc_debug
     return 1
 }
 base_bashrc_prepend_path
 base_bashrc_source_defaults || return 1
+base_bashrc_debug "complete"
 
 unset -f base_bashrc_source_path base_bashrc_set_base_home
 unset -f base_bashrc_prepend_path base_bashrc_source_defaults
+unset -f base_bashrc_debug

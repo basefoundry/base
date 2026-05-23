@@ -94,3 +94,86 @@ run_basectl() {
     [ "$status" -eq 0 ]
     [ "$(cat "$input_file")" = $'a\nb' ]
 }
+
+
+@test "Base runtime shell prompt includes host, venv, and git segments" {
+    local venv_dir="$TEST_TMPDIR/.venv"
+    local mockbin="$TEST_TMPDIR/mockbin"
+
+    mkdir -p "$venv_dir" "$mockbin"
+    cat > "$mockbin/scutil" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--get" && "${2:-}" == "ComputerName" ]]; then
+    printf '%s\n' "aadhara"
+    exit 0
+fi
+if [[ "${1:-}" == "--get" && "${2:-}" == "LocalHostName" ]]; then
+    printf '%s\n' "aadhara-local"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$mockbin/scutil"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        VIRTUAL_ENV="$venv_dir" \
+        PATH="$mockbin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "PS1=%s\n" "$PS1"; \
+            printf "host=%s\n" "$(_base_runtime_host_prompt)"; \
+            printf "venv=%s\n" "$(_base_runtime_venv_prompt)"; \
+            cd "$BASE_HOME"; \
+            printf "git=%s\n" "$(_base_runtime_git_prompt)"; \
+            printf "disable=%s\n" "${VIRTUAL_ENV_DISABLE_PROMPT:-}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *"host=aadhara"* ]]
+    [[ "$output" == *"venv=[.venv] "* ]]
+    [[ "$output" == *"git=("* ]]
+    [[ "$output" == *"disable=1"* ]]
+}
+
+
+@test "Base runtime shell sources user bashrc before setting prompt" {
+    cat > "$TEST_HOME/.bashrc" <<'EOF'
+alias user_bashrc_alias='printf user-bashrc'
+export USER_BASHRC_LOADED=1
+PS1='user prompt: '
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            alias user_bashrc_alias; \
+            printf "USER_BASHRC_LOADED=%s\n" "${USER_BASHRC_LOADED:-}"; \
+            printf "PS1=%s\n" "$PS1"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"alias user_bashrc_alias='printf user-bashrc'"* ]]
+    [[ "$output" == *"USER_BASHRC_LOADED=1"* ]]
+    [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+}
+
+@test "BASE_DEBUG traces Base runtime shell startup" {
+    cat > "$TEST_HOME/.bashrc" <<'EOF'
+export USER_BASHRC_LOADED=1
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_DEBUG=1 \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "ok\n"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG runtime: loading"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: sourcing '$TEST_HOME/.bashrc'"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: sourcing '$BASE_REPO_ROOT/base_init.sh'"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: complete"* ]]
+}
