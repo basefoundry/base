@@ -4,15 +4,30 @@
 # base_init.sh
 #     Base runtime bootstrap for Bash commands and Base-enabled Bash shells.
 #
-# Purpose:
-#     - validate that the runtime is Bash 4.2 or newer
-#     - establish the exported BASE_* environment contract
-#     - source the Base Bash standard library
-#     - provide import_base_lib for convention-based Base library imports
+# Loaded by:
+#     - bin/basectl before it sources a Base command implementation
+#     - bin/basectl before it sources an explicit Base-enabled Bash script
+#     - lib/bash/runtime/bashrc for `basectl` and `basectl shell` sessions
 #
-# This file is intentionally not part of normal dotfile startup. It is sourced
-# by bin/basectl before running Base commands/scripts, and by the Base runtime
-# Bash shell started with `basectl` or `basectl shell`.
+# Not loaded by:
+#     - normal Bash/Zsh dotfile startup managed by lib/shell/*
+#
+# Runtime contract:
+#     - validate that the runtime is Bash 4.2 or newer
+#     - derive or validate BASE_HOME
+#     - export the BASE_* paths that downstream scripts may rely on
+#     - export BASE_OS and BASE_HOST runtime metadata
+#     - source Base's Bash standard library
+#     - add BASE_BIN_DIR to PATH
+#     - provide import_base_lib for convention-based Base Bash library imports
+#
+# Downstream scripts should not rediscover Base's directory layout on their own.
+# They should use the exported BASE_* variables and import libraries with:
+#
+#     import_base_lib file/lib_file.sh
+#
+# import_base_lib reports missing or invalid libraries through Base stdlib error
+# handling and fails immediately, so callers do not need duplicate checks.
 #
 
 [[ -n "${__base_init_sourced__:-}" ]] && return 0
