@@ -186,6 +186,9 @@ normal interactive Bash behavior while also making Base stdlib functions such as
 `import_base_lib` available during user Bash startup. Base still owns the final
 runtime prompt.
 
+Bash startup paths share `lib/shell/baserc_guard.bash` for safe `~/.baserc`
+loading and Base-owned variable protection.
+
 ## Dotfile Boundary
 
 The normal shell-startup snippets under `lib/shell/` do not source

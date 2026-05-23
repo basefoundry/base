@@ -73,7 +73,7 @@ basectl_verify_home() {
         return 1
     fi
 
-    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
+    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.bash lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
         if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi

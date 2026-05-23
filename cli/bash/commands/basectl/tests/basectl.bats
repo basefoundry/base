@@ -87,6 +87,7 @@ run_basectl() {
         "$base_home/base_init.sh" \
         "$base_home/lib/shell/bash_profile" \
         "$base_home/lib/shell/bashrc" \
+        "$base_home/lib/shell/baserc_guard.bash" \
         "$base_home/lib/bash/runtime/bashrc" \
         "$base_home/bin/basectl" \
         "$base_home/cli/bash/commands/basectl/basectl.sh"

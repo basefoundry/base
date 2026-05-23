@@ -482,6 +482,27 @@ run_base_command() {
     [[ "$output" == *"BASE_DEBUG bashrc: complete"* ]]
 }
 
+@test "Bash profile bridge shares the baserc guard with bashrc" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    printf '%s
+' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --norc -i -c 'source "$HOME/.bash_profile"; command -v basectl; printf "BASE_HOME=%s
+" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG bash_profile: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"BASE_DEBUG bash_profile: sourcing '$TEST_HOME/.bashrc'"* ]]
+    [[ "$output" == *"BASE_DEBUG bashrc: loading"* ]]
+    [[ "$output" != *"BASE_DEBUG bashrc: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
 @test "baserc cannot override BASE_HOME for Base-managed Bash startup" {
     run_base_command update-profile
     [ "$status" -eq 0 ]
