@@ -103,11 +103,14 @@ the command directory itself and place internal subcommand modules underneath
 that command. For example:
 
 ```text
-cli/bash/commands/base/
-  base.sh
+cli/bash/commands/basectl/
+  basectl.sh
   subcommands/
     setup.sh
     check.sh
+  tests/
+    basectl.bats
+    setup.bats
 ```
 
 `$BASE_HOME/bin` is the only public command surface that should be added to
@@ -124,8 +127,9 @@ The command implementation still lives under
 `cli/bash/commands/<command>/<command>.sh` so code, docs, and tests stay with
 the command module.
 
-Command-level integration tests for those subcommands can live under a shared
-directory such as `cli/bash/commands/tests/`.
+Command-level integration tests should be colocated under the command module's
+`tests/` directory. Use a shared command test directory only for tests that are
+truly cross-command and cannot naturally belong to one command module.
 
 ### Libraries
 
@@ -176,7 +180,7 @@ local `README.md` should document the module itself.
 
 It owns three decisions:
 
-- run the umbrella Base command under `cli/bash/commands/base/base.sh`
+- run the umbrella Base command under `cli/bash/commands/basectl/basectl.sh`
 - run an explicit Bash script path inside the Base runtime
 - start an interactive Bash shell with the Base runtime already loaded
 
