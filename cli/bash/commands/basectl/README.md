@@ -33,6 +33,9 @@ that delegate to `basectl`.
 ## Notes
 
 - `basectl setup` is the default local bootstrap path.
+- `basectl setup [project]` runs the Bash bootstrap layer first, then invokes the
+  Python project setup layer for `base_manifest.yaml` artifacts. The optional
+  project argument validates `project.name`.
 - `basectl check` verifies the same local requirements without making changes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.

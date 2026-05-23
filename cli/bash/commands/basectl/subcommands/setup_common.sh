@@ -20,7 +20,7 @@ readonly _base_setup_common_sourced
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN
+    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY
 }
 
 setup_enable_dry_run() {
@@ -53,6 +53,10 @@ setup_python_formula() {
 
 setup_bats_formula() {
     printf '%s\n' "${BASE_SETUP_BATS_FORMULA:-bats-core}"
+}
+
+setup_pyyaml_package() {
+    printf '%s\n' "${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 }
 
 setup_xcode_tools_dir() {
@@ -293,6 +297,108 @@ setup_create_virtualenv() {
     run "$python_bin" -m venv "$venv_dir"
 }
 
+setup_base_venv_python_bin() {
+    local venv_dir="$1"
+    local python_bin="$venv_dir/bin/python"
+
+    [[ -x "$python_bin" ]] || return 1
+    printf '%s\n' "$python_bin"
+}
+
+setup_pyyaml_installed() {
+    local venv_dir python_bin package
+
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
+    package="$(setup_pyyaml_package)"
+    "$python_bin" -m pip show "$package" >/dev/null 2>&1
+}
+
+setup_install_pyyaml() {
+    local venv_dir python_bin package
+
+    venv_dir="$(setup_venv_dir)"
+    package="$(setup_pyyaml_package)"
+
+    if setup_pyyaml_installed; then
+        BASE_SETUP_PYYAML_READY=true
+        export BASE_SETUP_PYYAML_READY
+        log_info "Python package '$package' is already installed in the Base virtual environment."
+        return 0
+    fi
+
+    if setup_is_dry_run; then
+        BASE_SETUP_PYYAML_READY=false
+        export BASE_SETUP_PYYAML_READY
+        log_info "[DRY-RUN] Would install Python package '$package' in the Base virtual environment."
+        return 0
+    fi
+
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
+
+    log_info "Installing Python package '$package' in the Base virtual environment."
+    run "$python_bin" -m pip install "$package"
+    BASE_SETUP_PYYAML_READY=true
+    export BASE_SETUP_PYYAML_READY
+}
+
+setup_project_setup_python_bin() {
+    local venv_dir python_bin
+
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$venv_dir/bin/python"
+    if [[ -x "$python_bin" ]]; then
+        printf '%s\n' "$python_bin"
+        return 0
+    fi
+
+    setup_find_python_bin
+}
+
+setup_run_project_artifact_setup() {
+    local python_bin old_pythonpath
+    local exit_code
+    local args=()
+
+    if setup_is_dry_run && [[ "${BASE_SETUP_PYYAML_READY:-}" != true ]]; then
+        log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
+        return 0
+    fi
+
+    python_bin="$(setup_project_setup_python_bin)" || fatal_error "Unable to locate a python3 executable for project artifact setup."
+
+    if setup_is_dry_run; then
+        args+=(--dry-run)
+    fi
+    if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
+        args+=(--manifest "$BASE_SETUP_MANIFEST")
+    fi
+    if [[ -n "${BASE_SETUP_PROJECT_NAME:-}" ]]; then
+        args+=("$BASE_SETUP_PROJECT_NAME")
+    fi
+
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        PYTHONPATH="$BASE_HOME/cli/python:$old_pythonpath"
+    else
+        PYTHONPATH="$BASE_HOME/cli/python"
+    fi
+    export PYTHONPATH
+
+    log_info "Running Python project setup layer."
+    "$python_bin" -m base_setup "${args[@]}"
+    exit_code=$?
+
+    if [[ -n "$old_pythonpath" ]]; then
+        PYTHONPATH="$old_pythonpath"
+        export PYTHONPATH
+    else
+        unset PYTHONPATH
+    fi
+
+    exit_if_error "$exit_code" "Python project setup layer failed."
+}
+
 setup_run_check() {
     local brew_bin="" venv_dir missing=0
 
@@ -352,6 +458,8 @@ setup_run_install() {
     setup_install_python
     setup_install_bats
     setup_create_virtualenv
+    setup_install_pyyaml
+    setup_run_project_artifact_setup
 
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Base CLI setup check is complete."

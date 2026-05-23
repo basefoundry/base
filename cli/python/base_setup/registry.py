@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ArtifactDefinition:
+    name: str
+    artifact_type: str
+    manager: str
+    package: str
+    target: str
+
+
+_ARTIFACTS = {
+    ("tool", "terraform"): ArtifactDefinition(
+        name="terraform",
+        artifact_type="tool",
+        manager="homebrew",
+        package="terraform",
+        target="system",
+    ),
+    ("tool", "kubectl"): ArtifactDefinition(
+        name="kubectl",
+        artifact_type="tool",
+        manager="homebrew",
+        package="kubernetes-cli",
+        target="system",
+    ),
+    ("tool", "node"): ArtifactDefinition(
+        name="node",
+        artifact_type="tool",
+        manager="homebrew",
+        package="node",
+        target="system",
+    ),
+    ("tool", "nodejs"): ArtifactDefinition(
+        name="nodejs",
+        artifact_type="tool",
+        manager="homebrew",
+        package="node",
+        target="system",
+    ),
+    ("python-package", "requests"): ArtifactDefinition(
+        name="requests",
+        artifact_type="python-package",
+        manager="pip",
+        package="requests",
+        target="project-venv",
+    ),
+}
+
+
+def get_artifact_definition(artifact_type: str, name: str) -> ArtifactDefinition | None:
+    return _ARTIFACTS.get((artifact_type, name))
