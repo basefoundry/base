@@ -38,6 +38,7 @@ Current implemented commands include:
 - `basectl setup`
 - `basectl check`
 - `basectl update-profile`
+- `basectl version`
 - `basectl shell`
 
 Planned commands include:
@@ -137,7 +138,8 @@ exec "$SHELL" -l
 ```
 
 After the shell restarts, Base's managed startup section adds `~/work/base/bin`
-to `PATH`, so `basectl` can be run without spelling out the full path.
+to `PATH`, so `basectl` can be run without spelling out the full path. Use
+`basectl version` or `basectl --version` to report the installed Base version.
 
 ## Compatibility
 

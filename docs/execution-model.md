@@ -116,6 +116,7 @@ It owns the current Base subcommands:
 - `setup`
 - `check`
 - `update-profile`
+- `version`
 - `shell`
 - `help`
 
@@ -208,7 +209,7 @@ The current execution model does not yet define:
 - Python command dispatch
 - project discovery
 - project activation
-- version-number management
+- release automation around version numbers
 - Linux support beyond the current macOS implementation
 
 Those features should build on this execution contract rather than bypass it.

@@ -26,6 +26,7 @@ that delegate to `basectl`.
 - `setup`
 - `check`
 - `update-profile`
+- `version`
 - `shell`
 - `help`
 
@@ -34,5 +35,6 @@ that delegate to `basectl`.
 - `basectl setup` is the default local bootstrap path.
 - `basectl check` verifies the same local requirements without making changes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
+- `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

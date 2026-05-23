@@ -36,7 +36,7 @@ run_basectl() {
     ! grep -Fqx '  man' <<<"$output"
     ! grep -Fqx '  embrace' <<<"$output"
     ! grep -Fqx '  install' <<<"$output"
-    ! grep -Fqx '  version' <<<"$output"
+    grep -Fqx '  version' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
@@ -49,11 +49,18 @@ run_basectl() {
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
-@test "basectl rejects removed version option" {
-    run_basectl --version
+@test "basectl prints version with --version and version" {
+    local expected_version
 
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"Unknown option '--version'"* ]]
+    expected_version="$(head -n 1 "$BASE_REPO_ROOT/VERSION")"
+
+    run_basectl --version
+    [ "$status" -eq 0 ]
+    [ "$output" = "basectl $expected_version" ]
+
+    run_basectl version
+    [ "$status" -eq 0 ]
+    [ "$output" = "basectl $expected_version" ]
 }
 
 @test "basectl setup prints setup-specific help" {
@@ -68,7 +75,7 @@ run_basectl() {
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man embrace install version; do
+    for legacy_command in status update run set-team set-shared-teams man embrace install; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
@@ -84,6 +91,7 @@ run_basectl() {
         "$base_home/lib/bash/runtime" \
         "$base_home/cli/bash/commands/basectl"
     touch \
+        "$base_home/VERSION" \
         "$base_home/base_init.sh" \
         "$base_home/lib/shell/bash_profile" \
         "$base_home/lib/shell/bashrc" \
