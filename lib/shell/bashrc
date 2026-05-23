@@ -47,7 +47,7 @@ base_bashrc_source_baserc_guard() {
 
     source_path="$(base_bashrc_source_path)" || return 1
     snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    guard_path="$snippet_dir/baserc_guard.bash"
+    guard_path="$snippet_dir/baserc_guard.sh"
 
     [[ -f "$guard_path" ]] || {
         printf "ERROR: Base baserc guard '%s' was not found.\n" "$guard_path" >&2
