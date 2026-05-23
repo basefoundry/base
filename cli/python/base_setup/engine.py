@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import venv
 from pathlib import Path
 
 import base_cli
 
-from .manifest import BaseManifest, ManifestError, discover_manifest, read_manifest
+from .manifest import ArtifactRequest, BaseManifest, ManifestError, discover_manifest, read_manifest
 from .registry import ArtifactDefinition, get_artifact_definition
 
 
@@ -41,7 +42,8 @@ def run(
     try:
         base_manifest = read_manifest(manifest_path)
         validate_project_name(base_manifest, project)
-        reconcile_manifest(ctx, base_manifest, dry_run=dry_run)
+        default_manifest = read_default_manifest(ctx)
+        reconcile_manifest(ctx, default_manifest, base_manifest, dry_run=dry_run)
         return 0
     except ManifestError as exc:
         ctx.log.error(str(exc))
@@ -62,17 +64,36 @@ def validate_project_name(manifest: BaseManifest, expected_project: str | None) 
         )
 
 
-def reconcile_manifest(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+def read_default_manifest(ctx: base_cli.Context) -> BaseManifest:
+    if ctx.base_home is None:
+        raise ManifestError("BASE_HOME is required to load Base's default artifact manifest.")
+    default_manifest_path = ctx.base_home / "lib" / "base" / "default_manifest.yaml"
+    return read_manifest(default_manifest_path)
+
+
+def reconcile_manifest(
+    ctx: base_cli.Context,
+    default_manifest: BaseManifest,
+    manifest: BaseManifest,
+    dry_run: bool,
+) -> None:
     ctx.log.info("Reading Base manifest at '%s'.", manifest.path)
     ctx.log.info("Setting up project '%s'.", manifest.project_name)
 
-    project_root = manifest.path.parent
+    artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
+    definitions = resolve_artifact_definitions(artifacts)
     if not manifest.artifacts:
         ctx.log.info("Project '%s' declares no artifacts.", manifest.project_name)
-        ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
-        return
 
-    for artifact in manifest.artifacts:
+    for artifact, definition in zip(artifacts, definitions, strict=True):
+        reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
+
+    ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
+
+
+def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tuple[ArtifactDefinition, ...]:
+    definitions: list[ArtifactDefinition] = []
+    for artifact in artifacts:
         definition = get_artifact_definition(artifact.artifact_type, artifact.name)
         if definition is None:
             raise ArtifactError(
@@ -80,14 +101,35 @@ def reconcile_manifest(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
                 f"'{artifact.name}' of type '{artifact.artifact_type}'. "
                 "Base does not know how to manage this artifact yet."
             )
-        reconcile_artifact(ctx, project_root, definition, artifact.version, dry_run=dry_run)
+        definitions.append(definition)
+    return tuple(definitions)
 
-    ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
+
+def merge_artifacts(
+    default_artifacts: tuple[ArtifactRequest, ...],
+    manifest_artifacts: tuple[ArtifactRequest, ...],
+) -> tuple[ArtifactRequest, ...]:
+    merged: dict[tuple[str, str], ArtifactRequest] = {}
+
+    for artifact in default_artifacts:
+        merged[(artifact.artifact_type, artifact.name)] = artifact
+
+    for artifact in manifest_artifacts:
+        key = (artifact.artifact_type, artifact.name)
+        existing = merged.get(key)
+        if existing is not None and existing.version != artifact.version:
+            raise ArtifactError(
+                "Artifact "
+                f"'{artifact.name}' of type '{artifact.artifact_type}' is declared by defaults "
+                f"as version '{existing.version}' and by the project manifest as version '{artifact.version}'."
+            )
+        merged[key] = artifact
+
+    return tuple(merged.values())
 
 
 def reconcile_artifact(
     ctx: base_cli.Context,
-    project_root: Path,
     definition: ArtifactDefinition,
     version: str,
     dry_run: bool,
@@ -96,7 +138,7 @@ def reconcile_artifact(
         reconcile_homebrew_artifact(ctx, definition, version, dry_run=dry_run)
         return
     if definition.manager == "pip":
-        reconcile_python_artifact(ctx, project_root, definition, version, dry_run=dry_run)
+        reconcile_python_artifact(ctx, definition, version, dry_run=dry_run)
         return
     raise ArtifactError(f"Artifact manager '{definition.manager}' is not implemented.")
 
@@ -134,14 +176,18 @@ def reconcile_homebrew_artifact(
 
 def reconcile_python_artifact(
     ctx: base_cli.Context,
-    project_root: Path,
     definition: ArtifactDefinition,
     version: str,
     dry_run: bool,
 ) -> None:
-    venv_dir = project_root / ".base" / ".venv"
+    project = os.environ.get("BASE_PROJECT", "base")
+    venv_dir = Path.home() / ".base.d" / project / ".venv"
     python_bin = venv_dir / "bin" / "python"
     requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
+
+    if python_artifact_installed(python_bin, definition.package, version):
+        ctx.log.info("Python artifact '%s' is already installed in the project virtual environment.", definition.name)
+        return
 
     if dry_run:
         if not python_bin.exists():
@@ -155,6 +201,21 @@ def reconcile_python_artifact(
 
     ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
     run_command([str(python_bin), "-m", "pip", "install", requirement])
+
+
+def python_artifact_installed(python_bin: Path, package: str, version: str) -> bool:
+    if not python_bin.exists():
+        return False
+    command = [str(python_bin), "-m", "pip", "show", package]
+    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+    if completed.returncode:
+        return False
+    if version == "latest":
+        return True
+    for line in completed.stdout.splitlines():
+        if line.startswith("Version: "):
+            return line.removeprefix("Version: ").strip() == version
+    return False
 
 
 def command_exists(name: str) -> bool:

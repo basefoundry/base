@@ -1,0 +1,11 @@
+project:
+  name: __base_defaults__
+
+artifacts:
+  - type: python-package
+    name: click
+    version: "8.4.1"
+
+  - type: python-package
+    name: PyYAML
+    version: "6.0.3"

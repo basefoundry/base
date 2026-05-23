@@ -27,7 +27,7 @@ Setup does:
   2. Install Xcode Command Line Tools if needed.
   3. Install Python 3.13 via Homebrew if needed.
   4. Install BATS via Homebrew if needed.
-  5. Create ~/.base.d/.venv if it does not already exist.
+  5. Create ~/.base.d/base/.venv if it does not already exist.
   6. Install Base Python bootstrap packages into the Base virtual environment.
   7. Invoke the Python project setup layer for base_manifest.yaml artifacts.
 

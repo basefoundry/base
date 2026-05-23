@@ -25,7 +25,7 @@ Check does:
   2. Verify Xcode Command Line Tools are installed.
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify BATS is installed via Homebrew.
-  5. Verify ~/.base.d/.venv exists.
+  5. Verify ~/.base.d/base/.venv exists.
 EOF
 }
 

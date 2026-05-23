@@ -325,7 +325,7 @@ run_base_command() {
 }
 
 @test "basectl setup is idempotent when brew, xcode tools, python, and the venv already exist" {
-    local venv_dir="$TEST_HOME/.base.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
     create_xcode_stubs
@@ -388,7 +388,7 @@ EOF
 
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {
     local installer
-    local venv_dir="$TEST_HOME/.base.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_xcode_stubs
     installer="$(create_homebrew_installer_stub)"
@@ -426,17 +426,17 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
-    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/.venv'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'click' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Would run Python project setup layer after PyYAML is installed."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
-    [ ! -e "$TEST_HOME/.base.d/.venv" ]
+    [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
 }
 
 @test "basectl setup ignores inherited DRY_RUN without --dry-run" {
     local installer
-    local venv_dir="$TEST_HOME/.base.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_xcode_stubs
     installer="$(create_homebrew_installer_stub)"
@@ -457,7 +457,7 @@ EOF
 }
 
 @test "basectl check passes when all required components are present" {
-    local venv_dir="$TEST_HOME/.base.d/.venv"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
     create_xcode_stubs
@@ -487,7 +487,7 @@ EOF
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is not installed via Homebrew."* ]]
     [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
-    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/.venv'."* ]]
+    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 

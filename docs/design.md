@@ -282,7 +282,7 @@ active, its venv is active. Showing both would be redundant. The prompt stays cl
 ### Base Venv
 
 - Created once during `basectl setup`
-- Lives at `~/.base.d/.venv`
+- Lives at `~/.base.d/base/.venv`
 - Used to run Base's own Python orchestration code (manifest parsing, project discovery,
   etc.)
 - Not activated in the user's interactive shell by default — it runs internally when
@@ -354,8 +354,8 @@ When `basectl setup` runs on a fresh Mac:
 1. Check for Homebrew — install if missing
 2. Check for Xcode CLI tools — install if missing
 3. Install Python (target version) via Homebrew
-4. Create Base's own virtual environment at `~/.base.d/.venv`
-5. Install Base's Python dependencies into `~/.base.d/.venv`
+4. Create Base's own virtual environment at `~/.base.d/base/.venv`
+5. Install Base's Python dependencies into `~/.base.d/base/.venv`
 6. Prepare the managed shell startup model with `basectl update-profile`
 7. Scan the parent directory for peer repos with base manifests
 8. For each discovered project, run project-level setup (install declared dependencies,
