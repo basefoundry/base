@@ -180,10 +180,11 @@ That shell uses Base's runtime rcfile:
 $BASE_HOME/lib/bash/runtime/bashrc
 ```
 
-The runtime rcfile sources the user's `~/.bashrc` once with guardrails, sources
-`base_init.sh`, and then sets the Base runtime prompt. This gives the user their
-normal interactive Bash behavior while still letting Base own the final runtime
-contract.
+The runtime rcfile sources `base_init.sh`, sources the user's `~/.bashrc` once
+with guardrails, and then sets the Base runtime prompt. This gives the user their
+normal interactive Bash behavior while also making Base stdlib functions such as
+`import_base_lib` available during user Bash startup. Base still owns the final
+runtime prompt.
 
 ## Dotfile Boundary
 
