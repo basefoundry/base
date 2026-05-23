@@ -21,32 +21,15 @@ base_bashrc_debug() {
     esac
 }
 
-base_bashrc_source_path() {
-    local source_path="${BASH_SOURCE[0]}"
-    local link_dir
-    local target
-
-    while [[ -L "$source_path" ]]; do
-        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-        target="$(readlink "$source_path")" || return 1
-        if [[ "$target" == /* ]]; then
-            source_path="$target"
-        else
-            source_path="$link_dir/$target"
-        fi
-    done
-
-    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
+base_bashrc_snippet_dir() {
+    cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
 }
 
 base_bashrc_source_baserc_guard() {
-    local source_path
     local snippet_dir
     local guard_path
 
-    source_path="$(base_bashrc_source_path)" || return 1
-    snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    snippet_dir="$(base_bashrc_snippet_dir)" || return 1
     guard_path="$snippet_dir/baserc_guard.sh"
 
     [[ -f "$guard_path" ]] || {
@@ -63,25 +46,23 @@ base_baserc_guard_source base_bashrc_debug || return $?
 
 if [[ $- != *i* ]]; then
     base_bashrc_debug "non-interactive shell; skipping"
-    unset -f base_bashrc_debug base_bashrc_source_path base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
     return 0
 fi
 
 if [[ -n "${__base_bashrc_sourced__:-}" ]]; then
     base_bashrc_debug "already sourced; skipping"
-    unset -f base_bashrc_debug base_bashrc_source_path base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
     return 0
 fi
 readonly __base_bashrc_sourced__=1
 base_bashrc_debug "loading"
 
 base_bashrc_set_base_home() {
-    local source_path
     local snippet_dir
     local base_home
 
-    source_path="$(base_bashrc_source_path)" || return 1
-    snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    snippet_dir="$(base_bashrc_snippet_dir)" || return 1
     base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
@@ -141,13 +122,13 @@ base_bashrc_source_defaults() {
 
 base_bashrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base bashrc snippet. Run basectl update-profile.\n' >&2
-    unset -f base_bashrc_debug base_bashrc_source_path base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
     return 1
 }
 base_bashrc_prepend_path
 base_bashrc_source_defaults || return 1
 base_bashrc_debug "complete"
 
-unset -f base_bashrc_source_path base_bashrc_set_base_home
+unset -f base_bashrc_snippet_dir base_bashrc_set_base_home
 unset -f base_bashrc_prepend_path base_bashrc_source_defaults
 unset -f base_bashrc_source_baserc_guard base_bashrc_debug

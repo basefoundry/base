@@ -5,10 +5,11 @@ This file is the shared working memory for future AI-assisted development in thi
 ## Current State
 
 - Branch: `hpr/fix-claude-findings`.
-- Working tree was clean before the current prompt-defaults fix.
-- Current uncommitted work adds this context file and fixes normal Bash defaults so git branches appear in the prompt after `exec bash`.
+- Current work is moving through `TODO.md`, which tracks Claude's code-analysis findings item by item.
+- Most recent uncommitted change simplifies managed shell snippet path discovery by removing stale symlink-resolving loops from `lib/shell/bashrc`, `lib/shell/bash_profile`, and `lib/shell/zshrc`.
+- Confirmed there are no symlinked snippets in the repo; `basectl update-profile` writes direct `source $BASE_HOME/lib/shell/<snippet>` lines into managed dotfile sections.
 - The recent extension cleanup is considered complete.
-- The next broader development thread is the coverage PR: add or confirm focused tests for public utility commands and startup snippets.
+- The broader development thread remains improving focused tests and startup/public utility coverage while closing TODO items in small commits.
 
 ## Project Shape
 
@@ -31,10 +32,16 @@ This file is the shared working memory for future AI-assisted development in thi
 
 ## Recent Bug Context
 
-- Observed bug: after `basectl update-profile` and `exec bash`, the prompt inside `/Users/rameshhp/work/base` did not show the git branch.
+- Previously observed bug: after `basectl update-profile` and `exec bash`, the prompt inside `/Users/rameshhp/work/base` did not show the git branch.
 - `basectl shell` did show the branch because it uses `lib/bash/runtime/bashrc`, whose prompt calls `_base_runtime_git_prompt`.
 - Root cause: normal Bash shells with optional Base defaults use `lib/shell/bash_defaults.sh`, whose prompt only showed time, host, and cwd.
 - Fix: keep ordinary shell startup separate from runtime bootstrap, but make `bash_defaults.sh` include a small dynamic git prompt helper so normal interactive Bash defaults show the active repo branch.
+
+## Current TODO Progress
+
+- Completed and committed: Claude findings TODO list, `_git_only_path_dirty` directory matching, `sort-in-place` flag quoting, `update_file_section` temp cleanup, and wrapper runtime flag documentation.
+- Current uncommitted TODO item: simplify duplicated shell snippet path discovery for the direct-source startup model.
+- Next likely TODO item after that commit: decide whether to remove or consolidate duplicate `basectl_read_version`.
 
 ## Testing Notes
 
@@ -49,4 +56,4 @@ bats cli/bash/commands/basectl/tests/setup.bats
 bats cli/bash/commands/basectl/tests/basectl.bats
 ```
 
-- Latest verification in this session: full BATS suite passed, 125 tests with the existing pseudo-tty `wait_for_enter` case skipped.
+- Latest verification in this session: full BATS suite passed, 128 tests with the existing pseudo-tty `wait_for_enter` case skipped.

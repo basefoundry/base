@@ -22,32 +22,15 @@ base_bash_profile_debug() {
     esac
 }
 
-base_bash_profile_source_path() {
-    local source_path="${BASH_SOURCE[0]}"
-    local link_dir
-    local target
-
-    while [[ -L "$source_path" ]]; do
-        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-        target="$(readlink "$source_path")" || return 1
-        if [[ "$target" == /* ]]; then
-            source_path="$target"
-        else
-            source_path="$link_dir/$target"
-        fi
-    done
-
-    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
+base_bash_profile_snippet_dir() {
+    cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
 }
 
 base_bash_profile_source_baserc_guard() {
-    local source_path
     local snippet_dir
     local guard_path
 
-    source_path="$(base_bash_profile_source_path)" || return 1
-    snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    snippet_dir="$(base_bash_profile_snippet_dir)" || return 1
     guard_path="$snippet_dir/baserc_guard.sh"
 
     [[ -f "$guard_path" ]] || {
@@ -64,7 +47,7 @@ base_baserc_guard_source base_bash_profile_debug || return $?
 
 if [[ -n "${__base_bash_profile_sourced__:-}" ]]; then
     base_bash_profile_debug "already sourced; skipping"
-    unset -f base_bash_profile_debug base_bash_profile_source_path base_bash_profile_source_baserc_guard
+    unset -f base_bash_profile_debug base_bash_profile_snippet_dir base_bash_profile_source_baserc_guard
     return 0
 fi
 readonly __base_bash_profile_sourced__=1
@@ -72,13 +55,13 @@ base_bash_profile_debug "loading"
 
 if [[ -n "${__base_sourcing_bashrc_from_profile__:-}" ]]; then
     base_bash_profile_debug "bashrc bridge guard is active; skipping"
-    unset -f base_bash_profile_debug base_bash_profile_source_path base_bash_profile_source_baserc_guard
+    unset -f base_bash_profile_debug base_bash_profile_snippet_dir base_bash_profile_source_baserc_guard
     return 0
 fi
 
 if [[ ! -f "$HOME/.bashrc" ]]; then
     base_bash_profile_debug "'$HOME/.bashrc' not found; skipping"
-    unset -f base_bash_profile_debug base_bash_profile_source_path base_bash_profile_source_baserc_guard
+    unset -f base_bash_profile_debug base_bash_profile_snippet_dir base_bash_profile_source_baserc_guard
     return 0
 fi
 
@@ -88,4 +71,4 @@ __base_sourcing_bashrc_from_profile__=1
 source "$HOME/.bashrc"
 unset __base_sourcing_bashrc_from_profile__
 base_bash_profile_debug "complete"
-unset -f base_bash_profile_debug base_bash_profile_source_path base_bash_profile_source_baserc_guard
+unset -f base_bash_profile_debug base_bash_profile_snippet_dir base_bash_profile_source_baserc_guard

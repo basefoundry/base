@@ -35,11 +35,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: document what each flag does and clarify the difference between `-v` and `--debug-wrapper`.
   - Done locally; pending commit.
 
-- [ ] Reduce duplicated source-path resolution logic.
+- [x] Reduce duplicated source-path resolution logic.
   - Files: `bin/basectl`, `base_init.sh`, `lib/shell/bashrc`, `lib/shell/bash_profile`, `lib/shell/zshrc`
   - Problem: symlink-resolving path normalization is copied in multiple places.
-  - Expected fix: keep the launcher self-contained, but consider sharing helper logic among shell snippets where startup ordering permits.
-  - Preserve behavior for symlinked snippets and direct sourcing.
+  - Expected fix: keep the launcher and runtime bootstrap self-contained, but simplify shell snippets for the current direct-source startup model.
+  - Confirmed there are no symlinked snippets; `basectl update-profile` writes direct `source` lines to Base files.
+  - Done locally; pending commit.
 
 - [ ] Remove or consolidate duplicate `basectl_read_version`.
   - Files: `bin/basectl`, `cli/bash/commands/basectl/basectl.sh`
