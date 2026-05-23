@@ -21,6 +21,9 @@ for command implementations, then sources this command implementation and calls
 commands in `$BASE_HOME/bin`, such as `bin/caff`, should remain tiny launchers
 that delegate to `basectl`.
 
+For the detailed dispatch and runtime contract, see
+[`docs/execution-model.md`](../../../../docs/execution-model.md).
+
 ## Current subcommands
 
 - `setup`
@@ -34,5 +37,5 @@ that delegate to `basectl`.
 - `basectl setup` is the default local bootstrap path.
 - `basectl check` verifies the same local requirements without making changes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
-- Base-specific bootstrap subcommands live under `cli/bash/commands/base/subcommands/`.
-- Shared tests for Base subcommands live under `cli/bash/commands/tests/`.
+- basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
+- Shared tests for basectl subcommands live under `cli/bash/commands/tests/`.
