@@ -82,7 +82,7 @@ base_init_resolve_home() {
             base_init_error "BASE_HOME '$BASE_HOME' is not a directory or is not accessible."
             return 1
         }
-        cd -- "$BASE_HOME" && pwd -P
+        (cd -- "$BASE_HOME" && pwd -P)
         return $?
     fi
 

@@ -131,6 +131,10 @@ Convenience commands in `$BASE_HOME/bin` should be tiny real launcher files,
 not symlinks. They delegate to `basectl` and keep the public command surface in
 one place.
 
+Some launchers may expose bonus utilities such as `caff` or `sort-in-place`.
+Those utilities follow the same command-layout convention, but they are extras,
+not the core workspace control plane.
+
 Example:
 
 ```bash
@@ -201,6 +205,6 @@ The current execution model does not yet define:
 - project discovery
 - project activation
 - version-number management
-- cross-platform support beyond the current macOS-first implementation
+- Linux support beyond the current macOS implementation
 
 Those features should build on this execution contract rather than bypass it.
