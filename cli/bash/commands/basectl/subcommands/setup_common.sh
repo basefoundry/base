@@ -59,6 +59,10 @@ setup_pyyaml_package() {
     printf '%s\n' "${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 }
 
+setup_click_package() {
+    printf '%s\n' "${BASE_SETUP_CLICK_PACKAGE:-click}"
+}
+
 setup_xcode_tools_dir() {
     printf '%s\n' "${BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR:-/Library/Developer/CommandLineTools}"
 }
@@ -305,31 +309,27 @@ setup_base_venv_python_bin() {
     printf '%s\n' "$python_bin"
 }
 
-setup_pyyaml_installed() {
-    local venv_dir python_bin package
+setup_base_python_package_installed() {
+    local package="$1"
+    local venv_dir python_bin
 
     venv_dir="$(setup_venv_dir)"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
-    package="$(setup_pyyaml_package)"
     "$python_bin" -m pip show "$package" >/dev/null 2>&1
 }
 
-setup_install_pyyaml() {
-    local venv_dir python_bin package
+setup_install_base_python_package() {
+    local package="$1"
+    local venv_dir python_bin
 
     venv_dir="$(setup_venv_dir)"
-    package="$(setup_pyyaml_package)"
 
-    if setup_pyyaml_installed; then
-        BASE_SETUP_PYYAML_READY=true
-        export BASE_SETUP_PYYAML_READY
+    if setup_base_python_package_installed "$package"; then
         log_info "Python package '$package' is already installed in the Base virtual environment."
         return 0
     fi
 
     if setup_is_dry_run; then
-        BASE_SETUP_PYYAML_READY=false
-        export BASE_SETUP_PYYAML_READY
         log_info "[DRY-RUN] Would install Python package '$package' in the Base virtual environment."
         return 0
     fi
@@ -338,8 +338,28 @@ setup_install_pyyaml() {
 
     log_info "Installing Python package '$package' in the Base virtual environment."
     run "$python_bin" -m pip install "$package"
-    BASE_SETUP_PYYAML_READY=true
+}
+
+setup_install_pyyaml() {
+    local package
+
+    package="$(setup_pyyaml_package)"
+    if setup_base_python_package_installed "$package"; then
+        BASE_SETUP_PYYAML_READY=true
+    else
+        BASE_SETUP_PYYAML_READY=false
+    fi
     export BASE_SETUP_PYYAML_READY
+
+    setup_install_base_python_package "$package"
+    if ! setup_is_dry_run; then
+        BASE_SETUP_PYYAML_READY=true
+    fi
+    export BASE_SETUP_PYYAML_READY
+}
+
+setup_install_click() {
+    setup_install_base_python_package "$(setup_click_package)"
 }
 
 setup_project_setup_python_bin() {
@@ -459,6 +479,7 @@ setup_run_install() {
     setup_install_bats
     setup_create_virtualenv
     setup_install_pyyaml
+    setup_install_click
     setup_run_project_artifact_setup
 
     if setup_is_dry_run; then
