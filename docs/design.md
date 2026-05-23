@@ -2,10 +2,11 @@
 
 ## Overview
 
-Base is an opinionated Mac development orchestrator. It provides a unified, declarative
-foundation for bootstrapping a Mac development environment and managing multiple projects
-through a single CLI interface. Base is Mac-only by deliberate design choice. Windows
-support is not in scope.
+Base is an opinionated Mac-first development orchestrator. It provides a unified,
+declarative foundation for bootstrapping a Mac development environment and managing
+multiple projects through a single CLI interface. The current implementation support
+contract is macOS. Linux is a future design target, while Windows support is not in
+scope.
 
 The governing philosophy: **solve your own problem elegantly first**. Base is built for
 a specific workflow — multiple peer GitHub repositories under a shared parent directory,
@@ -396,7 +397,7 @@ These extras emerge organically from real needs — they are not designed upfron
 
 - Not a replacement for Docker or dev containers — those solve a different problem
   (containerization). Base is Mac-native and lightweight.
-- Not cross-platform — Windows is explicitly out of scope.
+- Not broadly cross-platform today — macOS is the current support contract, Linux is a future target, and Windows is explicitly out of scope.
 - Not a universal package manager — Homebrew handles that. Base orchestrates on top
   of Homebrew.
 - Not trying to solve every edge case — version conflict handling across projects,

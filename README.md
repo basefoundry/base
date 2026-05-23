@@ -33,10 +33,15 @@ Base is being refactored around three primary goals.
 Base should give the user one entry point for setting up and validating a
 workspace that contains multiple project repositories.
 
-Examples of the kind of interface Base should provide:
+Current implemented commands include:
 
 - `basectl setup`
 - `basectl check`
+- `basectl update-profile`
+- `basectl shell`
+
+Planned commands include:
+
 - `basectl setup <project>`
 - `basectl test`
 - `basectl test <project>`
@@ -44,7 +49,8 @@ Examples of the kind of interface Base should provide:
 - `basectl projects list`
 
 The important idea is that the user should not need to memorize a different
-bootstrap story for every repository in the workspace.
+bootstrap story for every repository in the workspace. Planned commands are
+listed here to describe direction, not current availability.
 
 Base should be able to discover participating project repositories checked out
 next to it under a shared parent directory, for example:
@@ -114,24 +120,43 @@ Example launcher:
 exec "$(dirname "$0")/basectl" caff "$@"
 ```
 
+`basectl setup` deliberately pins its default Homebrew Python formula so setup is
+reproducible across machines. The current default is `python@3.13`. Override it
+with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
+
+## Quick Start
+
+Base is currently designed to be checked out once per workspace. Until a
+standalone installer exists, the explicit bootstrap path is:
+
+```bash
+git clone https://github.com/codeforester/base.git ~/work/base
+~/work/base/bin/basectl setup
+~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
+```
+
+After the shell restarts, Base's managed startup section adds `~/work/base/bin`
+to `PATH`, so `basectl` can be run without spelling out the full path.
+
 ## Compatibility
 
-Base is currently macOS-first.
+Base is currently macOS-first. The implemented and tested support contract is
+macOS with Homebrew, Xcode Command Line Tools, a Homebrew-managed Bash, Git, and
+Python installed through Base setup.
 
 Intended supported platforms are:
 
 - macOS on Apple Silicon
 - macOS on Intel Macs
-- at least one Linux variant, with the first target still to be decided
+- at least one Linux variant in the future, with the first target still to be decided
 
-The supported macOS version floor is still TBD. The current implementation
-assumes a modern macOS environment with Homebrew, Xcode Command Line Tools, a
-Homebrew-managed Bash, Git, and Python installed through Base setup.
+The supported macOS version floor is still TBD. Linux support is a design target,
+but not yet an implemented or tested support contract. Windows is out of scope.
 
-Linux support is a design target, but not yet an implemented or tested support
-contract. OS-specific behavior should stay isolated behind small helpers instead
-of being scattered through command code. For example, the Base runtime prompt can
-prefer macOS `scutil` names while still falling back to generic `hostname`.
+OS-specific behavior should stay isolated behind small helpers instead of being
+scattered through command code. For example, the Base runtime prompt can prefer
+macOS `scutil` names while still falling back to generic `hostname`.
 
 ## Shell Startup Files
 
@@ -277,6 +302,16 @@ Those defaults are intended to stay conservative:
 - editor defaults
 - prompt defaults
 - history behavior
+
+## Bonus Utilities
+
+Base currently exposes a small number of convenience utilities through
+`$BASE_HOME/bin`, including `caff` and `sort-in-place`. These are useful helper
+commands that share Base's command conventions, but they are not the core
+workspace orchestration surface.
+
+As Base matures, bonus utilities may stay documented as extras or move behind a
+clearer namespace. The control-plane surface remains `basectl`.
 
 ## What Base Is Responsible For
 
