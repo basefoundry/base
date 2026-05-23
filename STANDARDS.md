@@ -206,8 +206,10 @@ Base-managed shell startup files follow this separation of concerns:
 - `bashrc` / `zshrc`
   - interactive shell guards and dotfile-only behavior
   - Base `bin/` PATH availability for interactive shells
+- `base_defaults.sh`
+  - optional shell-neutral interactive defaults shared by Bash and Zsh
 - `bash_defaults.sh` / `zsh_defaults.sh`
-  - optional shared interactive defaults
+  - optional shell-specific interactive defaults
 
 Startup files should stay thin and predictable. They must not source
 `base_init.sh`; Base runtime setup belongs to the `basectl` command path.

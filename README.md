@@ -260,8 +260,9 @@ by plain `basectl update-profile`.
 
 Current default-setting scripts are:
 
-- `lib/shell/bash_defaults.sh` for Bash
-- `lib/shell/zsh_defaults.sh` for Zsh
+- `lib/shell/base_defaults.sh` for shell-neutral defaults shared by Bash and Zsh
+- `lib/shell/bash_defaults.sh` for Bash-specific defaults
+- `lib/shell/zsh_defaults.sh` for Zsh-specific defaults
 
 Users can opt in during profile updates with:
 

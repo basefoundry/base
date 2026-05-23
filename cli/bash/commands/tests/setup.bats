@@ -498,13 +498,16 @@ run_base_command() {
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"defaults.sh"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"defaults.sh"* ]]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u EDITOR -u VISUAL -u EXINIT \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "BASE_HOME=%s\n" "$BASE_HOME"'
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "BASE_HOME=%s\n" "$BASE_HOME"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias cp='cp -i'"* ]]
+    [[ "$output" == *"EDITOR=vi"* ]]
+    [[ "$output" == *"VISUAL=vi"* ]]
+    [[ "$output" == *"EXINIT=set ts=4 sw=4 ai nows nosm expandtab"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
 }
 
