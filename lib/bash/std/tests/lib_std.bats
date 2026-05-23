@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../tests/test_helper.bash
+load ../../tests/test_helper.sh
 
 readonly STDLIB_PATH="$BASE_BASH_DIR/std/lib_std.sh"
 

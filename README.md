@@ -220,7 +220,7 @@ The managed sections source matching snippets under `lib/shell/`:
 The names intentionally mirror the dotfiles they support, without leading dots
 inside the repository.
 
-Bash snippets and the Bash runtime rcfile share `lib/shell/baserc_guard.bash` for
+Bash snippets and the Bash runtime rcfile share `lib/shell/baserc_guard.sh` for
 safe `~/.baserc` loading. Zsh snippets keep their own guard logic for now.
 
 ### Login Profiles

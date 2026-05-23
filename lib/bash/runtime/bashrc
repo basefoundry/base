@@ -29,7 +29,7 @@ _base_runtime_debug() {
 }
 
 _base_runtime_source_baserc_guard() {
-    local guard_path="$BASE_HOME/lib/shell/baserc_guard.bash"
+    local guard_path="$BASE_HOME/lib/shell/baserc_guard.sh"
 
     [[ -f "$guard_path" ]] || {
         _base_runtime_error "Base baserc guard '$guard_path' was not found."
