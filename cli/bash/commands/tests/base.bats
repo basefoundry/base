@@ -177,3 +177,34 @@ EOF
     [[ "$output" == *"BASE_DEBUG runtime: sourcing '$BASE_REPO_ROOT/base_init.sh'"* ]]
     [[ "$output" == *"BASE_DEBUG runtime: complete"* ]]
 }
+
+
+@test "baserc can enable BASE_DEBUG for Base runtime shells" {
+    printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
+
+    run env -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "ok\n"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG runtime: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: loading"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: complete"* ]]
+}
+
+@test "baserc cannot override BASE_HOME for Base runtime shells" {
+    printf '%s\n' 'BASE_HOME=/tmp/not-base' > "$TEST_HOME/.baserc"
+
+    run env -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "BASE_HOME=%s\n" "$BASE_HOME"; printf "BASE_BIN_DIR=%s\n" "${BASE_BIN_DIR-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ERROR: ~/.baserc must not set Base-owned variable 'BASE_HOME'."* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"BASE_BIN_DIR=unset"* ]]
+}
