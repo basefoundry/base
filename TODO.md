@@ -100,10 +100,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: use a more reliable relationship check, or parse arguments defensively with error handling.
   - Add tests for alternate caffeinate argument shapes and pgrep failures if feasible.
 
-- [ ] Add `--version` to `basectl` help.
+- [x] Add `--version` to `basectl` help.
   - File: `cli/bash/commands/basectl/basectl.sh`
   - Problem: `version` is listed as a command, but the supported `--version` flag is omitted.
   - Expected fix: include `--version` in the help output and verify with existing help tests.
+  - Done locally; pending commit.
 
 - [ ] Decide how `basectl shell` handles arguments.
   - File: `cli/bash/commands/basectl/basectl.sh`

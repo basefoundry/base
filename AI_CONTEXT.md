@@ -6,7 +6,8 @@ This file is the shared working memory for future AI-assisted development in thi
 
 - Branch: `hpr/fix-claude-findings2`.
 - Current work is moving through `TODO.md`, which tracks Claude's code-analysis findings item by item.
-- Most recent uncommitted change consolidates `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
+- Most recent uncommitted change adds the supported `--version` flag to `basectl --help`.
+- The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
 - The previous change consolidated Base version reading in `lib/bash/version/lib_version.sh`, shared by early `basectl --version` handling and the runtime `basectl version` command.
 - `lib/bash/version` and `lib/bash/runtime` now have local README files and colocated BATS coverage, in addition to existing basectl integration coverage.
 - Confirmed there are no symlinked snippets in the repo; `basectl update-profile` writes direct `source $BASE_HOME/lib/shell/<snippet>` lines into managed dotfile sections.
@@ -42,7 +43,7 @@ This file is the shared working memory for future AI-assisted development in thi
 ## Current TODO Progress
 
 - Completed and committed: Claude findings TODO list, `_git_only_path_dirty` directory matching, `sort-in-place` flag quoting, `update_file_section` temp cleanup, wrapper runtime flag documentation, simplified shell snippet path discovery, and shared version reading.
-- Current uncommitted TODO item: consolidate setup dry-run state on `DRY_RUN`.
+- Current uncommitted TODO item: add `--version` to `basectl` help.
 - Next likely TODO item after that commit: remove interactive Bash upgrade behavior from `lib_std.sh`.
 
 ## Testing Notes

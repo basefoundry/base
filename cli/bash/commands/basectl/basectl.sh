@@ -26,6 +26,8 @@ Options:
   -v       Enable DEBUG logging for the selected command.
   -x       Enable Bash xtrace before running the command.
   -h       Show this help text.
+  --version
+           Show the installed Base version.
 
 Wrapper options:
   --debug-wrapper    Enable DEBUG logging before the Base runtime is loaded.
