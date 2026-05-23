@@ -63,6 +63,7 @@ state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
 python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 
 case "${1:-}" in
     list)
@@ -89,6 +90,30 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
+    cat > "$3/bin/python" <<'VENVEOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+VENVEOF
+    chmod +x "$3/bin/python"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
 printf 'unexpected python3 args: %s\n' "$*" >&2
@@ -133,6 +158,7 @@ state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
 python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 
 case "${1:-}" in
     list)
@@ -159,6 +185,30 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
+    cat > "$3/bin/python" <<'VENVEOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+VENVEOF
+    chmod +x "$3/bin/python"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
 printf 'unexpected python3 args: %s\n' "$*" >&2
@@ -261,8 +311,29 @@ run_base_command() {
     mkdir -p "$TEST_TMPDIR/CommandLineTools"
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
     mkdir -p "$venv_dir/bin"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
 
     run_base_command setup
 
@@ -272,8 +343,12 @@ run_base_command() {
     [[ "$output" == *"Python formula 'python@3.13' is already installed via Homebrew."* ]]
     [[ "$output" == *"BATS formula 'bats-core' is already installed via Homebrew."* ]]
     [[ "$output" == *"Virtual environment already exists at '$venv_dir'."* ]]
+    [[ "$output" == *"Python package 'PyYAML' is already installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Running Python project setup layer."* ]]
     [ ! -f "$TEST_STATE_DIR/python-install-ran" ]
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/pyyaml-install-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {
@@ -295,10 +370,14 @@ run_base_command() {
     [[ "$output" == *"Installing Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" == *"Installing BATS formula 'bats-core' via Homebrew."* ]]
     [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
+    [[ "$output" == *"Installing Python package 'PyYAML' in the Base virtual environment."* ]]
+    [[ "$output" == *"Running Python project setup layer."* ]]
     [[ "$output" == *"Base CLI setup is complete."* ]]
     [ -f "$TEST_STATE_DIR/homebrew-install-ran" ]
     [ -f "$TEST_STATE_DIR/python-install-ran" ]
     [ -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ -f "$TEST_STATE_DIR/pyyaml-install-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
@@ -311,6 +390,8 @@ run_base_command() {
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/.venv'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run Python project setup layer after PyYAML is installed."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
     [ ! -e "$TEST_HOME/.base.d/.venv" ]
 }

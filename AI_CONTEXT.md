@@ -6,6 +6,15 @@ This file is the shared working memory for future AI-assisted development in thi
 
 - Branch: `hpr/fix-claude-findings2`.
 - Current work is moving through `TODO.md`, which tracks Claude's code-analysis findings item by item.
+- New in-progress feature work adds the first artifact setup layer: root
+  `base_manifest.yaml`, a Python `base_setup` package under `cli/python/`, and
+  a Bash setup handoff after Base bootstrap.
+- The Python layer now reads manifests with PyYAML. PyYAML is a Base bootstrap
+  dependency installed by the Bash setup layer into `~/.base.d/.venv`, not a
+  project artifact.
+- Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
+  and `version`; users do not specify managers. The Python registry maps known
+  `(type, name)` pairs to managers and errors on unknown artifacts.
 - Most recent uncommitted change adds `basectl update-profile --no-defaults`, including conflict handling with `--defaults`, docs, and BATS coverage.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.

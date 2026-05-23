@@ -68,6 +68,24 @@ next to it under a shared parent directory, for example:
 Over time, each project repo can declare how Base should interact with it,
 likely through a small project manifest or well-defined conventions.
 
+The first version of that manifest is `base_manifest.yaml` at a project repo
+root. It declares the project name and the project artifacts Base should manage:
+
+```yaml
+project:
+  name: example
+
+artifacts:
+  - type: tool
+    name: terraform
+    version: "1.8.5"
+```
+
+The manifest intentionally describes what the project needs, not how to install
+it. Base owns the artifact registry and chooses the manager for each supported
+`type` and `name` pair. Unknown artifacts fail setup clearly instead of running
+arbitrary user-provided install commands.
+
 ### 2. Shell Environment Management
 
 Base should manage shell environments at two levels:
@@ -124,6 +142,9 @@ exec "$(dirname "$0")/basectl" caff "$@"
 `basectl setup` deliberately pins its default Homebrew Python formula so setup is
 reproducible across machines. The current default is `python@3.13`. Override it
 with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
+After this Bash bootstrap layer creates Base's own Python environment, setup
+installs `PyYAML` into that environment and invokes the Python project setup
+layer to read `base_manifest.yaml` and reconcile project artifacts.
 
 ## Quick Start
 
