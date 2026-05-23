@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 import io
+import importlib.util
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from base_setup.engine import main
 from base_setup.manifest import read_manifest
+
+
+def run_engine(args: list[str]) -> tuple[int, str, str]:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with tempfile.TemporaryDirectory() as home_dir:
+        with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                status = main(args)
+    return status, stdout.getvalue(), stderr.getvalue()
 
 
 class ManifestTests(unittest.TestCase):
@@ -36,6 +49,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_unknown_artifact_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
@@ -54,13 +68,12 @@ class ManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            stderr = io.StringIO()
-            with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
-                status = main(["--manifest", str(manifest_path)])
+            status, _stdout, stderr = run_engine(["--manifest", str(manifest_path)])
 
         self.assertEqual(status, 1)
-        self.assertIn("Unsupported artifact 'not-a-real-artifact' of type 'tool'", stderr.getvalue())
+        self.assertIn("Unsupported artifact 'not-a-real-artifact' of type 'tool'", stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
@@ -79,13 +92,12 @@ class ManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            stdout = io.StringIO()
-            with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
-                status = main(["--dry-run", "--manifest", str(manifest_path)])
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("[DRY-RUN] Would run: brew install terraform", stdout.getvalue())
+        self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_project_argument_validates_manifest_project_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
@@ -101,12 +113,10 @@ class ManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            stderr = io.StringIO()
-            with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
-                status = main(["--manifest", str(manifest_path), "other"])
+            status, _stdout, stderr = run_engine(["--manifest", str(manifest_path), "other"])
 
         self.assertEqual(status, 1)
-        self.assertIn("project.name is 'demo', expected 'other'", stderr.getvalue())
+        self.assertIn("project.name is 'demo', expected 'other'", stderr)
 
     def test_empty_artifact_list_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -128,6 +138,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest.project_name, "demo")
         self.assertEqual(manifest.artifacts, ())
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_empty_artifact_list_logs_that_no_artifacts_are_declared(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
@@ -143,12 +154,10 @@ class ManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            stdout = io.StringIO()
-            with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
-                status = main(["--manifest", str(manifest_path)])
+            status, _stdout, stderr = run_engine(["--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("Project 'demo' declares no artifacts.", stdout.getvalue())
+        self.assertIn("Project 'demo' declares no artifacts.", stderr)
 
 
 if __name__ == "__main__":

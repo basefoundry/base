@@ -1,44 +1,54 @@
 from __future__ import annotations
 
-import argparse
-import os
 import subprocess
-import sys
 import venv
 from pathlib import Path
+
+import base_cli
 
 from .manifest import BaseManifest, ManifestError, discover_manifest, read_manifest
 from .registry import ArtifactDefinition, get_artifact_definition
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run Base project artifact setup.")
-    parser.add_argument("project", nargs="?", help="Expected project name from base_manifest.yaml.")
-    parser.add_argument("--manifest", help="Path to base_manifest.yaml.")
-    parser.add_argument("--start-dir", default=os.getcwd(), help="Directory where manifest discovery should start.")
-    parser.add_argument("--dry-run", action="store_true", help="Log planned changes without making them.")
-    args = parser.parse_args(argv)
+app = base_cli.App(name="base_setup")
 
-    manifest_path = Path(args.manifest).resolve() if args.manifest else discover_manifest(Path(args.start_dir))
+
+def main(argv: list[str] | None = None) -> int:
+    result = app.click_command.main(args=argv, standalone_mode=False)
+    return int(result or 0)
+
+
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.argument("project", required=False)
+@base_cli.option("--manifest", help="Path to base_manifest.yaml.")
+@base_cli.option("--start-dir", default=".", help="Directory where manifest discovery should start.")
+@base_cli.option("--dry-run", is_flag=True, help="Log planned changes without making them.")
+def run(
+    ctx: base_cli.Context,
+    project: str | None,
+    manifest: str | None,
+    start_dir: str,
+    dry_run: bool,
+) -> int:
+    manifest_path = Path(manifest).resolve() if manifest else discover_manifest(Path(start_dir))
     if manifest_path is None:
-        if args.project:
-            error(f"No base_manifest.yaml found while setting up project '{args.project}'.")
+        if project:
+            ctx.log.error("No base_manifest.yaml found while setting up project '%s'.", project)
             return 1
-        info("No base_manifest.yaml found; skipping project artifact setup.")
+        ctx.log.info("No base_manifest.yaml found; skipping project artifact setup.")
         return 0
 
     try:
-        manifest = read_manifest(manifest_path)
-        validate_project_name(manifest, args.project)
-        reconcile_manifest(manifest, dry_run=args.dry_run)
+        base_manifest = read_manifest(manifest_path)
+        validate_project_name(base_manifest, project)
+        reconcile_manifest(ctx, base_manifest, dry_run=dry_run)
+        return 0
     except ManifestError as exc:
-        error(str(exc))
+        ctx.log.error(str(exc))
         return 1
     except ArtifactError as exc:
-        error(str(exc))
+        ctx.log.error(str(exc))
         return 1
-
-    return 0
 
 
 class ArtifactError(RuntimeError):
@@ -52,14 +62,14 @@ def validate_project_name(manifest: BaseManifest, expected_project: str | None) 
         )
 
 
-def reconcile_manifest(manifest: BaseManifest, dry_run: bool) -> None:
-    info(f"Reading Base manifest at '{manifest.path}'.")
-    info(f"Setting up project '{manifest.project_name}'.")
+def reconcile_manifest(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    ctx.log.info("Reading Base manifest at '%s'.", manifest.path)
+    ctx.log.info("Setting up project '%s'.", manifest.project_name)
 
     project_root = manifest.path.parent
     if not manifest.artifacts:
-        info(f"Project '{manifest.project_name}' declares no artifacts.")
-        info(f"Project '{manifest.project_name}' artifact setup is complete.")
+        ctx.log.info("Project '%s' declares no artifacts.", manifest.project_name)
+        ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
         return
 
     for artifact in manifest.artifacts:
@@ -70,54 +80,80 @@ def reconcile_manifest(manifest: BaseManifest, dry_run: bool) -> None:
                 f"'{artifact.name}' of type '{artifact.artifact_type}'. "
                 "Base does not know how to manage this artifact yet."
             )
-        reconcile_artifact(project_root, definition, artifact.version, dry_run=dry_run)
+        reconcile_artifact(ctx, project_root, definition, artifact.version, dry_run=dry_run)
 
-    info(f"Project '{manifest.project_name}' artifact setup is complete.")
+    ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
 
 
-def reconcile_artifact(project_root: Path, definition: ArtifactDefinition, version: str, dry_run: bool) -> None:
+def reconcile_artifact(
+    ctx: base_cli.Context,
+    project_root: Path,
+    definition: ArtifactDefinition,
+    version: str,
+    dry_run: bool,
+) -> None:
     if definition.manager == "homebrew":
-        reconcile_homebrew_artifact(definition, version, dry_run=dry_run)
+        reconcile_homebrew_artifact(ctx, definition, version, dry_run=dry_run)
         return
     if definition.manager == "pip":
-        reconcile_python_artifact(project_root, definition, version, dry_run=dry_run)
+        reconcile_python_artifact(ctx, project_root, definition, version, dry_run=dry_run)
         return
     raise ArtifactError(f"Artifact manager '{definition.manager}' is not implemented.")
 
 
-def reconcile_homebrew_artifact(definition: ArtifactDefinition, version: str, dry_run: bool) -> None:
+def reconcile_homebrew_artifact(
+    ctx: base_cli.Context,
+    definition: ArtifactDefinition,
+    version: str,
+    dry_run: bool,
+) -> None:
     command = ["brew", "install", definition.package]
     if dry_run:
-        dry_run_command(command)
+        dry_run_command(ctx, command)
         return
 
     if not command_exists("brew"):
         raise ArtifactError(f"Homebrew is required to install artifact '{definition.name}'.")
 
     if run_check(["brew", "list", definition.package]):
-        info(f"Artifact '{definition.name}' is already installed via Homebrew package '{definition.package}'.")
+        ctx.log.info(
+            "Artifact '%s' is already installed via Homebrew package '%s'.",
+            definition.name,
+            definition.package,
+        )
         return
 
-    info(f"Installing artifact '{definition.name}' via Homebrew package '{definition.package}' ({version}).")
+    ctx.log.info(
+        "Installing artifact '%s' via Homebrew package '%s' (%s).",
+        definition.name,
+        definition.package,
+        version,
+    )
     run_command(command)
 
 
-def reconcile_python_artifact(project_root: Path, definition: ArtifactDefinition, version: str, dry_run: bool) -> None:
+def reconcile_python_artifact(
+    ctx: base_cli.Context,
+    project_root: Path,
+    definition: ArtifactDefinition,
+    version: str,
+    dry_run: bool,
+) -> None:
     venv_dir = project_root / ".base" / ".venv"
     python_bin = venv_dir / "bin" / "python"
     requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
 
     if dry_run:
         if not python_bin.exists():
-            info(f"[DRY-RUN] Would create project virtual environment at '{venv_dir}'.")
-        dry_run_command([str(python_bin), "-m", "pip", "install", requirement])
+            ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", venv_dir)
+        dry_run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
         return
 
     if not python_bin.exists():
-        info(f"Creating project virtual environment at '{venv_dir}'.")
+        ctx.log.info("Creating project virtual environment at '%s'.", venv_dir)
         venv.create(venv_dir, with_pip=True)
 
-    info(f"Installing Python artifact '{definition.name}' into project virtual environment.")
+    ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
     run_command([str(python_bin), "-m", "pip", "install", requirement])
 
 
@@ -135,8 +171,8 @@ def run_command(command: list[str]) -> None:
         raise ArtifactError(f"Command failed with exit {completed.returncode}: {format_command(command)}")
 
 
-def dry_run_command(command: list[str]) -> None:
-    info(f"[DRY-RUN] Would run: {format_command(command)}")
+def dry_run_command(ctx: base_cli.Context, command: list[str]) -> None:
+    ctx.log.info("[DRY-RUN] Would run: %s", format_command(command))
 
 
 def format_command(command: list[str]) -> str:
@@ -147,11 +183,3 @@ def _quote_arg(arg: str) -> str:
     if arg and all(char.isalnum() or char in "/._=:@+-" for char in arg):
         return arg
     return "'" + arg.replace("'", "'\"'\"'") + "'"
-
-
-def info(message: str) -> None:
-    print(f"INFO: {message}")
-
-
-def error(message: str) -> None:
-    print(f"ERROR: {message}", file=sys.stderr)

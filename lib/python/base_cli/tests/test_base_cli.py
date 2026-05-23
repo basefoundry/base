@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import os
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -67,6 +68,8 @@ class BaseCliTests(unittest.TestCase):
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
             self.assertTrue((home / ".base.d" / "cli" / "demo" / "logs").is_dir())
+            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
+            self.assertIn("hello Ada", result.stderr)
 
 
 if __name__ == "__main__":

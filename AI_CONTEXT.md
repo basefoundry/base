@@ -13,8 +13,11 @@ This file is the shared working memory for future AI-assisted development in thi
   dependency installed by the Bash setup layer into `~/.base.d/.venv`, not a
   project artifact.
 - Current in-progress work rewrites `docs/base-cli-design.md` around explicit
-  `base_cli.App`/`Context` initialization and starts v1 under `cli/python/base_cli/`.
+  `base_cli.App`/`Context` initialization and starts v1 under `lib/python/base_cli/`.
   Click is a Base Python bootstrap dependency installed into `~/.base.d/.venv`.
+- Most recent local work dogfoods `base_cli` in `base_setup`: the Python setup
+  engine now uses `base_cli.App`, `base_cli.argument`, `base_cli.option`, and
+  `Context` logging while preserving the existing module CLI shape.
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.

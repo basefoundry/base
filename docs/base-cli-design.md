@@ -52,7 +52,7 @@ created immediately before command execution and cleaned up afterward.
 ## Package Layout
 
 ```text
-cli/python/base_cli/
+lib/python/base_cli/
   __init__.py
   app.py
   config.py
@@ -123,8 +123,14 @@ Every run gets two streams:
 
 | Stream | Destination | Level | Format |
 |---|---|---|---|
-| user | stderr | INFO by default, DEBUG with `--debug` | concise text |
-| persistent | `ctx.log_file` | DEBUG | timestamped text |
+| user | stderr | INFO by default, DEBUG with `--debug` | Base-style timestamp, level, source, message |
+| persistent | `ctx.log_file` | DEBUG | Base-style timestamp, level, source, message |
+
+Python user-facing logs should visually align with Bash `lib_std.sh` logs:
+
+```text
+2026-05-23 12:31:04 INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
+```
 
 `base_cli` logs invocation metadata at DEBUG level:
 

@@ -379,6 +379,7 @@ setup_run_project_artifact_setup() {
     local python_bin old_pythonpath
     local exit_code
     local args=()
+    local base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
 
     if setup_is_dry_run && [[ "${BASE_SETUP_PYYAML_READY:-}" != true ]]; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
@@ -399,9 +400,9 @@ setup_run_project_artifact_setup() {
 
     old_pythonpath="${PYTHONPATH-}"
     if [[ -n "$old_pythonpath" ]]; then
-        PYTHONPATH="$BASE_HOME/cli/python:$old_pythonpath"
+        PYTHONPATH="$base_pythonpath:$old_pythonpath"
     else
-        PYTHONPATH="$BASE_HOME/cli/python"
+        PYTHONPATH="$base_pythonpath"
     fi
     export PYTHONPATH
 

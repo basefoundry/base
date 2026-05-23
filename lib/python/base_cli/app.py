@@ -26,40 +26,59 @@ class App:
         self.name = normalize_cli_name(name or sys.argv[0])
         self.version = version
         self._click_command = None
+        self._command_func: Callable[..., Any] | None = None
+        self._command_args: tuple[Any, ...] = ()
+        self._command_kwargs: dict[str, Any] = {}
 
     def command(self, *command_args: Any, **command_kwargs: Any):
-        click = _require_click()
-
         def decorator(func: Callable[..., Any]):
-            sensitive_options = set(getattr(func, "__base_cli_sensitive_options__", set()))
-
-            @functools.wraps(func)
-            def wrapper(**kwargs: Any):
-                standard = _pop_standard_options(kwargs)
-                context = self._create_context(standard, sensitive_options)
-                token = set_current_context(context)
-                try:
-                    log_invocation(context.log, sys.argv, sensitive_options)
-                    if context.project_root is not None:
-                        context.log.debug("project_root=%s", context.project_root)
-                    if context.manifest_path is not None:
-                        context.log.debug("manifest_path=%s", context.manifest_path)
-                    return func(context, **kwargs)
-                finally:
-                    reset_current_context(token)
-                    context.cleanup()
-
-            wrapper.__click_params__ = list(getattr(func, "__click_params__", []))
-            wrapper = _decorate_standard_options(click, wrapper, self.version)
-            self._click_command = click.command(*command_args, **command_kwargs)(wrapper)
-            return self._click_command
+            self._command_func = func
+            self._command_args = command_args
+            self._command_kwargs = command_kwargs
+            return func
 
         return decorator
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.click_command(*args, **kwargs)
+
+    @property
+    def click_command(self) -> Any:
         if self._click_command is None:
+            self._click_command = self._build_click_command()
+        return self._click_command
+
+    def _build_click_command(self) -> Any:
+        if self._command_func is None:
             raise RuntimeError("No command has been registered on this base_cli.App.")
-        return self._click_command(*args, **kwargs)
+
+        click = _require_click()
+        func = self._command_func
+        sensitive_options = set(getattr(func, "__base_cli_sensitive_options__", set()))
+
+        @functools.wraps(func)
+        def wrapper(**kwargs: Any):
+            standard = _pop_standard_options(kwargs)
+            context = self._create_context(standard, sensitive_options)
+            token = set_current_context(context)
+            try:
+                log_invocation(context.log, sys.argv, sensitive_options)
+                if context.project_root is not None:
+                    context.log.debug("project_root=%s", context.project_root)
+                if context.manifest_path is not None:
+                    context.log.debug("manifest_path=%s", context.manifest_path)
+                return func(context, **kwargs)
+            finally:
+                reset_current_context(token)
+                context.cleanup()
+
+        for kind, param_decls, attrs in getattr(func, "__base_cli_param_specs__", []):
+            if kind == "option":
+                wrapper = click.option(*param_decls, **attrs)(wrapper)
+            elif kind == "argument":
+                wrapper = click.argument(*param_decls, **attrs)(wrapper)
+        wrapper = _decorate_standard_options(click, wrapper, self.version)
+        return click.command(*self._command_args, **self._command_kwargs)(wrapper)
 
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str]) -> Context:
         del sensitive_options
@@ -109,15 +128,25 @@ def command(*args: Any, **kwargs: Any):
 
 
 def option(*param_decls: str, sensitive: bool = False, **attrs: Any):
-    click = _require_click()
-
     def decorator(func: Callable[..., Any]):
-        decorated = click.option(*param_decls, **attrs)(func)
+        specs = list(getattr(func, "__base_cli_param_specs__", []))
+        specs.append(("option", param_decls, attrs))
+        func.__base_cli_param_specs__ = specs
         if sensitive:
-            options = set(getattr(decorated, "__base_cli_sensitive_options__", set()))
+            options = set(getattr(func, "__base_cli_sensitive_options__", set()))
             options.add(parameter_name_from_decls(param_decls))
-            decorated.__base_cli_sensitive_options__ = options
-        return decorated
+            func.__base_cli_sensitive_options__ = options
+        return func
+
+    return decorator
+
+
+def argument(*param_decls: str, **attrs: Any):
+    def decorator(func: Callable[..., Any]):
+        specs = list(getattr(func, "__base_cli_param_specs__", []))
+        specs.append(("argument", param_decls, attrs))
+        func.__base_cli_param_specs__ = specs
+        return func
 
     return decorator
 
@@ -138,4 +167,3 @@ def _pop_standard_options(kwargs: dict[str, Any]) -> dict[str, Any]:
     for key in ("debug", "environment", "config", "keep_temp", "log_file"):
         standard[key] = kwargs.pop(key, None)
     return standard
-
