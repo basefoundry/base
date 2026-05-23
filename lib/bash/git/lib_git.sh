@@ -3,6 +3,9 @@
 # lib_git.sh: Git operations
 #
 
+[[ -n "${__lib_git_sourced__:-}" ]] && return 0
+readonly __lib_git_sourced__=1
+
 #
 # Returns success when tracked changes are limited to one repo-relative path.
 #
@@ -29,20 +32,66 @@ _git_only_path_dirty() {
     return 0
 }
 
+_git_expected_update_branch() {
+    local configured_branch="${1:-}"
+    local default_branch
+
+    if [[ -n "$configured_branch" ]]; then
+        printf '%s\n' "$configured_branch"
+        return 0
+    fi
+
+    if default_branch="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+        default_branch="${default_branch#origin/}"
+        if [[ -n "$default_branch" ]]; then
+            printf '%s\n' "$default_branch"
+            return 0
+        fi
+    fi
+
+    if git show-ref --verify --quiet refs/heads/main; then
+        printf '%s\n' main
+        return 0
+    fi
+
+    if git show-ref --verify --quiet refs/heads/master; then
+        printf '%s\n' master
+        return 0
+    fi
+
+    printf '%s\n' master
+}
+
+_git_update_repo_finish() {
+    local git_log="${1:-}"
+    local should_popd="${2:-false}"
+    local status="${3:-0}"
+
+    if [[ "$should_popd" == true ]]; then
+        popd >/dev/null || status=1
+    fi
+
+    [[ -n "$git_log" ]] && rm -f "$git_log"
+    return "$status"
+}
+
 #
-# Safely updates a Git repository and its submodules after checking if the current branch is 'master'.
+# Safely updates a Git repository and its submodules after checking that the
+# current branch is the repo default branch or an explicit expected branch.
 #
 # @param $1 git_repo           The path to the local git repository.
 # @param $2 allowed_dirty_path Optional repo-relative path that may be dirty.
+# @param $3 expected_branch    Optional branch name to require instead of auto-detecting.
 #
 git_update_repo() {
     local git_repo="$1"
     local allowed_dirty_path="${2:-}"
+    local expected_branch="${3:-}"
     local git_log
 
     if [[ -z "$git_repo" ]]; then
         log_error "No git repository path provided."
-        log_info "Usage: update_repo /path/to/repo [allowed_dirty_path]"
+        log_info "Usage: update_repo /path/to/repo [allowed_dirty_path] [expected_branch]"
         return 1
     fi
 
@@ -51,26 +100,31 @@ git_update_repo() {
         return 1
     fi
 
-    git_log=$(mktemp -p /tmp)
+    git_log="$(mktemp "${TMPDIR:-/tmp}/git_log.XXXXXX")" || {
+        log_error "Unable to create temporary git log file."
+        return 1
+    }
     if ! pushd "$git_repo" > /dev/null; then
         # If cd fails, we can't proceed.
-        return 1
+        _git_update_repo_finish "$git_log" false 1
+        return $?
     fi
 
     # Check if it's a valid git repo
     if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
         log_error "'$git_repo' is not a Git repository."
-        popd >/dev/null || return 1
-        return 1
+        _git_update_repo_finish "$git_log" true 1
+        return $?
     fi
 
-    # Make sure the current branch is master
+    # Make sure the current branch is the expected update branch.
     local current_branch
+    expected_branch="$(_git_expected_update_branch "$expected_branch")"
     current_branch=$(git rev-parse --abbrev-ref HEAD)
-    if [[ "$current_branch" != "master" ]]; then
-        log_debug "Current branch of '$git_repo' is '${current_branch}', not 'master'. Skipping update."
-        popd >/dev/null || return 1
-        return 1
+    if [[ "$current_branch" != "$expected_branch" ]]; then
+        log_debug "Current branch of '$git_repo' is '${current_branch}', not '$expected_branch'. Skipping update."
+        _git_update_repo_finish "$git_log" true 1
+        return $?
     fi
 
     local dirty=false
@@ -85,8 +139,8 @@ git_update_repo() {
             log_debug "Repo '$git_repo' only has tracked changes in '$allowed_dirty_path'; attempting git pull."
         else
             log_debug "Repo '$git_repo' has local changes; skipping auto-update. Commit or stash to enable git pull."
-            popd >/dev/null || return 1
-            return 0
+            _git_update_repo_finish "$git_log" true 0
+            return $?
         fi
     fi
 
@@ -94,21 +148,21 @@ git_update_repo() {
     if ! { git pull || git pull; } >"$git_log" 2>&1; then
         log_error "git pull failed on repo '$git_repo'"
         [[ -s "$git_log" ]] && log_info_file "$git_log"
-        popd >/dev/null || return 1
-        return 1
+        _git_update_repo_finish "$git_log" true 1
+        return $?
     fi
 
     # it is safe to run submodule commands even if the repo has no submodules
     if ! { git submodule init && git submodule sync && git submodule update; } >/dev/null; then
         log_error "git submodule update failed on repo '$git_repo'"
         [[ -s "$git_log" ]] && log_info_file "$git_log"
-        popd >/dev/null || return 1
-        return 1
+        _git_update_repo_finish "$git_log" true 1
+        return $?
     fi
 
-    log_debug "Git repo '$git_repo' updated to latest master"
-    popd >/dev/null || return 1
-    return 0
+    log_debug "Git repo '$git_repo' updated to latest '$expected_branch'"
+    _git_update_repo_finish "$git_log" true 0
+    return $?
 }
 
 #

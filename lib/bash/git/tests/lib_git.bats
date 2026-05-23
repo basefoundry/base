@@ -47,6 +47,44 @@ setup() {
     [[ "$output" == *"has local changes; skipping auto-update"* ]]
 }
 
+@test "git_update_repo accepts main as the detected update branch" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    git -C "$repo" checkout -B main >/dev/null 2>&1
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    printf 'local change\n' > "$repo/data.txt"
+    set_log_level DEBUG
+
+    bats_run git_update_repo "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"has local changes; skipping auto-update"* ]]
+    [[ "$output" != *"not 'master'"* ]]
+}
+
+@test "git_update_repo cleans up temp log without changing RETURN trap" {
+    local repo="$TEST_TMPDIR/repo"
+    local temp_dir="$TEST_TMPDIR/git-temp"
+    local return_trap
+
+    mkdir -p "$temp_dir"
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    printf 'local change\n' > "$repo/data.txt"
+
+    trap 'printf "outer return trap\n"' RETURN
+    TMPDIR="$temp_dir" bats_run git_update_repo "$repo"
+    return_trap="$(trap -p RETURN)"
+    trap - RETURN
+
+    [ "$status" -eq 0 ]
+    [[ "$return_trap" == *"outer return trap"* ]]
+    ! compgen -G "$temp_dir/git_log.*" >/dev/null
+}
+
 @test "check_script_up_to_date reports success for an up-to-date tracked script" {
     local repo="$TEST_TMPDIR/repo"
     local remote="$TEST_TMPDIR/remote.git"

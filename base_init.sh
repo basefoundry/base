@@ -92,20 +92,38 @@ base_init_resolve_home() {
 }
 
 base_init_export_contract() {
-    local base_home
+    local base_home base_os base_host
 
     base_home="$(base_init_resolve_home)" || return 1
+    base_os="$(uname -s)" || {
+        base_init_error "Unable to determine BASE_OS with uname."
+        return 1
+    }
+    [[ -n "$base_os" ]] || {
+        base_init_error "Unable to determine BASE_OS with uname."
+        return 1
+    }
+    base_host="$(hostname -s)" || {
+        base_init_error "Unable to determine BASE_HOST with hostname."
+        return 1
+    }
+    [[ -n "$base_host" ]] || {
+        base_init_error "Unable to determine BASE_HOST with hostname."
+        return 1
+    }
 
-    export BASE_HOME="$base_home"
-    export BASE_BIN_DIR="$BASE_HOME/bin"
-    export BASE_CLI_DIR="$BASE_HOME/cli"
-    export BASE_BASH_DIR="$BASE_CLI_DIR/bash"
-    export BASE_BASH_COMMANDS_DIR="$BASE_BASH_DIR/commands"
-    export BASE_LIB_DIR="$BASE_HOME/lib"
-    export BASE_BASH_LIB_DIR="$BASE_LIB_DIR/bash"
-    export BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
-    export BASE_OS="$(uname -s)"
-    export BASE_HOST="$(hostname -s)"
+    BASE_HOME="$base_home"
+    BASE_BIN_DIR="$BASE_HOME/bin"
+    BASE_CLI_DIR="$BASE_HOME/cli"
+    BASE_BASH_DIR="$BASE_CLI_DIR/bash"
+    BASE_BASH_COMMANDS_DIR="$BASE_BASH_DIR/commands"
+    BASE_LIB_DIR="$BASE_HOME/lib"
+    BASE_BASH_LIB_DIR="$BASE_LIB_DIR/bash"
+    BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
+    BASE_OS="$base_os"
+    BASE_HOST="$base_host"
+    export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_HOST
 }
 
 base_init_source_stdlib() {

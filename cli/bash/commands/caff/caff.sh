@@ -43,7 +43,7 @@ main() {
             ;;
     esac
 
-    if ! type -ft caffeinate >/dev/null; then
+    if ! command -v caffeinate >/dev/null 2>&1; then
         print_error "There is no caffeinate command on your system."
         return 1
     fi

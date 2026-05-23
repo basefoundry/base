@@ -307,12 +307,34 @@ run_base_command() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would install Homebrew using the official installer."* ]]
-    [[ "$output" == *"[DRY-RUN] Would wait for Xcode Command Line Tools installation to complete."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
     [ ! -e "$TEST_HOME/.base.d/.venv" ]
+}
+
+@test "basectl setup ignores inherited DRY_RUN without --dry-run" {
+    local installer
+    local venv_dir="$TEST_HOME/.base.d/.venv"
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        DRY_RUN=true \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"[DRY-RUN]"* ]]
+    [[ "$output" == *"Installing Homebrew."* ]]
+    [[ "$output" == *"Installing Xcode Command Line Tools."* ]]
+    [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
+    [ -f "$TEST_STATE_DIR/homebrew-install-ran" ]
+    [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
 @test "basectl check passes when all required components are present" {

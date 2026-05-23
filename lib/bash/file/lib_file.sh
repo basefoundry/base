@@ -3,6 +3,9 @@
 # lib_file.sh - Bash library of generic file manipulation functions.
 #
 
+[[ -n "${__lib_file_sourced__:-}" ]] && return 0
+readonly __lib_file_sourced__=1
+
 #
 # update_file_section - Idempotently manages a block of text within a file,
 #                       demarcated by start and end markers.
@@ -140,13 +143,13 @@ update_file_section() {
             cp "$target_file" "$temp_file"
 
             if [[ $(tail -c 1 "$temp_file" 2>/dev/null | wc -l) -eq 0 ]]; then
-                 echo "" >> "$temp_file"
+                printf '\n' >> "$temp_file"
             fi
 
             if {
-                echo "$beginning_marker"
-                printf "%s" "$new_content_string"
-                echo "$end_marker"
+                printf '%s\n' "$beginning_marker"
+                printf '%s' "$new_content_string"
+                printf '%s\n' "$end_marker"
             } >> "$temp_file" && mv -f "$temp_file" "$target_file"; then
                 return 0
             fi

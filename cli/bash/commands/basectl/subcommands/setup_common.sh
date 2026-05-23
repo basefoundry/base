@@ -18,7 +18,7 @@ _base_setup_common_sourced=1
 readonly _base_setup_common_sourced
 
 setup_clear_run_state() {
-    unset dry_run
+    unset dry_run DRY_RUN
 }
 
 setup_enable_dry_run() {
@@ -155,13 +155,13 @@ setup_install_xcode_tools() {
         fatal_error "Xcode Command Line Tools installation requires an interactive terminal."
     fi
 
-    log_info "Installing Xcode Command Line Tools."
-    run --no-exit xcode-select --install
-
     if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would wait for Xcode Command Line Tools installation to complete."
+        log_info "[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."
         return 0
     fi
+
+    log_info "Installing Xcode Command Line Tools."
+    run --no-exit xcode-select --install
 
     timeout="$(setup_xcode_wait_timeout_seconds)"
     interval="$(setup_xcode_wait_interval_seconds)"
