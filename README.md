@@ -365,8 +365,10 @@ older version of Base. The goal now is to evolve those foundations into a more
 general multi-project workspace tool.
 
 For the evolving architecture and product-direction notes behind that refactor,
-see [docs/design.md](docs/design.md). For ecosystem boundary and integration
-decisions, see [docs/tool-boundaries.md](docs/tool-boundaries.md).
+see [docs/design.md](docs/design.md). For the current `basectl` runtime and
+dispatch contract, see [docs/execution-model.md](docs/execution-model.md). For
+ecosystem boundary and integration decisions, see
+[docs/tool-boundaries.md](docs/tool-boundaries.md).
 
 The first migration pass has already started: the Base CLI, runtime bootstrap,
 setup command, and Bash libraries formerly living in the `banyanlabs` repo now

@@ -86,6 +86,9 @@ Shebang-based Bash scripts can also use:
 In that mode, `basectl` wraps the script in the Base environment, sources it,
 and calls its `main` function.
 
+The current dispatch and runtime contract is documented in
+[execution-model.md](execution-model.md).
+
 ---
 
 ## Project Activation Model — Subshell Design
