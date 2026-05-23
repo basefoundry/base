@@ -72,7 +72,6 @@ layers. This keeps the product name and the control-plane action separate:
 
 - `basectl setup`
 - `basectl check`
-- `basectl install`
 - `basectl update-profile`
 - `basectl shell`
 - future commands such as `basectl projects list`, `basectl test`, and

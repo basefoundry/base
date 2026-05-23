@@ -45,7 +45,7 @@ basectl_resolve_path() {
     printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
 }
 
-basectl_repo_root() {
+basectl_base_home() {
     local source_path
     local bin_dir
 
@@ -110,7 +110,7 @@ basectl_filter_runtime_args() {
 }
 
 basectl_run_bash_script() {
-    local repo_root="$1"
+    local base_home="$1"
     local script_path="$2"
     local command_name="$3"
     local command_dir
@@ -121,14 +121,14 @@ basectl_run_bash_script() {
 
     basectl_filter_runtime_args "$@"
 
-    export BASE_HOME="$repo_root"
+    export BASE_HOME="$base_home"
     export BASE_BASH_COMMAND_NAME="$command_name"
     export BASE_BASH_COMMAND_DIR="$command_dir"
     export BASE_BASH_COMMAND_SCRIPT="$script_path"
 
     BASE_BASH_BOOTSTRAP_SOURCE="$script_path"
     # shellcheck source=/dev/null
-    source "$repo_root/base_init.sh" "$@" || exit $?
+    source "$base_home/base_init.sh" "$@" || exit $?
     unset BASE_BASH_BOOTSTRAP_SOURCE
 
     unset -f main
@@ -144,18 +144,18 @@ basectl_run_bash_script() {
 }
 
 basectl_start_shell() {
-    local repo_root="$1"
-    local shell_rc="$repo_root/lib/bash/runtime/bashrc"
+    local base_home="$1"
+    local shell_rc="$base_home/lib/bash/runtime/bashrc"
 
     [[ -f "$shell_rc" ]] || basectl_die "Base runtime Bash rcfile '$shell_rc' was not found."
 
-    export BASE_HOME="$repo_root"
+    export BASE_HOME="$base_home"
     export BASE_SHELL=1
     exec "${BASH:-bash}" --rcfile "$shell_rc"
 }
 
 basectl_command_script() {
-    local repo_root="$1"
+    local base_home="$1"
     local command_name="${2:-}"
     local script_path
 
@@ -167,39 +167,39 @@ basectl_command_script() {
             ;;
     esac
 
-    script_path="$repo_root/cli/bash/commands/$command_name/$command_name.sh"
+    script_path="$base_home/cli/bash/commands/$command_name/$command_name.sh"
     [[ -f "$script_path" ]] || return 1
     printf '%s\n' "$script_path"
 }
 
 basectl_run_command_name() {
-    local repo_root="$1"
+    local base_home="$1"
     local command_name="$2"
     local script_path
     shift 2
 
-    script_path="$(basectl_command_script "$repo_root" "$command_name")" || return 1
-    basectl_run_bash_script "$repo_root" "$script_path" "$command_name" "$@"
+    script_path="$(basectl_command_script "$base_home" "$command_name")" || return 1
+    basectl_run_bash_script "$base_home" "$script_path" "$command_name" "$@"
 }
 
 basectl_run_control_command() {
-    local repo_root="$1"
-    local script_path="$repo_root/cli/bash/commands/base/base.sh"
+    local base_home="$1"
+    local script_path="$base_home/cli/bash/commands/base/base.sh"
     shift
 
-    basectl_run_bash_script "$repo_root" "$script_path" basectl "$@"
+    basectl_run_bash_script "$base_home" "$script_path" basectl "$@"
 }
 
 main() {
-    local repo_root
+    local base_home
     local script_path
     local command_name
 
     basectl_ensure_supported_bash "$@"
-    repo_root="$(basectl_repo_root)" || basectl_die "Unable to resolve the Base repository root."
+    base_home="$(basectl_base_home)" || basectl_die "Unable to resolve Base home."
 
     if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
-        basectl_start_shell "$repo_root"
+        basectl_start_shell "$base_home"
         return $?
     fi
 
@@ -207,18 +207,18 @@ main() {
         script_path="$(basectl_resolve_path "$1")" || basectl_die "Script '$1' was not found."
         command_name="$(basectl_normalize_script_name "$(basename -- "$script_path")")"
         shift
-        basectl_run_bash_script "$repo_root" "$script_path" "$command_name" "$@"
+        basectl_run_bash_script "$base_home" "$script_path" "$command_name" "$@"
         return $?
     fi
 
-    if [[ -n "${1:-}" ]] && basectl_command_script "$repo_root" "$1" >/dev/null; then
+    if [[ -n "${1:-}" ]] && basectl_command_script "$base_home" "$1" >/dev/null; then
         command_name="$1"
         shift
-        basectl_run_command_name "$repo_root" "$command_name" "$@"
+        basectl_run_command_name "$base_home" "$command_name" "$@"
         return $?
     fi
 
-    basectl_run_control_command "$repo_root" "$@"
+    basectl_run_control_command "$base_home" "$@"
 }
 
 main "$@"
