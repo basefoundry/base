@@ -54,22 +54,21 @@ basectl_base_home() {
     cd -- "$bin_dir/.." && pwd -P
 }
 
-basectl_read_version() {
+basectl_source_version_library() {
     local base_home="$1"
-    local version_file="$base_home/VERSION"
+    local version_lib="$base_home/lib/bash/version/lib_version.sh"
 
-    [[ -f "$version_file" ]] || {
-        printf '%s\n' "unknown"
-        return 0
-    }
+    [[ -f "$version_lib" ]] || basectl_die "Base version library '$version_lib' was not found."
 
-    IFS= read -r version < "$version_file" || version=""
-    printf '%s\n' "${version:-unknown}"
+    # shellcheck source=/dev/null
+    source "$version_lib"
 }
 
 basectl_print_version() {
     local base_home="$1"
-    printf 'basectl %s\n' "$(basectl_read_version "$base_home")"
+
+    basectl_source_version_library "$base_home"
+    printf 'basectl %s\n' "$(base_read_version "$base_home")"
 }
 
 basectl_ensure_supported_bash() {

@@ -64,6 +64,48 @@ setup() {
     [[ "$output" != *"not 'master'"* ]]
 }
 
+@test "_git_only_path_dirty accepts multiple dirty files under an allowed directory" {
+    local repo="$TEST_TMPDIR/repo"
+    local rc
+
+    init_git_repo "$repo"
+    mkdir -p "$repo/shared"
+    printf 'one\n' > "$repo/shared/one.txt"
+    printf 'two\n' > "$repo/shared/two.txt"
+    commit_all "$repo" "Initial commit"
+    printf 'local one\n' > "$repo/shared/one.txt"
+    printf 'local two\n' > "$repo/shared/two.txt"
+
+    pushd "$repo" >/dev/null
+    _git_only_path_dirty "shared"
+    rc=$?
+    popd >/dev/null
+
+    [ "$rc" -eq 0 ]
+}
+
+@test "_git_only_path_dirty does not treat sibling path prefixes as allowed" {
+    local repo="$TEST_TMPDIR/repo"
+    local rc
+
+    init_git_repo "$repo"
+    mkdir -p "$repo/shared"
+    printf 'one\n' > "$repo/shared/one.txt"
+    printf 'other\n' > "$repo/shared-other.txt"
+    commit_all "$repo" "Initial commit"
+    printf 'local one\n' > "$repo/shared/one.txt"
+    printf 'local other\n' > "$repo/shared-other.txt"
+
+    pushd "$repo" >/dev/null
+    set +e
+    _git_only_path_dirty "shared"
+    rc=$?
+    set -e
+    popd >/dev/null
+
+    [ "$rc" -eq 1 ]
+}
+
 @test "git_update_repo cleans up temp log without changing RETURN trap" {
     local repo="$TEST_TMPDIR/repo"
     local temp_dir="$TEST_TMPDIR/git-temp"

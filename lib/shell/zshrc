@@ -107,35 +107,20 @@ fi
 readonly __base_zshrc_sourced__=1
 base_zshrc_debug "loading"
 
-base_zshrc_source_path() {
+base_zshrc_snippet_dir() {
     local source_path
-    local link_dir
-    local target
 
     source_path="$(eval 'printf "%s\n" "${(%):-%x}"')" || return 1
     [[ -n "$source_path" ]] || return 1
 
-    while [[ -L "$source_path" ]]; do
-        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-        target="$(readlink "$source_path")" || return 1
-        if [[ "$target" == /* ]]; then
-            source_path="$target"
-        else
-            source_path="$link_dir/$target"
-        fi
-    done
-
-    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
-    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
+    cd -- "$(dirname -- "$source_path")" && pwd -P
 }
 
 base_zshrc_set_base_home() {
-    local source_path
     local snippet_dir
     local base_home
 
-    source_path="$(base_zshrc_source_path)" || return 1
-    snippet_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    snippet_dir="$(base_zshrc_snippet_dir)" || return 1
     base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
@@ -202,6 +187,6 @@ base_zshrc_prepend_path
 base_zshrc_source_defaults || return 1
 base_zshrc_debug "complete"
 
-unset -f base_zshrc_source_path base_zshrc_set_base_home
+unset -f base_zshrc_snippet_dir base_zshrc_set_base_home
 unset -f base_zshrc_prepend_path base_zshrc_source_defaults
 unset -f base_zshrc_debug base_zshrc_reject_baserc_owned_var base_zshrc_source_baserc

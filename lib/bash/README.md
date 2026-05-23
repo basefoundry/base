@@ -11,6 +11,8 @@ Reusable Bash libraries for Base-owned command wrappers and other Bash tooling.
   Git-related helpers built on top of the stdlib.
 - `file/`
   File-editing helpers built on top of the stdlib.
+- `version/`
+  Base version helpers that can be sourced before the full runtime is loaded.
 - `runtime/`
   Bash runtime startup files used only by `basectl` when it starts an
   interactive Base shell. These are passed with `bash --rcfile`, source the

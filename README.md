@@ -283,6 +283,19 @@ Diagnostics are printed to stderr and show which Base snippet loaded, how
 `BASE_HOME` was derived, whether `$BASE_HOME/bin` was added to `PATH`, whether
 optional shell defaults were enabled, and how the Base runtime shell was layered.
 
+For command debugging, `basectl -v <command>` enables DEBUG logs after the Base
+runtime is loaded and the selected command is dispatched. For earlier startup
+debugging, use wrapper options that are consumed by `bin/basectl` before
+`base_init.sh` is sourced:
+
+- `--debug-wrapper` and `--verbose-wrapper` enable `LOG_DEBUG=1` before runtime
+  initialization.
+- `--utc-wrapper` enables UTC log timestamps before runtime initialization.
+- `--color` preserves color-aware wrapper argument handling while keeping the flag
+  out of command arguments.
+
+Prefer `-v` unless the problem happens before the command implementation starts.
+
 ### Standard Shell Defaults
 
 Base can provide optional, opinionated shell defaults, but they are not enabled
