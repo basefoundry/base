@@ -83,7 +83,7 @@ basectl_verify_home() {
         return 1
     fi
 
-    for file in VERSION base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.sh lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
+    for file in VERSION base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.sh lib/bash/runtime/bashrc lib/bash/version/lib_version.sh bin/basectl cli/bash/commands/basectl/basectl.sh; do
         if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi
@@ -160,21 +160,21 @@ basectl_do_shell() {
     exec "${BASH:-bash}" --rcfile "$shell_rc"
 }
 
-basectl_read_version() {
-    local version_file="$BASE_HOME/VERSION"
-    local version
+basectl_source_version_library() {
+    local version_lib="$BASE_HOME/lib/bash/version/lib_version.sh"
 
-    [[ -f "$version_file" ]] || {
-        printf '%s\n' "unknown"
-        return 0
+    [[ -f "$version_lib" ]] || {
+        basectl_error "Base version library '$version_lib' was not found."
+        return 1
     }
 
-    IFS= read -r version < "$version_file" || version=""
-    printf '%s\n' "${version:-unknown}"
+    # shellcheck source=/dev/null
+    source "$version_lib"
 }
 
 basectl_do_version() {
-    printf 'basectl %s\n' "$(basectl_read_version)"
+    basectl_source_version_library || return 1
+    printf 'basectl %s\n' "$(base_read_version "$BASE_HOME")"
 }
 
 basectl_should_start_shell() {

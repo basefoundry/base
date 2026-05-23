@@ -33,20 +33,21 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Files: `bin/basectl`, `cli/bash/commands/basectl/basectl.sh`, possibly `README.md`
   - Problem: `--debug-wrapper`, `--verbose-wrapper`, `--utc-wrapper`, and `--color` are consumed by the launcher but not documented.
   - Expected fix: document what each flag does and clarify the difference between `-v` and `--debug-wrapper`.
-  - Done locally; pending commit.
+  - Done.
 
 - [x] Reduce duplicated source-path resolution logic.
   - Files: `bin/basectl`, `base_init.sh`, `lib/shell/bashrc`, `lib/shell/bash_profile`, `lib/shell/zshrc`
   - Problem: symlink-resolving path normalization is copied in multiple places.
   - Expected fix: keep the launcher and runtime bootstrap self-contained, but simplify shell snippets for the current direct-source startup model.
   - Confirmed there are no symlinked snippets; `basectl update-profile` writes direct `source` lines to Base files.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Remove or consolidate duplicate `basectl_read_version`.
+- [x] Remove or consolidate duplicate `basectl_read_version`.
   - Files: `bin/basectl`, `cli/bash/commands/basectl/basectl.sh`
   - Problem: the version-reading function body exists in two layers.
   - Expected fix: decide whether duplication is required by startup ordering; if not, consolidate or rename responsibilities so the duplication is intentional and documented.
   - Verify both `basectl --version` and `basectl version`.
+  - Done locally; pending commit.
 
 - [ ] Consolidate setup dry-run state on `DRY_RUN`.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`

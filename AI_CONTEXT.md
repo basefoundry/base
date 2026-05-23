@@ -6,7 +6,8 @@ This file is the shared working memory for future AI-assisted development in thi
 
 - Branch: `hpr/fix-claude-findings`.
 - Current work is moving through `TODO.md`, which tracks Claude's code-analysis findings item by item.
-- Most recent uncommitted change simplifies managed shell snippet path discovery by removing stale symlink-resolving loops from `lib/shell/bashrc`, `lib/shell/bash_profile`, and `lib/shell/zshrc`.
+- Most recent uncommitted change consolidates Base version reading in `lib/bash/version/lib_version.sh`, shared by early `basectl --version` handling and the runtime `basectl version` command.
+- `lib/bash/version` and `lib/bash/runtime` now have local README files and colocated BATS coverage, in addition to existing basectl integration coverage.
 - Confirmed there are no symlinked snippets in the repo; `basectl update-profile` writes direct `source $BASE_HOME/lib/shell/<snippet>` lines into managed dotfile sections.
 - The recent extension cleanup is considered complete.
 - The broader development thread remains improving focused tests and startup/public utility coverage while closing TODO items in small commits.
@@ -39,9 +40,9 @@ This file is the shared working memory for future AI-assisted development in thi
 
 ## Current TODO Progress
 
-- Completed and committed: Claude findings TODO list, `_git_only_path_dirty` directory matching, `sort-in-place` flag quoting, `update_file_section` temp cleanup, and wrapper runtime flag documentation.
-- Current uncommitted TODO item: simplify duplicated shell snippet path discovery for the direct-source startup model.
-- Next likely TODO item after that commit: decide whether to remove or consolidate duplicate `basectl_read_version`.
+- Completed and committed: Claude findings TODO list, `_git_only_path_dirty` directory matching, `sort-in-place` flag quoting, `update_file_section` temp cleanup, wrapper runtime flag documentation, and simplified shell snippet path discovery.
+- Current uncommitted TODO item: remove duplicate `basectl_read_version` bodies by sharing `base_read_version`.
+- Next likely TODO item after that commit: consolidate setup dry-run state on `DRY_RUN`.
 
 ## Testing Notes
 
@@ -56,4 +57,4 @@ bats cli/bash/commands/basectl/tests/setup.bats
 bats cli/bash/commands/basectl/tests/basectl.bats
 ```
 
-- Latest verification in this session: full BATS suite passed, 128 tests with the existing pseudo-tty `wait_for_enter` case skipped.
+- Latest verification in this session: full BATS suite passed, 134 tests with the existing pseudo-tty `wait_for_enter` case skipped.

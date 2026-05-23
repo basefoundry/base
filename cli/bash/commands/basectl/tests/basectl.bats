@@ -94,6 +94,7 @@ run_basectl() {
         "$base_home/bin" \
         "$base_home/lib/shell" \
         "$base_home/lib/bash/runtime" \
+        "$base_home/lib/bash/version" \
         "$base_home/cli/bash/commands/basectl"
     touch \
         "$base_home/VERSION" \
@@ -102,6 +103,7 @@ run_basectl() {
         "$base_home/lib/shell/bashrc" \
         "$base_home/lib/shell/baserc_guard.sh" \
         "$base_home/lib/bash/runtime/bashrc" \
+        "$base_home/lib/bash/version/lib_version.sh" \
         "$base_home/bin/basectl" \
         "$base_home/cli/bash/commands/basectl/basectl.sh"
 
