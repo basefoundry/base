@@ -22,6 +22,7 @@ run_basectl() {
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
+    [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
     [[ "$output" == *"--debug-wrapper"* ]]
     [[ "$output" == *"--verbose-wrapper"* ]]
@@ -85,6 +86,14 @@ run_basectl() {
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
     done
+}
+
+@test "basectl shell rejects arguments" {
+    run_basectl shell -c 'echo ignored'
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"The 'shell' command does not accept arguments."* ]]
+    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
 @test "Base home verification does not require a git repository" {

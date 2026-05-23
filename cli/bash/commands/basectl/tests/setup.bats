@@ -597,3 +597,23 @@ run_base_command() {
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=true"* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=true"* ]]
 }
+
+@test "basectl update-profile --no-defaults disables existing defaults preference" {
+    run_base_command update-profile --defaults
+    [ "$status" -eq 0 ]
+
+    run_base_command update-profile --no-defaults
+    [ "$status" -eq 0 ]
+
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=false"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
+}
+
+@test "basectl update-profile rejects conflicting defaults options" {
+    run_base_command update-profile --defaults --no-defaults
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Options '--defaults' and '--no-defaults' cannot be used together."* ]]
+    [[ "$output" == *"Usage:"* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
+}

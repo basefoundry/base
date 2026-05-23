@@ -47,13 +47,14 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: the version-reading function body exists in two layers.
   - Expected fix: decide whether duplication is required by startup ordering; if not, consolidate or rename responsibilities so the duplication is intentional and documented.
   - Verify both `basectl --version` and `basectl version`.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Consolidate setup dry-run state on `DRY_RUN`.
+- [x] Consolidate setup dry-run state on `DRY_RUN`.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: both local `dry_run` and exported `DRY_RUN` are maintained.
   - Expected fix: use exported `DRY_RUN` as the canonical state because `lib_std.sh` already consumes it.
   - Verify dry-run setup/check tests and inherited `DRY_RUN` behavior.
+  - Done locally; pending commit.
 
 - [ ] Remove interactive Bash upgrade behavior from `lib_std.sh`.
   - File: `lib/bash/std/lib_std.sh`
@@ -81,11 +82,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: consider `--format json`, `--quiet`, or a documented stdout/stderr contract.
   - Add tests for any new output mode.
 
-- [ ] Add a CLI path to disable profile defaults.
+- [x] Add a CLI path to disable profile defaults.
   - File: `cli/bash/commands/basectl/subcommands/update_profile.sh`
   - Problem: after `basectl update-profile --defaults`, later runs preserve defaults; disabling requires manual `profile.conf` edits.
   - Expected fix: add `--no-defaults` or an equivalent explicit disable flag, and document the behavior.
   - Cover default enable, preserve, and disable flows.
+  - Done locally; pending commit.
 
 - [ ] Decide whether BATS is a required or dev-only dependency.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
@@ -99,13 +101,15 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: use a more reliable relationship check, or parse arguments defensively with error handling.
   - Add tests for alternate caffeinate argument shapes and pgrep failures if feasible.
 
-- [ ] Add `--version` to `basectl` help.
+- [x] Add `--version` to `basectl` help.
   - File: `cli/bash/commands/basectl/basectl.sh`
   - Problem: `version` is listed as a command, but the supported `--version` flag is omitted.
   - Expected fix: include `--version` in the help output and verify with existing help tests.
+  - Done.
 
-- [ ] Decide how `basectl shell` handles arguments.
+- [x] Decide how `basectl shell` handles arguments.
   - File: `cli/bash/commands/basectl/basectl.sh`
   - Problem: `basectl shell -c 'echo hello'` silently ignores arguments.
   - Expected fix: either reject unexpected args with usage, document that no args are accepted, or pass args through to the spawned shell.
   - Add tests for the chosen behavior.
+  - Done locally; pending commit.
