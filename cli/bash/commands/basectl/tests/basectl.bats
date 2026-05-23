@@ -176,10 +176,13 @@ EOF
 }
 
 
-@test "Base runtime shell sources user bashrc before setting prompt" {
+@test "Base runtime shell loads base_init before user bashrc and owns final prompt" {
     cat > "$TEST_HOME/.bashrc" <<'EOF'
 alias user_bashrc_alias='printf user-bashrc'
 export USER_BASHRC_LOADED=1
+if declare -F import_base_lib >/dev/null 2>&1; then
+    export USER_BASHRC_HAS_BASE_IMPORT=1
+fi
 PS1='user prompt: '
 EOF
 
@@ -190,11 +193,13 @@ EOF
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             alias user_bashrc_alias; \
             printf "USER_BASHRC_LOADED=%s\n" "${USER_BASHRC_LOADED:-}"; \
+            printf "USER_BASHRC_HAS_BASE_IMPORT=%s\n" "${USER_BASHRC_HAS_BASE_IMPORT:-}"; \
             printf "PS1=%s\n" "$PS1"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias user_bashrc_alias='printf user-bashrc'"* ]]
     [[ "$output" == *"USER_BASHRC_LOADED=1"* ]]
+    [[ "$output" == *"USER_BASHRC_HAS_BASE_IMPORT=1"* ]]
     [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
@@ -212,8 +217,8 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_DEBUG runtime: loading"* ]]
-    [[ "$output" == *"BASE_DEBUG runtime: sourcing '$TEST_HOME/.bashrc'"* ]]
     [[ "$output" == *"BASE_DEBUG runtime: sourcing '$BASE_REPO_ROOT/base_init.sh'"* ]]
+    [[ "$output" == *"BASE_DEBUG runtime: sourcing '$TEST_HOME/.bashrc'"* ]]
     [[ "$output" == *"BASE_DEBUG runtime: complete"* ]]
 }
 

@@ -248,10 +248,10 @@ Base-enabled Bash shell.
 
 When `basectl` starts an interactive Bash runtime shell, it uses Base's runtime
 rcfile rather than making Bash read `~/.bashrc` directly. That runtime rcfile
-sources the user's `~/.bashrc` once with guardrails, then loads `base_init.sh`,
-and finally sets the Base runtime prompt. This keeps user aliases and normal
-interactive Bash behavior available while still letting Base own the runtime
-environment and final prompt.
+loads `base_init.sh`, sources the user's `~/.bashrc` once with guardrails, and
+finally sets the Base runtime prompt. This keeps user aliases and normal
+interactive Bash behavior available while making Base stdlib functions such as
+`import_base_lib` available during user Bash startup.
 
 ### Debugging Shell Startup
 
