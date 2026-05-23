@@ -113,3 +113,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: either reject unexpected args with usage, document that no args are accepted, or pass args through to the spawned shell.
   - Add tests for the chosen behavior.
   - Done locally; pending commit.
+
+## Base CLI Python Layer
+
+- [ ] Implement `base_cli` v1 for Python CLIs.
+  - Files: `cli/python/base_cli/`, `docs/base-cli-design.md`, `cli/bash/commands/basectl/subcommands/setup_common.sh`
+  - Goal: provide explicit `App`/decorator-driven initialization for Base and Base-supported project CLIs.
+  - V1 scope: `Context`, Click wrapper decorators, standard options, `~/.base.d/cli/<name>` paths, user/file logging, temp/cache directories, sensitive option redaction for invocation logging, project manifest discovery, and a test helper.
+  - Bootstrap: install Click into Base's Python virtual environment alongside PyYAML.
+  - Add focused Python tests and keep existing setup tests passing.

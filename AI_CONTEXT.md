@@ -12,6 +12,9 @@ This file is the shared working memory for future AI-assisted development in thi
 - The Python layer now reads manifests with PyYAML. PyYAML is a Base bootstrap
   dependency installed by the Bash setup layer into `~/.base.d/.venv`, not a
   project artifact.
+- Current in-progress work rewrites `docs/base-cli-design.md` around explicit
+  `base_cli.App`/`Context` initialization and starts v1 under `cli/python/base_cli/`.
+  Click is a Base Python bootstrap dependency installed into `~/.base.d/.venv`.
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.

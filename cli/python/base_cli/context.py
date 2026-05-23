@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+import contextvars
+import logging
+import shutil
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable
+
+
+_current_context: contextvars.ContextVar[Context | None] = contextvars.ContextVar(
+    "base_cli_current_context",
+    default=None,
+)
+
+
+@dataclass
+class Context:
+    cli_name: str
+    run_id: str
+    state_dir: Path
+    log_dir: Path
+    cache_dir: Path
+    temp_dir: Path
+    log_file: Path
+    config: dict
+    environment: str
+    debug: bool
+    keep_temp: bool
+    log: logging.Logger
+    base_home: Path | None = None
+    project_root: Path | None = None
+    manifest_path: Path | None = None
+    cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
+
+    def on_cleanup(self, hook: Callable[[], None]) -> None:
+        self.cleanup_hooks.append(hook)
+
+    def cleanup(self) -> None:
+        for hook in self.cleanup_hooks:
+            hook()
+        for handler in list(self.log.handlers):
+            handler.flush()
+            handler.close()
+            self.log.removeHandler(handler)
+        if not self.keep_temp and self.temp_dir.exists():
+            shutil.rmtree(self.temp_dir)
+
+
+def set_current_context(context: Context | None) -> contextvars.Token[Context | None]:
+    return _current_context.set(context)
+
+
+def reset_current_context(token: contextvars.Token[Context | None]) -> None:
+    _current_context.reset(token)
+
+
+def get_current_context() -> Context:
+    context = _current_context.get()
+    if context is None:
+        raise RuntimeError("base_cli context is not active. Run inside a base_cli.App command.")
+    return context
+

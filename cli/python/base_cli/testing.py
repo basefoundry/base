@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+
+def invoke(app: Any, args: list[str] | None = None, home: Path | None = None):
+    try:
+        from click.testing import CliRunner
+    except ImportError as exc:
+        raise RuntimeError("Click is required for base_cli.testing. Run 'basectl setup' to install it.") from exc
+
+    env = {}
+    if home is not None:
+        env["HOME"] = str(home)
+    runner = CliRunner()
+    return runner.invoke(app._click_command, args or [], env=env)
+
