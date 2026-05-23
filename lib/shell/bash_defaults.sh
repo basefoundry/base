@@ -42,7 +42,20 @@ unset base_bash_defaults_file
 
 set -o vi
 
-export PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] \w\[\033[00m\]: '
+_base_bash_defaults_git_prompt() {
+    local branch
+
+    command -v git >/dev/null 2>&1 || return 0
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" || \
+        branch="$(git rev-parse --short HEAD 2>/dev/null)" || return 0
+    [[ -n "$branch" ]] || return 0
+
+    printf '(%s) ' "$branch"
+}
+
+export PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '
 
 export HISTCONTROL=ignoredups:erasedups
 export HISTTIMEFORMAT="[%F %T] "

@@ -575,7 +575,7 @@ run_base_command() {
     run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u EDITOR -u VISUAL -u EXINIT \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "BASE_HOME=%s\n" "$BASE_HOME"'
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "BASE_HOME=%s\n" "$BASE_HOME"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_bash_defaults_git_prompt)"; printf "PS1=%s\n" "$PS1"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias cp='cp -i'"* ]]
@@ -583,6 +583,8 @@ run_base_command() {
     [[ "$output" == *"VISUAL=vi"* ]]
     [[ "$output" == *"EXINIT=set ts=4 sw=4 ai nows nosm expandtab"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"git=("* ]]
+    [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '* ]]
 }
 
 @test "basectl update-profile preserves an existing defaults preference" {

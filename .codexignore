@@ -1,0 +1,47 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Python cache
+pycache/
+*.pyc
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Generated files
+generated/
+tmp/
+temp/
+
+# Git
+.git/
+
+# IDE
+.idea/
+.vscode/
+
+# Coverage
+htmlcov/
+.coverage
+
+# Large binaries
+*.zip
+*.tar.gz
+*.bin
+
+# Secrets
+.env
+.env.local
+secrets/
