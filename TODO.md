@@ -6,11 +6,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
 
 ## Bugs
 
-- [ ] Fix `_git_only_path_dirty` directory matching.
+- [x] Fix `_git_only_path_dirty` directory matching.
   - File: `lib/bash/git/lib_git.sh`
   - Problem: dirty files under an allowed directory such as `shared/foo.txt` are compared to `shared` exactly, so allowed dirty directories are rejected.
   - Expected fix: accept either the exact allowed path or paths prefixed by `allowed_path/`.
   - Add or update BATS coverage in `lib/bash/git/tests/lib_git.bats`.
+  - Done locally; pending commit.
 
 - [ ] Quote or array-encode `sort-in-place` flags.
   - File: `cli/bash/commands/sort-in-place/sort-in-place.sh`

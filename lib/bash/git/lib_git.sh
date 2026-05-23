@@ -24,7 +24,7 @@ _git_only_path_dirty() {
         if [[ "$path" == *" -> "* ]]; then
             path="${path#* -> }"
         fi
-        if [[ "$path" != "$allowed_path" ]]; then
+        if [[ "$path" != "$allowed_path" && "$path" != "$allowed_path/"* ]]; then
             return 1
         fi
     done <<< "$status_output"
