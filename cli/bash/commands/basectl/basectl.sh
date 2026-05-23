@@ -152,6 +152,11 @@ basectl_do_update_profile() {
 basectl_do_shell() {
     local shell_rc
 
+    if (($# > 0)); then
+        basectl_usage_error "The 'shell' command does not accept arguments."
+        return $?
+    fi
+
     shell_rc="$(basectl_shell_rc_path)" || {
         basectl_error "$BASE_CLI_ERROR_MESSAGE"
         return 1
@@ -244,7 +249,7 @@ basectl_main() {
         check)            basectl_do_check "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
-        shell)            basectl_do_shell ;;
+        shell)            basectl_do_shell "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;
         "")

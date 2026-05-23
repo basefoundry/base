@@ -88,6 +88,14 @@ run_basectl() {
     done
 }
 
+@test "basectl shell rejects arguments" {
+    run_basectl shell -c 'echo ignored'
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"The 'shell' command does not accept arguments."* ]]
+    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
+}
+
 @test "Base home verification does not require a git repository" {
     local base_home="$TEST_TMPDIR/embedded/base"
 

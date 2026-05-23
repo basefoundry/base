@@ -6,7 +6,8 @@ This file is the shared working memory for future AI-assisted development in thi
 
 - Branch: `hpr/fix-claude-findings2`.
 - Current work is moving through `TODO.md`, which tracks Claude's code-analysis findings item by item.
-- Most recent uncommitted change adds the supported `--version` flag to `basectl --help`.
+- Most recent uncommitted change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
+- The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
 - The previous change consolidated Base version reading in `lib/bash/version/lib_version.sh`, shared by early `basectl --version` handling and the runtime `basectl version` command.
 - `lib/bash/version` and `lib/bash/runtime` now have local README files and colocated BATS coverage, in addition to existing basectl integration coverage.
@@ -43,7 +44,7 @@ This file is the shared working memory for future AI-assisted development in thi
 ## Current TODO Progress
 
 - Completed and committed: Claude findings TODO list, `_git_only_path_dirty` directory matching, `sort-in-place` flag quoting, `update_file_section` temp cleanup, wrapper runtime flag documentation, simplified shell snippet path discovery, and shared version reading.
-- Current uncommitted TODO item: add `--version` to `basectl` help.
+- Current uncommitted TODO item: decide how `basectl shell` handles arguments; current decision is to reject them because `basectl shell` is an interactive shell entrypoint, not a `bash` argument passthrough.
 - Next likely TODO item after that commit: remove interactive Bash upgrade behavior from `lib_std.sh`.
 
 ## Testing Notes
@@ -59,4 +60,4 @@ bats cli/bash/commands/basectl/tests/setup.bats
 bats cli/bash/commands/basectl/tests/basectl.bats
 ```
 
-- Latest verification in this session: full BATS suite passed, 134 tests with the existing pseudo-tty `wait_for_enter` case skipped.
+- Latest verification in this session: full BATS suite passed, 135 tests with the existing pseudo-tty `wait_for_enter` case skipped.

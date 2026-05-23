@@ -104,10 +104,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - File: `cli/bash/commands/basectl/basectl.sh`
   - Problem: `version` is listed as a command, but the supported `--version` flag is omitted.
   - Expected fix: include `--version` in the help output and verify with existing help tests.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Decide how `basectl shell` handles arguments.
+- [x] Decide how `basectl shell` handles arguments.
   - File: `cli/bash/commands/basectl/basectl.sh`
   - Problem: `basectl shell -c 'echo hello'` silently ignores arguments.
   - Expected fix: either reject unexpected args with usage, document that no args are accepted, or pass args through to the spawned shell.
   - Add tests for the chosen behavior.
+  - Done locally; pending commit.
