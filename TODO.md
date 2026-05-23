@@ -117,8 +117,15 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
 ## Base CLI Python Layer
 
 - [ ] Implement `base_cli` v1 for Python CLIs.
-  - Files: `cli/python/base_cli/`, `docs/base-cli-design.md`, `cli/bash/commands/basectl/subcommands/setup_common.sh`
+  - Files: `lib/python/base_cli/`, `docs/base-cli-design.md`, `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Goal: provide explicit `App`/decorator-driven initialization for Base and Base-supported project CLIs.
   - V1 scope: `Context`, Click wrapper decorators, standard options, `~/.base.d/cli/<name>` paths, user/file logging, temp/cache directories, sensitive option redaction for invocation logging, project manifest discovery, and a test helper.
   - Bootstrap: install Click into Base's Python virtual environment alongside PyYAML.
   - Add focused Python tests and keep existing setup tests passing.
+
+- [x] Dogfood `base_cli` in `base_setup`.
+  - Files: `cli/python/base_setup/engine.py`, `cli/python/base_setup/tests/test_engine.py`, `lib/python/base_cli/`
+  - Goal: convert the manifest/artifact setup engine from hand-rolled argparse/print handling to `base_cli.App`, preserving the existing `python -m base_setup [project] --manifest <path> --dry-run` interface.
+  - Use `base_cli.Context` logging and path initialization, and keep Bash `basectl setup` behavior unchanged.
+  - Verify with Base's real virtual environment after `basectl setup` installs Click.
+  - Done locally; pending commit.
