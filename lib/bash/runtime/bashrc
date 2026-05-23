@@ -7,21 +7,118 @@
 # Purpose:
 #     - start an interactive Bash shell with the Base runtime already loaded
 #     - keep runtime shell initialization separate from user dotfile integration
+#     - source the user's ~/.bashrc with guardrails
+#     - provide a Base runtime prompt with time, host, venv, git branch, and cwd
 #
 # This file is not installed into user dotfiles. It is passed to Bash with
 # `bash --rcfile` by the Base CLI.
 #
 
-[[ -n "${BASE_HOME:-}" ]] || {
-    printf 'ERROR: BASE_HOME is not set.\n' >&2
-    return 1
+_base_runtime_error() {
+    printf 'ERROR: %s\n' "$*" >&2
 }
 
-[[ -f "$BASE_HOME/base_init.sh" ]] || {
-    printf "ERROR: Base init script '%s/base_init.sh' was not found.\n" "$BASE_HOME" >&2
-    return 1
+_base_runtime_debug() {
+    case "${BASE_DEBUG:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            printf 'BASE_DEBUG runtime: %s\n' "$*" >&2
+            ;;
+    esac
 }
 
-export BASE_SHELL=1
-# shellcheck source=/dev/null
-source "$BASE_HOME/base_init.sh" || return $?
+_base_runtime_source_user_bashrc() {
+    local user_bashrc="$HOME/.bashrc"
+
+    if [[ -n "${__base_runtime_sourcing_user_bashrc__:-}" ]]; then
+        _base_runtime_debug "user bashrc guard is active; skipping"
+        return 0
+    fi
+
+    if [[ ! -f "$user_bashrc" ]]; then
+        _base_runtime_debug "'$user_bashrc' not found; skipping"
+        return 0
+    fi
+
+    _base_runtime_debug "sourcing '$user_bashrc'"
+    __base_runtime_sourcing_user_bashrc__=1
+    # shellcheck source=/dev/null
+    source "$user_bashrc" || return $?
+    unset __base_runtime_sourcing_user_bashrc__
+}
+
+_base_runtime_host_prompt() {
+    local host_name=""
+
+    if command -v scutil >/dev/null 2>&1; then
+        host_name="$(scutil --get ComputerName 2>/dev/null)" || host_name=""
+        if [[ -z "$host_name" ]]; then
+            host_name="$(scutil --get LocalHostName 2>/dev/null)" || host_name=""
+        fi
+    fi
+
+    if [[ -z "$host_name" ]]; then
+        host_name="$(hostname -s 2>/dev/null)" || host_name=""
+    fi
+
+    if [[ -z "$host_name" ]]; then
+        host_name="$(hostname 2>/dev/null)" || host_name=""
+    fi
+
+    printf '%s' "${host_name:-unknown}"
+}
+
+_base_runtime_venv_prompt() {
+    local venv_path="${VIRTUAL_ENV:-}"
+    local venv_name
+
+    [[ -n "$venv_path" ]] || return 0
+    venv_name="${venv_path##*/}"
+    [[ -n "$venv_name" ]] || return 0
+
+    printf '[%s] ' "$venv_name"
+}
+
+_base_runtime_git_prompt() {
+    local branch
+
+    command -v git >/dev/null 2>&1 || return 0
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" || \
+        branch="$(git rev-parse --short HEAD 2>/dev/null)" || return 0
+    [[ -n "$branch" ]] || return 0
+
+    printf '(%s) ' "$branch"
+}
+
+_base_runtime_set_prompt() {
+    # Base owns this runtime shell prompt, so disable prompt mutation by Python
+    # virtualenv activation and render the active venv dynamically instead.
+    export VIRTUAL_ENV_DISABLE_PROMPT=1
+    PS1='\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '
+}
+
+_base_runtime_main() {
+    [[ -n "${BASE_HOME:-}" ]] || {
+        _base_runtime_error "BASE_HOME is not set."
+        return 1
+    }
+
+    [[ -f "$BASE_HOME/base_init.sh" ]] || {
+        _base_runtime_error "Base init script '$BASE_HOME/base_init.sh' was not found."
+        return 1
+    }
+
+    export BASE_SHELL=1
+    _base_runtime_debug "loading"
+    _base_runtime_source_user_bashrc || return $?
+
+    _base_runtime_debug "sourcing '$BASE_HOME/base_init.sh'"
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/base_init.sh" || return $?
+
+    _base_runtime_set_prompt
+    _base_runtime_debug "complete"
+}
+
+_base_runtime_main || return $?

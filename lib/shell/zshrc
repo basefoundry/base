@@ -6,14 +6,33 @@
 #     - derive and export BASE_HOME from this snippet's location
 #     - make basectl available on PATH
 #     - source optional Zsh defaults when enabled in ~/.base.d/profile.conf
+#     - print startup diagnostics when BASE_DEBUG=1 is set
 #
 # Important:
 #     This file must not source base_init.sh. Base runtime setup belongs to the
 #     Bash-based basectl command path, not ordinary Zsh startup.
 #
-[[ ! -o interactive ]] && return 0
-[[ -n "${__base_zshrc_sourced__:-}" ]] && return 0
+base_zshrc_debug() {
+    case "${BASE_DEBUG:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            printf 'BASE_DEBUG zshrc: %s\n' "$*" >&2
+            ;;
+    esac
+}
+
+if [[ ! -o interactive ]]; then
+    base_zshrc_debug "non-interactive shell; skipping"
+    unset -f base_zshrc_debug
+    return 0
+fi
+
+if [[ -n "${__base_zshrc_sourced__:-}" ]]; then
+    base_zshrc_debug "already sourced; skipping"
+    unset -f base_zshrc_debug
+    return 0
+fi
 readonly __base_zshrc_sourced__=1
+base_zshrc_debug "loading"
 
 base_zshrc_source_path() {
     local source_path
@@ -48,15 +67,26 @@ base_zshrc_set_base_home() {
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
     export BASE_HOME="$base_home"
+    base_zshrc_debug "BASE_HOME=$BASE_HOME"
 }
 
 base_zshrc_prepend_path() {
     local bin_dir="$BASE_HOME/bin"
 
-    [[ -d "$bin_dir" ]] || return 0
+    [[ -d "$bin_dir" ]] || {
+        base_zshrc_debug "bin dir '$bin_dir' does not exist; PATH unchanged"
+        return 0
+    }
+
     case ":$PATH:" in
-        *:"$bin_dir":*) ;;
-        *) PATH="$bin_dir${PATH:+:$PATH}"; export PATH ;;
+        *:"$bin_dir":*)
+            base_zshrc_debug "PATH already contains '$bin_dir'"
+            ;;
+        *)
+            PATH="$bin_dir${PATH:+:$PATH}"
+            export PATH
+            base_zshrc_debug "prepended '$bin_dir' to PATH"
+            ;;
     esac
 }
 
@@ -64,25 +94,41 @@ base_zshrc_source_defaults() {
     local profile_conf="$HOME/.base.d/profile.conf"
     local enable_defaults=false
 
-    [[ -f "$profile_conf" ]] || return 0
+    if [[ ! -f "$profile_conf" ]]; then
+        base_zshrc_debug "profile config '$profile_conf' not found; defaults disabled"
+        return 0
+    fi
+
+    base_zshrc_debug "sourcing profile config '$profile_conf'"
     # shellcheck source=/dev/null
     source "$profile_conf"
     enable_defaults="${BASE_ENABLE_ZSH_DEFAULTS:-false}"
     unset BASE_PROFILE_VERSION BASE_ENABLE_BASH_DEFAULTS BASE_ENABLE_ZSH_DEFAULTS
 
-    [[ "$enable_defaults" == true ]] || return 0
-    [[ -f "$BASE_HOME/lib/shell/zsh_defaults.sh" ]] || return 0
+    if [[ "$enable_defaults" != true ]]; then
+        base_zshrc_debug "Zsh defaults disabled"
+        return 0
+    fi
 
+    if [[ ! -f "$BASE_HOME/lib/shell/zsh_defaults.sh" ]]; then
+        base_zshrc_debug "Zsh defaults file not found; skipping"
+        return 0
+    fi
+
+    base_zshrc_debug "sourcing Zsh defaults"
     # shellcheck source=/dev/null
     source "$BASE_HOME/lib/shell/zsh_defaults.sh"
 }
 
 base_zshrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base zshrc snippet. Run basectl update-profile.\n' >&2
+    unset -f base_zshrc_debug
     return 1
 }
 base_zshrc_prepend_path
 base_zshrc_source_defaults || return 1
+base_zshrc_debug "complete"
 
 unset -f base_zshrc_source_path base_zshrc_set_base_home
 unset -f base_zshrc_prepend_path base_zshrc_source_defaults
+unset -f base_zshrc_debug

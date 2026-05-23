@@ -5,10 +5,26 @@
 # Purpose:
 #     - sourced from the Base-managed section in ~/.zprofile
 #     - keep Zsh login startup thin
+#     - print startup diagnostics when BASE_DEBUG=1 is set
 #
 # Design note:
 #     Zsh already reads ~/.zshrc for interactive shells. Base does not source
 #     ~/.zshrc from this file.
 #
-[[ -n "${__base_zprofile_sourced__:-}" ]] && return 0
+base_zprofile_debug() {
+    case "${BASE_DEBUG:-}" in
+        1|true|TRUE|yes|YES|on|ON)
+            printf 'BASE_DEBUG zprofile: %s\n' "$*" >&2
+            ;;
+    esac
+}
+
+if [[ -n "${__base_zprofile_sourced__:-}" ]]; then
+    base_zprofile_debug "already sourced; skipping"
+    unset -f base_zprofile_debug
+    return 0
+fi
 readonly __base_zprofile_sourced__=1
+base_zprofile_debug "loading"
+base_zprofile_debug "complete"
+unset -f base_zprofile_debug
