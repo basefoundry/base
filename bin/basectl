@@ -54,6 +54,24 @@ basectl_base_home() {
     cd -- "$bin_dir/.." && pwd -P
 }
 
+basectl_read_version() {
+    local base_home="$1"
+    local version_file="$base_home/VERSION"
+
+    [[ -f "$version_file" ]] || {
+        printf '%s\n' "unknown"
+        return 0
+    }
+
+    IFS= read -r version < "$version_file" || version=""
+    printf '%s\n' "${version:-unknown}"
+}
+
+basectl_print_version() {
+    local base_home="$1"
+    printf 'basectl %s\n' "$(basectl_read_version "$base_home")"
+}
+
 basectl_ensure_supported_bash() {
     local current_version
     local candidate
@@ -198,6 +216,11 @@ main() {
 
     basectl_ensure_supported_bash "$@"
     base_home="$(basectl_base_home)" || basectl_die "Unable to resolve Base home."
+
+    if [[ "${1:-}" == "--version" || "${1:-}" == "version" ]]; then
+        basectl_print_version "$base_home"
+        return 0
+    fi
 
     if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
         basectl_start_shell "$base_home"

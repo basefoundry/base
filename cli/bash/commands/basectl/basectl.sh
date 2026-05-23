@@ -15,6 +15,8 @@ Commands:
     Verify the local Base CLI environment without making changes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
+  version
+    Show the installed Base version.
   shell
     Start an interactive Bash shell with the Base runtime loaded.
   help
@@ -73,7 +75,7 @@ basectl_verify_home() {
         return 1
     fi
 
-    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.bash lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
+    for file in VERSION base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.bash lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
         if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi
@@ -150,6 +152,23 @@ basectl_do_shell() {
     exec "${BASH:-bash}" --rcfile "$shell_rc"
 }
 
+basectl_read_version() {
+    local version_file="$BASE_HOME/VERSION"
+    local version
+
+    [[ -f "$version_file" ]] || {
+        printf '%s\n' "unknown"
+        return 0
+    }
+
+    IFS= read -r version < "$version_file" || version=""
+    printf '%s\n' "${version:-unknown}"
+}
+
+basectl_do_version() {
+    printf 'basectl %s\n' "$(basectl_read_version)"
+}
+
 basectl_should_start_shell() {
     [[ -t 0 && -t 1 ]]
 }
@@ -161,6 +180,12 @@ basectl_main() {
 
     if [[ "${1:-}" =~ ^(-h|--help|-help|help)$ ]]; then
         basectl_show_help
+        return 0
+    fi
+
+    if [[ "${1:-}" == "--version" ]]; then
+        basectl_get_base_home || return 1
+        basectl_do_version
         return 0
     fi
 
@@ -211,6 +236,7 @@ basectl_main() {
         help)             basectl_show_help ;;
         shell)            basectl_do_shell ;;
         update-profile)   basectl_do_update_profile "$@" ;;
+        version)          basectl_do_version ;;
         "")
             if basectl_should_start_shell; then
                 basectl_do_shell
