@@ -184,7 +184,7 @@ base_update_profile_subcommand_main() {
 
     log_debug "Running 'basectl update-profile'."
 
-    base_home="$(base_cli_runtime_base_home)" || {
+    base_home="$(basectl_runtime_base_home)" || {
         print_error "${BASE_CLI_ERROR_MESSAGE:-Unable to find Base home.}"
         return 1
     }

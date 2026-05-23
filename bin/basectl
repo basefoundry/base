@@ -184,7 +184,7 @@ basectl_run_command_name() {
 
 basectl_run_control_command() {
     local base_home="$1"
-    local script_path="$base_home/cli/bash/commands/base/base.sh"
+    local script_path="$base_home/cli/bash/commands/basectl/basectl.sh"
     shift
 
     basectl_run_bash_script "$base_home" "$script_path" basectl "$@"

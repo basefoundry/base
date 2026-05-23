@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-base_cli_error() {
+basectl_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
 
-base_cli_show_help() {
+basectl_show_help() {
     cat <<'EOF'
 Usage: basectl [options] <command> [args...]
 
@@ -33,38 +33,38 @@ Notes:
 EOF
 }
 
-base_cli_describe() {
-    printf '%s\n' "Base umbrella CLI"
+basectl_describe() {
+    printf '%s\n' "basectl umbrella CLI"
 }
 
-base_cli_usage_error() {
-    base_cli_error "$*"
-    base_cli_show_help >&2
+basectl_usage_error() {
+    basectl_error "$*"
+    basectl_show_help >&2
     return 2
 }
 
-base_cli_get_base_home() {
+basectl_get_base_home() {
     [[ -n "${HOME:-}" ]] || {
-        base_cli_error "Environment variable 'HOME' is not set."
+        basectl_error "Environment variable 'HOME' is not set."
         return 1
     }
     [[ -d "$HOME" ]] || {
-        base_cli_error "\$HOME '$HOME' is not a directory."
+        basectl_error "\$HOME '$HOME' is not a directory."
         return 1
     }
 
     [[ -n "${BASE_HOME:-}" ]] || {
-        base_cli_error "BASE_HOME is not set. Run this command through bin/basectl."
+        basectl_error "BASE_HOME is not set. Run this command through bin/basectl."
         return 1
     }
     [[ -d "$BASE_HOME" ]] || {
-        base_cli_error "BASE_HOME '$BASE_HOME' is not a directory."
+        basectl_error "BASE_HOME '$BASE_HOME' is not a directory."
         return 1
     }
     export BASE_HOME
 }
 
-base_cli_verify_home() {
+basectl_verify_home() {
     local base_home="$1"
     local file missing=()
 
@@ -73,7 +73,7 @@ base_cli_verify_home() {
         return 1
     fi
 
-    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl cli/bash/commands/base/base.sh; do
+    for file in base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/bash/runtime/bashrc bin/basectl cli/bash/commands/basectl/basectl.sh; do
         if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi
@@ -87,8 +87,8 @@ base_cli_verify_home() {
     return 0
 }
 
-base_cli_runtime_base_home() {
-    if base_cli_verify_home "$BASE_HOME"; then
+basectl_runtime_base_home() {
+    if basectl_verify_home "$BASE_HOME"; then
         printf '%s\n' "$BASE_HOME"
         return 0
     fi
@@ -96,25 +96,25 @@ base_cli_runtime_base_home() {
     return 1
 }
 
-base_cli_shell_rc_path() {
+basectl_shell_rc_path() {
     local base_home
 
-    base_home="$(base_cli_runtime_base_home)" || return 1
+    base_home="$(basectl_runtime_base_home)" || return 1
     printf '%s\n' "$base_home/lib/bash/runtime/bashrc"
 }
 
 
-base_cli_enable_debug_logging() {
+basectl_enable_debug_logging() {
     set_log_level DEBUG
     export LOG_DEBUG=1
 }
 
-base_cli_source_subcommand_module() {
+basectl_source_subcommand_module() {
     local module_name="$1"
     local subcommand_script="$__SCRIPT_DIR__/subcommands/${module_name}.sh"
 
     [[ -f "$subcommand_script" ]] || {
-        base_cli_error "Subcommand module '$subcommand_script' was not found."
+        basectl_error "Subcommand module '$subcommand_script' was not found."
         return 1
     }
 
@@ -122,26 +122,26 @@ base_cli_source_subcommand_module() {
     source "$subcommand_script"
 }
 
-base_cli_do_setup() {
-    base_cli_source_subcommand_module setup || return 1
+basectl_do_setup() {
+    basectl_source_subcommand_module setup || return 1
     base_setup_subcommand_main "$@"
 }
 
-base_cli_do_check() {
-    base_cli_source_subcommand_module check || return 1
+basectl_do_check() {
+    basectl_source_subcommand_module check || return 1
     base_check_subcommand_main "$@"
 }
 
-base_cli_do_update_profile() {
-    base_cli_source_subcommand_module update_profile || return 1
+basectl_do_update_profile() {
+    basectl_source_subcommand_module update_profile || return 1
     base_update_profile_subcommand_main "$@"
 }
 
-base_cli_do_shell() {
+basectl_do_shell() {
     local shell_rc
 
-    shell_rc="$(base_cli_shell_rc_path)" || {
-        base_cli_error "$BASE_CLI_ERROR_MESSAGE"
+    shell_rc="$(basectl_shell_rc_path)" || {
+        basectl_error "$BASE_CLI_ERROR_MESSAGE"
         return 1
     }
 
@@ -151,23 +151,23 @@ base_cli_do_shell() {
 }
 
 
-base_cli_main() {
+basectl_main() {
     local base_debug=0 command=""
     local opt
 
     if [[ "${1:-}" =~ ^(-h|--help|-help|help)$ ]]; then
-        base_cli_show_help
+        basectl_show_help
         return 0
     fi
 
     if [[ "${1:-}" == "--describe" ]]; then
-        base_cli_describe
+        basectl_describe
         return 0
     fi
 
     case "${1:-}" in
         --*)
-            base_cli_usage_error "Unknown option '$1'"
+            basectl_usage_error "Unknown option '$1'"
             return $?
             ;;
     esac
@@ -179,15 +179,15 @@ base_cli_main() {
             v) base_debug=1 ;;
             x) set -x ;;
             h)
-                base_cli_show_help
+                basectl_show_help
                 return 0
                 ;;
             \?)
-                base_cli_usage_error "Unknown option '-$OPTARG'"
+                basectl_usage_error "Unknown option '-$OPTARG'"
                 return $?
                 ;;
             :)
-                base_cli_usage_error "Option '-$OPTARG' requires an argument."
+                basectl_usage_error "Option '-$OPTARG' requires an argument."
                 return $?
                 ;;
         esac
@@ -197,31 +197,31 @@ base_cli_main() {
     command="${1:-}"
     [[ -n "$command" ]] && shift
 
-    base_cli_get_base_home || return 1
-    ((base_debug)) && base_cli_enable_debug_logging
+    basectl_get_base_home || return 1
+    ((base_debug)) && basectl_enable_debug_logging
     log_debug "Running basectl command '${command:-<none>}' with args: $*"
 
     case "$command" in
-        check)            base_cli_do_check "$@" ;;
-        setup)            base_cli_do_setup "$@" ;;
-        help)             base_cli_show_help ;;
-        shell)            base_cli_do_shell ;;
-        update-profile)   base_cli_do_update_profile "$@" ;;
+        check)            basectl_do_check "$@" ;;
+        setup)            basectl_do_setup "$@" ;;
+        help)             basectl_show_help ;;
+        shell)            basectl_do_shell ;;
+        update-profile)   basectl_do_update_profile "$@" ;;
         "")
             if is_interactive; then
-                base_cli_do_shell
+                basectl_do_shell
             else
-                base_cli_show_help
+                basectl_show_help
             fi
             ;;
         *)
-            base_cli_usage_error "Unrecognized command: $command"
+            basectl_usage_error "Unrecognized command: $command"
             ;;
     esac
 }
 
 main() {
-    base_cli_main "$@"
+    basectl_main "$@"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
