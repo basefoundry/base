@@ -13,6 +13,20 @@ class ArtifactDefinition:
 
 
 _ARTIFACTS = {
+    ("python-package", "click"): ArtifactDefinition(
+        name="click",
+        artifact_type="python-package",
+        manager="pip",
+        package="click",
+        target="project-venv",
+    ),
+    ("python-package", "PyYAML"): ArtifactDefinition(
+        name="PyYAML",
+        artifact_type="python-package",
+        manager="pip",
+        package="PyYAML",
+        target="project-venv",
+    ),
     ("tool", "terraform"): ArtifactDefinition(
         name="terraform",
         artifact_type="tool",

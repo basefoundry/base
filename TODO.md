@@ -129,3 +129,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Use `base_cli.Context` logging and path initialization, and keep Bash `basectl setup` behavior unchanged.
   - Verify with Base's real virtual environment after `basectl setup` installs Click.
   - Done locally; pending commit.
+
+- [x] Add `base-wrapper` as the Python command execution wrapper.
+  - Files: `bin/base-wrapper`, `cli/bash/commands/basectl/subcommands/setup_common.sh`, `lib/base/default_manifest.yaml`
+  - Goal: expose one internal Python package execution path that selects `~/.base.d/<project>/.venv`, sets `BASE_HOME`, `BASE_PROJECT`, and `PYTHONPATH`, and runs `python -m <package>`.
+  - Use `base` as the default project for now.
+  - Move Base's venv from `~/.base.d/.venv` to `~/.base.d/base/.venv`.
+  - Add default artifact manifest using the same manifest shape as project manifests.
+  - Done locally; pending commit.

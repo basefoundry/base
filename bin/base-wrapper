@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+base_wrapper_die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+base_wrapper_resolve_path() {
+    local source_path="${1:-}"
+    local link_dir target
+
+    [[ -n "$source_path" ]] || return 1
+
+    if [[ "$source_path" != */* ]]; then
+        source_path="$(command -v -- "$source_path" 2>/dev/null || true)"
+        [[ -n "$source_path" ]] || return 1
+    fi
+
+    while [[ -L "$source_path" ]]; do
+        link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+        target="$(readlink "$source_path")" || return 1
+        if [[ "$target" == /* ]]; then
+            source_path="$target"
+        else
+            source_path="$link_dir/$target"
+        fi
+    done
+
+    link_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    printf '%s/%s\n' "$link_dir" "$(basename -- "$source_path")"
+}
+
+base_wrapper_base_home() {
+    local source_path bin_dir
+
+    source_path="$(base_wrapper_resolve_path "$0")" || return 1
+    bin_dir="$(cd -- "$(dirname -- "$source_path")" && pwd -P)" || return 1
+    cd -- "$bin_dir/.." && pwd -P
+}
+
+base_wrapper_usage() {
+    cat <<'EOF'
+Usage:
+  base-wrapper [--project <name>] <python-package> [args...]
+
+Options:
+  --project <name>  Run using ~/.base.d/<name>/.venv.
+  -h, --help        Show this help text.
+
+Purpose:
+  Run Base Python command packages through the selected project virtual
+  environment with Base's Python library and command roots on PYTHONPATH.
+EOF
+}
+
+main() {
+    local base_home project package python_bin old_pythonpath base_pythonpath
+
+    base_home="$(base_wrapper_base_home)" || base_wrapper_die "Unable to resolve Base home."
+    project="${BASE_PROJECT:-base}"
+
+    while (($#)); do
+        case "$1" in
+            -h|--help)
+                base_wrapper_usage
+                return 0
+                ;;
+            --project)
+                shift
+                [[ -n "${1:-}" ]] || base_wrapper_die "Option '--project' requires an argument."
+                project="$1"
+                ;;
+            --)
+                shift
+                break
+                ;;
+            --*)
+                base_wrapper_die "Unknown option '$1'."
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    package="${1:-}"
+    [[ -n "$package" ]] || {
+        base_wrapper_usage >&2
+        return 2
+    }
+    shift
+
+    case "$project" in
+        ""|*/*|.*|*..*)
+            base_wrapper_die "Invalid BASE_PROJECT '$project'."
+            ;;
+    esac
+    case "$package" in
+        ""|*/*|.*|*..*)
+            base_wrapper_die "Expected a Python package name, got '$package'."
+            ;;
+    esac
+
+    BASE_HOME="$base_home"
+    BASE_PROJECT="$project"
+    export BASE_HOME BASE_PROJECT
+
+    python_bin="${BASE_PROJECT_VENV_DIR:-$HOME/.base.d/$project/.venv}/bin/python"
+    [[ -x "$python_bin" ]] || base_wrapper_die "Project virtual environment Python was not found at '$python_bin'. Run 'basectl setup'."
+
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        PYTHONPATH="$base_pythonpath:$old_pythonpath"
+    else
+        PYTHONPATH="$base_pythonpath"
+    fi
+    export PYTHONPATH
+
+    exec "$python_bin" -m "$package" "$@"
+}
+
+main "$@"

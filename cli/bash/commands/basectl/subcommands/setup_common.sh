@@ -20,7 +20,7 @@ readonly _base_setup_common_sourced
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY
+    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_PROJECT
 }
 
 setup_enable_dry_run() {
@@ -44,7 +44,7 @@ setup_virtualenv_exists() {
 }
 
 setup_venv_dir() {
-    printf '%s\n' "${BASE_SETUP_VENV_DIR:-$HOME/.base.d/.venv}"
+    printf '%s\n' "${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}"
 }
 
 setup_python_formula() {
@@ -362,31 +362,18 @@ setup_install_click() {
     setup_install_base_python_package "$(setup_click_package)"
 }
 
-setup_project_setup_python_bin() {
-    local venv_dir python_bin
-
-    venv_dir="$(setup_venv_dir)"
-    python_bin="$venv_dir/bin/python"
-    if [[ -x "$python_bin" ]]; then
-        printf '%s\n' "$python_bin"
-        return 0
-    fi
-
-    setup_find_python_bin
-}
-
 setup_run_project_artifact_setup() {
-    local python_bin old_pythonpath
-    local exit_code
+    local exit_code project wrapper
     local args=()
-    local base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
 
     if setup_is_dry_run && [[ "${BASE_SETUP_PYYAML_READY:-}" != true ]]; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
         return 0
     fi
 
-    python_bin="$(setup_project_setup_python_bin)" || fatal_error "Unable to locate a python3 executable for project artifact setup."
+    project="${BASE_SETUP_PROJECT_NAME:-base}"
+    wrapper="$BASE_HOME/bin/base-wrapper"
+    [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     if setup_is_dry_run; then
         args+=(--dry-run)
@@ -394,28 +381,11 @@ setup_run_project_artifact_setup() {
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
         args+=(--manifest "$BASE_SETUP_MANIFEST")
     fi
-    if [[ -n "${BASE_SETUP_PROJECT_NAME:-}" ]]; then
-        args+=("$BASE_SETUP_PROJECT_NAME")
-    fi
-
-    old_pythonpath="${PYTHONPATH-}"
-    if [[ -n "$old_pythonpath" ]]; then
-        PYTHONPATH="$base_pythonpath:$old_pythonpath"
-    else
-        PYTHONPATH="$base_pythonpath"
-    fi
-    export PYTHONPATH
+    args+=("$project")
 
     log_info "Running Python project setup layer."
-    "$python_bin" -m base_setup "${args[@]}"
+    "$wrapper" --project "$project" base_setup "${args[@]}"
     exit_code=$?
-
-    if [[ -n "$old_pythonpath" ]]; then
-        PYTHONPATH="$old_pythonpath"
-        export PYTHONPATH
-    else
-        unset PYTHONPATH
-    fi
 
     exit_if_error "$exit_code" "Python project setup layer failed."
 }

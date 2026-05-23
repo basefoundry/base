@@ -114,6 +114,7 @@ run_basectl() {
         "$base_home/lib/bash/runtime/bashrc" \
         "$base_home/lib/bash/version/lib_version.sh" \
         "$base_home/bin/basectl" \
+        "$base_home/bin/base-wrapper" \
         "$base_home/cli/bash/commands/basectl/basectl.sh"
 
     run bash -c 'source "$1"; basectl_verify_home "$2"' _ \
@@ -121,6 +122,32 @@ run_basectl() {
         "$base_home"
 
     [ "$status" -eq 0 ]
+}
+
+
+@test "base-wrapper runs package commands in the selected project venv" {
+    local python_bin="$TEST_HOME/.base.d/demo/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_HOME=%s\n' "$BASE_HOME"
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'PYTHONPATH=%s\n' "$PYTHONPATH"
+printf 'ARGS=%s\n' "$*"
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PYTHONPATH="existing" \
+        "$BASE_REPO_ROOT/bin/base-wrapper" --project demo base_setup --dry-run demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"PYTHONPATH=$BASE_REPO_ROOT/lib/python:$BASE_REPO_ROOT/cli/python:existing"* ]]
+    [[ "$output" == *"ARGS=-m base_setup --dry-run demo"* ]]
 }
 
 

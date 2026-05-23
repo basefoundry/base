@@ -9,19 +9,26 @@ This file is the shared working memory for future AI-assisted development in thi
 - New in-progress feature work adds the first artifact setup layer: root
   `base_manifest.yaml`, a Python `base_setup` package under `cli/python/`, and
   a Bash setup handoff after Base bootstrap.
-- The Python layer now reads manifests with PyYAML. PyYAML is a Base bootstrap
-  dependency installed by the Bash setup layer into `~/.base.d/.venv`, not a
-  project artifact.
+- The Bash setup layer seeds Base's own project virtual environment at
+  `~/.base.d/base/.venv` with PyYAML and Click before invoking Python setup.
 - Current in-progress work rewrites `docs/base-cli-design.md` around explicit
   `base_cli.App`/`Context` initialization and starts v1 under `lib/python/base_cli/`.
-  Click is a Base Python bootstrap dependency installed into `~/.base.d/.venv`.
+  Click is a Base Python bootstrap dependency installed into `~/.base.d/base/.venv`.
 - Most recent local work dogfoods `base_cli` in `base_setup`: the Python setup
   engine now uses `base_cli.App`, `base_cli.argument`, `base_cli.option`, and
   `Context` logging while preserving the existing module CLI shape.
+- `bin/base-wrapper` is the single Python command wrapper, uses
+  `~/.base.d/<project>/.venv`, and invokes package commands such as
+  `base_setup`. Base itself uses project name `base`.
+- Default project artifacts are declared in `lib/base/default_manifest.yaml`
+  using the same manifest shape as project manifests; the Python setup layer
+  merges defaults with the project manifest before reconciling artifacts.
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.
-- Most recent uncommitted change adds `basectl update-profile --no-defaults`, including conflict handling with `--defaults`, docs, and BATS coverage.
+- Most recent uncommitted change adds `base-wrapper`, moves Base's venv to
+  `~/.base.d/base/.venv`, and teaches the Python setup layer to merge default
+  artifacts from `lib/base/default_manifest.yaml`.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
