@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 
 #
-# baserc_guard.bash
+# baserc_guard.sh
 #     Shared Bash helper for safely loading user-managed ~/.baserc.
 #
 # Purpose:
