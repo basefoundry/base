@@ -58,6 +58,6 @@ base_setup_subcommand_main() {
         shift
     done
 
-    log_debug "Running 'basectl setup' (dry_run=${dry_run:-false})."
+    log_debug "Running 'basectl setup' (DRY_RUN=$(setup_is_dry_run && printf true || printf false))."
     setup_run_install
 }

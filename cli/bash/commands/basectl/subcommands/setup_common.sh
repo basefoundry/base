@@ -18,11 +18,12 @@ _base_setup_common_sourced=1
 readonly _base_setup_common_sourced
 
 setup_clear_run_state() {
+    # Clear legacy lowercase state too so inherited environments cannot trigger
+    # lib_std.sh dry-run behavior unless this command explicitly enables it.
     unset dry_run DRY_RUN
 }
 
 setup_enable_dry_run() {
-    dry_run=true
     export DRY_RUN=true
 }
 
@@ -32,7 +33,7 @@ setup_enable_debug_logging() {
 }
 
 setup_is_dry_run() {
-    [[ "${DRY_RUN-}" == true || "${dry_run-}" == true ]]
+    [[ "${DRY_RUN-}" == true ]]
 }
 
 setup_virtualenv_exists() {
@@ -358,4 +359,3 @@ setup_run_install() {
         log_info "Base CLI setup is complete."
     fi
 }
-

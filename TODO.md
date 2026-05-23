@@ -47,13 +47,14 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: the version-reading function body exists in two layers.
   - Expected fix: decide whether duplication is required by startup ordering; if not, consolidate or rename responsibilities so the duplication is intentional and documented.
   - Verify both `basectl --version` and `basectl version`.
-  - Done locally; pending commit.
+  - Done.
 
-- [ ] Consolidate setup dry-run state on `DRY_RUN`.
+- [x] Consolidate setup dry-run state on `DRY_RUN`.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: both local `dry_run` and exported `DRY_RUN` are maintained.
   - Expected fix: use exported `DRY_RUN` as the canonical state because `lib_std.sh` already consumes it.
   - Verify dry-run setup/check tests and inherited `DRY_RUN` behavior.
+  - Done locally; pending commit.
 
 - [ ] Remove interactive Bash upgrade behavior from `lib_std.sh`.
   - File: `lib/bash/std/lib_std.sh`
