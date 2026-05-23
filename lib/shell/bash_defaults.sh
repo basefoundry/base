@@ -4,8 +4,9 @@
 #     provide a standard shell experience.
 #
 # Purpose:
-#     - define a conservative shared set of aliases, editor defaults, prompt
-#       settings, and history behavior for interactive Bash shells
+#     - load Base's shared shell defaults
+#     - define conservative Bash-specific command-line editing, prompt, and
+#       history behavior for interactive Bash shells
 #
 # How it is loaded:
 #     - sourced from the Base-managed ~/.bashrc section
@@ -13,12 +14,12 @@
 #     - only for interactive Bash shells
 #
 # What belongs here:
-#     - aliases such as rm -i / cp -i / mv -i
-#     - editor and command-line editing defaults
-#     - prompt defaults
-#     - history-related shell options
+#     - Bash command-line editing defaults
+#     - Bash prompt defaults
+#     - Bash history-related shell options
 #
 # What does not belong here:
+#     - aliases and editor defaults shared with Zsh; use base_defaults.sh
 #     - BASE_HOME discovery
 #     - sourcing of base_init.sh
 #     - login-shell orchestration
@@ -26,15 +27,20 @@
 #
 [[ $- != *i* ]] && return 0
 
-alias rm='rm -i'
-alias cp='cp -i'
-alias mv='mv -i'
+base_bash_defaults_file="${BASE_HOME:-}/lib/shell/base_defaults.sh"
+[[ -f "$base_bash_defaults_file" ]] || {
+    printf "ERROR: Base shared defaults file '%s' was not found.\n" "$base_bash_defaults_file" >&2
+    unset base_bash_defaults_file
+    return 1
+}
+# shellcheck source=/dev/null
+source "$base_bash_defaults_file" || {
+    unset base_bash_defaults_file
+    return 1
+}
+unset base_bash_defaults_file
 
 set -o vi
-export EDITOR="${EDITOR:-vi}"
-export VISUAL="${VISUAL:-$EDITOR}"
-
-export EXINIT="set ts=4 sw=4 ai nows nosm expandtab"
 
 export PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] \w\[\033[00m\]: '
 
