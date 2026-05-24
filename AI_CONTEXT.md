@@ -30,8 +30,9 @@ This file is the shared working memory for future AI-assisted development in thi
   `basectl setup` creates/uses `~/.base.d/base/.venv`, seeds PyYAML and Click
   there, and invokes Python setup through `base-wrapper`. If the target `.venv`
   path exists but is not a valid venv, setup moves it to
-  `.venv.backup.<timestamp>` before creating a clean venv. This was verified
-  with real non-dry setup locally.
+  `.venv.backup.<timestamp>` before creating a clean venv. `basectl setup
+  --recreate-venv` intentionally backs up and rebuilds even a valid venv. This
+  was verified with real non-dry setup locally.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
