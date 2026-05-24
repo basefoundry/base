@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import io
 import os
-import re
 import tempfile
 import unittest
 from contextlib import redirect_stderr

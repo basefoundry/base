@@ -27,6 +27,20 @@ _ARTIFACTS = {
         package="PyYAML",
         target="project-venv",
     ),
+    ("python-package", "pylint"): ArtifactDefinition(
+        name="pylint",
+        artifact_type="python-package",
+        manager="pip",
+        package="pylint",
+        target="project-venv",
+    ),
+    ("python-package", "pytest"): ArtifactDefinition(
+        name="pytest",
+        artifact_type="python-package",
+        manager="pip",
+        package="pytest",
+        target="project-venv",
+    ),
     ("tool", "terraform"): ArtifactDefinition(
         name="terraform",
         artifact_type="tool",

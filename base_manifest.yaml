@@ -1,4 +1,11 @@
 project:
   name: base
 
-artifacts: []
+artifacts:
+  - type: python-package
+    name: pylint
+    version: latest
+
+  - type: python-package
+    name: pytest
+    version: latest
