@@ -16,6 +16,7 @@ Usage:
 Options:
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
+  --recreate-venv    Back up and recreate the project virtual environment.
   -v                 Enable DEBUG logging for this subcommand.
   -h, --help         Show this help text.
 
@@ -61,6 +62,9 @@ base_setup_subcommand_main() {
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
+                ;;
+            --recreate-venv)
+                setup_enable_recreate_venv
                 ;;
             -v)
                 setup_enable_debug_logging

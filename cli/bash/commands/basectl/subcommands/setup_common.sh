@@ -20,7 +20,7 @@ readonly _base_setup_common_sourced
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_SETUP_RECREATE_VENV BASE_PROJECT
 }
 
 setup_enable_dry_run() {
@@ -36,6 +36,14 @@ setup_is_dry_run() {
     [[ "${DRY_RUN-}" == true ]]
 }
 
+setup_enable_recreate_venv() {
+    export BASE_SETUP_RECREATE_VENV=true
+}
+
+setup_recreate_venv_enabled() {
+    [[ "${BASE_SETUP_RECREATE_VENV:-false}" == true ]]
+}
+
 setup_virtualenv_exists() {
     local venv_dir
 
@@ -48,8 +56,9 @@ setup_venv_dir() {
 }
 
 setup_backup_existing_venv_path() {
-    local backup_path timestamp venv_dir
+    local backup_path description timestamp venv_dir
 
+    description="${1:-existing path}"
     venv_dir="$(setup_venv_dir)"
     [[ -e "$venv_dir" ]] || return 0
 
@@ -58,11 +67,11 @@ setup_backup_existing_venv_path() {
     [[ ! -e "$backup_path" ]] || fatal_error "Virtual environment backup path already exists at '$backup_path'."
 
     if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would move existing non-venv path '$venv_dir' to '$backup_path'."
+        log_info "[DRY-RUN] Would move $description '$venv_dir' to '$backup_path'."
         return 0
     fi
 
-    log_info "Moving existing non-venv path '$venv_dir' to '$backup_path'."
+    log_info "Moving $description '$venv_dir' to '$backup_path'."
     run mv "$venv_dir" "$backup_path"
 }
 
@@ -303,12 +312,16 @@ setup_create_virtualenv() {
 
     venv_dir="$(setup_venv_dir)"
 
-    if setup_virtualenv_exists; then
+    if setup_virtualenv_exists && ! setup_recreate_venv_enabled; then
         log_info "Virtual environment already exists at '$venv_dir'."
         return 0
     fi
 
-    setup_backup_existing_venv_path
+    if setup_virtualenv_exists; then
+        setup_backup_existing_venv_path "existing virtual environment"
+    else
+        setup_backup_existing_venv_path "existing non-venv path"
+    fi
 
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Would create Python virtual environment at '$venv_dir'."
@@ -333,6 +346,10 @@ setup_base_venv_python_bin() {
 setup_base_python_package_installed() {
     local package="$1"
     local venv_dir python_bin
+
+    if setup_is_dry_run && setup_recreate_venv_enabled; then
+        return 1
+    fi
 
     venv_dir="$(setup_venv_dir)"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1

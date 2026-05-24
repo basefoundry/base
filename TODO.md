@@ -145,8 +145,9 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Move any existing non-venv path aside as `.venv.backup.<timestamp>` before creating the project venv.
   - Verified locally with real `bin/basectl setup` and `bin/basectl setup --dry-run`.
 
-- [ ] Add an explicit project venv rebuild option.
+- [x] Add an explicit project venv rebuild option.
   - Files: `cli/bash/commands/basectl/subcommands/setup.sh`, `cli/bash/commands/basectl/subcommands/setup_common.sh`, `cli/bash/commands/basectl/tests/setup.bats`
   - Goal: preserve idempotent setup by reusing valid venvs by default, while offering an intentional option such as `basectl setup --recreate-venv`.
   - Expected behavior: when requested, move the existing `~/.base.d/<project>/.venv` to `.venv.backup.<timestamp>` before creating a fresh venv.
   - Add dry-run and non-dry coverage.
+  - Done locally; pending commit.

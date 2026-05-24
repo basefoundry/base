@@ -303,6 +303,7 @@ run_base_command() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
+    [[ "$output" == *"--recreate-venv"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
@@ -455,6 +456,59 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would move existing non-venv path '$venv_dir' to '$venv_dir.backup."* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$venv_dir'."* ]]
     [ -f "$venv_dir/stale.txt" ]
+    [ -z "$(find "$TEST_HOME/.base.d/base" -maxdepth 1 -type d -name '.venv.backup.*' -print)" ]
+}
+
+@test "basectl setup --recreate-venv backs up a valid venv before creating a fresh one" {
+    local backup_path
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/bats-installed"
+    mkdir -p "$venv_dir/bin"
+    printf 'python-home = old\n' > "$venv_dir/pyvenv.cfg"
+    printf 'old venv marker\n' > "$venv_dir/old.txt"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+
+    run_base_command setup --recreate-venv
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Moving existing virtual environment '$venv_dir' to '$venv_dir.backup."* ]]
+    [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
+    backup_path="$(find "$TEST_HOME/.base.d/base" -maxdepth 1 -type d -name '.venv.backup.*' -print)"
+    [[ -n "$backup_path" ]]
+    [ -f "$backup_path/old.txt" ]
+    [ -f "$venv_dir/pyvenv.cfg" ]
+    [ ! -f "$venv_dir/old.txt" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+}
+
+@test "basectl setup --recreate-venv dry-run reports rebuild without moving a valid venv" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    mkdir -p "$venv_dir/bin"
+    printf 'python-home = old\n' > "$venv_dir/pyvenv.cfg"
+    printf 'old venv marker\n' > "$venv_dir/old.txt"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+
+    run_base_command setup --dry-run --recreate-venv
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would move existing virtual environment '$venv_dir' to '$venv_dir.backup."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$venv_dir'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install Python package 'click' in the Base virtual environment."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run Python project setup layer after PyYAML is installed."* ]]
+    [ -f "$venv_dir/old.txt" ]
     [ -z "$(find "$TEST_HOME/.base.d/base" -maxdepth 1 -type d -name '.venv.backup.*' -print)" ]
 }
 
