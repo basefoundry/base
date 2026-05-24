@@ -1,0 +1,31 @@
+name: Pylint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pylint click PyYAML pytest
+
+      - name: Run Pylint
+        env:
+          PYTHONPATH: lib/python:cli/python
+        run: |
+          pylint --rcfile=.pylintrc $(git ls-files '*.py')
