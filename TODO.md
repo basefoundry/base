@@ -134,6 +134,19 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Files: `bin/base-wrapper`, `cli/bash/commands/basectl/subcommands/setup_common.sh`, `lib/base/default_manifest.yaml`
   - Goal: expose one internal Python package execution path that selects `~/.base.d/<project>/.venv`, sets `BASE_HOME`, `BASE_PROJECT`, and `PYTHONPATH`, and runs `python -m <package>`.
   - Use `base` as the default project for now.
-  - Move Base's venv from `~/.base.d/.venv` to `~/.base.d/base/.venv`.
+  - Standardize Base's venv on `~/.base.d/base/.venv`.
   - Add default artifact manifest using the same manifest shape as project manifests.
   - Done locally; pending commit.
+
+- [x] Dogfood the new Base project venv bootstrap.
+  - Files: `cli/bash/commands/basectl/subcommands/setup_common.sh`, `cli/bash/commands/basectl/tests/setup.bats`
+  - Goal: make non-dry `basectl setup` create/use `~/.base.d/base/.venv`, seed Base bootstrap packages there, and invoke the Python layer through `base-wrapper`.
+  - Standardize on the project-scoped venv path without carrying compatibility code for older local bootstrap experiments.
+  - Move any existing non-venv path aside as `.venv.backup.<timestamp>` before creating the project venv.
+  - Verified locally with real `bin/basectl setup` and `bin/basectl setup --dry-run`.
+
+- [ ] Add an explicit project venv rebuild option.
+  - Files: `cli/bash/commands/basectl/subcommands/setup.sh`, `cli/bash/commands/basectl/subcommands/setup_common.sh`, `cli/bash/commands/basectl/tests/setup.bats`
+  - Goal: preserve idempotent setup by reusing valid venvs by default, while offering an intentional option such as `basectl setup --recreate-venv`.
+  - Expected behavior: when requested, move the existing `~/.base.d/<project>/.venv` to `.venv.backup.<timestamp>` before creating a fresh venv.
+  - Add dry-run and non-dry coverage.

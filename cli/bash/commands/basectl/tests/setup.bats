@@ -418,6 +418,46 @@ EOF
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
+@test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
+    local backup_path
+    local installer
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+    mkdir -p "$venv_dir"
+    printf 'stale content\n' > "$venv_dir/stale.txt"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Moving existing non-venv path '$venv_dir' to '$venv_dir.backup."* ]]
+    [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
+    backup_path="$(find "$TEST_HOME/.base.d/base" -maxdepth 1 -type d -name '.venv.backup.*' -print)"
+    [[ -n "$backup_path" ]]
+    [ -f "$backup_path/stale.txt" ]
+    [ -f "$venv_dir/pyvenv.cfg" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+}
+
+@test "basectl setup dry-run reports backup for an existing non-venv path without moving it" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    mkdir -p "$venv_dir"
+    printf 'stale content\n' > "$venv_dir/stale.txt"
+
+    run_base_command setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would move existing non-venv path '$venv_dir' to '$venv_dir.backup."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$venv_dir'."* ]]
+    [ -f "$venv_dir/stale.txt" ]
+    [ -z "$(find "$TEST_HOME/.base.d/base" -maxdepth 1 -type d -name '.venv.backup.*' -print)" ]
+}
+
 @test "basectl setup supports dry-run without making changes" {
     run_base_command setup --dry-run
 
