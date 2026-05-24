@@ -25,7 +25,7 @@ def redact_argv(argv: list[str], sensitive_options: set[str]) -> list[str]:
             skip_next = False
             continue
 
-        option, separator, value = arg.partition("=")
+        option, separator, _value = arg.partition("=")
         normalized = option_name_to_parameter(option) if option.startswith("--") else option
         if option.startswith("--") and normalized in sensitive_options:
             if separator:
@@ -37,4 +37,3 @@ def redact_argv(argv: list[str], sensitive_options: set[str]) -> list[str]:
 
         redacted.append(arg)
     return redacted
-

@@ -1,0 +1,26 @@
+[MAIN]
+py-version=3.10
+init-hook='import sys; sys.path.extend(["lib/python", "cli/python"])'
+jobs=1
+persistent=no
+
+[MESSAGES CONTROL]
+disable=
+    import-outside-toplevel,
+    invalid-name,
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    not-callable,
+    too-many-instance-attributes,
+    too-many-locals,
+    too-few-public-methods,
+    trailing-newlines,
+    duplicate-code,
+    fixme
+
+[FORMAT]
+max-line-length=120
+
+[REPORTS]
+score=no

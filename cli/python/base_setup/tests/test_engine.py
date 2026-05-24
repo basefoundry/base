@@ -12,6 +12,7 @@ from unittest import mock
 from base_setup.engine import ArtifactError, main, merge_artifacts
 from base_setup.manifest import ArtifactRequest
 from base_setup.manifest import read_manifest
+from base_setup.registry import get_artifact_definition
 
 
 def run_engine(args: list[str]) -> tuple[int, str, str]:
@@ -78,6 +79,15 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
+
+    def test_base_manifest_declares_python_dev_tools(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "base_manifest.yaml")
+        tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
+
+        self.assertIn(("python-package", "pylint"), tools)
+        self.assertIn(("python-package", "pytest"), tools)
+        self.assertIsNotNone(get_artifact_definition("python-package", "pylint"))
+        self.assertIsNotNone(get_artifact_definition("python-package", "pytest"))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_unknown_artifact_fails(self) -> None:

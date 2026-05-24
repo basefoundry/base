@@ -219,7 +219,10 @@ def python_artifact_installed(python_bin: Path, package: str, version: str) -> b
 
 
 def command_exists(name: str) -> bool:
-    return any((Path(directory) / name).is_file() and os.access(Path(directory) / name, os.X_OK) for directory in os.environ.get("PATH", "").split(os.pathsep))
+    return any(
+        (Path(directory) / name).is_file() and os.access(Path(directory) / name, os.X_OK)
+        for directory in os.environ.get("PATH", "").split(os.pathsep)
+    )
 
 
 def run_check(command: list[str]) -> bool:
