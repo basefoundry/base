@@ -47,6 +47,25 @@ setup_venv_dir() {
     printf '%s\n' "${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}"
 }
 
+setup_backup_existing_venv_path() {
+    local backup_path timestamp venv_dir
+
+    venv_dir="$(setup_venv_dir)"
+    [[ -e "$venv_dir" ]] || return 0
+
+    timestamp="$(date +%Y%m%dT%H%M%S)"
+    backup_path="${venv_dir}.backup.${timestamp}"
+    [[ ! -e "$backup_path" ]] || fatal_error "Virtual environment backup path already exists at '$backup_path'."
+
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Would move existing non-venv path '$venv_dir' to '$backup_path'."
+        return 0
+    fi
+
+    log_info "Moving existing non-venv path '$venv_dir' to '$backup_path'."
+    run mv "$venv_dir" "$backup_path"
+}
+
 setup_python_formula() {
     printf '%s\n' "${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 }
@@ -288,6 +307,8 @@ setup_create_virtualenv() {
         log_info "Virtual environment already exists at '$venv_dir'."
         return 0
     fi
+
+    setup_backup_existing_venv_path
 
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Would create Python virtual environment at '$venv_dir'."

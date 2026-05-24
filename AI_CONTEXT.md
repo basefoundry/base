@@ -26,9 +26,12 @@ This file is the shared working memory for future AI-assisted development in thi
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.
-- Most recent uncommitted change adds `base-wrapper`, moves Base's venv to
-  `~/.base.d/base/.venv`, and teaches the Python setup layer to merge default
-  artifacts from `lib/base/default_manifest.yaml`.
+- Most recent uncommitted change dogfoods the new Base project venv bootstrap:
+  `basectl setup` creates/uses `~/.base.d/base/.venv`, seeds PyYAML and Click
+  there, and invokes Python setup through `base-wrapper`. If the target `.venv`
+  path exists but is not a valid venv, setup moves it to
+  `.venv.backup.<timestamp>` before creating a clean venv. This was verified
+  with real non-dry setup locally.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
