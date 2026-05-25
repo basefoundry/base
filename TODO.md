@@ -101,11 +101,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Update setup/check tests and README accordingly.
   - Done locally with BATS as an opt-in `--dev` dependency; pending commit.
 
-- [ ] Make `caff` PID detection more robust.
+- [x] Make `caff` PID detection more robust.
   - File: `cli/bash/commands/caff/caff.sh`
   - Problem: parsing `ps -o args` assumes a fixed `caffeinate -iw <pid>` argument position, and `pgrep | head -1` hides non-not-found errors.
   - Expected fix: use a more reliable relationship check, or parse arguments defensively with error handling.
   - Add tests for alternate caffeinate argument shapes and pgrep failures if feasible.
+  - Done locally; pending commit.
 
 - [x] Add `--version` to `basectl` help.
   - File: `cli/bash/commands/basectl/basectl.sh`

@@ -26,10 +26,10 @@ This file is the shared working memory for future AI-assisted development in thi
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.
-- Most recent uncommitted change makes BATS a developer/test dependency:
-  default `basectl setup` no longer installs BATS and default `basectl check`
-  no longer fails when BATS is missing. Use `basectl setup --dev` and
-  `basectl check --dev` to install/check developer dependencies.
+- Most recent uncommitted change makes `caff` PID detection more robust:
+  `pgrep` results are captured without `head`, pgrep errors are reported
+  separately from "not running", and existing caffeinate commands are parsed
+  for `-w` PIDs across multiple argument shapes.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
