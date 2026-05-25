@@ -130,10 +130,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: `BASE_SETUP_PYYAML_READY` is exported and used as cross-function run state for dry-run gating.
   - Expected fix: inline the package-installed check in `setup_run_project_artifact_setup` instead of exporting a readiness flag.
 
-- [ ] Capture `base_cli.testing` stderr separately.
+- [x] Capture `base_cli.testing` stderr separately.
   - File: `lib/python/base_cli/testing.py`
   - Problem: `CliRunner()` may mix stderr into stdout depending on Click behavior, while tests and callers expect `result.stderr`.
   - Expected fix: construct `CliRunner(mix_stderr=False)` when supported and keep tests explicit about stderr capture.
+  - Done.
 
 - [x] Clarify default-only artifact setup logging.
   - File: `cli/python/base_setup/engine.py`

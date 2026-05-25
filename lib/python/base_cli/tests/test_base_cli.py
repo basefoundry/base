@@ -131,6 +131,27 @@ class BaseCliTests(unittest.TestCase):
             self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_captures_stderr_separately(self) -> None:
+        app = base_cli.App(name="streams", version="0.1.0")
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            print("stdout text")
+            ctx.log.info("stderr text")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+                from base_cli.testing import invoke
+
+                result = invoke(app, [], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("stdout text", result.stdout)
+        self.assertNotIn("stderr text", result.stdout)
+        self.assertIn("stderr text", result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_standard_options_manifest_context_and_sensitive_redaction(self) -> None:
         app = base_cli.App(name="secret-tool", version="0.1.0")
         seen = {}
