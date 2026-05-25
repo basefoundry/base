@@ -31,6 +31,10 @@ EOF
 create_pgrep_stub() {
     cat > "$TEST_MOCKBIN/pgrep" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${CAFF_TEST_PGREP_FAIL:-}" == "${1:-}" ]]; then
+    printf 'pgrep failed for %s\n' "$1" >&2
+    exit 2
+fi
 case "${1:-}" in
     caffeinate)
         [[ -n "${CAFF_TEST_CAFFEINATE_PID:-}" ]] && printf '%s\n' "$CAFF_TEST_CAFFEINATE_PID"
@@ -47,7 +51,9 @@ create_ps_stub() {
     cat > "$TEST_MOCKBIN/ps" <<'EOF'
 #!/usr/bin/env bash
 printf 'ARGS\n'
-if [[ -n "${CAFF_TEST_CAFFEINATED_PID:-}" ]]; then
+if [[ -n "${CAFF_TEST_PS_ARGS:-}" ]]; then
+    printf '%s\n' "$CAFF_TEST_PS_ARGS"
+elif [[ -n "${CAFF_TEST_CAFFEINATED_PID:-}" ]]; then
     printf 'caffeinate -iw %s\n' "$CAFF_TEST_CAFFEINATED_PID"
 fi
 EOF
@@ -157,4 +163,63 @@ wait_for_record() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Already caffeinating: worker pid=1234, caffeinate pid=9999"* ]]
     [ ! -e "$record_file" ]
+}
+
+@test "caff recognizes already caffeinated process when -w is a separate option" {
+    local record_file="$TEST_STATE_DIR/caffeinate.args"
+
+    create_caffeinate_stub
+    create_pgrep_stub
+    create_ps_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        CAFF_TEST_PROCESS_NAME=worker \
+        CAFF_TEST_TARGET_PID=1234 \
+        CAFF_TEST_CAFFEINATE_PID=9999 \
+        CAFF_TEST_PS_ARGS="caffeinate -i -w 1234" \
+        CAFF_TEST_RECORD="$record_file" \
+        "$BASE_REPO_ROOT/bin/basectl" caff worker
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Already caffeinating: worker pid=1234, caffeinate pid=9999"* ]]
+    [ ! -e "$record_file" ]
+}
+
+@test "caff recognizes already caffeinated process when -w appears before other options" {
+    local record_file="$TEST_STATE_DIR/caffeinate.args"
+
+    create_caffeinate_stub
+    create_pgrep_stub
+    create_ps_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        CAFF_TEST_PROCESS_NAME=worker \
+        CAFF_TEST_TARGET_PID=1234 \
+        CAFF_TEST_CAFFEINATE_PID=9999 \
+        CAFF_TEST_PS_ARGS="caffeinate -w 1234 -i" \
+        CAFF_TEST_RECORD="$record_file" \
+        "$BASE_REPO_ROOT/bin/basectl" caff worker
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Already caffeinating: worker pid=1234, caffeinate pid=9999"* ]]
+    [ ! -e "$record_file" ]
+}
+
+@test "caff reports pgrep errors instead of treating them as not running" {
+    create_caffeinate_stub
+    create_pgrep_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        CAFF_TEST_PGREP_FAIL=worker \
+        "$BASE_REPO_ROOT/bin/basectl" caff worker
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to query process list for 'worker'."* ]]
+    [[ "$output" != *"'worker' process is not running."* ]]
 }
