@@ -114,10 +114,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: catch and log cleanup hook and temp removal failures while continuing cleanup.
   - Done.
 
-- [ ] Return unambiguous fallback source paths in Python logs.
+- [x] Return unambiguous fallback source paths in Python logs.
   - File: `lib/python/base_cli/logging.py`
   - Problem: `_source_path` falls back to a bare filename when the log source is outside `BASE_HOME` and the current working directory.
   - Expected fix: return the resolved absolute path as the fallback.
+  - Done.
 
 - [ ] Remove or guard system-wide Base config loading.
   - File: `lib/python/base_cli/config.py`

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import logging
 import os
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 import base_cli
+from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
 
@@ -72,6 +74,31 @@ class BaseCliTests(unittest.TestCase):
             redact_argv(argv, {"api_key", "token"}),
             ["tool", "--api-key", "[REDACTED]", "--token=[REDACTED]", "--name", "visible"],
         )
+
+    def test_log_source_fallback_uses_resolved_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base-home"
+            cwd = root / "cwd"
+            external = root / "external" / "same_name.py"
+            base_home.mkdir()
+            cwd.mkdir()
+            external.parent.mkdir()
+            external.write_text("# test\n", encoding="utf-8")
+            record = logging.LogRecord(
+                name="base_cli.test",
+                level=logging.INFO,
+                pathname=str(external),
+                lineno=7,
+                msg="hello",
+                args=(),
+                exc_info=None,
+            )
+
+            with mock.patch.dict(os.environ, {"BASE_HOME": str(base_home)}), change_directory(cwd):
+                formatted = BaseCliFormatter().format(record)
+
+        self.assertIn(f"{external.resolve()}:7 hello", formatted)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_runs_with_context_and_cleans_temp_dir(self) -> None:

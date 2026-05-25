@@ -66,7 +66,7 @@ def _source_path(record: logging.LogRecord) -> str:
             return str(path.resolve().relative_to(root.resolve()))
         except ValueError:
             continue
-    return path.name
+    return str(path.resolve())
 
 
 def log_invocation(logger: logging.Logger, argv: list[str], sensitive_options: set[str]) -> None:
