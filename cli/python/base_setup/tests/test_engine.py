@@ -144,6 +144,30 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_discovers_manifest_from_start_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            nested = root / "nested"
+            nested.mkdir()
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--start-dir", str(nested)])
+
+        self.assertEqual(status, 0)
+        self.assertIn(f"Reading Base manifest at '{manifest_path.resolve()}'.", stderr)
+
     def test_homebrew_artifact_rejects_non_latest_version(self) -> None:
         definition = get_artifact_definition("tool", "terraform")
         self.assertIsNotNone(definition)

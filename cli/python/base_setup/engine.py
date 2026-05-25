@@ -6,8 +6,9 @@ import venv
 from pathlib import Path
 
 import base_cli
+from base_cli.paths import discover_manifest
 
-from .manifest import ArtifactRequest, BaseManifest, ManifestError, discover_manifest, read_manifest
+from .manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
 from .registry import ArtifactDefinition, get_artifact_definition
 
 
