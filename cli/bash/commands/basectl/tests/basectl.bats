@@ -257,7 +257,7 @@ EOF
             printf "disable=%s\n" "${VIRTUAL_ENV_DISABLE_PROMPT:-}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
     [[ "$output" == *"host=aadhara"* ]]
     [[ "$output" == *"venv=[.venv] "* ]]
     [[ "$output" == *"git=("* ]]
@@ -289,7 +289,7 @@ EOF
     [[ "$output" == *"alias user_bashrc_alias='printf user-bashrc'"* ]]
     [[ "$output" == *"USER_BASHRC_LOADED=1"* ]]
     [[ "$output" == *"USER_BASHRC_HAS_BASE_IMPORT=1"* ]]
-    [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 @test "BASE_DEBUG traces Base runtime shell startup" {
