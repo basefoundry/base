@@ -9,6 +9,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_setup import engine
 from base_setup.engine import ArtifactError, main, merge_artifacts
 from base_setup.manifest import ArtifactRequest
 from base_setup.manifest import read_manifest
@@ -23,6 +24,12 @@ def run_engine(args: list[str]) -> tuple[int, str, str]:
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+def fake_context() -> mock.Mock:
+    ctx = mock.Mock()
+    ctx.log = mock.Mock()
+    return ctx
 
 
 class ManifestTests(unittest.TestCase):
@@ -126,7 +133,7 @@ class ManifestTests(unittest.TestCase):
                         "artifacts:",
                         "  - type: tool",
                         "    name: terraform",
-                        "    version: \"1.8.5\"",
+                        "    version: latest",
                     ]
                 ),
                 encoding="utf-8",
@@ -136,6 +143,61 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+
+    def test_homebrew_artifact_rejects_non_latest_version(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+
+        with self.assertRaisesRegex(ArtifactError, "only supports Homebrew artifact version 'latest'"):
+            engine.reconcile_homebrew_artifact(fake_context(), definition, "1.8.5", dry_run=True)
+
+    def test_homebrew_artifact_latest_invokes_brew_install(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=False,
+        ), mock.patch("base_setup.engine.run_command") as run_command:
+            engine.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["brew", "install", "terraform"])
+
+    def test_python_artifact_honors_project_venv_dir_override(self) -> None:
+        definition = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "custom-venv"
+            with mock.patch.dict(
+                os.environ,
+                {"BASE_PROJECT": "demo", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
+            ), mock.patch("base_setup.engine.python_artifact_installed", return_value=False):
+                engine.reconcile_python_artifact(ctx, definition, "latest", dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(
+            f"[DRY-RUN] Would create project virtual environment at '{venv_dir}'.",
+            info_messages,
+        )
+        self.assertIn(
+            f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install requests",
+            info_messages,
+        )
+
+    def test_run_command_includes_stderr_on_failure(self) -> None:
+        ctx = fake_context()
+
+        with mock.patch(
+            "base_setup.engine.subprocess.run",
+            return_value=mock.Mock(returncode=17, stderr="installer exploded\n"),
+        ):
+            with self.assertRaisesRegex(ArtifactError, "installer exploded"):
+                engine.run_command(ctx, ["installer", "--bad"])
+
+        ctx.log.error.assert_called_once_with("Command stderr: %s", "installer exploded")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_project_argument_validates_manifest_project_name(self) -> None:
@@ -179,7 +241,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts, ())
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
-    def test_empty_artifact_list_logs_that_no_artifacts_are_declared(self) -> None:
+    def test_empty_artifact_list_logs_that_base_defaults_are_used(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
             manifest_path.write_text(
@@ -197,7 +259,7 @@ class ManifestTests(unittest.TestCase):
             status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("Project 'demo' declares no artifacts.", stderr)
+        self.assertIn("Project 'demo' declares no artifacts; installing Base default artifacts only.", stderr)
 
 
 if __name__ == "__main__":

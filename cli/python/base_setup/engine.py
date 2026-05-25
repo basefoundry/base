@@ -83,7 +83,13 @@ def reconcile_manifest(
     artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
     definitions = resolve_artifact_definitions(artifacts)
     if not manifest.artifacts:
-        ctx.log.info("Project '%s' declares no artifacts.", manifest.project_name)
+        if artifacts:
+            ctx.log.info(
+                "Project '%s' declares no artifacts; installing Base default artifacts only.",
+                manifest.project_name,
+            )
+        else:
+            ctx.log.info("Project '%s' has no artifacts to install.", manifest.project_name)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
@@ -149,6 +155,13 @@ def reconcile_homebrew_artifact(
     version: str,
     dry_run: bool,
 ) -> None:
+    if version != "latest":
+        raise ArtifactError(
+            "Homebrew artifact "
+            f"'{definition.name}' specifies version '{version}', but Base only supports "
+            "Homebrew artifact version 'latest' right now."
+        )
+
     command = ["brew", "install", definition.package]
     if dry_run:
         dry_run_command(ctx, command)
@@ -171,7 +184,7 @@ def reconcile_homebrew_artifact(
         definition.package,
         version,
     )
-    run_command(command)
+    run_command(ctx, command)
 
 
 def reconcile_python_artifact(
@@ -181,7 +194,7 @@ def reconcile_python_artifact(
     dry_run: bool,
 ) -> None:
     project = os.environ.get("BASE_PROJECT", "base")
-    venv_dir = Path.home() / ".base.d" / project / ".venv"
+    venv_dir = project_venv_dir(project)
     python_bin = venv_dir / "bin" / "python"
     requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
 
@@ -200,7 +213,14 @@ def reconcile_python_artifact(
         venv.create(venv_dir, with_pip=True)
 
     ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
-    run_command([str(python_bin), "-m", "pip", "install", requirement])
+    run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+
+
+def project_venv_dir(project: str) -> Path:
+    override = os.environ.get("BASE_PROJECT_VENV_DIR")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / ".base.d" / project / ".venv"
 
 
 def python_artifact_installed(python_bin: Path, package: str, version: str) -> bool:
@@ -229,10 +249,15 @@ def run_check(command: list[str]) -> bool:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
-def run_command(command: list[str]) -> None:
-    completed = subprocess.run(command, check=False)
+def run_command(ctx: base_cli.Context, command: list[str]) -> None:
+    completed = subprocess.run(command, stderr=subprocess.PIPE, text=True, check=False)
     if completed.returncode:
-        raise ArtifactError(f"Command failed with exit {completed.returncode}: {format_command(command)}")
+        stderr = (completed.stderr or "").strip()
+        message = f"Command failed with exit {completed.returncode}: {format_command(command)}"
+        if stderr:
+            ctx.log.error("Command stderr: %s", stderr)
+            message = f"{message}\n{stderr}"
+        raise ArtifactError(message)
 
 
 def dry_run_command(ctx: base_cli.Context, command: list[str]) -> None:
