@@ -480,6 +480,100 @@ setup_run_check() {
     return 1
 }
 
+setup_json_escape() {
+    local value="${1:-}"
+
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    value="${value//$'\r'/\\r}"
+    value="${value//$'\t'/\\t}"
+    printf '%s' "$value"
+}
+
+setup_print_check_json_item() {
+    local trailing_comma="$1"
+    local name="$2"
+    local ok="$3"
+    local message="$4"
+
+    printf '    {"name":"%s","ok":%s,"message":"%s"}%s\n' \
+        "$(setup_json_escape "$name")" \
+        "$ok" \
+        "$(setup_json_escape "$message")" \
+        "$trailing_comma"
+}
+
+setup_run_check_json() {
+    local bats_message bats_ok=false brew_bin homebrew_message homebrew_ok=false
+    local missing=0
+    local python_message python_ok=false
+    local venv_dir venv_message venv_ok=false
+    local xcode_message xcode_ok=false
+
+    setup_require_macos
+    venv_dir="$(setup_venv_dir)"
+
+    if brew_bin="$(setup_find_brew_bin)"; then
+        if setup_refresh_brew_path; then
+            homebrew_ok=true
+            homebrew_message="Homebrew is installed."
+        else
+            homebrew_message="Homebrew is installed, but its bin directory could not be added to PATH."
+            missing=1
+        fi
+    else
+        homebrew_message="Homebrew is not installed."
+        missing=1
+    fi
+
+    if setup_xcode_tools_installed; then
+        xcode_ok=true
+        xcode_message="Xcode Command Line Tools are installed."
+    else
+        xcode_message="Xcode Command Line Tools are not installed."
+        missing=1
+    fi
+
+    if setup_python_installed; then
+        python_ok=true
+        python_message="Python formula '$(setup_python_formula)' is installed via Homebrew."
+    else
+        python_message="Python formula '$(setup_python_formula)' is not installed via Homebrew."
+        missing=1
+    fi
+
+    if setup_bats_installed; then
+        bats_ok=true
+        bats_message="BATS formula '$(setup_bats_formula)' is installed via Homebrew."
+    else
+        bats_ok=false
+        bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
+        missing=1
+    fi
+
+    if setup_virtualenv_exists; then
+        venv_ok=true
+        venv_message="Virtual environment exists at '$venv_dir'."
+    else
+        venv_message="Virtual environment is missing at '$venv_dir'."
+        missing=1
+    fi
+
+    printf '{\n'
+    printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
+    printf '  "checks": [\n'
+    setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
+    setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
+    setup_print_check_json_item "," "python" "$python_ok" "$python_message"
+    setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
+    setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
+    printf '  ]\n'
+    printf '}\n'
+
+    [[ "$missing" -eq 0 ]]
+}
+
 setup_run_install() {
     setup_require_macos
     setup_install_homebrew

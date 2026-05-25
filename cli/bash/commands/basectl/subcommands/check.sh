@@ -14,8 +14,9 @@ Usage:
   basectl check [options]
 
 Options:
-  -v          Enable DEBUG logging for this subcommand.
-  -h, --help  Show this help text.
+  --format <text|json>  Select output format. Defaults to text.
+  -v                    Enable DEBUG logging for this subcommand.
+  -h, --help            Show this help text.
 
 Purpose:
   Verify the local Base CLI environment on macOS without making changes.
@@ -30,11 +31,31 @@ EOF
 }
 
 base_check_subcommand_main() {
+    local output_format="text"
+
     while (($#)); do
         case "$1" in
             -h|--help|help)
                 base_check_subcommand_usage
                 return 0
+                ;;
+            --format)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    print_error "Option '--format' requires an argument."
+                    base_check_subcommand_usage >&2
+                    return 1
+                fi
+                case "$1" in
+                    text|json)
+                        output_format="$1"
+                        ;;
+                    *)
+                        print_error "Unsupported check output format '$1'."
+                        base_check_subcommand_usage >&2
+                        return 1
+                        ;;
+                esac
                 ;;
             -v)
                 setup_enable_debug_logging
@@ -49,5 +70,9 @@ base_check_subcommand_main() {
     done
 
     log_debug "Running 'basectl check'."
-    setup_run_check
+    if [[ "$output_format" == json ]]; then
+        setup_run_check_json
+    else
+        setup_run_check
+    fi
 }

@@ -80,11 +80,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
 
 ## Usability Issues
 
-- [ ] Make `basectl check` more automation-friendly.
+- [x] Make `basectl check` more automation-friendly.
   - Files: `cli/bash/commands/basectl/subcommands/check.sh`, `lib/bash/std/lib_std.sh`
   - Problem: all log output goes to stderr, so `basectl check > result.txt` captures nothing and scripting requires `2>&1`.
   - Expected fix: consider `--format json`, `--quiet`, or a documented stdout/stderr contract.
   - Add tests for any new output mode.
+  - Done locally with `basectl check --format json`; pending commit.
 
 - [x] Add a CLI path to disable profile defaults.
   - File: `cli/bash/commands/basectl/subcommands/update_profile.sh`
