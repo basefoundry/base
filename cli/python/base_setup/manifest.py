@@ -31,20 +31,6 @@ class BaseManifest:
     artifacts: tuple[ArtifactRequest, ...]
 
 
-def discover_manifest(start: Path) -> Path | None:
-    current = start.resolve()
-    if current.is_file():
-        current = current.parent
-
-    while True:
-        candidate = current / "base_manifest.yaml"
-        if candidate.is_file():
-            return candidate
-        if current.parent == current:
-            return None
-        current = current.parent
-
-
 def read_manifest(path: Path) -> BaseManifest:
     if yaml is None:
         raise ManifestError(

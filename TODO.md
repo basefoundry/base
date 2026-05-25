@@ -33,10 +33,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: either implement supported Homebrew version handling or raise `ArtifactError` when a Homebrew artifact specifies anything other than `latest`.
   - Done.
 
-- [ ] Deduplicate Base manifest discovery.
+- [x] Deduplicate Base manifest discovery.
   - Files: `cli/python/base_setup/manifest.py`, `lib/python/base_cli/paths.py`
   - Problem: upward discovery for `base_manifest.yaml` is implemented in both modules.
   - Expected fix: keep the shared implementation in `base_cli.paths`, remove the duplicate from `base_setup.manifest`, and update imports/tests.
+  - Done.
 
 - [ ] Use `shlex.join` for setup command formatting.
   - File: `cli/python/base_setup/engine.py`
