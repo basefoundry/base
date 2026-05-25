@@ -131,10 +131,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Goal: decide whether Base should support machine- or organization-managed config, where it should live, and how users can inspect or opt into it.
   - Note: v1 intentionally does not read `/etc/base.d/config.yaml` implicitly.
 
-- [ ] Simplify PyYAML readiness state in setup.
+- [x] Simplify PyYAML readiness state in setup.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: `BASE_SETUP_PYYAML_READY` is exported and used as cross-function run state for dry-run gating.
   - Expected fix: inline the package-installed check in `setup_run_project_artifact_setup` instead of exporting a readiness flag.
+  - Done.
 
 - [x] Capture `base_cli.testing` stderr separately.
   - File: `lib/python/base_cli/testing.py`
