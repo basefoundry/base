@@ -408,6 +408,16 @@ setup_install_click() {
     setup_install_base_python_package "$(setup_click_package)"
 }
 
+setup_base_python_package_check_message() {
+    local package="$1"
+
+    if setup_base_python_package_installed "$package"; then
+        printf "Python package '%s' is installed in the Base virtual environment.\n" "$package"
+    else
+        printf "Python package '%s' is not installed in the Base virtual environment.\n" "$package"
+    fi
+}
+
 setup_run_project_artifact_setup() {
     local exit_code project wrapper
     local args=()
@@ -437,9 +447,11 @@ setup_run_project_artifact_setup() {
 }
 
 setup_run_check() {
-    local brew_bin="" venv_dir missing=0
+    local brew_bin="" click_package pyyaml_package venv_dir missing=0
 
     setup_require_macos
+    click_package="$(setup_click_package)"
+    pyyaml_package="$(setup_pyyaml_package)"
     venv_dir="$(setup_venv_dir)"
 
     if brew_bin="$(setup_find_brew_bin)"; then
@@ -481,6 +493,20 @@ setup_run_check() {
         missing=1
     fi
 
+    if setup_base_python_package_installed "$pyyaml_package"; then
+        log_info "$(setup_base_python_package_check_message "$pyyaml_package")"
+    else
+        log_warn "$(setup_base_python_package_check_message "$pyyaml_package")"
+        missing=1
+    fi
+
+    if setup_base_python_package_installed "$click_package"; then
+        log_info "$(setup_base_python_package_check_message "$click_package")"
+    else
+        log_warn "$(setup_base_python_package_check_message "$click_package")"
+        missing=1
+    fi
+
     if ((missing == 0)); then
         log_info "Base CLI environment check passed."
         return 0
@@ -516,12 +542,16 @@ setup_print_check_json_item() {
 
 setup_run_check_json() {
     local bats_message bats_ok=false brew_bin homebrew_message homebrew_ok=false
+    local click_message click_ok=false click_package
     local missing=0
+    local pyyaml_message pyyaml_ok=false pyyaml_package
     local python_message python_ok=false
     local venv_dir venv_message venv_ok=false
     local xcode_message xcode_ok=false
 
     setup_require_macos
+    click_package="$(setup_click_package)"
+    pyyaml_package="$(setup_pyyaml_package)"
     venv_dir="$(setup_venv_dir)"
 
     if brew_bin="$(setup_find_brew_bin)"; then
@@ -572,6 +602,20 @@ setup_run_check_json() {
         missing=1
     fi
 
+    if setup_base_python_package_installed "$pyyaml_package"; then
+        pyyaml_ok=true
+    else
+        missing=1
+    fi
+    pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package")"
+
+    if setup_base_python_package_installed "$click_package"; then
+        click_ok=true
+    else
+        missing=1
+    fi
+    click_message="$(setup_base_python_package_check_message "$click_package")"
+
     printf '{\n'
     printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
     printf '  "checks": [\n'
@@ -581,6 +625,8 @@ setup_run_check_json() {
     if setup_dev_dependencies_enabled; then
         setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
     fi
+    setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
+    setup_print_check_json_item "," "click" "$click_ok" "$click_message"
     setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
     printf '  ]\n'
     printf '}\n'

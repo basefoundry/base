@@ -298,6 +298,29 @@ run_base_command() {
         "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
 }
 
+create_base_venv_stub() {
+    local venv_dir="${1:-$TEST_HOME/.base.d/base/.venv}"
+
+    mkdir -p "$venv_dir/bin"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$click_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
+    exit $?
+fi
+printf 'unexpected check venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+}
+
 @test "basectl setup prints usage for help" {
     run_base_command setup --help
 
@@ -585,8 +608,9 @@ EOF
     mkdir -p "$TEST_TMPDIR/CommandLineTools"
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/bats-installed"
-    mkdir -p "$venv_dir/bin"
-    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
 
     run_base_command check
 
@@ -596,7 +620,29 @@ EOF
     [[ "$output" == *"Python formula 'python@3.13' is installed via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
+    [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
+}
+
+@test "basectl check fails when a required Base Python package is missing" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command check
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
+    [[ "$output" == *"Python package 'PyYAML' is not installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
 @test "basectl check --dev includes BATS in developer dependency checks" {
@@ -607,8 +653,9 @@ EOF
     touch "$TEST_STATE_DIR/xcode-installed"
     mkdir -p "$TEST_TMPDIR/CommandLineTools"
     touch "$TEST_STATE_DIR/python-installed"
-    mkdir -p "$venv_dir/bin"
-    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
 
     run_base_command check --dev
 
@@ -626,8 +673,9 @@ EOF
     mkdir -p "$TEST_TMPDIR/CommandLineTools"
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/bats-installed"
-    mkdir -p "$venv_dir/bin"
-    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
@@ -644,6 +692,8 @@ EOF
     [[ "$output" == *'"ok": true'* ]]
     [[ "$output" == *'"name":"homebrew","ok":true'* ]]
     [[ "$output" != *'"name":"bats"'* ]]
+    [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
+    [[ "$output" == *'"name":"click","ok":true'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
     [ "${stderr:-}" = "" ]
 }
@@ -656,8 +706,9 @@ EOF
     touch "$TEST_STATE_DIR/xcode-installed"
     mkdir -p "$TEST_TMPDIR/CommandLineTools"
     touch "$TEST_STATE_DIR/python-installed"
-    mkdir -p "$venv_dir/bin"
-    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
@@ -673,6 +724,8 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
     [[ "$output" == *'"name":"bats","ok":false'* ]]
+    [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
+    [[ "$output" == *'"name":"click","ok":true'* ]]
     [ "${stderr:-}" = "" ]
 }
 
@@ -693,6 +746,8 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
     [[ "$output" == *'"name":"homebrew","ok":false'* ]]
+    [[ "$output" == *'"name":"pyyaml","ok":false'* ]]
+    [[ "$output" == *'"name":"click","ok":false'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":false'* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [ "${stderr:-}" = "" ]
