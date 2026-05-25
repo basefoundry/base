@@ -71,11 +71,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Preserve support for multi-line replacement sections.
   - Done locally; pending commit.
 
-- [ ] Investigate and replace double `git pull` retry.
+- [x] Investigate and replace double `git pull` retry.
   - File: `lib/bash/git/lib_git.sh`
   - Problem: `git pull || git pull` hides the underlying failure or warning mode.
   - Expected fix: identify the root cause and use explicit git configuration or clearer failure handling.
   - Add tests around the intended retry or non-retry behavior.
+  - Done locally; pending commit.
 
 ## Usability Issues
 

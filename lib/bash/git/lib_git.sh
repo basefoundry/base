@@ -75,6 +75,29 @@ _git_update_repo_finish() {
     return "$status"
 }
 
+_git_pull_with_retry() {
+    local git_log="$1"
+    local max_attempts=2
+    local attempt=1
+
+    while ((attempt <= max_attempts)); do
+        if git pull >"$git_log" 2>&1; then
+            if ((attempt > 1)); then
+                log_debug "git pull succeeded on attempt $attempt."
+            fi
+            return 0
+        fi
+
+        if ((attempt == max_attempts)); then
+            return 1
+        fi
+
+        log_warn "git pull failed on attempt $attempt; retrying once."
+        [[ -s "$git_log" ]] && log_debug_file "$git_log"
+        attempt=$((attempt + 1))
+    done
+}
+
 #
 # Safely updates a Git repository and its submodules after checking that the
 # current branch is the repo default branch or an explicit expected branch.
@@ -144,8 +167,7 @@ git_update_repo() {
         fi
     fi
 
-    # sometimes git pull throws warnings and we need a second git pull to address it
-    if ! { git pull || git pull; } >"$git_log" 2>&1; then
+    if ! _git_pull_with_retry "$git_log"; then
         log_error "git pull failed on repo '$git_repo'"
         [[ -s "$git_log" ]] && log_info_file "$git_log"
         _git_update_repo_finish "$git_log" true 1

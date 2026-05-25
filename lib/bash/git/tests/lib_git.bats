@@ -127,6 +127,61 @@ setup() {
     ! compgen -G "$temp_dir/git_log.*" >/dev/null
 }
 
+@test "_git_pull_with_retry retries once after a transient pull failure" {
+    local git_log="$TEST_TMPDIR/git.log"
+    local pull_count="$TEST_TMPDIR/pull-count"
+
+    printf '0\n' > "$pull_count"
+    git() {
+        local count
+
+        if [[ "${1:-}" == "pull" ]]; then
+            count="$(cat "$pull_count")"
+            count=$((count + 1))
+            printf '%s\n' "$count" > "$pull_count"
+            printf 'pull attempt %s\n' "$count" >&2
+            [[ "$count" -ge 2 ]]
+            return $?
+        fi
+        command git "$@"
+    }
+
+    bats_run _git_pull_with_retry "$git_log"
+    unset -f git
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$pull_count")" = "2" ]
+    [[ "$output" == *"git pull failed on attempt 1; retrying once."* ]]
+    [ "$(cat "$git_log")" = "pull attempt 2" ]
+}
+
+@test "_git_pull_with_retry fails after two pull attempts" {
+    local git_log="$TEST_TMPDIR/git.log"
+    local pull_count="$TEST_TMPDIR/pull-count"
+
+    printf '0\n' > "$pull_count"
+    git() {
+        local count
+
+        if [[ "${1:-}" == "pull" ]]; then
+            count="$(cat "$pull_count")"
+            count=$((count + 1))
+            printf '%s\n' "$count" > "$pull_count"
+            printf 'pull attempt %s\n' "$count" >&2
+            return 1
+        fi
+        command git "$@"
+    }
+
+    bats_run _git_pull_with_retry "$git_log"
+    unset -f git
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$pull_count")" = "2" ]
+    [[ "$output" == *"git pull failed on attempt 1; retrying once."* ]]
+    [ "$(cat "$git_log")" = "pull attempt 2" ]
+}
+
 @test "check_script_up_to_date reports success for an up-to-date tracked script" {
     local repo="$TEST_TMPDIR/repo"
     local remote="$TEST_TMPDIR/remote.git"
