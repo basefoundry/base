@@ -396,8 +396,9 @@ setup_install_click() {
 
 setup_base_python_package_check_message() {
     local package="$1"
+    local installed="$2"
 
-    if setup_base_python_package_installed "$package"; then
+    if [[ "$installed" == true ]]; then
         printf "Python package '%s' is installed in the Base virtual environment.\n" "$package"
     else
         printf "Python package '%s' is not installed in the Base virtual environment.\n" "$package"
@@ -480,16 +481,16 @@ setup_run_check() {
     fi
 
     if setup_base_python_package_installed "$pyyaml_package"; then
-        log_info "$(setup_base_python_package_check_message "$pyyaml_package")"
+        log_info "$(setup_base_python_package_check_message "$pyyaml_package" true)"
     else
-        log_warn "$(setup_base_python_package_check_message "$pyyaml_package")"
+        log_warn "$(setup_base_python_package_check_message "$pyyaml_package" false)"
         missing=1
     fi
 
     if setup_base_python_package_installed "$click_package"; then
-        log_info "$(setup_base_python_package_check_message "$click_package")"
+        log_info "$(setup_base_python_package_check_message "$click_package" true)"
     else
-        log_warn "$(setup_base_python_package_check_message "$click_package")"
+        log_warn "$(setup_base_python_package_check_message "$click_package" false)"
         missing=1
     fi
 
@@ -593,14 +594,14 @@ setup_run_check_json() {
     else
         missing=1
     fi
-    pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package")"
+    pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package" "$pyyaml_ok")"
 
     if setup_base_python_package_installed "$click_package"; then
         click_ok=true
     else
         missing=1
     fi
-    click_message="$(setup_base_python_package_check_message "$click_package")"
+    click_message="$(setup_base_python_package_check_message "$click_package" "$click_ok")"
 
     printf '{\n'
     printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
