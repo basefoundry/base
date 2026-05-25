@@ -123,12 +123,13 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
 
 ## Base CLI Python Layer
 
-- [ ] Implement `base_cli` v1 for Python CLIs.
+- [x] Implement `base_cli` v1 for Python CLIs.
   - Files: `lib/python/base_cli/`, `docs/base-cli-design.md`, `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Goal: provide explicit `App`/decorator-driven initialization for Base and Base-supported project CLIs.
   - V1 scope: `Context`, Click wrapper decorators, standard options, `~/.base.d/cli/<name>` paths, user/file logging, temp/cache directories, sensitive option redaction for invocation logging, project manifest discovery, and a test helper.
   - Bootstrap: install Click into Base's Python virtual environment alongside PyYAML.
   - Add focused Python tests and keep existing setup tests passing.
+  - Done locally; pending commit.
 
 - [x] Dogfood `base_cli` in `base_setup`.
   - Files: `cli/python/base_setup/engine.py`, `cli/python/base_setup/tests/test_engine.py`, `lib/python/base_cli/`
