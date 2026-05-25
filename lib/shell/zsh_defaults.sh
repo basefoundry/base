@@ -42,11 +42,25 @@ unset base_zsh_defaults_file
 
 bindkey -v
 
+_base_zsh_defaults_git_prompt() {
+    local branch
+
+    command -v git >/dev/null 2>&1 || return 0
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" || \
+        branch="$(git rev-parse --short HEAD 2>/dev/null)" || return 0
+    [[ -n "$branch" ]] || return 0
+
+    printf '(%s) ' "$branch"
+}
+
 export HISTSIZE="${HISTSIZE:-5000}"
 export SAVEHIST="${SAVEHIST:-5000}"
 setopt appendhistory
 setopt hist_ignore_dups
 setopt hist_ignore_all_dups
+setopt prompt_subst
 setopt share_history
 
-PROMPT='%* %m %1~: '
+PROMPT='%* %m $(_base_zsh_defaults_git_prompt)%1~: '

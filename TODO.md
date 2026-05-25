@@ -221,10 +221,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: document the venv location and how it relates to python-package artifacts.
   - Done.
 
-- [ ] Add git branch context to Zsh defaults prompt.
+- [x] Add git branch context to Zsh defaults prompt.
   - File: `lib/shell/zsh_defaults.sh`
   - Problem: Bash defaults show git branch context in the prompt, but Zsh defaults do not.
   - Expected fix: add a Zsh git prompt helper and include it in `PROMPT`.
+  - Done.
 
 - [x] Avoid subprocess-per-prompt host lookup.
   - File: `lib/bash/runtime/bashrc`
