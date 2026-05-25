@@ -120,10 +120,16 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: return the resolved absolute path as the fallback.
   - Done.
 
-- [ ] Remove or guard system-wide Base config loading.
+- [x] Remove or guard system-wide Base config loading.
   - File: `lib/python/base_cli/config.py`
   - Problem: `load_config` always reads `/etc/base.d/config.yaml`, which can unexpectedly affect local developer tooling.
   - Expected fix: either remove system config from v1 or gate it behind an explicit environment variable such as `BASE_SYSTEM_CONFIG`.
+  - Done.
+
+- [ ] Design optional organization-wide Base config policy.
+  - File: `docs/base-cli-design.md`
+  - Goal: decide whether Base should support machine- or organization-managed config, where it should live, and how users can inspect or opt into it.
+  - Note: v1 intentionally does not read `/etc/base.d/config.yaml` implicitly.
 
 - [ ] Simplify PyYAML readiness state in setup.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
