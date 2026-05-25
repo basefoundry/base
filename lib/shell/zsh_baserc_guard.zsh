@@ -1,5 +1,5 @@
 #
-# zsh_baserc_guard.sh
+# zsh_baserc_guard.zsh
 #     Shared Zsh helper for safely loading user-managed ~/.baserc.
 #
 # Purpose:

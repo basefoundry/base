@@ -35,7 +35,7 @@ base_zshrc_source_baserc_guard() {
     local guard_path
 
     snippet_dir="$(base_zshrc_snippet_dir)" || return 1
-    guard_path="$snippet_dir/zsh_baserc_guard.sh"
+    guard_path="$snippet_dir/zsh_baserc_guard.zsh"
 
     [[ -f "$guard_path" ]] || {
         printf "ERROR: Base Zsh baserc guard '%s' was not found.\n" "$guard_path" >&2
