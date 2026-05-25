@@ -321,6 +321,38 @@ EOF
     chmod +x "$venv_dir/bin/python"
 }
 
+create_project_setup_venv_stub() {
+    local exit_code="${2:-0}"
+    local venv_dir="${1:-$TEST_HOME/.base.d/base/.venv}"
+
+    mkdir -p "$venv_dir/bin"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
+    touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
+    exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$click_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
+    exit $?
+fi
+printf 'unexpected project setup venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+    printf '%s\n' "$exit_code" > "$TEST_STATE_DIR/project-setup-exit-code"
+}
+
 @test "basectl setup prints usage for help" {
     run_base_command setup --help
 
@@ -443,6 +475,50 @@ EOF
     [ -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ -f "$venv_dir/pyvenv.cfg" ]
+}
+
+@test "basectl setup forwards project setup arguments through base-wrapper" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$demo_venv_dir"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command setup --dry-run --manifest "$manifest_path" demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Running Python project setup layer."* ]]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" demo)" ]
+}
+
+@test "basectl setup propagates Python project setup failure" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$venv_dir" 42
+
+    run_base_command setup
+
+    [ "$status" -eq 42 ]
+    [[ "$output" == *"Python project setup layer failed."* ]]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup --dev installs BATS with developer dependencies" {

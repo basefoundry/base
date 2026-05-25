@@ -160,10 +160,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: both files copy the same Base-owned variable snapshot/restore logic with different function prefixes.
   - Expected fix: create a shared Zsh guard helper and source it from both files.
 
-- [ ] Add BATS coverage for Bash-to-Python setup handoff.
+- [x] Add BATS coverage for Bash-to-Python setup handoff.
   - Files: `cli/bash/commands/basectl/tests/setup.bats`, `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: `setup_run_project_artifact_setup` is not covered at the Bash layer.
   - Expected fix: mock `base-wrapper` or the Python boundary and verify argument passing, manifest/project environment handling, and non-zero exit propagation.
+  - Done.
 
 ## Usability Issues
 
