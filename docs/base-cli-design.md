@@ -177,6 +177,12 @@ Configuration is resolved from lowest to highest precedence:
 5. Command line options
 6. Explicit runtime API overrides
 
+V1 intentionally does not read machine-wide or organization-wide config
+implicitly. In particular, Base must not silently load `/etc/base.d/config.yaml`
+or any other global policy file during local CLI startup. That keeps a new
+checkout and a local developer shell deterministic unless the user or wrapper
+explicitly opts into an additional config source.
+
 V1 implements the shape and context fields, but only needs a minimal config
 loader: YAML files are merged when present, environment is read from
 `BASE_CLI_ENVIRONMENT`, and CLI options can override `--environment`, `--debug`,
@@ -190,6 +196,31 @@ Standard environment variables:
 | `BASE_CLI_LOG_LEVEL` | user stream log level | `info` |
 | `BASE_CLI_KEEP_TEMP` | keep run temp directory | `false` |
 | `BASE_CLI_TEMP_RETENTION_DAYS` | prune retained temp dirs older than N days | `7` |
+
+### Future Organization Policy
+
+Base may later support machine- or organization-managed defaults, but that
+feature should be designed as explicit policy rather than another hidden config
+layer.
+
+Recommended shape:
+
+1. Organization policy lives outside project repositories and user-managed Base
+   state. `/etc/base.d/config.yaml` is acceptable on managed machines, but it is
+   not special unless explicitly enabled.
+2. Users or enterprise wrappers opt in with an environment variable such as
+   `BASE_ORG_CONFIG=/etc/base.d/config.yaml`, or a future Base launcher flag
+   with equivalent behavior.
+3. `base_cli` exposes the resolved config source list through context and a
+   future inspection command, so users can see exactly which files influenced a
+   run.
+4. Policy config is normally a defaults layer between code defaults and user
+   config. A later enforcement model may add locked keys, but locked policy must
+   be visible in inspection output and should fail loudly when a user or project
+   attempts to override it.
+5. Missing, unreadable, or invalid opt-in policy files fail the command instead
+   of being silently skipped. Optional policy should be represented by not
+   setting the opt-in variable.
 
 ## Standard Options
 
