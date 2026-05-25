@@ -1061,6 +1061,18 @@ EOF
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
     [[ "$output" == *"git=("* ]]
     [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '* ]]
+
+    if command -v zsh >/dev/null 2>&1; then
+        run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u EDITOR -u VISUAL -u EXINIT \
+            HOME="$TEST_HOME" \
+            PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+            zsh -f -i -c 'source "$HOME/.zshrc"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_zsh_defaults_git_prompt)"; printf "PROMPT=%s\n" "$PROMPT"; setopt | grep -q "^promptsubst$"; printf "prompt_subst=enabled\n"'
+
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"git=("* ]]
+        [[ "$output" == *'PROMPT=%* %m $(_base_zsh_defaults_git_prompt)%1~: '* ]]
+        [[ "$output" == *"prompt_subst=enabled"* ]]
+    fi
 }
 
 @test "basectl update-profile preserves an existing defaults preference" {
