@@ -20,7 +20,7 @@ readonly _base_setup_common_sourced
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_SETUP_RECREATE_VENV BASE_PROJECT
 }
 
 setup_enable_dry_run() {
@@ -30,6 +30,14 @@ setup_enable_dry_run() {
 setup_enable_debug_logging() {
     set_log_level DEBUG
     export LOG_DEBUG=1
+}
+
+setup_enable_dev_dependencies() {
+    export BASE_SETUP_DEV=true
+}
+
+setup_dev_dependencies_enabled() {
+    [[ "${BASE_SETUP_DEV:-false}" == true ]]
 }
 
 setup_is_dry_run() {
@@ -457,11 +465,13 @@ setup_run_check() {
         missing=1
     fi
 
-    if setup_bats_installed; then
-        log_info "BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-    else
-        log_warn "BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-        missing=1
+    if setup_dev_dependencies_enabled; then
+        if setup_bats_installed; then
+            log_info "BATS formula '$(setup_bats_formula)' is installed via Homebrew."
+        else
+            log_warn "BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
+            missing=1
+        fi
     fi
 
     if setup_virtualenv_exists; then
@@ -543,13 +553,15 @@ setup_run_check_json() {
         missing=1
     fi
 
-    if setup_bats_installed; then
-        bats_ok=true
-        bats_message="BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-    else
-        bats_ok=false
-        bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-        missing=1
+    if setup_dev_dependencies_enabled; then
+        if setup_bats_installed; then
+            bats_ok=true
+            bats_message="BATS formula '$(setup_bats_formula)' is installed via Homebrew."
+        else
+            bats_ok=false
+            bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
+            missing=1
+        fi
     fi
 
     if setup_virtualenv_exists; then
@@ -566,7 +578,9 @@ setup_run_check_json() {
     setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
     setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
     setup_print_check_json_item "," "python" "$python_ok" "$python_message"
-    setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
+    if setup_dev_dependencies_enabled; then
+        setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
+    fi
     setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
     printf '  ]\n'
     printf '}\n'
@@ -579,7 +593,9 @@ setup_run_install() {
     setup_install_homebrew
     setup_install_xcode_tools
     setup_install_python
-    setup_install_bats
+    if setup_dev_dependencies_enabled; then
+        setup_install_bats
+    fi
     setup_create_virtualenv
     setup_install_pyyaml
     setup_install_click

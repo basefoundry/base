@@ -94,11 +94,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Cover default enable, preserve, and disable flows.
   - Done locally; pending commit.
 
-- [ ] Decide whether BATS is a required or dev-only dependency.
+- [x] Decide whether BATS is a required or dev-only dependency.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: setup installs BATS unconditionally and check treats missing BATS as a failure.
   - Expected fix: either document BATS as a first-class dependency or make it optional via `--dev` or project metadata.
   - Update setup/check tests and README accordingly.
+  - Done locally with BATS as an opt-in `--dev` dependency; pending commit.
 
 - [ ] Make `caff` PID detection more robust.
   - File: `cli/bash/commands/caff/caff.sh`
