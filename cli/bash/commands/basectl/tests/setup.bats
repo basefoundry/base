@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load ../../../../../lib/bash/tests/test_helper.sh
+bats_require_minimum_version 1.5.0
 
 setup() {
     setup_test_tmpdir
@@ -573,6 +574,58 @@ EOF
     [[ "$output" == *"Base CLI environment check passed."* ]]
 }
 
+@test "basectl check --format json writes successful check results to stdout" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    mkdir -p "$venv_dir/bin"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"ok": true'* ]]
+    [[ "$output" == *'"name":"homebrew","ok":true'* ]]
+    [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --format json writes failed check results to stdout" {
+    create_xcode_stubs
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"name":"homebrew","ok":false'* ]]
+    [[ "$output" == *'"name":"base_virtualenv","ok":false'* ]]
+    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
+    [ "${stderr:-}" = "" ]
+}
+
 @test "basectl check fails when required components are missing" {
     run_base_command check
 
@@ -583,6 +636,13 @@ EOF
     [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+}
+
+@test "basectl check rejects unsupported output formats" {
+    run_base_command check --format xml
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unsupported check output format 'xml'."* ]]
 }
 
 @test "basectl -v setup enables DEBUG logs" {

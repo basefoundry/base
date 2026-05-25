@@ -26,10 +26,9 @@ This file is the shared working memory for future AI-assisted development in thi
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.
-- Most recent uncommitted change replaces the silent `git pull || git pull`
-  retry in `lib/bash/git/lib_git.sh` with `_git_pull_with_retry`, which logs a
-  warning after the first failure, retries once, and preserves final failure
-  logging.
+- Most recent uncommitted change adds `basectl check --format json` for
+  automation-friendly stdout output while preserving the default human logging
+  contract on stderr.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.
