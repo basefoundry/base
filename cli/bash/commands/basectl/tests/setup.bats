@@ -977,6 +977,27 @@ EOF
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
 }
 
+@test "Zsh profile and zshrc share the baserc guard" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_DEBUG \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c 'source "$HOME/.zprofile"; source "$HOME/.zshrc"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_DEBUG zprofile: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"BASE_DEBUG zprofile: loading"* ]]
+    [[ "$output" == *"BASE_DEBUG zshrc: loading"* ]]
+    [[ "$output" != *"BASE_DEBUG zshrc: sourced '$TEST_HOME/.baserc'"* ]]
+    [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
 @test "baserc cannot override BASE_HOME for Base-managed Bash startup" {
     run_base_command update-profile
     [ "$status" -eq 0 ]
