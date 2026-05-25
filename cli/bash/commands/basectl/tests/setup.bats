@@ -308,10 +308,12 @@ create_base_venv_stub() {
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    printf '%s\n' "$4" >> "${BASE_SETUP_TEST_STATE_DIR:?}/pip-show.log"
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$click_package" ]]; then
+    printf '%s\n' "$4" >> "${BASE_SETUP_TEST_STATE_DIR:?}/pip-show.log"
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
@@ -699,6 +701,8 @@ EOF
     [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
+    [ "$(grep -c '^PyYAML$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
+    [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
 @test "basectl check fails when a required Base Python package is missing" {
@@ -719,6 +723,8 @@ EOF
     [[ "$output" == *"Python package 'PyYAML' is not installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+    [ "$(grep -c '^PyYAML$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
+    [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
 @test "basectl check --dev includes BATS in developer dependency checks" {
