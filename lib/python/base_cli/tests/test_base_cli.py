@@ -25,6 +25,29 @@ def change_directory(path: Path):
 
 
 class BaseCliTests(unittest.TestCase):
+    @staticmethod
+    def make_context(tmpdir: str) -> tuple[base_cli.Context, mock.Mock]:
+        root = Path(tmpdir)
+        temp_dir = root / "tmp"
+        temp_dir.mkdir()
+        log = mock.Mock()
+        log.handlers = []
+        context = base_cli.Context(
+            cli_name="demo",
+            run_id="run",
+            state_dir=root / "state",
+            log_dir=root / "logs",
+            cache_dir=root / "cache",
+            temp_dir=temp_dir,
+            log_file=root / "logs" / "run.log",
+            config={},
+            environment="dev",
+            debug=False,
+            keep_temp=False,
+            log=log,
+        )
+        return context, log
+
     def test_import_has_no_state_directory_side_effect(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
@@ -132,6 +155,53 @@ class BaseCliTests(unittest.TestCase):
             self.assertNotIn("super-secret", log_text)
             self.assertIn("manifest_path=", log_text)
             self.assertIn("project_root=", log_text)
+
+    def test_cleanup_continues_after_hook_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            context, log = self.make_context(tmpdir)
+            calls = []
+
+            def failing_hook() -> None:
+                calls.append("failing")
+                raise RuntimeError("hook exploded")
+
+            def later_hook() -> None:
+                calls.append("later")
+
+            context.on_cleanup(failing_hook)
+            context.on_cleanup(later_hook)
+
+            context.cleanup()
+
+            self.assertEqual(calls, ["failing", "later"])
+            self.assertFalse(context.temp_dir.exists())
+            log.warning.assert_any_call("Cleanup hook failed: %s", mock.ANY)
+
+    def test_cleanup_logs_temp_removal_failure_without_raising(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            context, log = self.make_context(tmpdir)
+
+            with mock.patch("base_cli.context.shutil.rmtree", side_effect=OSError("permission denied")):
+                context.cleanup()
+
+            log.warning.assert_any_call(
+                "Temp directory cleanup failed for '%s': %s",
+                context.temp_dir,
+                mock.ANY,
+            )
+
+    def test_cleanup_removes_handler_after_flush_and_close_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            context, log = self.make_context(tmpdir)
+            handler = mock.Mock()
+            handler.flush.side_effect = RuntimeError("flush exploded")
+            handler.close.side_effect = RuntimeError("close exploded")
+            log.handlers = [handler]
+
+            context.cleanup()
+
+            log.removeHandler.assert_called_once_with(handler)
+            self.assertEqual(log.warning.call_count, 2)
 
 
 if __name__ == "__main__":
