@@ -1,6 +1,6 @@
 # TODO
 
-Action items from Claude's Base code analysis for version `0.1.0-dev`.
+Action items from Claude's Base code analysis for version `0.1.0`.
 
 Use this as a commit-by-commit work queue. When an item is fixed, update the checkbox and add the commit hash or a short note.
 
