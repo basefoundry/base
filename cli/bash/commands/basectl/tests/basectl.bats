@@ -69,6 +69,43 @@ run_basectl() {
     [ "$output" = "basectl $expected_version" ]
 }
 
+@test "basectl re-execs through an installed supported Bash when current Bash is too old" {
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake_bash=%s\n' "$0"
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$fake_bash"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_BASH_VERSION=32 \
+        BASE_TEST_BASH_CANDIDATES="$fake_bash" \
+        "$BASE_REPO_ROOT/bin/basectl" --version
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"fake_bash=$fake_bash"* ]]
+    [[ "$output" == *"args=$BASE_REPO_ROOT/bin/basectl --version"* ]]
+}
+
+@test "basectl gives setup guidance when current Bash is too old and no supported Bash is installed" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_BASH_VERSION=32 \
+        BASE_TEST_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        "$BASE_REPO_ROOT/bin/basectl" --version
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base requires Bash 4.2 or newer; current version is 3.2."* ]]
+    [[ "$output" == *"A supported Bash was not found"* ]]
+    [[ "$output" == *"basectl setup"* ]]
+    [[ "$output" == *"brew install bash"* ]]
+}
+
 @test "basectl setup prints setup-specific help" {
     run_basectl setup --help
 

@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 #
 # lib_std.sh - Foundation library for Bash scripts
-#              Requires Bash version 4.0 or higher.
+#              Base entrypoints require Bash 4.2 or higher before sourcing this library.
 #
 # This library provides a standardized set of functions for common tasks,
 # ensuring consistency and robustness across multiple scripts.
@@ -10,7 +10,7 @@
 #     - PATH manipulation
 #     - Logging (with levels and colors)
 #     - Error handling and stack tracing
-#     - Bash version checking
+#     - Bash version check helpers
 #     - Library importing
 #     - Miscellaneous helpers
 #
@@ -84,91 +84,26 @@ is_interactive() {
 }
 
 #
-# check_bash_version_and_upgrade - Verifies the Bash version and prompts for an upgrade if necessary.
+# check_bash_version - Verifies the Bash version without prompting or installing anything.
 #
-# This function checks if the running Bash interpreter is version 4.0 or higher.
-# If the version is too old and the shell is interactive, it will offer to
-# install/upgrade Bash via Homebrew. If the shell is not interactive, or if the OSTYPE is not darwin,
-# it will exit with an error.
+# This function checks if the running Bash interpreter is version 4.0 or higher and returns
+# non-zero when it is not. Base entrypoints should enforce the supported runtime before
+# sourcing this library; this helper is intentionally passive so sourcing lib_std.sh never
+# prompts, installs packages, or re-execs the caller.
 #
 # Note: This function is called before logging is initialized, so it uses `echo` to stderr.
 #
-check_bash_version_and_upgrade() {
+check_bash_version() {
     local -r major_version=${BASH_VERSINFO[0]}
     if ((major_version < 4)); then
-        if ! is_interactive; then
-            {
-                echo "Error: This script requires Bash 4.0 or higher."
-                echo "Your version ($BASH_VERSION) is not compatible."
-                echo "Upgrade Bash manually or run the script in interactive mode for guided upgrade."
-            } >&2
-            exit 1
-        fi
-
-        # -- Interactive Upgrade Process --
-        echo "Warning: This script requires Bash version 4.0 or higher to run correctly." >&2
-        echo "Your current version is $BASH_VERSION." >&2
-
-        local install_cmd
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            if command -v apt-get &>/dev/null; then
-                install_cmd="sudo apt-get update && sudo apt-get install bash"
-            elif command -v yum &>/dev/null; then
-                install_cmd="sudo yum install bash"
-            fi
-
-            echo "On your system, you can likely upgrade by running:" >&2
-            echo "  $install_cmd" >&2
-            exit 1
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            read -p "Would you like to attempt an upgrade using Homebrew? (y/n) " -n 1 -r
-            echo >&2
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                if ! command -v brew &>/dev/null; then
-                    echo "Homebrew is not installed." >&2
-                    read -p "May I install Homebrew for you? (y/n) " -n 1 -r
-                    echo >&2
-                    if [[ $REPLY =~ ^[Yy]$ ]]; then
-                        echo "Installing Homebrew..." >&2
-                        if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-                            echo "Error: Homebrew installation failed. Please install it manually and try again." >&2
-                            exit 1
-                        fi
-                        echo "Homebrew installed successfully." >&2
-                    else
-                        echo "Aborting. Homebrew is required to proceed." >&2
-                        exit 1
-                    fi
-                fi
-
-                echo "Updating Homebrew and installing Bash..." >&2
-                if ! { brew update && brew install bash; }; then
-                    echo "Error: Failed to install Bash via Homebrew." >&2
-                    exit 1
-                fi
-
-                echo "Bash installed successfully." >&2
-
-                local new_bash_path
-                new_bash_path="$(brew --prefix)/bin/bash"
-                if [[ -f "$new_bash_path" ]]; then
-                    printf 'Relaunching script with the new Bash from: %s' "$new_bash_path" >&2
-                    printf ' %q' "${__SCRIPT_ARGS__[@]}" >&2
-                    printf '\n' >&2
-                    exec "$new_bash_path" "$0" "${__SCRIPT_ARGS__[@]}"
-                else
-                    echo "Error: Could not find the new Bash executable at '$new_bash_path'." >&2
-                    exit 1
-                fi
-            else
-                echo "Aborting. Please upgrade Bash to version 4.0 or higher to run this script." >&2
-                exit 1
-            fi
-        else
-            echo "Unsupported OSTYPE: [$OSTYPE]" >&2
-            exit 1
-        fi
+        echo "Error: This script requires Bash 4.0 or higher." >&2
+        echo "Your version ($BASH_VERSION) is not compatible." >&2
+        return 1
     fi
+}
+
+check_bash_version_and_upgrade() {
+    check_bash_version
 }
 
 ###################################################### INIT ############################################################
@@ -178,12 +113,10 @@ check_bash_version_and_upgrade() {
 #
 # This is the only function that executes when the library is sourced.
 # It sets up the environment by:
-#   1. Checking the Bash version.
-#   2. Initializing the logging system.
-#   3. Parsing global command-line options like --debug, --verbose, --color.
+#   1. Initializing the logging system.
+#   2. Parsing global command-line options like --debug, --verbose, --color.
 #
 __stdlib_init__() {
-    check_bash_version_and_upgrade
     __log_init__
 
     #
