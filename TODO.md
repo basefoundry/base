@@ -27,10 +27,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Add focused failure-path coverage in `lib/bash/file/tests/lib_file.bats` if practical.
   - Done.
 
-- [ ] Fix Homebrew artifact version handling.
+- [x] Fix Homebrew artifact version handling.
   - File: `cli/python/base_setup/engine.py`
   - Problem: `reconcile_homebrew_artifact` receives and logs an artifact version, but runs `brew install <package>` without honoring non-latest versions.
   - Expected fix: either implement supported Homebrew version handling or raise `ArtifactError` when a Homebrew artifact specifies anything other than `latest`.
+  - Done.
 
 - [ ] Deduplicate Base manifest discovery.
   - Files: `cli/python/base_setup/manifest.py`, `lib/python/base_cli/paths.py`
@@ -42,10 +43,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: `_quote_arg` reimplements shell quoting and passes empty strings through unquoted.
   - Expected fix: replace `format_command`/`_quote_arg` internals with `shlex.join(command)` and cover empty-string formatting.
 
-- [ ] Honor `BASE_PROJECT_VENV_DIR` in Python artifact installs.
+- [x] Honor `BASE_PROJECT_VENV_DIR` in Python artifact installs.
   - Files: `cli/python/base_setup/engine.py`, `bin/base-wrapper`
   - Problem: `base-wrapper` honors `BASE_PROJECT_VENV_DIR`, but `reconcile_python_artifact` hardcodes `~/.base.d/<project>/.venv`.
   - Expected fix: make Python artifact installation use `BASE_PROJECT_VENV_DIR` when present, falling back to the standard project venv path.
+  - Done.
 
 ## Design Issues
 
@@ -98,10 +100,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Add tests around the intended retry or non-retry behavior.
   - Done.
 
-- [ ] Capture subprocess error output in artifact setup.
+- [x] Capture subprocess error output in artifact setup.
   - File: `cli/python/base_setup/engine.py`
   - Problem: failed subprocesses inherit stderr/stdout, so the persistent log only gets the command and exit code, not the tool's failure reason.
   - Expected fix: capture stderr in `run_command`, include it in `ArtifactError`, and log it before raising.
+  - Done.
 
 - [ ] Make `Context.cleanup` resilient to cleanup failures.
   - File: `lib/python/base_cli/context.py`
@@ -128,15 +131,17 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: `CliRunner()` may mix stderr into stdout depending on Click behavior, while tests and callers expect `result.stderr`.
   - Expected fix: construct `CliRunner(mix_stderr=False)` when supported and keep tests explicit about stderr capture.
 
-- [ ] Clarify default-only artifact setup logging.
+- [x] Clarify default-only artifact setup logging.
   - File: `cli/python/base_setup/engine.py`
   - Problem: `reconcile_manifest` logs that a project declares no artifacts even when default manifest artifacts are still merged and installed.
   - Expected fix: log based on the merged artifact list, or explicitly say that Base defaults are being installed.
+  - Done.
 
-- [ ] Add PyYAML and Click checks to `basectl check`.
+- [x] Add PyYAML and Click checks to `basectl check`.
   - File: `cli/bash/commands/basectl/subcommands/setup_common.sh`
   - Problem: `basectl check` verifies the venv exists but not whether required bootstrap packages are installed.
   - Expected fix: check both `$(setup_pyyaml_package)` and `$(setup_click_package)` in text and JSON check modes.
+  - Done.
 
 - [ ] Deduplicate Zsh baserc protection.
   - Files: `lib/shell/zprofile`, `lib/shell/zshrc`
