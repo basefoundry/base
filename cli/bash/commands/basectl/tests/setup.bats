@@ -304,6 +304,7 @@ run_base_command() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
+    [[ "$output" == *"--dev"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
@@ -314,6 +315,7 @@ run_base_command() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl check [options]"* ]]
+    [[ "$output" == *"--dev"* ]]
     [[ "$output" == *"Verify the local Base CLI environment on macOS without making changes."* ]]
 }
 
@@ -376,7 +378,7 @@ EOF
     [[ "$output" == *"Homebrew is already installed."* ]]
     [[ "$output" == *"Xcode Command Line Tools are already installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is already installed via Homebrew."* ]]
-    [[ "$output" == *"BATS formula 'bats-core' is already installed via Homebrew."* ]]
+    [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Virtual environment already exists at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is already installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is already installed in the Base virtual environment."* ]]
@@ -405,7 +407,7 @@ EOF
     [[ "$output" == *"Installing Xcode Command Line Tools."* ]]
     [[ "$output" == *"Xcode Command Line Tools installation detected."* ]]
     [[ "$output" == *"Installing Python formula 'python@3.13' via Homebrew."* ]]
-    [[ "$output" == *"Installing BATS formula 'bats-core' via Homebrew."* ]]
+    [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
     [[ "$output" == *"Installing Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"Installing Python package 'click' in the Base virtual environment."* ]]
@@ -413,11 +415,27 @@ EOF
     [[ "$output" == *"Base CLI setup is complete."* ]]
     [ -f "$TEST_STATE_DIR/homebrew-install-ran" ]
     [ -f "$TEST_STATE_DIR/python-install-ran" ]
-    [ -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
     [ -f "$TEST_STATE_DIR/pyyaml-install-ran" ]
     [ -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ -f "$venv_dir/pyvenv.cfg" ]
+}
+
+@test "basectl setup --dev installs BATS with developer dependencies" {
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup --dev
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installing BATS formula 'bats-core' via Homebrew."* ]]
+    [ -f "$TEST_STATE_DIR/bats-install-ran" ]
 }
 
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
@@ -520,13 +538,20 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would install Homebrew using the official installer."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
-    [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
+    [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'click' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Would run Python project setup layer after PyYAML is installed."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
     [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
+}
+
+@test "basectl setup --dev dry-run includes BATS" {
+    run_base_command setup --dev --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
 }
 
 @test "basectl setup ignores inherited DRY_RUN without --dry-run" {
@@ -569,9 +594,27 @@ EOF
     [[ "$output" == *"Homebrew is installed."* ]]
     [[ "$output" == *"Xcode Command Line Tools are installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is installed via Homebrew."* ]]
-    [[ "$output" == *"BATS formula 'bats-core' is installed via Homebrew."* ]]
+    [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
+}
+
+@test "basectl check --dev includes BATS in developer dependency checks" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    mkdir -p "$venv_dir/bin"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+
+    run_base_command check --dev
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
+    [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
 @test "basectl check --format json writes successful check results to stdout" {
@@ -600,7 +643,36 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *'"ok": true'* ]]
     [[ "$output" == *'"name":"homebrew","ok":true'* ]]
+    [[ "$output" != *'"name":"bats"'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --dev --format json includes BATS check results" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    mkdir -p "$venv_dir/bin"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --dev --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"name":"bats","ok":false'* ]]
     [ "${stderr:-}" = "" ]
 }
 
@@ -633,7 +705,7 @@ EOF
     [[ "$output" == *"Homebrew is not installed."* ]]
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is not installed via Homebrew."* ]]
-    [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
+    [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
