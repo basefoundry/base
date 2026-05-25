@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import venv
 from pathlib import Path
@@ -266,10 +267,4 @@ def dry_run_command(ctx: base_cli.Context, command: list[str]) -> None:
 
 
 def format_command(command: list[str]) -> str:
-    return " ".join(_quote_arg(arg) for arg in command)
-
-
-def _quote_arg(arg: str) -> str:
-    if arg and all(char.isalnum() or char in "/._=:@+-" for char in arg):
-        return arg
-    return "'" + arg.replace("'", "'\"'\"'") + "'"
+    return shlex.join(command)

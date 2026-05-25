@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_setup import engine
-from base_setup.engine import ArtifactError, main, merge_artifacts
+from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
 from base_setup.manifest import ArtifactRequest
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
@@ -61,6 +61,12 @@ class ManifestTests(unittest.TestCase):
                     ArtifactRequest(artifact_type="python-package", name="click", version="1.0.0"),
                 ),
             )
+
+    def test_format_command_uses_shell_quoting_for_empty_and_spaced_args(self) -> None:
+        self.assertEqual(
+            format_command(["tool", "", "two words", "plain"]),
+            "tool '' 'two words' plain",
+        )
 
     def test_reads_basic_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

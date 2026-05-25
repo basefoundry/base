@@ -39,10 +39,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: keep the shared implementation in `base_cli.paths`, remove the duplicate from `base_setup.manifest`, and update imports/tests.
   - Done.
 
-- [ ] Use `shlex.join` for setup command formatting.
+- [x] Use `shlex.join` for setup command formatting.
   - File: `cli/python/base_setup/engine.py`
   - Problem: `_quote_arg` reimplements shell quoting and passes empty strings through unquoted.
   - Expected fix: replace `format_command`/`_quote_arg` internals with `shlex.join(command)` and cover empty-string formatting.
+  - Done.
 
 - [x] Honor `BASE_PROJECT_VENV_DIR` in Python artifact installs.
   - Files: `cli/python/base_setup/engine.py`, `bin/base-wrapper`
