@@ -21,92 +21,6 @@ base_zshrc_debug() {
     esac
 }
 
-base_zshrc_reject_baserc_owned_var() {
-    local var_name="$1"
-    local before_set="$2"
-    local before_value="$3"
-    local after_set
-    local after_value
-
-    eval "after_set=\"\${+$var_name}\""
-    eval "after_value=\"\${(P)var_name}\""
-
-    if [[ "$after_set" == "$before_set" && "$after_value" == "$before_value" ]]; then
-        return 0
-    fi
-
-    if [[ "$before_set" == 1 ]]; then
-        typeset -g -- "$var_name=$before_value"
-    else
-        unset "$var_name"
-    fi
-
-    printf "ERROR: ~/.baserc must not set Base-owned variable '%s'.\n" "$var_name" >&2
-    return 1
-}
-
-base_zshrc_source_baserc() {
-    local baserc="$HOME/.baserc"
-    local base_owned_vars="BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_ARCH BASE_HOST BASE_SHELL BASE_PROFILE_VERSION BASE_ENABLE_BASH_DEFAULTS BASE_ENABLE_ZSH_DEFAULTS"
-    local var_name
-    local snapshot_name
-    local snapshot_set_name
-    local snapshot_value_name
-    local before_set
-    local before_value
-    local baserc_status=0
-
-    [[ -n "${__base_baserc_sourced__:-}" ]] && return 0
-    [[ -f "$baserc" && -r "$baserc" ]] || return 0
-
-    for var_name in ${=base_owned_vars}; do
-        snapshot_name="base_zshrc_before_$var_name"
-        eval "local ${snapshot_name}_set=\"\${+$var_name}\""
-        eval "local ${snapshot_name}_value=\"\${(P)var_name}\""
-    done
-
-    __base_baserc_sourced__=1
-    # shellcheck source=/dev/null
-    source "$baserc" || {
-        unset __base_baserc_sourced__
-        printf "ERROR: Failed to source Base user config '%s'.\n" "$baserc" >&2
-        return 1
-    }
-
-    for var_name in ${=base_owned_vars}; do
-        snapshot_name="base_zshrc_before_$var_name"
-        snapshot_set_name="${snapshot_name}_set"
-        snapshot_value_name="${snapshot_name}_value"
-        before_set="${(P)snapshot_set_name}"
-        before_value="${(P)snapshot_value_name}"
-        base_zshrc_reject_baserc_owned_var "$var_name" "$before_set" "$before_value" || baserc_status=1
-    done
-
-    if [[ "$baserc_status" -ne 0 ]]; then
-        unset __base_baserc_sourced__
-        return "$baserc_status"
-    fi
-
-    base_zshrc_debug "sourced '$baserc'"
-}
-
-
-base_zshrc_source_baserc || return $?
-
-if [[ ! -o interactive ]]; then
-    base_zshrc_debug "non-interactive shell; skipping"
-    unset -f base_zshrc_debug base_zshrc_reject_baserc_owned_var base_zshrc_source_baserc
-    return 0
-fi
-
-if [[ -n "${__base_zshrc_sourced__:-}" ]]; then
-    base_zshrc_debug "already sourced; skipping"
-    unset -f base_zshrc_debug base_zshrc_reject_baserc_owned_var base_zshrc_source_baserc
-    return 0
-fi
-readonly __base_zshrc_sourced__=1
-base_zshrc_debug "loading"
-
 base_zshrc_snippet_dir() {
     local source_path
 
@@ -115,6 +29,38 @@ base_zshrc_snippet_dir() {
 
     cd -- "$(dirname -- "$source_path")" && pwd -P
 }
+
+base_zshrc_source_baserc_guard() {
+    local snippet_dir
+    local guard_path
+
+    snippet_dir="$(base_zshrc_snippet_dir)" || return 1
+    guard_path="$snippet_dir/zsh_baserc_guard.sh"
+
+    [[ -f "$guard_path" ]] || {
+        printf "ERROR: Base Zsh baserc guard '%s' was not found.\n" "$guard_path" >&2
+        return 1
+    }
+
+    source "$guard_path"
+}
+
+base_zshrc_source_baserc_guard || return $?
+base_zsh_baserc_guard_source base_zshrc_debug || return $?
+
+if [[ ! -o interactive ]]; then
+    base_zshrc_debug "non-interactive shell; skipping"
+    unset -f base_zshrc_debug base_zshrc_snippet_dir base_zshrc_source_baserc_guard
+    return 0
+fi
+
+if [[ -n "${__base_zshrc_sourced__:-}" ]]; then
+    base_zshrc_debug "already sourced; skipping"
+    unset -f base_zshrc_debug base_zshrc_snippet_dir base_zshrc_source_baserc_guard
+    return 0
+fi
+readonly __base_zshrc_sourced__=1
+base_zshrc_debug "loading"
 
 base_zshrc_set_base_home() {
     local snippet_dir
@@ -180,7 +126,7 @@ base_zshrc_source_defaults() {
 
 base_zshrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base zshrc snippet. Run basectl update-profile.\n' >&2
-    unset -f base_zshrc_debug base_zshrc_reject_baserc_owned_var base_zshrc_source_baserc
+    unset -f base_zshrc_debug base_zshrc_snippet_dir base_zshrc_source_baserc_guard
     return 1
 }
 base_zshrc_prepend_path
@@ -189,4 +135,4 @@ base_zshrc_debug "complete"
 
 unset -f base_zshrc_snippet_dir base_zshrc_set_base_home
 unset -f base_zshrc_prepend_path base_zshrc_source_defaults
-unset -f base_zshrc_debug base_zshrc_reject_baserc_owned_var base_zshrc_source_baserc
+unset -f base_zshrc_source_baserc_guard base_zshrc_debug
