@@ -108,10 +108,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Expected fix: capture stderr in `run_command`, include it in `ArtifactError`, and log it before raising.
   - Done.
 
-- [ ] Make `Context.cleanup` resilient to cleanup failures.
+- [x] Make `Context.cleanup` resilient to cleanup failures.
   - File: `lib/python/base_cli/context.py`
   - Problem: one failing cleanup hook can skip later hooks, log handler cleanup, and temp directory removal; `rmtree` failures can also mask the original command result.
   - Expected fix: catch and log cleanup hook and temp removal failures while continuing cleanup.
+  - Done.
 
 - [ ] Return unambiguous fallback source paths in Python logs.
   - File: `lib/python/base_cli/logging.py`

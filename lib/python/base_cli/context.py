@@ -38,13 +38,25 @@ class Context:
 
     def cleanup(self) -> None:
         for hook in self.cleanup_hooks:
-            hook()
-        for handler in list(self.log.handlers):
-            handler.flush()
-            handler.close()
-            self.log.removeHandler(handler)
+            try:
+                hook()
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self.log.warning("Cleanup hook failed: %s", exc)
         if not self.keep_temp and self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
+            try:
+                shutil.rmtree(self.temp_dir)
+            except OSError as exc:
+                self.log.warning("Temp directory cleanup failed for '%s': %s", self.temp_dir, exc)
+        for handler in list(self.log.handlers):
+            try:
+                handler.flush()
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self.log.warning("Log handler flush failed: %s", exc)
+            try:
+                handler.close()
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self.log.warning("Log handler close failed: %s", exc)
+            self.log.removeHandler(handler)
 
 
 def set_current_context(context: Context | None) -> contextvars.Token[Context | None]:
@@ -60,4 +72,3 @@ def get_current_context() -> Context:
     if context is None:
         raise RuntimeError("base_cli context is not active. Run inside a base_cli.App command.")
     return context
-
