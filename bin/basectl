@@ -72,19 +72,43 @@ basectl_print_version() {
 }
 
 basectl_ensure_supported_bash() {
-    local current_version
     local candidate
+    local candidates=()
+    local current_version
+    local display_version
 
-    current_version="${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}"
+    current_version="${BASE_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
     ((current_version >= 42)) && return 0
 
-    for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    if [[ -n "${BASE_TEST_BASH_CANDIDATES:-}" ]]; then
+        IFS=: read -r -a candidates <<<"$BASE_TEST_BASH_CANDIDATES"
+    else
+        candidates=(/opt/homebrew/bin/bash /usr/local/bin/bash)
+    fi
+
+    for candidate in "${candidates[@]}"; do
         [[ -x "$candidate" ]] || continue
         [[ "$candidate" == "${BASH:-}" ]] && continue
         exec "$candidate" "$0" "$@"
     done
 
-    basectl_die "basectl requires Bash 4.2 or newer; current version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}."
+    if [[ -n "${BASE_TEST_BASH_VERSION:-}" ]]; then
+        display_version="${BASE_TEST_BASH_VERSION:0:1}.${BASE_TEST_BASH_VERSION:1}"
+    else
+        display_version="${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
+    fi
+
+    {
+        printf 'ERROR: Base requires Bash 4.2 or newer; current version is %s.\n' "$display_version"
+        printf 'A supported Bash was not found at /opt/homebrew/bin/bash or /usr/local/bin/bash.\n'
+        printf '\n'
+        printf 'Run:\n'
+        printf '  basectl setup\n'
+        printf '\n'
+        printf 'Or install Bash manually:\n'
+        printf '  brew install bash\n'
+    } >&2
+    exit 1
 }
 
 basectl_is_script_argument() {

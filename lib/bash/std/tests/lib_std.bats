@@ -133,6 +133,11 @@ EOF
     [ "$?" -eq 0 ]
 }
 
+@test "stdlib exposes passive bash version check helper" {
+    check_bash_version
+    [ "$?" -eq 0 ]
+}
+
 @test "color initialization honors tty mode when --color is passed" {
     local script="$TEST_TMPDIR/tty-colors.sh"
     local normalized

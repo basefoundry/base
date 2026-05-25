@@ -56,11 +56,13 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Verify dry-run setup/check tests and inherited `DRY_RUN` behavior.
   - Done locally; pending commit.
 
-- [ ] Remove interactive Bash upgrade behavior from `lib_std.sh`.
+- [x] Remove interactive Bash upgrade behavior from `lib_std.sh`.
   - File: `lib/bash/std/lib_std.sh`
   - Problem: `__stdlib_init__` calls `check_bash_version_and_upgrade`, which can trigger interactive Homebrew/Bash installation from a library source path.
   - Expected fix: keep Bash version enforcement in the entrypoint layer; make the library non-interactive when sourced.
   - Review tests that cover `check_bash_version_and_upgrade` and adjust the public contract.
+  - `bin/basectl` still auto-reexecs through an already-installed supported Bash and prints setup/manual-install guidance when none is found.
+  - Done locally; pending commit.
 
 - [ ] Avoid exporting multi-line `AWK_NEW_TEXT`.
   - File: `lib/bash/file/lib_file.sh`
