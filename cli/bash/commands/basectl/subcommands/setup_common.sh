@@ -20,7 +20,7 @@ readonly _base_setup_common_sourced
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_PYYAML_READY BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
 }
 
 setup_enable_dry_run() {
@@ -387,21 +387,7 @@ setup_install_base_python_package() {
 }
 
 setup_install_pyyaml() {
-    local package
-
-    package="$(setup_pyyaml_package)"
-    if setup_base_python_package_installed "$package"; then
-        BASE_SETUP_PYYAML_READY=true
-    else
-        BASE_SETUP_PYYAML_READY=false
-    fi
-    export BASE_SETUP_PYYAML_READY
-
-    setup_install_base_python_package "$package"
-    if ! setup_is_dry_run; then
-        BASE_SETUP_PYYAML_READY=true
-    fi
-    export BASE_SETUP_PYYAML_READY
+    setup_install_base_python_package "$(setup_pyyaml_package)"
 }
 
 setup_install_click() {
@@ -422,7 +408,7 @@ setup_run_project_artifact_setup() {
     local exit_code project wrapper
     local args=()
 
-    if setup_is_dry_run && [[ "${BASE_SETUP_PYYAML_READY:-}" != true ]]; then
+    if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
         return 0
     fi
