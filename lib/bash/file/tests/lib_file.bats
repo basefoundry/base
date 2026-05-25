@@ -47,6 +47,48 @@ EOF
     [ "$(cat "$target")" = $'before\n# BEGIN\nnew\n# END\nafter' ]
 }
 
+@test "update_file_section replaces an existing section with multi-line content" {
+    local target="$TEST_TMPDIR/config.txt"
+    cat <<'EOF' > "$target"
+before
+# BEGIN
+old
+# END
+after
+EOF
+
+    update_file_section "$target" "# BEGIN" "# END" "first" "second" "third"
+
+    [ "$(cat "$target")" = $'before\n# BEGIN\nfirst\nsecond\nthird\n# END\nafter' ]
+}
+
+@test "update_file_section does not export replacement content to awk" {
+    local awk_log="$TEST_TMPDIR/awk-env.log"
+    local target="$TEST_TMPDIR/config.txt"
+    cat <<'EOF' > "$target"
+before
+# BEGIN
+old
+# END
+after
+EOF
+
+    awk() {
+        if [[ -n "${AWK_NEW_TEXT+x}" ]]; then
+            printf 'leaked=%s\n' "$AWK_NEW_TEXT" > "$awk_log"
+        else
+            printf 'not-leaked\n' > "$awk_log"
+        fi
+        command awk "$@"
+    }
+
+    update_file_section "$target" "# BEGIN" "# END" "secret" "value"
+    unset -f awk
+
+    [ "$(cat "$awk_log")" = "not-leaked" ]
+    [ "$(cat "$target")" = $'before\n# BEGIN\nsecret\nvalue\n# END\nafter' ]
+}
+
 @test "update_file_section removes a marked block with -r" {
     local target="$TEST_TMPDIR/config.txt"
     cat <<'EOF' > "$target"

@@ -26,12 +26,10 @@ This file is the shared working memory for future AI-assisted development in thi
 - Artifact manifests declare `project.name` and `artifacts` with `type`, `name`,
   and `version`; users do not specify managers. The Python registry maps known
   `(type, name)` pairs to managers and errors on unknown artifacts.
-- Most recent uncommitted change removes interactive Bash upgrade behavior from
-  `lib/bash/std/lib_std.sh`: sourcing stdlib now initializes logging and wrapper
-  flags without prompting, installing Homebrew/Bash, or re-execing the caller.
-  Bash version enforcement stays in entrypoints. `bin/basectl` auto-reexecs via
-  an already-installed supported Bash when available, otherwise it prints setup
-  and `brew install bash` guidance.
+- Most recent uncommitted change updates `update_file_section` in
+  `lib/bash/file/lib_file.sh` so replacement content is passed to `awk` through
+  a temporary file instead of the exported `AWK_NEW_TEXT` environment variable.
+  Multi-line section replacement remains supported.
 - The previous change makes `basectl shell` reject unexpected arguments with a usage error instead of silently ignoring them.
 - The previous change added the supported `--version` flag to `basectl --help`.
 - The previous change consolidated `basectl setup` dry-run state on exported `DRY_RUN` while still clearing legacy inherited `dry_run`.

@@ -64,11 +64,12 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - `bin/basectl` still auto-reexecs through an already-installed supported Bash and prints setup/manual-install guidance when none is found.
   - Done locally; pending commit.
 
-- [ ] Avoid exporting multi-line `AWK_NEW_TEXT`.
+- [x] Avoid exporting multi-line `AWK_NEW_TEXT`.
   - File: `lib/bash/file/lib_file.sh`
   - Problem: `update_file_section` passes replacement content through an exported environment variable.
   - Expected fix: pass multi-line content through a temp file, stdin, or another scoped mechanism that does not leak into subprocess environments.
   - Preserve support for multi-line replacement sections.
+  - Done locally; pending commit.
 
 - [ ] Investigate and replace double `git pull` retry.
   - File: `lib/bash/git/lib_git.sh`
