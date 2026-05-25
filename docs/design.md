@@ -309,41 +309,38 @@ conflict because Base venv is not surfaced in the interactive shell.
 Each Base-managed project declares its dependencies in a YAML manifest file at the
 project root. Base reads this manifest to know what to install and configure.
 
-File: `base.yaml` (name TBD)
+File: `base_manifest.yaml`
 
-Conceptual structure:
+Current structure:
 
 ```yaml
 project:
   name: myproject
-  description: A short description
 
-dependencies:
-  system:
-    - kubernetes
-    - terraform
-    - docker
-  python:
-    - version: "3.12"
-      packages:
-        - requests
-        - rich
-  go:
-    - version: "1.22"
+artifacts:
+  - type: tool
+    name: terraform
+    version: latest
 
-shell:
-  env:
-    MY_PROJECT_ENV: production
-  path:
-    - ./bin
+  - type: python-package
+    name: requests
+    version: latest
 ```
 
-The Python layer interprets this declarative manifest and translates each item into
-concrete installation actions. Base knows how to install system tools via Homebrew,
-manage Python versions and packages, and handle language-specific package managers.
+The Python layer interprets this declarative manifest and translates each
+artifact into concrete installation actions. Base owns the artifact registry and
+chooses the manager for each supported `(type, name)` pair. The current registry
+is `cli/python/base_setup/registry.py`.
 
-Version conflicts across projects are a known complexity — addressed in a later
-iteration, not in the initial build.
+`python-package` artifacts install into the project virtual environment at
+`~/.base.d/<project>/.venv`. Base's own project venv is therefore
+`~/.base.d/base/.venv`. The wrapper `bin/base-wrapper` runs Python packages
+through that project-scoped venv.
+
+Homebrew-managed `tool` artifacts currently support `version: latest`. If a
+project requests a pinned Homebrew version, setup fails clearly instead of
+silently installing a different version. Richer version conflict handling across
+projects is a later iteration, not part of the initial build.
 
 ---
 

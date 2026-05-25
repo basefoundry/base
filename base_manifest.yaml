@@ -1,7 +1,31 @@
 project:
+  # Project name used by Base for setup logs and the project virtual
+  # environment at ~/.base.d/<project>/.venv.
   name: base
 
 artifacts:
+  # Artifact declarations are intentionally declarative:
+  #   type:    artifact category understood by Base, such as "python-package"
+  #            or "tool".
+  #   name:    artifact name from Base's registry.
+  #   version: requested artifact version. Use "latest" when Base should install
+  #            the manager's default/current version.
+  #
+  # Base chooses the manager from the registry instead of accepting install
+  # commands in the manifest. The source of truth for supported (type, name)
+  # pairs is cli/python/base_setup/registry.py.
+  #
+  # python-package artifacts are installed into the project virtual environment:
+  #   ~/.base.d/<project>/.venv
+  #
+  # tool artifacts are currently managed through Homebrew. For Homebrew-managed
+  # artifacts, Base currently supports version: latest only.
+  #
+  # Example:
+  #   - type: tool
+  #     name: terraform
+  #     version: latest
+
   - type: python-package
     name: pylint
     version: latest

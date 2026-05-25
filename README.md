@@ -78,13 +78,23 @@ project:
 artifacts:
   - type: tool
     name: terraform
-    version: "1.8.5"
+    version: latest
+
+  - type: python-package
+    name: requests
+    version: latest
 ```
 
 The manifest intentionally describes what the project needs, not how to install
 it. Base owns the artifact registry and chooses the manager for each supported
 `type` and `name` pair. Unknown artifacts fail setup clearly instead of running
 arbitrary user-provided install commands.
+
+The supported artifact registry lives in
+`cli/python/base_setup/registry.py`. Today, `python-package` artifacts install
+into the project virtual environment at `~/.base.d/<project>/.venv`.
+Homebrew-managed `tool` artifacts currently support `version: latest`; pinned
+Homebrew versions fail clearly until Base grows explicit versioned tool support.
 
 ### 2. Shell Environment Management
 

@@ -196,15 +196,17 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Add tests for the chosen behavior.
   - Done.
 
-- [ ] Add schema documentation to `base_manifest.yaml`.
+- [x] Add schema documentation to `base_manifest.yaml`.
   - File: `base_manifest.yaml`
   - Problem: the root manifest is the first artifact schema many developers will see, but it has no comments explaining supported artifact types, version semantics, or the artifact registry.
   - Expected fix: add concise schema comments and point readers to `cli/python/base_setup/registry.py` for supported `(type, name)` pairs.
+  - Done.
 
-- [ ] Document project virtual environment location.
+- [x] Document project virtual environment location.
   - Files: `docs/design.md`, `README.md`, possibly `base_manifest.yaml`
   - Problem: project virtual environments live at `~/.base.d/<project>/.venv`, but that convention is not easy for developers to discover.
   - Expected fix: document the venv location and how it relates to python-package artifacts.
+  - Done.
 
 - [ ] Add git branch context to Zsh defaults prompt.
   - File: `lib/shell/zsh_defaults.sh`
