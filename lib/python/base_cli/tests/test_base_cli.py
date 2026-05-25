@@ -5,13 +5,23 @@ import io
 import os
 import tempfile
 import unittest
-from contextlib import chdir, redirect_stderr
+from contextlib import contextmanager, redirect_stderr
 from pathlib import Path
 from unittest import mock
 
 import base_cli
 from base_cli.paths import base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
+
+
+@contextmanager
+def change_directory(path: Path):
+    original = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(original)
 
 
 class BaseCliTests(unittest.TestCase):
@@ -99,7 +109,7 @@ class BaseCliTests(unittest.TestCase):
                 os.sys,
                 "argv",
                 ["secret-tool", "--debug", "--token", "super-secret"],
-            ), chdir(project):
+            ), change_directory(project):
                 from base_cli.testing import invoke
 
                 result = invoke(
