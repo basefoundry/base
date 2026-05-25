@@ -226,10 +226,11 @@ Use this as a commit-by-commit work queue. When an item is fixed, update the che
   - Problem: Bash defaults show git branch context in the prompt, but Zsh defaults do not.
   - Expected fix: add a Zsh git prompt helper and include it in `PROMPT`.
 
-- [ ] Avoid subprocess-per-prompt host lookup.
+- [x] Avoid subprocess-per-prompt host lookup.
   - File: `lib/bash/runtime/bashrc`
   - Problem: `_base_runtime_host_prompt` can run `scutil`/`hostname` on every prompt render.
   - Expected fix: compute the host prompt value once during runtime initialization and reference the cached variable in `PS1`.
+  - Done.
 
 ## Base CLI Python Layer
 
