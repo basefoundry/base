@@ -39,7 +39,6 @@ def load_config(
 ) -> dict[str, Any]:
     root = home or Path.home()
     config: dict[str, Any] = {}
-    config = merge_dicts(config, load_yaml_file(Path("/etc/base.d/config.yaml")))
     config = merge_dicts(config, load_yaml_file(root / ".base.d" / "config.yaml"))
     if project_root is not None:
         config = merge_dicts(config, load_yaml_file(project_root / ".base" / "config.yaml"))
@@ -54,4 +53,3 @@ def load_config(
     if "BASE_CLI_KEEP_TEMP" in os.environ:
         env_config["keep_temp"] = os.environ["BASE_CLI_KEEP_TEMP"].lower() == "true"
     return merge_dicts(config, env_config)
-

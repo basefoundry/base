@@ -11,6 +11,8 @@ from pathlib import Path
 from unittest import mock
 
 import base_cli
+from base_cli import config as config_module
+from base_cli.config import load_config
 from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
@@ -99,6 +101,36 @@ class BaseCliTests(unittest.TestCase):
                 formatted = BaseCliFormatter().format(record)
 
         self.assertIn(f"{external.resolve()}:7 hello", formatted)
+
+    def test_config_precedence_excludes_implicit_system_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project = root / "project"
+            explicit = root / "explicit.yaml"
+            home_config = home / ".base.d" / "config.yaml"
+            project_config = project / ".base" / "config.yaml"
+            home_config.parent.mkdir(parents=True)
+            project_config.parent.mkdir(parents=True)
+            home_config.write_text("environment: user\nlog_level: info\n", encoding="utf-8")
+            project_config.write_text("environment: project\n", encoding="utf-8")
+            explicit.write_text("log_level: warning\n", encoding="utf-8")
+
+            original_load_yaml_file = config_module.load_yaml_file
+
+            def load_without_system_config(path: Path) -> dict:
+                if path == Path("/etc/base.d/config.yaml"):
+                    raise AssertionError("system config should not be loaded")
+                return original_load_yaml_file(path)
+
+            with mock.patch.dict(os.environ, {"BASE_CLI_ENVIRONMENT": "env"}), mock.patch(
+                "base_cli.config.load_yaml_file",
+                side_effect=load_without_system_config,
+            ):
+                config = load_config(project, explicit, home=home)
+
+        self.assertEqual(config["environment"], "env")
+        self.assertEqual(config["log_level"], "warning")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_runs_with_context_and_cleans_temp_dir(self) -> None:

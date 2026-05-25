@@ -171,12 +171,11 @@ shape is stable.
 Configuration is resolved from lowest to highest precedence:
 
 1. Code defaults
-2. System config: `/etc/base.d/config.yaml`
-3. User config: `~/.base.d/config.yaml`
-4. Project config: `<project-root>/.base/config.yaml`
-5. Environment variables
-6. Command line options
-7. Explicit runtime API overrides
+2. User config: `~/.base.d/config.yaml`
+3. Project config: `<project-root>/.base/config.yaml`
+4. Environment variables
+5. Command line options
+6. Explicit runtime API overrides
 
 V1 implements the shape and context fields, but only needs a minimal config
 loader: YAML files are merged when present, environment is read from
