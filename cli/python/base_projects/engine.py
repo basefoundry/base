@@ -24,12 +24,15 @@ def main(argv: list[str] | None = None) -> int:
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.argument("command", required=False)
+@base_cli.argument("project", required=False)
 @base_cli.option("--workspace", help="Workspace directory to scan. Defaults to BASE_HOME's parent.")
-def run(ctx: base_cli.Context, command: str | None, workspace: str | None) -> int:
+def run(ctx: base_cli.Context, command: str | None, project: str | None, workspace: str | None) -> int:
     if command in (None, "list"):
         return list_projects_command(ctx, workspace)
+    if command == "resolve":
+        return resolve_project_command(ctx, project, workspace)
 
-    ctx.log.error("Unknown projects command '%s'. Supported command: list.", command)
+    ctx.log.error("Unknown projects command '%s'. Supported commands: list, resolve.", command)
     return 2
 
 
@@ -43,6 +46,22 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None) -> int:
 
     for project in projects:
         print(f"{project.name}\t{project.root}")
+    return 0
+
+
+def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+
+    try:
+        workspace_root = resolve_workspace_root(ctx, workspace)
+        project = find_project(workspace_root, project_name)
+    except ProjectDiscoveryError as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
     return 0
 
 
@@ -72,6 +91,14 @@ def discover_projects(workspace_root: Path) -> tuple[Project, ...]:
         projects.append(read_project(manifest_path))
 
     return validate_unique_project_names(tuple(sorted(projects)))
+
+
+def find_project(workspace_root: Path, project_name: str) -> Project:
+    projects = discover_projects(workspace_root)
+    for project in projects:
+        if project.name == project_name:
+            return project
+    raise ProjectDiscoveryError(f"Project '{project_name}' was not found in workspace '{workspace_root}'.")
 
 
 def read_project(manifest_path: Path) -> Project:

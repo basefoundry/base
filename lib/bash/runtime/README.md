@@ -1,7 +1,8 @@
 # Runtime Bash Rcfile
 
-`lib/bash/runtime/bashrc` is the rcfile used by `basectl` and `basectl shell`
-when they start a Base-enabled interactive Bash shell.
+`lib/bash/runtime/bashrc` is the rcfile used by `basectl activate <project>`
+when it starts a Base-enabled interactive Bash shell. Invoking `basectl` with no
+arguments in a terminal is equivalent to `basectl activate base`.
 
 ## What It Does
 
@@ -22,5 +23,5 @@ when they start a Base-enabled interactive Bash shell.
 ## Tests
 
 BATS coverage lives in `tests/runtime_bashrc.bats`. Additional integration
-coverage for `basectl shell` and command startup lives in
+coverage for project activation and command startup lives in
 `cli/bash/commands/basectl/tests/basectl.bats`.

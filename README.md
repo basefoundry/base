@@ -39,8 +39,8 @@ Current implemented commands include:
 - `basectl check`
 - `basectl update-profile`
 - `basectl projects list`
+- `basectl activate <project>`
 - `basectl version`
-- `basectl shell`
 
 Planned commands include:
 
@@ -105,6 +105,21 @@ basectl projects list
 By default this scans the parent directory of `BASE_HOME`, which matches the
 recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
 different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
+
+Once a project is discoverable, activate it with:
+
+```bash
+basectl activate example
+```
+
+Activation spawns a project-specific subshell, changes to the project root, sets
+`BASE_PROJECT` and related project variables, and activates the project virtual
+environment at `~/.base.d/<project>/.venv`. Exit that shell to return to the
+original environment.
+
+Invoking `basectl` with no arguments in a terminal is equivalent to
+`basectl activate base`, so the default interactive Base shell uses Base's own
+project virtual environment.
 
 ### 2. Shell Environment Management
 
@@ -298,12 +313,13 @@ They do not source `base_init.sh`. Base runtime setup happens only when the
 `basectl` command runs a Base command, runs an explicit script path, or starts a
 Base-enabled Bash shell.
 
-When `basectl` starts an interactive Bash runtime shell, it uses Base's runtime
-rcfile rather than making Bash read `~/.bashrc` directly. That runtime rcfile
-loads `base_init.sh`, sources the user's `~/.bashrc` once with guardrails, and
-finally sets the Base runtime prompt. This keeps user aliases and normal
-interactive Bash behavior available while making Base stdlib functions such as
-`import_base_lib` available during user Bash startup.
+When `basectl activate <project>` starts an interactive Bash runtime shell, it
+uses Base's runtime rcfile rather than making Bash read `~/.bashrc` directly.
+That runtime rcfile loads `base_init.sh`, sources the user's `~/.bashrc` once
+with guardrails, activates the project virtual environment, and finally sets the
+Base runtime prompt. This keeps user aliases and normal interactive Bash
+behavior available while making Base stdlib functions such as `import_base_lib`
+available during user Bash startup.
 
 ### Debugging Shell Startup
 

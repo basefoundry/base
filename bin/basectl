@@ -5,7 +5,7 @@
 #     Public control-plane command for Base.
 #
 # Responsibilities:
-#     - start a Bash shell with the Base runtime established
+#     - start a Bash shell with the Base project runtime established
 #     - run the umbrella Base command implementation
 #     - run Base command implementations by convention
 #     - run explicit Bash script paths inside the Base runtime
@@ -185,17 +185,6 @@ basectl_run_bash_script() {
     main "${basectl_runtime_args[@]}"
 }
 
-basectl_start_shell() {
-    local base_home="$1"
-    local shell_rc="$base_home/lib/bash/runtime/bashrc"
-
-    [[ -f "$shell_rc" ]] || basectl_die "Base runtime Bash rcfile '$shell_rc' was not found."
-
-    export BASE_HOME="$base_home"
-    export BASE_SHELL=1
-    exec "${BASH:-bash}" --rcfile "$shell_rc"
-}
-
 basectl_command_script() {
     local base_home="$1"
     local command_name="${2:-}"
@@ -246,7 +235,7 @@ main() {
     fi
 
     if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
-        basectl_start_shell "$base_home"
+        basectl_run_control_command "$base_home" activate base
         return $?
     fi
 

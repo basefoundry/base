@@ -20,9 +20,11 @@ run_basectl() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
+    [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
+    [[ "$output" == *"Invoking \`basectl\` with no command is equivalent to \`basectl activate base\`"* ]]
     [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
     [[ "$output" == *"--debug-wrapper"* ]]
@@ -43,6 +45,7 @@ run_basectl() {
     ! grep -Fqx '  man' <<<"$output"
     ! grep -Fqx '  embrace' <<<"$output"
     ! grep -Fqx '  install' <<<"$output"
+    ! grep -Fqx '  shell' <<<"$output"
     grep -Fqx '  version' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
@@ -54,6 +57,23 @@ run_basectl() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
+}
+
+@test "basectl with no command activates the base project in an interactive shell" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_should_start_shell() { return 0; }
+            basectl_get_base_home() { export BASE_HOME; }
+            basectl_do_activate() { printf "activate=%s\n" "$*"; }
+            basectl_main
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "activate=base" ]
 }
 
 @test "basectl prints version with --version and version" {
@@ -157,22 +177,97 @@ EOF
     [[ "$output" == *"basectl projects list [options]"* ]]
 }
 
+@test "basectl activate resolves a project and execs a project subshell" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
+    local workspace="$TEST_TMPDIR/workspace"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*"
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
+printf 'BASE_PROJECT_MANIFEST=%s\n' "$BASE_PROJECT_MANIFEST"
+printf 'BASE_PROJECT_VENV_DIR=%s\n' "$BASE_PROJECT_VENV_DIR"
+printf 'PWD=%s\n' "$PWD"
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_bash" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"args=--rcfile $BASE_REPO_ROOT/lib/bash/runtime/bashrc"* ]]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_MANIFEST=$workspace/demo/base_manifest.yaml"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$output" == *"PWD=$workspace/demo"* ]]
+}
+
+@test "basectl activate prints help without requiring the Base Python venv" {
+    run_basectl activate --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl activate <project> [options]"* ]]
+}
+
+@test "basectl activate reports missing project as a usage error" {
+    run_basectl activate
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Project name is required."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+}
+
+@test "basectl activate reports invalid arguments as usage errors" {
+    run_basectl activate --workspace
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl activate --unknown demo
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown activate option '--unknown'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl activate demo extra
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: The 'activate' command accepts exactly one project name."* ]]
+    [[ "$output" != *"FATAL"* ]]
+}
+
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man embrace install; do
+    for legacy_command in status update run set-team set-shared-teams man embrace install shell; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
     done
-}
-
-@test "basectl shell rejects arguments" {
-    run_basectl shell -c 'echo ignored'
-
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"The 'shell' command does not accept arguments."* ]]
-    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
 @test "Base home verification does not require a git repository" {
@@ -299,11 +394,41 @@ EOF
             printf "disable=%s\n" "${VIRTUAL_ENV_DISABLE_PROMPT:-}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
     [[ "$output" == *"host=aadhara"* ]]
     [[ "$output" == *"venv=[.venv] "* ]]
     [[ "$output" == *"git=("* ]]
     [[ "$output" == *"disable=1"* ]]
+}
+
+@test "Base runtime shell activates project virtual environment" {
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+
+    mkdir -p "$venv_dir/bin"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+PATH="$VIRTUAL_ENV/bin:$PATH"
+export VIRTUAL_ENV PATH
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$BASE_REPO_ROOT" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_PROJECT=%s\n" "$BASE_PROJECT"; \
+            printf "VIRTUAL_ENV=%s\n" "$VIRTUAL_ENV"; \
+            printf "PATH=%s\n" "$PATH"; \
+            printf "PS1=%s\n" "$PS1"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"VIRTUAL_ENV=$venv_dir"* ]]
+    [[ "$output" == *"PATH=$venv_dir/bin:"* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 
@@ -331,7 +456,7 @@ EOF
     [[ "$output" == *"alias user_bashrc_alias='printf user-bashrc'"* ]]
     [[ "$output" == *"USER_BASHRC_LOADED=1"* ]]
     [[ "$output" == *"USER_BASHRC_HAS_BASE_IMPORT=1"* ]]
-    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 @test "BASE_DEBUG traces Base runtime shell startup" {
