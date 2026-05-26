@@ -74,9 +74,9 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl setup`
 - `basectl check`
 - `basectl update-profile`
+- `basectl projects list`
 - `basectl shell`
-- future commands such as `basectl projects list`, `basectl test`, and
-  `basectl activate`
+- future commands such as `basectl test` and `basectl activate`
 
 Shebang-based Bash scripts can also use:
 

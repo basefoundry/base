@@ -12,11 +12,6 @@ they are merged.
   - Expected behavior: discover the project, set `BASE_PROJECT` and project-root environment, activate `~/.base.d/<project>/.venv`, layer project shell behavior, and spawn a subshell that cleans up when it exits.
   - Notes: the activation model is already described in `docs/design.md`; implementation should follow that design before expanding scope.
 
-- [ ] Implement `basectl projects list`.
-  - Goal: make workspace discovery visible and inspectable.
-  - Expected behavior: scan the workspace for repos with `base_manifest.yaml`, parse project names, and print a stable list of discovered projects.
-  - Follow-up: later use the same discovery layer for completions, activation, setup, and project commands.
-
 - [ ] Split runtime artifacts out of `~/.base.d`.
   - Files: `lib/python/base_cli/paths.py`, `lib/python/base_cli/app.py`, tests.
   - Problem: `~/.base.d` currently mixes durable config and project venvs with ephemeral CLI logs, temp files, and caches.

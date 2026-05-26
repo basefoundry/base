@@ -26,6 +26,7 @@ that delegate to `basectl`.
 - `setup`
 - `check`
 - `update-profile`
+- `projects list`
 - `version`
 - `shell`
 - `help`
@@ -38,6 +39,7 @@ that delegate to `basectl`.
   project argument validates `project.name`.
 - `basectl check` verifies the same local requirements without making changes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
+- `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

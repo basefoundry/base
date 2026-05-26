@@ -15,6 +15,8 @@ Commands:
     Verify the local Base CLI environment without making changes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
+  projects list [options]
+    List Base-managed projects discovered in the workspace.
   version
     Show the installed Base version.
   shell
@@ -149,6 +151,11 @@ basectl_do_update_profile() {
     base_update_profile_subcommand_main "$@"
 }
 
+basectl_do_projects() {
+    basectl_source_subcommand_module projects || return 1
+    base_projects_subcommand_main "$@"
+}
+
 basectl_do_shell() {
     local shell_rc
 
@@ -249,6 +256,7 @@ basectl_main() {
         check)            basectl_do_check "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
+        projects)         basectl_do_projects "$@" ;;
         shell)            basectl_do_shell "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;
