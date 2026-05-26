@@ -38,6 +38,7 @@ Current implemented commands include:
 - `basectl setup`
 - `basectl check`
 - `basectl update-profile`
+- `basectl projects list`
 - `basectl version`
 - `basectl shell`
 
@@ -47,7 +48,6 @@ Planned commands include:
 - `basectl test`
 - `basectl test <project>`
 - `basectl doctor`
-- `basectl projects list`
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace. Planned commands are
@@ -95,6 +95,16 @@ The supported artifact registry lives in
 into the project virtual environment at `~/.base.d/<project>/.venv`.
 Homebrew-managed `tool` artifacts currently support `version: latest`; pinned
 Homebrew versions fail clearly until Base grows explicit versioned tool support.
+
+You can inspect the projects Base can see with:
+
+```bash
+basectl projects list
+```
+
+By default this scans the parent directory of `BASE_HOME`, which matches the
+recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
+different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
 
 ### 2. Shell Environment Management
 
