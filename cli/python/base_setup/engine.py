@@ -96,7 +96,8 @@ def reconcile_manifest(
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
-    ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
+    if not dry_run:
+        ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
 
 
 def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tuple[ArtifactDefinition, ...]:

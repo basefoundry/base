@@ -11,7 +11,7 @@ from unittest import mock
 
 from base_setup import engine
 from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
-from base_setup.manifest import ArtifactRequest
+from base_setup.manifest import ArtifactRequest, BaseManifest
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 
@@ -149,6 +149,17 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+        self.assertNotIn("Project 'demo' artifact setup is complete.", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_successful_non_dry_run_logs_project_artifact_completion(self) -> None:
+        ctx = fake_context()
+        default_manifest = BaseManifest(path=Path("default_manifest.yaml"), project_name="defaults", artifacts=())
+        manifest = BaseManifest(path=Path("base_manifest.yaml"), project_name="demo", artifacts=())
+
+        engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=False)
+
+        ctx.log.info.assert_any_call("Project '%s' artifact setup is complete.", "demo")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_discovers_manifest_from_start_dir(self) -> None:
