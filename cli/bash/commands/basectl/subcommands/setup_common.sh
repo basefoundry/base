@@ -406,7 +406,7 @@ setup_base_python_package_check_message() {
 }
 
 setup_run_project_artifact_setup() {
-    local exit_code project wrapper
+    local base_pythonpath exit_code old_pythonpath project python_bin venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -415,8 +415,8 @@ setup_run_project_artifact_setup() {
     fi
 
     project="${BASE_SETUP_PROJECT_NAME:-base}"
-    wrapper="$BASE_HOME/bin/base-wrapper"
-    [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
 
     if setup_is_dry_run; then
         args+=(--dry-run)
@@ -427,7 +427,13 @@ setup_run_project_artifact_setup() {
     args+=("$project")
 
     log_info "Running Python project setup layer."
-    "$wrapper" --project "$project" base_setup "${args[@]}"
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        base_pythonpath="$base_pythonpath:$old_pythonpath"
+    fi
+
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$base_pythonpath" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
     exit_if_error "$exit_code" "Python project setup layer failed."
