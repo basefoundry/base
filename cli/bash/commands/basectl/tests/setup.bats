@@ -102,7 +102,14 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "${BASE_PROJECT:-}" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-project"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    printf 'base\n'
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
@@ -130,7 +137,14 @@ VENVEOF
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "${BASE_PROJECT:-}" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-project"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    printf 'base\n'
     exit 0
 fi
 printf 'unexpected python3 args: %s\n' "$*" >&2
@@ -218,7 +232,14 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "${BASE_PROJECT:-}" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-project"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    printf 'base\n'
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
@@ -246,7 +267,14 @@ VENVEOF
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "${BASE_PROJECT:-}" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-project"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    printf 'base\n'
     exit 0
 fi
 printf 'unexpected python3 args: %s\n' "$*" >&2
@@ -359,6 +387,15 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    manifest_path="${3:-}"
+    if [[ -n "$manifest_path" && -f "$manifest_path" ]]; then
+        awk '/^[[:space:]]*name:/ { print $2; exit }' "$manifest_path"
+    else
+        printf 'base\n'
+    fi
+    exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
@@ -503,7 +540,7 @@ EOF
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
-@test "basectl setup forwards project setup arguments through base-wrapper" {
+@test "basectl setup forwards explicit project setup arguments through the Base venv" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
@@ -515,8 +552,7 @@ EOF
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
-    create_base_venv_stub "$base_venv_dir"
-    create_project_setup_venv_stub "$demo_venv_dir"
+    create_project_setup_venv_stub "$base_venv_dir"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
 
     run_base_command setup --dry-run --manifest "$manifest_path" demo
@@ -526,6 +562,56 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" demo)" ]
+    [ ! -e "$demo_venv_dir/bin/python" ]
+}
+
+@test "basectl setup infers omitted project argument from the manifest" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command setup --dry-run --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" demo)" ]
+    [ ! -e "$demo_venv_dir/bin/python" ]
+}
+
+@test "basectl setup --dev fails for non-Base projects before installing developer dependencies" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command setup --dev --manifest "$manifest_path"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"--dev is only supported for the Base project. Run without --dev for project 'demo'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+    [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/gh-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup propagates Python project setup failure" {
@@ -549,6 +635,7 @@ EOF
 
 @test "basectl setup --dev installs developer dependencies" {
     local installer
+    local expected_args
 
     create_xcode_stubs
     installer="$(create_homebrew_installer_stub)"
@@ -563,6 +650,8 @@ EOF
     [[ "$output" == *"Installing GitHub CLI formula 'gh' via Homebrew."* ]]
     [ -f "$TEST_STATE_DIR/bats-install-ran" ]
     [ -f "$TEST_STATE_DIR/gh-install-ran" ]
+    expected_args="$(printf '%s\n' --manifest "$BASE_REPO_ROOT/base_manifest.yaml" base)"
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$expected_args" ]
 }
 
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
