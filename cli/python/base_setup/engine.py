@@ -252,6 +252,7 @@ def run_check(command: list[str]) -> bool:
 
 
 def run_command(command: list[str]) -> None:
+    # Keep stdout live for installer progress; capture stderr for persistent failure logs.
     completed = subprocess.run(command, stderr=subprocess.PIPE, text=True, check=False)
     if completed.returncode:
         stderr = (completed.stderr or "").strip()

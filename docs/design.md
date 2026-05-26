@@ -342,6 +342,12 @@ project requests a pinned Homebrew version, setup fails clearly instead of
 silently installing a different version. Richer version conflict handling across
 projects is a later iteration, not part of the initial build.
 
+Artifact install commands keep stdout attached to the terminal so long-running
+tools such as `brew` and `pip` remain live and readable while setup runs. Base's
+persistent log records the command intent and captures stderr on failures. If
+Base later needs full install transcripts, it should add tee-style streaming so
+users still see progress while stdout is also preserved in the log.
+
 ---
 
 ## Mac Bootstrap Sequence
