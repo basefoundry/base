@@ -91,6 +91,10 @@ setup_bats_formula() {
     printf '%s\n' "${BASE_SETUP_BATS_FORMULA:-bats-core}"
 }
 
+setup_gh_formula() {
+    printf '%s\n' "${BASE_SETUP_GH_FORMULA:-gh}"
+}
+
 setup_pyyaml_package() {
     printf '%s\n' "${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 }
@@ -276,6 +280,34 @@ setup_install_bats() {
     command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install BATS formula '$formula'."
 
     log_info "Installing BATS formula '$formula' via Homebrew."
+    run brew install "$formula"
+}
+
+setup_gh_installed() {
+    local formula
+
+    formula="$(setup_gh_formula)"
+    command -v brew >/dev/null 2>&1 && brew list "$formula" >/dev/null 2>&1
+}
+
+setup_install_gh() {
+    local formula
+
+    formula="$(setup_gh_formula)"
+
+    if setup_gh_installed; then
+        log_info "GitHub CLI formula '$formula' is already installed via Homebrew."
+        return 0
+    fi
+
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Would install GitHub CLI formula '$formula' via Homebrew."
+        return 0
+    fi
+
+    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install GitHub CLI formula '$formula'."
+
+    log_info "Installing GitHub CLI formula '$formula' via Homebrew."
     run brew install "$formula"
 }
 
@@ -471,6 +503,12 @@ setup_run_check() {
             log_warn "BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
             missing=1
         fi
+        if setup_gh_installed; then
+            log_info "GitHub CLI formula '$(setup_gh_formula)' is installed via Homebrew."
+        else
+            log_warn "GitHub CLI formula '$(setup_gh_formula)' is not installed via Homebrew."
+            missing=1
+        fi
     fi
 
     if setup_virtualenv_exists; then
@@ -530,6 +568,7 @@ setup_print_check_json_item() {
 setup_run_check_json() {
     local bats_message bats_ok=false brew_bin homebrew_message homebrew_ok=false
     local click_message click_ok=false click_package
+    local gh_message gh_ok=false
     local missing=0
     local pyyaml_message pyyaml_ok=false pyyaml_package
     local python_message python_ok=false
@@ -579,6 +618,14 @@ setup_run_check_json() {
             bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
             missing=1
         fi
+        if setup_gh_installed; then
+            gh_ok=true
+            gh_message="GitHub CLI formula '$(setup_gh_formula)' is installed via Homebrew."
+        else
+            gh_ok=false
+            gh_message="GitHub CLI formula '$(setup_gh_formula)' is not installed via Homebrew."
+            missing=1
+        fi
     fi
 
     if setup_virtualenv_exists; then
@@ -611,6 +658,7 @@ setup_run_check_json() {
     setup_print_check_json_item "," "python" "$python_ok" "$python_message"
     if setup_dev_dependencies_enabled; then
         setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
+        setup_print_check_json_item "," "gh" "$gh_ok" "$gh_message"
     fi
     setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
     setup_print_check_json_item "," "click" "$click_ok" "$click_message"
@@ -628,6 +676,7 @@ setup_run_install() {
     setup_install_python
     if setup_dev_dependencies_enabled; then
         setup_install_bats
+        setup_install_gh
     fi
     setup_create_virtualenv
     setup_install_pyyaml

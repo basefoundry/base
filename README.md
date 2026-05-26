@@ -155,8 +155,8 @@ with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
 installs `PyYAML` into that environment and invokes the Python project setup
 layer to read `base_manifest.yaml` and reconcile project artifacts.
-Developer/test dependencies such as BATS are opt-in; use `basectl setup --dev`
-to install them and `basectl check --dev` to verify them.
+Developer/test dependencies such as BATS and GitHub CLI are opt-in; use
+`basectl setup --dev` to install them and `basectl check --dev` to verify them.
 
 ## Quick Start
 

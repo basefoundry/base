@@ -64,6 +64,7 @@ state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
 python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
+gh_formula="${BASE_SETUP_GH_FORMULA:-gh}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 
@@ -76,6 +77,10 @@ case "${1:-}" in
                 ;;
             "$bats_formula")
                 [[ -f "$state_dir/bats-installed" ]]
+                exit $?
+                ;;
+            "$gh_formula")
+                [[ -f "$state_dir/gh-installed" ]]
                 exit $?
                 ;;
         esac
@@ -137,6 +142,11 @@ PYEOF
         if [[ "${2:-}" == "$bats_formula" ]]; then
             touch "$state_dir/bats-install-ran"
             touch "$state_dir/bats-installed"
+            exit 0
+        fi
+        if [[ "${2:-}" == "$gh_formula" ]]; then
+            touch "$state_dir/gh-install-ran"
+            touch "$state_dir/gh-installed"
             exit 0
         fi
         printf 'unexpected brew install args: %s\n' "$*" >&2
@@ -170,6 +180,7 @@ state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
 python_prefix="${BASE_SETUP_TEST_PYTHON_PREFIX:?}"
 python_formula="${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 bats_formula="${BASE_SETUP_BATS_FORMULA:-bats-core}"
+gh_formula="${BASE_SETUP_GH_FORMULA:-gh}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 
@@ -182,6 +193,10 @@ case "${1:-}" in
                 ;;
             "$bats_formula")
                 [[ -f "$state_dir/bats-installed" ]]
+                exit $?
+                ;;
+            "$gh_formula")
+                [[ -f "$state_dir/gh-installed" ]]
                 exit $?
                 ;;
         esac
@@ -243,6 +258,11 @@ PYEOF
         if [[ "${2:-}" == "$bats_formula" ]]; then
             touch "$state_dir/bats-install-ran"
             touch "$state_dir/bats-installed"
+            exit 0
+        fi
+        if [[ "${2:-}" == "$gh_formula" ]]; then
+            touch "$state_dir/gh-install-ran"
+            touch "$state_dir/gh-installed"
             exit 0
         fi
         printf 'unexpected brew install args: %s\n' "$*" >&2
@@ -436,12 +456,14 @@ EOF
     [[ "$output" == *"Xcode Command Line Tools are already installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is already installed via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
+    [[ "$output" != *"GitHub CLI formula 'gh'"* ]]
     [[ "$output" == *"Virtual environment already exists at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is already installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is already installed in the Base virtual environment."* ]]
     [[ "$output" == *"Running Python project setup layer."* ]]
     [ ! -f "$TEST_STATE_DIR/python-install-ran" ]
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/gh-install-ran" ]
     [ ! -f "$TEST_STATE_DIR/pyyaml-install-ran" ]
     [ ! -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
@@ -465,6 +487,7 @@ EOF
     [[ "$output" == *"Xcode Command Line Tools installation detected."* ]]
     [[ "$output" == *"Installing Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
+    [[ "$output" != *"GitHub CLI formula 'gh'"* ]]
     [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
     [[ "$output" == *"Installing Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"Installing Python package 'click' in the Base virtual environment."* ]]
@@ -473,6 +496,7 @@ EOF
     [ -f "$TEST_STATE_DIR/homebrew-install-ran" ]
     [ -f "$TEST_STATE_DIR/python-install-ran" ]
     [ ! -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ ! -f "$TEST_STATE_DIR/gh-install-ran" ]
     [ -f "$TEST_STATE_DIR/pyyaml-install-ran" ]
     [ -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
@@ -523,7 +547,7 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
-@test "basectl setup --dev installs BATS with developer dependencies" {
+@test "basectl setup --dev installs developer dependencies" {
     local installer
 
     create_xcode_stubs
@@ -536,7 +560,9 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing BATS formula 'bats-core' via Homebrew."* ]]
+    [[ "$output" == *"Installing GitHub CLI formula 'gh' via Homebrew."* ]]
     [ -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ -f "$TEST_STATE_DIR/gh-install-ran" ]
 }
 
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
@@ -640,6 +666,7 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
+    [[ "$output" != *"GitHub CLI formula 'gh'"* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'click' in the Base virtual environment."* ]]
@@ -648,11 +675,12 @@ EOF
     [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
 }
 
-@test "basectl setup --dev dry-run includes BATS" {
+@test "basectl setup --dev dry-run includes developer dependencies" {
     run_base_command setup --dev --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install GitHub CLI formula 'gh' via Homebrew."* ]]
 }
 
 @test "basectl setup ignores inherited DRY_RUN without --dry-run" {
@@ -697,6 +725,7 @@ EOF
     [[ "$output" == *"Xcode Command Line Tools are installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is installed via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
+    [[ "$output" != *"GitHub CLI formula 'gh'"* ]]
     [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
@@ -727,7 +756,7 @@ EOF
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
-@test "basectl check --dev includes BATS in developer dependency checks" {
+@test "basectl check --dev includes developer dependency checks" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -743,6 +772,7 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
+    [[ "$output" == *"GitHub CLI formula 'gh' is not installed via Homebrew."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
@@ -774,13 +804,14 @@ EOF
     [[ "$output" == *'"ok": true'* ]]
     [[ "$output" == *'"name":"homebrew","ok":true'* ]]
     [[ "$output" != *'"name":"bats"'* ]]
+    [[ "$output" != *'"name":"gh"'* ]]
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
     [ "${stderr:-}" = "" ]
 }
 
-@test "basectl check --dev --format json includes BATS check results" {
+@test "basectl check --dev --format json includes developer dependency check results" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -806,6 +837,7 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
     [[ "$output" == *'"name":"bats","ok":false'* ]]
+    [[ "$output" == *'"name":"gh","ok":false'* ]]
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
     [ "${stderr:-}" = "" ]
@@ -843,6 +875,7 @@ EOF
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is not installed via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
+    [[ "$output" != *"GitHub CLI formula 'gh'"* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
