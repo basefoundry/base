@@ -437,8 +437,72 @@ setup_base_python_package_check_message() {
     fi
 }
 
+setup_project_setup_pythonpath() {
+    local base_pythonpath old_pythonpath
+
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        base_pythonpath="$base_pythonpath:$old_pythonpath"
+    fi
+    printf '%s\n' "$base_pythonpath"
+}
+
+setup_resolve_project_name() {
+    local manifest_arg project python_bin venv_dir
+
+    if [[ -n "${BASE_SETUP_PROJECT_NAME:-}" ]]; then
+        printf '%s\n' "$BASE_SETUP_PROJECT_NAME"
+        return 0
+    fi
+
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
+
+    manifest_arg="${BASE_SETUP_MANIFEST:-}"
+    project="$(
+        env BASE_HOME="$BASE_HOME" PYTHONPATH="$(setup_project_setup_pythonpath)" "$python_bin" -c '
+from pathlib import Path
+import sys
+
+from base_cli.paths import discover_manifest
+from base_setup.manifest import read_manifest
+
+manifest_arg = sys.argv[1]
+start_dir = Path(sys.argv[2])
+if manifest_arg:
+    manifest_path = Path(manifest_arg).expanduser().resolve()
+else:
+    manifest_path = discover_manifest(start_dir)
+
+print(read_manifest(manifest_path).project_name if manifest_path else "base")
+' "$manifest_arg" "$PWD"
+    )" || fatal_error "Unable to resolve Base project name from manifest."
+
+    printf '%s\n' "$project"
+}
+
+setup_validate_dev_project() {
+    local project
+
+    if ! setup_dev_dependencies_enabled; then
+        return 0
+    fi
+
+    if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
+        log_info "[DRY-RUN] Would validate that --dev is only used for the Base project after PyYAML is installed."
+        return 0
+    fi
+
+    project="$(setup_resolve_project_name)"
+    if [[ "$project" != base ]]; then
+        print_error "--dev is only supported for the Base project. Run without --dev for project '$project'."
+        return 1
+    fi
+}
+
 setup_run_project_artifact_setup() {
-    local exit_code project wrapper
+    local exit_code project python_bin venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -446,20 +510,22 @@ setup_run_project_artifact_setup() {
         return 0
     fi
 
-    project="${BASE_SETUP_PROJECT_NAME:-base}"
-    wrapper="$BASE_HOME/bin/base-wrapper"
-    [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
+    project="$(setup_resolve_project_name)"
 
     if setup_is_dry_run; then
         args+=(--dry-run)
     fi
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
         args+=(--manifest "$BASE_SETUP_MANIFEST")
+    elif [[ "$project" == base ]]; then
+        args+=(--manifest "$BASE_HOME/base_manifest.yaml")
     fi
     args+=("$project")
 
     log_info "Running Python project setup layer."
-    "$wrapper" --project "$project" base_setup "${args[@]}"
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$(setup_project_setup_pythonpath)" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
     exit_if_error "$exit_code" "Python project setup layer failed."
@@ -674,13 +740,14 @@ setup_run_install() {
     setup_install_homebrew
     setup_install_xcode_tools
     setup_install_python
+    setup_create_virtualenv
+    setup_install_pyyaml
+    setup_install_click
+    setup_validate_dev_project || return 1
     if setup_dev_dependencies_enabled; then
         setup_install_bats
         setup_install_gh
     fi
-    setup_create_virtualenv
-    setup_install_pyyaml
-    setup_install_click
     setup_run_project_artifact_setup
 
     if setup_is_dry_run; then
