@@ -50,6 +50,8 @@ def load_config(
         env_config["environment"] = os.environ["BASE_CLI_ENVIRONMENT"]
     if "BASE_CLI_LOG_LEVEL" in os.environ:
         env_config["log_level"] = os.environ["BASE_CLI_LOG_LEVEL"]
+    elif os.environ.get("LOG_DEBUG", "").lower() in ("1", "true"):
+        env_config["log_level"] = "debug"
     if "BASE_CLI_KEEP_TEMP" in os.environ:
         env_config["keep_temp"] = os.environ["BASE_CLI_KEEP_TEMP"].lower() == "true"
     return merge_dicts(config, env_config)

@@ -116,9 +116,11 @@ It owns the current Base subcommands:
 
 - `setup`
 - `check`
+- `clean`
+- `activate`
+- `projects list`
 - `update-profile`
 - `version`
-- `shell`
 - `help`
 
 Subcommand modules for the umbrella command live under:

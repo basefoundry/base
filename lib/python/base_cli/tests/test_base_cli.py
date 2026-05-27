@@ -57,7 +57,7 @@ class BaseCliTests(unittest.TestCase):
             home = Path(tmpdir)
             with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
                 self.assertFalse((home / ".base.d").exists())
-                self.assertFalse((home / ".cache" / "base").exists())
+                self.assertFalse((home / "Library" / "Caches" / "base").exists())
 
     def test_path_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -67,9 +67,20 @@ class BaseCliTests(unittest.TestCase):
             (root / "base_manifest.yaml").write_text("project:\n  name: demo\n", encoding="utf-8")
 
             self.assertEqual(base_state_root(root), root / ".base.d")
-            self.assertEqual(base_cache_root(root), root / ".cache" / "base")
             self.assertEqual(normalize_cli_name("/tmp/demo.py"), "demo")
             self.assertEqual(discover_manifest(nested), (root / "base_manifest.yaml").resolve())
+
+    def test_base_cache_root_uses_macos_cache_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch("base_cli.paths.sys.platform", "darwin"):
+                self.assertEqual(base_cache_root(root), root / "Library" / "Caches" / "base")
+
+    def test_base_cache_root_uses_xdg_cache_directory_off_macos(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch("base_cli.paths.sys.platform", "linux"):
+                self.assertEqual(base_cache_root(root), root / ".cache" / "base")
 
     def test_base_cache_root_honors_environment_override(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -140,6 +151,13 @@ class BaseCliTests(unittest.TestCase):
         self.assertEqual(config["environment"], "env")
         self.assertEqual(config["log_level"], "warning")
 
+    def test_log_debug_enables_python_debug_logging(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"LOG_DEBUG": "1"}):
+                config = load_config(None, None, home=Path(tmpdir))
+
+        self.assertEqual(config["log_level"], "debug")
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_runs_with_context_and_cleans_temp_dir(self) -> None:
         app = base_cli.App(name="demo", version="0.1.0")
@@ -166,7 +184,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
-            self.assertTrue((home / ".cache" / "base" / "cli" / "demo" / "logs").is_dir())
+            self.assertTrue((home / "Library" / "Caches" / "base" / "cli" / "demo" / "logs").is_dir())
             self.assertFalse((home / ".base.d" / "cli").exists())
             self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
             self.assertIn("hello Ada", result.stderr)
@@ -235,7 +253,10 @@ class BaseCliTests(unittest.TestCase):
             self.assertTrue(seen["debug"])
             self.assertTrue(seen["temp_dir"].exists())
             self.assertEqual(seen["log_file"], log_file)
-            self.assertEqual(seen["temp_dir"].parents[1], home / ".cache" / "base" / "cli" / "secret-tool")
+            self.assertEqual(
+                seen["temp_dir"].parents[1],
+                home / "Library" / "Caches" / "base" / "cli" / "secret-tool",
+            )
             self.assertEqual(seen["manifest_path"], manifest_path.resolve())
             self.assertEqual(seen["project_root"], project.resolve())
 

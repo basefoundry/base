@@ -37,6 +37,7 @@ Current implemented commands include:
 
 - `basectl setup`
 - `basectl check`
+- `basectl clean --older-than <age>`
 - `basectl update-profile`
 - `basectl projects list`
 - `basectl activate <project>`
@@ -120,6 +121,18 @@ original environment.
 Invoking `basectl` with no arguments in a terminal is equivalent to
 `basectl activate base`, so the default interactive Base shell uses Base's own
 project virtual environment.
+
+Clean old Base CLI runtime logs, retained temp files, and cache entries with:
+
+```bash
+basectl clean --older-than 30d --dry-run
+basectl clean --older-than 30d
+```
+
+Cleanup only targets runtime artifacts under the Base cache root, which defaults
+to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
+state such as `~/.base.d/config.yaml` and project virtual environments under
+`~/.base.d/<project>/.venv` are outside this scope.
 
 ### 2. Shell Environment Management
 
