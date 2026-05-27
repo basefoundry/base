@@ -87,14 +87,6 @@ setup_python_formula() {
     printf '%s\n' "${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 }
 
-setup_bats_formula() {
-    printf '%s\n' "${BASE_SETUP_BATS_FORMULA:-bats-core}"
-}
-
-setup_gh_formula() {
-    printf '%s\n' "${BASE_SETUP_GH_FORMULA:-gh}"
-}
-
 setup_pyyaml_package() {
     printf '%s\n' "${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 }
@@ -117,6 +109,34 @@ setup_xcode_wait_interval_seconds() {
 
 setup_allow_noninteractive_xcode_install() {
     [[ "${BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL:-false}" == true ]]
+}
+
+setup_recovery_homebrew() {
+    printf "%s\n" "Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."
+}
+
+setup_recovery_brew_path() {
+    printf "%s\n" "Check your Homebrew installation and make sure its bin directory is on PATH, then rerun 'basectl setup'."
+}
+
+setup_recovery_xcode_tools() {
+    printf "%s\n" "Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."
+}
+
+setup_recovery_python() {
+    printf "Run 'basectl setup' to install Homebrew Python, or run 'brew install %s'.\n" "$(setup_python_formula)"
+}
+
+setup_recovery_venv() {
+    printf "%s\n" "Run 'basectl setup --recreate-venv' to back up and recreate the Base virtual environment."
+}
+
+setup_recovery_base_python_package() {
+    printf "%s\n" "Run 'basectl setup' to install Base Python bootstrap packages."
+}
+
+setup_recovery_project_layer() {
+    printf "%s\n" "Review the Python error above, then rerun 'basectl setup -v' for more detail."
 }
 
 setup_find_brew_bin() {
@@ -154,9 +174,10 @@ setup_refresh_brew_path() {
 
 setup_install_homebrew() {
     local installer_url="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+    local exit_code
 
     if setup_find_brew_bin >/dev/null 2>&1; then
-        setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH."
+        setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
         log_info "Homebrew is already installed."
         return 0
     fi
@@ -171,12 +192,16 @@ setup_install_homebrew() {
     if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT:-}" ]]; then
         run "$BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT"
     else
-        command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install Homebrew."
+        command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install Homebrew. Install curl or install Homebrew manually from https://brew.sh/, then rerun 'basectl setup'."
         /bin/bash -c "$(curl -fsSL "$installer_url")"
-        exit_if_error $? "Homebrew installation failed."
+        exit_code=$?
+        if ((exit_code)); then
+            log_error "$(setup_recovery_homebrew)"
+        fi
+        exit_if_error "$exit_code" "Homebrew installation failed."
     fi
 
-    setup_refresh_brew_path || fatal_error "Homebrew installation finished, but 'brew' was not found on PATH."
+    setup_refresh_brew_path || fatal_error "Homebrew installation finished, but 'brew' was not found on PATH. $(setup_recovery_brew_path)"
 }
 
 setup_require_macos() {
@@ -201,7 +226,7 @@ setup_install_xcode_tools() {
     fi
 
     if ! is_interactive && ! setup_allow_noninteractive_xcode_install && ! setup_is_dry_run; then
-        fatal_error "Xcode Command Line Tools installation requires an interactive terminal."
+        fatal_error "Xcode Command Line Tools installation requires an interactive terminal. $(setup_recovery_xcode_tools)"
     fi
 
     if setup_is_dry_run; then
@@ -219,7 +244,7 @@ setup_install_xcode_tools() {
     until setup_xcode_tools_installed; do
         current_time="$(date +%s)"
         if ((current_time - start_time >= timeout)); then
-            fatal_error "Timed out waiting for Xcode Command Line Tools installation to complete."
+            fatal_error "Timed out waiting for Xcode Command Line Tools installation to complete. If the installer is still open, finish it. Otherwise $(setup_recovery_xcode_tools)"
         fi
         sleep "$interval"
     done
@@ -249,65 +274,9 @@ setup_install_python() {
         return 0
     fi
 
-    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install Python formula '$formula'."
+    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install Python formula '$formula'. $(setup_recovery_homebrew)"
 
     log_info "Installing Python formula '$formula' via Homebrew."
-    run brew install "$formula"
-}
-
-setup_bats_installed() {
-    local formula
-
-    formula="$(setup_bats_formula)"
-    command -v brew >/dev/null 2>&1 && brew list "$formula" >/dev/null 2>&1
-}
-
-setup_install_bats() {
-    local formula
-
-    formula="$(setup_bats_formula)"
-
-    if setup_bats_installed; then
-        log_info "BATS formula '$formula' is already installed via Homebrew."
-        return 0
-    fi
-
-    if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would install BATS formula '$formula' via Homebrew."
-        return 0
-    fi
-
-    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install BATS formula '$formula'."
-
-    log_info "Installing BATS formula '$formula' via Homebrew."
-    run brew install "$formula"
-}
-
-setup_gh_installed() {
-    local formula
-
-    formula="$(setup_gh_formula)"
-    command -v brew >/dev/null 2>&1 && brew list "$formula" >/dev/null 2>&1
-}
-
-setup_install_gh() {
-    local formula
-
-    formula="$(setup_gh_formula)"
-
-    if setup_gh_installed; then
-        log_info "GitHub CLI formula '$formula' is already installed via Homebrew."
-        return 0
-    fi
-
-    if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would install GitHub CLI formula '$formula' via Homebrew."
-        return 0
-    fi
-
-    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install GitHub CLI formula '$formula'."
-
-    log_info "Installing GitHub CLI formula '$formula' via Homebrew."
     run brew install "$formula"
 }
 
@@ -368,7 +337,7 @@ setup_create_virtualenv() {
         return 0
     fi
 
-    python_bin="$(setup_find_python_bin)" || fatal_error "Unable to locate a python3 executable after installation."
+    python_bin="$(setup_find_python_bin)" || fatal_error "Unable to locate a python3 executable after installation. $(setup_recovery_python)"
 
     safe_mkdir -p "$(dirname "$venv_dir")"
     log_info "Creating Python virtual environment at '$venv_dir'."
@@ -412,7 +381,7 @@ setup_install_base_python_package() {
         return 0
     fi
 
-    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
     log_info "Installing Python package '$package' in the Base virtual environment."
     run "$python_bin" -m pip install "$package"
@@ -437,72 +406,8 @@ setup_base_python_package_check_message() {
     fi
 }
 
-setup_project_setup_pythonpath() {
-    local base_pythonpath old_pythonpath
-
-    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
-    old_pythonpath="${PYTHONPATH-}"
-    if [[ -n "$old_pythonpath" ]]; then
-        base_pythonpath="$base_pythonpath:$old_pythonpath"
-    fi
-    printf '%s\n' "$base_pythonpath"
-}
-
-setup_resolve_project_name() {
-    local manifest_arg project python_bin venv_dir
-
-    if [[ -n "${BASE_SETUP_PROJECT_NAME:-}" ]]; then
-        printf '%s\n' "$BASE_SETUP_PROJECT_NAME"
-        return 0
-    fi
-
-    venv_dir="$(setup_venv_dir)"
-    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
-
-    manifest_arg="${BASE_SETUP_MANIFEST:-}"
-    project="$(
-        env BASE_HOME="$BASE_HOME" PYTHONPATH="$(setup_project_setup_pythonpath)" "$python_bin" -c '
-from pathlib import Path
-import sys
-
-from base_cli.paths import discover_manifest
-from base_setup.manifest import read_manifest
-
-manifest_arg = sys.argv[1]
-start_dir = Path(sys.argv[2])
-if manifest_arg:
-    manifest_path = Path(manifest_arg).expanduser().resolve()
-else:
-    manifest_path = discover_manifest(start_dir)
-
-print(read_manifest(manifest_path).project_name if manifest_path else "base")
-' "$manifest_arg" "$PWD"
-    )" || fatal_error "Unable to resolve Base project name from manifest."
-
-    printf '%s\n' "$project"
-}
-
-setup_validate_dev_project() {
-    local project
-
-    if ! setup_dev_dependencies_enabled; then
-        return 0
-    fi
-
-    if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
-        log_info "[DRY-RUN] Would validate that --dev is only used for the Base project after PyYAML is installed."
-        return 0
-    fi
-
-    project="$(setup_resolve_project_name)"
-    if [[ "$project" != base ]]; then
-        print_error "--dev is only supported for the Base project. Run without --dev for project '$project'."
-        return 1
-    fi
-}
-
 setup_run_project_artifact_setup() {
-    local exit_code project python_bin venv_dir
+    local base_pythonpath exit_code old_pythonpath project python_bin venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -510,25 +415,53 @@ setup_run_project_artifact_setup() {
         return 0
     fi
 
+    project="${BASE_SETUP_PROJECT_NAME:-base}"
     venv_dir="$(setup_venv_dir)"
-    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'."
-    project="$(setup_resolve_project_name)"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
     if setup_is_dry_run; then
         args+=(--dry-run)
     fi
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
         args+=(--manifest "$BASE_SETUP_MANIFEST")
-    elif [[ "$project" == base ]]; then
-        args+=(--manifest "$BASE_HOME/base_manifest.yaml")
     fi
     args+=("$project")
 
     log_info "Running Python project setup layer."
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$(setup_project_setup_pythonpath)" "$python_bin" -m base_setup "${args[@]}"
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        base_pythonpath="$base_pythonpath:$old_pythonpath"
+    fi
+
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$base_pythonpath" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
+    if ((exit_code)); then
+        log_error "$(setup_recovery_project_layer)"
+    fi
     exit_if_error "$exit_code" "Python project setup layer failed."
+}
+
+setup_run_base_dev_layer() {
+    local args=("$@")
+    local venv_dir
+
+    if setup_is_dry_run &&
+        { ! setup_base_python_package_installed "$(setup_pyyaml_package)" ||
+            ! setup_base_python_package_installed "$(setup_click_package)"; }; then
+        log_info "[DRY-RUN] Would run Python developer prerequisite layer after Base Python bootstrap dependencies are installed."
+        return 0
+    fi
+
+    venv_dir="$(setup_venv_dir)"
+    if ! setup_base_venv_python_bin "$venv_dir" >/dev/null 2>&1; then
+        log_warn "Python developer prerequisite layer cannot run because Base virtual environment Python was not found at '$venv_dir/bin/python'."
+        log_warn "$(setup_recovery_venv)"
+        return 1
+    fi
+
+    "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}"
 }
 
 setup_run_check() {
@@ -540,11 +473,12 @@ setup_run_check() {
     venv_dir="$(setup_venv_dir)"
 
     if brew_bin="$(setup_find_brew_bin)"; then
-        setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH."
+        setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
         log_info "Homebrew is installed."
         log_debug "Resolved Homebrew binary: $brew_bin"
     else
         log_warn "Homebrew is not installed."
+        log_warn "$(setup_recovery_homebrew)"
         missing=1
     fi
 
@@ -552,6 +486,7 @@ setup_run_check() {
         log_info "Xcode Command Line Tools are installed."
     else
         log_warn "Xcode Command Line Tools are not installed."
+        log_warn "$(setup_recovery_xcode_tools)"
         missing=1
     fi
 
@@ -559,28 +494,15 @@ setup_run_check() {
         log_info "Python formula '$(setup_python_formula)' is installed via Homebrew."
     else
         log_warn "Python formula '$(setup_python_formula)' is not installed via Homebrew."
+        log_warn "$(setup_recovery_python)"
         missing=1
-    fi
-
-    if setup_dev_dependencies_enabled; then
-        if setup_bats_installed; then
-            log_info "BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-        else
-            log_warn "BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-            missing=1
-        fi
-        if setup_gh_installed; then
-            log_info "GitHub CLI formula '$(setup_gh_formula)' is installed via Homebrew."
-        else
-            log_warn "GitHub CLI formula '$(setup_gh_formula)' is not installed via Homebrew."
-            missing=1
-        fi
     fi
 
     if setup_virtualenv_exists; then
         log_info "Virtual environment exists at '$venv_dir'."
     else
         log_warn "Virtual environment is missing at '$venv_dir'."
+        log_warn "$(setup_recovery_venv)"
         missing=1
     fi
 
@@ -588,6 +510,7 @@ setup_run_check() {
         log_info "$(setup_base_python_package_check_message "$pyyaml_package" true)"
     else
         log_warn "$(setup_base_python_package_check_message "$pyyaml_package" false)"
+        log_warn "$(setup_recovery_base_python_package)"
         missing=1
     fi
 
@@ -595,7 +518,12 @@ setup_run_check() {
         log_info "$(setup_base_python_package_check_message "$click_package" true)"
     else
         log_warn "$(setup_base_python_package_check_message "$click_package" false)"
+        log_warn "$(setup_recovery_base_python_package)"
         missing=1
+    fi
+
+    if setup_dev_dependencies_enabled; then
+        setup_run_base_dev_layer check || missing=1
     fi
 
     if ((missing == 0)); then
@@ -604,6 +532,7 @@ setup_run_check() {
     fi
 
     log_warn "Base CLI environment check found missing requirements."
+    log_warn "Run 'basectl setup' to reconcile the missing requirements."
     return 1
 }
 
@@ -631,10 +560,27 @@ setup_print_check_json_item() {
         "$trailing_comma"
 }
 
+setup_print_json_property_value() {
+    local first_line=true
+    local key="$1"
+    local line
+    local value="$2"
+
+    printf '  "%s": ' "$(setup_json_escape "$key")"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$first_line" == true ]]; then
+            printf '%s\n' "$line"
+            first_line=false
+        else
+            printf '  %s\n' "$line"
+        fi
+    done <<<"$value"
+}
+
 setup_run_check_json() {
-    local bats_message bats_ok=false brew_bin homebrew_message homebrew_ok=false
+    local brew_bin homebrew_message homebrew_ok=false
     local click_message click_ok=false click_package
-    local gh_message gh_ok=false
+    local dev_json="[]"
     local missing=0
     local pyyaml_message pyyaml_ok=false pyyaml_package
     local python_message python_ok=false
@@ -675,25 +621,6 @@ setup_run_check_json() {
         missing=1
     fi
 
-    if setup_dev_dependencies_enabled; then
-        if setup_bats_installed; then
-            bats_ok=true
-            bats_message="BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-        else
-            bats_ok=false
-            bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-            missing=1
-        fi
-        if setup_gh_installed; then
-            gh_ok=true
-            gh_message="GitHub CLI formula '$(setup_gh_formula)' is installed via Homebrew."
-        else
-            gh_ok=false
-            gh_message="GitHub CLI formula '$(setup_gh_formula)' is not installed via Homebrew."
-            missing=1
-        fi
-    fi
-
     if setup_virtualenv_exists; then
         venv_ok=true
         venv_message="Virtual environment exists at '$venv_dir'."
@@ -716,20 +643,29 @@ setup_run_check_json() {
     fi
     click_message="$(setup_base_python_package_check_message "$click_package" "$click_ok")"
 
+    if setup_dev_dependencies_enabled; then
+        if ! dev_json="$(setup_run_base_dev_layer check --format json)"; then
+            missing=1
+            [[ -n "$dev_json" ]] || dev_json="[]"
+        fi
+    fi
+
     printf '{\n'
     printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
     printf '  "checks": [\n'
     setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
     setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
     setup_print_check_json_item "," "python" "$python_ok" "$python_message"
-    if setup_dev_dependencies_enabled; then
-        setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
-        setup_print_check_json_item "," "gh" "$gh_ok" "$gh_message"
-    fi
     setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
     setup_print_check_json_item "," "click" "$click_ok" "$click_message"
     setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
-    printf '  ]\n'
+    printf '  ]'
+    if setup_dev_dependencies_enabled; then
+        printf ',\n'
+        setup_print_json_property_value "dev_checks" "$dev_json"
+    else
+        printf '\n'
+    fi
     printf '}\n'
 
     [[ "$missing" -eq 0 ]]
@@ -743,10 +679,12 @@ setup_run_install() {
     setup_create_virtualenv
     setup_install_pyyaml
     setup_install_click
-    setup_validate_dev_project || return 1
     if setup_dev_dependencies_enabled; then
-        setup_install_bats
-        setup_install_gh
+        if setup_is_dry_run; then
+            setup_run_base_dev_layer setup --dry-run || fatal_error "Python developer prerequisite layer failed."
+        else
+            setup_run_base_dev_layer setup || fatal_error "Python developer prerequisite layer failed."
+        fi
     fi
     setup_run_project_artifact_setup
 

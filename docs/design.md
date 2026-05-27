@@ -73,10 +73,11 @@ layers. This keeps the product name and the control-plane action separate:
 
 - `basectl setup`
 - `basectl check`
+- `basectl doctor`
 - `basectl update-profile`
-- `basectl shell`
-- future commands such as `basectl projects list`, `basectl test`, and
-  `basectl activate`
+- `basectl projects list`
+- `basectl activate`
+- future commands such as `basectl test`
 
 Shebang-based Bash scripts can also use:
 
@@ -156,7 +157,9 @@ availability.
 
 ### Layer 2 — Base Runtime Environment
 
-Applied when the user invokes `basectl`, `basectl shell`, or `basectl /path/to/script.sh`.
+Applied when the user invokes `basectl`, `basectl activate <project>`, or
+`basectl /path/to/script.sh`. Invoking `basectl` with no arguments in a terminal
+is equivalent to `basectl activate base`.
 
 Contains:
 - exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`, and `BASE_BASH_LIB_DIR`
@@ -170,8 +173,7 @@ This layer is established by `base_init.sh`, which is sourced only through the
 
 ### Layer 3 — Project-Specific Environment
 
-Applied inside the project subshell when a future `basectl activate <project>` flow
-is run.
+Applied inside the project subshell when `basectl activate <project>` is run.
 
 Contains:
 - Project-specific PATH additions
@@ -317,6 +319,8 @@ Current structure:
 project:
   name: myproject
 
+brewfile: Brewfile
+
 artifacts:
   - type: tool
     name: terraform
@@ -331,6 +335,11 @@ The Python layer interprets this declarative manifest and translates each
 artifact into concrete installation actions. Base owns the artifact registry and
 chooses the manager for each supported `(type, name)` pair. The current registry
 is `cli/python/base_setup/registry.py`.
+
+The optional top-level `brewfile` field delegates ordinary Homebrew dependencies
+to Homebrew's native `brew bundle` flow. The path is relative to the project root
+and must stay inside the project. Base runs `brew bundle --file=<path>` during
+setup before reconciling Base-managed artifacts.
 
 `python-package` artifacts install into the project virtual environment at
 `~/.base.d/<project>/.venv`. Base's own project venv is therefore

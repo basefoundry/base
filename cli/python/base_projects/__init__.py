@@ -1,0 +1,1 @@
+"""Base workspace project discovery."""

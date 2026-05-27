@@ -8,7 +8,7 @@ from typing import Any, Callable
 from .config import load_config
 from .context import Context, reset_current_context, set_current_context
 from .logging import configure_logger, log_invocation
-from .paths import base_state_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
+from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
 from .redaction import parameter_name_from_decls
 
 
@@ -91,7 +91,7 @@ class App:
         debug = bool(standard.get("debug") or str(config.get("log_level", "")).lower() == "debug")
         keep_temp = bool(standard.get("keep_temp") or config.get("keep_temp"))
 
-        state_dir = base_state_root() / "cli" / self.name
+        state_dir = base_cache_root() / "cli" / self.name
         log_dir = state_dir / "logs"
         cache_dir = state_dir / "cache"
         temp_dir = state_dir / "tmp" / run_id

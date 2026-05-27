@@ -2,7 +2,7 @@
 
 #
 # lib/bash/runtime/bashrc
-#     Runtime rcfile used by `basectl` and `basectl shell`.
+#     Runtime rcfile used by `basectl activate <project>`.
 #
 # Purpose:
 #     - start an interactive Bash shell with the Base runtime already loaded
@@ -60,6 +60,50 @@ _base_runtime_source_user_bashrc() {
     unset __base_runtime_sourcing_user_bashrc__
 }
 
+_base_runtime_activate_project_venv() {
+    local activate_script
+
+    [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]] || return 0
+    activate_script="$BASE_PROJECT_VENV_DIR/bin/activate"
+    [[ -f "$activate_script" ]] || {
+        _base_runtime_error "Project virtual environment activation script '$activate_script' was not found."
+        return 1
+    }
+
+    export VIRTUAL_ENV_DISABLE_PROMPT=1
+    # shellcheck source=/dev/null
+    source "$activate_script"
+}
+
+_base_runtime_add_project_bin_to_path() {
+    local entry
+    local new_path=""
+    local project_bin
+    local -a path_entries
+
+    [[ -n "${BASE_PROJECT_ROOT:-}" ]] || return 0
+    project_bin="$BASE_PROJECT_ROOT/bin"
+    [[ -d "$project_bin" ]] || return 0
+
+    IFS=: read -ra path_entries <<< "$PATH"
+    for entry in "${path_entries[@]}"; do
+        [[ -n "$entry" ]] || continue
+        [[ "$entry" != "$BASE_BIN_DIR" ]] || continue
+        [[ "$entry" != "$project_bin" ]] || continue
+        if [[ -n "$new_path" ]]; then
+            new_path="$new_path:$entry"
+        else
+            new_path="$entry"
+        fi
+    done
+
+    PATH="$BASE_BIN_DIR:$project_bin"
+    if [[ -n "$new_path" ]]; then
+        PATH="$PATH:$new_path"
+    fi
+    export PATH
+}
+
 _base_runtime_host_prompt() {
     local host_name=""
 
@@ -110,7 +154,7 @@ _base_runtime_set_prompt() {
     # virtualenv activation and render the active venv dynamically instead.
     export VIRTUAL_ENV_DISABLE_PROMPT=1
     _BASE_RUNTIME_HOST_PROMPT="$(_base_runtime_host_prompt)"
-    PS1='\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '
+    PS1='\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '
 }
 
 _base_runtime_main() {
@@ -133,7 +177,9 @@ _base_runtime_main() {
     # shellcheck source=/dev/null
     source "$BASE_HOME/base_init.sh" || return $?
 
+    _base_runtime_add_project_bin_to_path || return $?
     _base_runtime_source_user_bashrc || return $?
+    _base_runtime_activate_project_venv || return $?
     _base_runtime_set_prompt
     _base_runtime_debug "complete"
 }

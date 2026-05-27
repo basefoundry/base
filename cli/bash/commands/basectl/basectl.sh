@@ -9,16 +9,24 @@ basectl_show_help() {
 Usage: basectl [options] <command> [args...]
 
 Commands:
+  activate <project> [options]
+    Start an interactive Base runtime subshell for a project.
   setup [options]
     Install and bootstrap the local Base CLI environment on macOS.
   check [options]
     Verify the local Base CLI environment without making changes.
+  clean --older-than <age> [options]
+    Remove old Base CLI runtime logs, temp files, and cache entries.
+  doctor [options]
+    Diagnose the local Base CLI environment and suggest fixes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
+  update [options]
+    Update Base from Git and run setup.
+  projects list [options]
+    List Base-managed projects discovered in the workspace.
   version
     Show the installed Base version.
-  shell
-    Start an interactive Bash shell with the Base runtime loaded.
   help
     Show this help text.
 
@@ -38,8 +46,8 @@ Wrapper options:
 Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
-  - Invoking `basectl` with no command opens an interactive shell when attached to
-    a terminal; otherwise it prints this help text.
+  - Invoking `basectl` with no command is equivalent to `basectl activate base`
+    when attached to a terminal; otherwise it prints this help text.
   - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging
     startup before command dispatch or Base runtime initialization.
 EOF
@@ -108,14 +116,6 @@ basectl_runtime_base_home() {
     return 1
 }
 
-basectl_shell_rc_path() {
-    local base_home
-
-    base_home="$(basectl_runtime_base_home)" || return 1
-    printf '%s\n' "$base_home/lib/bash/runtime/bashrc"
-}
-
-
 basectl_enable_debug_logging() {
     set_log_level DEBUG
     export LOG_DEBUG=1
@@ -139,9 +139,24 @@ basectl_do_setup() {
     base_setup_subcommand_main "$@"
 }
 
+basectl_do_activate() {
+    basectl_source_subcommand_module activate || return 1
+    base_activate_subcommand_main "$@"
+}
+
 basectl_do_check() {
     basectl_source_subcommand_module check || return 1
     base_check_subcommand_main "$@"
+}
+
+basectl_do_clean() {
+    basectl_source_subcommand_module clean || return 1
+    base_clean_subcommand_main "$@"
+}
+
+basectl_do_doctor() {
+    basectl_source_subcommand_module doctor || return 1
+    base_doctor_subcommand_main "$@"
 }
 
 basectl_do_update_profile() {
@@ -149,22 +164,14 @@ basectl_do_update_profile() {
     base_update_profile_subcommand_main "$@"
 }
 
-basectl_do_shell() {
-    local shell_rc
+basectl_do_update() {
+    basectl_source_subcommand_module update || return 1
+    base_update_subcommand_main "$@"
+}
 
-    if (($# > 0)); then
-        basectl_usage_error "The 'shell' command does not accept arguments."
-        return $?
-    fi
-
-    shell_rc="$(basectl_shell_rc_path)" || {
-        basectl_error "$BASE_CLI_ERROR_MESSAGE"
-        return 1
-    }
-
-    export BASE_HOME
-    export BASE_SHELL=1
-    exec "${BASH:-bash}" --rcfile "$shell_rc"
+basectl_do_projects() {
+    basectl_source_subcommand_module projects || return 1
+    base_projects_subcommand_main "$@"
 }
 
 basectl_source_version_library() {
@@ -246,15 +253,19 @@ basectl_main() {
     log_debug "Running basectl command '${command:-<none>}' with args: $*"
 
     case "$command" in
+        activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
+        clean)            basectl_do_clean "$@" ;;
+        doctor)           basectl_do_doctor "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
-        shell)            basectl_do_shell "$@" ;;
+        projects)         basectl_do_projects "$@" ;;
+        update)           basectl_do_update "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;
         "")
             if basectl_should_start_shell; then
-                basectl_do_shell
+                basectl_do_activate base
             else
                 basectl_show_help
             fi

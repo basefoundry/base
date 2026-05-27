@@ -37,17 +37,19 @@ Current implemented commands include:
 
 - `basectl setup`
 - `basectl check`
+- `basectl doctor`
+- `basectl clean --older-than <age>`
 - `basectl update-profile`
+- `basectl update`
+- `basectl projects list`
+- `basectl activate <project>`
 - `basectl version`
-- `basectl shell`
 
 Planned commands include:
 
 - `basectl setup <project>`
 - `basectl test`
 - `basectl test <project>`
-- `basectl doctor`
-- `basectl projects list`
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace. Planned commands are
@@ -75,6 +77,8 @@ root. It declares the project name and the project artifacts Base should manage:
 project:
   name: example
 
+brewfile: Brewfile
+
 artifacts:
   - type: tool
     name: terraform
@@ -90,11 +94,63 @@ it. Base owns the artifact registry and chooses the manager for each supported
 `type` and `name` pair. Unknown artifacts fail setup clearly instead of running
 arbitrary user-provided install commands.
 
+The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
+to the project root. When present, `basectl setup` runs
+`brew bundle --file=<project-root>/<brewfile>` before reconciling artifacts. Use
+this for ordinary Homebrew formulae and casks; keep Base-aware dependencies in
+`artifacts`.
+
 The supported artifact registry lives in
 `cli/python/base_setup/registry.py`. Today, `python-package` artifacts install
 into the project virtual environment at `~/.base.d/<project>/.venv`.
 Homebrew-managed `tool` artifacts currently support `version: latest`; pinned
 Homebrew versions fail clearly until Base grows explicit versioned tool support.
+
+You can inspect the projects Base can see with:
+
+```bash
+basectl projects list
+```
+
+By default this scans the parent directory of `BASE_HOME`, which matches the
+recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
+different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
+
+Once a project is discoverable, activate it with:
+
+```bash
+basectl activate example
+```
+
+Activation spawns a project-specific subshell, changes to the project root, sets
+`BASE_PROJECT` and related project variables, adds project-owned commands from
+`$PROJECT_ROOT/bin` when that directory exists, and activates the project
+virtual environment at `~/.base.d/<project>/.venv`. Exit that shell to return to
+the original environment.
+
+Invoking `basectl` with no arguments in a terminal is equivalent to
+`basectl activate base`, so the default interactive Base shell uses Base's own
+project virtual environment.
+
+Clean old Base CLI runtime logs, retained temp files, and cache entries with:
+
+```bash
+basectl clean --older-than 30d --dry-run
+basectl clean --older-than 30d
+```
+
+Cleanup only targets runtime artifacts under the Base cache root, which defaults
+to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
+state such as `~/.base.d/config.yaml` and project virtual environments under
+`~/.base.d/<project>/.venv` are outside this scope.
+
+Use `basectl doctor` when you want a human-oriented diagnosis with suggested
+fixes:
+
+```bash
+basectl doctor
+basectl doctor --dev
+```
 
 ### 2. Shell Environment Management
 
@@ -134,8 +190,8 @@ invoke it from whatever shell state they already had.
 
 ## Public Command Surface
 
-Base exposes commands through a single public directory: `$BASE_HOME/bin`. That
-directory is added to `PATH` by Base's managed shell startup snippets.
+Base exposes its own commands through `$BASE_HOME/bin`. That directory is added
+to `PATH` by Base's managed shell startup snippets.
 
 `bin/basectl` is the control-plane command. Additional public commands, when
 needed, are tiny real launcher files in `bin/` that delegate to `basectl`; their
@@ -149,14 +205,31 @@ Example launcher:
 exec "$(dirname "$0")/basectl" caff "$@"
 ```
 
+Projects expose their own commands through `$PROJECT_ROOT/bin`. When
+`basectl activate <project>` starts a project runtime shell, Base adds that
+directory to `PATH` if it exists, behind `$BASE_HOME/bin`. Project Python command
+packages should be treated as implementation details unless a project-owned
+launcher exposes them from `bin/`.
+
+Project launchers that need to run Python packages should delegate through
+`base-wrapper` so they use the selected project virtual environment and Base's
+Python library roots:
+
+```bash
+#!/usr/bin/env bash
+exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_cli "$@"
+```
+
 `basectl setup` deliberately pins its default Homebrew Python formula so setup is
 reproducible across machines. The current default is `python@3.13`. Override it
 with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
 installs `PyYAML` into that environment and invokes the Python project setup
 layer to read `base_manifest.yaml` and reconcile project artifacts.
-Developer/test dependencies such as BATS and GitHub CLI are opt-in; use
-`basectl setup --dev` to install them and `basectl check --dev` to verify them.
+Developer prerequisites such as BATS and the GitHub CLI are opt-in and
+manifest-driven through `lib/base/dev_manifest.yaml`; use `basectl setup --dev`
+to install them and `basectl check --dev` or `basectl doctor --dev` to verify
+them.
 
 ## Quick Start
 
@@ -217,7 +290,9 @@ adds or replaces its marked section.
 `basectl update-profile` also creates `~/.base.d/profile.conf`, which records
 whether the user has opted into Base's optional shell defaults. The managed
 dotfile sections stay minimal and defer PATH/default handling to the sourced
-Base snippets.
+Base snippets. The same sourced snippets also register `basectl` shell
+completions, so future completion improvements arrive when Base is updated
+without rewriting user dotfiles.
 
 Run `basectl update-profile --defaults` to enable those optional defaults, and
 run `basectl update-profile --no-defaults` to disable them again. Plain
@@ -225,6 +300,15 @@ run `basectl update-profile --no-defaults` to disable them again. Plain
 
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
+
+Update Base itself from the checked-out repository with:
+
+```bash
+basectl update
+```
+
+This command is intentionally conservative: it only runs from a clean `master`
+worktree, pulls the latest changes through Git, and then runs `basectl setup`.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
@@ -288,12 +372,13 @@ They do not source `base_init.sh`. Base runtime setup happens only when the
 `basectl` command runs a Base command, runs an explicit script path, or starts a
 Base-enabled Bash shell.
 
-When `basectl` starts an interactive Bash runtime shell, it uses Base's runtime
-rcfile rather than making Bash read `~/.bashrc` directly. That runtime rcfile
-loads `base_init.sh`, sources the user's `~/.bashrc` once with guardrails, and
-finally sets the Base runtime prompt. This keeps user aliases and normal
-interactive Bash behavior available while making Base stdlib functions such as
-`import_base_lib` available during user Bash startup.
+When `basectl activate <project>` starts an interactive Bash runtime shell, it
+uses Base's runtime rcfile rather than making Bash read `~/.bashrc` directly.
+That runtime rcfile loads `base_init.sh`, sources the user's `~/.bashrc` once
+with guardrails, activates the project virtual environment, and finally sets the
+Base runtime prompt. This keeps user aliases and normal interactive Bash
+behavior available while making Base stdlib functions such as `import_base_lib`
+available during user Bash startup.
 
 ### Debugging Shell Startup
 

@@ -20,8 +20,14 @@ run_basectl() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
+    [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
+    [[ "$output" == *"clean --older-than <age> [options]"* ]]
+    [[ "$output" == *"doctor [options]"* ]]
+    [[ "$output" == *"update [options]"* ]]
+    [[ "$output" == *"projects list [options]"* ]]
+    [[ "$output" == *"Invoking \`basectl\` with no command is equivalent to \`basectl activate base\`"* ]]
     [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
     [[ "$output" == *"--debug-wrapper"* ]]
@@ -34,7 +40,6 @@ run_basectl() {
     run_basectl --help
 
     [ "$status" -eq 0 ]
-    ! grep -Fqx '  update' <<<"$output"
     ! grep -Fqx '  run <command> [args...]' <<<"$output"
     ! grep -Fqx '  status' <<<"$output"
     ! grep -Fqx '  set-team TEAM' <<<"$output"
@@ -42,10 +47,109 @@ run_basectl() {
     ! grep -Fqx '  man' <<<"$output"
     ! grep -Fqx '  embrace' <<<"$output"
     ! grep -Fqx '  install' <<<"$output"
+    ! grep -Fqx '  shell' <<<"$output"
     grep -Fqx '  version' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
+}
+
+@test "basectl update prints help" {
+    run_basectl update --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl update [options]"* ]]
+    [[ "$output" == *"Update the Base repository from Git"* ]]
+}
+
+@test "basectl update dry-run reports planned update and setup" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 0; }
+            base_update_subcommand_main --dry-run
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would update Base repository at '$BASE_REPO_ROOT'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after updating."* ]]
+}
+
+@test "basectl update refuses dirty worktrees before pulling" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 1; }
+            base_update_run_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base repository has local changes."* ]]
+    [[ "$output" != *"setup should not run"* ]]
+}
+
+@test "basectl update reports already up-to-date repositories" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 0; }
+            base_update_source_git_library() { :; }
+            git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
+            base_update_head_revision() { printf "%s\n" abc1234; }
+            base_update_run_setup() { printf "setup ran\n"; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Updating Base repository at '$BASE_REPO_ROOT'."* ]]
+    [[ "$output" == *"Base repository is already up to date on 'master' at 'abc1234'."* ]]
+    [[ "$output" == *"Running basectl setup after update."* ]]
+    [[ "$output" == *"setup ran"* ]]
+    [[ "$output" == *"Base update is complete."* ]]
+}
+
+@test "basectl update reports changed revisions" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_AFTER_UPDATE="$TEST_TMPDIR/after-update" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 0; }
+            base_update_source_git_library() { :; }
+            git_update_repo() { :; }
+            base_update_head_revision() {
+                if [[ -f "$BASE_TEST_AFTER_UPDATE" ]]; then
+                    printf "%s\n" new5678
+                else
+                    touch "$BASE_TEST_AFTER_UPDATE"
+                    printf "%s\n" old1234
+                fi
+            }
+            base_update_run_setup() { printf "setup ran\n"; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base repository updated from 'old1234' to 'new5678' on 'master'."* ]]
+    [[ "$output" == *"setup ran"* ]]
+    [[ "$output" == *"Base update is complete."* ]]
 }
 
 @test "basectl prints help when no command is given in a non-interactive shell" {
@@ -53,6 +157,23 @@ run_basectl() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
+}
+
+@test "basectl with no command activates the base project in an interactive shell" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_should_start_shell() { return 0; }
+            basectl_get_base_home() { export BASE_HOME; }
+            basectl_do_activate() { printf "activate=%s\n" "$*"; }
+            basectl_main
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "activate=base" ]
 }
 
 @test "basectl prints version with --version and version" {
@@ -115,22 +236,345 @@ EOF
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
 
+@test "basectl projects list discovers manifests in a workspace" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base" "$workspace/demo" "$workspace/notes"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" && "${4:-}" == "--workspace" ]]; then
+    printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT" > "${BASE_TEST_PROJECTS_LIST_STATE:?}"
+    printf '%s\t%s\n' base "$5/base"
+    printf '%s\t%s\n' demo "$5/demo"
+    exit 0
+fi
+printf 'unexpected projects list python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: base\nartifacts: []\n' > "$workspace/base/base_manifest.yaml"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECTS_LIST_STATE="$TEST_TMPDIR/projects-list-state" \
+        "$BASE_REPO_ROOT/bin/basectl" projects list --workspace "$workspace"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'base\t'"$workspace/base"* ]]
+    [[ "$output" == *$'demo\t'"$workspace/demo"* ]]
+    [ "$(cat "$TEST_TMPDIR/projects-list-state")" = "BASE_PROJECT=base" ]
+}
+
+@test "basectl projects list prints help without requiring the Base Python venv" {
+    run_basectl projects list --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl projects list [options]"* ]]
+}
+
+@test "basectl clean delegates to the Python cleanup layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_clean" ]]; then
+    printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected clean python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl clean --older-than 30d --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=base"* ]]
+    [[ "$output" == *"ARGS=--older-than 30d --dry-run"* ]]
+}
+
+@test "basectl clean prints help without requiring the Base Python venv" {
+    run_basectl clean --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl clean --older-than <age> [options]"* ]]
+}
+
+@test "basectl clean reports missing age as a usage error" {
+    run_basectl clean
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--older-than' is required."* ]]
+    [[ "$output" != *"Traceback"* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl clean --older-than
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--older-than' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+}
+
+@test "basectl doctor prints help" {
+    run_basectl doctor --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl doctor [options]"* ]]
+    [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
+}
+
+@test "basectl doctor reports ok findings and includes dev checks" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13|bats-core) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh version test\n'
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" && "${3:-}" == "doctor" ]]; then
+    printf 'ok     bats-core                   Artifact '\''bats-core'\'' is installed via Homebrew package '\''bats-core'\''.\n'
+    printf 'ok     gh                          Artifact '\''gh'\'' is installed via Homebrew package '\''gh'\''.\n'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$fake_bin/gh" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base doctor"* ]]
+    [[ "$output" == *"ok"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$output" == *"ok"*"bats-core"*"Artifact 'bats-core' is installed via Homebrew package 'bats-core'."* ]]
+    [[ "$output" == *"ok"*"gh"*"Artifact 'gh' is installed via Homebrew package 'gh'."* ]]
+    [[ "$output" == *"ok"*"Base virtualenv"*"Virtual environment exists at"* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
+}
+
+@test "basectl doctor --dev reports missing GitHub CLI" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13|bats-core) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" && "${3:-}" == "doctor" ]]; then
+    printf 'ok     bats-core                   Artifact '\''bats-core'\'' is installed via Homebrew package '\''bats-core'\''.\n'
+    printf 'error  gh                          Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n'
+    printf '       Fix: basectl setup --dev\n'
+    exit 1
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"error"*"gh"*"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
+    [[ "$output" == *"Fix: basectl setup --dev"* ]]
+}
+
+@test "basectl doctor reports errors with suggested fixes" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base doctor"* ]]
+    [[ "$output" == *"error"*"Homebrew"*"Homebrew is not installed."* ]]
+    [[ "$output" == *"Fix: basectl setup"* ]]
+    [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
+}
+
+@test "basectl activate resolves a project and execs a project subshell" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
+    local workspace="$TEST_TMPDIR/workspace"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*"
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
+printf 'BASE_PROJECT_MANIFEST=%s\n' "$BASE_PROJECT_MANIFEST"
+printf 'BASE_PROJECT_VENV_DIR=%s\n' "$BASE_PROJECT_VENV_DIR"
+printf 'PWD=%s\n' "$PWD"
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_bash" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"args=--rcfile $BASE_REPO_ROOT/lib/bash/runtime/bashrc"* ]]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_MANIFEST=$workspace/demo/base_manifest.yaml"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$output" == *"PWD=$workspace/demo"* ]]
+}
+
+@test "basectl activate prints help without requiring the Base Python venv" {
+    run_basectl activate --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl activate <project> [options]"* ]]
+}
+
+@test "basectl activate reports missing project as a usage error" {
+    run_basectl activate
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Project name is required."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+}
+
+@test "basectl activate reports invalid arguments as usage errors" {
+    run_basectl activate --workspace
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl activate --unknown demo
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown activate option '--unknown'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl activate demo extra
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: The 'activate' command accepts exactly one project name."* ]]
+    [[ "$output" != *"FATAL"* ]]
+}
+
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man embrace install; do
+    for legacy_command in status run set-team set-shared-teams man embrace install shell; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
     done
-}
-
-@test "basectl shell rejects arguments" {
-    run_basectl shell -c 'echo ignored'
-
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"The 'shell' command does not accept arguments."* ]]
-    [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
 }
 
 @test "Base home verification does not require a git repository" {
@@ -257,11 +701,42 @@ EOF
             printf "disable=%s\n" "${VIRTUAL_ENV_DISABLE_PROMPT:-}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
     [[ "$output" == *"host=aadhara"* ]]
     [[ "$output" == *"venv=[.venv] "* ]]
     [[ "$output" == *"git=("* ]]
     [[ "$output" == *"disable=1"* ]]
+}
+
+@test "Base runtime shell activates project virtual environment" {
+    local project_root="$TEST_TMPDIR/demo"
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+
+    mkdir -p "$project_root/bin" "$venv_dir/bin"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+PATH="$VIRTUAL_ENV/bin:$PATH"
+export VIRTUAL_ENV PATH
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_PROJECT=%s\n" "$BASE_PROJECT"; \
+            printf "VIRTUAL_ENV=%s\n" "$VIRTUAL_ENV"; \
+            printf "PATH=%s\n" "$PATH"; \
+            printf "PS1=%s\n" "$PS1"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"VIRTUAL_ENV=$venv_dir"* ]]
+    [[ "$output" == *"PATH=$venv_dir/bin:$BASE_REPO_ROOT/bin:$project_root/bin:"* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 
@@ -289,7 +764,7 @@ EOF
     [[ "$output" == *"alias user_bashrc_alias='printf user-bashrc'"* ]]
     [[ "$output" == *"USER_BASHRC_LOADED=1"* ]]
     [[ "$output" == *"USER_BASHRC_HAS_BASE_IMPORT=1"* ]]
-    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 @test "BASE_DEBUG traces Base runtime shell startup" {

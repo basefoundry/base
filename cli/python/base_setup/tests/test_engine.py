@@ -11,7 +11,7 @@ from unittest import mock
 
 from base_setup import engine
 from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
-from base_setup.manifest import ArtifactRequest
+from base_setup.manifest import ArtifactRequest, BaseManifest
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 
@@ -89,9 +89,29 @@ class ManifestTests(unittest.TestCase):
             manifest = read_manifest(manifest_path)
 
         self.assertEqual(manifest.project_name, "demo")
+        self.assertIsNone(manifest.brewfile)
         self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
+
+    def test_reads_manifest_brewfile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "brewfile: Brewfile",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.brewfile, "Brewfile")
 
     def test_base_manifest_declares_python_dev_tools(self) -> None:
         manifest = read_manifest(Path(__file__).resolve().parents[4] / "base_manifest.yaml")
@@ -101,6 +121,26 @@ class ManifestTests(unittest.TestCase):
         self.assertIn(("python-package", "pytest"), tools)
         self.assertIsNotNone(get_artifact_definition("python-package", "pylint"))
         self.assertIsNotNone(get_artifact_definition("python-package", "pytest"))
+
+    def test_base_dev_manifest_declares_supported_tools(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
+
+        self.assertIn(("tool", "bats-core"), tools)
+        self.assertIn(("tool", "gh"), tools)
+        self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
+        self.assertIsNotNone(get_artifact_definition("tool", "gh"))
+
+    def test_docker_and_colima_are_supported_tools(self) -> None:
+        docker = get_artifact_definition("tool", "docker")
+        colima = get_artifact_definition("tool", "colima")
+
+        self.assertIsNotNone(docker)
+        self.assertEqual(docker.package, "docker")
+        self.assertEqual(docker.manager, "homebrew")
+        self.assertIsNotNone(colima)
+        self.assertEqual(colima.package, "colima")
+        self.assertEqual(colima.manager, "homebrew")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_unknown_artifact_fails(self) -> None:
@@ -149,6 +189,34 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_docker_and_colima_artifacts_dry_run_through_homebrew(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: docker",
+                        "    version: latest",
+                        "  - type: tool",
+                        "    name: colima",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew install docker", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install colima", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_discovers_manifest_from_start_dir(self) -> None:
@@ -286,6 +354,75 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("Project 'demo' declares no artifacts; installing Base default artifacts only.", stderr)
+
+
+class BrewfileTests(unittest.TestCase):
+    def test_brewfile_dry_run_invokes_brew_bundle(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            brewfile = project_root / "Brewfile"
+            brewfile.write_text("brew \"jq\"\n", encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+            expected_brewfile = brewfile.resolve()
+
+            engine.reconcile_brewfile(ctx, manifest, dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(f"[DRY-RUN] Would run: brew bundle --file={expected_brewfile}", info_messages)
+
+    def test_brewfile_invokes_brew_bundle(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            brewfile = project_root / "Brewfile"
+            brewfile.write_text("brew \"jq\"\n", encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+            expected_brewfile = brewfile.resolve()
+
+            with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+                "base_setup.engine.run_command"
+            ) as run_command:
+                engine.reconcile_brewfile(ctx, manifest, dry_run=False)
+
+        run_command.assert_called_once_with(["brew", "bundle", f"--file={expected_brewfile}"])
+
+    def test_brewfile_missing_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+
+            with self.assertRaisesRegex(ArtifactError, "does not exist"):
+                engine.resolve_brewfile_path(manifest)
+
+    def test_brewfile_must_stay_inside_project_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "project"
+            project_root.mkdir()
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="../Brewfile",
+                artifacts=(),
+            )
+
+            with self.assertRaisesRegex(ArtifactError, "must stay inside the project root"):
+                engine.resolve_brewfile_path(manifest)
 
 
 if __name__ == "__main__":

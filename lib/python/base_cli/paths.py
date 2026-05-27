@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -8,6 +9,16 @@ from pathlib import Path
 
 def base_state_root(home: Path | None = None) -> Path:
     return (home or Path.home()) / ".base.d"
+
+
+def base_cache_root(home: Path | None = None) -> Path:
+    value = os.environ.get("BASE_CACHE_DIR")
+    if value:
+        return Path(value).expanduser()
+    root = home or Path.home()
+    if sys.platform == "darwin":
+        return root / "Library" / "Caches" / "base"
+    return root / ".cache" / "base"
 
 
 def make_run_id() -> str:
@@ -41,4 +52,3 @@ def resolve_base_home() -> Path | None:
     if not value:
         return None
     return Path(value).expanduser().resolve()
-
