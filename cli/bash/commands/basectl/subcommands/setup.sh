@@ -17,6 +17,7 @@ Options:
   --dev             Install manifest-declared developer prerequisites.
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
+  --no-notify        Disable the default best-effort macOS completion notification.
   --recreate-venv    Back up and recreate the project virtual environment.
   -v                 Enable DEBUG logging for this subcommand.
   -h, --help         Show this help text.
@@ -41,6 +42,7 @@ EOF
 }
 
 base_setup_subcommand_main() {
+    local exit_code
     local project_name=""
 
     setup_clear_run_state
@@ -66,6 +68,12 @@ base_setup_subcommand_main() {
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
+                ;;
+            --notify)
+                setup_enable_notifications
+                ;;
+            --no-notify)
+                setup_disable_notifications
                 ;;
             --recreate-venv)
                 setup_enable_recreate_venv
@@ -93,5 +101,14 @@ base_setup_subcommand_main() {
     BASE_SETUP_PROJECT_NAME="$project_name"
     export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl setup' (DRY_RUN=$(setup_is_dry_run && printf true || printf false))."
+    if setup_notifications_enabled; then
+        trap 'setup_notify_completion "$?"' EXIT
+    fi
     setup_run_install
+    exit_code=$?
+    if setup_notifications_enabled; then
+        trap - EXIT
+        setup_notify_completion "$exit_code"
+    fi
+    return "$exit_code"
 }

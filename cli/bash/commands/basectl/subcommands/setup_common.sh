@@ -48,8 +48,20 @@ setup_enable_recreate_venv() {
     export BASE_SETUP_RECREATE_VENV=true
 }
 
+setup_enable_notifications() {
+    export BASE_SETUP_NOTIFY=true
+}
+
+setup_disable_notifications() {
+    export BASE_SETUP_NOTIFY=false
+}
+
 setup_recreate_venv_enabled() {
     [[ "${BASE_SETUP_RECREATE_VENV:-false}" == true ]]
+}
+
+setup_notifications_enabled() {
+    [[ "${BASE_SETUP_NOTIFY:-true}" == true ]]
 }
 
 setup_virtualenv_exists() {
@@ -137,6 +149,28 @@ setup_recovery_base_python_package() {
 
 setup_recovery_project_layer() {
     printf "%s\n" "Review the Python error above, then rerun 'basectl setup -v' for more detail."
+}
+
+setup_notify_completion() {
+    local exit_code="$1"
+    local message title
+
+    setup_notifications_enabled || return 0
+    setup_is_dry_run && return 0
+    [[ "$OSTYPE" == darwin* ]] || return 0
+    command -v osascript >/dev/null 2>&1 || return 0
+
+    if ((exit_code == 0)); then
+        title="Base setup complete"
+        message="Base CLI setup completed successfully."
+    else
+        title="Base setup failed"
+        message="Base CLI setup failed. Check the terminal for details."
+    fi
+
+    osascript -e 'on run argv
+display notification (item 2 of argv) with title (item 1 of argv)
+end run' "$title" "$message" >/dev/null 2>&1 || true
 }
 
 setup_find_brew_bin() {

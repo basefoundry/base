@@ -57,6 +57,14 @@ EOF
     chmod +x "$TEST_MOCKBIN/xcrun"
 }
 
+create_osascript_stub() {
+    cat > "$TEST_MOCKBIN/osascript" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/osascript-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/osascript"
+}
+
 create_brew_stub() {
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -434,6 +442,7 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
     [[ "$output" == *"--dev"* ]]
+    [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
 }
@@ -551,6 +560,24 @@ EOF
     [ -f "$venv_dir/pyvenv.cfg" ]
 }
 
+@test "basectl setup sends a best-effort success notification by default" {
+    local installer
+
+    create_xcode_stubs
+    create_osascript_stub
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/osascript-args" ]
+    [[ "$(cat "$TEST_STATE_DIR/osascript-args")" == *"Base setup complete"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/osascript-args")" == *"Base CLI setup completed successfully."* ]]
+}
+
 @test "basectl setup forwards project setup arguments through the Base venv" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
@@ -606,6 +633,62 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"Xcode Command Line Tools installation requires an interactive terminal."* ]]
     [[ "$output" == *"Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."* ]]
+}
+
+@test "basectl setup sends a best-effort failure notification by default" {
+    create_brew_stub
+    create_xcode_stubs
+    create_osascript_stub
+    touch "$TEST_STATE_DIR/python-installed"
+
+    run_base_command setup
+
+    [ "$status" -eq 1 ]
+    [ -f "$TEST_STATE_DIR/osascript-args" ]
+    [[ "$(cat "$TEST_STATE_DIR/osascript-args")" == *"Base setup failed"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/osascript-args")" == *"Base CLI setup failed. Check the terminal for details."* ]]
+}
+
+@test "basectl setup skips notifications during dry-run" {
+    create_osascript_stub
+
+    run_base_command setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [ ! -f "$TEST_STATE_DIR/osascript-args" ]
+}
+
+@test "basectl setup --no-notify disables setup notifications" {
+    local installer
+
+    create_xcode_stubs
+    create_osascript_stub
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup --no-notify
+
+    [ "$status" -eq 0 ]
+    [ ! -f "$TEST_STATE_DIR/osascript-args" ]
+}
+
+@test "BASE_SETUP_NOTIFY=false disables setup notifications" {
+    local installer
+
+    create_xcode_stubs
+    create_osascript_stub
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_NOTIFY=false \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [ ! -f "$TEST_STATE_DIR/osascript-args" ]
 }
 
 @test "basectl setup --dev runs the Python developer prerequisite layer" {

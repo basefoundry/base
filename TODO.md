@@ -43,11 +43,6 @@ they are merged.
   - Goal: provide a guided checklist-style setup experience without making `basectl setup` itself interactive-heavy.
   - Expected behavior: explain each prerequisite, confirm before performing major steps, and call existing setup/check primitives internally.
 
-- [ ] Add macOS notification on long setup completion.
-  - Goal: make long-running setup friendlier.
-  - Expected behavior: optionally display a macOS notification when `basectl setup` completes or fails.
-  - Notes: keep this best-effort and non-fatal.
-
 - [ ] Package Base as a Homebrew formula or tap.
   - Goal: make Base installation feel native on macOS.
   - Expected behavior: support an install path such as `brew install codeforester/base/basectl`.
