@@ -93,6 +93,8 @@ def reconcile_manifest(
         else:
             ctx.log.info("Project '%s' has no artifacts to install.", manifest.project_name)
 
+    reconcile_brewfile(ctx, manifest, dry_run=dry_run)
+
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
@@ -134,6 +136,41 @@ def merge_artifacts(
         merged[key] = artifact
 
     return tuple(merged.values())
+
+
+def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    if manifest.brewfile is None:
+        return
+
+    brewfile_path = resolve_brewfile_path(manifest)
+    command = ["brew", "bundle", f"--file={brewfile_path}"]
+
+    if dry_run:
+        dry_run_command(ctx, command)
+        return
+
+    if not command_exists("brew"):
+        raise ArtifactError(f"Homebrew is required to install Brewfile dependencies from '{brewfile_path}'.")
+
+    ctx.log.info("Installing Homebrew dependencies from Brewfile '%s'.", brewfile_path)
+    run_command(command)
+
+
+def resolve_brewfile_path(manifest: BaseManifest) -> Path:
+    if manifest.brewfile is None:
+        raise ArtifactError(f"{manifest.path}: brewfile is not configured.")
+
+    brewfile = Path(manifest.brewfile)
+    if brewfile.is_absolute():
+        raise ArtifactError(f"{manifest.path}: brewfile must be relative to the project root.")
+
+    project_root = manifest.path.parent.resolve()
+    brewfile_path = (project_root / brewfile).resolve()
+    if not brewfile_path.is_relative_to(project_root):
+        raise ArtifactError(f"{manifest.path}: brewfile must stay inside the project root.")
+    if not brewfile_path.is_file():
+        raise ArtifactError(f"{manifest.path}: brewfile '{manifest.brewfile}' does not exist.")
+    return brewfile_path
 
 
 def reconcile_artifact(

@@ -77,6 +77,8 @@ root. It declares the project name and the project artifacts Base should manage:
 project:
   name: example
 
+brewfile: Brewfile
+
 artifacts:
   - type: tool
     name: terraform
@@ -91,6 +93,12 @@ The manifest intentionally describes what the project needs, not how to install
 it. Base owns the artifact registry and chooses the manager for each supported
 `type` and `name` pair. Unknown artifacts fail setup clearly instead of running
 arbitrary user-provided install commands.
+
+The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
+to the project root. When present, `basectl setup` runs
+`brew bundle --file=<project-root>/<brewfile>` before reconciling artifacts. Use
+this for ordinary Homebrew formulae and casks; keep Base-aware dependencies in
+`artifacts`.
 
 The supported artifact registry lives in
 `cli/python/base_setup/registry.py`. Today, `python-package` artifacts install
