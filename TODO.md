@@ -43,10 +43,6 @@ they are merged.
   - Goal: provide a guided checklist-style setup experience without making `basectl setup` itself interactive-heavy.
   - Expected behavior: explain each prerequisite, confirm before performing major steps, and call existing setup/check primitives internally.
 
-- [ ] Define project-level installer guidance.
-  - Goal: document that true end-user onboarding belongs in project-specific installers, not in `basectl` itself.
-  - Expected output: guidance for scripts such as `banyanlabs/install.sh` that bootstrap Base and then call `basectl setup`.
-
 - [ ] Add macOS notification on long setup completion.
   - Goal: make long-running setup friendlier.
   - Expected behavior: optionally display a macOS notification when `basectl setup` completes or fails.

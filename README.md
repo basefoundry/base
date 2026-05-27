@@ -247,6 +247,10 @@ After the shell restarts, Base's managed startup section adds `~/work/base/bin`
 to `PATH`, so `basectl` can be run without spelling out the full path. Use
 `basectl version` or `basectl --version` to report the installed Base version.
 
+Project-specific onboarding should live in project installers that call Base
+internally. See [Project Installers](docs/project-installers.md) for the
+recommended boundary between Base and scripts such as `banyanlabs/install.sh`.
+
 ## Compatibility
 
 Base is currently macOS-first. The implemented and tested support contract is

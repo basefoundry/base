@@ -432,7 +432,10 @@ These extras emerge organically from real needs — they are not designed upfron
 Base is the prerequisite for banyanlabs. Banyanlabs (a multi-cloud, polyglot DevOps
 learning environment) will be a Base-managed project — it will have a base manifest
 declaring all its infrastructure tool dependencies. Base handles the bootstrapping.
-Banyanlabs handles the learning environment. Base must ship first.
+Banyanlabs handles the learning environment. A Banyanlabs-specific installer can
+bootstrap or locate Base, clone the project, and call `basectl setup` with
+friendlier product-specific messaging. See [Project Installers](project-installers.md)
+for that boundary. Base must ship first.
 
 ---
 
