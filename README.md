@@ -72,7 +72,8 @@ Over time, each project repo can declare how Base should interact with it,
 likely through a small project manifest or well-defined conventions.
 
 The first version of that manifest is `base_manifest.yaml` at a project repo
-root. It declares the project name and the project artifacts Base should manage:
+root. It declares the project name and the project contracts Base should
+orchestrate:
 
 ```yaml
 project:
@@ -80,32 +81,45 @@ project:
 
 brewfile: Brewfile
 
-artifacts:
-  - type: tool
-    name: terraform
-    version: latest
+# Future contract; Base will delegate to mise rather than reimplementing it.
+mise: .mise.toml
 
+artifacts:
   - type: python-package
     name: requests
     version: latest
+
+# Future contract for `basectl test example`.
+test:
+  command: pytest tests/
 ```
 
-The manifest intentionally describes what the project needs, not how to install
-it. Base owns the artifact registry and chooses the manager for each supported
-`type` and `name` pair. Unknown artifacts fail setup clearly instead of running
-arbitrary user-provided install commands.
+The manifest intentionally describes what the project needs, not arbitrary
+commands to execute. Base's direction is delegation-first: use mature tools for
+the domains they already own, and keep Base responsible for workspace
+orchestration, project discovery, the project virtual environment, and
+diagnostics.
 
 The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
 to the project root. When present, `basectl setup` runs
 `brew bundle --file=<project-root>/<brewfile>` before reconciling artifacts. Use
-this for ordinary Homebrew formulae and casks; keep Base-aware dependencies in
-`artifacts`.
+this for ordinary Homebrew formulae and casks instead of adding every Homebrew
+package to Base's hand-curated artifact registry.
+
+Future manifest fields should follow the same rule. A `mise` field should cause
+Base to run `mise install` and later delegate task execution to `mise run` when a
+project chooses that substrate. A `test` field should give `basectl test` a
+single project-owned command to run. Base should not run arbitrary setup hooks
+until there is an explicit, reviewable contract for when they run, where they
+run, whether they are interactive, and how dry-run/check/doctor report them.
 
 The supported artifact registry lives in
-`cli/python/base_setup/registry.py`. Today, `python-package` artifacts install
-into the project virtual environment at `~/.base.d/<project>/.venv`.
-Homebrew-managed `tool` artifacts currently support `version: latest`; pinned
-Homebrew versions fail clearly until Base grows explicit versioned tool support.
+`cli/python/base_setup/registry.py`. It should stay small and Base-aware. Today,
+`python-package` artifacts install into the project virtual environment at
+`~/.base.d/<project>/.venv`. Homebrew-managed `tool` artifacts currently support
+`version: latest`, but ordinary Homebrew tools should move toward Brewfile
+delegation. Pinned Homebrew versions fail clearly until Base grows explicit
+versioned tool support.
 
 You can inspect the projects Base can see with:
 

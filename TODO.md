@@ -9,22 +9,6 @@ they are merged.
 
 ## P1 — Product Core And Composability
 
-- [ ] Redesign project manifests around delegation-first orchestration.
-  - Goal: reduce the hand-curated artifact registry and make Base easier for
-    real projects to adopt.
-  - Expected design topics:
-    - Keep `brewfile: Brewfile` as the primary path for ordinary Homebrew
-      formulae and casks.
-    - Add first-class `mise` delegation when a project declares `.mise.toml` or
-      `mise.toml`.
-    - Consider a structured `python:` section for Base-managed venvs and Python
-      package requirements.
-    - Define a `test:` contract for future `basectl test <project>`.
-    - Decide whether setup hooks belong in the manifest and what guardrails they
-      need.
-  - Constraint: preserve Base's safety stance; do not silently run arbitrary
-    project commands without a clear contract.
-
 - [ ] Add first-class `mise` integration.
   - Goal: let Base orchestrate project tool versions and tasks without becoming
     a version manager.
@@ -36,6 +20,20 @@ they are merged.
   - Goal: make Base the umbrella entry point for project test execution.
   - Expected behavior: delegate to the project's declared test command, `mise`
     task, or conventional runner while preserving Base logging and exit status.
+
+- [ ] Consider a structured `python:` manifest section.
+  - Goal: make Base-managed Python environments clearer than encoding every
+    package as an artifact entry.
+  - Expected design topics: default project venv location, optional venv path
+    override, package requirement syntax, relationship to `requirements.txt`,
+    and migration from existing `python-package` artifacts.
+
+- [ ] Decide whether setup hooks belong in the manifest.
+  - Goal: preserve Base's safety stance while allowing real projects to perform
+    necessary post-setup work when delegation targets are not enough.
+  - Expected behavior: either define a constrained hook contract with explicit
+    timing, dry-run, interactivity, and diagnostics semantics, or document why
+    project-owned installers remain the right layer for hooks.
 
 - [ ] Implement `basectl onboard`.
   - Goal: provide the guided checklist-style Base setup experience described in
