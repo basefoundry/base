@@ -50,6 +50,7 @@ Base gets weaker when it drifts into becoming any of these:
 | `dotbot` | dotfile bootstrap and symlinks | No | Yes, lightly | Low |
 | `Taskfile` / `just` | task running | No | Yes, strongly | High |
 | `Brewfile` / `brew bundle` | declarative Homebrew bootstrap | Yes, by orchestration rather than replacement | Yes, strongly | High |
+| Docker / Docker Compose / Colima | containers, Compose-defined local services | Partially, as orchestration only | Yes, strongly | High |
 | `mise` tasks | project-local task running inside `mise` | No | Yes, strongly | Medium |
 
 ## Tool-by-Tool Decisions
@@ -285,6 +286,100 @@ How Base should coexist:
 Current stance: first-class integration candidate, but still as an orchestrator
 on top of Homebrew.
 
+### Docker, Docker Compose, And Colima
+
+What they do well:
+
+- run containers, networks, volumes, and images through a mature container
+  runtime
+- describe multi-container local services through Docker Compose files
+- provide a common service substrate for databases, queues, app dependencies,
+  and project-local infrastructure
+- offer multiple macOS runtime choices, including Docker Desktop and Colima
+
+What Base should borrow:
+
+- the idea that a project can declare named local services needed for daily
+  development
+- the idea that service preparation and health can be checked separately from
+  service startup
+- the Compose file as the project-owned source of truth for containers,
+  networks, volumes, ports, and environment variables
+
+What Base should not do:
+
+- replace Docker, Docker Compose, Docker Desktop, or Colima
+- invent a parallel container manifest
+- hide the underlying Docker commands so thoroughly that troubleshooting becomes
+  harder
+- own image architecture compatibility, licensing, registry auth, or container
+  health semantics beyond reporting useful diagnostics
+
+How Base should coexist:
+
+- Base can manage Docker CLI and Colima installation through ordinary
+  Homebrew-backed `tool` artifacts
+- project repositories should own their `docker-compose.yml` or
+  `compose.yaml` files
+- a future Base `docker-service` artifact can point at a Compose file and a
+  service name, then orchestrate common lifecycle operations
+- `basectl setup` can prepare services by running `docker compose pull` and,
+  when requested by the manifest, `docker compose build`
+- `basectl check` or `basectl doctor` can verify that Docker is installed, the
+  daemon is reachable, the Compose file exists, and declared images or services
+  are available
+- `basectl activate <project>` can optionally start declared services for the
+  activated project when the manifest opts into that behavior
+
+A future manifest shape could look like this:
+
+```yaml
+artifacts:
+  - type: tool
+    name: colima
+    version: latest
+
+  - type: tool
+    name: docker
+    version: latest
+
+  - type: docker-service
+    name: postgres
+    version: latest
+    compose-file: docker-compose.yml
+    service: postgres
+    setup:
+      pull: true
+      build: false
+    activate:
+      start: true
+    health:
+      command: docker compose exec -T postgres pg_isready
+      timeout-seconds: 30
+```
+
+This is intentionally a future shape, not the current manifest contract. The
+exact field names should be finalized when a real project needs the feature.
+The key design choice is that Base should orchestrate Compose; Docker Compose
+should remain the source of truth for how services actually run.
+
+Implementation notes for later:
+
+- start with one Compose file per `docker-service` artifact
+- require Compose paths to be relative to the project root and to stay inside
+  that root
+- support a single named service first; multi-service groups can come later
+- keep setup preparation idempotent: `pull` and `build` should be safe to rerun
+- make daemon checks explicit and friendly, especially for Colima users who may
+  need `colima start`
+- avoid automatic service startup during setup; activation is the better place
+  for long-lived local services
+- expose the underlying Docker command in logs before running it
+
+Current stance: support Docker and Colima as installable tools now; design
+`docker-service` as future Base orchestration over Docker Compose, not a
+container abstraction owned by Base.
+
 ### `mise` tasks
 
 What they do well:
@@ -399,4 +494,6 @@ Official references that informed this boundary note:
 - `Task`: <https://taskfile.dev/docs/getting-started>
 - `just`: <https://just.systems/man/en/introduction.html>
 - `Brewfile` / `brew bundle`: <https://docs.brew.sh/Brew-Bundle-and-Brewfile>
+- Docker Compose: <https://docs.docker.com/compose/>
+- Colima: <https://github.com/abiosoft/colima>
 - `mise` tasks: <https://mise.jdx.dev/tasks/>
