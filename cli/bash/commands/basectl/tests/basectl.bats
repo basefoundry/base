@@ -648,7 +648,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
-    printf '[{"status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]\n'
+    printf '[{"status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
     exit 0
 fi
 printf 'unexpected doctor project json python args: %s\n' "$*" >&2
@@ -670,7 +670,7 @@ EOF
     [[ "$output" == *'"ok": true'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
-    [[ "$output" == *'"status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""'* ]]
+    [[ "$output" == *'"status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"'* ]]
     [[ "$output" != *"Running Python project doctor layer."* ]]
     [ "${stderr:-}" = "" ]
 }

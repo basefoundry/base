@@ -444,6 +444,38 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup demo")
 
+    def test_doctor_warning_status_does_not_fail(self) -> None:
+        check = engine.ArtifactCheck(
+            name="optional-artifact",
+            ok=False,
+            message="Optional project artifact is not installed.",
+            fix="basectl setup demo",
+            status="warn",
+        )
+
+        self.assertEqual(engine.doctor_status(check), "warn")
+        self.assertEqual(engine.check_to_doctor_json(check)["status"], "warn")
+
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+        with mock.patch("base_setup.engine.manifest_checks", return_value=(check,)):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
+
+        self.assertEqual(status, 0)
+        self.assertIn("warn", stdout.getvalue())
+
 
 class BrewfileTests(unittest.TestCase):
     def test_brewfile_dry_run_invokes_brew_bundle(self) -> None:

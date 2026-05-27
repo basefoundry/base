@@ -19,6 +19,7 @@ class DevCheck:
     ok: bool
     message: str
     fix: str
+    status: str = ""
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -113,18 +114,19 @@ def doctor_dev_artifacts(
     )
     if output_format == "json":
         print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
-        return min(sum(1 for check in checks if not check.ok), 125)
+        return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
     if output_format != "text":
         print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
         return 2
 
     error_count = 0
     for check in checks:
-        if check.ok:
-            print_doctor_finding("ok", check.name, check.message)
-        else:
+        status = doctor_status(check)
+        if status == "error":
             print_doctor_finding("error", check.name, check.message, check.fix)
             error_count += 1
+        else:
+            print_doctor_finding(status, check.name, check.message, check.fix)
     return min(error_count, 125)
 
 
@@ -173,11 +175,15 @@ def check_to_json(check: DevCheck) -> dict[str, str | bool]:
 
 def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
     return {
-        "status": "ok" if check.ok else "error",
+        "status": doctor_status(check),
         "name": check.name,
         "message": check.message,
         "fix": check.fix,
     }
+
+
+def doctor_status(check: DevCheck) -> str:
+    return check.status or ("ok" if check.ok else "error")
 
 
 def print_doctor_finding(status: str, name: str, message: str, fix: str = "") -> None:
