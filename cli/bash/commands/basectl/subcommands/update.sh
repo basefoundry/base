@@ -45,7 +45,14 @@ base_update_run_setup() {
     "$BASE_HOME/bin/basectl" setup
 }
 
+base_update_head_revision() {
+    local repo="$1"
+    git -C "$repo" rev-parse --short HEAD 2>/dev/null
+}
+
 base_update_subcommand_main() {
+    local after_revision
+    local before_revision
     local branch
     local dry_run=0
 
@@ -93,6 +100,25 @@ base_update_subcommand_main() {
     fi
 
     base_update_source_git_library || return 1
+    before_revision="$(base_update_head_revision "$BASE_HOME")" || {
+        log_error "Unable to read current Base repository revision."
+        return 1
+    }
+
+    log_info "Updating Base repository at '$BASE_HOME'."
     git_update_repo "$BASE_HOME" "" master || return 1
-    base_update_run_setup
+    after_revision="$(base_update_head_revision "$BASE_HOME")" || {
+        log_error "Unable to read updated Base repository revision."
+        return 1
+    }
+
+    if [[ "$before_revision" == "$after_revision" ]]; then
+        log_info "Base repository is already up to date on 'master' at '$after_revision'."
+    else
+        log_info "Base repository updated from '$before_revision' to '$after_revision' on 'master'."
+    fi
+
+    log_info "Running basectl setup after update."
+    base_update_run_setup || return $?
+    log_info "Base update is complete."
 }
