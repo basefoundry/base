@@ -65,6 +65,52 @@ EOF
     chmod +x "$TEST_MOCKBIN/osascript"
 }
 
+create_system_python3_stub() {
+    cat > "$TEST_MOCKBIN/python3" <<'EOF'
+#!/usr/bin/env bash
+touch "${BASE_SETUP_TEST_STATE_DIR:?}/system-python-ran"
+if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
+    mkdir -p "$3/bin"
+    printf 'python-home = system-test\n' > "$3/pyvenv.cfg"
+    printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
+    cat > "$3/bin/python" <<'VENVEOF'
+#!/usr/bin/env bash
+pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
+click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$click_package" ]]; then
+    [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
+    exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$click_package" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-install-ran"
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed"
+    exit 0
+fi
+printf 'unexpected system venv python args: %s\n' "$*" >&2
+exit 1
+VENVEOF
+    chmod +x "$3/bin/python"
+    exit 0
+fi
+printf 'unexpected system python3 args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/python3"
+}
+
 create_brew_stub() {
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -632,6 +678,39 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"BASE_SETUP_PYTHON_BIN is a test-only setup override."* ]]
+}
+
+@test "basectl setup does not fall back to system python3 by default" {
+    create_brew_stub
+    create_xcode_stubs
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+
+    run_base_command setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to locate a python3 executable after installation."* ]]
+    [ ! -f "$TEST_STATE_DIR/system-python-ran" ]
+}
+
+@test "basectl setup uses system python3 only when explicitly allowed" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+
+    run_base_command BASE_SETUP_ALLOW_SYSTEM_PYTHON=true setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Creating Python virtual environment at '$venv_dir'."* ]]
+    [ -f "$TEST_STATE_DIR/system-python-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup skips notifications for quick successful runs" {

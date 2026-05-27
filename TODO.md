@@ -7,15 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Remove implicit system `python3` fallback from Base venv creation.
-  - Problem: `setup_find_python_bin` can fall back to the first `python3` on
-    `PATH` if Homebrew Python cannot be resolved, potentially creating Base's
-    venv with the wrong interpreter.
-  - Goal: use the configured Homebrew Python formula unless the user explicitly
-    opts into a system Python fallback.
-  - Expected behavior: remove the fallback or gate it behind a clearly named
-    opt-in such as `BASE_SETUP_ALLOW_SYSTEM_PYTHON=true`.
-
 - [ ] Clear inherited setup state in `basectl check`.
   - Problem: `basectl setup` calls `setup_clear_run_state`, but `basectl check`
     does not, so inherited variables such as `DRY_RUN` or

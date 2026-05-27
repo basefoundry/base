@@ -132,6 +132,10 @@ setup_allow_noninteractive_xcode_install() {
     [[ "${BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL:-false}" == true ]]
 }
 
+setup_allow_system_python() {
+    [[ "${BASE_SETUP_ALLOW_SYSTEM_PYTHON:-false}" == true ]]
+}
+
 setup_allow_test_hooks() {
     [[ "${BASE_TEST_MODE:-false}" == true || "${CI:-false}" == true ]]
 }
@@ -383,7 +387,7 @@ setup_find_python_bin() {
         fi
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
+    if setup_allow_system_python && command -v python3 >/dev/null 2>&1; then
         command -v python3
         return 0
     fi
