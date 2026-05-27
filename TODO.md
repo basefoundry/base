@@ -7,14 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Restrict setup test-only environment escape hatches.
-  - Problem: `BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT` and `BASE_SETUP_PYTHON_BIN`
-    can redirect setup to arbitrary executables when present in the environment.
-  - Goal: keep test hooks available without honoring them in normal user runs.
-  - Expected behavior: require an explicit test/CI guard such as
-    `BASE_TEST_MODE=true` before these overrides are accepted; otherwise ignore
-    or fail with a clear error.
-
 - [ ] Remove implicit system `python3` fallback from Base venv creation.
   - Problem: `setup_find_python_bin` can fall back to the first `python3` on
     `PATH` if Homebrew Python cannot be resolved, potentially creating Base's

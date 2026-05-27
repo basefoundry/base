@@ -352,6 +352,7 @@ run_base_command() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE="${OSTYPE_OVERRIDE:-darwin24}" \
+        BASE_TEST_MODE=true \
         BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
         BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
         BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
@@ -593,6 +594,44 @@ EOF
     [ -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ -f "$venv_dir/pyvenv.cfg" ]
+}
+
+@test "basectl setup rejects Homebrew installer override outside test mode" {
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_TEST_MODE=false \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT is a test-only setup override."* ]]
+    [ ! -f "$TEST_STATE_DIR/homebrew-install-ran" ]
+}
+
+@test "basectl setup rejects Python binary override outside test mode" {
+    local python_bin="$TEST_TMPDIR/fake-python"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$python_bin"
+    chmod +x "$python_bin"
+
+    run_base_command \
+        BASE_TEST_MODE=false \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_PYTHON_BIN="$python_bin" \
+        setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"BASE_SETUP_PYTHON_BIN is a test-only setup override."* ]]
 }
 
 @test "basectl setup skips notifications for quick successful runs" {

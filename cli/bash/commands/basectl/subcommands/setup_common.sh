@@ -132,6 +132,17 @@ setup_allow_noninteractive_xcode_install() {
     [[ "${BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL:-false}" == true ]]
 }
 
+setup_allow_test_hooks() {
+    [[ "${BASE_TEST_MODE:-false}" == true || "${CI:-false}" == true ]]
+}
+
+setup_reject_test_hook_if_disallowed() {
+    local variable_name="$1"
+
+    setup_allow_test_hooks && return 0
+    fatal_error "$variable_name is a test-only setup override. Set BASE_TEST_MODE=true or CI=true to use it."
+}
+
 setup_recovery_homebrew() {
     printf "%s\n" "Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."
 }
@@ -251,6 +262,7 @@ setup_install_homebrew() {
     log_info "Installing Homebrew."
 
     if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT:-}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT
         run "$BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT"
     else
         command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install Homebrew. Install curl or install Homebrew manually from https://brew.sh/, then rerun 'basectl setup'."
@@ -345,7 +357,9 @@ setup_find_python_bin() {
     local formula prefix candidate
     local candidates=()
 
-    if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" && -x "${BASE_SETUP_PYTHON_BIN}" ]]; then
+    if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_PYTHON_BIN
+        [[ -x "${BASE_SETUP_PYTHON_BIN}" ]] || return 1
         printf '%s\n' "${BASE_SETUP_PYTHON_BIN}"
         return 0
     fi
