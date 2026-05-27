@@ -24,6 +24,7 @@ run_basectl() {
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [options]"* ]]
     [[ "$output" == *"clean --older-than <age> [options]"* ]]
+    [[ "$output" == *"doctor [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
     [[ "$output" == *"Invoking \`basectl\` with no command is equivalent to \`basectl activate base\`"* ]]
     [[ "$output" == *"--version"* ]]
@@ -222,6 +223,156 @@ EOF
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--older-than' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
+}
+
+@test "basectl doctor prints help" {
+    run_basectl doctor --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl doctor [options]"* ]]
+    [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
+}
+
+@test "basectl doctor reports ok findings and includes dev checks" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13|bats-core) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh version test\n'
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$fake_bin/gh" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base doctor"* ]]
+    [[ "$output" == *"ok"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$output" == *"ok"*"BATS"*"BATS formula 'bats-core' is installed via Homebrew."* ]]
+    [[ "$output" == *"ok"*"GitHub CLI"*"GitHub CLI is installed."* ]]
+    [[ "$output" == *"ok"*"Base virtualenv"*"Virtual environment exists at"* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
+}
+
+@test "basectl doctor --dev reports missing GitHub CLI" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13|bats-core) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"error"*"GitHub CLI"*"GitHub CLI command 'gh' is not installed or not on PATH."* ]]
+    [[ "$output" == *"Fix: brew install gh"* ]]
+}
+
+@test "basectl doctor reports errors with suggested fixes" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base doctor"* ]]
+    [[ "$output" == *"error"*"Homebrew"*"Homebrew is not installed."* ]]
+    [[ "$output" == *"Fix: basectl setup"* ]]
+    [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
 }
 
 @test "basectl activate resolves a project and execs a project subshell" {

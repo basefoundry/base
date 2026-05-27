@@ -37,6 +37,7 @@ Current implemented commands include:
 
 - `basectl setup`
 - `basectl check`
+- `basectl doctor`
 - `basectl clean --older-than <age>`
 - `basectl update-profile`
 - `basectl projects list`
@@ -48,7 +49,6 @@ Planned commands include:
 - `basectl setup <project>`
 - `basectl test`
 - `basectl test <project>`
-- `basectl doctor`
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace. Planned commands are
@@ -133,6 +133,14 @@ Cleanup only targets runtime artifacts under the Base cache root, which defaults
 to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
 state such as `~/.base.d/config.yaml` and project virtual environments under
 `~/.base.d/<project>/.venv` are outside this scope.
+
+Use `basectl doctor` when you want a human-oriented diagnosis with suggested
+fixes:
+
+```bash
+basectl doctor
+basectl doctor --dev
+```
 
 ### 2. Shell Environment Management
 

@@ -17,6 +17,8 @@ Commands:
     Verify the local Base CLI environment without making changes.
   clean --older-than <age> [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
+  doctor [options]
+    Diagnose the local Base CLI environment and suggest fixes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   projects list [options]
@@ -150,6 +152,11 @@ basectl_do_clean() {
     base_clean_subcommand_main "$@"
 }
 
+basectl_do_doctor() {
+    basectl_source_subcommand_module doctor || return 1
+    base_doctor_subcommand_main "$@"
+}
+
 basectl_do_update_profile() {
     basectl_source_subcommand_module update_profile || return 1
     base_update_profile_subcommand_main "$@"
@@ -242,6 +249,7 @@ basectl_main() {
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
         clean)            basectl_do_clean "$@" ;;
+        doctor)           basectl_do_doctor "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;

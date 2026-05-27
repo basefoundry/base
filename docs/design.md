@@ -73,6 +73,7 @@ layers. This keeps the product name and the control-plane action separate:
 
 - `basectl setup`
 - `basectl check`
+- `basectl doctor`
 - `basectl update-profile`
 - `basectl projects list`
 - `basectl activate`

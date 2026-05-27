@@ -117,6 +117,7 @@ It owns the current Base subcommands:
 - `setup`
 - `check`
 - `clean`
+- `doctor`
 - `activate`
 - `projects list`
 - `update-profile`
