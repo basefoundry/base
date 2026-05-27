@@ -592,7 +592,20 @@ EOF
 
     [ "$status" -eq 42 ]
     [[ "$output" == *"Python project setup layer failed."* ]]
+    [[ "$output" == *"Review the Python error above, then rerun 'basectl setup -v' for more detail."* ]]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+}
+
+@test "basectl setup gives recovery guidance when Xcode install needs an interactive terminal" {
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/python-installed"
+
+    run_base_command setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Xcode Command Line Tools installation requires an interactive terminal."* ]]
+    [[ "$output" == *"Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."* ]]
 }
 
 @test "basectl setup --dev runs the Python developer prerequisite layer" {
@@ -793,6 +806,7 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is not installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Run 'basectl setup' to install Base Python bootstrap packages."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
     [ "$(grep -c '^PyYAML$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
@@ -915,11 +929,16 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Homebrew is not installed."* ]]
+    [[ "$output" == *"Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."* ]]
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]
+    [[ "$output" == *"Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is not installed via Homebrew."* ]]
+    [[ "$output" == *"Run 'basectl setup' to install Homebrew Python, or run 'brew install python@3.13'."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
+    [[ "$output" == *"Run 'basectl setup --recreate-venv' to back up and recreate the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+    [[ "$output" == *"Run 'basectl setup' to reconcile the missing requirements."* ]]
 }
 
 @test "basectl check rejects unsupported output formats" {
