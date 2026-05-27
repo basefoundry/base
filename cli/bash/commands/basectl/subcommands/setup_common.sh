@@ -249,6 +249,10 @@ setup_refresh_brew_path() {
 }
 
 setup_install_homebrew() {
+    # Trust decision: Base follows Homebrew's official install command, which
+    # intentionally fetches the installer from the mutable HEAD ref. Pinning a
+    # reviewed commit would reduce mutability risk, but would also make Base own
+    # installer refreshes and drift from Homebrew's supported bootstrap path.
     local installer_url="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
     local exit_code
 
