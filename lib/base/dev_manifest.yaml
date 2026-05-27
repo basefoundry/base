@@ -1,0 +1,11 @@
+project:
+  name: __base_dev__
+
+artifacts:
+  - type: tool
+    name: bats-core
+    version: latest
+
+  - type: tool
+    name: gh
+    version: latest

@@ -100,6 +100,25 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
+    case "${1:-}" in
+        setup)
+            touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+            exit 0
+            ;;
+        check)
+            if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
+                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --dev"}]\n'
+            else
+                printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
+                printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
+            fi
+            exit 1
+            ;;
+    esac
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
@@ -127,6 +146,25 @@ fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
+    case "${1:-}" in
+        setup)
+            touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+            exit 0
+            ;;
+        check)
+            if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
+                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --dev"}]\n'
+            else
+                printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
+                printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
+            fi
+            exit 1
+            ;;
+    esac
 fi
 printf 'unexpected python3 args: %s\n' "$*" >&2
 exit 1
@@ -205,6 +243,25 @@ click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
+    case "${1:-}" in
+        setup)
+            touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+            exit 0
+            ;;
+        check)
+            if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
+                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --dev"}]\n'
+            else
+                printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
+                printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
+            fi
+            exit 1
+            ;;
+    esac
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
@@ -316,6 +373,21 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     printf '%s\n' "$4" >> "${BASE_SETUP_TEST_STATE_DIR:?}/pip-show.log"
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
+    case "${1:-}" in
+        check)
+            if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
+                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --dev"}]\n'
+            else
+                printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
+                printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
+            fi
+            exit 1
+            ;;
+    esac
 fi
 printf 'unexpected check venv python args: %s\n' "$*" >&2
 exit 1
@@ -523,7 +595,7 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
-@test "basectl setup --dev installs BATS with developer dependencies" {
+@test "basectl setup --dev runs the Python developer prerequisite layer" {
     local installer
 
     create_xcode_stubs
@@ -535,8 +607,8 @@ EOF
         setup --dev
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Installing BATS formula 'bats-core' via Homebrew."* ]]
-    [ -f "$TEST_STATE_DIR/bats-install-ran" ]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "setup" ]
 }
 
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
@@ -648,11 +720,11 @@ EOF
     [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
 }
 
-@test "basectl setup --dev dry-run includes BATS" {
+@test "basectl setup --dev dry-run defers developer prerequisites until Python bootstrap dependencies exist" {
     run_base_command setup --dev --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would install BATS formula 'bats-core' via Homebrew."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run Python developer prerequisite layer after Base Python bootstrap dependencies are installed."* ]]
 }
 
 @test "basectl setup ignores inherited DRY_RUN without --dry-run" {
@@ -727,7 +799,7 @@ EOF
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
-@test "basectl check --dev includes BATS in developer dependency checks" {
+@test "basectl check --dev includes manifest-driven developer prerequisite checks" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -742,7 +814,8 @@ EOF
     run_base_command check --dev
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"BATS formula 'bats-core' is not installed via Homebrew."* ]]
+    [[ "$output" == *"Artifact 'bats-core' is not installed via Homebrew package 'bats-core'."* ]]
+    [[ "$output" == *"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
@@ -780,7 +853,7 @@ EOF
     [ "${stderr:-}" = "" ]
 }
 
-@test "basectl check --dev --format json includes BATS check results" {
+@test "basectl check --dev --format json includes developer prerequisite check results" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -805,7 +878,9 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
-    [[ "$output" == *'"name":"bats","ok":false'* ]]
+    [[ "$output" == *'"dev_checks":'* ]]
+    [[ "$output" == *"bats-core"* ]]
+    [[ "$output" == *"gh"* ]]
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
     [ "${stderr:-}" = "" ]

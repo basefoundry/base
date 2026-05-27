@@ -14,7 +14,7 @@ Usage:
   basectl check [options]
 
 Options:
-  --dev                 Include developer/test dependency checks such as BATS.
+  --dev                 Include manifest-declared developer prerequisite checks.
   --format <text|json>  Select output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -27,7 +27,7 @@ Check does:
   2. Verify Xcode Command Line Tools are installed.
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify ~/.base.d/base/.venv exists.
-  5. Verify BATS is installed via Homebrew when --dev is passed.
+  5. Verify developer prerequisites from lib/base/dev_manifest.yaml when --dev is passed.
 EOF
 }
 

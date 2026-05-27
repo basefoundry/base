@@ -48,6 +48,20 @@ _ARTIFACTS = {
         package="terraform",
         target="system",
     ),
+    ("tool", "bats-core"): ArtifactDefinition(
+        name="bats-core",
+        artifact_type="tool",
+        manager="homebrew",
+        package="bats-core",
+        target="system",
+    ),
+    ("tool", "gh"): ArtifactDefinition(
+        name="gh",
+        artifact_type="tool",
+        manager="homebrew",
+        package="gh",
+        target="system",
+    ),
     ("tool", "kubectl"): ArtifactDefinition(
         name="kubectl",
         artifact_type="tool",
