@@ -50,6 +50,7 @@ Planned commands include:
 - `basectl setup <project>`
 - `basectl test`
 - `basectl test <project>`
+- `basectl onboard`
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace. Planned commands are
@@ -151,6 +152,11 @@ fixes:
 basectl doctor
 basectl doctor --dev
 ```
+
+`basectl onboard` is a planned guided setup experience for technically-adjacent
+users who want a checklist-style first Base setup. Its design is captured in
+[docs/basectl-onboard.md](docs/basectl-onboard.md). Product-specific onboarding
+should still live in project installers that call Base internally.
 
 ### 2. Shell Environment Management
 

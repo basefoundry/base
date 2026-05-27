@@ -92,7 +92,8 @@ Project installers should not:
 
 ## Relationship To `basectl onboard`
 
-`basectl onboard` is still useful, but it should target a different layer.
+`basectl onboard` is still useful, but it should target a different layer. Its
+command design is captured in [basectl-onboard.md](basectl-onboard.md).
 
 `basectl onboard` should be a guided Base setup experience for
 technically-adjacent users who are installing Base itself. A project installer

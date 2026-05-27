@@ -39,13 +39,17 @@ they are merged.
     - Cover manifest validation, dry-run command planning, daemon-check
       failures, Compose command failures, and activate-time startup behavior.
 
-- [ ] Design `basectl onboard`.
-  - Goal: provide a guided checklist-style setup experience without making `basectl setup` itself interactive-heavy.
-  - Expected behavior: explain each prerequisite, confirm before performing major steps, and call existing setup/check primitives internally.
-
 - [ ] Package Base as a Homebrew formula or tap.
   - Goal: make Base installation feel native on macOS.
   - Expected behavior: support an install path such as `brew install codeforester/base/basectl`.
+
+- [ ] Implement `basectl onboard`.
+  - Goal: provide the guided checklist-style Base setup experience described in
+    `docs/basectl-onboard.md`.
+  - Expected behavior: orchestrate existing setup, check, doctor, profile, and
+    project-discovery primitives without duplicating their logic.
+  - Starting point: implement the v1 Bash subcommand with dry-run, prompted,
+    `--yes`, `--dev`, and `--no-profile` flows.
 
 - [ ] Add initial Linux support plan.
   - Goal: define the first supported Linux target, likely Ubuntu/Debian.
