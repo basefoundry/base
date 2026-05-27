@@ -246,6 +246,13 @@ manifest-driven through `lib/base/dev_manifest.yaml`; use `basectl setup --dev`
 to install them and `basectl check --dev` or `basectl doctor --dev` to verify
 them.
 
+If Homebrew is missing, `basectl setup` uses Homebrew's official installer URL
+at `https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`. This is
+a deliberate trust decision: Base stays aligned with Homebrew's supported
+bootstrap command instead of pinning and maintaining a reviewed installer
+commit. Teams that require stricter supply-chain controls should install
+Homebrew through their managed device process before running Base.
+
 On macOS, `basectl setup` sends a best-effort notification when setup completes
 or fails after running for at least 30 seconds. Notifications are skipped during
 `--dry-run` and never change the setup exit status. Use `basectl setup --notify`

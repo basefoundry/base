@@ -373,6 +373,14 @@ When `basectl setup` runs on a fresh Mac:
 8. For each discovered project, run project-level setup (install declared dependencies,
    create project venv)
 
+Homebrew installation follows Homebrew's official `install/HEAD/install.sh`
+bootstrap command. That means Base intentionally trusts Homebrew's mutable
+installer entry point instead of pinning a commit SHA. Pinning would reduce
+installer mutability, but would also make Base responsible for tracking
+Homebrew installer updates and could diverge from Homebrew's documented support
+path. Environments with stricter supply-chain policy should preinstall Homebrew
+through managed workstation provisioning before invoking `basectl setup`.
+
 ---
 
 ## GitHub and Repository Conventions

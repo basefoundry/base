@@ -7,15 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Document or harden the Homebrew installer trust decision.
-  - Problem: Base follows Homebrew's official mutable `HEAD` installer pattern,
-    which executes downloaded code.
-  - Goal: make the trust model explicit and decide whether Base should pin and
-    verify the installer.
-  - Expected behavior: either pin to a reviewed installer commit with SHA
-    verification, or document in code and docs why Base intentionally follows
-    Homebrew's official installer command.
-
 ## P1 — Product Core And Composability
 
 - [ ] Redesign project manifests around delegation-first orchestration.
