@@ -963,15 +963,51 @@ EOF
     [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source $BASE_REPO_ROOT/lib/shell/bash_profile"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"source $BASE_REPO_ROOT/lib/shell/bashrc"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"completion"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *"# --- BEGIN base zprofile MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *"source $BASE_REPO_ROOT/lib/shell/zprofile"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *"# --- BEGIN base zshrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *"source $BASE_REPO_ROOT/lib/shell/zshrc"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" != *"completion"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_PROFILE_VERSION=1"* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=false"* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
+}
+
+@test "Base-managed Bash startup registers basectl completion and project names" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$base_python")"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
+    printf 'base\t/Users/test/base\n'
+    printf 'demo\t/Users/test/demo\n'
+    exit 0
+fi
+printf 'unexpected completion python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$base_python"
+
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run env -u BASE_HOME -u BASE_HOST -u BASE_OS \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c '\
+            complete -p basectl; \
+            COMP_WORDS=(basectl activate ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "projects=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
 }
 
 @test "basectl update-profile preserves non-Base dotfile content and is idempotent" {

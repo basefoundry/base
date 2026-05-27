@@ -120,6 +120,24 @@ base_bashrc_source_defaults() {
     source "$BASE_HOME/lib/shell/bash_defaults.sh"
 }
 
+base_bashrc_source_completions() {
+    local completion_file="$BASE_HOME/lib/shell/completions/basectl_completion.sh"
+
+    if [[ ! -f "$completion_file" ]]; then
+        base_bashrc_debug "Bash completion file not found; skipping"
+        return 0
+    fi
+
+    if ! type complete >/dev/null 2>&1; then
+        base_bashrc_debug "Bash completion builtin not available; skipping"
+        return 0
+    fi
+
+    base_bashrc_debug "sourcing Bash completions"
+    # shellcheck source=/dev/null
+    source "$completion_file"
+}
+
 base_bashrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base bashrc snippet. Run basectl update-profile.\n' >&2
     unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
@@ -127,8 +145,10 @@ base_bashrc_set_base_home || {
 }
 base_bashrc_prepend_path
 base_bashrc_source_defaults || return 1
+base_bashrc_source_completions || return 1
 base_bashrc_debug "complete"
 
 unset -f base_bashrc_snippet_dir base_bashrc_set_base_home
 unset -f base_bashrc_prepend_path base_bashrc_source_defaults
+unset -f base_bashrc_source_completions
 unset -f base_bashrc_source_baserc_guard base_bashrc_debug

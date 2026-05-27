@@ -124,6 +124,18 @@ base_zshrc_source_defaults() {
     source "$BASE_HOME/lib/shell/zsh_defaults.sh"
 }
 
+base_zshrc_source_completions() {
+    local completion_file="$BASE_HOME/lib/shell/completions/basectl_completion.zsh"
+
+    if [[ ! -f "$completion_file" ]]; then
+        base_zshrc_debug "Zsh completion file not found; skipping"
+        return 0
+    fi
+
+    base_zshrc_debug "sourcing Zsh completions"
+    source "$completion_file"
+}
+
 base_zshrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base zshrc snippet. Run basectl update-profile.\n' >&2
     unset -f base_zshrc_debug base_zshrc_snippet_dir base_zshrc_source_baserc_guard
@@ -131,8 +143,10 @@ base_zshrc_set_base_home || {
 }
 base_zshrc_prepend_path
 base_zshrc_source_defaults || return 1
+base_zshrc_source_completions || return 1
 base_zshrc_debug "complete"
 
 unset -f base_zshrc_snippet_dir base_zshrc_set_base_home
 unset -f base_zshrc_prepend_path base_zshrc_source_defaults
+unset -f base_zshrc_source_completions
 unset -f base_zshrc_source_baserc_guard base_zshrc_debug

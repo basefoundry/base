@@ -40,6 +40,7 @@ Current implemented commands include:
 - `basectl doctor`
 - `basectl clean --older-than <age>`
 - `basectl update-profile`
+- `basectl update`
 - `basectl projects list`
 - `basectl activate <project>`
 - `basectl version`
@@ -281,7 +282,9 @@ adds or replaces its marked section.
 `basectl update-profile` also creates `~/.base.d/profile.conf`, which records
 whether the user has opted into Base's optional shell defaults. The managed
 dotfile sections stay minimal and defer PATH/default handling to the sourced
-Base snippets.
+Base snippets. The same sourced snippets also register `basectl` shell
+completions, so future completion improvements arrive when Base is updated
+without rewriting user dotfiles.
 
 Run `basectl update-profile --defaults` to enable those optional defaults, and
 run `basectl update-profile --no-defaults` to disable them again. Plain
@@ -289,6 +292,15 @@ run `basectl update-profile --no-defaults` to disable them again. Plain
 
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
+
+Update Base itself from the checked-out repository with:
+
+```bash
+basectl update
+```
+
+This command is intentionally conservative: it only runs from a clean `master`
+worktree, pulls the latest changes through Git, and then runs `basectl setup`.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
