@@ -411,7 +411,8 @@ fi
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$fake_bin/gh" "$venv_python"
-    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 
     run env \
@@ -480,7 +481,8 @@ fi
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
-    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 
     run env \
@@ -582,7 +584,8 @@ printf 'unexpected doctor project python args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
-    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 
     run env \
@@ -655,7 +658,8 @@ printf 'unexpected doctor project json python args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
-    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 
     run --separate-stderr env \

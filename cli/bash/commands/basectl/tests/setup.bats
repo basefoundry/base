@@ -24,6 +24,8 @@ installed_file="$state_dir/xcode-installed"
 case "${1:-}" in
     -p)
         if [[ -f "$installed_file" ]]; then
+            mkdir -p "$tools_dir/usr/bin"
+            touch "$tools_dir/usr/bin/clang"
             printf '%s\n' "$tools_dir"
             exit 0
         fi
@@ -31,7 +33,8 @@ case "${1:-}" in
         ;;
     --install)
         touch "$installed_file"
-        mkdir -p "$tools_dir"
+        mkdir -p "$tools_dir/usr/bin"
+        touch "$tools_dir/usr/bin/clang"
         exit 0
         ;;
     *)

@@ -138,31 +138,6 @@ they are merged.
 
 ## P3 — Performance And CI Hardening
 
-- [ ] Speed up Homebrew Python discovery.
-  - Problem: `brew --prefix <formula>` adds noticeable startup cost to setup and
-    check runs.
-  - Goal: check known Homebrew opt paths before invoking `brew --prefix`.
-  - Expected behavior: try `/opt/homebrew/opt/<formula>/bin/python3` and
-    `/usr/local/opt/<formula>/bin/python3` first, then fall back to Homebrew.
-
-- [ ] Speed up Xcode Command Line Tools detection.
-  - Problem: `xcrun -f clang` can be slow because it validates the active
-    toolchain.
-  - Goal: replace the slow probe with direct filesystem checks when reliable.
-  - Expected behavior: after `xcode-select -p` and the configured tools
-    directory exist, check for `usr/bin/clang` under the tools directory.
-
-- [ ] Optimize Bash log caller detection.
-  - Problem: `_print_log` walks the caller stack on every log call.
-  - Goal: use `BASH_SOURCE` and `BASH_LINENO` fast paths for common direct
-    callers and keep the stack walk only as a rare fallback.
-
-- [ ] Reduce repeated subshell calls for setup paths.
-  - Problem: helpers such as `setup_venv_dir` and `setup_pythonpath` are often
-    called through command substitution even though they build deterministic
-    strings.
-  - Goal: cache or initialize these values once per command run.
-
 - [ ] Evaluate parallelizing independent `basectl check` probes.
   - Goal: reduce check wall time by running independent probes concurrently.
   - Expected behavior: preserve deterministic output order while collecting

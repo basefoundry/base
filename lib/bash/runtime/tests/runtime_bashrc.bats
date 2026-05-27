@@ -28,7 +28,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"USER_BASHRC_HAS_BASE_IMPORT=1"* ]]
     [[ "$output" == *"BASE_SHELL=1"* ]]
-    [[ "$output" == *'PS1=\T $(_base_runtime_host_prompt) $(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
+    [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
 @test "runtime bashrc sources baserc debug preferences" {
