@@ -232,9 +232,12 @@ to install them and `basectl check --dev` or `basectl doctor --dev` to verify
 them.
 
 On macOS, `basectl setup` sends a best-effort notification when setup completes
-or fails. Notifications are skipped during `--dry-run` and never change the
-setup exit status. Use `basectl setup --no-notify` or
-`BASE_SETUP_NOTIFY=false` to disable them.
+or fails after running for at least 30 seconds. Notifications are skipped during
+`--dry-run` and never change the setup exit status. Use `basectl setup --notify`
+to force a notification for quick runs, `basectl setup --no-notify` or
+`BASE_SETUP_NOTIFY=false` to disable notifications, and
+`BASE_SETUP_NOTIFY_MIN_SECONDS` to tune the default threshold. When `--notify`
+is requested on macOS, Base warns if `osascript` is not available.
 
 ## Quick Start
 
