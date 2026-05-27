@@ -50,10 +50,15 @@ setup_enable_recreate_venv() {
 
 setup_enable_notifications() {
     export BASE_SETUP_NOTIFY=true
+    export BASE_SETUP_NOTIFY_FORCE=true
 }
 
 setup_disable_notifications() {
     export BASE_SETUP_NOTIFY=false
+}
+
+setup_notify_min_seconds() {
+    printf '%s\n' "${BASE_SETUP_NOTIFY_MIN_SECONDS:-30}"
 }
 
 setup_recreate_venv_enabled() {
@@ -62,6 +67,10 @@ setup_recreate_venv_enabled() {
 
 setup_notifications_enabled() {
     [[ "${BASE_SETUP_NOTIFY:-true}" == true ]]
+}
+
+setup_notifications_forced() {
+    [[ "${BASE_SETUP_NOTIFY_FORCE:-false}" == true ]]
 }
 
 setup_virtualenv_exists() {
@@ -153,12 +162,30 @@ setup_recovery_project_layer() {
 
 setup_notify_completion() {
     local exit_code="$1"
+    local elapsed_seconds=0
     local message title
+    local min_seconds
 
     setup_notifications_enabled || return 0
     setup_is_dry_run && return 0
     [[ "$OSTYPE" == darwin* ]] || return 0
-    command -v osascript >/dev/null 2>&1 || return 0
+    if ! command -v osascript >/dev/null 2>&1; then
+        if setup_notifications_forced; then
+            log_warn "Setup notification was requested, but 'osascript' is not available on this Mac."
+        fi
+        return 0
+    fi
+
+    min_seconds="$(setup_notify_min_seconds)"
+    if ! [[ "$min_seconds" =~ ^[0-9]+$ ]]; then
+        min_seconds=30
+    fi
+    if [[ -n "${BASE_SETUP_START_TIME:-}" && "$BASE_SETUP_START_TIME" =~ ^[0-9]+$ ]]; then
+        elapsed_seconds=$(($(date +%s) - BASE_SETUP_START_TIME))
+    fi
+    if ! setup_notifications_forced && ((elapsed_seconds < min_seconds)); then
+        return 0
+    fi
 
     if ((exit_code == 0)); then
         title="Base setup complete"

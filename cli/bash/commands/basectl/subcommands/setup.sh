@@ -17,6 +17,7 @@ Options:
   --dev             Install manifest-declared developer prerequisites.
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
+  --notify           Force a best-effort macOS notification when setup ends.
   --no-notify        Disable the default best-effort macOS completion notification.
   --recreate-venv    Back up and recreate the project virtual environment.
   -v                 Enable DEBUG logging for this subcommand.
@@ -100,6 +101,8 @@ base_setup_subcommand_main() {
     done
 
     BASE_SETUP_PROJECT_NAME="$project_name"
+    BASE_SETUP_START_TIME="$(date +%s)"
+    export BASE_SETUP_START_TIME
     export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl setup' (DRY_RUN=$(setup_is_dry_run && printf true || printf false))."
     if setup_notifications_enabled; then
