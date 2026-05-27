@@ -7,13 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Add warning severity to doctor findings.
-  - Problem: doctor findings are currently effectively binary `ok` or `error`.
-  - Goal: distinguish optional or non-blocking recommendations from setup
-    failures.
-  - Expected behavior: support `warn` findings in Base, dev, and project doctor
-    output; reserve non-zero exit status for blocking `error` findings.
-
 - [ ] Document or harden the Homebrew installer trust decision.
   - Problem: Base follows Homebrew's official mutable `HEAD` installer pattern,
     which executes downloaded code.

@@ -78,6 +78,28 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup --dev")
 
+    def test_doctor_warning_status_does_not_fail(self) -> None:
+        check = engine.DevCheck(
+            name="optional-tool",
+            ok=False,
+            message="Optional developer tool is not installed.",
+            fix="brew install optional-tool",
+            status="warn",
+        )
+
+        self.assertEqual(engine.doctor_status(check), "warn")
+        self.assertEqual(engine.check_to_doctor_json(check)["status"], "warn")
+
+        manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        definitions = engine.resolve_artifact_definitions(manifest.artifacts)
+        with mock.patch("base_dev.engine.check_homebrew_artifact", return_value=check):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
+
+        self.assertEqual(status, 0)
+        self.assertIn("warn", stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
