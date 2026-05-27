@@ -7,13 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Put `base_virtualenv` before Python packages in check JSON.
-  - Problem: JSON output currently reports PyYAML and click before the venv even
-    though the venv is their prerequisite.
-  - Goal: make JSON check ordering communicate dependency order.
-  - Expected behavior: emit Homebrew, Xcode, Python, Base virtualenv, PyYAML,
-    click, then optional dev/project checks.
-
 - [ ] Add JSON output to `basectl doctor`.
   - Problem: `basectl check` supports `--format text|json`, but
     `basectl doctor` is text-only even though project artifact checks already

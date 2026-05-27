@@ -1197,6 +1197,9 @@ EOF
 }
 
 @test "basectl check --format json writes successful check results to stdout" {
+    local click_line
+    local pyyaml_line
+    local venv_line
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -1227,6 +1230,11 @@ EOF
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
+    venv_line="$(printf '%s\n' "$output" | grep -n '"name":"base_virtualenv"' | cut -d: -f1)"
+    pyyaml_line="$(printf '%s\n' "$output" | grep -n '"name":"pyyaml"' | cut -d: -f1)"
+    click_line="$(printf '%s\n' "$output" | grep -n '"name":"click"' | cut -d: -f1)"
+    [ "$venv_line" -lt "$pyyaml_line" ]
+    [ "$pyyaml_line" -lt "$click_line" ]
     [ "${stderr:-}" = "" ]
 }
 
