@@ -7,14 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Make Bash JSON escaping strict for all control characters.
-  - Problem: `setup_json_escape` handles `"`, `\`, newline, carriage return, and
-    tab, but not the rest of U+0000 through U+001F.
-  - Goal: ensure `basectl check --format json` always emits structurally valid
-    JSON.
-  - Expected behavior: either use a trusted JSON encoder when available or add a
-    complete control-character escape path with regression tests.
-
 - [ ] Put `base_virtualenv` before Python packages in check JSON.
   - Problem: JSON output currently reports PyYAML and click before the venv even
     though the venv is their prerequisite.
