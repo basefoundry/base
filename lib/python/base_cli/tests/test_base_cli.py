@@ -14,7 +14,7 @@ import base_cli
 from base_cli import config as config_module
 from base_cli.config import load_config
 from base_cli.logging import BaseCliFormatter
-from base_cli.paths import base_state_root, discover_manifest, normalize_cli_name
+from base_cli.paths import base_cache_root, base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
 
 
@@ -52,11 +52,12 @@ class BaseCliTests(unittest.TestCase):
         )
         return context, log
 
-    def test_import_has_no_state_directory_side_effect(self) -> None:
+    def test_import_has_no_runtime_directory_side_effect(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
                 self.assertFalse((home / ".base.d").exists())
+                self.assertFalse((home / ".cache" / "base").exists())
 
     def test_path_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -66,8 +67,15 @@ class BaseCliTests(unittest.TestCase):
             (root / "base_manifest.yaml").write_text("project:\n  name: demo\n", encoding="utf-8")
 
             self.assertEqual(base_state_root(root), root / ".base.d")
+            self.assertEqual(base_cache_root(root), root / ".cache" / "base")
             self.assertEqual(normalize_cli_name("/tmp/demo.py"), "demo")
             self.assertEqual(discover_manifest(nested), (root / "base_manifest.yaml").resolve())
+
+    def test_base_cache_root_honors_environment_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(root / "custom-cache")}):
+                self.assertEqual(base_cache_root(root), root / "custom-cache")
 
     def test_redacts_sensitive_option_values(self) -> None:
         argv = ["tool", "--api-key", "secret", "--token=hidden", "--name", "visible"]
@@ -147,7 +155,7 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
                 from base_cli.testing import invoke
 
                 stderr = io.StringIO()
@@ -158,7 +166,8 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
-            self.assertTrue((home / ".base.d" / "cli" / "demo" / "logs").is_dir())
+            self.assertTrue((home / ".cache" / "base" / "cli" / "demo" / "logs").is_dir())
+            self.assertFalse((home / ".base.d" / "cli").exists())
             self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
             self.assertIn("hello Ada", result.stderr)
 
@@ -173,7 +182,7 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
                 from base_cli.testing import invoke
 
                 result = invoke(app, [], home=home)
@@ -208,7 +217,7 @@ class BaseCliTests(unittest.TestCase):
             manifest_path.write_text("project:\n  name: demo\n", encoding="utf-8")
             log_file = home / "custom.log"
 
-            with mock.patch.dict(os.environ, {"HOME": str(home)}), mock.patch.object(
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}), mock.patch.object(
                 os.sys,
                 "argv",
                 ["secret-tool", "--debug", "--token", "super-secret"],
@@ -226,6 +235,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertTrue(seen["debug"])
             self.assertTrue(seen["temp_dir"].exists())
             self.assertEqual(seen["log_file"], log_file)
+            self.assertEqual(seen["temp_dir"].parents[1], home / ".cache" / "base" / "cli" / "secret-tool")
             self.assertEqual(seen["manifest_path"], manifest_path.resolve())
             self.assertEqual(seen["project_root"], project.resolve())
 

@@ -10,6 +10,13 @@ def base_state_root(home: Path | None = None) -> Path:
     return (home or Path.home()) / ".base.d"
 
 
+def base_cache_root(home: Path | None = None) -> Path:
+    value = os.environ.get("BASE_CACHE_DIR")
+    if value:
+        return Path(value).expanduser()
+    return (home or Path.home()) / ".cache" / "base"
+
+
 def make_run_id() -> str:
     timestamp = time.strftime("%Y%m%dT%H%M%S")
     return f"{timestamp}_{uuid.uuid4().hex[:8]}"
@@ -41,4 +48,3 @@ def resolve_base_home() -> Path | None:
     if not value:
         return None
     return Path(value).expanduser().resolve()
-
