@@ -87,10 +87,6 @@ setup_python_formula() {
     printf '%s\n' "${BASE_SETUP_PYTHON_FORMULA:-python@3.13}"
 }
 
-setup_bats_formula() {
-    printf '%s\n' "${BASE_SETUP_BATS_FORMULA:-bats-core}"
-}
-
 setup_pyyaml_package() {
     printf '%s\n' "${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 }
@@ -248,34 +244,6 @@ setup_install_python() {
     command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install Python formula '$formula'."
 
     log_info "Installing Python formula '$formula' via Homebrew."
-    run brew install "$formula"
-}
-
-setup_bats_installed() {
-    local formula
-
-    formula="$(setup_bats_formula)"
-    command -v brew >/dev/null 2>&1 && brew list "$formula" >/dev/null 2>&1
-}
-
-setup_install_bats() {
-    local formula
-
-    formula="$(setup_bats_formula)"
-
-    if setup_bats_installed; then
-        log_info "BATS formula '$formula' is already installed via Homebrew."
-        return 0
-    fi
-
-    if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would install BATS formula '$formula' via Homebrew."
-        return 0
-    fi
-
-    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install BATS formula '$formula'."
-
-    log_info "Installing BATS formula '$formula' via Homebrew."
     run brew install "$formula"
 }
 
@@ -439,6 +407,26 @@ setup_run_project_artifact_setup() {
     exit_if_error "$exit_code" "Python project setup layer failed."
 }
 
+setup_run_base_dev_layer() {
+    local args=("$@")
+    local venv_dir
+
+    if setup_is_dry_run &&
+        { ! setup_base_python_package_installed "$(setup_pyyaml_package)" ||
+            ! setup_base_python_package_installed "$(setup_click_package)"; }; then
+        log_info "[DRY-RUN] Would run Python developer prerequisite layer after Base Python bootstrap dependencies are installed."
+        return 0
+    fi
+
+    venv_dir="$(setup_venv_dir)"
+    if ! setup_base_venv_python_bin "$venv_dir" >/dev/null 2>&1; then
+        log_warn "Python developer prerequisite layer cannot run because Base virtual environment Python was not found at '$venv_dir/bin/python'."
+        return 1
+    fi
+
+    "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}"
+}
+
 setup_run_check() {
     local brew_bin="" click_package pyyaml_package venv_dir missing=0
 
@@ -470,15 +458,6 @@ setup_run_check() {
         missing=1
     fi
 
-    if setup_dev_dependencies_enabled; then
-        if setup_bats_installed; then
-            log_info "BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-        else
-            log_warn "BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-            missing=1
-        fi
-    fi
-
     if setup_virtualenv_exists; then
         log_info "Virtual environment exists at '$venv_dir'."
     else
@@ -498,6 +477,10 @@ setup_run_check() {
     else
         log_warn "$(setup_base_python_package_check_message "$click_package" false)"
         missing=1
+    fi
+
+    if setup_dev_dependencies_enabled; then
+        setup_run_base_dev_layer check || missing=1
     fi
 
     if ((missing == 0)); then
@@ -533,9 +516,27 @@ setup_print_check_json_item() {
         "$trailing_comma"
 }
 
+setup_print_json_property_value() {
+    local first_line=true
+    local key="$1"
+    local line
+    local value="$2"
+
+    printf '  "%s": ' "$(setup_json_escape "$key")"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$first_line" == true ]]; then
+            printf '%s\n' "$line"
+            first_line=false
+        else
+            printf '  %s\n' "$line"
+        fi
+    done <<<"$value"
+}
+
 setup_run_check_json() {
-    local bats_message bats_ok=false brew_bin homebrew_message homebrew_ok=false
+    local brew_bin homebrew_message homebrew_ok=false
     local click_message click_ok=false click_package
+    local dev_json="[]"
     local missing=0
     local pyyaml_message pyyaml_ok=false pyyaml_package
     local python_message python_ok=false
@@ -576,17 +577,6 @@ setup_run_check_json() {
         missing=1
     fi
 
-    if setup_dev_dependencies_enabled; then
-        if setup_bats_installed; then
-            bats_ok=true
-            bats_message="BATS formula '$(setup_bats_formula)' is installed via Homebrew."
-        else
-            bats_ok=false
-            bats_message="BATS formula '$(setup_bats_formula)' is not installed via Homebrew."
-            missing=1
-        fi
-    fi
-
     if setup_virtualenv_exists; then
         venv_ok=true
         venv_message="Virtual environment exists at '$venv_dir'."
@@ -609,19 +599,29 @@ setup_run_check_json() {
     fi
     click_message="$(setup_base_python_package_check_message "$click_package" "$click_ok")"
 
+    if setup_dev_dependencies_enabled; then
+        if ! dev_json="$(setup_run_base_dev_layer check --format json)"; then
+            missing=1
+            [[ -n "$dev_json" ]] || dev_json="[]"
+        fi
+    fi
+
     printf '{\n'
     printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
     printf '  "checks": [\n'
     setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
     setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
     setup_print_check_json_item "," "python" "$python_ok" "$python_message"
-    if setup_dev_dependencies_enabled; then
-        setup_print_check_json_item "," "bats" "$bats_ok" "$bats_message"
-    fi
     setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
     setup_print_check_json_item "," "click" "$click_ok" "$click_message"
     setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
-    printf '  ]\n'
+    printf '  ]'
+    if setup_dev_dependencies_enabled; then
+        printf ',\n'
+        setup_print_json_property_value "dev_checks" "$dev_json"
+    else
+        printf '\n'
+    fi
     printf '}\n'
 
     [[ "$missing" -eq 0 ]]
@@ -632,12 +632,16 @@ setup_run_install() {
     setup_install_homebrew
     setup_install_xcode_tools
     setup_install_python
-    if setup_dev_dependencies_enabled; then
-        setup_install_bats
-    fi
     setup_create_virtualenv
     setup_install_pyyaml
     setup_install_click
+    if setup_dev_dependencies_enabled; then
+        if setup_is_dry_run; then
+            setup_run_base_dev_layer setup --dry-run || fatal_error "Python developer prerequisite layer failed."
+        else
+            setup_run_base_dev_layer setup || fatal_error "Python developer prerequisite layer failed."
+        fi
+    fi
     setup_run_project_artifact_setup
 
     if setup_is_dry_run; then

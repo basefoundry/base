@@ -7,12 +7,6 @@ they are merged.
 
 ## P1 — High-Value Product Capabilities
 
-- [ ] Manage GitHub CLI as a Base developer dependency.
-  - Files: `cli/bash/commands/basectl/subcommands/setup_common.sh`, setup/check tests.
-  - Goal: keep `basectl setup --dev`, `basectl check --dev`, and `basectl doctor --dev` aligned.
-  - Expected behavior: install `gh` through Homebrew during `setup --dev`, check it during `check --dev`, and keep doctor diagnostics consistent with both.
-  - Notes: `gh` supports Base development workflows such as PR creation, CI inspection, and GitHub operations.
-
 - [ ] Add Docker and Colima to the artifact registry.
   - File: `cli/python/base_setup/registry.py`
   - Expected behavior: support `type: tool`, `name: docker`, `version: latest` and `type: tool`, `name: colima`, `version: latest` through Homebrew.

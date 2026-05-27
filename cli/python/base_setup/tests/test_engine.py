@@ -102,6 +102,15 @@ class ManifestTests(unittest.TestCase):
         self.assertIsNotNone(get_artifact_definition("python-package", "pylint"))
         self.assertIsNotNone(get_artifact_definition("python-package", "pytest"))
 
+    def test_base_dev_manifest_declares_supported_tools(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
+
+        self.assertIn(("tool", "bats-core"), tools)
+        self.assertIn(("tool", "gh"), tools)
+        self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
+        self.assertIsNotNone(get_artifact_definition("tool", "gh"))
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_unknown_artifact_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

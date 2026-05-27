@@ -279,6 +279,11 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
         PyYAML|click) exit 0 ;;
     esac
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" && "${3:-}" == "doctor" ]]; then
+    printf 'ok     bats-core                   Artifact '\''bats-core'\'' is installed via Homebrew package '\''bats-core'\''.\n'
+    printf 'ok     gh                          Artifact '\''gh'\'' is installed via Homebrew package '\''gh'\''.\n'
+    exit 0
+fi
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$fake_bin/gh" "$venv_python"
@@ -295,8 +300,8 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Base doctor"* ]]
     [[ "$output" == *"ok"*"Homebrew"*"Homebrew is installed."* ]]
-    [[ "$output" == *"ok"*"BATS"*"BATS formula 'bats-core' is installed via Homebrew."* ]]
-    [[ "$output" == *"ok"*"GitHub CLI"*"GitHub CLI is installed."* ]]
+    [[ "$output" == *"ok"*"bats-core"*"Artifact 'bats-core' is installed via Homebrew package 'bats-core'."* ]]
+    [[ "$output" == *"ok"*"gh"*"Artifact 'gh' is installed via Homebrew package 'gh'."* ]]
     [[ "$output" == *"ok"*"Base virtualenv"*"Virtual environment exists at"* ]]
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
@@ -342,6 +347,12 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
         PyYAML|click) exit 0 ;;
     esac
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" && "${3:-}" == "doctor" ]]; then
+    printf 'ok     bats-core                   Artifact '\''bats-core'\'' is installed via Homebrew package '\''bats-core'\''.\n'
+    printf 'error  gh                          Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n'
+    printf '       Fix: basectl setup --dev\n'
+    exit 1
+fi
 exit 1
 EOF
     chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
@@ -356,8 +367,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" doctor --dev
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"error"*"GitHub CLI"*"GitHub CLI command 'gh' is not installed or not on PATH."* ]]
-    [[ "$output" == *"Fix: brew install gh"* ]]
+    [[ "$output" == *"error"*"gh"*"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
+    [[ "$output" == *"Fix: basectl setup --dev"* ]]
 }
 
 @test "basectl doctor reports errors with suggested fixes" {

@@ -14,7 +14,7 @@ Usage:
   basectl doctor [options]
 
 Options:
-  --dev       Include developer/test dependency checks such as BATS and gh.
+  --dev       Include manifest-declared developer prerequisite checks.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
 
@@ -81,36 +81,6 @@ base_doctor_check_python() {
     return 1
 }
 
-base_doctor_check_bats() {
-    local formula
-
-    formula="$(setup_bats_formula)"
-    if setup_bats_installed; then
-        base_doctor_print_finding "ok" "BATS" "BATS formula '$formula' is installed via Homebrew."
-        return 0
-    fi
-
-    base_doctor_print_finding "error" "BATS" \
-        "BATS formula '$formula' is not installed via Homebrew." \
-        "basectl setup --dev"
-    return 1
-}
-
-base_doctor_check_github_cli() {
-    local gh_bin
-
-    if gh_bin="$(command -v gh 2>/dev/null)"; then
-        base_doctor_print_finding "ok" "GitHub CLI" "GitHub CLI is installed."
-        log_debug "Resolved GitHub CLI binary: $gh_bin"
-        return 0
-    fi
-
-    base_doctor_print_finding "error" "GitHub CLI" \
-        "GitHub CLI command 'gh' is not installed or not on PATH." \
-        "brew install gh"
-    return 1
-}
-
 base_doctor_check_virtualenv() {
     local venv_dir
 
@@ -141,7 +111,7 @@ base_doctor_check_python_package() {
 }
 
 base_doctor_subcommand_main() {
-    local errors=0
+    local dev_errors=0 errors=0
 
     while (($#)); do
         case "$1" in
@@ -172,13 +142,14 @@ base_doctor_subcommand_main() {
     base_doctor_check_homebrew || errors=$((errors + 1))
     base_doctor_check_xcode || errors=$((errors + 1))
     base_doctor_check_python || errors=$((errors + 1))
-    if setup_dev_dependencies_enabled; then
-        base_doctor_check_bats || errors=$((errors + 1))
-        base_doctor_check_github_cli || errors=$((errors + 1))
-    fi
     base_doctor_check_virtualenv || errors=$((errors + 1))
     base_doctor_check_python_package "$(setup_pyyaml_package)" || errors=$((errors + 1))
     base_doctor_check_python_package "$(setup_click_package)" || errors=$((errors + 1))
+    if setup_dev_dependencies_enabled; then
+        setup_run_base_dev_layer doctor
+        dev_errors=$?
+        errors=$((errors + dev_errors))
+    fi
 
     printf '\n'
     if ((errors == 0)); then
