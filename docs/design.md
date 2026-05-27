@@ -313,7 +313,7 @@ project root. Base reads this manifest to know what to install and configure.
 
 File: `base_manifest.yaml`
 
-Current structure:
+Current and planned structure:
 
 ```yaml
 project:
@@ -321,20 +321,35 @@ project:
 
 brewfile: Brewfile
 
-artifacts:
-  - type: tool
-    name: terraform
-    version: latest
+# Future contract; Base delegates to mise instead of reimplementing it.
+mise: .mise.toml
 
+artifacts:
   - type: python-package
     name: requests
     version: latest
+
+# Future contract for `basectl test myproject`.
+test:
+  command: pytest tests/
 ```
 
-The Python layer interprets this declarative manifest and translates each
-artifact into concrete installation actions. Base owns the artifact registry and
-chooses the manager for each supported `(type, name)` pair. The current registry
-is `cli/python/base_setup/registry.py`.
+The Python layer interprets this declarative manifest and translates it into
+orchestration actions. The design rule is delegation-first:
+
+- Use Homebrew's own `Brewfile`/`brew bundle` flow for ordinary macOS packages.
+- Use `mise` for tool versions, language runtimes, environment variables, and
+  tasks when a project opts into it.
+- Use a project-owned `test` contract for future `basectl test <project>`
+  delegation.
+- Let Base own the project virtual environment and Base-aware package
+  reconciliation.
+- Do not run arbitrary project setup hooks until Base has a clear safety
+  contract for execution timing, dry-run behavior, interactivity, and
+  diagnostics.
+
+Base owns the artifact registry only for things it must manage directly. The
+current registry is `cli/python/base_setup/registry.py`.
 
 The optional top-level `brewfile` field delegates ordinary Homebrew dependencies
 to Homebrew's native `brew bundle` flow. The path is relative to the project root
@@ -348,8 +363,9 @@ through that project-scoped venv.
 
 Homebrew-managed `tool` artifacts currently support `version: latest`. If a
 project requests a pinned Homebrew version, setup fails clearly instead of
-silently installing a different version. Richer version conflict handling across
-projects is a later iteration, not part of the initial build.
+silently installing a different version. New ordinary Homebrew tools should
+prefer Brewfile delegation over registry growth. Richer version conflict
+handling across projects is a later iteration, not part of the initial build.
 
 Artifact install commands keep stdout attached to the terminal so long-running
 tools such as `brew` and `pip` remain live and readable while setup runs. Base's
