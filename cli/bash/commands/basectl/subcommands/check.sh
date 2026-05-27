@@ -36,6 +36,8 @@ base_check_subcommand_main() {
     local output_format="text"
     local project=""
 
+    setup_clear_run_state
+
     while (($#)); do
         case "$1" in
             -h|--help|help)

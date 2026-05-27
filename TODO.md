@@ -7,15 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Clear inherited setup state in `basectl check`.
-  - Problem: `basectl setup` calls `setup_clear_run_state`, but `basectl check`
-    does not, so inherited variables such as `DRY_RUN` or
-    `BASE_SETUP_RECREATE_VENV` can affect check behavior.
-  - Goal: make `check` deterministic and insulated from ambient setup state.
-  - Expected behavior: call `setup_clear_run_state` at the start of
-    `base_check_subcommand_main`, then preserve only flags explicitly passed to
-    `check`.
-
 - [ ] Support non-`master` default branches in `basectl update`.
   - Problem: `basectl update` currently refuses to run unless the checked-out
     branch is exactly `master`, which blocks repositories whose default branch
