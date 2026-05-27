@@ -39,10 +39,6 @@ they are merged.
     - Cover manifest validation, dry-run command planning, daemon-check
       failures, Compose command failures, and activate-time startup behavior.
 
-- [ ] Improve setup recovery messages for technically-adjacent users.
-  - Goal: keep `basectl setup` developer-oriented while making failures easier to recover from.
-  - Expected behavior: plain-English errors with concrete commands or next steps for missing Homebrew, Xcode tools, Python, venv, and Python package issues.
-
 - [ ] Design `basectl onboard`.
   - Goal: provide a guided checklist-style setup experience without making `basectl setup` itself interactive-heavy.
   - Expected behavior: explain each prerequisite, confirm before performing major steps, and call existing setup/check primitives internally.
