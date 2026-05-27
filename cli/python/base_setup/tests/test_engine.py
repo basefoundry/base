@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import importlib.util
+import json
 import os
 import tempfile
 import unittest
@@ -415,11 +416,33 @@ class ProjectCheckTests(unittest.TestCase):
         )
 
         with redirect_stdout(io.StringIO()) as stdout:
-            status = engine.doctor_manifest(default_manifest, manifest)
+            status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         self.assertEqual(status, 1)
         self.assertIn("Project doctor: demo", stdout.getvalue())
         self.assertIn("Fix: basectl setup demo", stdout.getvalue())
+
+    def test_doctor_manifest_supports_json_output(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),),
+        )
+
+        with redirect_stdout(io.StringIO()) as stdout:
+            status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
+
+        findings = json.loads(stdout.getvalue())
+        self.assertEqual(status, 1)
+        self.assertEqual(findings[0]["status"], "error")
+        self.assertEqual(findings[0]["fix"], "basectl setup demo")
 
 
 class BrewfileTests(unittest.TestCase):

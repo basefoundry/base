@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     default="setup",
     help="Action to run: setup, check, or doctor. Defaults to setup.",
 )
-@base_cli.option("--format", "output_format", default="text", help="Output format for check: text or json.")
+@base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -93,7 +93,7 @@ def run_manifest_action(
     if action == "check":
         return check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
     if action == "doctor":
-        return doctor_manifest(default_manifest, base_manifest)
+        return doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
     ctx.log.error("Unsupported base_setup action '%s'. Expected setup, check, or doctor.", action)
     return 2
 
@@ -168,8 +168,15 @@ def check_manifest(
     return 0 if all(check.ok for check in checks) else 1
 
 
-def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest) -> int:
+def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, output_format: str) -> int:
     checks = manifest_checks(default_manifest, manifest)
+    if output_format == "json":
+        print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
+        return min(sum(1 for check in checks if not check.ok), 125)
+    if output_format != "text":
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
+        return 2
+
     error_count = 0
     print(f"\nProject doctor: {manifest.project_name}\n")
     for check in checks:
@@ -320,6 +327,15 @@ def check_to_json(check: ArtifactCheck) -> dict[str, str | bool]:
     return {
         "name": check.name,
         "ok": check.ok,
+        "message": check.message,
+        "fix": check.fix,
+    }
+
+
+def check_to_doctor_json(check: ArtifactCheck) -> dict[str, str]:
+    return {
+        "status": "ok" if check.ok else "error",
+        "name": check.name,
         "message": check.message,
         "fix": check.fix,
     }

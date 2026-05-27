@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.argument("action", required=True)
 @base_cli.option("--dry-run", is_flag=True, help="Log planned setup changes without making them.")
-@base_cli.option("--format", "output_format", default="text", help="Output format for check: text or json.")
+@base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
 def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str) -> int:
     try:
         manifest = read_dev_manifest(ctx)
@@ -43,7 +43,7 @@ def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str) -
     if action == "check":
         return check_dev_artifacts(ctx, manifest.artifacts, definitions, output_format=output_format)
     if action == "doctor":
-        return doctor_dev_artifacts(manifest.artifacts, definitions)
+        return doctor_dev_artifacts(manifest.artifacts, definitions, output_format=output_format)
 
     ctx.log.error("Unsupported base_dev action '%s'. Expected setup, check, or doctor.", action)
     return 2
@@ -106,10 +106,18 @@ def check_dev_artifacts(
 def doctor_dev_artifacts(
     artifacts: tuple[ArtifactRequest, ...],
     definitions: tuple[ArtifactDefinition, ...],
+    output_format: str,
 ) -> int:
     checks = tuple(
         check_homebrew_artifact(artifact, definition) for artifact, definition in zip(artifacts, definitions)
     )
+    if output_format == "json":
+        print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
+        return min(sum(1 for check in checks if not check.ok), 125)
+    if output_format != "text":
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
+        return 2
+
     error_count = 0
     for check in checks:
         if check.ok:
@@ -158,6 +166,15 @@ def check_to_json(check: DevCheck) -> dict[str, str | bool]:
     return {
         "name": check.name,
         "ok": check.ok,
+        "message": check.message,
+        "fix": check.fix,
+    }
+
+
+def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
+    return {
+        "status": "ok" if check.ok else "error",
+        "name": check.name,
         "message": check.message,
         "fix": check.fix,
     }

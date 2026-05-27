@@ -7,15 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Add JSON output to `basectl doctor`.
-  - Problem: `basectl check` supports `--format text|json`, but
-    `basectl doctor` is text-only even though project artifact checks already
-    have structured data internally.
-  - Goal: make doctor usable in automation, CI health checks, and dashboards.
-  - Expected behavior: support `basectl doctor --format json` and
-    `basectl doctor <project> --format json` with stable `ok`, `warn`, and
-    `error` finding objects.
-
 - [ ] Add warning severity to doctor findings.
   - Problem: doctor findings are currently effectively binary `ok` or `error`.
   - Goal: distinguish optional or non-blocking recommendations from setup
