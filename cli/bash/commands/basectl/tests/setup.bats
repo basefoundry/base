@@ -420,6 +420,17 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]]; then
+    project="${4:-}"
+    project_root="${BASE_SETUP_TEST_WORKSPACE:?}/$project"
+    manifest_path="$project_root/base_manifest.yaml"
+    if [[ -f "$manifest_path" ]]; then
+        printf '%s\t%s\t%s\n' "$project" "$project_root" "$manifest_path"
+        exit 0
+    fi
+    printf 'Project not found: %s\n' "$project" >&2
+    exit 1
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
@@ -601,6 +612,33 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" demo)" ]
     [ ! -e "$demo_venv_dir/bin/python" ]
+}
+
+@test "project setup resolves named project manifests from the workspace" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$workspace/brew"
+    printf 'project:\n  name: brew\nartifacts: []\n' > "$workspace/brew/base_manifest.yaml"
+    create_project_setup_venv_stub "$base_venv_dir"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_SETUP_PROJECT_NAME=brew \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_WORKSPACE="$workspace" \
+        BASE_SETUP_VENV_DIR="$base_venv_dir" \
+        bash -c '
+            source "$1/base_init.sh"
+            source "$1/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            setup_run_project_artifact_setup
+        ' _ "$BASE_REPO_ROOT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Resolved project 'brew' at '$workspace/brew'."* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "brew" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/brew/base_manifest.yaml" brew)" ]
 }
 
 @test "basectl setup propagates Python project setup failure" {
