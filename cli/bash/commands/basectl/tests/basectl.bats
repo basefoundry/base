@@ -25,6 +25,7 @@ run_basectl() {
     [[ "$output" == *"check [options]"* ]]
     [[ "$output" == *"clean --older-than <age> [options]"* ]]
     [[ "$output" == *"doctor [options]"* ]]
+    [[ "$output" == *"update [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
     [[ "$output" == *"Invoking \`basectl\` with no command is equivalent to \`basectl activate base\`"* ]]
     [[ "$output" == *"--version"* ]]
@@ -39,7 +40,6 @@ run_basectl() {
     run_basectl --help
 
     [ "$status" -eq 0 ]
-    ! grep -Fqx '  update' <<<"$output"
     ! grep -Fqx '  run <command> [args...]' <<<"$output"
     ! grep -Fqx '  status' <<<"$output"
     ! grep -Fqx '  set-team TEAM' <<<"$output"
@@ -52,6 +52,50 @@ run_basectl() {
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
+}
+
+@test "basectl update prints help" {
+    run_basectl update --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl update [options]"* ]]
+    [[ "$output" == *"Update the Base repository from Git"* ]]
+}
+
+@test "basectl update dry-run reports planned update and setup" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 0; }
+            base_update_subcommand_main --dry-run
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would update Base repository at '$BASE_REPO_ROOT'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after updating."* ]]
+}
+
+@test "basectl update refuses dirty worktrees before pulling" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_current_branch() { printf "%s\n" master; }
+            base_update_worktree_clean() { return 1; }
+            base_update_run_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base repository has local changes."* ]]
+    [[ "$output" != *"setup should not run"* ]]
 }
 
 @test "basectl prints help when no command is given in a non-interactive shell" {
@@ -472,7 +516,7 @@ EOF
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status update run set-team set-shared-teams man embrace install shell; do
+    for legacy_command in status run set-team set-shared-teams man embrace install shell; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]

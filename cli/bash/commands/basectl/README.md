@@ -29,6 +29,7 @@ that delegate to `basectl`.
 - `clean`
 - `doctor`
 - `update-profile`
+- `update`
 - `projects list`
 - `version`
 - `help`
@@ -48,6 +49,7 @@ that delegate to `basectl`.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
 - `basectl doctor` diagnoses the local Base environment and prints suggested fixes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
+- `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.

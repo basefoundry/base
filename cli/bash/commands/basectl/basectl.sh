@@ -21,6 +21,8 @@ Commands:
     Diagnose the local Base CLI environment and suggest fixes.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
+  update [options]
+    Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
   version
@@ -162,6 +164,11 @@ basectl_do_update_profile() {
     base_update_profile_subcommand_main "$@"
 }
 
+basectl_do_update() {
+    basectl_source_subcommand_module update || return 1
+    base_update_subcommand_main "$@"
+}
+
 basectl_do_projects() {
     basectl_source_subcommand_module projects || return 1
     base_projects_subcommand_main "$@"
@@ -253,6 +260,7 @@ basectl_main() {
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;
+        update)           basectl_do_update "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;
         "")

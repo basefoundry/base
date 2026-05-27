@@ -17,16 +17,6 @@ they are merged.
   - Expected behavior: allow a project manifest to reference a `Brewfile` and have setup run `brew bundle --file=<path>`.
   - Notes: this should complement the registry, not replace Base-specific known artifacts.
 
-- [ ] Add shell completions for `basectl`.
-  - Goal: improve daily ergonomics for commands and project names.
-  - Expected behavior: complete subcommands and, once project discovery exists, complete project names for commands such as `activate`.
-  - Notes: wire completion setup through `basectl update-profile` if practical.
-
-- [ ] Implement `basectl update`.
-  - Goal: provide a simple self-update path until Base has a Homebrew formula.
-  - Expected behavior: update the Base repo safely, then run `basectl setup`.
-  - Notes: build on the existing Git update helpers and keep dirty-worktree handling explicit.
-
 ## P2 — Adoption And Expansion
 
 - [ ] Improve setup recovery messages for technically-adjacent users.
