@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_doctor_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl doctor [options]
+  basectl doctor [project] [options]
 
 Options:
   --dev       Include manifest-declared developer prerequisite checks.
@@ -19,7 +19,7 @@ Options:
   -h, --help  Show this help text.
 
 Purpose:
-  Diagnose the local Base CLI environment and suggest fixes.
+  Diagnose the local Base CLI environment and, when provided, project artifacts.
 EOF
 }
 
@@ -111,7 +111,7 @@ base_doctor_check_python_package() {
 }
 
 base_doctor_subcommand_main() {
-    local dev_errors=0 errors=0
+    local dev_errors=0 errors=0 project=""
 
     while (($#)); do
         case "$1" in
@@ -126,18 +126,32 @@ base_doctor_subcommand_main() {
                 setup_enable_debug_logging
                 ;;
             *)
-                print_error "Unknown option '$1'."
-                base_doctor_subcommand_usage >&2
-                return 2
+                if [[ "$1" == -* ]]; then
+                    print_error "Unknown option '$1'."
+                    base_doctor_subcommand_usage >&2
+                    return 2
+                fi
+                if [[ -n "$project" ]]; then
+                    print_error "The 'doctor' command accepts at most one project name."
+                    base_doctor_subcommand_usage >&2
+                    return 2
+                fi
+                project="$1"
                 ;;
         esac
         shift
     done
 
+    BASE_SETUP_PROJECT_NAME="$project"
+    export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl doctor'."
     setup_require_macos
 
-    printf 'Base doctor\n\n'
+    if [[ -n "$project" ]]; then
+        printf "Base doctor for project '%s'\n\n" "$project"
+    else
+        printf 'Base doctor\n\n'
+    fi
 
     base_doctor_check_homebrew || errors=$((errors + 1))
     base_doctor_check_xcode || errors=$((errors + 1))
@@ -150,13 +164,25 @@ base_doctor_subcommand_main() {
         dev_errors=$?
         errors=$((errors + dev_errors))
     fi
+    if [[ -n "$project" ]]; then
+        setup_run_project_artifact_doctor
+        errors=$((errors + $?))
+    fi
 
     printf '\n'
     if ((errors == 0)); then
-        printf 'Base doctor found no blocking issues.\n'
+        if [[ -n "$project" ]]; then
+            printf "Base doctor found no blocking issues for project '%s'.\n" "$project"
+        else
+            printf 'Base doctor found no blocking issues.\n'
+        fi
         return 0
     fi
 
-    printf 'Base doctor found %s blocking issue(s).\n' "$errors"
+    if [[ -n "$project" ]]; then
+        printf "Base doctor found %s blocking issue(s) for project '%s'.\n" "$errors" "$project"
+    else
+        printf 'Base doctor found %s blocking issue(s).\n' "$errors"
+    fi
     return 1
 }
