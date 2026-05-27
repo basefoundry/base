@@ -1102,6 +1102,32 @@ EOF
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
+@test "basectl check ignores inherited setup dry-run and recreate state" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command \
+        DRY_RUN=true \
+        BASE_SETUP_RECREATE_VENV=true \
+        check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+    [ "$(grep -c '^PyYAML$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
+    [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
+}
+
 @test "basectl check fails when a required Base Python package is missing" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
