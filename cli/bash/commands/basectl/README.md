@@ -27,6 +27,7 @@ that delegate to `basectl`.
 - `setup`
 - `check`
 - `clean`
+- `doctor`
 - `update-profile`
 - `projects list`
 - `version`
@@ -42,6 +43,7 @@ that delegate to `basectl`.
   project argument validates `project.name`.
 - `basectl check` verifies the same local requirements without making changes.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
+- `basectl doctor` diagnoses the local Base environment and prints suggested fixes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
