@@ -28,10 +28,15 @@ def configure_logger(
     logger.addHandler(user_handler)
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    secure_log_file_permissions(log_file)
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(BaseCliFormatter())
     logger.addHandler(file_handler)
     return logger
+
+
+def secure_log_file_permissions(log_file: Path) -> None:
+    log_file.chmod(0o600)
 
 
 class BaseCliFormatter(logging.Formatter):
