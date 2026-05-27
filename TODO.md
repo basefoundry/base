@@ -7,16 +7,9 @@ they are merged.
 
 ## P0 — Core Workspace Loop
 
-- [ ] Split runtime artifacts out of `~/.base.d`.
-  - Files: `lib/python/base_cli/paths.py`, `lib/python/base_cli/app.py`, tests.
-  - Problem: `~/.base.d` currently mixes durable config and project venvs with ephemeral CLI logs, temp files, and caches.
-  - Expected behavior: keep durable state under `~/.base.d`, but move CLI runtime artifacts under a cache root such as `${BASE_CACHE_DIR:-~/.cache/base}`.
-  - Notes: macOS `~/Library/Caches/base` is a later option; start with an overrideable default that is simple and testable.
-
 - [ ] Add log cleanup with `basectl clean`.
   - Goal: prevent Base logs and retained temp/cache files from growing indefinitely.
   - Expected behavior: support at least `basectl clean --older-than 30d`, with dry-run output and clear scope.
-  - Dependency: easiest after the runtime artifact cache root is split from `~/.base.d`.
 
 ## P1 — High-Value Product Capabilities
 

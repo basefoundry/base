@@ -73,7 +73,7 @@ ctx.run_id         # str
 ctx.base_home      # Path | None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
-ctx.state_dir      # ~/.base.d/cli/<cli-name>
+ctx.state_dir      # ${BASE_CACHE_DIR:-~/.cache/base}/cli/<cli-name>
 ctx.log_dir        # state_dir/logs
 ctx.cache_dir      # state_dir/cache
 ctx.temp_dir       # state_dir/tmp/<run-id>

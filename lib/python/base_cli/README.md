@@ -148,7 +148,7 @@ Important fields include:
 - `ctx.base_home`: resolved `BASE_HOME`, when available.
 - `ctx.project_root`: directory containing the nearest `base_manifest.yaml`.
 - `ctx.manifest_path`: nearest discovered Base manifest.
-- `ctx.state_dir`: per-CLI state directory under `~/.base.d/cli/<name>`.
+- `ctx.state_dir`: per-CLI runtime directory under the Base cache root.
 - `ctx.log_dir`: persistent log directory.
 - `ctx.cache_dir`: persistent cache directory.
 - `ctx.temp_dir`: per-run temp directory.
@@ -239,17 +239,21 @@ actionable message.
 
 ## Runtime Directories
 
-Current runtime state is rooted at:
+Current runtime state is rooted at `${BASE_CACHE_DIR:-~/.cache/base}`:
 
 ```text
-~/.base.d/cli/<cli-name>/
+~/.cache/base/cli/<cli-name>/
   logs/
   cache/
   tmp/<run-id>/
 ```
 
-`logs/` and `cache/` are persistent. `tmp/<run-id>/` is deleted automatically
-after the command returns unless `--keep-temp` is set.
+Use `BASE_CACHE_DIR` to override the root for tests, CI, or unusual local
+environments.
+
+`logs/` and `cache/` are runtime artifacts that can be pruned by Base cleanup
+tools. `tmp/<run-id>/` is deleted automatically after the command returns unless
+`--keep-temp` is set.
 
 Use `ctx.on_cleanup()` for cleanup work that should happen even when helper code
 does not own the main command wrapper:
