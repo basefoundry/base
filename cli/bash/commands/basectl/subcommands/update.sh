@@ -22,7 +22,7 @@ Purpose:
   Update the Base repository from Git, then run basectl setup.
 
 Notes:
-  - The repository must be on master.
+  - The repository must be on its default branch.
   - The worktree must be clean, including untracked files.
 EOF
 }
@@ -34,6 +34,31 @@ base_update_source_git_library() {
 base_update_current_branch() {
     local repo="$1"
     git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+base_update_default_branch() {
+    local repo="$1"
+    local default_branch
+
+    if default_branch="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+        default_branch="${default_branch#origin/}"
+        if [[ -n "$default_branch" ]]; then
+            printf '%s\n' "$default_branch"
+            return 0
+        fi
+    fi
+
+    if git -C "$repo" show-ref --verify --quiet refs/heads/main; then
+        printf '%s\n' main
+        return 0
+    fi
+
+    if git -C "$repo" show-ref --verify --quiet refs/heads/master; then
+        printf '%s\n' master
+        return 0
+    fi
+
+    return 1
 }
 
 base_update_worktree_clean() {
@@ -54,6 +79,7 @@ base_update_subcommand_main() {
     local after_revision
     local before_revision
     local branch
+    local update_branch
     local dry_run=0
 
     while (($#)); do
@@ -83,8 +109,12 @@ base_update_subcommand_main() {
         log_error "Base home '$BASE_HOME' is not a Git repository."
         return 1
     }
-    if [[ "$branch" != "master" ]]; then
-        log_error "Base update only runs on branch 'master'; current branch is '$branch'."
+    update_branch="$(base_update_default_branch "$BASE_HOME")" || {
+        log_error "Unable to determine the Base repository default branch."
+        return 1
+    }
+    if [[ "$branch" != "$update_branch" ]]; then
+        log_error "Base update only runs on default branch '$update_branch'; current branch is '$branch'."
         return 1
     fi
 
@@ -106,16 +136,16 @@ base_update_subcommand_main() {
     }
 
     log_info "Updating Base repository at '$BASE_HOME'."
-    git_update_repo "$BASE_HOME" "" master || return 1
+    git_update_repo "$BASE_HOME" "" "$update_branch" || return 1
     after_revision="$(base_update_head_revision "$BASE_HOME")" || {
         log_error "Unable to read updated Base repository revision."
         return 1
     }
 
     if [[ "$before_revision" == "$after_revision" ]]; then
-        log_info "Base repository is already up to date on 'master' at '$after_revision'."
+        log_info "Base repository is already up to date on '$update_branch' at '$after_revision'."
     else
-        log_info "Base repository updated from '$before_revision' to '$after_revision' on 'master'."
+        log_info "Base repository updated from '$before_revision' to '$after_revision' on '$update_branch'."
     fi
 
     log_info "Running basectl setup after update."

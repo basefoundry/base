@@ -9,7 +9,7 @@ Source `lib/bash/std/lib_std.sh` before this library so logging and shared error
 ## Public API
 
 - `git_update_repo`
-  Update a repository on branch `master`, optionally allowing tracked changes in one specific path.
+  Update a repository on its detected default branch, optionally allowing tracked changes in one specific path.
 - `git_get_current_branch`
   Return the current branch name through a caller-provided variable, or `detached head`.
 - `check_script_up_to_date`
@@ -33,7 +33,7 @@ log_info "Current branch: $branch"
 
 ## Behavior Notes
 
-- `git_update_repo` currently only attempts updates when the checked-out branch is `master`.
+- `git_update_repo` only attempts updates when the checked-out branch is the detected default branch, or an explicit expected branch passed by the caller.
 - `check_script_up_to_date` treats missing git state, untracked scripts, or missing upstreams as skip conditions rather than hard failures.
 
 ## Tests
