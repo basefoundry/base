@@ -17,10 +17,33 @@
 _base_setup_common_sourced=1
 readonly _base_setup_common_sourced
 
+_BASE_SETUP_VENV_DIR_CACHE=""
+_BASE_SETUP_PYTHONPATH_CACHE=""
+
+setup_refresh_cached_paths() {
+    local base_pythonpath old_pythonpath
+
+    _BASE_SETUP_VENV_DIR_CACHE="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}"
+
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        base_pythonpath="$base_pythonpath:$old_pythonpath"
+    fi
+    _BASE_SETUP_PYTHONPATH_CACHE="$base_pythonpath"
+}
+
+setup_ensure_cached_paths() {
+    if [[ -z "${_BASE_SETUP_VENV_DIR_CACHE:-}" || -z "${_BASE_SETUP_PYTHONPATH_CACHE:-}" ]]; then
+        setup_refresh_cached_paths
+    fi
+}
+
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
     unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    setup_refresh_cached_paths
 }
 
 setup_enable_dry_run() {
@@ -76,19 +99,22 @@ setup_notifications_forced() {
 setup_virtualenv_exists() {
     local venv_dir
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     [[ -f "$venv_dir/bin/activate" || -f "$venv_dir/pyvenv.cfg" ]]
 }
 
 setup_venv_dir() {
-    printf '%s\n' "${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}"
+    setup_ensure_cached_paths
+    printf '%s\n' "$_BASE_SETUP_VENV_DIR_CACHE"
 }
 
 setup_backup_existing_venv_path() {
     local backup_path description timestamp venv_dir
 
     description="${1:-existing path}"
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     [[ -e "$venv_dir" ]] || return 0
 
     timestamp="$(date +%Y%m%dT%H%M%S)"
@@ -295,7 +321,7 @@ setup_xcode_tools_installed() {
     tools_dir="$(setup_xcode_tools_dir)"
     xcode-select -p >/dev/null 2>&1 &&
         [[ -d "$tools_dir" ]] &&
-        xcrun -f clang >/dev/null 2>&1
+        [[ -f "$tools_dir/usr/bin/clang" ]]
 }
 
 setup_install_xcode_tools() {
@@ -373,6 +399,17 @@ setup_find_python_bin() {
     fi
 
     formula="$(setup_python_formula)"
+    candidates+=("/opt/homebrew/opt/$formula/bin/python3")
+    candidates+=("/usr/local/opt/$formula/bin/python3")
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    candidates=()
     if command -v brew >/dev/null 2>&1; then
         prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
         if [[ -n "$prefix" ]]; then
@@ -402,7 +439,8 @@ setup_find_python_bin() {
 setup_create_virtualenv() {
     local venv_dir python_bin
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if setup_virtualenv_exists && ! setup_recreate_venv_enabled; then
         log_info "Virtual environment already exists at '$venv_dir'."
@@ -443,7 +481,8 @@ setup_base_python_package_installed() {
         return 1
     fi
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
     "$python_bin" -m pip show "$package" >/dev/null 2>&1
 }
@@ -452,7 +491,8 @@ setup_install_base_python_package() {
     local package="$1"
     local venv_dir python_bin
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if setup_base_python_package_installed "$package"; then
         log_info "Python package '$package' is already installed in the Base virtual environment."
@@ -490,14 +530,8 @@ setup_base_python_package_check_message() {
 }
 
 setup_pythonpath() {
-    local base_pythonpath old_pythonpath
-
-    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
-    old_pythonpath="${PYTHONPATH-}"
-    if [[ -n "$old_pythonpath" ]]; then
-        base_pythonpath="$base_pythonpath:$old_pythonpath"
-    fi
-    printf '%s\n' "$base_pythonpath"
+    setup_ensure_cached_paths
+    printf '%s\n' "$_BASE_SETUP_PYTHONPATH_CACHE"
 }
 
 setup_resolve_project_manifest() {
@@ -515,8 +549,9 @@ setup_resolve_project_manifest() {
         return 0
     fi
 
+    setup_ensure_cached_paths
     resolve_output="$(
-        env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$(setup_pythonpath)" \
+        env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
             "$python_bin" -m base_projects resolve "$project"
     )" || return 1
 
@@ -542,7 +577,8 @@ setup_run_project_artifact_layer() {
     fi
 
     project="${BASE_SETUP_PROJECT_NAME:-base}"
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
     resolve_output="$(setup_resolve_project_manifest "$project" "$python_bin")" || {
         log_error "Unable to resolve Base project '$project'."
@@ -572,7 +608,7 @@ setup_run_project_artifact_layer() {
         log_info "Running Python project $action layer."
     fi
 
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$(setup_pythonpath)" "$python_bin" -m base_setup "${args[@]}"
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
     if ((exit_code)) && [[ "$action" == setup ]]; then
@@ -616,7 +652,8 @@ setup_run_base_dev_layer() {
         return 0
     fi
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     if ! setup_base_venv_python_bin "$venv_dir" >/dev/null 2>&1; then
         log_warn "Python developer prerequisite layer cannot run because Base virtual environment Python was not found at '$venv_dir/bin/python'."
         log_warn "$(setup_recovery_venv)"
@@ -633,7 +670,8 @@ setup_run_check() {
     setup_require_macos
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if brew_bin="$(setup_find_brew_bin)"; then
         setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
@@ -802,7 +840,8 @@ setup_run_check_json() {
     setup_require_macos
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if brew_bin="$(setup_find_brew_bin)"; then
         if setup_refresh_brew_path; then

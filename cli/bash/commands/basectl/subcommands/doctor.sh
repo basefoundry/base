@@ -100,7 +100,8 @@ base_doctor_check_python() {
 base_doctor_check_virtualenv() {
     local venv_dir
 
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     if setup_virtualenv_exists; then
         base_doctor_print_finding "ok" "Base virtualenv" "Virtual environment exists at '$venv_dir'."
         return 0
@@ -138,7 +139,8 @@ base_doctor_run_json() {
 
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
-    venv_dir="$(setup_venv_dir)"
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if brew_bin="$(setup_find_brew_bin)"; then
         if setup_refresh_brew_path; then
