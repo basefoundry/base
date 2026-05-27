@@ -36,7 +36,8 @@ Setup does:
 
 Notes:
   - This command is intentionally idempotent.
-  - The optional project argument validates project.name in base_manifest.yaml.
+  - The optional project argument resolves a Base project from the workspace
+    unless --manifest is provided explicitly.
   - Use `basectl check` to verify the same requirements without making changes.
 EOF
 }

@@ -440,8 +440,45 @@ setup_base_python_package_check_message() {
     fi
 }
 
+setup_pythonpath() {
+    local base_pythonpath old_pythonpath
+
+    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
+    old_pythonpath="${PYTHONPATH-}"
+    if [[ -n "$old_pythonpath" ]]; then
+        base_pythonpath="$base_pythonpath:$old_pythonpath"
+    fi
+    printf '%s\n' "$base_pythonpath"
+}
+
+setup_resolve_project_manifest() {
+    local project="$1"
+    local python_bin="$2"
+    local resolve_output resolved_manifest resolved_name resolved_root
+
+    if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
+        printf '%s\n' "$BASE_SETUP_MANIFEST"
+        return 0
+    fi
+
+    if [[ "$project" == base ]]; then
+        printf '%s\n' "$BASE_HOME/base_manifest.yaml"
+        return 0
+    fi
+
+    resolve_output="$(
+        env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$(setup_pythonpath)" \
+            "$python_bin" -m base_projects resolve "$project"
+    )" || return 1
+
+    IFS=$'\t' read -r resolved_name resolved_root resolved_manifest <<<"$resolve_output"
+    [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || return 1
+
+    printf '%s\t%s\n' "$resolved_root" "$resolved_manifest"
+}
+
 setup_run_project_artifact_setup() {
-    local base_pythonpath exit_code old_pythonpath project python_bin venv_dir
+    local exit_code manifest_path project python_bin resolved_root resolve_output venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -452,29 +489,36 @@ setup_run_project_artifact_setup() {
     project="${BASE_SETUP_PROJECT_NAME:-base}"
     venv_dir="$(setup_venv_dir)"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
+    resolve_output="$(setup_resolve_project_manifest "$project" "$python_bin")" || {
+        log_error "Unable to resolve Base project '$project'."
+        log_error "Run 'basectl projects list' to see projects Base can discover."
+        return 1
+    }
+    if [[ "$resolve_output" == *$'\t'* ]]; then
+        IFS=$'\t' read -r resolved_root manifest_path <<<"$resolve_output"
+        log_info "Resolved project '$project' at '$resolved_root'."
+    else
+        manifest_path="$resolve_output"
+    fi
 
     if setup_is_dry_run; then
         args+=(--dry-run)
     fi
-    if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
-        args+=(--manifest "$BASE_SETUP_MANIFEST")
-    fi
+    args+=(--manifest "$manifest_path")
     args+=("$project")
 
     log_info "Running Python project setup layer."
-    base_pythonpath="$BASE_HOME/lib/python:$BASE_HOME/cli/python"
-    old_pythonpath="${PYTHONPATH-}"
-    if [[ -n "$old_pythonpath" ]]; then
-        base_pythonpath="$base_pythonpath:$old_pythonpath"
-    fi
 
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$base_pythonpath" "$python_bin" -m base_setup "${args[@]}"
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$(setup_pythonpath)" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
     if ((exit_code)); then
         log_error "$(setup_recovery_project_layer)"
     fi
-    exit_if_error "$exit_code" "Python project setup layer failed."
+    if ((exit_code)); then
+        log_error "Python project setup layer failed."
+        return "$exit_code"
+    fi
 }
 
 setup_run_base_dev_layer() {
@@ -720,7 +764,7 @@ setup_run_install() {
             setup_run_base_dev_layer setup || fatal_error "Python developer prerequisite layer failed."
         fi
     fi
-    setup_run_project_artifact_setup
+    setup_run_project_artifact_setup || return $?
 
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Base CLI setup check is complete."
