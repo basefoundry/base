@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import importlib.util
+import json
 import os
 import tempfile
 import unittest
@@ -57,11 +58,25 @@ class DevManifestTests(unittest.TestCase):
         with mock.patch("base_dev.engine.run_check", return_value=False):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                status = engine.doctor_dev_artifacts(manifest.artifacts, definitions)
+                status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
 
         self.assertEqual(status, 2)
         self.assertIn("error", stdout.getvalue())
         self.assertIn("Fix: basectl setup --dev", stdout.getvalue())
+
+    def test_doctor_supports_json_output(self) -> None:
+        manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        definitions = engine.resolve_artifact_definitions(manifest.artifacts)
+
+        with mock.patch("base_dev.engine.run_check", return_value=False):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="json")
+
+        findings = json.loads(stdout.getvalue())
+        self.assertEqual(status, 2)
+        self.assertEqual(findings[0]["status"], "error")
+        self.assertEqual(findings[0]["fix"], "basectl setup --dev")
 
 
 if __name__ == "__main__":

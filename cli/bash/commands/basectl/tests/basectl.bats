@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 load ../../../../../lib/bash/tests/test_helper.sh
+bats_require_minimum_version 1.5.0
 
 setup() {
     setup_test_tmpdir
@@ -509,6 +510,23 @@ EOF
     [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
 }
 
+@test "basectl doctor --format json reports structured findings" {
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"findings":'* ]]
+    [[ "$output" == *'"status":"error","name":"Homebrew","message":"Homebrew is not installed.","fix":"basectl setup"'* ]]
+    [[ "$output" == *'"status":"error","name":"Base virtualenv"'* ]]
+    [[ "$output" != *"Base doctor"* ]]
+    [ "${stderr:-}" = "" ]
+}
+
 @test "basectl doctor project includes project artifact findings" {
     local fake_bin="$TEST_TMPDIR/bin"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
@@ -580,6 +598,81 @@ EOF
     [[ "$output" == *"Running Python project doctor layer."* ]]
     [[ "$output" == *"ok"*"demo-artifact"*"Project artifact check passed."* ]]
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
+}
+
+@test "basectl doctor project --format json includes project findings" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$workspace/demo"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    printf '[{"status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]\n'
+    exit 0
+fi
+printf 'unexpected doctor project json python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor demo --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"ok": true'* ]]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"project_findings":'* ]]
+    [[ "$output" == *'"status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""'* ]]
+    [[ "$output" != *"Running Python project doctor layer."* ]]
+    [ "${stderr:-}" = "" ]
 }
 
 @test "basectl activate resolves a project and execs a project subshell" {

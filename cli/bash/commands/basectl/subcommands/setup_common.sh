@@ -547,7 +547,7 @@ setup_run_project_artifact_layer() {
     }
     if [[ "$resolve_output" == *$'\t'* ]]; then
         IFS=$'\t' read -r resolved_root manifest_path <<<"$resolve_output"
-        if [[ "$action" != check || "$output_format" != json ]]; then
+        if [[ "$output_format" != json ]]; then
             log_info "Resolved project '$project' at '$resolved_root'."
         fi
     else
@@ -559,12 +559,12 @@ setup_run_project_artifact_layer() {
     fi
     args+=(--manifest "$manifest_path")
     args+=(--action "$action")
-    if [[ "$action" == check ]]; then
+    if [[ "$action" == check || "$action" == doctor ]]; then
         args+=(--format "$output_format")
     fi
     args+=("$project")
 
-    if [[ "$action" != check || "$output_format" != json ]]; then
+    if [[ "$output_format" != json ]]; then
         log_info "Running Python project $action layer."
     fi
 
@@ -595,6 +595,10 @@ setup_run_project_artifact_check_json() {
 
 setup_run_project_artifact_doctor() {
     setup_run_project_artifact_layer doctor text
+}
+
+setup_run_project_artifact_doctor_json() {
+    setup_run_project_artifact_layer doctor json
 }
 
 setup_run_base_dev_layer() {
