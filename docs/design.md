@@ -75,8 +75,8 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl check`
 - `basectl update-profile`
 - `basectl projects list`
-- `basectl shell`
-- future commands such as `basectl test` and `basectl activate`
+- `basectl activate`
+- future commands such as `basectl test`
 
 Shebang-based Bash scripts can also use:
 
@@ -156,7 +156,9 @@ availability.
 
 ### Layer 2 — Base Runtime Environment
 
-Applied when the user invokes `basectl`, `basectl shell`, or `basectl /path/to/script.sh`.
+Applied when the user invokes `basectl`, `basectl activate <project>`, or
+`basectl /path/to/script.sh`. Invoking `basectl` with no arguments in a terminal
+is equivalent to `basectl activate base`.
 
 Contains:
 - exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`, and `BASE_BASH_LIB_DIR`
@@ -170,8 +172,7 @@ This layer is established by `base_init.sh`, which is sourced only through the
 
 ### Layer 3 — Project-Specific Environment
 
-Applied inside the project subshell when a future `basectl activate <project>` flow
-is run.
+Applied inside the project subshell when `basectl activate <project>` is run.
 
 Contains:
 - Project-specific PATH additions

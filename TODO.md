@@ -7,11 +7,6 @@ they are merged.
 
 ## P0 — Core Workspace Loop
 
-- [ ] Implement `basectl activate <project>`.
-  - Goal: make Base a daily workspace tool, not only a setup tool.
-  - Expected behavior: discover the project, set `BASE_PROJECT` and project-root environment, activate `~/.base.d/<project>/.venv`, layer project shell behavior, and spawn a subshell that cleans up when it exits.
-  - Notes: the activation model is already described in `docs/design.md`; implementation should follow that design before expanding scope.
-
 - [ ] Split runtime artifacts out of `~/.base.d`.
   - Files: `lib/python/base_cli/paths.py`, `lib/python/base_cli/app.py`, tests.
   - Problem: `~/.base.d` currently mixes durable config and project venvs with ephemeral CLI logs, temp files, and caches.

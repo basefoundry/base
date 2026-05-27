@@ -23,6 +23,7 @@ that delegate to `basectl`.
 
 ## Current subcommands
 
+- `activate`
 - `setup`
 - `check`
 - `update-profile`
@@ -34,6 +35,8 @@ that delegate to `basectl`.
 ## Notes
 
 - `basectl setup` is the default local bootstrap path.
+- `basectl activate <project>` starts a project-specific runtime subshell with
+  the project virtual environment active.
 - `basectl setup [project]` runs the Bash bootstrap layer first, then invokes the
   Python project setup layer for `base_manifest.yaml` artifacts. The optional
   project argument validates `project.name`.

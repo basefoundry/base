@@ -68,6 +68,31 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
 
+    def test_projects_resolve_prints_project_details(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["resolve", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+
+    def test_projects_resolve_reports_missing_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            status, _stdout, stderr = run_engine(["resolve", "missing"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("Project 'missing' was not found", stderr)
+
     def test_projects_list_reports_invalid_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)

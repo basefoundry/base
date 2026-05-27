@@ -38,7 +38,8 @@ The Base home check validates the expected Base files instead of checking for a
 When `basectl` starts, it uses this dispatch order:
 
 1. If no arguments are provided and stdin/stdout are attached to a terminal,
-   start a Base-enabled interactive Bash shell.
+   behave like `basectl activate base` and start a Base-enabled interactive Bash
+   shell with Base's project virtual environment activated.
 2. If the first argument is path-like or names an existing file, treat it as a
    Bash script path and run that script inside the Base runtime.
 3. If the first argument matches a Base command implementation by convention,
@@ -172,8 +173,10 @@ library cannot be found, so callers do not need to duplicate that check.
 
 ## Runtime Shell
 
-Running `basectl` with no arguments in a terminal, or running `basectl shell`,
-starts an interactive Bash shell with the Base runtime loaded.
+Running `basectl activate <project>` starts an interactive Bash shell with the
+Base runtime loaded and the project virtual environment activated. Running
+`basectl` with no arguments in a terminal is equivalent to
+`basectl activate base`.
 
 That shell uses Base's runtime rcfile:
 
