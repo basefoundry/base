@@ -7,14 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Support non-`master` default branches in `basectl update`.
-  - Problem: `basectl update` currently refuses to run unless the checked-out
-    branch is exactly `master`, which blocks repositories whose default branch
-    is `main` or another remote default.
-  - Goal: make self-update work with modern GitHub default branch conventions.
-  - Expected behavior: accept both `master` and `main`, or discover the remote
-    default branch from `origin/HEAD` and use that consistently.
-
 - [ ] Make Bash JSON escaping strict for all control characters.
   - Problem: `setup_json_escape` handles `"`, `\`, newline, carriage return, and
     tab, but not the rest of U+0000 through U+001F.
