@@ -611,9 +611,10 @@ EOF
 }
 
 @test "Base runtime shell activates project virtual environment" {
+    local project_root="$TEST_TMPDIR/demo"
     local venv_dir="$TEST_TMPDIR/demo-venv"
 
-    mkdir -p "$venv_dir/bin"
+    mkdir -p "$project_root/bin" "$venv_dir/bin"
     cat > "$venv_dir/bin/activate" <<'EOF'
 VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
 PATH="$VIRTUAL_ENV/bin:$PATH"
@@ -624,7 +625,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_PROJECT=demo \
-        BASE_PROJECT_ROOT="$BASE_REPO_ROOT" \
+        BASE_PROJECT_ROOT="$project_root" \
         BASE_PROJECT_VENV_DIR="$venv_dir" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
@@ -636,7 +637,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=demo"* ]]
     [[ "$output" == *"VIRTUAL_ENV=$venv_dir"* ]]
-    [[ "$output" == *"PATH=$venv_dir/bin:"* ]]
+    [[ "$output" == *"PATH=$venv_dir/bin:$BASE_REPO_ROOT/bin:$project_root/bin:"* ]]
     [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 

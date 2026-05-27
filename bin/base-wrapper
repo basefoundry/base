@@ -50,6 +50,10 @@ Options:
 Purpose:
   Run Base Python command packages through the selected project virtual
   environment with Base's Python library and command roots on PYTHONPATH.
+
+  This is primarily for Bash launchers in $BASE_HOME/bin and project bin/
+  directories. End users should normally run those launchers or basectl rather
+  than invoking Python packages directly.
 EOF
 }
 

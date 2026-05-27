@@ -75,6 +75,35 @@ _base_runtime_activate_project_venv() {
     source "$activate_script"
 }
 
+_base_runtime_add_project_bin_to_path() {
+    local entry
+    local new_path=""
+    local project_bin
+    local -a path_entries
+
+    [[ -n "${BASE_PROJECT_ROOT:-}" ]] || return 0
+    project_bin="$BASE_PROJECT_ROOT/bin"
+    [[ -d "$project_bin" ]] || return 0
+
+    IFS=: read -ra path_entries <<< "$PATH"
+    for entry in "${path_entries[@]}"; do
+        [[ -n "$entry" ]] || continue
+        [[ "$entry" != "$BASE_BIN_DIR" ]] || continue
+        [[ "$entry" != "$project_bin" ]] || continue
+        if [[ -n "$new_path" ]]; then
+            new_path="$new_path:$entry"
+        else
+            new_path="$entry"
+        fi
+    done
+
+    PATH="$BASE_BIN_DIR:$project_bin"
+    if [[ -n "$new_path" ]]; then
+        PATH="$PATH:$new_path"
+    fi
+    export PATH
+}
+
 _base_runtime_host_prompt() {
     local host_name=""
 
@@ -148,6 +177,7 @@ _base_runtime_main() {
     # shellcheck source=/dev/null
     source "$BASE_HOME/base_init.sh" || return $?
 
+    _base_runtime_add_project_bin_to_path || return $?
     _base_runtime_source_user_bashrc || return $?
     _base_runtime_activate_project_venv || return $?
     _base_runtime_set_prompt

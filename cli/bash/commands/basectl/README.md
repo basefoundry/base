@@ -37,7 +37,8 @@ that delegate to `basectl`.
 
 - `basectl setup` is the default local bootstrap path.
 - `basectl activate <project>` starts a project-specific runtime subshell with
-  the project virtual environment active.
+  the project virtual environment active and `$PROJECT_ROOT/bin` on `PATH` when
+  that directory exists.
 - `basectl setup [project]` runs the Bash bootstrap layer first, then invokes the
   Python project setup layer for `base_manifest.yaml` artifacts. The optional
   project argument validates `project.name`.

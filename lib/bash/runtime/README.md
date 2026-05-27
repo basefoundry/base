@@ -10,6 +10,7 @@ arguments in a terminal is equivalent to `basectl activate base`.
 - sources `lib/shell/baserc_guard.sh`
 - sources user-managed `~/.baserc` when present
 - sources `base_init.sh`
+- adds `$BASE_PROJECT_ROOT/bin` to `PATH` when it exists, keeping `$BASE_HOME/bin` first
 - sources the user's `~/.bashrc` with guardrails
 - owns the final runtime prompt
 
