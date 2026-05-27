@@ -418,6 +418,28 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
     printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
+    action="setup"
+    output_format="text"
+    while (($#)); do
+        case "$1" in
+            --action)
+                shift
+                action="${1:-}"
+                ;;
+            --format)
+                shift
+                output_format="${1:-}"
+                ;;
+        esac
+        shift || true
+    done
+    if [[ "$action" == "check" && "$output_format" == "json" ]]; then
+        printf '[{"name":"demo-artifact","ok":true,"message":"Project artifact check passed.","fix":""}]\n'
+    elif [[ "$action" == "check" ]]; then
+        printf 'Project artifact check passed.\n' >&2
+    elif [[ "$action" == "doctor" ]]; then
+        printf 'ok     demo-artifact               Project artifact check passed.\n'
+    fi
     exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]]; then
@@ -464,9 +486,9 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl check [options]"* ]]
+    [[ "$output" == *"basectl check [project] [options]"* ]]
     [[ "$output" == *"--dev"* ]]
-    [[ "$output" == *"Verify the local Base CLI environment on macOS without making changes."* ]]
+    [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
 }
 
 @test "basectl setup fails on unsupported operating systems" {
@@ -661,7 +683,7 @@ EOF
     [[ "$output" == *"Running Python project setup layer."* ]]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
-    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
     [ ! -e "$demo_venv_dir/bin/python" ]
 }
 
@@ -689,7 +711,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Resolved project 'brew' at '$workspace/brew'."* ]]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "brew" ]
-    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/brew/base_manifest.yaml" brew)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/brew/base_manifest.yaml" --action setup brew)" ]
 }
 
 @test "basectl setup propagates Python project setup failure" {
@@ -1005,6 +1027,31 @@ EOF
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
+@test "basectl check project verifies project artifacts" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Resolved project 'demo' at '$workspace/demo'."* ]]
+    [[ "$output" == *"Running Python project check layer."* ]]
+    [[ "$output" == *"Project artifact check passed."* ]]
+    [[ "$output" == *"Base CLI environment and project 'demo' check passed."* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format text demo)" ]
+}
+
 @test "basectl check --format json writes successful check results to stdout" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
@@ -1036,6 +1083,40 @@ EOF
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
     [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check project --format json includes project check results" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_TEST_WORKSPACE="$workspace" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check demo --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"project_checks":'* ]]
+    [[ "$output" == *'"name":"demo-artifact","ok":true'* || "$output" == *'"name": "demo-artifact"'* ]]
     [ "${stderr:-}" = "" ]
 }
 

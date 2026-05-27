@@ -13,12 +13,12 @@ Commands:
     Start an interactive Base runtime subshell for a project.
   setup [options]
     Install and bootstrap the local Base CLI environment on macOS.
-  check [options]
-    Verify the local Base CLI environment without making changes.
+  check [project] [options]
+    Verify the local Base CLI environment and optional project artifacts without making changes.
   clean --older-than <age> [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
-  doctor [options]
-    Diagnose the local Base CLI environment and suggest fixes.
+  doctor [project] [options]
+    Diagnose the local Base CLI environment and optional project artifacts.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   update [options]
@@ -46,6 +46,7 @@ Wrapper options:
 Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
+    Pass a project name to include that project's manifest artifacts.
   - Invoking `basectl` with no command is equivalent to `basectl activate base`
     when attached to a terminal; otherwise it prints this help text.
   - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging

@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_check_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl check [options]
+  basectl check [project] [options]
 
 Options:
   --dev                 Include manifest-declared developer prerequisite checks.
@@ -20,7 +20,7 @@ Options:
   -h, --help            Show this help text.
 
 Purpose:
-  Verify the local Base CLI environment on macOS without making changes.
+  Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes.
 
 Check does:
   1. Verify Homebrew is installed.
@@ -28,11 +28,13 @@ Check does:
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify ~/.base.d/base/.venv exists.
   5. Verify developer prerequisites from lib/base/dev_manifest.yaml when --dev is passed.
+  6. Verify project manifest artifacts when a project name is passed.
 EOF
 }
 
 base_check_subcommand_main() {
     local output_format="text"
+    local project=""
 
     while (($#)); do
         case "$1" in
@@ -65,14 +67,24 @@ base_check_subcommand_main() {
                 setup_enable_debug_logging
                 ;;
             *)
-                print_error "Unknown option '$1'."
-                base_check_subcommand_usage >&2
-                return 1
+                if [[ "$1" == -* ]]; then
+                    print_error "Unknown option '$1'."
+                    base_check_subcommand_usage >&2
+                    return 1
+                fi
+                if [[ -n "$project" ]]; then
+                    print_error "The 'check' command accepts at most one project name."
+                    base_check_subcommand_usage >&2
+                    return 1
+                fi
+                project="$1"
                 ;;
         esac
         shift
     done
 
+    BASE_SETUP_PROJECT_NAME="$project"
+    export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl check'."
     if [[ "$output_format" == json ]]; then
         setup_run_check_json

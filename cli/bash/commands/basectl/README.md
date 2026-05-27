@@ -47,11 +47,13 @@ that delegate to `basectl`.
 - `basectl setup [project]` runs the Bash bootstrap layer first, then invokes the
   Python project setup layer for `base_manifest.yaml` artifacts. The optional
   project argument validates `project.name`.
-- `basectl check` verifies the same local requirements without making changes.
+- `basectl check [project]` verifies the same local requirements without making
+  changes and can include project manifest artifacts.
 - `basectl setup --dev`, `basectl check --dev`, and `basectl doctor --dev`
   manage developer prerequisites through `lib/base/dev_manifest.yaml`.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
-- `basectl doctor` diagnoses the local Base environment and prints suggested fixes.
+- `basectl doctor [project]` diagnoses the local Base environment and, when
+  provided, project manifest artifacts with suggested fixes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.

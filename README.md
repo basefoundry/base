@@ -153,6 +153,15 @@ basectl doctor
 basectl doctor --dev
 ```
 
+`basectl check <project>` and `basectl doctor <project>` extend those checks to
+a project's `base_manifest.yaml` artifacts after verifying the Base bootstrap
+environment:
+
+```bash
+basectl check example
+basectl doctor example
+```
+
 `basectl onboard` is a planned guided setup experience for technically-adjacent
 users who want a checklist-style first Base setup. Its design is captured in
 [docs/basectl-onboard.md](docs/basectl-onboard.md). Product-specific onboarding

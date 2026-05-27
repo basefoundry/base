@@ -505,6 +505,12 @@ setup_resolve_project_manifest() {
 }
 
 setup_run_project_artifact_setup() {
+    setup_run_project_artifact_layer setup text
+}
+
+setup_run_project_artifact_layer() {
+    local action="$1"
+    local output_format="$2"
     local exit_code manifest_path project python_bin resolved_root resolve_output venv_dir
     local args=()
 
@@ -523,7 +529,9 @@ setup_run_project_artifact_setup() {
     }
     if [[ "$resolve_output" == *$'\t'* ]]; then
         IFS=$'\t' read -r resolved_root manifest_path <<<"$resolve_output"
-        log_info "Resolved project '$project' at '$resolved_root'."
+        if [[ "$action" != check || "$output_format" != json ]]; then
+            log_info "Resolved project '$project' at '$resolved_root'."
+        fi
     else
         manifest_path="$resolve_output"
     fi
@@ -532,20 +540,43 @@ setup_run_project_artifact_setup() {
         args+=(--dry-run)
     fi
     args+=(--manifest "$manifest_path")
+    args+=(--action "$action")
+    if [[ "$action" == check ]]; then
+        args+=(--format "$output_format")
+    fi
     args+=("$project")
 
-    log_info "Running Python project setup layer."
+    if [[ "$action" != check || "$output_format" != json ]]; then
+        log_info "Running Python project $action layer."
+    fi
 
     env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$(setup_pythonpath)" "$python_bin" -m base_setup "${args[@]}"
     exit_code=$?
 
-    if ((exit_code)); then
+    if ((exit_code)) && [[ "$action" == setup ]]; then
         log_error "$(setup_recovery_project_layer)"
-    fi
-    if ((exit_code)); then
-        log_error "Python project setup layer failed."
+        log_error "Python project $action layer failed."
         return "$exit_code"
     fi
+    if ((exit_code)) && [[ "$action" == check ]]; then
+        log_warn "Python project check layer found missing requirements."
+        return "$exit_code"
+    fi
+    if ((exit_code)); then
+        return "$exit_code"
+    fi
+}
+
+setup_run_project_artifact_check() {
+    setup_run_project_artifact_layer check text
+}
+
+setup_run_project_artifact_check_json() {
+    setup_run_project_artifact_layer check json
+}
+
+setup_run_project_artifact_doctor() {
+    setup_run_project_artifact_layer doctor text
 }
 
 setup_run_base_dev_layer() {
@@ -571,6 +602,7 @@ setup_run_base_dev_layer() {
 
 setup_run_check() {
     local brew_bin="" click_package pyyaml_package venv_dir missing=0
+    local project="${BASE_SETUP_PROJECT_NAME:-}"
 
     setup_require_macos
     click_package="$(setup_click_package)"
@@ -631,13 +663,26 @@ setup_run_check() {
         setup_run_base_dev_layer check || missing=1
     fi
 
+    if [[ -n "$project" ]]; then
+        setup_run_project_artifact_check || missing=1
+    fi
+
     if ((missing == 0)); then
-        log_info "Base CLI environment check passed."
+        if [[ -n "$project" ]]; then
+            log_info "Base CLI environment and project '$project' check passed."
+        else
+            log_info "Base CLI environment check passed."
+        fi
         return 0
     fi
 
-    log_warn "Base CLI environment check found missing requirements."
-    log_warn "Run 'basectl setup' to reconcile the missing requirements."
+    if [[ -n "$project" ]]; then
+        log_warn "Base CLI environment or project '$project' check found missing requirements."
+        log_warn "Run 'basectl setup $project' to reconcile the missing requirements."
+    else
+        log_warn "Base CLI environment check found missing requirements."
+        log_warn "Run 'basectl setup' to reconcile the missing requirements."
+    fi
     return 1
 }
 
@@ -687,6 +732,8 @@ setup_run_check_json() {
     local click_message click_ok=false click_package
     local dev_json="[]"
     local missing=0
+    local project="${BASE_SETUP_PROJECT_NAME:-}"
+    local project_json="[]"
     local pyyaml_message pyyaml_ok=false pyyaml_package
     local python_message python_ok=false
     local venv_dir venv_message venv_ok=false
@@ -755,8 +802,18 @@ setup_run_check_json() {
         fi
     fi
 
+    if [[ -n "$project" ]]; then
+        if ! project_json="$(setup_run_project_artifact_check_json)"; then
+            missing=1
+            [[ -n "$project_json" ]] || project_json="[]"
+        fi
+    fi
+
     printf '{\n'
     printf '  "ok": %s,\n' "$([[ "$missing" -eq 0 ]] && printf true || printf false)"
+    if [[ -n "$project" ]]; then
+        printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
+    fi
     printf '  "checks": [\n'
     setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
     setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
@@ -765,11 +822,23 @@ setup_run_check_json() {
     setup_print_check_json_item "," "click" "$click_ok" "$click_message"
     setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
     printf '  ]'
-    if setup_dev_dependencies_enabled; then
+    if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
         printf ',\n'
-        setup_print_json_property_value "dev_checks" "$dev_json"
     else
         printf '\n'
+    fi
+    if setup_dev_dependencies_enabled; then
+        setup_print_json_property_value "dev_checks" "$dev_json"
+        if [[ -n "$project" ]]; then
+            printf ',\n'
+        else
+            printf '\n'
+        fi
+    fi
+    if [[ -n "$project" ]]; then
+        setup_print_json_property_value "project_checks" "$project_json"
+    else
+        :
     fi
     printf '}\n'
 

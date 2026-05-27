@@ -356,6 +356,72 @@ class ManifestTests(unittest.TestCase):
         self.assertIn("Project 'demo' declares no artifacts; installing Base default artifacts only.", stderr)
 
 
+class ProjectCheckTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_json_reports_project_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: requests",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, _stderr = run_engine(
+                ["--action", "check", "--format", "json", "--manifest", str(manifest_path), "demo"]
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn('"name": "requests"', stdout)
+        self.assertIn('"ok": false', stdout)
+        self.assertIn('"fix": "basectl setup demo"', stdout)
+
+    def test_check_homebrew_artifact_reports_missing_package(self) -> None:
+        artifact = ArtifactRequest(artifact_type="tool", name="terraform", version="latest")
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=False,
+        ):
+            check = engine.check_homebrew_artifact("demo", artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertIn("not installed via Homebrew package 'terraform'", check.message)
+        self.assertEqual(check.fix, "basectl setup demo")
+
+    def test_doctor_manifest_counts_failed_project_artifacts(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),),
+        )
+
+        with redirect_stdout(io.StringIO()) as stdout:
+            status = engine.doctor_manifest(default_manifest, manifest)
+
+        self.assertEqual(status, 1)
+        self.assertIn("Project doctor: demo", stdout.getvalue())
+        self.assertIn("Fix: basectl setup demo", stdout.getvalue())
+
+
 class BrewfileTests(unittest.TestCase):
     def test_brewfile_dry_run_invokes_brew_bundle(self) -> None:
         ctx = fake_context()
