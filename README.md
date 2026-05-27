@@ -114,9 +114,10 @@ basectl activate example
 ```
 
 Activation spawns a project-specific subshell, changes to the project root, sets
-`BASE_PROJECT` and related project variables, and activates the project virtual
-environment at `~/.base.d/<project>/.venv`. Exit that shell to return to the
-original environment.
+`BASE_PROJECT` and related project variables, adds project-owned commands from
+`$PROJECT_ROOT/bin` when that directory exists, and activates the project
+virtual environment at `~/.base.d/<project>/.venv`. Exit that shell to return to
+the original environment.
 
 Invoking `basectl` with no arguments in a terminal is equivalent to
 `basectl activate base`, so the default interactive Base shell uses Base's own
@@ -180,8 +181,8 @@ invoke it from whatever shell state they already had.
 
 ## Public Command Surface
 
-Base exposes commands through a single public directory: `$BASE_HOME/bin`. That
-directory is added to `PATH` by Base's managed shell startup snippets.
+Base exposes its own commands through `$BASE_HOME/bin`. That directory is added
+to `PATH` by Base's managed shell startup snippets.
 
 `bin/basectl` is the control-plane command. Additional public commands, when
 needed, are tiny real launcher files in `bin/` that delegate to `basectl`; their
@@ -193,6 +194,21 @@ Example launcher:
 ```bash
 #!/usr/bin/env bash
 exec "$(dirname "$0")/basectl" caff "$@"
+```
+
+Projects expose their own commands through `$PROJECT_ROOT/bin`. When
+`basectl activate <project>` starts a project runtime shell, Base adds that
+directory to `PATH` if it exists, behind `$BASE_HOME/bin`. Project Python command
+packages should be treated as implementation details unless a project-owned
+launcher exposes them from `bin/`.
+
+Project launchers that need to run Python packages should delegate through
+`base-wrapper` so they use the selected project virtual environment and Base's
+Python library roots:
+
+```bash
+#!/usr/bin/env bash
+exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_cli "$@"
 ```
 
 `basectl setup` deliberately pins its default Homebrew Python formula so setup is
