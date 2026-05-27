@@ -184,7 +184,11 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
-            self.assertTrue((home / "Library" / "Caches" / "base" / "cli" / "demo" / "logs").is_dir())
+            log_dir = home / "Library" / "Caches" / "base" / "cli" / "demo" / "logs"
+            self.assertTrue(log_dir.is_dir())
+            log_files = tuple(log_dir.glob("*.log"))
+            self.assertEqual(len(log_files), 1)
+            self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
             self.assertFalse((home / ".base.d" / "cli").exists())
             self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
             self.assertIn("hello Ada", result.stderr)
@@ -261,6 +265,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["project_root"], project.resolve())
 
             log_text = log_file.read_text(encoding="utf-8")
+            self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
             self.assertIn("--token", log_text)
             self.assertIn("[REDACTED]", log_text)
             self.assertNotIn("super-secret", log_text)

@@ -7,13 +7,6 @@ they are merged.
 
 ## P0 — Security And Correctness
 
-- [ ] Lock down Python CLI log file permissions.
-  - Problem: `logging.FileHandler` creates log files using the process umask,
-    commonly `0644`, while Base logs include argv and runtime context.
-  - Goal: ensure Python CLI log files are readable only by the current user.
-  - Expected behavior: create or chmod log files to `0600` and cover with a unit
-    test in `lib/python/base_cli/tests`.
-
 - [ ] Restrict setup test-only environment escape hatches.
   - Problem: `BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT` and `BASE_SETUP_PYTHON_BIN`
     can redirect setup to arbitrary executables when present in the environment.
