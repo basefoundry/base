@@ -7,11 +7,6 @@ they are merged.
 
 ## P1 — High-Value Product Capabilities
 
-- [ ] Add Docker and Colima to the artifact registry.
-  - File: `cli/python/base_setup/registry.py`
-  - Expected behavior: support `type: tool`, `name: docker`, `version: latest` and `type: tool`, `name: colima`, `version: latest` through Homebrew.
-  - Notes: do not build a docker-service reconciler in this task.
-
 - [ ] Design future `docker-service` artifacts.
   - File: `docs/tool-boundaries.md`
   - Goal: document how Base should eventually orchestrate Docker Compose without replacing Docker.

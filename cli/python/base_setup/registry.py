@@ -62,6 +62,20 @@ _ARTIFACTS = {
         package="gh",
         target="system",
     ),
+    ("tool", "docker"): ArtifactDefinition(
+        name="docker",
+        artifact_type="tool",
+        manager="homebrew",
+        package="docker",
+        target="system",
+    ),
+    ("tool", "colima"): ArtifactDefinition(
+        name="colima",
+        artifact_type="tool",
+        manager="homebrew",
+        package="colima",
+        target="system",
+    ),
     ("tool", "kubectl"): ArtifactDefinition(
         name="kubectl",
         artifact_type="tool",

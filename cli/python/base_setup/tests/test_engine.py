@@ -111,6 +111,17 @@ class ManifestTests(unittest.TestCase):
         self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
         self.assertIsNotNone(get_artifact_definition("tool", "gh"))
 
+    def test_docker_and_colima_are_supported_tools(self) -> None:
+        docker = get_artifact_definition("tool", "docker")
+        colima = get_artifact_definition("tool", "colima")
+
+        self.assertIsNotNone(docker)
+        self.assertEqual(docker.package, "docker")
+        self.assertEqual(docker.manager, "homebrew")
+        self.assertIsNotNone(colima)
+        self.assertEqual(colima.package, "colima")
+        self.assertEqual(colima.manager, "homebrew")
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_unknown_artifact_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -158,6 +169,34 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_docker_and_colima_artifacts_dry_run_through_homebrew(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: docker",
+                        "    version: latest",
+                        "  - type: tool",
+                        "    name: colima",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew install docker", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install colima", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_discovers_manifest_from_start_dir(self) -> None:
