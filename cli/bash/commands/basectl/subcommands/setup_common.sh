@@ -870,9 +870,9 @@ setup_run_check_json() {
     setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
     setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
     setup_print_check_json_item "," "python" "$python_ok" "$python_message"
+    setup_print_check_json_item "," "base_virtualenv" "$venv_ok" "$venv_message"
     setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
-    setup_print_check_json_item "," "click" "$click_ok" "$click_message"
-    setup_print_check_json_item "" "base_virtualenv" "$venv_ok" "$venv_message"
+    setup_print_check_json_item "" "click" "$click_ok" "$click_message"
     printf '  ]'
     if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
         printf ',\n'
