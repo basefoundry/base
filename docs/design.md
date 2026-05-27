@@ -319,6 +319,8 @@ Current structure:
 project:
   name: myproject
 
+brewfile: Brewfile
+
 artifacts:
   - type: tool
     name: terraform
@@ -333,6 +335,11 @@ The Python layer interprets this declarative manifest and translates each
 artifact into concrete installation actions. Base owns the artifact registry and
 chooses the manager for each supported `(type, name)` pair. The current registry
 is `cli/python/base_setup/registry.py`.
+
+The optional top-level `brewfile` field delegates ordinary Homebrew dependencies
+to Homebrew's native `brew bundle` flow. The path is relative to the project root
+and must stay inside the project. Base runs `brew bundle --file=<path>` during
+setup before reconciling Base-managed artifacts.
 
 `python-package` artifacts install into the project virtual environment at
 `~/.base.d/<project>/.venv`. Base's own project venv is therefore

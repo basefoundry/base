@@ -12,11 +12,6 @@ they are merged.
   - Goal: document how Base should eventually orchestrate Docker Compose without replacing Docker.
   - Expected design topics: compose file path, `docker compose pull/build`, daemon checks, image existence checks, activation-time service startup, health checks, and Colima vs Docker Desktop tradeoffs.
 
-- [ ] Add Brewfile integration for project setup.
-  - Goal: support arbitrary Homebrew project dependencies without hand-curating every package in the Base registry.
-  - Expected behavior: allow a project manifest to reference a `Brewfile` and have setup run `brew bundle --file=<path>`.
-  - Notes: this should complement the registry, not replace Base-specific known artifacts.
-
 ## P2 — Adoption And Expansion
 
 - [ ] Improve setup recovery messages for technically-adjacent users.
