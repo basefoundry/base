@@ -231,6 +231,11 @@ manifest-driven through `lib/base/dev_manifest.yaml`; use `basectl setup --dev`
 to install them and `basectl check --dev` or `basectl doctor --dev` to verify
 them.
 
+On macOS, `basectl setup` sends a best-effort notification when setup completes
+or fails. Notifications are skipped during `--dry-run` and never change the
+setup exit status. Use `basectl setup --no-notify` or
+`BASE_SETUP_NOTIFY=false` to disable them.
+
 ## Quick Start
 
 Base is currently designed to be checked out once per workspace. Until a
