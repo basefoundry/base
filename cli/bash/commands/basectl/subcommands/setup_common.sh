@@ -706,13 +706,47 @@ setup_run_check() {
 
 setup_json_escape() {
     local value="${1:-}"
+    local char code escaped i
+    local output=""
+    local LC_ALL=C
 
-    value="${value//\\/\\\\}"
-    value="${value//\"/\\\"}"
-    value="${value//$'\n'/\\n}"
-    value="${value//$'\r'/\\r}"
-    value="${value//$'\t'/\\t}"
-    printf '%s' "$value"
+    for ((i = 0; i < ${#value}; i++)); do
+        char="${value:i:1}"
+        case "$char" in
+            '"')
+                output+='\"'
+                ;;
+            '\')
+                output+='\\'
+                ;;
+            $'\b')
+                output+='\b'
+                ;;
+            $'\f')
+                output+='\f'
+                ;;
+            $'\n')
+                output+='\n'
+                ;;
+            $'\r')
+                output+='\r'
+                ;;
+            $'\t')
+                output+='\t'
+                ;;
+            *)
+                printf -v code '%d' "'$char"
+                if ((code < 32)); then
+                    printf -v escaped '\\u%04x' "$code"
+                    output+="$escaped"
+                else
+                    output+="$char"
+                fi
+                ;;
+        esac
+    done
+
+    printf '%s' "$output"
 }
 
 setup_print_check_json_item() {
