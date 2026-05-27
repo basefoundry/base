@@ -5,12 +5,6 @@ Action items from the May 2026 Base product review.
 Use this as a commit-by-commit work queue. Completed items are removed after
 they are merged.
 
-## P0 — Core Workspace Loop
-
-- [ ] Add log cleanup with `basectl clean`.
-  - Goal: prevent Base logs and retained temp/cache files from growing indefinitely.
-  - Expected behavior: support at least `basectl clean --older-than 30d`, with dry-run output and clear scope.
-
 ## P1 — High-Value Product Capabilities
 
 - [ ] Implement `basectl doctor`.

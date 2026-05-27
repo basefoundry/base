@@ -15,6 +15,8 @@ Commands:
     Install and bootstrap the local Base CLI environment on macOS.
   check [options]
     Verify the local Base CLI environment without making changes.
+  clean --older-than <age> [options]
+    Remove old Base CLI runtime logs, temp files, and cache entries.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   projects list [options]
@@ -143,6 +145,11 @@ basectl_do_check() {
     base_check_subcommand_main "$@"
 }
 
+basectl_do_clean() {
+    basectl_source_subcommand_module clean || return 1
+    base_clean_subcommand_main "$@"
+}
+
 basectl_do_update_profile() {
     basectl_source_subcommand_module update_profile || return 1
     base_update_profile_subcommand_main "$@"
@@ -234,6 +241,7 @@ basectl_main() {
     case "$command" in
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
+        clean)            basectl_do_clean "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;

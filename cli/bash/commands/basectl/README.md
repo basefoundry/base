@@ -26,10 +26,10 @@ that delegate to `basectl`.
 - `activate`
 - `setup`
 - `check`
+- `clean`
 - `update-profile`
 - `projects list`
 - `version`
-- `shell`
 - `help`
 
 ## Notes
@@ -41,6 +41,7 @@ that delegate to `basectl`.
   Python project setup layer for `base_manifest.yaml` artifacts. The optional
   project argument validates `project.name`.
 - `basectl check` verifies the same local requirements without making changes.
+- `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.

@@ -239,21 +239,23 @@ actionable message.
 
 ## Runtime Directories
 
-Current runtime state is rooted at `${BASE_CACHE_DIR:-~/.cache/base}`:
+On macOS, current runtime state is rooted at `~/Library/Caches/base`:
 
 ```text
-~/.cache/base/cli/<cli-name>/
+~/Library/Caches/base/cli/<cli-name>/
   logs/
   cache/
   tmp/<run-id>/
 ```
 
-Use `BASE_CACHE_DIR` to override the root for tests, CI, or unusual local
+On Linux and other non-macOS platforms, the default is `~/.cache/base`. Use
+`BASE_CACHE_DIR` to override the root for tests, CI, or unusual local
 environments.
 
-`logs/` and `cache/` are runtime artifacts that can be pruned by Base cleanup
-tools. `tmp/<run-id>/` is deleted automatically after the command returns unless
-`--keep-temp` is set.
+`logs/` and `cache/` are runtime artifacts that can be pruned with
+`basectl clean --older-than <age>`. `tmp/<run-id>/` is deleted automatically
+after the command returns unless `--keep-temp` is set; retained temp entries can
+also be pruned by `basectl clean`.
 
 Use `ctx.on_cleanup()` for cleanup work that should happen even when helper code
 does not own the main command wrapper:
