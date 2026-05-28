@@ -84,15 +84,6 @@ they are merged.
 
 ## P2 — Operational Excellence
 
-- [ ] Add a standalone installer script.
-  - Goal: make first-time Base adoption easier than manually cloning the repo.
-  - Expected behavior: provide an install path such as
-    `curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash`
-    that clones or updates Base, runs `basectl setup`, and optionally runs
-    `basectl update-profile`.
-  - Security note: document the trust implications of `curl | bash` and align
-    with the Homebrew installer trust decision.
-
 - [ ] Package Base as a Homebrew formula or tap.
   - Goal: make Base installation feel native on macOS.
   - Expected behavior: support an install path such as

@@ -55,7 +55,7 @@ project_dir="${workspace_dir}/${project_name}"
 mkdir -p "$workspace_dir"
 
 if [[ ! -d "$base_dir/.git" ]]; then
-    git clone https://github.com/codeforester/base.git "$base_dir"
+    curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | BASE_INSTALL_DIR="$base_dir" bash
 else
     git -C "$base_dir" pull --ff-only
 fi
@@ -72,6 +72,11 @@ fi
 
 This is only a sketch. A real installer should add friendlier output, better
 error handling, and project-specific next steps.
+
+If a project installer uses Base's standalone installer, it should still avoid
+reimplementing Base setup. Use `BASE_INSTALL_DIR` or `install.sh --dir <path>` to
+choose the Base checkout location, and use `--no-profile` if the project
+installer wants to defer shell startup integration until later.
 
 ## User Experience Guidelines
 

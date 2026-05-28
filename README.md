@@ -291,8 +291,35 @@ is requested on macOS, Base warns if `osascript` is not available.
 
 ## Quick Start
 
-Base is currently designed to be checked out once per workspace. Until a
-standalone installer exists, the explicit bootstrap path is:
+Base is designed to be checked out once per workspace. The quickest install path
+is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash
+exec "$SHELL" -l
+```
+
+This runs a shell script from GitHub, so review the script first if you do not
+already trust this repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh
+```
+
+By default, the installer clones or updates Base at `~/work/base`, runs
+`~/work/base/bin/basectl setup`, and then runs
+`~/work/base/bin/basectl update-profile`. Set `BASE_INSTALL_DIR` or pass
+`--dir <path>` to install somewhere else. When using the piped form, pass
+installer options with `bash -s --`, for example:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash -s -- --dir ~/work/base --no-profile
+```
+
+Use `--no-profile` to skip shell startup integration and `--dry-run` to print
+planned actions.
+
+The explicit manual bootstrap path is:
 
 ```bash
 git clone https://github.com/codeforester/base.git ~/work/base
