@@ -385,6 +385,13 @@ def merge_artifacts(
                 f"'{artifact.name}' of type '{artifact.artifact_type}' is declared by defaults "
                 f"as version '{existing.version}' and by the project manifest as version '{artifact.version}'."
             )
+        if existing is not None:
+            artifact = ArtifactRequest(
+                artifact_type=artifact.artifact_type,
+                name=artifact.name,
+                version=artifact.version,
+                bootstrap=existing.bootstrap or artifact.bootstrap,
+            )
         merged[key] = artifact
 
     return tuple(merged.values())

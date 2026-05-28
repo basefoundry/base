@@ -22,6 +22,7 @@ class ArtifactRequest:
     artifact_type: str
     name: str
     version: str
+    bootstrap: bool = False
 
 
 @dataclass(frozen=True)
@@ -100,14 +101,15 @@ def _read_artifact(path: Path, artifact_data: Any, index: int) -> ArtifactReques
     if not isinstance(artifact_data, dict):
         raise ManifestError(f"{path}: artifacts[{index}] must be a mapping.")
 
-    allowed_artifact_keys = {"type", "name", "version"}
+    required_artifact_keys = {"type", "name", "version"}
+    allowed_artifact_keys = required_artifact_keys | {"bootstrap"}
     unknown_artifact_keys = sorted(set(artifact_data) - allowed_artifact_keys)
     if unknown_artifact_keys:
         raise ManifestError(
             f"{path}: artifacts[{index}] has unsupported keys: {', '.join(unknown_artifact_keys)}."
         )
 
-    missing = sorted(key for key in allowed_artifact_keys if not artifact_data.get(key))
+    missing = sorted(key for key in required_artifact_keys if not artifact_data.get(key))
     if missing:
         raise ManifestError(f"{path}: artifacts[{index}] is missing required keys: {', '.join(missing)}.")
 
@@ -116,9 +118,13 @@ def _read_artifact(path: Path, artifact_data: Any, index: int) -> ArtifactReques
     version = artifact_data["version"]
     if not all(isinstance(value, str) for value in (artifact_type, name, version)):
         raise ManifestError(f"{path}: artifacts[{index}] type, name, and version must be strings.")
+    bootstrap = artifact_data.get("bootstrap", False)
+    if not isinstance(bootstrap, bool):
+        raise ManifestError(f"{path}: artifacts[{index}] bootstrap must be a boolean when provided.")
 
     return ArtifactRequest(
         artifact_type=artifact_type,
         name=name,
         version=version,
+        bootstrap=bootstrap,
     )

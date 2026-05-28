@@ -367,6 +367,11 @@ silently installing a different version. New ordinary Homebrew tools should
 prefer Brewfile delegation over registry growth. Richer version conflict
 handling across projects is a later iteration, not part of the initial build.
 
+Default artifacts can be marked with `bootstrap: true` when they are required to
+run Base's Python CLI layer inside a project virtual environment before the rest
+of that project's artifacts are reconciled. In the current default manifest,
+`click` and `PyYAML` carry this marker.
+
 Artifact install commands keep stdout attached to the terminal so long-running
 tools such as `brew` and `pip` remain live and readable while setup runs. Base's
 persistent log records the command intent and captures stderr on failures. If
