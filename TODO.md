@@ -84,11 +84,6 @@ they are merged.
 
 ## P2 — Operational Excellence
 
-- [ ] Package Base as a Homebrew formula or tap.
-  - Goal: make Base installation feel native on macOS.
-  - Expected behavior: support an install path such as
-    `brew install codeforester/base/basectl`.
-
 - [ ] Add initial Linux support plan.
   - Goal: define the first supported Linux target, likely Ubuntu/Debian.
   - Expected design topics: `/etc/os-release` detection, `apt` equivalents for

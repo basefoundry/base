@@ -291,8 +291,24 @@ is requested on macOS, Base warns if `osascript` is not available.
 
 ## Quick Start
 
-Base is designed to be checked out once per workspace. The quickest install path
-is:
+Base can be installed through its Homebrew tap:
+
+```bash
+brew install codeforester/base/base
+basectl setup
+basectl update-profile
+exec "$SHELL" -l
+```
+
+Homebrew installs the Base files. `basectl setup` still prepares the local Base
+runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
+your shell startup path. When installed through Homebrew, update Base with:
+
+```bash
+brew upgrade codeforester/base/base
+```
+
+The standalone installer is also available:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash
