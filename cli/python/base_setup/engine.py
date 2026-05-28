@@ -34,6 +34,20 @@ class ManifestAction:
     output_format: str
 
 
+@dataclass(frozen=True)
+class IdeDefinition:
+    name: str
+    label: str
+    cli: str
+    cask: str
+
+
+IDE_DEFINITIONS = {
+    "vscode": IdeDefinition(name="vscode", label="VS Code", cli="code", cask="visual-studio-code"),
+    "cursor": IdeDefinition(name="cursor", label="Cursor", cli="cursor", cask="cursor"),
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     result = app.click_command.main(args=argv, standalone_mode=False)
     return int(result or 0)
@@ -141,6 +155,7 @@ def reconcile_manifest(
             ctx.log.info("Project '%s' has no artifacts to install.", manifest.project_name)
 
     reconcile_brewfile(ctx, manifest, dry_run=dry_run)
+    reconcile_ide_installs(ctx, manifest, dry_run=dry_run)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
@@ -218,6 +233,8 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
 
     if manifest.brewfile is not None:
         checks.append(check_brewfile(manifest))
+
+    checks.extend(check_ide_installs(manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(manifest.project_name, artifact, definition))
@@ -451,6 +468,83 @@ def resolve_brewfile_path(manifest: BaseManifest) -> Path:
     if not brewfile_path.is_file():
         raise ArtifactError(f"{manifest.path}: brewfile '{manifest.brewfile}' does not exist.")
     return brewfile_path
+
+
+def reconcile_ide_installs(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    for ide_name, ide_config in manifest.ide.items():
+        definition = IDE_DEFINITIONS[ide_name]
+        if not ide_config.install:
+            ctx.log.debug("IDE '%s' does not request installation; skipping cask install.", ide_name)
+            continue
+        reconcile_ide_install(ctx, definition, dry_run=dry_run)
+
+
+def reconcile_ide_install(ctx: base_cli.Context, definition: IdeDefinition, dry_run: bool) -> None:
+    command = ["brew", "install", "--cask", definition.cask]
+    if dry_run:
+        dry_run_command(ctx, command)
+        return
+
+    if not command_exists("brew"):
+        raise ArtifactError(f"Homebrew is required to install {definition.label}.")
+
+    if run_check(["brew", "list", "--cask", definition.cask]):
+        ctx.log.info("%s is already installed via Homebrew cask '%s'.", definition.label, definition.cask)
+    else:
+        ctx.log.info("Installing %s via Homebrew cask '%s'.", definition.label, definition.cask)
+        run_command(ctx, command)
+
+    if command_exists(definition.cli):
+        ctx.log.info("%s CLI '%s' is available on PATH.", definition.label, definition.cli)
+    else:
+        ctx.log.warning(
+            "%s is installed, but CLI '%s' is not on PATH. Enable the IDE shell command before extension setup.",
+            definition.label,
+            definition.cli,
+        )
+
+
+def check_ide_installs(manifest: BaseManifest) -> list[ArtifactCheck]:
+    checks: list[ArtifactCheck] = []
+    for ide_name, ide_config in manifest.ide.items():
+        definition = IDE_DEFINITIONS[ide_name]
+        if ide_config.install:
+            checks.append(check_ide_install(manifest.project_name, definition))
+    return checks
+
+
+def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
+    if not command_exists("brew"):
+        return ArtifactCheck(
+            name=f"{definition.label} app",
+            ok=False,
+            message=f"Homebrew is required to check {definition.label} installation.",
+            fix="basectl setup",
+        )
+
+    cask_installed = run_check(["brew", "list", "--cask", definition.cask])
+    cli_available = command_exists(definition.cli)
+
+    if cask_installed and cli_available:
+        return ArtifactCheck(
+            name=f"{definition.label} app",
+            ok=True,
+            message=f"{definition.label} is installed and CLI '{definition.cli}' is on PATH.",
+            fix="",
+        )
+    if not cask_installed:
+        return ArtifactCheck(
+            name=f"{definition.label} app",
+            ok=False,
+            message=f"{definition.label} is not installed via Homebrew cask '{definition.cask}'.",
+            fix=f"basectl setup {project}",
+        )
+    return ArtifactCheck(
+        name=f"{definition.label} CLI",
+        ok=False,
+        message=f"{definition.label} is installed, but CLI '{definition.cli}' is not on PATH.",
+        fix=f"Enable the '{definition.cli}' shell command from {definition.label}.",
+    )
 
 
 def reconcile_artifact(

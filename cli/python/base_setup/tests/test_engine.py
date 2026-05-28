@@ -12,7 +12,7 @@ from unittest import mock
 
 from base_setup import engine
 from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
-from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError
+from base_setup.manifest import ArtifactRequest, BaseManifest, IdeConfig, ManifestError
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 
@@ -783,6 +783,129 @@ class BrewfileTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ArtifactError, "must stay inside the project root"):
                 engine.resolve_brewfile_path(manifest)
+
+
+class IdeInstallTests(unittest.TestCase):
+    def test_ide_install_dry_run_invokes_homebrew_cask_install(self) -> None:
+        ctx = fake_context()
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(install=True, extensions=(), settings={}),
+                "cursor": IdeConfig(install=False, extensions=(), settings={}),
+            },
+        )
+
+        engine.reconcile_ide_installs(ctx, manifest, dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn("[DRY-RUN] Would run: brew install --cask visual-studio-code", info_messages)
+        self.assertEqual(len(info_messages), 1)
+
+    def test_ide_install_skips_existing_cask_and_reports_available_cli(self) -> None:
+        ctx = fake_context()
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=True,
+        ), mock.patch("base_setup.engine.run_command") as run_command:
+            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+
+        run_command.assert_not_called()
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn("VS Code is already installed via Homebrew cask 'visual-studio-code'.", info_messages)
+        self.assertIn("VS Code CLI 'code' is available on PATH.", info_messages)
+
+    def test_ide_install_installs_missing_cask(self) -> None:
+        ctx = fake_context()
+        definition = engine.IDE_DEFINITIONS["cursor"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=False,
+        ), mock.patch("base_setup.engine.run_command") as run_command:
+            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["brew", "install", "--cask", "cursor"])
+
+    def test_ide_install_warns_when_cli_is_missing_after_install(self) -> None:
+        ctx = fake_context()
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        def command_exists(name: str) -> bool:
+            return name == "brew"
+
+        with mock.patch("base_setup.engine.command_exists", side_effect=command_exists), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=True,
+        ):
+            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+
+        warning_messages = [call.args[0] % call.args[1:] for call in ctx.log.warning.call_args_list]
+        self.assertIn(
+            "VS Code is installed, but CLI 'code' is not on PATH. Enable the IDE shell command before extension setup.",
+            warning_messages,
+        )
+
+    def test_check_ide_install_reports_missing_cask(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=False,
+        ):
+            check = engine.check_ide_install("demo", definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.name, "VS Code app")
+        self.assertIn("Homebrew cask 'visual-studio-code'", check.message)
+        self.assertEqual(check.fix, "basectl setup demo")
+
+    def test_check_ide_install_reports_missing_cli(self) -> None:
+        definition = engine.IDE_DEFINITIONS["cursor"]
+
+        def command_exists(name: str) -> bool:
+            return name == "brew"
+
+        with mock.patch("base_setup.engine.command_exists", side_effect=command_exists), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=True,
+        ):
+            check = engine.check_ide_install("demo", definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.name, "Cursor CLI")
+        self.assertIn("CLI 'cursor' is not on PATH", check.message)
+        self.assertIn("Enable the 'cursor' shell command", check.fix)
+
+    def test_manifest_checks_include_requested_ide_installs(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={"vscode": IdeConfig(install=True, extensions=(), settings={})},
+        )
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.run_check",
+            return_value=True,
+        ):
+            checks = engine.manifest_checks(default_manifest, manifest)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].name, "VS Code app")
+        self.assertTrue(checks[0].ok)
 
 
 if __name__ == "__main__":
