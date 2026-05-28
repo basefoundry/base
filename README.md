@@ -193,6 +193,11 @@ users who want a checklist-style first Base setup. Its design is captured in
 [docs/basectl-onboard.md](docs/basectl-onboard.md). Product-specific onboarding
 should still live in project installers that call Base internally.
 
+Base can also bootstrap supported IDEs for participating projects through the
+optional `ide:` manifest section. It currently supports VS Code and Cursor app
+installation, extension installation, additive user settings, and check/doctor
+diagnostics. See [docs/ide-bootstrapping.md](docs/ide-bootstrapping.md).
+
 ### 2. Shell Environment Management
 
 Base should manage shell environments at two levels:
