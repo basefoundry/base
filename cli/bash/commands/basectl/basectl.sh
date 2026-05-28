@@ -51,8 +51,9 @@ Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
     Pass a project name to include that project's manifest artifacts.
-  - Invoking `basectl` with no command is equivalent to `basectl activate base`
-    when attached to a terminal; otherwise it prints this help text.
+  - Invoking `basectl` with no command starts a Base runtime shell with Base's
+    project virtual environment while preserving the current directory; in
+    non-interactive shells it prints this help text.
   - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging
     startup before command dispatch or Base runtime initialization.
 EOF
@@ -282,7 +283,7 @@ basectl_main() {
         version)          basectl_do_version ;;
         "")
             if basectl_should_start_shell; then
-                basectl_do_activate base
+                BASE_ACTIVATE_PRESERVE_CWD=1 basectl_do_activate base
             else
                 basectl_show_help
             fi

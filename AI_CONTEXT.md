@@ -117,8 +117,9 @@ base-wrapper --project <project> base_setup ...
 - `basectl activate <project>` starts a runtime shell using
   `lib/bash/runtime/bashrc`; that runtime sources `base_init.sh`, loads the user
   shell config, activates the project venv, and owns the final runtime prompt.
-- Invoking `basectl` with no command in an interactive terminal is equivalent to
-  `basectl activate base`.
+- Invoking `basectl` with no command in an interactive terminal starts a Base
+  runtime shell with project `base`, but preserves the caller's current working
+  directory so the prompt Git segment reflects the current directory's repo.
 
 ## Useful Validation
 

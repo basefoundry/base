@@ -159,7 +159,8 @@ availability.
 
 Applied when the user invokes `basectl`, `basectl activate <project>`, or
 `basectl /path/to/script.sh`. Invoking `basectl` with no arguments in a terminal
-is equivalent to `basectl activate base`.
+starts the Base project runtime while preserving the caller's current
+directory.
 
 Contains:
 - exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`, and `BASE_BASH_LIB_DIR`

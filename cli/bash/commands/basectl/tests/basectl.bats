@@ -32,7 +32,7 @@ run_basectl() {
     [[ "$output" == *"gh <area> <command> [options]"* ]]
     [[ "$output" == *"update [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
-    [[ "$output" == *"Invoking \`basectl\` with no command is equivalent to \`basectl activate base\`"* ]]
+    [[ "$output" == *"Invoking \`basectl\` with no command starts a Base runtime shell"* ]]
     [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
     [[ "$output" == *"--debug-wrapper"* ]]
@@ -378,12 +378,12 @@ EOF
             log_debug() { :; }
             basectl_should_start_shell() { return 0; }
             basectl_get_base_home() { export BASE_HOME; }
-            basectl_do_activate() { printf "activate=%s\n" "$*"; }
+            basectl_do_activate() { printf "activate=%s preserve=%s\n" "$*" "${BASE_ACTIVATE_PRESERVE_CWD:-}"; }
             basectl_main
         '
 
     [ "$status" -eq 0 ]
-    [ "$output" = "activate=base" ]
+    [ "$output" = "activate=base preserve=1" ]
 }
 
 @test "basectl prints version with --version and version" {
@@ -919,6 +919,50 @@ EOF
     [[ "$output" == *"BASE_PROJECT_MANIFEST=$workspace/demo/base_manifest.yaml"* ]]
     [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/demo/.venv"* ]]
     [[ "$output" == *"PWD=$workspace/demo"* ]]
+}
+
+@test "basectl default runtime shell preserves caller working directory" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_activate="$TEST_HOME/.base.d/base/.venv/bin/activate"
+    local workspace="$TEST_TMPDIR/workspace"
+    local caller="$TEST_TMPDIR/caller"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$workspace/base" "$caller"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "base" ]]; then
+    printf 'base\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
+printf 'PWD=%s\n' "$PWD"
+EOF
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/base/.venv" > "$project_activate"
+    chmod +x "$base_python" "$fake_bash"
+    printf 'project:\n  name: base\nartifacts: []\n' > "$workspace/base/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+    caller="$(cd "$caller" && pwd -P)"
+
+    run bash -c 'cd "$1" || exit 1; shift; exec "$@"' _ "$caller" \
+        env \
+            HOME="$TEST_HOME" \
+            PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+            BASE_ACTIVATE_PRESERVE_CWD=1 \
+            BASE_ACTIVATE_SHELL="$fake_bash" \
+            BASE_TEST_PROJECT_ROOT="$workspace/base" \
+            "$BASE_REPO_ROOT/bin/basectl" activate base
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=base"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/base"* ]]
+    [[ "$output" == *"PWD=$caller"* ]]
 }
 
 @test "basectl activate prints help without requiring the Base Python venv" {
