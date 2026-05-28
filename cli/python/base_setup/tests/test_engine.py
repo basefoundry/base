@@ -262,7 +262,7 @@ class ManifestTests(unittest.TestCase):
         ), mock.patch("base_setup.engine.run_command") as run_command:
             engine.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
 
-        run_command.assert_called_once_with(["brew", "install", "terraform"])
+        run_command.assert_called_once_with(ctx, ["brew", "install", "terraform"])
 
     def test_python_artifact_honors_project_venv_dir_override(self) -> None:
         definition = get_artifact_definition("python-package", "requests")
@@ -288,12 +288,28 @@ class ManifestTests(unittest.TestCase):
         )
 
     def test_run_command_includes_stderr_on_failure(self) -> None:
+        ctx = fake_context()
+
         with mock.patch(
             "base_setup.engine.subprocess.run",
             return_value=mock.Mock(returncode=17, stderr="installer exploded\n"),
         ):
             with self.assertRaisesRegex(ArtifactError, "installer exploded"):
-                engine.run_command(["installer", "--bad"])
+                engine.run_command(ctx, ["installer", "--bad"])
+
+    def test_run_command_logs_success_at_debug(self) -> None:
+        ctx = fake_context()
+
+        with mock.patch(
+            "base_setup.engine.subprocess.run",
+            return_value=mock.Mock(returncode=0, stderr=""),
+        ):
+            engine.run_command(ctx, ["installer", "--good", "two words"])
+
+        ctx.log.debug.assert_called_once_with(
+            "Command succeeded: %s",
+            "installer --good 'two words'",
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_project_argument_validates_manifest_project_name(self) -> None:
@@ -614,7 +630,7 @@ class BrewfileTests(unittest.TestCase):
             ) as run_command:
                 engine.reconcile_brewfile(ctx, manifest, dry_run=False)
 
-        run_command.assert_called_once_with(["brew", "bundle", f"--file={expected_brewfile}"])
+        run_command.assert_called_once_with(ctx, ["brew", "bundle", f"--file={expected_brewfile}"])
 
     def test_brewfile_missing_file_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -433,7 +433,7 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
         raise ArtifactError(f"Homebrew is required to install Brewfile dependencies from '{brewfile_path}'.")
 
     ctx.log.info("Installing Homebrew dependencies from Brewfile '%s'.", brewfile_path)
-    run_command(command)
+    run_command(ctx, command)
 
 
 def resolve_brewfile_path(manifest: BaseManifest) -> Path:
@@ -503,7 +503,7 @@ def reconcile_homebrew_artifact(
         definition.package,
         version,
     )
-    run_command(command)
+    run_command(ctx, command)
 
 
 def reconcile_python_artifact(
@@ -532,7 +532,7 @@ def reconcile_python_artifact(
         venv.create(venv_dir, with_pip=True)
 
     ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
-    run_command([str(python_bin), "-m", "pip", "install", requirement])
+    run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
 
 
 def project_venv_dir(project: str) -> Path:
@@ -568,7 +568,7 @@ def run_check(command: list[str]) -> bool:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
-def run_command(command: list[str]) -> None:
+def run_command(ctx: base_cli.Context, command: list[str]) -> None:
     # Keep stdout live for installer progress; capture stderr for persistent failure logs.
     completed = subprocess.run(command, stderr=subprocess.PIPE, text=True, check=False)
     if completed.returncode:
@@ -577,6 +577,7 @@ def run_command(command: list[str]) -> None:
         if stderr:
             message = f"{message}\n{stderr}"
         raise ArtifactError(message)
+    ctx.log.debug("Command succeeded: %s", format_command(command))
 
 
 def dry_run_command(ctx: base_cli.Context, command: list[str]) -> None:

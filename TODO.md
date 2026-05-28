@@ -84,13 +84,6 @@ they are merged.
 
 ## P2 — Operational Excellence
 
-- [ ] Add successful command debug logging in the Python setup engine.
-  - Problem: `run_command` logs failures but has no `ctx`, so successful command
-    completion is silent beyond the caller's "installing..." message.
-  - Goal: make setup logs more useful without noisy terminal output.
-  - Expected behavior: pass `ctx` or a logger into command execution helpers and
-    log successful commands at DEBUG with `format_command(command)`.
-
 - [ ] Add log rotation or retention policy.
   - Goal: prevent Base CLI logs from growing indefinitely.
   - Expected behavior: keep a fixed number of recent log files per CLI, or add a
