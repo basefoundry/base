@@ -9,9 +9,8 @@ debugging context changes.
 - Base is a macOS-first developer tooling foundation for multi-repo workspaces.
 - Current work is moving through `TODO.md`, which tracks May 2026 product-review
   follow-ups by priority.
-- The current in-flight branch is adding a standalone Base installer. Keep
-  `install.sh`, `tests/install.bats`, and the installer references in
-  `docs/project-installers.md` together in the same PR.
+- Base has a public Homebrew tap at `codeforester/homebrew-base`, exposed to
+  users as `brew install codeforester/base/basectl`.
 - Public commands live in `bin/`; `bin/basectl` is the control-plane command.
 - Command implementations live under `cli/bash/commands/<command>/`.
 - Shared Bash libraries live under `lib/bash/`.
@@ -38,6 +37,23 @@ debugging context changes.
   `bin/basectl update-profile`.
 - Installer behavior is covered by `tests/install.bats`; include that file in
   branch validation when touching installer logic.
+
+## Homebrew Tap Model
+
+- The Homebrew tap repository is `https://github.com/codeforester/homebrew-base`.
+- The formula lives at `Formula/basectl.rb` in that repository.
+- The user-facing install command is:
+
+```bash
+brew install codeforester/base/basectl
+```
+
+- The formula installs Base files and users still finish setup with
+  `basectl setup` and `basectl update-profile`.
+- When installed through Homebrew, Base should be updated with
+  `brew upgrade basectl` rather than `basectl update`.
+- The initial formula follows Base's `master` branch. Once Base publishes
+  release tarballs, the formula should move to a versioned URL plus SHA256.
 
 ## Artifact Setup Model
 
