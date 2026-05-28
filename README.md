@@ -39,6 +39,7 @@ Current implemented commands include:
 - `basectl check`
 - `basectl doctor`
 - `basectl clean --older-than <age>`
+- `basectl clean --keep-last <count>`
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
@@ -157,12 +158,18 @@ Clean old Base CLI runtime logs, retained temp files, and cache entries with:
 ```bash
 basectl clean --older-than 30d --dry-run
 basectl clean --older-than 30d
+basectl clean --keep-last 20
+basectl clean --older-than 30d --keep-last 20
 ```
 
 Cleanup only targets runtime artifacts under the Base cache root, which defaults
 to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
 state such as `~/.base.d/config.yaml` and project virtual environments under
 `~/.base.d/<project>/.venv` are outside this scope.
+
+Use `--keep-last <count>` to retain the newest log files per CLI log directory
+while pruning older logs. This retention mode applies only to `*.log` files;
+temp and cache artifacts continue to use `--older-than`.
 
 Use `basectl doctor` when you want a human-oriented diagnosis with suggested
 fixes:

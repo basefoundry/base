@@ -24,7 +24,7 @@ run_basectl() {
     [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
-    [[ "$output" == *"clean --older-than <age> [options]"* ]]
+    [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"update [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
@@ -331,14 +331,14 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl clean --older-than <age> [options]"* ]]
+    [[ "$output" == *"basectl clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
 }
 
-@test "basectl clean reports missing age as a usage error" {
+@test "basectl clean reports missing cleanup criterion as a usage error" {
     run_basectl clean
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Option '--older-than' is required."* ]]
+    [[ "$output" == *"ERROR: One of '--older-than' or '--keep-last' is required."* ]]
     [[ "$output" != *"Traceback"* ]]
     [[ "$output" != *"FATAL"* ]]
 
@@ -346,6 +346,12 @@ EOF
 
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--older-than' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl clean --keep-last
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--keep-last' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 }
 

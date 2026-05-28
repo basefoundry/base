@@ -52,6 +52,7 @@ that delegate to `basectl`.
 - `basectl setup --dev`, `basectl check --dev`, and `basectl doctor --dev`
   manage developer prerequisites through `lib/base/dev_manifest.yaml`.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
+- `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.

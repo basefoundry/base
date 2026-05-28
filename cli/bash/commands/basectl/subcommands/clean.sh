@@ -5,21 +5,24 @@ readonly _base_clean_subcommand_sourced
 base_clean_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl clean --older-than <age> [options]
+  basectl clean [--older-than <age>] [--keep-last <count>] [options]
 
 Options:
   --older-than <age>  Remove runtime artifacts older than an age such as 30d.
+  --keep-last <count> Keep the newest count log files per CLI log directory.
   --dry-run           Print what would be removed without deleting anything.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Remove old Base CLI runtime logs, temp files, and cache entries.
+Remove old Base CLI runtime logs, temp files, and cache entries. At least one
+cleanup criterion is required.
 EOF
 }
 
 base_clean_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local has_older_than=0
+    local has_keep_last=0
     local args=()
 
     while (($# > 0)); do
@@ -32,13 +35,17 @@ base_clean_subcommand_main() {
                 args+=(--debug)
                 shift
                 ;;
-            --older-than|--dry-run)
+            --older-than|--keep-last|--dry-run)
                 args+=("$1")
-                if [[ "$1" == "--older-than" ]]; then
-                    has_older_than=1
+                if [[ "$1" == "--older-than" || "$1" == "--keep-last" ]]; then
+                    if [[ "$1" == "--older-than" ]]; then
+                        has_older_than=1
+                    else
+                        has_keep_last=1
+                    fi
                     [[ -n "${2:-}" ]] || {
                         base_clean_subcommand_usage >&2
-                        printf 'ERROR: Option '\''--older-than'\'' requires an argument.\n' >&2
+                        printf 'ERROR: Option '\''%s'\'' requires an argument.\n' "$1" >&2
                         return 2
                     }
                     args+=("$2")
@@ -52,6 +59,11 @@ base_clean_subcommand_main() {
                 args+=("$1")
                 shift
                 ;;
+            --keep-last=*)
+                has_keep_last=1
+                args+=("$1")
+                shift
+                ;;
             *)
                 args+=("$1")
                 shift
@@ -59,9 +71,9 @@ base_clean_subcommand_main() {
         esac
     done
 
-    if (( ! has_older_than )); then
+    if (( ! has_older_than && ! has_keep_last )); then
         base_clean_subcommand_usage >&2
-        printf 'ERROR: Option '\''--older-than'\'' is required.\n' >&2
+        printf 'ERROR: One of '\''--older-than'\'' or '\''--keep-last'\'' is required.\n' >&2
         return 2
     fi
 

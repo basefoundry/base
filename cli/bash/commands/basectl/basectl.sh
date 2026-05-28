@@ -15,7 +15,7 @@ Commands:
     Install and bootstrap the local Base CLI environment on macOS.
   check [project] [options]
     Verify the local Base CLI environment and optional project artifacts without making changes.
-  clean --older-than <age> [options]
+  clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   doctor [project] [options]
     Diagnose the local Base CLI environment and optional project artifacts.

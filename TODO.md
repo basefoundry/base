@@ -84,11 +84,6 @@ they are merged.
 
 ## P2 — Operational Excellence
 
-- [ ] Add log rotation or retention policy.
-  - Goal: prevent Base CLI logs from growing indefinitely.
-  - Expected behavior: keep a fixed number of recent log files per CLI, or add a
-    retention mode to `basectl clean` such as `--keep-last 20`.
-
 - [ ] Add a standalone installer script.
   - Goal: make first-time Base adoption easier than manually cloning the repo.
   - Expected behavior: provide an install path such as

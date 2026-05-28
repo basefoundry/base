@@ -31,38 +31,50 @@ def main(argv: list[str] | None = None) -> int:
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.option("--older-than", help="Remove runtime artifacts older than an age such as 30d.")
+@base_cli.option("--keep-last", help="Keep the newest N log files per CLI log directory.")
 @base_cli.option("--dry-run", is_flag=True, help="Print what would be removed without deleting anything.")
-def run(ctx: base_cli.Context, older_than: str | None, dry_run: bool) -> int:
-    if not older_than:
-        ctx.log.error("Option '--older-than' is required.")
+def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dry_run: bool) -> int:
+    if not older_than and not keep_last:
+        ctx.log.error("One of '--older-than' or '--keep-last' is required.")
         return 2
 
-    try:
-        threshold_seconds = parse_age(older_than)
-    except ValueError as exc:
-        ctx.log.error(str(exc))
-        return 2
-
-    cutoff = time.time() - threshold_seconds
     cache_root = base_cache_root()
     ctx.log.debug("Scanning Base cache root '%s'.", cache_root)
-    candidates = tuple(find_clean_candidates(cache_root, cutoff, ctx.log))
 
-    if not candidates:
-        ctx.log.info("No Base runtime artifacts older than %s were found.", older_than)
+    candidates: list[CleanCandidate] = []
+    if older_than:
+        try:
+            threshold_seconds = parse_age(older_than)
+        except ValueError as exc:
+            ctx.log.error(str(exc))
+            return 2
+        cutoff = time.time() - threshold_seconds
+        candidates.extend(find_clean_candidates(cache_root, cutoff, ctx.log))
+
+    if keep_last:
+        try:
+            keep_count = parse_keep_last(keep_last)
+        except ValueError as exc:
+            ctx.log.error(str(exc))
+            return 2
+        candidates.extend(find_log_retention_candidates(cache_root, keep_count, ctx.log))
+
+    unique_candidates = tuple(deduplicate_candidates(candidates))
+
+    if not unique_candidates:
+        ctx.log.info("No Base runtime artifacts matched the clean criteria.")
         return 0
 
-    for candidate in candidates:
+    for candidate in unique_candidates:
         action = "Would remove" if dry_run else "Removing"
         print(f"{action}\t{candidate.category}\t{candidate.path}")
         if not dry_run:
             remove_path(candidate.path)
 
     ctx.log.info(
-        "%s %s Base runtime artifact(s) older than %s.",
+        "%s %s Base runtime artifact(s).",
         "Would remove" if dry_run else "Removed",
-        len(candidates),
-        older_than,
+        len(unique_candidates),
     )
     return 0
 
@@ -88,6 +100,15 @@ def parse_age(value: str) -> int:
     return amount * units[unit]
 
 
+def parse_keep_last(value: str) -> int:
+    if not value.isdigit():
+        raise ValueError("Option '--keep-last' must be a positive integer.")
+    amount = int(value)
+    if amount <= 0:
+        raise ValueError("Option '--keep-last' must be greater than zero.")
+    return amount
+
+
 def find_clean_candidates(cache_root: Path, cutoff: float, logger: object | None = None) -> list[CleanCandidate]:
     cli_root = cache_root / "cli"
     if logger is not None:
@@ -103,6 +124,59 @@ def find_clean_candidates(cache_root: Path, cutoff: float, logger: object | None
         candidates.extend(find_category_candidates(cli_dir / "tmp", "temp", cutoff, logger))
         candidates.extend(find_category_candidates(cli_dir / "cache", "cache", cutoff, logger))
     return sorted(candidates, key=lambda candidate: str(candidate.path))
+
+
+def find_log_retention_candidates(
+    cache_root: Path,
+    keep_count: int,
+    logger: object | None = None,
+) -> list[CleanCandidate]:
+    cli_root = cache_root / "cli"
+    if logger is not None:
+        logger.debug("Scanning Base CLI log retention root '%s'.", cli_root)
+    if not cli_root.is_dir():
+        return []
+
+    candidates: list[CleanCandidate] = []
+    for cli_dir in sorted(cli_root.iterdir(), key=lambda path: path.name):
+        if not cli_dir.is_dir():
+            continue
+        candidates.extend(find_log_retention_candidates_for_dir(cli_dir / "logs", keep_count, logger))
+    return sorted(candidates, key=lambda candidate: str(candidate.path))
+
+
+def find_log_retention_candidates_for_dir(
+    logs_dir: Path,
+    keep_count: int,
+    logger: object | None = None,
+) -> list[CleanCandidate]:
+    if logger is not None:
+        logger.debug("Scanning log retention artifacts in '%s'.", logs_dir)
+    if not logs_dir.is_dir():
+        return []
+
+    log_files = []
+    for path in sorted(logs_dir.glob("*.log"), key=lambda item: item.name):
+        if not path.is_file():
+            continue
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        log_files.append((path, stat.st_mtime))
+
+    retained = sorted(log_files, key=lambda item: (item[1], item[0].name), reverse=True)[:keep_count]
+    retained_paths = {path for path, _mtime in retained}
+    return [
+        CleanCandidate(path=path, category="log", age_seconds=int(time.time() - mtime))
+        for path, mtime in log_files
+        if path not in retained_paths
+    ]
+
+
+def deduplicate_candidates(candidates: list[CleanCandidate]) -> list[CleanCandidate]:
+    unique = {candidate.path: candidate for candidate in candidates}
+    return sorted(unique.values(), key=lambda candidate: str(candidate.path))
 
 
 def find_category_candidates(

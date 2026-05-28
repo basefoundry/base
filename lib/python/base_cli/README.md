@@ -253,9 +253,11 @@ On Linux and other non-macOS platforms, the default is `~/.cache/base`. Use
 environments.
 
 `logs/` and `cache/` are runtime artifacts that can be pruned with
-`basectl clean --older-than <age>`. `tmp/<run-id>/` is deleted automatically
-after the command returns unless `--keep-temp` is set; retained temp entries can
-also be pruned by `basectl clean`.
+`basectl clean --older-than <age>`. Logs can also be pruned with
+`basectl clean --keep-last <count>`, which keeps the newest log files per CLI log
+directory. `tmp/<run-id>/` is deleted automatically after the command returns
+unless `--keep-temp` is set; retained temp entries can also be pruned by
+`basectl clean`.
 
 Use `ctx.on_cleanup()` for cleanup work that should happen even when helper code
 does not own the main command wrapper:
