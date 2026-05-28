@@ -40,6 +40,9 @@ Current implemented commands include:
 - `basectl doctor`
 - `basectl clean --older-than <age>`
 - `basectl clean --keep-last <count>`
+- `basectl config path`
+- `basectl config show`
+- `basectl config doctor`
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`

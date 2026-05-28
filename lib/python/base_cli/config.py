@@ -4,6 +4,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from .paths import base_state_root
+
+
+def user_config_path(home: Path | None = None) -> Path:
+    return base_state_root(home) / "config.yaml"
+
 
 def load_yaml_file(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -14,12 +20,19 @@ def load_yaml_file(path: Path) -> dict[str, Any]:
     except ImportError as exc:
         raise RuntimeError("PyYAML is required to load base_cli configuration.") from exc
 
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Config file '{path}' contains invalid YAML: {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
         raise ValueError(f"Config file '{path}' must contain a YAML mapping.")
     return data
+
+
+def load_user_config(home: Path | None = None) -> dict[str, Any]:
+    return load_yaml_file(user_config_path(home))
 
 
 def merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -39,7 +52,7 @@ def load_config(
 ) -> dict[str, Any]:
     root = home or Path.home()
     config: dict[str, Any] = {}
-    config = merge_dicts(config, load_yaml_file(root / ".base.d" / "config.yaml"))
+    config = merge_dicts(config, load_user_config(root))
     if project_root is not None:
         config = merge_dicts(config, load_yaml_file(project_root / ".base" / "config.yaml"))
     if explicit_config is not None:

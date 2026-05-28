@@ -17,6 +17,8 @@ Commands:
     Verify the local Base CLI environment and optional project artifacts without making changes.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
+  config <path|show|doctor>
+    Inspect Base's machine-local user config.
   doctor [project] [options]
     Diagnose the local Base CLI environment and optional project artifacts.
   gh <area> <command> [options]
@@ -157,6 +159,11 @@ basectl_do_clean() {
     base_clean_subcommand_main "$@"
 }
 
+basectl_do_config() {
+    basectl_source_subcommand_module config || return 1
+    base_config_subcommand_main "$@"
+}
+
 basectl_do_doctor() {
     basectl_source_subcommand_module doctor || return 1
     base_doctor_subcommand_main "$@"
@@ -264,6 +271,7 @@ basectl_main() {
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
         clean)            basectl_do_clean "$@" ;;
+        config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;
         setup)            basectl_do_setup "$@" ;;

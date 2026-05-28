@@ -27,6 +27,7 @@ run_basectl() {
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
+    [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"gh <area> <command> [options]"* ]]
     [[ "$output" == *"update [options]"* ]]
@@ -54,9 +55,27 @@ run_basectl() {
     ! grep -Fqx '  shell' <<<"$output"
     grep -Fqx '  version' <<<"$output"
     grep -Fqx '  gh <area> <command> [options]' <<<"$output"
+    grep -Fqx '  config <path|show|doctor>' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
+}
+
+@test "basectl config prints help" {
+    run_basectl config --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl config path"* ]]
+    [[ "$output" == *"basectl config show"* ]]
+    [[ "$output" == *"basectl config doctor"* ]]
+}
+
+@test "basectl config path prints default user config path without Python venv" {
+    run_basectl config path
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$TEST_HOME/.base.d/config.yaml" ]
 }
 
 @test "basectl gh prints help" {

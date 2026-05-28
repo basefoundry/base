@@ -24,7 +24,7 @@ _base_basectl_completion_compgen() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check clean doctor gh update-profile update projects version help"
+    local commands="activate setup check clean config doctor gh update-profile update projects version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -56,6 +56,11 @@ _base_basectl_completion() {
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --dry-run -v -h --help" "$cur"
+            ;;
+        config)
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen "path show doctor" "$cur"
+            fi
             ;;
         doctor)
             _base_basectl_completion_compgen "--dev -v -h --help" "$cur"

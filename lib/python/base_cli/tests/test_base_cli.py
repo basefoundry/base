@@ -12,7 +12,7 @@ from unittest import mock
 
 import base_cli
 from base_cli import config as config_module
-from base_cli.config import load_config
+from base_cli.config import load_config, load_user_config, user_config_path
 from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_cache_root, base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
@@ -150,6 +150,49 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(config["environment"], "env")
         self.assertEqual(config["log_level"], "warning")
+
+    def test_user_config_path_defaults_to_base_state_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            self.assertEqual(user_config_path(home), home / ".base.d" / "config.yaml")
+
+    def test_load_user_config_missing_file_returns_empty_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = load_user_config(Path(tmpdir))
+
+        self.assertEqual(config, {})
+
+    def test_load_user_config_reads_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide:\n  enabled: true\n", encoding="utf-8")
+
+            config = load_user_config(home)
+
+        self.assertEqual(config, {"ide": {"enabled": True}})
+
+    def test_load_user_config_rejects_non_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("- not\n- mapping\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "must contain a YAML mapping"):
+                load_user_config(home)
+
+    def test_load_user_config_rejects_invalid_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide: [unterminated\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "contains invalid YAML"):
+                load_user_config(home)
 
     def test_log_debug_enables_python_debug_logging(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

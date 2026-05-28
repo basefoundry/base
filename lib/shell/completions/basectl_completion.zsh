@@ -17,6 +17,7 @@ _base_basectl_completion() {
         'setup:Install and bootstrap the local Base CLI environment'
         'check:Verify the local Base CLI environment'
         'clean:Remove old Base CLI runtime artifacts'
+        'config:Inspect Base machine-local user config'
         'doctor:Diagnose the local Base environment'
         'gh:Manage GitHub issues, pull requests, branches, and hygiene'
         'update-profile:Refresh Base-managed shell startup sections'
@@ -56,6 +57,9 @@ _base_basectl_completion() {
         clean)
             _arguments '--older-than[Artifact age]:age:' '--dry-run[Log without removing files]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        config)
+            _arguments '1:config command:(path show doctor)'
             ;;
         doctor)
             _arguments '--dev[Include developer prerequisite checks]' '-v[Enable DEBUG logging]' \
