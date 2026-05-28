@@ -27,6 +27,7 @@ that delegate to `basectl`.
 - `setup`
 - `check`
 - `clean`
+- `config`
 - `doctor`
 - `gh`
 - `update-profile`
@@ -54,6 +55,7 @@ that delegate to `basectl`.
   manage developer prerequisites through `lib/base/dev_manifest.yaml`.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
 - `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
+- `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
 - `basectl gh` manages GitHub issues, pull requests, branch naming, and
