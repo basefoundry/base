@@ -908,5 +908,192 @@ class IdeInstallTests(unittest.TestCase):
         self.assertTrue(checks[0].ok)
 
 
+class IdeExtensionTests(unittest.TestCase):
+    def test_ide_extensions_dry_run_prints_install_commands(self) -> None:
+        ctx = fake_context()
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python", "github.copilot"),
+                    settings={},
+                )
+            },
+        )
+
+        engine.reconcile_ide_extensions(ctx, manifest, dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertEqual(
+            info_messages,
+            [
+                "[DRY-RUN] Would run: code --install-extension ms-python.python",
+                "[DRY-RUN] Would run: code --install-extension github.copilot",
+            ],
+        )
+
+    def test_ide_extensions_skip_installed_extensions(self) -> None:
+        ctx = fake_context()
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python", "github.copilot"),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.list_ide_extensions",
+            return_value={"ms-python.python", "github.copilot"},
+        ), mock.patch("base_setup.engine.run_command") as run_command:
+            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+
+        run_command.assert_not_called()
+
+    def test_ide_extensions_install_missing_extensions(self) -> None:
+        ctx = fake_context()
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "cursor": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python", "github.copilot"),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.list_ide_extensions",
+            return_value={"ms-python.python"},
+        ), mock.patch("base_setup.engine.run_command") as run_command:
+            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["cursor", "--install-extension", "github.copilot"])
+
+    def test_ide_extensions_warn_when_cli_is_missing(self) -> None:
+        ctx = fake_context()
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python",),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch("base_setup.engine.command_exists", return_value=False):
+            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+
+        warning_messages = [call.args[0] % call.args[1:] for call in ctx.log.warning.call_args_list]
+        self.assertIn("VS Code CLI 'code' is not on PATH; skipping extension setup.", warning_messages)
+
+    def test_list_ide_extensions_returns_installed_extension_ids(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch(
+            "base_setup.engine.subprocess.run",
+            return_value=mock.Mock(returncode=0, stdout="ms-python.python\n\ngithub.copilot\n", stderr=""),
+        ):
+            extensions = engine.list_ide_extensions(definition)
+
+        self.assertEqual(extensions, {"ms-python.python", "github.copilot"})
+
+    def test_list_ide_extensions_includes_stderr_on_failure(self) -> None:
+        definition = engine.IDE_DEFINITIONS["cursor"]
+
+        with mock.patch(
+            "base_setup.engine.subprocess.run",
+            return_value=mock.Mock(returncode=1, stdout="", stderr="extensions unavailable\n"),
+        ):
+            with self.assertRaisesRegex(ArtifactError, "extensions unavailable"):
+                engine.list_ide_extensions(definition)
+
+    def test_check_ide_extension_reports_installed_extension(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.list_ide_extensions",
+            return_value={"ms-python.python"},
+        ):
+            check = engine.check_ide_extension("demo", definition, "ms-python.python")
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.name, "ms-python.python")
+        self.assertIn("is installed", check.message)
+
+    def test_check_ide_extension_reports_missing_extension(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.list_ide_extensions",
+            return_value=set(),
+        ):
+            check = engine.check_ide_extension("demo", definition, "ms-python.python")
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.fix, "basectl setup demo")
+        self.assertIn("is not installed", check.message)
+
+    def test_check_ide_extension_reports_missing_cli(self) -> None:
+        definition = engine.IDE_DEFINITIONS["cursor"]
+
+        with mock.patch("base_setup.engine.command_exists", return_value=False):
+            check = engine.check_ide_extension("demo", definition, "github.copilot")
+
+        self.assertFalse(check.ok)
+        self.assertIn("CLI 'cursor' is not on PATH", check.message)
+        self.assertIn("basectl setup demo", check.fix)
+
+    def test_manifest_checks_include_ide_extensions(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python",),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+            "base_setup.engine.list_ide_extensions",
+            return_value={"ms-python.python"},
+        ):
+            checks = engine.manifest_checks(default_manifest, manifest)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].name, "ms-python.python")
+        self.assertTrue(checks[0].ok)
+
+
 if __name__ == "__main__":
     unittest.main()

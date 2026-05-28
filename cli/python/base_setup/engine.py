@@ -156,6 +156,7 @@ def reconcile_manifest(
 
     reconcile_brewfile(ctx, manifest, dry_run=dry_run)
     reconcile_ide_installs(ctx, manifest, dry_run=dry_run)
+    reconcile_ide_extensions(ctx, manifest, dry_run=dry_run)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
@@ -235,6 +236,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
         checks.append(check_brewfile(manifest))
 
     checks.extend(check_ide_installs(manifest))
+    checks.extend(check_ide_extensions(manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(manifest.project_name, artifact, definition))
@@ -511,6 +513,96 @@ def check_ide_installs(manifest: BaseManifest) -> list[ArtifactCheck]:
         if ide_config.install:
             checks.append(check_ide_install(manifest.project_name, definition))
     return checks
+
+
+def reconcile_ide_extensions(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    for ide_name, ide_config in manifest.ide.items():
+        if not ide_config.extensions:
+            continue
+        definition = IDE_DEFINITIONS[ide_name]
+        if dry_run:
+            for extension in ide_config.extensions:
+                dry_run_command(ctx, [definition.cli, "--install-extension", extension])
+            continue
+        if not command_exists(definition.cli):
+            ctx.log.warning(
+                "%s CLI '%s' is not on PATH; skipping extension setup.",
+                definition.label,
+                definition.cli,
+            )
+            continue
+        installed_extensions = list_ide_extensions(definition)
+        for extension in ide_config.extensions:
+            if extension in installed_extensions:
+                ctx.log.debug(
+                    "%s extension '%s' is already installed.",
+                    definition.label,
+                    extension,
+                )
+                continue
+            ctx.log.info("Installing %s extension '%s'.", definition.label, extension)
+            run_command(ctx, [definition.cli, "--install-extension", extension])
+
+
+def list_ide_extensions(definition: IdeDefinition) -> set[str]:
+    completed = subprocess.run(
+        [definition.cli, "--list-extensions"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if completed.returncode:
+        stderr = (completed.stderr or "").strip()
+        message = f"Unable to list {definition.label} extensions with '{definition.cli} --list-extensions'."
+        if stderr:
+            message = f"{message}\n{stderr}"
+        raise ArtifactError(message)
+    return {line.strip() for line in completed.stdout.splitlines() if line.strip()}
+
+
+def check_ide_extensions(manifest: BaseManifest) -> list[ArtifactCheck]:
+    checks: list[ArtifactCheck] = []
+    for ide_name, ide_config in manifest.ide.items():
+        if not ide_config.extensions:
+            continue
+        definition = IDE_DEFINITIONS[ide_name]
+        checks.extend(check_ide_extension(manifest.project_name, definition, extension) for extension in ide_config.extensions)
+    return checks
+
+
+def check_ide_extension(project: str, definition: IdeDefinition, extension: str) -> ArtifactCheck:
+    if not command_exists(definition.cli):
+        return ArtifactCheck(
+            name=extension,
+            ok=False,
+            message=f"Cannot check {definition.label} extension '{extension}' because CLI '{definition.cli}' is not on PATH.",
+            fix=f"Enable the '{definition.cli}' shell command from {definition.label}, then run 'basectl setup {project}'.",
+        )
+
+    try:
+        installed_extensions = list_ide_extensions(definition)
+    except ArtifactError as exc:
+        return ArtifactCheck(
+            name=extension,
+            ok=False,
+            message=str(exc),
+            fix=f"basectl setup {project}",
+        )
+
+    if extension in installed_extensions:
+        return ArtifactCheck(
+            name=extension,
+            ok=True,
+            message=f"{definition.label} extension '{extension}' is installed.",
+            fix="",
+        )
+    return ArtifactCheck(
+        name=extension,
+        ok=False,
+        message=f"{definition.label} extension '{extension}' is not installed.",
+        fix=f"basectl setup {project}",
+    )
 
 
 def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
