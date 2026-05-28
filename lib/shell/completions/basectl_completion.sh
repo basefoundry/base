@@ -24,7 +24,7 @@ _base_basectl_completion_compgen() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check clean doctor update-profile update projects version help"
+    local commands="activate setup check clean doctor gh update-profile update projects version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -59,6 +59,39 @@ _base_basectl_completion() {
             ;;
         doctor)
             _base_basectl_completion_compgen "--dev -v -h --help" "$cur"
+            ;;
+        gh)
+            case "${COMP_WORDS[2]:-}" in
+                "")
+                    _base_basectl_completion_compgen "issue pr branch todo" "$cur"
+                    ;;
+                issue)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "list create start" "$cur"
+                    else
+                        _base_basectl_completion_compgen "--type --title --body -h --help" "$cur"
+                    fi
+                    ;;
+                pr)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "create status checks ready merge" "$cur"
+                    fi
+                    ;;
+                branch)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "stale prune" "$cur"
+                    else
+                        _base_basectl_completion_compgen "--days --dry-run --yes --remote -h --help" "$cur"
+                    fi
+                    ;;
+                todo)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "import" "$cur"
+                    else
+                        _base_basectl_completion_compgen "--dry-run --file -h --help" "$cur"
+                    fi
+                    ;;
+            esac
             ;;
         update-profile)
             _base_basectl_completion_compgen "--defaults --no-defaults --dry-run -v -h --help" "$cur"

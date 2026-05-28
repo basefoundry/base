@@ -19,6 +19,8 @@ Commands:
     Remove old Base CLI runtime logs, temp files, and cache entries.
   doctor [project] [options]
     Diagnose the local Base CLI environment and optional project artifacts.
+  gh <area> <command> [options]
+    Manage GitHub issues, PRs, branches, and repository hygiene.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   update [options]
@@ -160,6 +162,11 @@ basectl_do_doctor() {
     base_doctor_subcommand_main "$@"
 }
 
+basectl_do_gh() {
+    basectl_source_subcommand_module gh || return 1
+    base_gh_subcommand_main "$@"
+}
+
 basectl_do_update_profile() {
     basectl_source_subcommand_module update_profile || return 1
     base_update_profile_subcommand_main "$@"
@@ -258,6 +265,7 @@ basectl_main() {
         check)            basectl_do_check "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
+        gh)               basectl_do_gh "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;

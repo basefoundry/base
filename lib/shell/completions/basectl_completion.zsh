@@ -18,6 +18,7 @@ _base_basectl_completion() {
         'check:Verify the local Base CLI environment'
         'clean:Remove old Base CLI runtime artifacts'
         'doctor:Diagnose the local Base environment'
+        'gh:Manage GitHub issues, pull requests, branches, and hygiene'
         'update-profile:Refresh Base-managed shell startup sections'
         'update:Update Base and rerun setup'
         'projects:List Base-managed projects'
@@ -59,6 +60,41 @@ _base_basectl_completion() {
         doctor)
             _arguments '--dev[Include developer prerequisite checks]' '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        gh)
+            case "${words[3]:-}" in
+                issue)
+                    _arguments '1:gh area:(issue pr branch todo)' \
+                        '2:issue command:(list create start)' \
+                        '--type[Issue or branch type]:type:(feat fix chore docs)' \
+                        '--title[Issue title]:title:' \
+                        '--body[Issue body]:body:' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                pr)
+                    _arguments '1:gh area:(issue pr branch todo)' \
+                        '2:pr command:(create status checks ready merge)'
+                    ;;
+                branch)
+                    _arguments '1:gh area:(issue pr branch todo)' \
+                        '2:branch command:(stale prune)' \
+                        '--days[Stale threshold in days]:days:' \
+                        '--dry-run[Show planned deletions]' \
+                        '--yes[Apply branch pruning]' \
+                        '--remote[Prune stale remote tracking refs]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                todo)
+                    _arguments '1:gh area:(issue pr branch todo)' \
+                        '2:todo command:(import)' \
+                        '--dry-run[Show planned issues]' \
+                        '--file[TODO file]:path:_files' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '1:gh area:(issue pr branch todo)'
+                    ;;
+            esac
             ;;
         update-profile)
             _arguments '--defaults[Enable shell defaults]' '--no-defaults[Disable shell defaults]' \
