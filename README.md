@@ -152,9 +152,10 @@ Activation spawns a project-specific subshell, changes to the project root, sets
 virtual environment at `~/.base.d/<project>/.venv`. Exit that shell to return to
 the original environment.
 
-Invoking `basectl` with no arguments in a terminal is equivalent to
-`basectl activate base`, so the default interactive Base shell uses Base's own
-project virtual environment.
+Invoking `basectl` with no arguments in a terminal starts the default
+interactive Base shell. It uses the nearest `base_manifest.yaml` above the
+current directory to choose the active project, then preserves the current
+directory. If no project manifest is found, it falls back to the `base` project.
 
 Clean old Base CLI runtime logs, retained temp files, and cache entries with:
 

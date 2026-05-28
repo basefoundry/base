@@ -102,7 +102,9 @@ base_activate_subcommand_main() {
     export BASE_HOME
     export BASE_SHELL=1
 
-    cd "$project_root" || fatal_error "Unable to enter project root '$project_root'."
+    if [[ "${BASE_ACTIVATE_PRESERVE_CWD:-}" != "1" ]]; then
+        cd "$project_root" || fatal_error "Unable to enter project root '$project_root'."
+    fi
     activate_shell="${BASE_ACTIVATE_SHELL:-${BASH:-bash}}"
     exec "$activate_shell" --rcfile "$shell_rc"
 }

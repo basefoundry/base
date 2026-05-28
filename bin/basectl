@@ -235,7 +235,7 @@ main() {
     fi
 
     if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
-        basectl_run_control_command "$base_home" activate base
+        basectl_run_control_command "$base_home"
         return $?
     fi
 

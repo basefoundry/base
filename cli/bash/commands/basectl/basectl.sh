@@ -51,8 +51,10 @@ Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
     Pass a project name to include that project's manifest artifacts.
-  - Invoking `basectl` with no command is equivalent to `basectl activate base`
-    when attached to a terminal; otherwise it prints this help text.
+  - Invoking `basectl` with no command starts a Base runtime shell for the
+    nearest project manifest above the current directory, preserving that
+    directory. If no manifest is found, it falls back to project `base`. In
+    non-interactive shells it prints this help text.
   - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging
     startup before command dispatch or Base runtime initialization.
 EOF
@@ -210,6 +212,23 @@ basectl_should_start_shell() {
     [[ -t 0 && -t 1 ]]
 }
 
+basectl_default_activate_project() {
+    local wrapper="$BASE_HOME/bin/base-wrapper"
+    local resolve_output project_name
+
+    if [[ -x "$wrapper" ]]; then
+        if resolve_output="$("$wrapper" --project base base_projects current 2>/dev/null)"; then
+            IFS=$'\t' read -r project_name _ <<<"$resolve_output"
+            if [[ -n "$project_name" ]]; then
+                printf '%s\n' "$project_name"
+                return 0
+            fi
+        fi
+    fi
+
+    printf '%s\n' base
+}
+
 
 basectl_main() {
     local base_debug=0 command=""
@@ -282,7 +301,7 @@ basectl_main() {
         version)          basectl_do_version ;;
         "")
             if basectl_should_start_shell; then
-                basectl_do_activate base
+                BASE_ACTIVATE_PRESERVE_CWD=1 basectl_do_activate "$(basectl_default_activate_project)"
             else
                 basectl_show_help
             fi

@@ -2,7 +2,9 @@
 
 `lib/bash/runtime/bashrc` is the rcfile used by `basectl activate <project>`
 when it starts a Base-enabled interactive Bash shell. Invoking `basectl` with no
-arguments in a terminal is equivalent to `basectl activate base`.
+arguments in a terminal activates the nearest Base project for the caller
+directory, preserves that directory, and falls back to project `base` when no
+project manifest is found.
 
 ## What It Does
 
