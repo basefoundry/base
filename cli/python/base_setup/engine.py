@@ -4,6 +4,7 @@ import json
 import os
 import shlex
 import subprocess
+import tempfile
 import venv
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,11 +41,24 @@ class IdeDefinition:
     label: str
     cli: str
     cask: str
+    settings_app_dir: str
 
 
 IDE_DEFINITIONS = {
-    "vscode": IdeDefinition(name="vscode", label="VS Code", cli="code", cask="visual-studio-code"),
-    "cursor": IdeDefinition(name="cursor", label="Cursor", cli="cursor", cask="cursor"),
+    "vscode": IdeDefinition(
+        name="vscode",
+        label="VS Code",
+        cli="code",
+        cask="visual-studio-code",
+        settings_app_dir="Code",
+    ),
+    "cursor": IdeDefinition(
+        name="cursor",
+        label="Cursor",
+        cli="cursor",
+        cask="cursor",
+        settings_app_dir="Cursor",
+    ),
 }
 
 
@@ -157,6 +171,7 @@ def reconcile_manifest(
     reconcile_brewfile(ctx, manifest, dry_run=dry_run)
     reconcile_ide_installs(ctx, manifest, dry_run=dry_run)
     reconcile_ide_extensions(ctx, manifest, dry_run=dry_run)
+    reconcile_ide_settings(ctx, manifest, dry_run=dry_run)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
@@ -237,6 +252,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
 
     checks.extend(check_ide_installs(manifest))
     checks.extend(check_ide_extensions(manifest))
+    checks.extend(check_ide_settings(manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(manifest.project_name, artifact, definition))
@@ -602,6 +618,147 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
         ok=False,
         message=f"{definition.label} extension '{extension}' is not installed.",
         fix=f"basectl setup {project}",
+    )
+
+
+def reconcile_ide_settings(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    for ide_name, ide_config in manifest.ide.items():
+        if not ide_config.settings:
+            continue
+        definition = IDE_DEFINITIONS[ide_name]
+        resolved_settings = resolve_ide_settings(manifest.project_name, ide_config.settings)
+        merge_ide_settings(ctx, definition, resolved_settings, dry_run=dry_run)
+
+
+def resolve_ide_settings(project: str, settings: dict[str, object]) -> dict[str, object]:
+    resolved: dict[str, object] = {}
+    for key, value in settings.items():
+        if key == "python.defaultInterpreterPath" and value == "auto":
+            resolved[key] = str(project_venv_dir(project) / "bin" / "python")
+        else:
+            resolved[key] = value
+    return resolved
+
+
+def ide_settings_file(definition: IdeDefinition) -> Path:
+    return Path.home() / "Library" / "Application Support" / definition.settings_app_dir / "User" / "settings.json"
+
+
+def read_ide_settings(definition: IdeDefinition) -> dict[str, object]:
+    settings_file = ide_settings_file(definition)
+    if not settings_file.exists():
+        return {}
+    try:
+        data = json.loads(settings_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ArtifactError(f"{settings_file}: invalid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ArtifactError(f"{settings_file}: expected a JSON object.")
+    return data
+
+
+def merge_ide_settings(
+    ctx: base_cli.Context,
+    definition: IdeDefinition,
+    desired_settings: dict[str, object],
+    dry_run: bool,
+) -> None:
+    settings_file = ide_settings_file(definition)
+    current_settings = read_ide_settings(definition)
+    merged_settings = dict(current_settings)
+    added: dict[str, object] = {}
+
+    for key, value in desired_settings.items():
+        if key not in current_settings:
+            merged_settings[key] = value
+            added[key] = value
+        elif current_settings[key] != value:
+            ctx.log.info(
+                "%s setting '%s' already set by user; leaving intact.",
+                definition.label,
+                key,
+            )
+
+    if not added:
+        ctx.log.debug("%s user settings already contain all Base-managed keys.", definition.label)
+        return
+
+    if dry_run:
+        for key, value in added.items():
+            ctx.log.info(
+                "[DRY-RUN] Would set %s user setting '%s' to %s.",
+                definition.label,
+                key,
+                json.dumps(value, sort_keys=True),
+            )
+        return
+
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    write_json_atomic(settings_file, merged_settings)
+    ctx.log.info("Updated %s user settings at '%s'.", definition.label, settings_file)
+
+
+def write_json_atomic(path: Path, data: dict[str, object]) -> None:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as tmp_file:
+        json.dump(data, tmp_file, indent=2, sort_keys=True)
+        tmp_file.write("\n")
+        tmp_path = Path(tmp_file.name)
+    tmp_path.replace(path)
+
+
+def check_ide_settings(manifest: BaseManifest) -> list[ArtifactCheck]:
+    checks: list[ArtifactCheck] = []
+    for ide_name, ide_config in manifest.ide.items():
+        if not ide_config.settings:
+            continue
+        definition = IDE_DEFINITIONS[ide_name]
+        resolved_settings = resolve_ide_settings(manifest.project_name, ide_config.settings)
+        checks.extend(
+            check_ide_setting(manifest.project_name, definition, key, value)
+            for key, value in resolved_settings.items()
+        )
+    return checks
+
+
+def check_ide_setting(
+    project: str,
+    definition: IdeDefinition,
+    key: str,
+    expected_value: object,
+) -> ArtifactCheck:
+    settings_file = ide_settings_file(definition)
+    try:
+        current_settings = read_ide_settings(definition)
+    except ArtifactError as exc:
+        return ArtifactCheck(
+            name=f"{definition.label} setting: {key}",
+            ok=False,
+            message=str(exc),
+            fix=f"Repair '{settings_file}' and run 'basectl setup {project}'.",
+        )
+
+    if key not in current_settings:
+        return ArtifactCheck(
+            name=f"{definition.label} setting: {key}",
+            ok=False,
+            message=f"{definition.label} setting '{key}' is absent from '{settings_file}'.",
+            fix=f"basectl setup {project}",
+        )
+    if current_settings[key] == expected_value:
+        return ArtifactCheck(
+            name=f"{definition.label} setting: {key}",
+            ok=True,
+            message=f"{definition.label} setting '{key}' matches the Base manifest.",
+            fix="",
+        )
+    return ArtifactCheck(
+        name=f"{definition.label} setting: {key}",
+        ok=False,
+        message=(
+            f"{definition.label} setting '{key}' is set to {json.dumps(current_settings[key], sort_keys=True)}; "
+            f"expected {json.dumps(expected_value, sort_keys=True)}. Base will not overwrite user settings."
+        ),
+        fix=f"Update '{settings_file}' manually or remove the key and run 'basectl setup {project}'.",
     )
 
 
