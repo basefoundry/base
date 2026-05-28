@@ -294,7 +294,7 @@ is requested on macOS, Base warns if `osascript` is not available.
 Base can be installed through its Homebrew tap:
 
 ```bash
-brew install codeforester/base/basectl
+brew install codeforester/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
@@ -305,7 +305,7 @@ runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
 your shell startup path. When installed through Homebrew, update Base with:
 
 ```bash
-brew upgrade basectl
+brew upgrade codeforester/base/base
 ```
 
 The standalone installer is also available:
