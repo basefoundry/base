@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option(
     "--action",
     default="setup",
-    help="Action to run: setup, check, or doctor. Defaults to setup.",
+    help="Action to run: setup, bootstrap, check, or doctor. Defaults to setup.",
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -91,11 +91,14 @@ def run_manifest_action(
     if action == "setup":
         reconcile_manifest(ctx, default_manifest, base_manifest, dry_run=manifest_action.dry_run)
         return 0
+    if action == "bootstrap":
+        reconcile_bootstrap_artifacts(ctx, default_manifest, base_manifest, dry_run=manifest_action.dry_run)
+        return 0
     if action == "check":
         return check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
     if action == "doctor":
         return doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
-    ctx.log.error("Unsupported base_setup action '%s'. Expected setup, check, or doctor.", action)
+    ctx.log.error("Unsupported base_setup action '%s'. Expected setup, bootstrap, check, or doctor.", action)
     return 2
 
 
@@ -143,6 +146,24 @@ def reconcile_manifest(
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
     ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
+
+
+def reconcile_bootstrap_artifacts(
+    ctx: base_cli.Context,
+    default_manifest: BaseManifest,
+    manifest: BaseManifest,
+    dry_run: bool,
+) -> None:
+    ctx.log.info("Bootstrapping project '%s' Python runtime.", manifest.project_name)
+
+    artifacts = tuple(artifact for artifact in default_manifest.artifacts if artifact.bootstrap)
+    definitions = resolve_artifact_definitions(artifacts)
+    if not artifacts:
+        ctx.log.info("Base default manifest declares no bootstrap artifacts.")
+        return
+
+    for artifact, definition in zip(artifacts, definitions, strict=True):
+        reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
 
 def check_manifest(

@@ -531,10 +531,11 @@ EOF
 
 @test "basectl doctor project includes project artifact findings" {
     local fake_bin="$TEST_TMPDIR/bin"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
-    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$workspace/demo"
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -583,7 +584,8 @@ fi
 printf 'unexpected doctor project python args: %s\n' "$*" >&2
 exit 1
 EOF
-    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    cp "$venv_python" "$project_python"
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python" "$project_python"
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
@@ -605,10 +607,11 @@ EOF
 
 @test "basectl doctor project --format json includes project findings" {
     local fake_bin="$TEST_TMPDIR/bin"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
-    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$workspace/demo"
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -657,7 +660,8 @@ fi
 printf 'unexpected doctor project json python args: %s\n' "$*" >&2
 exit 1
 EOF
-    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    cp "$venv_python" "$project_python"
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python" "$project_python"
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"

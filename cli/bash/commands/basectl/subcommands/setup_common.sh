@@ -561,8 +561,56 @@ setup_resolve_project_manifest() {
     printf '%s\t%s\n' "$resolved_root" "$resolved_manifest"
 }
 
+setup_project_venv_dir() {
+    local project="$1"
+
+    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+        printf '%s\n' "$BASE_PROJECT_VENV_DIR"
+        return 0
+    fi
+    printf '%s\n' "$HOME/.base.d/$project/.venv"
+}
+
+setup_project_venv_python_bin() {
+    local project="$1"
+    local venv_dir
+
+    venv_dir="$(setup_project_venv_dir "$project")"
+    [[ -x "$venv_dir/bin/python" ]] || return 1
+    printf '%s\n' "$venv_dir/bin/python"
+}
+
 setup_run_project_artifact_setup() {
     setup_run_project_artifact_layer setup text
+}
+
+setup_run_project_bootstrap_layer() {
+    local manifest_path="$1"
+    local project="$2"
+    local output_format="$3"
+    local python_bin venv_dir
+    local args=()
+
+    if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
+        log_info "[DRY-RUN] Would bootstrap project Python runtime after PyYAML is installed."
+        return 0
+    fi
+
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
+
+    if setup_is_dry_run; then
+        args+=(--dry-run)
+    fi
+    args+=(--manifest "$manifest_path" --action bootstrap "$project")
+
+    if [[ "$output_format" != json ]]; then
+        log_info "Bootstrapping Python runtime for project '$project'."
+    fi
+
+    setup_ensure_cached_paths
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
 }
 
 setup_run_project_artifact_layer() {
@@ -608,7 +656,29 @@ setup_run_project_artifact_layer() {
         log_info "Running Python project $action layer."
     fi
 
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
+    if [[ "$action" == setup ]]; then
+        setup_run_project_bootstrap_layer "$manifest_path" "$project" "$output_format"
+        exit_code=$?
+        if ((exit_code)); then
+            log_error "$(setup_recovery_project_layer)"
+            log_error "Python project $action layer failed."
+            return "$exit_code"
+        fi
+    fi
+
+    if ! setup_project_venv_python_bin "$project" >/dev/null 2>&1; then
+        if setup_is_dry_run && [[ "$action" == setup ]]; then
+            log_info "[DRY-RUN] Would run Python project setup layer through base-wrapper for project '$project'."
+            return 0
+        fi
+        if [[ "$output_format" != json ]]; then
+            log_warn "Project virtual environment Python was not found at '$(setup_project_venv_dir "$project")/bin/python'."
+            log_warn "Run 'basectl setup $project' to bootstrap the project virtual environment."
+        fi
+        return 1
+    fi
+
+    "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
     exit_code=$?
 
     if ((exit_code)) && [[ "$action" == setup ]]; then

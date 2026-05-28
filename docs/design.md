@@ -388,11 +388,12 @@ When `basectl setup` runs on a fresh Mac:
 2. Check for Xcode CLI tools — install if missing
 3. Install Python (target version) via Homebrew
 4. Create Base's own virtual environment at `~/.base.d/base/.venv`
-5. Install Base's Python dependencies into `~/.base.d/base/.venv`
+5. Install Base's Python bootstrap dependencies into `~/.base.d/base/.venv`
 6. Prepare the managed shell startup model with `basectl update-profile`
 7. Scan the parent directory for peer repos with base manifests
-8. For each discovered project, run project-level setup (install declared dependencies,
-   create project venv)
+8. For each project setup target, seed the project venv with `bootstrap: true`
+   default artifacts, then run project artifact reconciliation through
+   `base-wrapper --project <project>`
 
 Homebrew installation follows Homebrew's official `install/HEAD/install.sh`
 bootstrap command. That means Base intentionally trusts Homebrew's mutable
