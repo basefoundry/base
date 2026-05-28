@@ -28,6 +28,7 @@ that delegate to `basectl`.
 - `check`
 - `clean`
 - `doctor`
+- `gh`
 - `update-profile`
 - `update`
 - `projects list`
@@ -55,6 +56,8 @@ that delegate to `basectl`.
 - `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
+- `basectl gh` manages GitHub issues, pull requests, branch naming, and
+  repository hygiene using Base's opinionated workflow.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
