@@ -9,6 +9,9 @@ debugging context changes.
 - Base is a macOS-first developer tooling foundation for multi-repo workspaces.
 - Current work is moving through `TODO.md`, which tracks May 2026 product-review
   follow-ups by priority.
+- The current in-flight branch is adding a standalone Base installer. Keep
+  `install.sh`, `tests/install.bats`, and the installer references in
+  `docs/project-installers.md` together in the same PR.
 - Public commands live in `bin/`; `bin/basectl` is the control-plane command.
 - Command implementations live under `cli/bash/commands/<command>/`.
 - Shared Bash libraries live under `lib/bash/`.
@@ -18,7 +21,23 @@ debugging context changes.
 - Durable Base state lives under `~/.base.d`; project virtual environments live
   at `~/.base.d/<project>/.venv`.
 - Runtime cache/log/temp data lives under the Base cache root, which defaults to
-  `~/Library/Caches/base` on macOS.
+  `~/Library/Caches/base` on macOS and can be overridden with `BASE_CACHE_DIR`.
+
+## Standalone Installer Model
+
+- `install.sh` is the user-facing installer for installing Base itself from a
+  fresh machine.
+- By default it installs into `~/work/base` from
+  `https://github.com/codeforester/base.git`.
+- Supported installer options are `--dir`, `--repo-url`, `--branch`,
+  `--no-profile`, and `--dry-run`.
+- The installer clones Base when the target directory is absent, updates it when
+  the target is an existing git checkout, rejects an existing non-git target, and
+  then runs `bin/basectl setup`.
+- Unless `--no-profile` is used, the installer also runs
+  `bin/basectl update-profile`.
+- Installer behavior is covered by `tests/install.bats`; include that file in
+  branch validation when touching installer logic.
 
 ## Artifact Setup Model
 
@@ -29,6 +48,7 @@ debugging context changes.
   `(type, name)` pairs to managers and errors on unknown artifacts.
 - Default project artifacts are declared in `lib/base/default_manifest.yaml`
   using the same manifest shape as project manifests.
+- Development-only Base artifacts are declared in `lib/base/dev_manifest.yaml`.
 - `click` and `PyYAML` are marked `bootstrap: true` in
   `lib/base/default_manifest.yaml`; they are the minimum Python packages needed
   before Base can run its Python CLI layer inside a project venv.
@@ -74,6 +94,7 @@ base-wrapper --project <project> base_setup ...
   reads optional defaults from `~/.base.d/profile.conf`, and sources
   `lib/shell/bash_defaults.sh` only when defaults are enabled.
 - `lib/shell/zshrc` mirrors the same integration model for Zsh.
+- Shell completions live under `lib/shell/completions/`.
 - `~/.baserc` is user-managed and may set startup-safe preferences such as
   `BASE_DEBUG=1`, but must not set Base-owned variables like `BASE_HOME` or
   `BASE_ENABLE_BASH_DEFAULTS`.
@@ -96,7 +117,8 @@ bats lib/bash/git/tests/lib_git.bats \
   cli/bash/commands/sort-in-place/tests/sort-in-place.bats \
   cli/bash/commands/basectl/tests/setup.bats \
   cli/bash/commands/basectl/tests/basectl.bats \
-  cli/bash/commands/caff/tests/caff.bats
+  cli/bash/commands/caff/tests/caff.bats \
+  tests/install.bats
 ```
 
 - Focused setup/control-plane validation:
@@ -117,9 +139,26 @@ env PYTHONPATH=lib/python:cli/python \
   cli/python/base_setup/engine.py cli/python/base_setup/tests/test_engine.py
 ```
 
+- Broader Python validation:
+
+```bash
+env PYTHONPATH=lib/python:cli/python \
+  ~/.base.d/base/.venv/bin/python -m unittest discover -s lib/python -p 'test*.py'
+
+env PYTHONPATH=lib/python:cli/python \
+  ~/.base.d/base/.venv/bin/python -m unittest discover -s cli/python -p 'test*.py'
+```
+
 - Smoke validation:
 
 ```bash
 bin/basectl check
 bin/basectl setup --dry-run
 ```
+
+## Open Design Notes
+
+- `docs/ide-bootstrapping.md` currently captures planned IDE support for
+  manifest-driven VS Code/Cursor extension and settings bootstrapping. If that
+  design is intended to move forward, commit it intentionally and keep this
+  context updated as the manifest shape becomes real.
