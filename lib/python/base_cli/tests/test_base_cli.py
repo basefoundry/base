@@ -12,7 +12,7 @@ from unittest import mock
 
 import base_cli
 from base_cli import config as config_module
-from base_cli.config import load_config, load_user_config, user_config_path
+from base_cli.config import load_config, load_user_config, read_user_config, user_config_path
 from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_cache_root, base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
@@ -193,6 +193,137 @@ class BaseCliTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "contains invalid YAML"):
                 load_user_config(home)
+
+    def test_read_user_config_missing_file_returns_empty_ide_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = read_user_config(Path(tmpdir))
+
+        self.assertEqual(config.raw, {})
+        self.assertIsNone(config.ide.enabled)
+        self.assertEqual(config.ide.preferences, {})
+
+    def test_read_user_config_parses_ide_preferences(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "\n".join(
+                    [
+                        "ide:",
+                        "  enabled: true",
+                        "  vscode:",
+                        "    enabled: true",
+                        "    install: false",
+                        "    extra_extensions:",
+                        "      - eamodio.gitlens",
+                        "      - github.copilot",
+                        "    settings:",
+                        "      editor.fontSize: 14",
+                        "      editor.minimap.enabled: false",
+                        "  cursor:",
+                        "    enabled: false",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            config = read_user_config(home)
+
+        self.assertTrue(config.ide.enabled)
+        vscode = config.ide.preferences["vscode"]
+        self.assertTrue(vscode.enabled)
+        self.assertFalse(vscode.install)
+        self.assertEqual(vscode.extra_extensions, ("eamodio.gitlens", "github.copilot"))
+        self.assertEqual(
+            vscode.settings,
+            {
+                "editor.fontSize": 14,
+                "editor.minimap.enabled": False,
+            },
+        )
+        self.assertFalse(config.ide.preferences["cursor"].enabled)
+        self.assertIsNone(config.ide.preferences["cursor"].install)
+
+    def test_read_user_config_rejects_non_mapping_ide(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide: true\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "ide must be a mapping"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_unknown_ide_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "\n".join(
+                    [
+                        "ide:",
+                        "  windswept:",
+                        "    enabled: true",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsupported ide keys: windswept"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_non_boolean_ide_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide:\n  enabled: sometimes\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "ide.enabled must be a boolean"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_non_boolean_per_ide_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide:\n  vscode:\n    install: maybe\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "ide.vscode.install must be a boolean"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_invalid_extra_extension(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "\n".join(
+                    [
+                        "ide:",
+                        "  cursor:",
+                        "    extra_extensions:",
+                        "      - github.copilot",
+                        "      - 17",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, r"ide.cursor.extra_extensions\[2\]"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_non_mapping_ide_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("ide:\n  vscode:\n    settings: true\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "ide.vscode.settings must be a mapping"):
+                read_user_config(home)
 
     def test_log_debug_enables_python_debug_logging(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
