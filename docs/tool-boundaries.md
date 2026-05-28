@@ -52,6 +52,7 @@ Base gets weaker when it drifts into becoming any of these:
 | `Brewfile` / `brew bundle` | declarative Homebrew bootstrap | Yes, by orchestration rather than replacement | Yes, strongly | High |
 | Docker / Docker Compose / Colima | containers, Compose-defined local services | Partially, as orchestration only | Yes, strongly | High |
 | `mise` tasks | project-local task running inside `mise` | No | Yes, strongly | Medium |
+| VS Code / Cursor | IDE app, extensions, and user editor settings | Partially, as workstation bootstrap only | Yes, strongly | High |
 
 ## Tool-by-Tool Decisions
 
@@ -258,6 +259,37 @@ How Base should coexist:
 - Base should provide the workspace-wide orchestration and selection layer
 
 Current stance: strong coexistence, borrow the explicit-command philosophy.
+
+### VS Code / Cursor
+
+What they do well:
+
+- provide the main editing environment for project work
+- install language/tooling extensions through a scriptable CLI
+- store user-level settings in a known macOS location
+
+What Base should borrow:
+
+- the idea that project development ergonomics should be declared and checked
+- the ability to install extensions through the IDE's own CLI
+
+What Base should not do:
+
+- become a general IDE preference manager
+- overwrite personal user settings
+- manage every editor or fork before a real project needs it
+- pin extension versions without a deliberate VSIX strategy
+
+How Base should coexist:
+
+- let projects declare supported IDE requirements through `base_manifest.yaml`
+- install VS Code/Cursor through Homebrew casks when opted in
+- install declared extensions through `code` or `cursor`
+- add missing user-level settings without overwriting user values
+- report missing app, CLI, extension, and settings state through check/doctor
+
+Current stance: strong coexistence, Base as IDE-readiness orchestrator rather
+than IDE owner.
 
 ### `Brewfile` / `brew bundle`
 
