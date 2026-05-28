@@ -115,6 +115,131 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(manifest.brewfile, "Brewfile")
 
+    def test_reads_ide_manifest_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    install: true",
+                        "    extensions:",
+                        "      - ms-python.python",
+                        "      - github.copilot",
+                        "    settings:",
+                        "      editor.formatOnSave: true",
+                        "      editor.rulers: [100]",
+                        "      python.defaultInterpreterPath: auto",
+                        "  cursor:",
+                        "    extensions:",
+                        "      - ms-python.python",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(set(manifest.ide), {"vscode", "cursor"})
+        self.assertTrue(manifest.ide["vscode"].install)
+        self.assertEqual(
+            manifest.ide["vscode"].extensions,
+            ("ms-python.python", "github.copilot"),
+        )
+        self.assertEqual(
+            manifest.ide["vscode"].settings,
+            {
+                "editor.formatOnSave": True,
+                "editor.rulers": [100],
+                "python.defaultInterpreterPath": "auto",
+            },
+        )
+        self.assertFalse(manifest.ide["cursor"].install)
+        self.assertEqual(manifest.ide["cursor"].extensions, ("ms-python.python",))
+        self.assertEqual(manifest.ide["cursor"].settings, {})
+
+    def test_rejects_unknown_ide_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  windows-notepad:",
+                        "    extensions: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "unsupported IDE names: windows-notepad"):
+                read_manifest(manifest_path)
+
+    def test_rejects_invalid_ide_extension(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    extensions:",
+                        "      - ms-python.python",
+                        "      - 123",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, r"ide.vscode.extensions\[2\] must be a non-empty string"):
+                read_manifest(manifest_path)
+
+    def test_rejects_non_boolean_ide_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    install: maybe",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "ide.vscode.install must be a boolean"):
+                read_manifest(manifest_path)
+
+    def test_rejects_unsupported_auto_ide_setting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    settings:",
+                        "      editor.defaultFormatter: auto",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "does not support the special value 'auto'"):
+                read_manifest(manifest_path)
+
     def test_base_manifest_declares_python_dev_tools(self) -> None:
         manifest = read_manifest(Path(__file__).resolve().parents[4] / "base_manifest.yaml")
         tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}

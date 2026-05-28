@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
+import json
 from pathlib import Path
 from typing import Any
 
@@ -26,11 +28,19 @@ class ArtifactRequest:
 
 
 @dataclass(frozen=True)
+class IdeConfig:
+    install: bool
+    extensions: tuple[str, ...]
+    settings: dict[str, Any]
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
     brewfile: str | None
     artifacts: tuple[ArtifactRequest, ...]
+    ide: dict[str, IdeConfig] = field(default_factory=dict)
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -50,16 +60,23 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"project", "brewfile", "artifacts"}
+    allowed_top_level = {"project", "brewfile", "ide", "artifacts"}
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
 
     project_name = _read_project_name(path, data.get("project"))
     brewfile = _read_brewfile(path, data.get("brewfile"))
+    ide = _read_ide(path, data.get("ide"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
-    return BaseManifest(path=path, project_name=project_name, brewfile=brewfile, artifacts=tuple(artifacts))
+    return BaseManifest(
+        path=path,
+        project_name=project_name,
+        brewfile=brewfile,
+        artifacts=tuple(artifacts),
+        ide=ide,
+    )
 
 
 def _read_project_name(path: Path, project_data: Any) -> str:
@@ -83,6 +100,84 @@ def _read_brewfile(path: Path, brewfile_data: Any) -> str | None:
     if not isinstance(brewfile_data, str) or not brewfile_data.strip():
         raise ManifestError(f"{path}: brewfile must be a non-empty string when provided.")
     return brewfile_data.strip()
+
+
+def _read_ide(path: Path, ide_data: Any) -> dict[str, IdeConfig]:
+    if ide_data is None:
+        return {}
+    if not isinstance(ide_data, dict):
+        raise ManifestError(f"{path}: ide must be a mapping when provided.")
+
+    allowed_ide_names = {"vscode", "cursor"}
+    unknown_ide_names = sorted(set(ide_data) - allowed_ide_names)
+    if unknown_ide_names:
+        raise ManifestError(f"{path}: unsupported IDE names: {', '.join(unknown_ide_names)}.")
+
+    ide: dict[str, IdeConfig] = {}
+    for ide_name, config_data in ide_data.items():
+        ide[ide_name] = _read_ide_config(path, ide_name, config_data)
+    return ide
+
+
+def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:
+    if config_data is None:
+        config_data = {}
+    if not isinstance(config_data, dict):
+        raise ManifestError(f"{path}: ide.{ide_name} must be a mapping.")
+
+    allowed_keys = {"install", "extensions", "settings"}
+    unknown_keys = sorted(set(config_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: ide.{ide_name} has unsupported keys: {', '.join(unknown_keys)}.")
+
+    install = config_data.get("install", False)
+    if not isinstance(install, bool):
+        raise ManifestError(f"{path}: ide.{ide_name}.install must be a boolean when provided.")
+
+    extensions = _read_ide_extensions(path, ide_name, config_data.get("extensions", []))
+    settings = _read_ide_settings(path, ide_name, config_data.get("settings", {}))
+
+    return IdeConfig(install=install, extensions=extensions, settings=settings)
+
+
+def _read_ide_extensions(path: Path, ide_name: str, extensions_data: Any) -> tuple[str, ...]:
+    if extensions_data is None:
+        return ()
+    if not isinstance(extensions_data, list):
+        raise ManifestError(f"{path}: ide.{ide_name}.extensions must be a list when provided.")
+
+    extensions: list[str] = []
+    for index, extension in enumerate(extensions_data, start=1):
+        if not isinstance(extension, str) or not extension.strip():
+            raise ManifestError(
+                f"{path}: ide.{ide_name}.extensions[{index}] must be a non-empty string."
+            )
+        extensions.append(extension.strip())
+    return tuple(extensions)
+
+
+def _read_ide_settings(path: Path, ide_name: str, settings_data: Any) -> dict[str, Any]:
+    if settings_data is None:
+        return {}
+    if not isinstance(settings_data, dict):
+        raise ManifestError(f"{path}: ide.{ide_name}.settings must be a mapping when provided.")
+
+    settings: dict[str, Any] = {}
+    for key, value in settings_data.items():
+        if not isinstance(key, str) or not key:
+            raise ManifestError(f"{path}: ide.{ide_name}.settings keys must be non-empty strings.")
+        if value == "auto" and key != "python.defaultInterpreterPath":
+            raise ManifestError(
+                f"{path}: ide.{ide_name}.settings.{key} does not support the special value 'auto'."
+            )
+        try:
+            json.dumps(value)
+        except TypeError as exc:
+            raise ManifestError(
+                f"{path}: ide.{ide_name}.settings.{key} must be JSON-serializable."
+            ) from exc
+        settings[key] = value
+    return settings
 
 
 def _read_artifacts(path: Path, artifacts_data: Any) -> list[ArtifactRequest]:
