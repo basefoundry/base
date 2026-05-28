@@ -783,7 +783,7 @@ EOF
     [[ "$output" == *"Setup notification was requested, but 'osascript' is not available on this Mac."* ]]
 }
 
-@test "basectl setup forwards project setup arguments through the Base venv" {
+@test "basectl setup forwards project setup arguments through the project wrapper" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
@@ -796,6 +796,7 @@ EOF
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
     create_project_setup_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$demo_venv_dir"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
 
     run_base_command setup --dry-run --manifest "$manifest_path" demo
@@ -805,7 +806,6 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
-    [ ! -e "$demo_venv_dir/bin/python" ]
 }
 
 @test "project setup resolves named project manifests from the workspace" {
@@ -815,6 +815,7 @@ EOF
     mkdir -p "$workspace/brew"
     printf 'project:\n  name: brew\nartifacts: []\n' > "$workspace/brew/base_manifest.yaml"
     create_project_setup_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$TEST_HOME/.base.d/brew/.venv"
 
     run env \
         HOME="$TEST_HOME" \
@@ -1187,6 +1188,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
 
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
@@ -1288,6 +1290,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \

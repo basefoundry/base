@@ -258,8 +258,10 @@ exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_
 reproducible across machines. The current default is `python@3.13`. Override it
 with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
-installs `PyYAML` into that environment and invokes the Python project setup
-layer to read `base_manifest.yaml` and reconcile project artifacts.
+installs Base bootstrap Python packages into that environment. For project
+artifact setup, Base first seeds the target project venv with `bootstrap: true`
+default artifacts and then invokes the Python project setup layer through
+`base-wrapper --project <project>`.
 Developer prerequisites such as BATS and the GitHub CLI are opt-in and
 manifest-driven through `lib/base/dev_manifest.yaml`; use `basectl setup --dev`
 to install them and `basectl check --dev` or `basectl doctor --dev` to verify

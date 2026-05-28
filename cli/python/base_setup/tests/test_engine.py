@@ -359,6 +359,30 @@ class ManifestTests(unittest.TestCase):
 
 
 class BootstrapManifestTests(unittest.TestCase):
+    def test_reconcile_bootstrap_artifacts_uses_only_bootstrap_defaults(self) -> None:
+        ctx = fake_context()
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="__base_defaults__",
+            brewfile=None,
+            artifacts=(
+                ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1", bootstrap=True),
+                ArtifactRequest(artifact_type="python-package", name="pytest", version="latest"),
+            ),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+
+        with mock.patch("base_setup.engine.reconcile_artifact") as reconcile_artifact:
+            engine.reconcile_bootstrap_artifacts(ctx, default_manifest, manifest, dry_run=True)
+
+        self.assertEqual(reconcile_artifact.call_count, 1)
+        self.assertEqual(reconcile_artifact.call_args.args[1].name, "click")
+
     def test_merge_artifacts_preserves_default_bootstrap_marker(self) -> None:
         merged = merge_artifacts(
             (
