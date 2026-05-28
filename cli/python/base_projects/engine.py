@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+from base_cli.paths import discover_manifest
 from base_setup.manifest import ManifestError, read_manifest
 
 
@@ -29,10 +30,12 @@ def main(argv: list[str] | None = None) -> int:
 def run(ctx: base_cli.Context, command: str | None, project: str | None, workspace: str | None) -> int:
     if command in (None, "list"):
         return list_projects_command(ctx, workspace)
+    if command == "current":
+        return current_project_command(ctx)
     if command == "resolve":
         return resolve_project_command(ctx, project, workspace)
 
-    ctx.log.error("Unknown projects command '%s'. Supported commands: list, resolve.", command)
+    ctx.log.error("Unknown projects command '%s'. Supported commands: list, current, resolve.", command)
     return 2
 
 
@@ -57,6 +60,22 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         project = find_project(workspace_root, project_name)
+    except ProjectDiscoveryError as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    return 0
+
+
+def current_project_command(ctx: base_cli.Context) -> int:
+    manifest_path = discover_manifest(Path.cwd())
+    if manifest_path is None:
+        ctx.log.error("No base_manifest.yaml found from '%s' upward.", Path.cwd())
+        return 1
+
+    try:
+        project = read_project(manifest_path)
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return 1

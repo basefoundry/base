@@ -249,9 +249,14 @@ The prompt shows three things, always:
 
 ### Project Name in Prompt
 
-`BASE_PROJECT` is set by `basectl activate`. Default value is `"base"`. It does not change
-based on directory. Once you activate a project, the project name shows consistently
-regardless of where you `cd` inside the subshell.
+`BASE_PROJECT` is set by `basectl activate`. When the user invokes `basectl`
+with no arguments in an interactive terminal, Base discovers the nearest
+`base_manifest.yaml` above the current directory and activates that project
+while preserving the current directory. If no manifest is found, it falls back
+to the `base` project.
+
+Once the subshell starts, `BASE_PROJECT` stays fixed until the shell exits. It
+does not change dynamically when the user later runs `cd`.
 
 ### Git Branch in Prompt
 
@@ -263,15 +268,17 @@ Implementation in PS1:
 
 ```bash
 _base_git_branch() {
-  git -C "$BASE_PROJECT_ROOT" symbolic-ref --short HEAD 2>/dev/null || echo "detached"
+  git symbolic-ref --quiet --short HEAD 2>/dev/null ||
+    git rev-parse --short HEAD 2>/dev/null
 }
 
 PS1='[${BASE_PROJECT}: $(_base_git_branch)] \w $ '
 ```
 
-Key decision: the branch is always queried against `$BASE_PROJECT_ROOT` (the project's
-root directory), not the current working directory. This means even if you `cd /tmp`,
-the prompt shows the project's branch, not whatever git repo happens to be at `/tmp`.
+Key decision: the branch is queried from the current directory at prompt render
+time. This keeps the prompt honest when a Base runtime shell is started from a
+nested project directory or when the user moves between repositories inside the
+same shell.
 
 ### Why Not Show Python Venv in Prompt
 

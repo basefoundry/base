@@ -97,6 +97,9 @@ base-wrapper --project <project> base_setup ...
   `lib/python` and `cli/python` to `PYTHONPATH`, and executes package commands
   with `python -m <package>`.
 - Base itself uses project name `base`.
+- Invoking `basectl` with no arguments in an interactive terminal activates
+  the nearest project manifest above the current directory and preserves that
+  directory. It falls back to project `base` when no manifest is found.
 - End users normally invoke `basectl` or project `bin/` launchers rather than
   calling Python packages directly.
 

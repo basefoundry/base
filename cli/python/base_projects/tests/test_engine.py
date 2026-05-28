@@ -82,6 +82,45 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
 
+    def test_projects_current_prints_nearest_project_details(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            nested = project_root / "docs" / "notes"
+            write_manifest(project_root, "demo")
+            nested.mkdir(parents=True)
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["current"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+
+    def test_projects_current_reports_missing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            outside = workspace / "outside"
+            outside.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(outside)
+                status, _stdout, stderr = run_engine(["current"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 1)
+        self.assertIn("No base_manifest.yaml found", stderr)
+
     def test_projects_resolve_reports_missing_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
