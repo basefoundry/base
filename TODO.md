@@ -91,6 +91,8 @@ they are merged.
   - Expected behavior: use `"$BASE_HOME/bin/base-wrapper" --project <project>
     base_setup ...` while preserving manifest resolution and JSON stdout
     cleanliness.
+  - Bootstrap note: `lib/base/default_manifest.yaml` marks the minimum Python
+    packages required before this project-scoped invocation can run.
 
 - [ ] Add successful command debug logging in the Python setup engine.
   - Problem: `run_command` logs failures but has no `ctx`, so successful command

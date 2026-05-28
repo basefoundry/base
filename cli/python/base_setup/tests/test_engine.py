@@ -12,7 +12,7 @@ from unittest import mock
 
 from base_setup import engine
 from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
-from base_setup.manifest import ArtifactRequest, BaseManifest
+from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 
@@ -45,10 +45,10 @@ class ManifestTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            [(artifact.artifact_type, artifact.name, artifact.version) for artifact in merged],
+            [(artifact.artifact_type, artifact.name, artifact.version, artifact.bootstrap) for artifact in merged],
             [
-                ("python-package", "click", "8.4.1"),
-                ("tool", "terraform", "1.8.5"),
+                ("python-package", "click", "8.4.1", False),
+                ("tool", "terraform", "1.8.5", False),
             ],
         )
 
@@ -94,6 +94,7 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
+        self.assertFalse(manifest.artifacts[0].bootstrap)
 
     def test_reads_manifest_brewfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -355,6 +356,79 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("Project 'demo' declares no artifacts; installing Base default artifacts only.", stderr)
+
+
+class BootstrapManifestTests(unittest.TestCase):
+    def test_merge_artifacts_preserves_default_bootstrap_marker(self) -> None:
+        merged = merge_artifacts(
+            (
+                ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1", bootstrap=True),
+            ),
+            (
+                ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1"),
+            ),
+        )
+
+        self.assertTrue(merged[0].bootstrap)
+
+    def test_reads_bootstrap_artifact_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: click",
+                        "    version: \"8.4.1\"",
+                        "    bootstrap: true",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertTrue(manifest.artifacts[0].bootstrap)
+
+    def test_rejects_non_boolean_bootstrap_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: click",
+                        "    version: \"8.4.1\"",
+                        "    bootstrap: \"yes\"",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "bootstrap must be a boolean"):
+                read_manifest(manifest_path)
+
+    def test_default_manifest_marks_python_bootstrap_packages(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "default_manifest.yaml")
+        bootstrap_artifacts = {
+            (artifact.artifact_type, artifact.name): artifact.bootstrap for artifact in manifest.artifacts
+        }
+
+        self.assertEqual(
+            bootstrap_artifacts,
+            {
+                ("python-package", "click"): True,
+                ("python-package", "PyYAML"): True,
+            },
+        )
 
 
 class ProjectCheckTests(unittest.TestCase):

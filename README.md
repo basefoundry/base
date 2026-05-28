@@ -121,6 +121,11 @@ The supported artifact registry lives in
 delegation. Pinned Homebrew versions fail clearly until Base grows explicit
 versioned tool support.
 
+Artifacts may include `bootstrap: true` when they are part of the minimum Python
+runtime contract needed before Base can reconcile a project's remaining
+artifacts. Base currently uses this marker in `lib/base/default_manifest.yaml`
+for `click` and `PyYAML`.
+
 You can inspect the projects Base can see with:
 
 ```bash
