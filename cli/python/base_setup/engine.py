@@ -176,7 +176,7 @@ def reconcile_manifest(
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
-    ctx.log.info("Project '%s' artifact setup is complete.", manifest.project_name)
+    ctx.log.info("Project '%s' setup is complete.", manifest.project_name)
 
 
 def reconcile_bootstrap_artifacts(
@@ -207,7 +207,7 @@ def check_manifest(
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], indent=2))
     elif output_format == "text":
-        ctx.log.info("Checking project '%s' artifacts.", manifest.project_name)
+        ctx.log.info("Checking project '%s' manifest requirements.", manifest.project_name)
         for check in checks:
             if check.ok:
                 ctx.log.info(check.message)

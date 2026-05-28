@@ -1265,5 +1265,94 @@ class IdeSettingsTests(unittest.TestCase):
         self.assertTrue(checks[0].ok)
 
 
+class IdeDiagnosticsTests(unittest.TestCase):
+    def test_check_json_reports_ide_app_extension_and_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    install: true",
+                        "    extensions:",
+                        "      - ms-python.python",
+                        "    settings:",
+                        "      editor.formatOnSave: true",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = read_manifest(manifest_path)
+            with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
+                "base_setup.engine.run_check",
+                return_value=True,
+            ), mock.patch(
+                "base_setup.engine.list_ide_extensions",
+                return_value={"ms-python.python"},
+            ), mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
+                settings_file.parent.mkdir(parents=True)
+                settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
+                stdout_buffer = io.StringIO()
+                with redirect_stdout(stdout_buffer):
+                    status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+
+        checks = json.loads(stdout_buffer.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            [check["name"] for check in checks],
+            ["VS Code app", "ms-python.python", "VS Code setting: editor.formatOnSave"],
+        )
+        self.assertTrue(all(check["ok"] for check in checks))
+
+    def test_doctor_text_reports_ide_fix_guidance(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "cursor": IdeConfig(
+                    install=True,
+                    extensions=("github.copilot",),
+                    settings={"editor.formatOnSave": True},
+                )
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            with mock.patch.dict(os.environ, {"HOME": home_dir}), mock.patch(
+                "base_setup.engine.command_exists",
+                return_value=False,
+            ):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
+
+        output = stdout.getvalue()
+        self.assertGreater(status, 0)
+        self.assertIn("Project doctor: demo", output)
+        self.assertIn("Cursor app", output)
+        self.assertIn("github.copilot", output)
+        self.assertIn("Cursor setting: editor.formatOnSave", output)
+        self.assertIn("Fix:", output)
+
+
 if __name__ == "__main__":
     unittest.main()
