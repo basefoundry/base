@@ -1,8 +1,8 @@
 # `basectl onboard` Design
 
-`basectl onboard` is a future guided setup experience for Base itself.
+`basectl onboard` is the guided setup experience for Base itself.
 
-It should help technically-adjacent users through the first Base setup without
+It helps technically-adjacent users through the first Base setup without
 turning `basectl setup` into an interactive, hand-holding command. The setup
 command should remain the direct, scriptable reconciler. The onboard command can
 be slower, friendlier, and more explanatory because that is its purpose.

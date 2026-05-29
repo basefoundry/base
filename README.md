@@ -214,10 +214,11 @@ basectl check example
 basectl doctor example
 ```
 
-`basectl onboard` is a planned guided setup experience for technically-adjacent
-users who want a checklist-style first Base setup. Its design is captured in
-[docs/basectl-onboard.md](docs/basectl-onboard.md). Product-specific onboarding
-should still live in project installers that call Base internally.
+`basectl onboard` provides a guided checklist for technically-adjacent users who
+want a first Base setup flow around check, setup, profile refresh, doctor, and
+project discovery. Product-specific onboarding should still live in project
+installers that call Base internally. See
+[docs/basectl-onboard.md](docs/basectl-onboard.md).
 
 Base can also bootstrap supported IDEs for participating projects through the
 optional `ide:` manifest section. It currently supports VS Code and Cursor app
