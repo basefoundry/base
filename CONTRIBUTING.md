@@ -53,6 +53,11 @@ basectl test base
 git diff --check
 ```
 
+Use the integration suite when a change affects cross-command workflows,
+workspace discovery, setup/check/doctor behavior, shell profile wiring, or
+installation layout assumptions. See [Testing](docs/testing.md) for the testing
+layers and integration-test boundaries.
+
 Use `basectl setup --dev` to install developer prerequisites such as BATS and
 the GitHub CLI. Use `basectl check --dev` or `basectl doctor --dev` to diagnose
 missing developer tools.

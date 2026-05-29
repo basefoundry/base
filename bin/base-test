@@ -22,4 +22,5 @@ bats \
     lib/bash/runtime/tests/runtime_bashrc.bats \
     lib/bash/std/tests/lib_std.bats \
     lib/bash/version/tests/lib_version.bats \
-    tests/install.bats
+    tests/install.bats \
+    tests/integration/base_workflows.bats
