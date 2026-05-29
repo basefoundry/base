@@ -75,13 +75,19 @@ class BaseCliTests(unittest.TestCase):
     def test_base_cache_root_uses_macos_cache_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with mock.patch("base_cli.paths.sys.platform", "darwin"):
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": ""}), mock.patch(
+                "base_cli.paths.sys.platform",
+                "darwin",
+            ):
                 self.assertEqual(base_cache_root(root), root / "Library" / "Caches" / "base")
 
     def test_base_cache_root_uses_xdg_cache_directory_off_macos(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with mock.patch("base_cli.paths.sys.platform", "linux"):
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": ""}), mock.patch(
+                "base_cli.paths.sys.platform",
+                "linux",
+            ):
                 self.assertEqual(base_cache_root(root), root / ".cache" / "base")
 
     def test_base_cache_root_honors_environment_override(self) -> None:
@@ -356,18 +362,18 @@ class BaseCliTests(unittest.TestCase):
                 with redirect_stderr(stderr):
                     result = invoke(app, ["--name", "Ada"], home=home)
 
-            self.assertEqual(result.exit_code, 0, result.output)
-            self.assertEqual(seen["name"], "Ada")
-            self.assertFalse(seen["temp_dir"].exists())
-            self.assertTrue(seen["cache_dir"].is_dir())
-            log_dir = base_cache_root(home) / "cli" / "demo" / "logs"
-            self.assertTrue(log_dir.is_dir())
-            log_files = tuple(log_dir.glob("*.log"))
-            self.assertEqual(len(log_files), 1)
-            self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
-            self.assertFalse((home / ".base.d" / "cli").exists())
-            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
-            self.assertIn("hello Ada", result.stderr)
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(seen["name"], "Ada")
+                self.assertFalse(seen["temp_dir"].exists())
+                self.assertTrue(seen["cache_dir"].is_dir())
+                log_dir = base_cache_root(home) / "cli" / "demo" / "logs"
+                self.assertTrue(log_dir.is_dir())
+                log_files = tuple(log_dir.glob("*.log"))
+                self.assertEqual(len(log_files), 1)
+                self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
+                self.assertFalse((home / ".base.d" / "cli").exists())
+                self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
+                self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_dry_run_avoids_default_cache_writes(self) -> None:
@@ -491,25 +497,25 @@ class BaseCliTests(unittest.TestCase):
                     home=home,
                 )
 
-            self.assertEqual(result.exit_code, 0, result.output)
-            self.assertEqual(seen["token"], "super-secret")
-            self.assertTrue(seen["debug"])
-            self.assertTrue(seen["temp_dir"].exists())
-            self.assertEqual(seen["log_file"], log_file)
-            self.assertEqual(
-                seen["temp_dir"].parents[1],
-                base_cache_root(home) / "cli" / "secret-tool",
-            )
-            self.assertEqual(seen["manifest_path"], manifest_path.resolve())
-            self.assertEqual(seen["project_root"], project.resolve())
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(seen["token"], "super-secret")
+                self.assertTrue(seen["debug"])
+                self.assertTrue(seen["temp_dir"].exists())
+                self.assertEqual(seen["log_file"], log_file)
+                self.assertEqual(
+                    seen["temp_dir"].parents[1],
+                    base_cache_root(home) / "cli" / "secret-tool",
+                )
+                self.assertEqual(seen["manifest_path"], manifest_path.resolve())
+                self.assertEqual(seen["project_root"], project.resolve())
 
-            log_text = log_file.read_text(encoding="utf-8")
-            self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
-            self.assertIn("--token", log_text)
-            self.assertIn("[REDACTED]", log_text)
-            self.assertNotIn("super-secret", log_text)
-            self.assertIn("manifest_path=", log_text)
-            self.assertIn("project_root=", log_text)
+                log_text = log_file.read_text(encoding="utf-8")
+                self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
+                self.assertIn("--token", log_text)
+                self.assertIn("[REDACTED]", log_text)
+                self.assertNotIn("super-secret", log_text)
+                self.assertIn("manifest_path=", log_text)
+                self.assertIn("project_root=", log_text)
 
     def test_cleanup_continues_after_hook_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
