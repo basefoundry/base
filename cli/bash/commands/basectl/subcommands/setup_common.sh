@@ -647,7 +647,11 @@ setup_run_project_artifact_layer() {
         IFS=$'\t' read -r resolved_name resolved_root manifest_path <<<"$resolve_output"
         project="$resolved_name"
         if [[ "$output_format" != json ]]; then
-            log_info "Resolved project '$project' at '$resolved_root'."
+            if [[ "$action" == setup ]]; then
+                log_info "Resolved project '$project' at '$resolved_root'."
+            else
+                log_debug "Resolved project '$project' at '$resolved_root'."
+            fi
         fi
     else
         if [[ -z "$project" ]]; then
@@ -667,7 +671,11 @@ setup_run_project_artifact_layer() {
     args+=("$project")
 
     if [[ "$output_format" != json ]]; then
-        log_info "Running Python project $action layer."
+        if [[ "$action" == setup ]]; then
+            log_info "Running Python project $action layer."
+        else
+            log_debug "Running Python project $action layer."
+        fi
     fi
 
     if [[ "$action" == setup ]]; then
