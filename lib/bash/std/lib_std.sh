@@ -86,7 +86,7 @@ is_interactive() {
 #
 # check_bash_version - Verifies the Bash version without prompting or installing anything.
 #
-# This function checks if the running Bash interpreter is version 4.0 or higher and returns
+# This function checks if the running Bash interpreter is version 4.2 or higher and returns
 # non-zero when it is not. Base entrypoints should enforce the supported runtime before
 # sourcing this library; this helper is intentionally passive so sourcing lib_std.sh never
 # prompts, installs packages, or re-execs the caller.
@@ -94,9 +94,11 @@ is_interactive() {
 # Note: This function is called before logging is initialized, so it uses `echo` to stderr.
 #
 check_bash_version() {
-    local -r major_version=${BASH_VERSINFO[0]}
-    if ((major_version < 4)); then
-        echo "Error: This script requires Bash 4.0 or higher." >&2
+    local current_version
+
+    current_version="${BASE_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
+    if ((current_version < 42)); then
+        echo "Error: This script requires Bash 4.2 or higher." >&2
         echo "Your version ($BASH_VERSION) is not compatible." >&2
         return 1
     fi
