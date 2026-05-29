@@ -22,6 +22,8 @@ reference. The filename should answer "what is this about?"
   model, environment model, manifest shape, and repository conventions.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
   dispatch order, public launchers, and runtime shell behavior.
+- [Linux Support](linux-support.md) defines the first Ubuntu/Debian runtime
+  support plan and bootstrap boundaries.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
   such as `mise`, `direnv`, Homebrew, IDEs, Docker, and dotfile managers.
 
