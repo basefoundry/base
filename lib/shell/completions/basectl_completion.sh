@@ -49,7 +49,7 @@ _base_basectl_completion() {
             fi
             ;;
         setup)
-            _base_basectl_completion_compgen "--dev --dry-run --manifest --recreate-venv -v -h --help" "$cur"
+            _base_basectl_completion_compgen "--dev --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help" "$cur"
             ;;
         check)
             _base_basectl_completion_compgen "--dev --format -v -h --help" "$cur"

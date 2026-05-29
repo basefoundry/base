@@ -47,7 +47,10 @@ _base_basectl_completion() {
             ;;
         setup)
             _arguments '--dev[Install developer prerequisites]' '--dry-run[Log without making changes]' \
-                '--manifest[Use a specific manifest]:path:_files' '--recreate-venv[Recreate the Base venv]' \
+                '--manifest[Use a specific manifest]:path:_files' \
+                '--notify[Force a setup completion notification]' \
+                '--no-notify[Disable setup completion notification]' \
+                '--recreate-venv[Recreate the Base venv]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         check)
