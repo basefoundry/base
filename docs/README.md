@@ -4,6 +4,9 @@ This directory holds design, architecture, and operational documentation for
 Base. The top-level [README](../README.md) is the product front door; this page
 is the documentation map.
 
+For contribution workflow, branch naming, tests, and PR expectations, see
+[CONTRIBUTING.md](../CONTRIBUTING.md).
+
 ## Naming Convention
 
 Use stable topic names for documentation files:
