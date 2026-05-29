@@ -70,7 +70,9 @@ _base_basectl_completion() {
             fi
             ;;
         clean)
-            _arguments '--older-than[Artifact age]:age:' '--dry-run[Log without removing files]' \
+            _arguments '--older-than[Artifact age]:age:' \
+                '--keep-last[Keep newest log files per CLI log directory]:count:' \
+                '--dry-run[Log without removing files]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)
