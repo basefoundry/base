@@ -329,7 +329,6 @@ project:
 
 brewfile: Brewfile
 
-# Future contract; Base delegates to mise instead of reimplementing it.
 mise: .mise.toml
 
 artifacts:
@@ -347,7 +346,8 @@ orchestration actions. The design rule is delegation-first:
 
 - Use Homebrew's own `Brewfile`/`brew bundle` flow for ordinary macOS packages.
 - Use `mise` for tool versions, language runtimes, environment variables, and
-  tasks when a project opts into it.
+  future tasks when a project opts into it. Base runs `mise install` during
+  setup and does not reimplement mise's version management.
 - Use a project-owned `test` contract for future `basectl test <project>`
   delegation.
 - Let Base own the project virtual environment and Base-aware package

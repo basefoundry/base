@@ -91,7 +91,6 @@ project:
 
 brewfile: Brewfile
 
-# Future contract; Base will delegate to mise rather than reimplementing it.
 mise: .mise.toml
 
 artifacts:
@@ -116,12 +115,13 @@ to the project root. When present, `basectl setup` runs
 this for ordinary Homebrew formulae and casks instead of adding every Homebrew
 package to Base's hand-curated artifact registry.
 
-Future manifest fields should follow the same rule. A `mise` field should cause
-Base to run `mise install` and later delegate task execution to `mise run` when a
-project chooses that substrate. A `test` field should give `basectl test` a
-single project-owned command to run. Base should not run arbitrary setup hooks
-until there is an explicit, reviewable contract for when they run, where they
-run, whether they are interactive, and how dry-run/check/doctor report them.
+Future manifest fields should follow the same rule. A `mise` field causes Base
+to run `mise install` from the project root when a project chooses that
+substrate. Later, `basectl test` can delegate task execution to `mise run` when
+declared. A `test` field should give `basectl test` a single project-owned
+command to run. Base should not run arbitrary setup hooks until there is an
+explicit, reviewable contract for when they run, where they run, whether they
+are interactive, and how dry-run/check/doctor report them.
 
 The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
 It should stay small and Base-aware. `python-package` artifacts are pass-through

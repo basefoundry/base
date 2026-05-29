@@ -180,6 +180,7 @@ def reconcile_manifest(
             ctx.log.info("Project '%s' has no artifacts to install.", effective_manifest.project_name)
 
     reconcile_brewfile(ctx, effective_manifest, dry_run=dry_run)
+    reconcile_mise(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_installs(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_extensions(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_settings(ctx, effective_manifest, dry_run=dry_run)
@@ -264,6 +265,8 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
 
     if effective_manifest.brewfile is not None:
         checks.append(check_brewfile(effective_manifest))
+    if effective_manifest.mise is not None:
+        checks.append(check_mise(effective_manifest))
 
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
@@ -316,6 +319,33 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
         ok=False,
         message=f"Brewfile dependencies are not satisfied for '{brewfile_path}'.",
         fix=f"basectl setup {manifest.project_name}",
+    )
+
+
+def check_mise(manifest: BaseManifest) -> ArtifactCheck:
+    try:
+        mise_path = resolve_mise_path(manifest)
+    except ArtifactError as exc:
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=str(exc),
+            fix=f"Update '{manifest.path}' or run 'basectl setup {manifest.project_name}'.",
+        )
+
+    if not command_exists("mise"):
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise is required for project config '{mise_path}'.",
+            fix="Install mise, then run 'basectl setup'.",
+        )
+
+    return ArtifactCheck(
+        name="mise",
+        ok=True,
+        message=f"mise config '{mise_path}' is present and the mise CLI is available.",
+        fix="",
     )
 
 
@@ -445,6 +475,7 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         brewfile=manifest.brewfile,
         artifacts=manifest.artifacts,
         ide=effective_ide_config(manifest.ide, user_config),
+        mise=manifest.mise,
     )
 
 
@@ -589,6 +620,24 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
     run_command(ctx, command)
 
 
+def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
+    if manifest.mise is None:
+        return
+
+    mise_path = resolve_mise_path(manifest)
+    project_root = manifest.path.parent.resolve()
+    command = ["mise", "install"]
+    if dry_run:
+        dry_run_command(ctx, command, cwd=project_root)
+        return
+
+    if not command_exists("mise"):
+        raise ArtifactError(f"mise is required to install project tool versions from '{mise_path}'.")
+
+    ctx.log.info("Installing mise-managed tools from '%s'.", mise_path)
+    run_command(ctx, command, cwd=project_root)
+
+
 def resolve_brewfile_path(manifest: BaseManifest) -> Path:
     if manifest.brewfile is None:
         raise ArtifactError(f"{manifest.path}: brewfile is not configured.")
@@ -604,6 +653,23 @@ def resolve_brewfile_path(manifest: BaseManifest) -> Path:
     if not brewfile_path.is_file():
         raise ArtifactError(f"{manifest.path}: brewfile '{manifest.brewfile}' does not exist.")
     return brewfile_path
+
+
+def resolve_mise_path(manifest: BaseManifest) -> Path:
+    if manifest.mise is None:
+        raise ArtifactError(f"{manifest.path}: mise is not configured.")
+
+    mise = Path(manifest.mise)
+    if mise.is_absolute():
+        raise ArtifactError(f"{manifest.path}: mise must be relative to the project root.")
+    project_root = manifest.path.parent.resolve()
+    mise_path = (project_root / mise).resolve()
+    if not mise_path.is_relative_to(project_root):
+        raise ArtifactError(f"{manifest.path}: mise must stay inside the project root.")
+    if not mise_path.is_file():
+        raise ArtifactError(f"{manifest.path}: mise config '{manifest.mise}' does not exist.")
+    return mise_path
+
 
 
 def reconcile_ide_installs(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
@@ -1040,19 +1106,25 @@ def run_check(command: list[str]) -> bool:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
-def run_command(ctx: base_cli.Context, command: list[str]) -> None:
+def run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
     # Keep stdout live for installer progress; capture stderr for persistent failure logs.
-    completed = subprocess.run(command, stderr=subprocess.PIPE, text=True, check=False)
+    completed = subprocess.run(command, cwd=cwd, stderr=subprocess.PIPE, text=True, check=False)
     if completed.returncode:
         stderr = (completed.stderr or "").strip()
         message = f"Command failed with exit {completed.returncode}: {format_command(command)}"
         if stderr:
             message = f"{message}\n{stderr}"
         raise ArtifactError(message)
-    ctx.log.debug("Command succeeded: %s", format_command(command))
+    if cwd is not None:
+        ctx.log.debug("Command succeeded in '%s': %s", cwd, format_command(command))
+    else:
+        ctx.log.debug("Command succeeded: %s", format_command(command))
 
 
-def dry_run_command(ctx: base_cli.Context, command: list[str]) -> None:
+def dry_run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
+    if cwd is not None:
+        ctx.log.info("[DRY-RUN] Would run in '%s': %s", cwd, format_command(command))
+        return
     ctx.log.info("[DRY-RUN] Would run: %s", format_command(command))
 
 
