@@ -1,4 +1,4 @@
-# Base — Design Document
+# Base Architecture
 
 ## Overview
 

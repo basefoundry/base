@@ -376,6 +376,20 @@ Project-specific onboarding should live in project installers that call Base
 internally. See [Project Installers](docs/project-installers.md) for the
 recommended boundary between Base and scripts such as `banyanlabs/install.sh`.
 
+## Documentation
+
+The top-level README is the product overview and first-run guide. The
+[docs README](docs/README.md) is the map for architecture, runtime behavior,
+feature designs, and ecosystem boundary decisions.
+
+Key starting points:
+
+- [Architecture](docs/architecture.md)
+- [Execution Model](docs/execution-model.md)
+- [Tool Boundaries](docs/tool-boundaries.md)
+- [IDE Bootstrapping](docs/ide-bootstrapping.md)
+- [Local Config](docs/local-config.md)
+
 ## Compatibility
 
 Base is currently macOS-first. The implemented and tested support contract is
@@ -674,10 +688,12 @@ The current contents include useful shell-oriented building blocks from the
 older version of Base. The goal now is to evolve those foundations into a more
 general multi-project workspace tool.
 
-For the evolving architecture and product-direction notes behind that refactor,
-see [docs/design.md](docs/design.md). For the current `basectl` runtime and
-dispatch contract, see [docs/execution-model.md](docs/execution-model.md). For
-ecosystem boundary and integration decisions, see
+For the documentation map and naming convention, see
+[docs/README.md](docs/README.md). For the evolving architecture and
+product-direction notes behind that refactor, see
+[docs/architecture.md](docs/architecture.md). For the current `basectl` runtime
+and dispatch contract, see [docs/execution-model.md](docs/execution-model.md).
+For ecosystem boundary and integration decisions, see
 [docs/tool-boundaries.md](docs/tool-boundaries.md).
 
 The first migration pass has already started: the Base CLI, runtime bootstrap,
