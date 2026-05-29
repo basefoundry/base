@@ -68,7 +68,7 @@ _base_basectl_completion() {
             _base_basectl_completion_project_or_options "--dev --format -v -h --help" "$cur"
             ;;
         clean)
-            _base_basectl_completion_compgen "--older-than --dry-run -v -h --help" "$cur"
+            _base_basectl_completion_compgen "--older-than --keep-last --dry-run -v -h --help" "$cur"
             ;;
         config)
             if ((COMP_CWORD == 2)); then
