@@ -1,0 +1,55 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run Python tests
+        env:
+          PYTHONPATH: lib/python:cli/python
+        run: |
+          python -m pytest
+
+  bats:
+    name: BATS tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run BATS tests
+        run: |
+          bats \
+            cli/bash/commands/basectl/tests/setup.bats \
+            cli/bash/commands/basectl/tests/basectl.bats \
+            cli/bash/commands/caff/tests/caff.bats \
+            cli/bash/commands/sort-in-place/tests/sort-in-place.bats \
+            lib/bash/file/tests/lib_file.bats \
+            lib/bash/git/tests/lib_git.bats \
+            lib/bash/runtime/tests/runtime_bashrc.bats \
+            lib/bash/std/tests/lib_std.bats \
+            lib/bash/version/tests/lib_version.bats \
+            tests/install.bats
