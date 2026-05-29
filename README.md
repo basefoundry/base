@@ -219,6 +219,14 @@ root, exports `BASE_PROJECT`, `BASE_PROJECT_ROOT`, `BASE_PROJECT_MANIFEST`, and
 exists, and returns the command's exit status. Use `--dry-run` to inspect the
 resolved command without running it.
 
+Pass additional arguments to the project's test command after `--`:
+
+```bash
+basectl test example -- -k focused_case
+```
+
+For `test.mise`, Base passes those arguments after `mise run <task> --`.
+
 Once a project is discoverable, activate it with:
 
 ```bash
