@@ -28,7 +28,7 @@ Branch naming:
 
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
-  - Branch pruning is dry-run unless --yes is passed.
+  - Branch pruning is dry-run by default and applies only when --yes is passed.
   - TODO import is currently a dry-run planning command.
 EOF
 }
@@ -331,7 +331,7 @@ base_gh_branch_stale() {
 }
 
 base_gh_branch_prune() {
-    local dry_run=1 yes=0 remote=0 default_branch current_branch branch
+    local dry_run=1 remote=0 default_branch current_branch branch
 
     while (($#)); do
         case "$1" in
@@ -340,7 +340,6 @@ base_gh_branch_prune() {
                 ;;
             --yes)
                 dry_run=0
-                yes=1
                 ;;
             --remote)
                 remote=1
@@ -363,9 +362,6 @@ base_gh_branch_prune() {
 
     if ((dry_run)); then
         printf '[DRY-RUN] Local branches merged into %s that would be deleted:\n' "$default_branch"
-    elif ((yes == 0)); then
-        base_gh_error "Refusing to prune without --yes."
-        return 1
     fi
 
     while read -r branch; do

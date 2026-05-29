@@ -172,6 +172,55 @@ EOF
     [[ "$output" == "chore/117-"*"-prune-merged-branches" ]]
 }
 
+@test "basectl gh branch prune defaults to dry-run" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Local branches merged into"* ]]
+    [[ "$output" == *"merged-work"* ]]
+    git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh branch prune applies only with yes" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Deleted branch merged-work"* ]]
+    ! git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
 @test "basectl gh pr create links current branch issue" {
     local repo
 
