@@ -5,15 +5,12 @@
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 
-Base is a foundational developer tooling repo for a multi-project workspace.
+Base is a workspace control plane for developers who keep multiple repositories
+checked out side by side.
 
-Its job is not to be a product repo, a service repo, or a monorepo. Its job is
-to provide the common layer that sits above individual project repositories and
-makes them easier to set up, run, and test in a consistent way.
-
-Base combines shell environment management, project discovery, setup
-orchestration, diagnostics, and controlled command execution into one
-workspace-level layer.
+It gives that workspace one common layer for setup, diagnostics, project
+discovery, shell activation, and test execution without turning the workspace
+into a monorepo or moving project-specific logic into Base.
 
 ## Why Base Exists
 
@@ -31,6 +28,60 @@ Base exists to provide that missing common layer.
 
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Release notes
 are tracked in [CHANGELOG.md](CHANGELOG.md).
+
+## Start Here
+
+Install Base through Homebrew:
+
+```bash
+brew install codeforester/base/base
+basectl setup
+basectl update-profile
+exec "$SHELL" -l
+```
+
+Or install from the repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash
+exec "$SHELL" -l
+```
+
+After Base is installed, the common development loop is:
+
+```bash
+basectl projects list
+basectl setup <project>
+basectl check <project>
+basectl doctor <project>
+basectl test <project>
+basectl activate <project>
+```
+
+For Base itself, run the dogfood test contract:
+
+```bash
+basectl test base
+```
+
+Success looks like a workspace where each participating project has a
+`base_manifest.yaml`, appears in `basectl projects list`, can be checked with
+`basectl check <project>`, and can run its declared test command through
+`basectl test <project>`.
+
+## How Base Fits
+
+Base orchestrates tools that already own their domains:
+
+- Homebrew still owns ordinary macOS packages and Brewfiles.
+- mise still owns language/runtime installation when a project declares a mise
+  config.
+- Project repositories still own their source code, tests, installers, service
+  definitions, and product-specific onboarding.
+- Base owns the workspace-level conventions that make those pieces discoverable
+  and repeatable across projects.
+
+See [Tool Boundaries](docs/tool-boundaries.md) for the detailed boundary model.
 
 ## Top Goals
 
@@ -341,7 +392,7 @@ to force a notification for quick runs, `basectl setup --no-notify` or
 `BASE_SETUP_NOTIFY_MIN_SECONDS` to tune the default threshold. When `--notify`
 is requested on macOS, Base warns if `osascript` is not available.
 
-## Quick Start
+## Installation Details
 
 Base can be installed through its Homebrew tap:
 
