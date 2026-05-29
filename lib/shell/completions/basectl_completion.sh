@@ -22,6 +22,17 @@ _base_basectl_completion_compgen() {
     done < <(compgen -W "$words" -- "$current")
 }
 
+_base_basectl_completion_project_or_options() {
+    local options="$1"
+    local current="$2"
+
+    if ((COMP_CWORD == 2)) && [[ "$current" != -* ]]; then
+        _base_basectl_completion_compgen "$(_base_basectl_completion_project_names)" "$current"
+    else
+        _base_basectl_completion_compgen "$options" "$current"
+    fi
+}
+
 _base_basectl_completion() {
     local command cur
     local commands="activate setup check clean config doctor gh update-profile update projects version help"
@@ -52,7 +63,7 @@ _base_basectl_completion() {
             _base_basectl_completion_compgen "--dev --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help" "$cur"
             ;;
         check)
-            _base_basectl_completion_compgen "--dev --format -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options "--dev --format -v -h --help" "$cur"
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --dry-run -v -h --help" "$cur"
@@ -63,7 +74,7 @@ _base_basectl_completion() {
             fi
             ;;
         doctor)
-            _base_basectl_completion_compgen "--dev -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options "--dev -v -h --help" "$cur"
             ;;
         gh)
             case "${COMP_WORDS[2]:-}" in
