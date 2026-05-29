@@ -47,6 +47,116 @@ install_run() {
     "$@"
 }
 
+install_bash_version_number() {
+    printf '%s\n' "${BASE_INSTALL_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
+}
+
+install_find_supported_bash() {
+    local candidate
+    local candidates="${BASE_INSTALL_BASH_CANDIDATES:-/opt/homebrew/bin/bash:/usr/local/bin/bash}"
+    local current_version
+    local old_ifs
+
+    current_version="$(install_bash_version_number)"
+    if [[ "$current_version" -ge 42 ]]; then
+        printf '%s\n' "${BASH:-bash}"
+        return 0
+    fi
+
+    old_ifs="$IFS"
+    IFS=:
+    for candidate in $candidates; do
+        IFS="$old_ifs"
+        [[ -x "$candidate" ]] || continue
+        printf '%s\n' "$candidate"
+        return 0
+    done
+    IFS="$old_ifs"
+
+    return 1
+}
+
+install_find_brew() {
+    local candidate
+    local candidates="${BASE_INSTALL_BREW_CANDIDATES:-/opt/homebrew/bin/brew:/usr/local/bin/brew}"
+    local old_ifs
+
+    if [[ -n "${BASE_INSTALL_BREW_BIN:-}" && -x "${BASE_INSTALL_BREW_BIN:-}" ]]; then
+        printf '%s\n' "$BASE_INSTALL_BREW_BIN"
+        return 0
+    fi
+
+    if command -v brew >/dev/null 2>&1; then
+        command -v brew
+        return 0
+    fi
+
+    old_ifs="$IFS"
+    IFS=:
+    for candidate in $candidates; do
+        IFS="$old_ifs"
+        [[ -x "$candidate" ]] || continue
+        printf '%s\n' "$candidate"
+        return 0
+    done
+    IFS="$old_ifs"
+
+    return 1
+}
+
+install_homebrew() {
+    local installer_url="${BASE_INSTALL_HOMEBREW_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
+
+    install_log "Installing Homebrew."
+    if [[ "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
+        install_log "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
+        return 0
+    fi
+    /bin/bash -c "$(curl -fsSL "$installer_url")"
+}
+
+install_ensure_homebrew() {
+    if install_find_brew >/dev/null 2>&1; then
+        return 0
+    fi
+    install_homebrew
+}
+
+install_ensure_supported_bash() {
+    local brew_bin
+
+    if install_find_supported_bash >/dev/null 2>&1; then
+        return 0
+    fi
+
+    install_log "A supported Bash was not found; bootstrapping Homebrew Bash before running basectl."
+    install_ensure_homebrew
+    brew_bin="$(install_find_brew || true)"
+    if [[ -z "$brew_bin" && "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
+        brew_bin=brew
+    fi
+    [[ -n "$brew_bin" ]] || install_die "Homebrew was installed, but 'brew' was not found."
+    install_run "$brew_bin" install bash
+
+    if [[ "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
+        return 0
+    fi
+    install_find_supported_bash >/dev/null 2>&1 || install_die "Bash was installed, but a supported Bash was not found."
+}
+
+install_run_basectl() {
+    local install_dir="$1"
+    shift
+    local bash_bin
+
+    bash_bin="$(install_find_supported_bash || true)"
+    if [[ -z "$bash_bin" && "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
+        bash_bin="${BASE_INSTALL_DRY_RUN_BASH:-/opt/homebrew/bin/bash}"
+    fi
+    [[ -n "$bash_bin" ]] || install_die "A supported Bash was not found."
+    install_run "$bash_bin" "$install_dir/bin/basectl" "$@"
+}
+
 install_clone_or_update() {
     local repo_url="$1"
     local install_dir="$2"
@@ -79,14 +189,15 @@ install_run_base_setup() {
     local install_dir="$1"
 
     install_log "Running basectl setup."
-    install_run "$install_dir/bin/basectl" setup
+    install_ensure_supported_bash
+    install_run_basectl "$install_dir" setup
 }
 
 install_run_update_profile() {
     local install_dir="$1"
 
     install_log "Updating shell startup files."
-    install_run "$install_dir/bin/basectl" update-profile
+    install_run_basectl "$install_dir" update-profile
 }
 
 install_main() {
