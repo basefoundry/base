@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import tempfile
 import venv
@@ -1027,10 +1028,7 @@ def python_artifact_installed(python_bin: Path, package: str, version: str) -> b
 
 
 def command_exists(name: str) -> bool:
-    return any(
-        (Path(directory) / name).is_file() and os.access(Path(directory) / name, os.X_OK)
-        for directory in os.environ.get("PATH", "").split(os.pathsep)
-    )
+    return shutil.which(name) is not None
 
 
 def run_check(command: list[str]) -> bool:
