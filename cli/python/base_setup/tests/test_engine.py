@@ -401,9 +401,9 @@ class ManifestTests(unittest.TestCase):
             venv_dir = Path(tmpdir) / "custom-venv"
             with mock.patch.dict(
                 os.environ,
-                {"BASE_PROJECT": "demo", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
+                {"BASE_PROJECT": "wrong-project", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
             ), mock.patch("base_setup.engine.python_artifact_installed", return_value=False):
-                engine.reconcile_python_artifact(ctx, definition, "latest", dry_run=True)
+                engine.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn(
@@ -414,6 +414,21 @@ class ManifestTests(unittest.TestCase):
             f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install requests",
             info_messages,
         )
+
+    def test_python_artifact_uses_manifest_project_not_environment(self) -> None:
+        definition = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "demo" / ".venv"
+            with mock.patch.dict(os.environ, {"BASE_PROJECT": "wrong-project"}), mock.patch(
+                "base_setup.engine.project_venv_dir",
+                return_value=venv_dir,
+            ) as project_venv_dir, mock.patch("base_setup.engine.python_artifact_installed", return_value=False):
+                engine.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
+
+        project_venv_dir.assert_called_once_with("demo")
 
     def test_run_command_includes_stderr_on_failure(self) -> None:
         ctx = fake_context()
@@ -526,6 +541,7 @@ class BootstrapManifestTests(unittest.TestCase):
 
         self.assertEqual(reconcile_artifact.call_count, 1)
         self.assertEqual(reconcile_artifact.call_args.args[1].name, "click")
+        self.assertEqual(reconcile_artifact.call_args.args[3], "demo")
 
     def test_merge_artifacts_preserves_default_bootstrap_marker(self) -> None:
         merged = merge_artifacts(
