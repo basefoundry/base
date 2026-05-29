@@ -1020,8 +1020,6 @@ setup_run_check_json() {
     fi
     if [[ -n "$project" ]]; then
         setup_print_json_property_value "project_checks" "$project_json"
-    else
-        :
     fi
     printf '}\n'
 
