@@ -6,32 +6,40 @@ opinionated, testable, and useful as a shared workspace control plane.
 ## Workflow
 
 1. Create or choose a GitHub issue before starting implementation work.
-2. Make sure the issue has one type label:
-   - `type:feat` for user-visible features or product capability.
-   - `type:fix` for bug fixes and correctness issues.
-   - `type:chore` for maintenance, CI, cleanup, or internal improvements.
-   - `type:docs` for documentation-only work.
+2. Make sure the issue has one primary GitHub-style category label:
+   - `bug` for defects, regressions, or correctness issues.
+   - `enhancement` for new capabilities, product improvements, refactors, and
+     most maintenance work.
+   - `documentation` for documentation-only work.
+   - `ci` for GitHub Actions, tests, release automation, or CI reliability.
+   - `security` for security hardening, dependency pinning, static analysis, or
+     permission tightening.
 3. Create a branch from the issue using this convention:
 
    ```text
-   <type>/<issue>-<YYYYMMDD>-<slug>
+   <category>/<issue>-<YYYYMMDD>-<slug>
    ```
 
    Example:
 
    ```text
-   feat/179-20260528-projects-list-json
+   enhancement/179-20260528-projects-list-json
    ```
 
-4. Prefer an isolated Git worktree for each pull request:
+4. Use an isolated Git worktree for each pull request:
 
    ```bash
-   git worktree add ../base-worktrees/<slug> -b <branch> master
+   git fetch origin master
+   git worktree add ../base-worktrees/<slug> -b <branch> origin/master
    ```
 
 5. Keep the PR scoped to the issue. Avoid unrelated refactors.
 6. Link the PR back to the issue with `Fixes #<issue>`.
-7. After merge, sync `master`, remove the worktree, and delete the local branch.
+7. After merge, sync `master`, remove the worktree, and delete the local and
+   remote branches.
+
+For the full policy, including milestone and GitHub Project guidance, see
+[GitHub Workflow](docs/github-workflow.md).
 
 ## Running Tests
 
@@ -87,7 +95,7 @@ When adding or changing a built-in tool artifact:
 
 Before opening a PR:
 
-- The branch name follows `<type>/<issue>-<YYYYMMDD>-<slug>`.
+- The branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - The PR is scoped to one issue.
 - The PR body explains what changed and how it was validated.
 - Relevant BATS and Python tests pass.

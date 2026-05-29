@@ -4,12 +4,15 @@ Base product work is tracked in GitHub Issues.
 
 Use this file only for short-lived private scratch notes that are not ready to
 be public product work. Public bugs, enhancements, chores, and design tasks
-should be filed as GitHub Issues with a `type:*` label and implemented from a
+should be filed as GitHub Issues with a standard category label and implemented from a
 branch named:
 
 ```text
-<type>/<issue>-<YYYYMMDD>-<slug>
+<category>/<issue>-<YYYYMMDD>-<slug>
 ```
+
+See [docs/github-workflow.md](docs/github-workflow.md) for the current label,
+milestone, Project, issue assignment, branch, and worktree policy.
 
 The previous public TODO backlog was migrated to GitHub Issues on 2026-05-28:
 

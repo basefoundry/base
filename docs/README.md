@@ -7,6 +7,9 @@ is the documentation map.
 For contribution workflow, branch naming, tests, and PR expectations, see
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+For GitHub labels, milestones, Projects, issue assignment, branch names, and
+worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
+
 ## Naming Convention
 
 Use stable topic names for documentation files:
@@ -48,3 +51,5 @@ reference. The filename should answer "what is this about?"
   project criteria for showing Base's complete workspace workflow.
 - [base_cli Runtime Package](base-cli.md) describes the Python CLI foundation
   used by Base and Base-supported project CLIs.
+- [GitHub Workflow](github-workflow.md) documents how Base uses GitHub Issues,
+  labels, milestones, Projects, worktrees, and PR trains.
