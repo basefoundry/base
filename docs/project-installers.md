@@ -3,6 +3,12 @@
 Base should stay a developer workspace engine. Project-specific installers should
 own the friendlier, product-specific onboarding experience.
 
+This is an intentional product boundary. Base should not add `basectl onboard
+<project>` for now. That command would make Base responsible for every
+project's product narrative, repository bootstrap choices, credentials, and
+next-step guidance. Those concerns change per project and are better owned by
+the project itself.
+
 This distinction matters because Base and a project installer serve different
 audiences:
 

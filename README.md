@@ -495,8 +495,10 @@ to `PATH`, so `basectl` can be run without spelling out the full path. Use
 `basectl version` or `basectl --version` to report the installed Base version.
 
 Project-specific onboarding should live in project installers that call Base
-internally. See [Project Installers](docs/project-installers.md) for the
-recommended boundary between Base and scripts such as `banyanlabs/install.sh`.
+internally. Base intentionally does not provide `basectl onboard <project>` for
+product-specific setup; that flow belongs in scripts such as
+`banyanlabs/install.sh`. See [Project Installers](docs/project-installers.md)
+for the recommended boundary.
 
 ## Documentation
 
