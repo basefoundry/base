@@ -768,9 +768,10 @@ def resolve_ide_settings(project: str, settings: dict[str, object]) -> dict[str,
 
 
 def ide_settings_file(definition: IdeDefinition) -> Path:
+    home = Path(os.environ.get("HOME") or Path.home()).expanduser()
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / definition.settings_app_dir / "User" / "settings.json"
-    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config").expanduser()
+        return home / "Library" / "Application Support" / definition.settings_app_dir / "User" / "settings.json"
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config").expanduser()
     return config_home / definition.settings_app_dir / "User" / "settings.json"
 
 
