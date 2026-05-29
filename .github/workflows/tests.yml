@@ -53,3 +53,35 @@ jobs:
             lib/bash/std/tests/lib_std.bats \
             lib/bash/version/tests/lib_version.bats \
             tests/install.bats
+
+  security:
+    name: Security scanners
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run Bandit
+        run: |
+          bandit -q -r cli/python lib/python -x '*/tests/*' --severity-level medium
+
+      - name: Run ShellCheck
+        run: |
+          git ls-files -z \
+            '*.sh' \
+            'base_init.sh' \
+            'install.sh' \
+            'bin/*' \
+            | xargs -0 shellcheck --severity=error
