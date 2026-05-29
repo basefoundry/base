@@ -12,7 +12,7 @@ from .redaction import redact_argv
 
 def configure_logger(
     cli_name: str,
-    log_file: Path,
+    log_file: Path | None,
     debug: bool,
 ) -> logging.Logger:
     logger = logging.getLogger(f"base_cli.{cli_name}")
@@ -27,11 +27,12 @@ def configure_logger(
     user_handler.setFormatter(BaseCliFormatter())
     logger.addHandler(user_handler)
 
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    secure_log_file_permissions(log_file)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(BaseCliFormatter())
-    logger.addHandler(file_handler)
+    if log_file is not None:
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        secure_log_file_permissions(log_file)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(BaseCliFormatter())
+        logger.addHandler(file_handler)
     return logger
 
 

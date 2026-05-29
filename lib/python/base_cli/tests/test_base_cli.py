@@ -370,6 +370,69 @@ class BaseCliTests(unittest.TestCase):
             self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_dry_run_avoids_default_cache_writes(self) -> None:
+        app = base_cli.App(name="dry-run-demo", version="0.1.0")
+        seen = {}
+
+        @app.command()
+        @base_cli.option("--dry-run", is_flag=True)
+        def main(ctx: base_cli.Context, dry_run: bool) -> None:
+            seen["dry_run"] = dry_run
+            seen["temp_dir"] = ctx.temp_dir
+            seen["cache_dir"] = ctx.cache_dir
+            seen["log_dir"] = ctx.log_dir
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("dry run")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
+                from base_cli.testing import invoke
+
+                result = invoke(app, ["--dry-run"], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(seen["dry_run"])
+            self.assertIsNone(seen["log_file"])
+            self.assertFalse(seen["temp_dir"].exists())
+            self.assertFalse(seen["cache_dir"].exists())
+            self.assertFalse(seen["log_dir"].exists())
+            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertIn("dry run", result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_dry_run_honors_explicit_log_file_without_cache_dirs(self) -> None:
+        app = base_cli.App(name="dry-run-log-demo", version="0.1.0")
+        seen = {}
+
+        @app.command()
+        @base_cli.option("--dry-run", is_flag=True)
+        def main(ctx: base_cli.Context, dry_run: bool) -> None:
+            seen["dry_run"] = dry_run
+            seen["temp_dir"] = ctx.temp_dir
+            seen["cache_dir"] = ctx.cache_dir
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("dry run with log")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            log_file = home / "logs" / "dry-run.log"
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
+                from base_cli.testing import invoke
+
+                result = invoke(app, ["--dry-run", "--log-file", str(log_file)], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(seen["dry_run"])
+            self.assertEqual(seen["log_file"], log_file)
+            self.assertTrue(log_file.is_file())
+            self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
+            self.assertFalse(seen["temp_dir"].exists())
+            self.assertFalse(seen["cache_dir"].exists())
+            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertIn("dry run with log", log_file.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_testing_invoke_captures_stderr_separately(self) -> None:
         app = base_cli.App(name="streams", version="0.1.0")
 
