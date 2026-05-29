@@ -360,7 +360,8 @@ orchestration actions. The design rule is delegation-first:
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety
   contract for execution timing, dry-run behavior, interactivity, and
-  diagnostics.
+  diagnostics. See [setup-hooks.md](setup-hooks.md) for the current no-hooks
+  decision and future reconsideration criteria.
 
 Base owns the curated tool artifact registry only for things it must manage
 directly. The current registry is `cli/python/base_setup/registry.py`.

@@ -206,9 +206,11 @@ Maven or Gradle project files. Base does not need first-class `go-package` or
 `java-package` artifact types until it has a Base-specific behavior to add on
 top of those native ecosystems.
 
-Base should not run arbitrary setup hooks until there is an explicit,
-reviewable contract for when they run, where they run, whether they are
-interactive, and how dry-run/check/doctor report them.
+Base does not run arbitrary setup hooks from the manifest. Projects should use
+typed Base contracts or project-owned installers/tasks until there is an
+explicit, reviewable hook contract for when hooks run, where they run, whether
+they are interactive, and how dry-run/check/doctor report them. See
+[Setup Hooks Boundary](docs/setup-hooks.md).
 
 The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
 It should stay small and Base-aware. `python-package` artifacts are pass-through
