@@ -110,6 +110,8 @@ base_test_subcommand_main() {
     if [[ -d "$venv_dir/bin" ]]; then
         PATH="$venv_dir/bin:$PATH"
         export PATH
+    elif [[ "$dry_run" != "1" ]]; then
+        log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
     fi
 
     if [[ "$dry_run" == "1" ]]; then
