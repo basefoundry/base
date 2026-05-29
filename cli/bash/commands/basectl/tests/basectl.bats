@@ -1224,7 +1224,8 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Base doctor for project 'demo'"* ]]
-    [[ "$output" == *"Running Python project doctor layer."* ]]
+    [[ "$output" != *"Resolved project 'demo' at '$workspace/demo'."* ]]
+    [[ "$output" != *"Running Python project doctor layer."* ]]
     [[ "$output" == *"ok"*"demo-artifact"*"Project artifact check passed."* ]]
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
 }

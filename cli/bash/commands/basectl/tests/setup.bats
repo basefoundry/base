@@ -1234,8 +1234,8 @@ EOF
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Resolved project 'demo' at '$workspace/demo'."* ]]
-    [[ "$output" == *"Running Python project check layer."* ]]
+    [[ "$output" != *"Resolved project 'demo' at '$workspace/demo'."* ]]
+    [[ "$output" != *"Running Python project check layer."* ]]
     [[ "$output" == *"Project artifact check passed."* ]]
     [[ "$output" == *"Base CLI environment and project 'demo' check passed."* ]]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
