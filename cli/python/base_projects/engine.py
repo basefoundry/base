@@ -87,8 +87,7 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
         return 2
 
     try:
-        workspace_root = resolve_workspace_root(ctx, workspace)
-        project = find_project(workspace_root, project_name)
+        project = resolve_named_project(ctx, project_name, workspace)
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return 1
@@ -100,8 +99,7 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
 def test_command_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
     try:
         if project_name:
-            workspace_root = resolve_workspace_root(ctx, workspace)
-            project = find_project(workspace_root, project_name)
+            project = resolve_named_project(ctx, project_name, workspace)
         else:
             project = current_project()
         manifest = read_manifest(project.manifest_path)
@@ -173,6 +171,14 @@ def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path
     if ctx.base_home is None:
         raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
     return ctx.base_home.parent.resolve()
+
+
+def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project:
+    if workspace is None and project_name == "base" and ctx.base_home is not None:
+        return read_project(ctx.base_home / "base_manifest.yaml")
+
+    workspace_root = resolve_workspace_root(ctx, workspace)
+    return find_project(workspace_root, project_name)
 
 
 def discover_projects(workspace_root: Path) -> tuple[Project, ...]:
