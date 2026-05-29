@@ -9,8 +9,26 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
-- Added this changelog so adopting teams can see what changed between Base
-  versions.
+- Added a repo-owned `bin/base-test` runner and declared it through
+  `base_manifest.yaml` so Base can dogfood `basectl test base`.
+- Added GitHub CLI authentication diagnostics to developer prerequisite checks.
+
+### Changed
+
+- Updated `basectl test` to warn when a project virtual environment is missing
+  before running a project's test command.
+- Changed the mise manifest check to report a warning instead of a full pass
+  when Base has verified only the config file and `mise` CLI availability.
+- Updated contributor test documentation to use `pytest` and the Base dogfood
+  test command.
+
+### Fixed
+
+- Fixed `basectl gh issue` shell completions to use `--category` and the
+  current GitHub workflow labels.
+- Replaced an optimized-away Python `assert` in project test command resolution
+  with an explicit invariant error.
+- Isolated `base_cli` tests from ambient `BASE_CACHE_DIR` overrides.
 
 ## [0.1.0] - 2026-05-29
 
