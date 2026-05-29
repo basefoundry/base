@@ -353,6 +353,9 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would run basectl update-profile --dry-run"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --dev"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl projects list"* ]]
+    [[ "$output" != *"Next: basectl check base --dev"* ]]
+    [[ "$output" != *"Next: basectl setup base --dev --dry-run"* ]]
+    [[ "$output" != *"Next: basectl update-profile --dry-run"* ]]
     [[ "$output" != *"unexpected run"* ]]
 }
 

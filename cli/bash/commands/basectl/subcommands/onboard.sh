@@ -79,13 +79,13 @@ base_onboard_execute() {
     local dry_run="$1"
     shift
 
-    base_onboard_print_next "$@"
     if ((dry_run)); then
         printf '[DRY-RUN] Would run '
         base_onboard_command_text "$@"
         return 0
     fi
 
+    base_onboard_print_next "$@"
     base_onboard_run_command "$@"
 }
 
