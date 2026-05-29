@@ -389,6 +389,70 @@ users still see progress while stdout is also preserved in the log.
 
 ---
 
+## Project Model Scope
+
+Base's project model is deliberately flat and simple: **one repository equals one
+project, and all projects are peer siblings under a shared parent directory.**
+
+This constraint is a feature, not a limitation. It keeps the manifest readable,
+the discovery logic fast, and the activation model unambiguous. The four most
+common requests to extend this model — and why each is out of scope:
+
+### Parent-child manifest inheritance
+
+A child project that inherits its parent's manifest looks attractive for sharing
+common artifacts across related projects. Base already has two manifest layers
+that address this need: `lib/base/default_manifest.yaml` for shared bootstrap
+defaults and each project's own `base_manifest.yaml`. A third layer creates an
+inheritance chain where diagnosing "why is this artifact installed?" requires
+tracing provenance across files rather than reading one manifest. It also
+introduces discovery-order coupling — a child is broken in a non-obvious way
+when its parent is not checked out.
+
+The right escalation path: if the need is for shared Homebrew tools, use
+Brewfile delegation. If the need is for shared Python packages, declare them in
+each project's manifest. If Base ever needs an org-level layer, introduce a
+workspace-level manifest at the parent directory rather than reaching for
+inheritance.
+
+### Project groups sharing a manifest
+
+If two projects share a manifest they are probably not two separate projects —
+they are one project with two source trees. A group concept introduces a new
+entity (group vs. project vs. member) with no clear semantics for which project
+gets activated when the user runs `basectl activate`. Closely coupled components
+should either be treated as one project or kept as independent projects that
+happen to declare the same artifacts.
+
+### Multiple projects within a single repository
+
+Scanning a repository tree for nested `base_manifest.yaml` files makes
+`basectl projects list` traverse potentially thousands of directories. It also
+conflicts with the activation model — `basectl activate <project>` assumes a
+project root is a repository root, so one active context maps cleanly to one
+directory. Sub-repo manifests blur that mapping in ways that affect the prompt,
+PATH manipulation, and virtual environment selection.
+
+What already works: `discover_manifest` in `lib/python/base_cli/paths.py` walks
+upward from the current directory, so a manifest anywhere in a repository subtree
+is found when `basectl` is invoked from that directory. The gap is only in
+`basectl projects list`, which enumerates workspace siblings rather than trees.
+If a specific monorepo layout genuinely needs enumeration, the least-invasive
+path is to scan exactly one additional level and require explicit opt-in from a
+parent manifest rather than auto-discovering everything.
+
+### Caching project definitions
+
+A cache for discovered project metadata is premature optimization. The current
+flat workspace scan is a single `readdir` call. Cache invalidation for filesystem
+state — what invalidates the entry: a manifest edit, a new checkout, a `git
+pull` — is harder than the problem it solves. Base already has a cache root
+(`~/Library/Caches/base`) for runtime artifacts; revisit this only after tree
+traversal creates a measured performance problem and a concrete invalidation
+strategy is available.
+
+---
+
 ## Mac Bootstrap Sequence
 
 When `basectl setup` runs on a fresh Mac:
