@@ -637,6 +637,15 @@ EOF
     [ "$output" = "basectl $expected_version" ]
 }
 
+@test "README version badge matches VERSION" {
+    local expected_version expected_badge
+
+    expected_version="$(head -n 1 "$BASE_REPO_ROOT/VERSION")"
+    expected_badge="![Version](https://img.shields.io/badge/version-$expected_version-blue)"
+
+    grep -Fqx "$expected_badge" "$BASE_REPO_ROOT/README.md"
+}
+
 @test "basectl re-execs through an installed supported Bash when current Bash is too old" {
     local fake_bash="$TEST_TMPDIR/fake-bash"
 
