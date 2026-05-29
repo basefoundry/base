@@ -1,0 +1,175 @@
+name: Skills Document
+
+on:
+  pull_request:
+    paths:
+      - "skills.md"
+      - ".github/workflows/skills.yml"
+  push:
+    paths:
+      - "skills.md"
+      - ".github/workflows/skills.yml"
+  workflow_dispatch:
+    inputs:
+      create_pr:
+        description: "Create a pull request when skills.md is missing"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate skills.md
+    if: github.event_name != 'workflow_dispatch' || inputs.create_pr != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required sections
+        run: |
+          test -f skills.md
+          grep -q '^# Skills$' skills.md
+          grep -q '^## Add a basectl subcommand$' skills.md
+          grep -q '^## Add a Bash command$' skills.md
+          grep -q '^## Add a Bash library$' skills.md
+          grep -q '^## Add a Python CLI feature$' skills.md
+          grep -q '^## Add or change artifact setup$' skills.md
+          grep -q '^## Change shell startup behavior$' skills.md
+          grep -q '^## Release or Homebrew-facing changes$' skills.md
+
+  create:
+    name: Create skills.md PR
+    if: github.event_name == 'workflow_dispatch' && inputs.create_pr == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create starter skills.md when missing
+        run: |
+          if [ -f skills.md ]; then
+            echo "skills.md already exists; nothing to create."
+            exit 0
+          fi
+
+          cat > skills.md <<'EOF'
+          # Skills
+
+          This file documents repeatable AI-assisted development workflows for Base.
+          General project context lives in `AI_CONTEXT.md`; coding standards live in
+          `STANDARDS.md`.
+
+          ## Add a basectl subcommand
+
+          Use this workflow when adding or changing a `basectl <command>` feature.
+
+          - Public entrypoint: `bin/basectl`
+          - Command implementation: `cli/bash/commands/basectl/`
+          - Subcommands: `cli/bash/commands/basectl/subcommands/`
+          - Tests: `cli/bash/commands/basectl/tests/`
+          - Follow shell standards in `STANDARDS.md`.
+
+          ## Add a Bash command
+
+          Use this workflow when adding a public Base-owned Bash command.
+
+          - Add the public launcher under `bin/`.
+          - Put implementation code under `cli/bash/commands/<command>/`.
+          - Keep command tests under `cli/bash/commands/<command>/tests/`.
+
+          ## Add a Bash library
+
+          Use this workflow when adding shared Bash behavior.
+
+          - Library path: `lib/bash/<name>/lib_<name>.sh`
+          - Module README: `lib/bash/<name>/README.md`
+          - Tests: `lib/bash/<name>/tests/`
+
+          ## Add a Python CLI feature
+
+          Use this workflow when adding or changing Python-backed Base behavior.
+
+          - Shared framework: `lib/python/base_cli/`
+          - Command packages: `cli/python/`
+          - Command execution wrapper: `bin/base-wrapper`
+
+          ## Add or change artifact setup
+
+          Use this workflow when changing `base_manifest.yaml`, default artifacts, or
+          setup behavior.
+
+          - Project manifest: `base_manifest.yaml`
+          - Default artifacts: `lib/base/default_manifest.yaml`
+          - Development artifacts: `lib/base/dev_manifest.yaml`
+          - Artifact registry: `cli/python/base_setup/registry.py`
+
+          ## Change shell startup behavior
+
+          Use this workflow when changing profile, rc, completion, or activation behavior.
+
+          - Startup snippets: `lib/shell/`
+          - Runtime shell entrypoint: `lib/bash/runtime/bashrc`
+          - Profile updater: `cli/bash/commands/basectl/subcommands/update_profile.sh`
+
+          ## Release or Homebrew-facing changes
+
+          Use this workflow when changing installation, update, or public package
+          behavior.
+
+          - Standalone installer: `install.sh`
+          - User-facing install test coverage: `tests/install.bats`
+          EOF
+
+          sed -i 's/^          //' skills.md
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet -- skills.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push starter file
+        if: steps.changes.outputs.changed == 'true'
+        id: commit
+        run: |
+          branch="codex/create-skills-md-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add skills.md
+          git commit -m "Add skills.md"
+          git push origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > pr-body.md <<'EOF'
+          Add a root `skills.md` file with starter AI-assisted development
+          workflows for Base.
+
+          This PR was generated by the Skills Document workflow.
+          EOF
+          sed -i 's/^          //' pr-body.md
+
+          gh pr create \
+            --draft \
+            --base "${GITHUB_REF_NAME}" \
+            --head "${{ steps.commit.outputs.branch }}" \
+            --title "[codex] Add skills.md" \
+            --body-file pr-body.md
