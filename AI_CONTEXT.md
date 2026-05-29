@@ -166,10 +166,7 @@ env PYTHONPATH=lib/python:cli/python \
 
 ```bash
 env PYTHONPATH=lib/python:cli/python \
-  ~/.base.d/base/.venv/bin/python -m unittest discover -s lib/python -p 'test*.py'
-
-env PYTHONPATH=lib/python:cli/python \
-  ~/.base.d/base/.venv/bin/python -m unittest discover -s cli/python -p 'test*.py'
+  ~/.base.d/base/.venv/bin/python -m pytest
 ```
 
 - Smoke validation:
