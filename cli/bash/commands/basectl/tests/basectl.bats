@@ -768,6 +768,28 @@ EOF
     [[ "$output" == *"--format <format>"* ]]
 }
 
+@test "basectl projects list reports invalid format as a usage error" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
+    printf 'ERROR: Unsupported output format '\''xml'\''. Expected one of: text, json.\n' >&2
+    exit 2
+fi
+printf 'unexpected projects list python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl projects list --format xml
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unsupported output format 'xml'"* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
+
 @test "basectl clean delegates to the Python cleanup layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
 
