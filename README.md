@@ -35,7 +35,7 @@ workspace that contains multiple project repositories.
 
 Current implemented commands include:
 
-- `basectl setup`
+- `basectl setup [project]`
 - `basectl check`
 - `basectl doctor`
 - `basectl clean --older-than <age>`
@@ -51,7 +51,6 @@ Current implemented commands include:
 
 Planned commands include:
 
-- `basectl setup <project>`
 - `basectl test`
 - `basectl test <project>`
 - `basectl onboard`
