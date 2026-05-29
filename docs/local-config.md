@@ -87,6 +87,17 @@ ide:
     enabled: false
 ```
 
+The design decision is to keep IDE preferences inside the existing
+`~/.base.d/config.yaml` file instead of introducing `~/.base.d/ide.yaml`.
+IDE choices are machine-local Base configuration, and the existing config
+commands already give users a stable path, JSON inspection, and diagnostics:
+
+```bash
+basectl config path
+basectl config show
+basectl config doctor
+```
+
 The project manifest remains authoritative for project requirements. User
 settings are additive:
 
@@ -95,9 +106,31 @@ settings are additive:
 - project settings win when both layers declare the same setting
 - users can disable IDE handling for one machine with `ide.enabled: false` or
   `ide.<name>.enabled: false`
+- user `install` can opt a machine into or out of IDE app installation without
+  changing the project's extension or settings requirements
 
 If a user setting conflicts with a project setting, Base reports a warning and
 uses the project setting.
+
+Supported IDE preference keys are intentionally narrow:
+
+- `ide.enabled`
+- `ide.vscode.enabled`
+- `ide.vscode.install`
+- `ide.vscode.extra_extensions`
+- `ide.vscode.settings`
+- `ide.cursor.enabled`
+- `ide.cursor.install`
+- `ide.cursor.extra_extensions`
+- `ide.cursor.settings`
+
+Unknown IDE names and unsupported keys are rejected. Settings values must be
+JSON-serializable because Base writes them to IDE `settings.json` files.
+
+Base does not edit this file. There is no `basectl config set` or IDE preference
+editor command by design; developers can edit YAML directly, and Base keeps the
+runtime behavior inspectable through `basectl config show` and
+`basectl config doctor`.
 
 ## Sync Guidance
 

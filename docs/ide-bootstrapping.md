@@ -141,6 +141,22 @@ IDE checks include:
 
 `doctor` provides human-oriented fix guidance for missing or divergent state.
 
+## User-Local Preferences
+
+User-local IDE preferences live in `~/.base.d/config.yaml`; Base should not add
+a separate `~/.base.d/ide.yaml` file. The user config layer is machine-local and
+additive over project manifests:
+
+- project manifests declare project requirements
+- user config can add personal extensions and settings
+- project settings take precedence over user settings for the same key
+- user config can disable IDE handling globally or for one supported IDE on a
+  machine
+
+This lets a project keep its required IDE contract in version control while a
+developer adds local preferences without changing shared project files. See
+[local-config.md](local-config.md) for the schema and sync boundary.
+
 ## Future Work
 
 Future IDE-related work should remain inside Base's boundary: workstation
@@ -153,6 +169,3 @@ Candidate future work:
 - JetBrains support only after a clean, scriptable configuration surface is
   identified
 - extension pinning only if Base adopts a deliberate VSIX management strategy
-
-Machine-local IDE preferences live in `~/.base.d/config.yaml`. See
-[local-config.md](local-config.md) for the user config schema and sync boundary.
