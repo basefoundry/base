@@ -41,7 +41,8 @@ Use this workflow when adding or changing a `basectl <command>` feature.
 - Tests: `cli/bash/commands/basectl/tests/`
 - Update completions: `lib/shell/completions/basectl_completion.sh` and
   `lib/shell/completions/basectl_completion.zsh` — add the new command to the
-  top-level command list and add a case block for its options.
+  top-level command list, add a case block for its options, and keep changed
+  flags synchronized.
 - Follow shell standards in `STANDARDS.md`.
 - Validate focused command behavior with:
 

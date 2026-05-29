@@ -1467,13 +1467,13 @@ EOF
     [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source $BASE_REPO_ROOT/lib/shell/bash_profile"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"source $BASE_REPO_ROOT/lib/shell/bashrc"* ]]
-    [[ "$(cat "$TEST_HOME/.bashrc")" != *"completion"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"basectl_completion"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *"# --- BEGIN base zprofile MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zprofile")" == *"source $BASE_REPO_ROOT/lib/shell/zprofile"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *"# --- BEGIN base zshrc MANAGED SECTION - DO NOT EDIT ---"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" == *"source $BASE_REPO_ROOT/lib/shell/zshrc"* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" != *"completion"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" != *"basectl_completion"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_PROFILE_VERSION=1"* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_BASH_DEFAULTS=false"* ]]
@@ -1572,6 +1572,23 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
+}
+
+@test "Bash completion uses gh issue category options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '\
+            source "$BASE_HOME/lib/shell/completions/basectl_completion.sh"; \
+            COMP_WORDS=(basectl gh issue create --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "reply=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--category"* ]]
+    [[ "$output" == *"--title"* ]]
+    [[ "$output" == *"--body"* ]]
+    [[ "$output" != *"--type"* ]]
 }
 
 @test "basectl update-profile preserves non-Base dotfile content and is idempotent" {
