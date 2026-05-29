@@ -34,6 +34,24 @@ assigned to `codeforester`.
 If assignment fails, the automation should mention that in its summary instead
 of silently leaving the issue unassigned.
 
+## Preferred GitHub Interface
+
+Use `basectl gh` as the preferred interface for Base repository GitHub
+workflows when it supports the operation.
+
+This keeps Base dogfooding its own workflow tool for common issue, branch, PR,
+and repository hygiene tasks. For example, prefer `basectl gh issue create`,
+`basectl gh issue start`, `basectl gh pr create`, and `basectl gh branch prune`
+over hand-written `gh` commands when those commands are available and local
+tooling is authenticated.
+
+Fallbacks are allowed when `basectl gh` does not support the needed operation,
+when local GitHub CLI authentication is unavailable, or when the GitHub
+connector provides a safer structured API for the task. In those cases, use the
+GitHub connector, raw `gh`, or `git` as appropriate and keep the resulting
+issue labels, branch names, assignments, and PR bodies aligned with this
+policy.
+
 ## Branch Names
 
 Branch names should be derived from the issue category:
