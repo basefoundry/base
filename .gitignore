@@ -4,3 +4,8 @@
 # Ignore Python interpreter caches
 __pycache__/
 *.py[cod]
+
+# Ignore Python test caches and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
