@@ -1632,6 +1632,20 @@ EOF
     [[ "$output" == *"BASE_HOME=unset"* ]]
 }
 
+@test "Bash baserc guard protects Base-owned runtime path variables" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/lib/shell/baserc_guard.sh"
+            base_baserc_guard_owned_vars
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_BASH_DIR"* ]]
+    [[ "$output" == *"BASE_BASH_COMMANDS_DIR"* ]]
+    [[ "$output" != *"BASE_ARCH"* ]]
+}
+
 @test "basectl update-profile makes basectl available in interactive Zsh without runtime bootstrap" {
     command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
 
