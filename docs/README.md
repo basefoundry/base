@@ -37,5 +37,7 @@ reference. The filename should answer "what is this about?"
   and its relationship to project installers.
 - [`basectl check` parallelism](check-parallelism.md) records the evaluation and
   implementation constraints for parallel check probes.
+- [Base-managed demo project](base-managed-demo-project.md) defines the proof
+  project criteria for showing Base's complete workspace workflow.
 - [base_cli Runtime Package](base-cli.md) describes the Python CLI foundation
   used by Base and Base-supported project CLIs.
