@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 [[ -n "${_base_projects_subcommand_sourced:-}" ]] && return
 _base_projects_subcommand_sourced=1
 readonly _base_projects_subcommand_sourced

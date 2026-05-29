@@ -9,3 +9,6 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Ignore user-local AI assistant context
+AI_CONTEXT.md

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # bash_defaults.sh
 #     Optional Bash-specific interactive defaults for users who want Base to
