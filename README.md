@@ -156,6 +156,9 @@ Activation spawns a project-specific subshell, changes to the project root, sets
 virtual environment at `~/.base.d/<project>/.venv`. Exit that shell to return to
 the original environment.
 
+Use `basectl activate example --no-cd` to keep the caller's current directory
+while still loading the selected project's Base runtime environment.
+
 Invoking `basectl` with no arguments in a terminal starts the default
 interactive Base shell. It uses the nearest `base_manifest.yaml` above the
 current directory to choose the active project, then preserves the current

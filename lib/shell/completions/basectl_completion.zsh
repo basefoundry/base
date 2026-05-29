@@ -39,7 +39,9 @@ _base_basectl_completion() {
                 project_names=("${(@f)$(_base_basectl_completion_project_names)}")
                 _describe -t projects 'Base project' project_names
             else
-                _arguments '--workspace[Workspace directory to scan]:path:_files' '-v[Enable DEBUG logging]' \
+                _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                    '--no-cd[Preserve the caller current directory]' \
+                    '-v[Enable DEBUG logging]' \
                     '(-h --help)'{-h,--help}'[Show help text]'
             fi
             ;;

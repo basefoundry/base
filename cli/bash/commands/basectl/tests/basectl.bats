@@ -1256,12 +1256,58 @@ EOF
     [[ "$output" == *"PWD=$caller"* ]]
 }
 
+@test "basectl activate --no-cd preserves caller working directory" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
+    local workspace="$TEST_TMPDIR/workspace"
+    local caller="$TEST_TMPDIR/caller"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo" "$caller"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
+printf 'PWD=%s\n' "$PWD"
+EOF
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+    caller="$(cd "$caller" && pwd -P)"
+
+    run bash -c 'cd "$1" || exit 1; shift; exec "$@"' _ "$caller" \
+        env \
+            HOME="$TEST_HOME" \
+            PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+            BASE_ACTIVATE_SHELL="$fake_bash" \
+            BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+            "$BASE_REPO_ROOT/bin/basectl" activate demo --no-cd
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/demo"* ]]
+    [[ "$output" == *"PWD=$caller"* ]]
+}
+
 @test "basectl activate prints help without requiring the Base Python venv" {
     run_basectl activate --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl activate <project> [options]"* ]]
+    [[ "$output" == *"--no-cd"* ]]
 }
 
 @test "basectl activate reports missing project as a usage error" {
