@@ -3,6 +3,29 @@
 This file documents repeatable AI-assisted development workflows for Base.
 Coding standards live in `STANDARDS.md`.
 
+## GitHub Issue And PR Workflow
+
+Use this workflow when creating GitHub issues, branches, worktrees, or pull
+requests for Base.
+
+- Assign Codex-created issues to `codeforester`.
+- Use GitHub default-style labels:
+  - `bug` for defects.
+  - `enhancement` for features, refactors, and most maintenance.
+  - `documentation` for docs-only changes.
+  - `ci` for GitHub Actions, tests, and release automation.
+  - `security` for hardening, dependency pinning, and static analysis.
+- Do not create new `type:*` labels.
+- Name branches as `<category>/<issue>-<YYYYMMDD>-<slug>`, for example
+  `bug/245-20260529-fix-profile-project-prompt`.
+- Do all pull request implementation work in a dedicated worktree under
+  `~/work/base-worktrees/<slug>`.
+- After merge, sync `master`, remove the worktree, and delete local and remote
+  branches.
+- Link PRs to issues with `Fixes #<issue>` or `Closes #<issue>`.
+- See `docs/github-workflow.md` for the full policy, including milestones and
+  GitHub Projects.
+
 ## Add a basectl subcommand
 
 Use this workflow when adding or changing a `basectl <command>` feature.
