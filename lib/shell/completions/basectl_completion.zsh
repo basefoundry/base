@@ -11,6 +11,7 @@ _base_basectl_completion_project_names() {
 
 _base_basectl_completion() {
     local -a commands project_names
+    local state
 
     commands=(
         'activate:Start an interactive Base runtime subshell for a project'
@@ -55,7 +56,12 @@ _base_basectl_completion() {
             ;;
         check)
             _arguments '--dev[Include developer prerequisite checks]' '--format[Output format]:format:(text json)' \
-                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
         clean)
             _arguments '--older-than[Artifact age]:age:' '--dry-run[Log without removing files]' \
@@ -66,7 +72,12 @@ _base_basectl_completion() {
             ;;
         doctor)
             _arguments '--dev[Include developer prerequisite checks]' '-v[Enable DEBUG logging]' \
-                '(-h --help)'{-h,--help}'[Show help text]'
+                '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
         gh)
             case "${words[3]:-}" in
