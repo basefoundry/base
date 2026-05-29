@@ -12,6 +12,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added a repo-owned `bin/base-test` runner and declared it through
   `base_manifest.yaml` so Base can dogfood `basectl test base`.
 - Added GitHub CLI authentication diagnostics to developer prerequisite checks.
+- Added `basectl test <project> -- <args...>` passthrough for delegated test
+  command arguments.
 
 ### Changed
 

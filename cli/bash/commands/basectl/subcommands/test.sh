@@ -7,7 +7,7 @@ readonly _base_test_subcommand_sourced
 base_test_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl test [project] [options]
+  basectl test [project] [options] [-- extra args...]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
@@ -16,6 +16,7 @@ Options:
   -h, --help          Show this help text.
 
 Run a project's declared test command from its project root.
+Use -- to pass additional arguments to the declared test command.
 EOF
 }
 
@@ -36,13 +37,61 @@ base_test_project_venv_dir() {
     printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
+base_test_format_extra_args() {
+    local arg quoted output=""
+
+    for arg in "$@"; do
+        printf -v quoted '%q' "$arg"
+        output+=" $quoted"
+    done
+    printf '%s\n' "$output"
+}
+
+base_test_command_with_extra_args() {
+    local command="$1"
+    shift
+
+    if (($# == 0)); then
+        printf '%s\n' "$command"
+        return 0
+    fi
+
+    if [[ "$command" == mise\ run\ * ]]; then
+        printf '%s -- "$@"\n' "$command"
+    else
+        printf '%s "$@"\n' "$command"
+    fi
+}
+
+base_test_display_command() {
+    local command="$1"
+    shift
+
+    if (($# == 0)); then
+        printf '%s\n' "$command"
+        return 0
+    fi
+
+    if [[ "$command" == mise\ run\ * ]]; then
+        printf '%s --%s\n' "$command" "$(base_test_format_extra_args "$@")"
+    else
+        printf '%s%s\n' "$command" "$(base_test_format_extra_args "$@")"
+    fi
+}
+
 base_test_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path test_command venv_dir
+    local command_to_run display_command
     local dry_run=0 workspace_requested=0
-    local args=()
+    local args=() extra_args=()
 
     while (($#)); do
         case "$1" in
+            --)
+                shift
+                extra_args=("$@")
+                break
+                ;;
             -h|--help|help)
                 base_test_subcommand_usage
                 return 0
@@ -114,11 +163,14 @@ base_test_subcommand_main() {
         log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
     fi
 
+    command_to_run="$(base_test_command_with_extra_args "$test_command" "${extra_args[@]}")"
+    display_command="$(base_test_display_command "$test_command" "${extra_args[@]}")"
+
     if [[ "$dry_run" == "1" ]]; then
-        printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$test_command"
+        printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$display_command"
         return 0
     fi
 
-    log_info "Running tests for project '$resolved_name': $test_command"
-    (cd "$project_root" && bash -c "$test_command")
+    log_info "Running tests for project '$resolved_name': $display_command"
+    (cd "$project_root" && bash -c "$command_to_run" basectl-test "${extra_args[@]}")
 }

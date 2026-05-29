@@ -349,7 +349,8 @@ orchestration actions. The design rule is delegation-first:
   setup and does not reimplement mise's version management.
 - Use a project-owned `test` contract for `basectl test <project>` delegation.
   Projects can declare either `test.command` for a shell command or `test.mise`
-  for a `mise run <task>` delegation.
+  for a `mise run <task>` delegation. Extra arguments after `basectl test
+  <project> --` are passed through to the delegated command.
 - Let Base own the project virtual environment and Base-aware package
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety
