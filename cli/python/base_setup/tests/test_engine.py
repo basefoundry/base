@@ -1176,7 +1176,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 engine.merge_ide_settings(
                     ctx,
                     definition,
@@ -1193,7 +1193,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["cursor"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(
@@ -1219,7 +1219,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 engine.merge_ide_settings(
                     ctx,
                     definition,
@@ -1265,7 +1265,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 check = engine.check_ide_setting("demo", definition, "editor.formatOnSave", True)
 
         self.assertFalse(check.ok)
@@ -1276,7 +1276,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
@@ -1289,7 +1289,7 @@ class IdeSettingsTests(unittest.TestCase):
         definition = engine.IDE_DEFINITIONS["cursor"]
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": False}), encoding="utf-8")
@@ -1315,7 +1315,7 @@ class IdeSettingsTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
@@ -1550,7 +1550,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
                 "ide:\n  vscode:\n    settings:\n      editor.formatOnSave: false\n",
                 encoding="utf-8",
             )
-            with mock.patch.dict(os.environ, {"HOME": home_dir}):
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
@@ -1593,7 +1593,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
             ), mock.patch(
                 "base_setup.engine.list_ide_extensions",
                 return_value={"ms-python.python"},
-            ), mock.patch.dict(os.environ, {"HOME": tmpdir}):
+            ), mock.patch.dict(os.environ, {"HOME": tmpdir, "XDG_CONFIG_HOME": ""}):
                 settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
@@ -1631,7 +1631,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir}), mock.patch(
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}), mock.patch(
                 "base_setup.engine.command_exists",
                 return_value=False,
             ):
