@@ -9,6 +9,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added the user-local IDE preference design for `~/.base.d/config.yaml`.
 - Added documentation guidance for using `mise` with Go and Java projects.
 - Added documentation for the boundary between `basectl onboard` and
   project-owned installers.
