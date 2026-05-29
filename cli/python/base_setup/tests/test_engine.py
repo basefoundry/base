@@ -1130,6 +1130,47 @@ class IdeSettingsTests(unittest.TestCase):
         self.assertEqual(settings["python.defaultInterpreterPath"], str(venv_dir / "bin" / "python"))
         self.assertTrue(settings["editor.formatOnSave"])
 
+    def test_ide_settings_file_uses_macos_application_support(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            with mock.patch.dict(os.environ, {"HOME": home_dir}, clear=False), mock.patch(
+                "base_setup.engine.sys.platform", "darwin"
+            ):
+                settings_file = engine.ide_settings_file(definition)
+
+        self.assertEqual(
+            settings_file,
+            Path(home_dir) / "Library" / "Application Support" / "Code" / "User" / "settings.json",
+        )
+
+    def test_ide_settings_file_uses_xdg_config_home_off_macos(self) -> None:
+        definition = engine.IDE_DEFINITIONS["cursor"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home_dir = Path(tmpdir) / "home"
+            config_home = Path(tmpdir) / "xdg-config"
+            home_dir.mkdir()
+            with mock.patch.dict(
+                os.environ,
+                {"HOME": str(home_dir), "XDG_CONFIG_HOME": str(config_home)},
+                clear=False,
+            ), mock.patch("base_setup.engine.sys.platform", "linux"):
+                settings_file = engine.ide_settings_file(definition)
+
+        self.assertEqual(settings_file, config_home / "Cursor" / "User" / "settings.json")
+
+    def test_ide_settings_file_defaults_to_home_config_off_macos(self) -> None:
+        definition = engine.IDE_DEFINITIONS["vscode"]
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}, clear=False), mock.patch(
+                "base_setup.engine.sys.platform", "linux"
+            ):
+                settings_file = engine.ide_settings_file(definition)
+
+        self.assertEqual(settings_file, Path(home_dir) / ".config" / "Code" / "User" / "settings.json")
+
     def test_merge_ide_settings_writes_missing_keys(self) -> None:
         ctx = fake_context()
         definition = engine.IDE_DEFINITIONS["vscode"]

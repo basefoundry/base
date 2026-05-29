@@ -7,6 +7,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import venv
 from dataclasses import dataclass
@@ -767,7 +768,10 @@ def resolve_ide_settings(project: str, settings: dict[str, object]) -> dict[str,
 
 
 def ide_settings_file(definition: IdeDefinition) -> Path:
-    return Path.home() / "Library" / "Application Support" / definition.settings_app_dir / "User" / "settings.json"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / definition.settings_app_dir / "User" / "settings.json"
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config").expanduser()
+    return config_home / definition.settings_app_dir / "User" / "settings.json"
 
 
 def read_ide_settings(definition: IdeDefinition) -> dict[str, object]:
