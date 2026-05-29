@@ -29,6 +29,8 @@ A developer may need:
 
 Base exists to provide that missing common layer.
 
+Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Top Goals
 
 Base is being refactored around three primary goals.
