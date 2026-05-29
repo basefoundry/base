@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added documentation for the no-hooks manifest boundary and future setup hook
+  criteria.
 - Added the design target for a future structured `python:` manifest section.
 - Added the user-local IDE preference design for `~/.base.d/config.yaml`.
 - Added documentation guidance for using `mise` with Go and Java projects.

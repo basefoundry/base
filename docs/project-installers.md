@@ -41,6 +41,8 @@ A project installer owns:
 - cloning or updating the project repository
 - installing or locating Base
 - calling Base commands in the right order
+- imperative setup steps that are not yet covered by a typed Base manifest
+  contract
 - explaining next steps after setup succeeds or fails
 
 The installer should not reimplement Base's setup logic. It should call Base.

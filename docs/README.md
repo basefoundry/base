@@ -44,6 +44,8 @@ reference. The filename should answer "what is this about?"
 - [Python Manifest Section](python-manifest.md) records the future structured
   Python manifest shape and its relationship to current `python-package`
   artifacts.
+- [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
+  arbitrary manifest setup hooks yet.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
 - [`basectl ci`](basectl-ci.md) defines the future non-interactive CI entry
