@@ -61,7 +61,9 @@ that delegate to `basectl`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
 - `basectl gh` manages GitHub issues, pull requests, branch naming, and
-  repository hygiene using Base's opinionated workflow.
+  repository hygiene using Base's opinionated workflow. It uses standard
+  GitHub-style issue categories such as `bug`, `enhancement`, `documentation`,
+  `ci`, and `security`, and derives branch names from those categories.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
