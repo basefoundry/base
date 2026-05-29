@@ -9,6 +9,7 @@ Usage:
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
+  --no-cd             Preserve the caller's current directory in the project shell.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -44,6 +45,7 @@ base_activate_project_venv_dir() {
 base_activate_subcommand_main() {
     local project="" wrapper resolve_output activate_shell
     local resolved_name project_root manifest_path venv_dir shell_rc
+    local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
     local args=()
 
     while (($# > 0)); do
@@ -66,6 +68,10 @@ base_activate_subcommand_main() {
                 ;;
             --workspace=*)
                 args+=("$1")
+                shift
+                ;;
+            --no-cd)
+                preserve_cwd=1
                 shift
                 ;;
             -*)
@@ -113,7 +119,7 @@ base_activate_subcommand_main() {
     export BASE_HOME
     export BASE_SHELL=1
 
-    if [[ "${BASE_ACTIVATE_PRESERVE_CWD:-}" != "1" ]]; then
+    if [[ "$preserve_cwd" != "1" ]]; then
         cd "$project_root" || fatal_error "Unable to enter project root '$project_root'."
     fi
     activate_shell="${BASE_ACTIVATE_SHELL:-${BASH:-bash}}"

@@ -1508,6 +1508,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "activate_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl activate demo --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "activate_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl check ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -1524,6 +1528,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
     [[ "$output" == *"activate_projects=base demo"* ]]
+    [[ "$output" == *"activate_options=--workspace --no-cd"* ]]
     [[ "$output" == *"check_projects=base demo"* ]]
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"check_options=--dev --format"* ]]
