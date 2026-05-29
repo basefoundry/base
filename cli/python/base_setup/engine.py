@@ -183,7 +183,7 @@ def reconcile_manifest(
     reconcile_ide_settings(ctx, effective_manifest, dry_run=dry_run)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
-        reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
+        reconcile_artifact(ctx, definition, artifact.version, effective_manifest.project_name, dry_run=dry_run)
 
     ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
@@ -203,7 +203,7 @@ def reconcile_bootstrap_artifacts(
         return
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
-        reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
+        reconcile_artifact(ctx, definition, artifact.version, manifest.project_name, dry_run=dry_run)
 
 
 def check_manifest(
@@ -925,13 +925,14 @@ def reconcile_artifact(
     ctx: base_cli.Context,
     definition: ArtifactDefinition,
     version: str,
+    project: str,
     dry_run: bool,
 ) -> None:
     if definition.manager == "homebrew":
         reconcile_homebrew_artifact(ctx, definition, version, dry_run=dry_run)
         return
     if definition.manager == "pip":
-        reconcile_python_artifact(ctx, definition, version, dry_run=dry_run)
+        reconcile_python_artifact(ctx, definition, version, project, dry_run=dry_run)
         return
     raise ArtifactError(f"Artifact manager '{definition.manager}' is not implemented.")
 
@@ -978,9 +979,9 @@ def reconcile_python_artifact(
     ctx: base_cli.Context,
     definition: ArtifactDefinition,
     version: str,
+    project: str,
     dry_run: bool,
 ) -> None:
-    project = os.environ.get("BASE_PROJECT", "base")
     venv_dir = project_venv_dir(project)
     python_bin = venv_dir / "bin" / "python"
     requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
