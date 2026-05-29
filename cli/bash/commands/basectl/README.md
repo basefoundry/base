@@ -30,6 +30,8 @@ that delegate to `basectl`.
 - `config`
 - `doctor`
 - `gh`
+- `onboard`
+- `test`
 - `update-profile`
 - `update`
 - `projects list`
@@ -38,7 +40,7 @@ that delegate to `basectl`.
 
 ## Planned subcommands
 
-- `onboard`
+- Additional `test` delegation modes such as `mise run test`.
 
 ## Notes
 
@@ -60,12 +62,14 @@ that delegate to `basectl`.
   provided, project manifest artifacts with suggested fixes.
 - `basectl gh` manages GitHub issues, pull requests, branch naming, and
   repository hygiene using Base's opinionated workflow.
+- `basectl onboard` guides first-run setup around existing setup, check,
+  doctor, profile, and project-discovery primitives. See
+  `docs/basectl-onboard.md`.
+- `basectl test <project>` runs the project's manifest `test.command` from the
+  project root with Base project environment variables exported.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
-- `basectl onboard` runs a guided first-run checklist around existing setup,
-  check, doctor, profile, and project-discovery primitives. See
-  `docs/basectl-onboard.md`.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

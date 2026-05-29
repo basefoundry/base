@@ -35,6 +35,11 @@ class IdeConfig:
 
 
 @dataclass(frozen=True)
+class TestConfig:
+    command: str
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
@@ -42,6 +47,7 @@ class BaseManifest:
     artifacts: tuple[ArtifactRequest, ...]
     ide: dict[str, IdeConfig] = field(default_factory=dict)
     mise: str | None = None
+    test: TestConfig | None = None
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -61,7 +67,7 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"project", "brewfile", "mise", "ide", "artifacts"}
+    allowed_top_level = {"project", "brewfile", "mise", "ide", "artifacts", "test"}
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
@@ -70,6 +76,7 @@ def read_manifest(path: Path) -> BaseManifest:
     brewfile = _read_brewfile(path, data.get("brewfile"))
     mise = _read_mise(path, data.get("mise"))
     ide = _read_ide(path, data.get("ide"))
+    test = _read_test(path, data.get("test"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -79,6 +86,7 @@ def read_manifest(path: Path) -> BaseManifest:
         artifacts=tuple(artifacts),
         ide=ide,
         mise=mise,
+        test=test,
     )
 
 
@@ -128,6 +136,23 @@ def _read_ide(path: Path, ide_data: Any) -> dict[str, IdeConfig]:
     for ide_name, config_data in ide_data.items():
         ide[ide_name] = _read_ide_config(path, ide_name, config_data)
     return ide
+
+
+def _read_test(path: Path, test_data: Any) -> TestConfig | None:
+    if test_data is None:
+        return None
+    if not isinstance(test_data, dict):
+        raise ManifestError(f"{path}: test must be a mapping when provided.")
+
+    allowed_keys = {"command"}
+    unknown_keys = sorted(set(test_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: test has unsupported keys: {', '.join(unknown_keys)}.")
+
+    command = test_data.get("command")
+    if not isinstance(command, str) or not command.strip():
+        raise ManifestError(f"{path}: test.command must be a non-empty string when provided.")
+    return TestConfig(command=command.strip())
 
 
 def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:

@@ -476,6 +476,7 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         artifacts=manifest.artifacts,
         ide=effective_ide_config(manifest.ide, user_config),
         mise=manifest.mise,
+        test=manifest.test,
     )
 
 

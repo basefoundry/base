@@ -77,7 +77,7 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl update-profile`
 - `basectl projects list`
 - `basectl activate`
-- future commands such as `basectl test`
+- `basectl test`
 
 Shebang-based Bash scripts can also use:
 
@@ -336,7 +336,6 @@ artifacts:
     name: requests
     version: latest
 
-# Future contract for `basectl test myproject`.
 test:
   command: pytest tests/
 ```
@@ -348,8 +347,7 @@ orchestration actions. The design rule is delegation-first:
 - Use `mise` for tool versions, language runtimes, environment variables, and
   future tasks when a project opts into it. Base runs `mise install` during
   setup and does not reimplement mise's version management.
-- Use a project-owned `test` contract for future `basectl test <project>`
-  delegation.
+- Use a project-owned `test` contract for `basectl test <project>` delegation.
 - Let Base own the project virtual environment and Base-aware package
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety
