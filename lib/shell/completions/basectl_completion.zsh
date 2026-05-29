@@ -21,6 +21,7 @@ _base_basectl_completion() {
         'config:Inspect Base machine-local user config'
         'doctor:Diagnose the local Base environment'
         'gh:Manage GitHub issues, pull requests, branches, and hygiene'
+        'onboard:Guide a user through first Base setup'
         'update-profile:Refresh Base-managed shell startup sections'
         'update:Update Base and rerun setup'
         'projects:List Base-managed projects'
@@ -118,6 +119,14 @@ _base_basectl_completion() {
                     _arguments '1:gh area:(issue pr branch todo)'
                     ;;
             esac
+            ;;
+        onboard)
+            _arguments '--dev[Include Base developer prerequisites]' \
+                '--dry-run[Explain planned onboarding steps without making changes]' \
+                '--yes[Accept default answers for setup and shell profile prompts]' \
+                '--no-profile[Skip shell profile updates]' \
+                '-v[Enable DEBUG logging]' \
+                '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         update-profile)
             _arguments '--defaults[Enable shell defaults]' '--no-defaults[Disable shell defaults]' \

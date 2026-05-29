@@ -1527,7 +1527,11 @@ EOF
             COMP_WORDS=(basectl projects list --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
-            printf "projects_options=%s\n" "${COMPREPLY[*]}"'
+            printf "projects_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl onboard --); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "onboard_options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
@@ -1537,6 +1541,7 @@ EOF
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"check_options=--dev --format"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
+    [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
 }
 
 @test "Bash completion includes setup notification options" {
