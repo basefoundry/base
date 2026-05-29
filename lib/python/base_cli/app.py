@@ -58,7 +58,7 @@ class App:
         @functools.wraps(func)
         def wrapper(**kwargs: Any):
             standard = _pop_standard_options(kwargs)
-            context = self._create_context(standard, sensitive_options)
+            context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get("dry_run")))
             token = set_current_context(context)
             try:
                 log_invocation(context.log, sys.argv, sensitive_options)
@@ -79,7 +79,7 @@ class App:
         wrapper = _decorate_standard_options(click, wrapper, self.version)
         return click.command(*self._command_args, **self._command_kwargs)(wrapper)
 
-    def _create_context(self, standard: dict[str, Any], sensitive_options: set[str]) -> Context:
+    def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options
         run_id = make_run_id()
         manifest_path = discover_manifest(Path.cwd())
@@ -95,11 +95,17 @@ class App:
         log_dir = state_dir / "logs"
         cache_dir = state_dir / "cache"
         temp_dir = state_dir / "tmp" / run_id
-        for directory in (log_dir, cache_dir, temp_dir):
-            directory.mkdir(parents=True, exist_ok=True)
 
-        log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else log_dir / f"{run_id}.log"
-        log_file.parent.mkdir(parents=True, exist_ok=True)
+        log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else None
+        if dry_run:
+            if log_file is not None:
+                log_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            for directory in (log_dir, cache_dir, temp_dir):
+                directory.mkdir(parents=True, exist_ok=True)
+            if log_file is None:
+                log_file = log_dir / f"{run_id}.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
         logger = configure_logger(self.name, log_file, debug)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
 

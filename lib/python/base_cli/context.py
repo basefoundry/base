@@ -22,7 +22,7 @@ class Context:
     log_dir: Path
     cache_dir: Path
     temp_dir: Path
-    log_file: Path
+    log_file: Path | None
     config: dict
     environment: str
     debug: bool
