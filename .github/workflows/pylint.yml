@@ -28,4 +28,4 @@ jobs:
         env:
           PYTHONPATH: lib/python:cli/python
         run: |
-          git ls-files '*.py' | xargs pylint --rcfile=.pylintrc
+          git ls-files -z '*.py' | xargs -0 pylint --rcfile=.pylintrc
