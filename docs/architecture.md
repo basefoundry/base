@@ -356,16 +356,17 @@ orchestration actions. The design rule is delegation-first:
   contract for execution timing, dry-run behavior, interactivity, and
   diagnostics.
 
-Base owns the artifact registry only for things it must manage directly. The
-current registry is `cli/python/base_setup/registry.py`.
+Base owns the curated tool artifact registry only for things it must manage
+directly. The current registry is `cli/python/base_setup/registry.py`.
 
 The optional top-level `brewfile` field delegates ordinary Homebrew dependencies
 to Homebrew's native `brew bundle` flow. The path is relative to the project root
 and must stay inside the project. Base runs `brew bundle --file=<path>` during
 setup before reconciling Base-managed artifacts.
 
-`python-package` artifacts install into the project virtual environment at
-`~/.base.d/<project>/.venv`. Base's own project venv is therefore
+`python-package` artifacts are pass-through PyPI package names and install into
+the project virtual environment at `~/.base.d/<project>/.venv`. Base's own
+project venv is therefore
 `~/.base.d/base/.venv`. The wrapper `bin/base-wrapper` runs Python packages
 through that project-scoped venv.
 

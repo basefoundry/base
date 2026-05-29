@@ -123,9 +123,9 @@ single project-owned command to run. Base should not run arbitrary setup hooks
 until there is an explicit, reviewable contract for when they run, where they
 run, whether they are interactive, and how dry-run/check/doctor report them.
 
-The supported artifact registry lives in
-`cli/python/base_setup/registry.py`. It should stay small and Base-aware. Today,
-`python-package` artifacts install into the project virtual environment at
+The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
+It should stay small and Base-aware. `python-package` artifacts are pass-through
+PyPI package names and install into the project virtual environment at
 `~/.base.d/<project>/.venv`. Homebrew-managed `tool` artifacts currently support
 `version: latest`, but ordinary Homebrew tools should move toward Brewfile
 delegation. Pinned Homebrew versions fail clearly until Base grows explicit

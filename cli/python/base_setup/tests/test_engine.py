@@ -252,6 +252,19 @@ class ManifestTests(unittest.TestCase):
         self.assertIsNotNone(get_artifact_definition("python-package", "pylint"))
         self.assertIsNotNone(get_artifact_definition("python-package", "pytest"))
 
+    def test_python_package_artifacts_are_pass_through_pip_packages(self) -> None:
+        definition = get_artifact_definition("python-package", "rich")
+
+        self.assertIsNotNone(definition)
+        self.assertEqual(definition.name, "rich")
+        self.assertEqual(definition.artifact_type, "python-package")
+        self.assertEqual(definition.manager, "pip")
+        self.assertEqual(definition.package, "rich")
+        self.assertEqual(definition.target, "project-venv")
+
+    def test_unknown_tool_artifacts_remain_unsupported(self) -> None:
+        self.assertIsNone(get_artifact_definition("tool", "not-a-real-tool"))
+
     def test_base_dev_manifest_declares_supported_tools(self) -> None:
         manifest = read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
@@ -295,6 +308,30 @@ class ManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn("Unsupported artifact 'not-a-real-artifact' of type 'tool'", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_unknown_python_package_artifact_dry_run_uses_pip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: rich",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("pip install rich", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:
