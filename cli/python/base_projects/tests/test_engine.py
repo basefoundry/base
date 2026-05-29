@@ -160,6 +160,10 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tmise run unit\n",
         )
 
+    def test_test_command_rejects_invalid_config_without_assert(self) -> None:
+        with self.assertRaisesRegex(ValueError, "TestConfig must have command or mise set"):
+            engine.test_command(engine.TestConfig())
+
     def test_projects_test_command_defaults_to_current_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
