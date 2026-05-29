@@ -92,6 +92,9 @@ run_basectl() {
 @test "basectl gh issue create applies type label" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$*" == "auth status" ]]; then
+    exit 0
+fi
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
@@ -111,6 +114,33 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label type:fix" ]
 }
 
+@test "basectl gh issue list reports missing gh authentication clearly" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status" ]]; then
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue list
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"GitHub CLI authentication is not ready."* ]]
+    [[ "$output" == *"gh auth login -h github.com"* ]]
+    [[ "$output" != *"unexpected gh args"* ]]
+}
+
 @test "basectl gh issue start creates convention branch from issue metadata" {
     local repo
 
@@ -121,6 +151,9 @@ EOF
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$*" == "auth status" ]]; then
+    exit 0
+fi
 if [[ "$*" == "issue view 117 --json labels --jq .labels[].name | select(startswith(\"type:\")) | sub(\"^type:\"; \"\")" ]]; then
     printf 'feat\n'
     exit 0
@@ -232,6 +265,9 @@ EOF
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$*" == "auth status" ]]; then
+    exit 0
+fi
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
 body_file=""
 while (($#)); do
