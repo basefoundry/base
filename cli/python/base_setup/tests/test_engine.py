@@ -157,6 +157,29 @@ class ManifestTests(unittest.TestCase):
 
         self.assertIsNotNone(manifest.test)
         self.assertEqual(manifest.test.command, "pytest tests/")
+        self.assertIsNone(manifest.test.mise)
+
+    def test_reads_manifest_test_mise_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  mise: test",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.test)
+        self.assertIsNone(manifest.test.command)
+        self.assertEqual(manifest.test.mise, "test")
 
     def test_rejects_invalid_manifest_test_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -175,6 +198,26 @@ class ManifestTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ManifestError, "test.command must be a non-empty string"):
+                read_manifest(manifest_path)
+
+    def test_rejects_ambiguous_manifest_test_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: pytest",
+                        "  mise: test",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "test must declare only one of command or mise"):
                 read_manifest(manifest_path)
 
     def test_reads_ide_manifest_section(self) -> None:

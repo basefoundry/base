@@ -54,7 +54,7 @@ Current implemented commands include:
 - `basectl update`
 - `basectl projects list`
 - `basectl activate <project>`
-- `basectl test <project>`
+- `basectl test [project]`
 - `basectl version`
 
 Planned commands include:
@@ -116,10 +116,16 @@ package to Base's hand-curated artifact registry.
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
 substrate. A `test` field gives `basectl test` a single project-owned command
-to run. Later, `basectl test` can delegate task execution to `mise run` when
-declared. Base should not run arbitrary setup hooks until there is an
-explicit, reviewable contract for when they run, where they run, whether they
-are interactive, and how dry-run/check/doctor report them.
+to run. Projects that keep tasks in `mise` can declare `test.mise` instead:
+
+```yaml
+test:
+  mise: test
+```
+
+Base should not run arbitrary setup hooks until there is an explicit,
+reviewable contract for when they run, where they run, whether they are
+interactive, and how dry-run/check/doctor report them.
 
 The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
 It should stay small and Base-aware. `python-package` artifacts are pass-through
@@ -152,10 +158,18 @@ Run a discovered project's declared test command with:
 basectl test example
 ```
 
-Base runs the manifest `test.command` from the project root, exports
-`BASE_PROJECT`, `BASE_PROJECT_ROOT`, `BASE_PROJECT_MANIFEST`, and
+When the current directory is inside a Base-managed project, the project name
+can be omitted:
+
+```bash
+basectl test
+```
+
+Base runs the manifest `test.command` or `mise run <test.mise>` from the project
+root, exports `BASE_PROJECT`, `BASE_PROJECT_ROOT`, `BASE_PROJECT_MANIFEST`, and
 `BASE_PROJECT_VENV_DIR`, prepends the project virtual environment when it
-exists, and returns the command's exit status.
+exists, and returns the command's exit status. Use `--dry-run` to inspect the
+resolved command without running it.
 
 Once a project is discoverable, activate it with:
 

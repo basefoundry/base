@@ -72,6 +72,7 @@ _base_basectl_completion() {
             ;;
         test)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--dry-run[Print the resolved test command without running it]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then

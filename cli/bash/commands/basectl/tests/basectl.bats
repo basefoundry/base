@@ -26,7 +26,7 @@ run_basectl() {
     [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
-    [[ "$output" == *"test <project> [options]"* ]]
+    [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
@@ -827,23 +827,88 @@ EOF
     [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
 }
 
+@test "basectl test dry-run prints resolved command without running it" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/test-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'touch "$BASE_TEST_TEST_STATE"; exit 7'
+    exit 0
+fi
+printf 'unexpected test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_TEST_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" test demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would run tests for project demo"* ]]
+    [[ "$output" == *'touch "$BASE_TEST_TEST_STATE"; exit 7'* ]]
+    [ ! -e "$state_file" ]
+}
+
+@test "basectl test can resolve the current project when omitted" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && -z "${4:-}" ]]; then
+    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'printf "current-project-test\n"'
+    exit 0
+fi
+printf 'unexpected test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        bash -c '
+            cd "$1"
+            shift
+            "$@"
+        ' bash "$workspace/demo" "$BASE_REPO_ROOT/bin/basectl" test
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"current-project-test"* ]]
+}
+
 @test "basectl test prints help without requiring the Base Python venv" {
     run_basectl test --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl test <project> [options]"* ]]
+    [[ "$output" == *"basectl test [project] [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
 }
 
 @test "basectl test reports invalid arguments as usage errors" {
-    run_basectl test
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Project name is required."* ]]
-
     run_basectl test --workspace
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
+
+    run_basectl test --workspace "$TEST_TMPDIR"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
 
     run_basectl test --unknown demo
     [ "$status" -eq 2 ]
