@@ -29,7 +29,8 @@ A developer may need:
 
 Base exists to provide that missing common layer.
 
-Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Release notes
+are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Top Goals
 
@@ -55,15 +56,11 @@ Current implemented commands include:
 - `basectl projects list`
 - `basectl activate <project>`
 - `basectl test [project]`
+- `basectl onboard`
 - `basectl version`
 
-Planned commands include:
-
-- `basectl onboard`
-
 The important idea is that the user should not need to memorize a different
-bootstrap story for every repository in the workspace. Planned commands are
-listed here to describe direction, not current availability.
+bootstrap story for every repository in the workspace.
 
 Base should be able to discover participating project repositories checked out
 next to it under a shared parent directory, for example:
