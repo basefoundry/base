@@ -103,7 +103,7 @@ _base_basectl_completion() {
                 issue)
                     _arguments '1:gh area:(issue pr branch todo)' \
                         '2:issue command:(list create start)' \
-                        '--type[Issue or branch type]:type:(feat fix chore docs)' \
+                        '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
                         '--body[Issue body]:body:' \
                         '(-h --help)'{-h,--help}'[Show help text]'

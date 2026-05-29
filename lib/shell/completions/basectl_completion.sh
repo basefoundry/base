@@ -90,7 +90,7 @@ _base_basectl_completion() {
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "list create start" "$cur"
                     else
-                        _base_basectl_completion_compgen "--type --title --body -h --help" "$cur"
+                        _base_basectl_completion_compgen "--category --title --body -h --help" "$cur"
                     fi
                     ;;
                 pr)
