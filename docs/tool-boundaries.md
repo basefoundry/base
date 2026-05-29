@@ -79,6 +79,9 @@ How Base should coexist:
 - allow a Base-managed project to declare that it uses `mise.toml`
 - let `basectl setup` or `basectl check` invoke `mise install`, `mise doctor`, or
   `mise run ...` when that is the project's chosen substrate
+- support Go, Java, and other language runtimes through project-owned
+  `.mise.toml` files instead of adding Base-owned package types for each
+  language ecosystem
 - keep Base at the workspace-orchestration layer, not the per-language tool
   installation layer
 

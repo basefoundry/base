@@ -347,6 +347,11 @@ orchestration actions. The design rule is delegation-first:
 - Use `mise` for tool versions, language runtimes, environment variables, and
   future tasks when a project opts into it. Base runs `mise install` during
   setup and does not reimplement mise's version management.
+- For Go and Java projects, put runtime pins such as `go = "1.22"` and
+  `java = "temurin-21"` in `.mise.toml`. Keep system tools in `Brewfile`, Go
+  dependencies in `go.mod`/`go.sum`, and Java dependencies in Maven or Gradle
+  project files. Base should orchestrate those contracts rather than add
+  generic language package artifact types.
 - Use a project-owned `test` contract for `basectl test <project>` delegation.
   Projects can declare either `test.command` for a shell command or `test.mise`
   for a `mise run <task>` delegation. Extra arguments after `basectl test
