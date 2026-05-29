@@ -44,6 +44,33 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(stderr, "")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_json_reports_invalid_github_auth_when_gh_is_installed(self) -> None:
+        def fake_run_check(command: list[str]) -> bool:
+            if command == ["brew", "list", "bats-core"]:
+                return True
+            if command == ["brew", "list", "gh"]:
+                return True
+            if command == ["gh", "auth", "status"]:
+                return False
+            raise AssertionError(f"Unexpected command: {command}")
+
+        with mock.patch("base_dev.engine.run_check", side_effect=fake_run_check):
+            status, stdout, stderr = run_engine(["check", "--format", "json"])
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn(
+            {
+                "name": "gh-auth",
+                "ok": False,
+                "message": "GitHub CLI authentication is not ready.",
+                "fix": "gh auth login -h github.com",
+            },
+            findings,
+        )
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_dry_run_uses_homebrew_registry_definitions(self) -> None:
         status, _stdout, stderr = run_engine(["setup", "--dry-run"])
 
@@ -63,6 +90,29 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertIn("error", stdout.getvalue())
         self.assertIn("Fix: basectl setup --dev", stdout.getvalue())
+
+    def test_doctor_reports_invalid_github_auth(self) -> None:
+        manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        definitions = engine.resolve_artifact_definitions(manifest.artifacts)
+
+        def fake_run_check(command: list[str]) -> bool:
+            if command == ["brew", "list", "bats-core"]:
+                return True
+            if command == ["brew", "list", "gh"]:
+                return True
+            if command == ["gh", "auth", "status"]:
+                return False
+            raise AssertionError(f"Unexpected command: {command}")
+
+        with mock.patch("base_dev.engine.run_check", side_effect=fake_run_check):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
+
+        self.assertEqual(status, 1)
+        self.assertIn("gh-auth", stdout.getvalue())
+        self.assertIn("GitHub CLI authentication is not ready.", stdout.getvalue())
+        self.assertIn("Fix: gh auth login -h github.com", stdout.getvalue())
 
     def test_doctor_supports_json_output(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
