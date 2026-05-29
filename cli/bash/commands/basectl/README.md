@@ -64,8 +64,8 @@ that delegate to `basectl`.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
-- `basectl onboard` is planned as a guided first-run checklist around existing
-  setup, check, doctor, profile, and project-discovery primitives. See
+- `basectl onboard` runs a guided first-run checklist around existing setup,
+  check, doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.
