@@ -1512,6 +1512,21 @@ EOF
     [[ "$output" == *"projects=base demo"* ]]
 }
 
+@test "Bash completion includes setup notification options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '\
+            source "$BASE_HOME/lib/shell/completions/basectl_completion.sh"; \
+            COMP_WORDS=(basectl setup --no); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "reply=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--notify"* ]]
+    [[ "$output" == *"--no-notify"* ]]
+}
+
 @test "basectl update-profile preserves non-Base dotfile content and is idempotent" {
     printf '%s
 ' 'user line before' > "$TEST_HOME/.bashrc"
