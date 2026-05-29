@@ -66,13 +66,16 @@ Follow [STANDARDS.md](STANDARDS.md). In particular:
 
 ## Artifact Registry Changes
 
-Base's curated artifact registry lives in:
+Base's curated tool artifact registry lives in:
 
 ```text
 cli/python/base_setup/registry.py
 ```
 
-When adding or changing a built-in artifact:
+Python package artifacts are pass-through PyPI package names; they do not need
+registry entries unless Base needs special handling for them.
+
+When adding or changing a built-in tool artifact:
 
 - Add or update the registry entry.
 - Add tests for lookup and setup/check behavior.

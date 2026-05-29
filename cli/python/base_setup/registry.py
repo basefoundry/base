@@ -108,4 +108,17 @@ _ARTIFACTS = {
 
 
 def get_artifact_definition(artifact_type: str, name: str) -> ArtifactDefinition | None:
-    return _ARTIFACTS.get((artifact_type, name))
+    definition = _ARTIFACTS.get((artifact_type, name))
+    if definition is not None:
+        return definition
+
+    if artifact_type == "python-package":
+        return ArtifactDefinition(
+            name=name,
+            artifact_type=artifact_type,
+            manager="pip",
+            package=name,
+            target="project-venv",
+        )
+
+    return None
