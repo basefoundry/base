@@ -20,6 +20,14 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_test_manifest(project_root: Path, name: str, command: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\ntest:\n  command: {command}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
 def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -109,6 +117,35 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+
+    def test_projects_test_command_prints_project_details_and_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_test_manifest(project_root, "demo", "pytest tests/")
+
+            status, stdout, stderr = run_engine(["test-command", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+        )
+
+    def test_projects_test_command_requires_manifest_test_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, _stdout, stderr = run_engine(["test-command", "demo"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("does not declare test.command", stderr)
 
     def test_projects_manifest_prints_project_details(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -26,6 +26,7 @@ run_basectl() {
     [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
+    [[ "$output" == *"test <project> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
@@ -788,6 +789,65 @@ EOF
     [ "$status" -eq 2 ]
     [[ "$output" == *"Unsupported output format 'xml'"* ]]
     [[ "$output" != *"Traceback"* ]]
+}
+
+@test "basectl test runs declared project test command from project root" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/test-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'printf "project=%s\nroot=%s\nmanifest=%s\nvenv=%s\npwd=%s\npath=%s\n" "$BASE_PROJECT" "$BASE_PROJECT_ROOT" "$BASE_PROJECT_MANIFEST" "$BASE_PROJECT_VENV_DIR" "$PWD" "$PATH" > "$BASE_TEST_TEST_STATE"; exit 7'
+    exit 0
+fi
+printf 'unexpected test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    touch "$TEST_HOME/.base.d/demo/.venv/bin/pytest"
+    printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_TEST_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" test demo
+
+    [ "$status" -eq 7 ]
+    [[ "$(cat "$state_file")" == *"project=demo"* ]]
+    [[ "$(cat "$state_file")" == *"root=$workspace/demo"* ]]
+    [[ "$(cat "$state_file")" == *"manifest=$workspace/demo/base_manifest.yaml"* ]]
+    [[ "$(cat "$state_file")" == *"venv=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
+    [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
+}
+
+@test "basectl test prints help without requiring the Base Python venv" {
+    run_basectl test --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl test <project> [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+}
+
+@test "basectl test reports invalid arguments as usage errors" {
+    run_basectl test
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Project name is required."* ]]
+
+    run_basectl test --workspace
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
+
+    run_basectl test --unknown demo
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown test option '--unknown'."* ]]
 }
 
 @test "basectl clean delegates to the Python cleanup layer" {

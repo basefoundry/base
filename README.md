@@ -54,12 +54,11 @@ Current implemented commands include:
 - `basectl update`
 - `basectl projects list`
 - `basectl activate <project>`
+- `basectl test <project>`
 - `basectl version`
 
 Planned commands include:
 
-- `basectl test`
-- `basectl test <project>`
 - `basectl onboard`
 
 The important idea is that the user should not need to memorize a different
@@ -98,7 +97,6 @@ artifacts:
     name: requests
     version: latest
 
-# Future contract for `basectl test example`.
 test:
   command: pytest tests/
 ```
@@ -117,9 +115,9 @@ package to Base's hand-curated artifact registry.
 
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
-substrate. Later, `basectl test` can delegate task execution to `mise run` when
-declared. A `test` field should give `basectl test` a single project-owned
-command to run. Base should not run arbitrary setup hooks until there is an
+substrate. A `test` field gives `basectl test` a single project-owned command
+to run. Later, `basectl test` can delegate task execution to `mise run` when
+declared. Base should not run arbitrary setup hooks until there is an
 explicit, reviewable contract for when they run, where they run, whether they
 are interactive, and how dry-run/check/doctor report them.
 
@@ -147,6 +145,17 @@ By default this scans the parent directory of `BASE_HOME`, which matches the
 recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
 different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
 Use `--format json` for machine-readable output.
+
+Run a discovered project's declared test command with:
+
+```bash
+basectl test example
+```
+
+Base runs the manifest `test.command` from the project root, exports
+`BASE_PROJECT`, `BASE_PROJECT_ROOT`, `BASE_PROJECT_MANIFEST`, and
+`BASE_PROJECT_VENV_DIR`, prepends the project virtual environment when it
+exists, and returns the command's exit status.
 
 Once a project is discoverable, activate it with:
 

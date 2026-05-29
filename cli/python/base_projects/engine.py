@@ -44,8 +44,13 @@ def run(
         return manifest_project_command(ctx, project)
     if command == "resolve":
         return resolve_project_command(ctx, project, workspace)
+    if command == "test-command":
+        return test_command_project_command(ctx, project, workspace)
 
-    ctx.log.error("Unknown projects command '%s'. Supported commands: list, current, manifest, resolve.", command)
+    ctx.log.error(
+        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, test-command.",
+        command,
+    )
     return 2
 
 
@@ -88,6 +93,27 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
         return 1
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    return 0
+
+
+def test_command_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+
+    try:
+        workspace_root = resolve_workspace_root(ctx, workspace)
+        project = find_project(workspace_root, project_name)
+        manifest = read_manifest(project.manifest_path)
+    except (ProjectDiscoveryError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    if manifest.test is None:
+        ctx.log.error("Project '%s' does not declare test.command in '%s'.", project.name, project.manifest_path)
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{manifest.test.command}")
     return 0
 
 

@@ -15,6 +15,8 @@ Commands:
     Install and bootstrap the local Base CLI environment on macOS.
   check [project] [options]
     Verify the local Base CLI environment and optional project artifacts without making changes.
+  test <project> [options]
+    Run a project's declared test command.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   config <path|show|doctor>
@@ -158,6 +160,11 @@ basectl_do_check() {
     base_check_subcommand_main "$@"
 }
 
+basectl_do_test() {
+    basectl_source_subcommand_module test || return 1
+    base_test_subcommand_main "$@"
+}
+
 basectl_do_clean() {
     basectl_source_subcommand_module clean || return 1
     base_clean_subcommand_main "$@"
@@ -296,6 +303,7 @@ basectl_main() {
     case "$command" in
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
+        test)             basectl_do_test "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;

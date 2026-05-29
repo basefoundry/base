@@ -23,7 +23,8 @@ basectl doctor <project>
 basectl activate <project>
 ```
 
-When `basectl test <project>` exists, the same demo should add it to the flow.
+The same demo should include `basectl test <project>` once it declares a
+manifest `test.command`.
 
 ## Project Requirements
 
