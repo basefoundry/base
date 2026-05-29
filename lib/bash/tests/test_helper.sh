@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Common helpers for Bash library BATS suites.
 
 # Preserve BATS' built-in `run` helper before lib_std.sh defines its own.

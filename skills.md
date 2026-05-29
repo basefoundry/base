@@ -1,8 +1,7 @@
 # Skills
 
 This file documents repeatable AI-assisted development workflows for Base.
-General project context lives in `AI_CONTEXT.md`; coding standards live in
-`STANDARDS.md`.
+Coding standards live in `STANDARDS.md`.
 
 ## Add a basectl subcommand
 
@@ -12,6 +11,9 @@ Use this workflow when adding or changing a `basectl <command>` feature.
 - Command implementation: `cli/bash/commands/basectl/`
 - Subcommands: `cli/bash/commands/basectl/subcommands/`
 - Tests: `cli/bash/commands/basectl/tests/`
+- Update completions: `lib/shell/completions/basectl_completion.sh` and
+  `lib/shell/completions/basectl_completion.zsh` — add the new command to the
+  top-level command list and add a case block for its options.
 - Follow shell standards in `STANDARDS.md`.
 - Validate focused command behavior with:
 
@@ -93,7 +95,8 @@ behavior.
 
 - Standalone installer: `install.sh`
 - User-facing install test coverage: `tests/install.bats`
-- Homebrew install path is documented in `AI_CONTEXT.md`.
+- Homebrew tap repository: `https://github.com/codeforester/homebrew-base`
+- User-facing Homebrew install command: `brew install codeforester/base/base`
 - Keep Homebrew users on `brew upgrade codeforester/base/base` rather than
   `basectl update`.
 - Validate with:

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # zsh_defaults.sh
 #     Optional Zsh-specific interactive defaults for users who want Base to

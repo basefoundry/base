@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # base_defaults.sh
 #     Optional shell-neutral interactive defaults shared by Bash and Zsh.
