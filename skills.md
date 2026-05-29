@@ -8,6 +8,11 @@ Coding standards live in `STANDARDS.md`.
 Use this workflow when creating GitHub issues, branches, worktrees, or pull
 requests for Base.
 
+- Prefer `basectl gh` for supported Base repository GitHub workflows so Base
+  dogfoods its own issue, branch, PR, and repository hygiene tool.
+- Fall back to the GitHub connector, raw `gh`, or `git` when `basectl gh` does
+  not support the needed operation or local `gh` authentication/tooling is not
+  available.
 - Assign Codex-created issues to `codeforester`.
 - Use GitHub default-style labels:
   - `bug` for defects.

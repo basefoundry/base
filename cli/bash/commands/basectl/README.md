@@ -63,7 +63,8 @@ that delegate to `basectl`.
 - `basectl gh` manages GitHub issues, pull requests, branch naming, and
   repository hygiene using Base's opinionated workflow. It uses standard
   GitHub-style issue categories such as `bug`, `enhancement`, `documentation`,
-  `ci`, and `security`, and derives branch names from those categories.
+  `ci`, and `security`, and derives branch names from those categories. Prefer
+  this command for Base repository GitHub workflows when it supports the task.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
