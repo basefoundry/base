@@ -46,6 +46,16 @@ base_gh_require_command() {
     }
 }
 
+base_gh_require_auth() {
+    base_gh_require_command gh || return 1
+
+    gh auth status >/dev/null 2>&1 || {
+        base_gh_error "GitHub CLI authentication is not ready."
+        base_gh_error "Run 'gh auth login -h github.com' and retry."
+        return 1
+    }
+}
+
 base_gh_require_git_repo() {
     git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
         base_gh_error "Current directory is not inside a Git worktree."
@@ -129,7 +139,7 @@ base_gh_do_issue() {
 
     case "$command" in
         list)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             gh issue list "$@"
             ;;
         create)
@@ -184,7 +194,7 @@ base_gh_issue_create() {
     }
     issue_type="${issue_type:-feat}"
     base_gh_validate_type "$issue_type" || return 1
-    base_gh_require_command gh || return 1
+    base_gh_require_auth || return 1
 
     if [[ -n "$body" ]]; then
         gh issue create --title "$title" --body "$body" --label "type:$issue_type"
@@ -226,7 +236,7 @@ base_gh_issue_start() {
 
     base_gh_require_git_repo || return 1
     if [[ -z "$issue_type" || -z "$title" ]]; then
-        base_gh_require_command gh || return 1
+        base_gh_require_auth || return 1
     fi
     if [[ -z "$issue_type" ]]; then
         issue_type="$(base_gh_issue_type_from_labels "$issue")" || return 1
@@ -251,7 +261,7 @@ base_gh_do_pr() {
 
     case "$command" in
         create)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             base_gh_require_git_repo || return 1
             issue="$(base_gh_current_issue_from_branch || true)"
             if [[ -n "$issue" ]]; then
@@ -265,19 +275,19 @@ base_gh_do_pr() {
             gh pr create --fill "$@"
             ;;
         status)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             gh pr status "$@"
             ;;
         checks)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             gh pr checks "$@"
             ;;
         ready)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             gh pr ready "$@"
             ;;
         merge)
-            base_gh_require_command gh || return 1
+            base_gh_require_auth || return 1
             gh pr merge "$@"
             ;;
         -h|--help|help|"")
