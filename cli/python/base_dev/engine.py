@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
-from base_setup.engine import ArtifactError, reconcile_artifact, resolve_artifact_definitions, run_check
+from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
+from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
+from base_setup.process import run_check
 from base_setup.registry import ArtifactDefinition
 
 

@@ -13,8 +13,11 @@ from pathlib import Path
 from unittest import mock
 
 from base_cli.config import UserConfig, UserIdeConfig, UserIdePreference
-from base_setup import engine
-from base_setup.engine import ArtifactError, format_command, main, merge_artifacts
+from base_setup import artifacts, checks, delegates, engine, ide, process
+from base_setup.artifacts import merge_artifacts
+from base_setup.errors import ArtifactError
+from base_setup.engine import main
+from base_setup.process import format_command
 from base_setup.manifest import ArtifactRequest, BaseManifest, IdeConfig, ManifestError
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
@@ -516,18 +519,18 @@ class ManifestTests(unittest.TestCase):
         self.assertIsNotNone(definition)
 
         with self.assertRaisesRegex(ArtifactError, "only supports Homebrew artifact version 'latest'"):
-            engine.reconcile_homebrew_artifact(fake_context(), definition, "1.8.5", dry_run=True)
+            artifacts.reconcile_homebrew_artifact(fake_context(), definition, "1.8.5", dry_run=True)
 
     def test_homebrew_artifact_latest_invokes_brew_install(self) -> None:
         definition = get_artifact_definition("tool", "terraform")
         self.assertIsNotNone(definition)
         ctx = fake_context()
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=False,
-        ), mock.patch("base_setup.engine.run_command") as run_command:
-            engine.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            artifacts.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["brew", "install", "terraform"])
 
@@ -541,8 +544,8 @@ class ManifestTests(unittest.TestCase):
             with mock.patch.dict(
                 os.environ,
                 {"BASE_PROJECT": "wrong-project", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
-            ), mock.patch("base_setup.engine.python_artifact_installed", return_value=False):
-                engine.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
+            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+                artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn(
@@ -562,10 +565,10 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_dir = Path(tmpdir) / "demo" / ".venv"
             with mock.patch.dict(os.environ, {"BASE_PROJECT": "wrong-project"}), mock.patch(
-                "base_setup.engine.project_venv_dir",
+                "base_setup.artifacts.project_venv_dir",
                 return_value=venv_dir,
-            ) as project_venv_dir, mock.patch("base_setup.engine.python_artifact_installed", return_value=False):
-                engine.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
+            ) as project_venv_dir, mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+                artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         project_venv_dir.assert_called_once_with("demo")
 
@@ -573,20 +576,20 @@ class ManifestTests(unittest.TestCase):
         ctx = fake_context()
 
         with mock.patch(
-            "base_setup.engine.subprocess.run",
+            "base_setup.process.subprocess.run",
             return_value=mock.Mock(returncode=17, stderr="installer exploded\n"),
         ):
             with self.assertRaisesRegex(ArtifactError, "installer exploded"):
-                engine.run_command(ctx, ["installer", "--bad"])
+                process.run_command(ctx, ["installer", "--bad"])
 
     def test_run_command_logs_success_at_debug(self) -> None:
         ctx = fake_context()
 
         with mock.patch(
-            "base_setup.engine.subprocess.run",
+            "base_setup.process.subprocess.run",
             return_value=mock.Mock(returncode=0, stderr=""),
         ):
-            engine.run_command(ctx, ["installer", "--good", "two words"])
+            process.run_command(ctx, ["installer", "--good", "two words"])
 
         ctx.log.debug.assert_called_once_with(
             "Command succeeded: %s",
@@ -788,11 +791,11 @@ class ProjectCheckTests(unittest.TestCase):
         definition = get_artifact_definition("tool", "terraform")
         self.assertIsNotNone(definition)
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=False,
         ):
-            check = engine.check_homebrew_artifact("demo", artifact, definition)
+            check = artifacts.check_homebrew_artifact("demo", artifact, definition)
 
         self.assertFalse(check.ok)
         self.assertIn("not installed via Homebrew package 'terraform'", check.message)
@@ -842,7 +845,7 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(findings[0]["fix"], "basectl setup demo")
 
     def test_doctor_warning_status_does_not_fail(self) -> None:
-        check = engine.ArtifactCheck(
+        check = checks.ArtifactCheck(
             name="optional-artifact",
             ok=False,
             message="Optional project artifact is not installed.",
@@ -851,7 +854,7 @@ class ProjectCheckTests(unittest.TestCase):
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(engine.check_to_doctor_json(check)["status"], "warn")
+        self.assertEqual(checks.check_to_doctor_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),
@@ -889,7 +892,7 @@ class BrewfileTests(unittest.TestCase):
             )
             expected_brewfile = brewfile.resolve()
 
-            engine.reconcile_brewfile(ctx, manifest, dry_run=True)
+            delegates.reconcile_brewfile(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn(f"[DRY-RUN] Would run: brew bundle --file={expected_brewfile}", info_messages)
@@ -908,10 +911,10 @@ class BrewfileTests(unittest.TestCase):
             )
             expected_brewfile = brewfile.resolve()
 
-            with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-                "base_setup.engine.run_command"
+            with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+                "base_setup.process.run_command"
             ) as run_command:
-                engine.reconcile_brewfile(ctx, manifest, dry_run=False)
+                delegates.reconcile_brewfile(ctx, manifest, dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["brew", "bundle", f"--file={expected_brewfile}"])
 
@@ -926,7 +929,7 @@ class BrewfileTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ArtifactError, "does not exist"):
-                engine.resolve_brewfile_path(manifest)
+                delegates.resolve_brewfile_path(manifest)
 
     def test_brewfile_must_stay_inside_project_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -940,7 +943,7 @@ class BrewfileTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ArtifactError, "must stay inside the project root"):
-                engine.resolve_brewfile_path(manifest)
+                delegates.resolve_brewfile_path(manifest)
 
     def test_mise_dry_run_invokes_mise_install_in_project_root(self) -> None:
         ctx = fake_context()
@@ -956,7 +959,7 @@ class BrewfileTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            engine.reconcile_mise(ctx, manifest, dry_run=True)
+            delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn(f"[DRY-RUN] Would run in '{project_root.resolve()}': mise install", info_messages)
@@ -975,10 +978,10 @@ class BrewfileTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-                "base_setup.engine.run_command"
+            with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+                "base_setup.process.run_command"
             ) as run_command:
-                engine.reconcile_mise(ctx, manifest, dry_run=False)
+                delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["mise", "install"], cwd=project_root.resolve())
 
@@ -995,7 +998,7 @@ class BrewfileTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ArtifactError, "mise config '.mise.toml' does not exist"):
-                engine.resolve_mise_path(manifest)
+                delegates.resolve_mise_path(manifest)
 
     def test_mise_must_stay_inside_project_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1010,7 +1013,7 @@ class BrewfileTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ArtifactError, "mise must stay inside the project root"):
-                engine.resolve_mise_path(manifest)
+                delegates.resolve_mise_path(manifest)
 
     def test_manifest_checks_include_mise_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1031,7 +1034,7 @@ class BrewfileTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            with mock.patch("base_setup.engine.command_exists", return_value=True):
+            with mock.patch("base_setup.process.command_exists", return_value=True):
                 checks = engine.manifest_checks(default_manifest, manifest)
 
         self.assertIn("mise", [check.name for check in checks])
@@ -1056,7 +1059,7 @@ class IdeInstallTests(unittest.TestCase):
             },
         )
 
-        engine.reconcile_ide_installs(ctx, manifest, dry_run=True)
+        ide.reconcile_ide_installs(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn("[DRY-RUN] Would run: brew install --cask visual-studio-code", info_messages)
@@ -1064,13 +1067,13 @@ class IdeInstallTests(unittest.TestCase):
 
     def test_ide_install_skips_existing_cask_and_reports_available_cli(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=True,
-        ), mock.patch("base_setup.engine.run_command") as run_command:
-            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            ide.reconcile_ide_install(ctx, definition, dry_run=False)
 
         run_command.assert_not_called()
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
@@ -1079,28 +1082,28 @@ class IdeInstallTests(unittest.TestCase):
 
     def test_ide_install_installs_missing_cask(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=False,
-        ), mock.patch("base_setup.engine.run_command") as run_command:
-            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            ide.reconcile_ide_install(ctx, definition, dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["brew", "install", "--cask", "cursor"])
 
     def test_ide_install_warns_when_cli_is_missing_after_install(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         def command_exists(name: str) -> bool:
             return name == "brew"
 
-        with mock.patch("base_setup.engine.command_exists", side_effect=command_exists), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", side_effect=command_exists), mock.patch(
+            "base_setup.process.run_check",
             return_value=True,
         ):
-            engine.reconcile_ide_install(ctx, definition, dry_run=False)
+            ide.reconcile_ide_install(ctx, definition, dry_run=False)
 
         warning_messages = [call.args[0] % call.args[1:] for call in ctx.log.warning.call_args_list]
         self.assertIn(
@@ -1109,13 +1112,13 @@ class IdeInstallTests(unittest.TestCase):
         )
 
     def test_check_ide_install_reports_missing_cask(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=False,
         ):
-            check = engine.check_ide_install("demo", definition)
+            check = ide.check_ide_install("demo", definition)
 
         self.assertFalse(check.ok)
         self.assertEqual(check.name, "VS Code app")
@@ -1123,16 +1126,16 @@ class IdeInstallTests(unittest.TestCase):
         self.assertEqual(check.fix, "basectl setup demo")
 
     def test_check_ide_install_reports_missing_cli(self) -> None:
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
         def command_exists(name: str) -> bool:
             return name == "brew"
 
-        with mock.patch("base_setup.engine.command_exists", side_effect=command_exists), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", side_effect=command_exists), mock.patch(
+            "base_setup.process.run_check",
             return_value=True,
         ):
-            check = engine.check_ide_install("demo", definition)
+            check = ide.check_ide_install("demo", definition)
 
         self.assertFalse(check.ok)
         self.assertEqual(check.name, "Cursor CLI")
@@ -1154,8 +1157,8 @@ class IdeInstallTests(unittest.TestCase):
             ide={"vscode": IdeConfig(install=True, extensions=(), settings={})},
         )
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.run_check",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
             return_value=True,
         ):
             checks = engine.manifest_checks(default_manifest, manifest)
@@ -1182,7 +1185,7 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        engine.reconcile_ide_extensions(ctx, manifest, dry_run=True)
+        ide.reconcile_ide_extensions(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertEqual(
@@ -1209,11 +1212,11 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.list_ide_extensions",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.ide.list_ide_extensions",
             return_value={"ms-python.python", "github.copilot"},
-        ), mock.patch("base_setup.engine.run_command") as run_command:
-            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            ide.reconcile_ide_extensions(ctx, manifest, dry_run=False)
 
         run_command.assert_not_called()
 
@@ -1233,11 +1236,11 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.list_ide_extensions",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.ide.list_ide_extensions",
             return_value={"ms-python.python"},
-        ), mock.patch("base_setup.engine.run_command") as run_command:
-            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            ide.reconcile_ide_extensions(ctx, manifest, dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["cursor", "--install-extension", "github.copilot"])
 
@@ -1257,64 +1260,64 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.engine.command_exists", return_value=False):
-            engine.reconcile_ide_extensions(ctx, manifest, dry_run=False)
+        with mock.patch("base_setup.process.command_exists", return_value=False):
+            ide.reconcile_ide_extensions(ctx, manifest, dry_run=False)
 
         warning_messages = [call.args[0] % call.args[1:] for call in ctx.log.warning.call_args_list]
         self.assertIn("VS Code CLI 'code' is not on PATH; skipping extension setup.", warning_messages)
 
     def test_list_ide_extensions_returns_installed_extension_ids(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch(
-            "base_setup.engine.subprocess.run",
+            "base_setup.ide.subprocess.run",
             return_value=mock.Mock(returncode=0, stdout="ms-python.python\n\ngithub.copilot\n", stderr=""),
         ):
-            extensions = engine.list_ide_extensions(definition)
+            extensions = ide.list_ide_extensions(definition)
 
         self.assertEqual(extensions, {"ms-python.python", "github.copilot"})
 
     def test_list_ide_extensions_includes_stderr_on_failure(self) -> None:
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
         with mock.patch(
-            "base_setup.engine.subprocess.run",
+            "base_setup.ide.subprocess.run",
             return_value=mock.Mock(returncode=1, stdout="", stderr="extensions unavailable\n"),
         ):
             with self.assertRaisesRegex(ArtifactError, "extensions unavailable"):
-                engine.list_ide_extensions(definition)
+                ide.list_ide_extensions(definition)
 
     def test_check_ide_extension_reports_installed_extension(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.list_ide_extensions",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.ide.list_ide_extensions",
             return_value={"ms-python.python"},
         ):
-            check = engine.check_ide_extension("demo", definition, "ms-python.python")
+            check = ide.check_ide_extension("demo", definition, "ms-python.python")
 
         self.assertTrue(check.ok)
         self.assertEqual(check.name, "ms-python.python")
         self.assertIn("is installed", check.message)
 
     def test_check_ide_extension_reports_missing_extension(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.list_ide_extensions",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.ide.list_ide_extensions",
             return_value=set(),
         ):
-            check = engine.check_ide_extension("demo", definition, "ms-python.python")
+            check = ide.check_ide_extension("demo", definition, "ms-python.python")
 
         self.assertFalse(check.ok)
         self.assertEqual(check.fix, "basectl setup demo")
         self.assertIn("is not installed", check.message)
 
     def test_check_ide_extension_reports_missing_cli(self) -> None:
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
-        with mock.patch("base_setup.engine.command_exists", return_value=False):
-            check = engine.check_ide_extension("demo", definition, "github.copilot")
+        with mock.patch("base_setup.process.command_exists", return_value=False):
+            check = ide.check_ide_extension("demo", definition, "github.copilot")
 
         self.assertFalse(check.ok)
         self.assertIn("CLI 'cursor' is not on PATH", check.message)
@@ -1341,8 +1344,8 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-            "base_setup.engine.list_ide_extensions",
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.ide.list_ide_extensions",
             return_value={"ms-python.python"},
         ):
             checks = engine.manifest_checks(default_manifest, manifest)
@@ -1357,7 +1360,7 @@ class IdeSettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_dir = Path(tmpdir) / "demo-venv"
             with mock.patch.dict(os.environ, {"BASE_PROJECT_VENV_DIR": str(venv_dir)}):
-                settings = engine.resolve_ide_settings(
+                settings = ide.resolve_ide_settings(
                     "demo",
                     {
                         "python.defaultInterpreterPath": "auto",
@@ -1369,13 +1372,13 @@ class IdeSettingsTests(unittest.TestCase):
         self.assertTrue(settings["editor.formatOnSave"])
 
     def test_ide_settings_file_uses_macos_application_support(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir}, clear=False), mock.patch(
-                "base_setup.engine.sys.platform", "darwin"
+                "base_setup.ide.sys.platform", "darwin"
             ):
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
 
         self.assertEqual(
             settings_file,
@@ -1383,7 +1386,7 @@ class IdeSettingsTests(unittest.TestCase):
         )
 
     def test_ide_settings_file_uses_xdg_config_home_off_macos(self) -> None:
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
@@ -1393,53 +1396,53 @@ class IdeSettingsTests(unittest.TestCase):
                 os.environ,
                 {"HOME": str(home_dir), "XDG_CONFIG_HOME": str(config_home)},
                 clear=False,
-            ), mock.patch("base_setup.engine.sys.platform", "linux"):
-                settings_file = engine.ide_settings_file(definition)
+            ), mock.patch("base_setup.ide.sys.platform", "linux"):
+                settings_file = ide.ide_settings_file(definition)
 
         self.assertEqual(settings_file, config_home / "Cursor" / "User" / "settings.json")
 
     def test_ide_settings_file_defaults_to_home_config_off_macos(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}, clear=False), mock.patch(
-                "base_setup.engine.sys.platform", "linux"
+                "base_setup.ide.sys.platform", "linux"
             ):
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
 
         self.assertEqual(settings_file, Path(home_dir) / ".config" / "Code" / "User" / "settings.json")
 
     def test_merge_ide_settings_writes_missing_keys(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                engine.merge_ide_settings(
+                ide.merge_ide_settings(
                     ctx,
                     definition,
                     {"editor.formatOnSave": True},
                     dry_run=False,
                 )
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
                 settings = json.loads(settings_file.read_text(encoding="utf-8"))
 
         self.assertEqual(settings, {"editor.formatOnSave": True})
 
     def test_merge_ide_settings_preserves_existing_user_value(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(
                     json.dumps({"editor.formatOnSave": False}),
                     encoding="utf-8",
                 )
 
-                engine.merge_ide_settings(
+                ide.merge_ide_settings(
                     ctx,
                     definition,
                     {"editor.formatOnSave": True, "editor.rulers": [100]},
@@ -1454,17 +1457,17 @@ class IdeSettingsTests(unittest.TestCase):
 
     def test_merge_ide_settings_dry_run_does_not_write(self) -> None:
         ctx = fake_context()
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                engine.merge_ide_settings(
+                ide.merge_ide_settings(
                     ctx,
                     definition,
                     {"editor.formatOnSave": True},
                     dry_run=True,
                 )
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
 
         self.assertFalse(settings_file.exists())
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
@@ -1489,49 +1492,49 @@ class IdeSettingsTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.engine.merge_ide_settings") as merge_settings:
-            engine.reconcile_ide_settings(ctx, manifest, dry_run=True)
+        with mock.patch("base_setup.ide.merge_ide_settings") as merge_settings:
+            ide.reconcile_ide_settings(ctx, manifest, dry_run=True)
 
         merge_settings.assert_called_once_with(
             ctx,
-            engine.IDE_DEFINITIONS["vscode"],
+            ide.IDE_DEFINITIONS["vscode"],
             {"editor.formatOnSave": True},
             dry_run=True,
         )
 
     def test_check_ide_setting_reports_absent_key(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                check = engine.check_ide_setting("demo", definition, "editor.formatOnSave", True)
+                check = ide.check_ide_setting("demo", definition, "editor.formatOnSave", True)
 
         self.assertFalse(check.ok)
         self.assertIn("is absent", check.message)
         self.assertEqual(check.fix, "basectl setup demo")
 
     def test_check_ide_setting_reports_matching_key(self) -> None:
-        definition = engine.IDE_DEFINITIONS["vscode"]
+        definition = ide.IDE_DEFINITIONS["vscode"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
-                check = engine.check_ide_setting("demo", definition, "editor.formatOnSave", True)
+                check = ide.check_ide_setting("demo", definition, "editor.formatOnSave", True)
 
         self.assertTrue(check.ok)
         self.assertIn("matches", check.message)
 
     def test_check_ide_setting_reports_divergent_key(self) -> None:
-        definition = engine.IDE_DEFINITIONS["cursor"]
+        definition = ide.IDE_DEFINITIONS["cursor"]
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(definition)
+                settings_file = ide.ide_settings_file(definition)
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": False}), encoding="utf-8")
-                check = engine.check_ide_setting("demo", definition, "editor.formatOnSave", True)
+                check = ide.check_ide_setting("demo", definition, "editor.formatOnSave", True)
 
         self.assertFalse(check.ok)
         self.assertIn("Base will not overwrite user settings", check.message)
@@ -1554,10 +1557,10 @@ class IdeSettingsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
+                settings_file = ide.ide_settings_file(ide.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
-                checks = engine.check_ide_settings(manifest)
+                checks = ide.check_ide_settings(manifest)
 
         self.assertEqual(len(checks), 1)
         self.assertTrue(checks[0].ok)
@@ -1629,7 +1632,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ),
         )
 
-        effective = engine.effective_ide_config(project_ide, user_config)
+        effective = ide.effective_ide_config(project_ide, user_config)
 
         self.assertEqual(
             effective["vscode"].settings,
@@ -1659,7 +1662,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ),
         )
 
-        effective = engine.effective_ide_config(project_ide, user_config)
+        effective = ide.effective_ide_config(project_ide, user_config)
 
         self.assertFalse(effective["cursor"].install)
         self.assertEqual(effective["cursor"].extensions, ("github.copilot",))
@@ -1677,7 +1680,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ide=UserIdeConfig(enabled=False, preferences={}),
         )
 
-        self.assertEqual(engine.effective_ide_config(project_ide, user_config), {})
+        self.assertEqual(ide.effective_ide_config(project_ide, user_config), {})
 
     def test_effective_ide_config_can_disable_one_ide(self) -> None:
         project_ide = {
@@ -1699,7 +1702,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ),
         )
 
-        effective = engine.effective_ide_config(project_ide, user_config)
+        effective = ide.effective_ide_config(project_ide, user_config)
 
         self.assertEqual(set(effective), {"vscode"})
 
@@ -1719,7 +1722,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ),
         )
 
-        effective = engine.effective_ide_config({}, user_config)
+        effective = ide.effective_ide_config({}, user_config)
 
         self.assertEqual(set(effective), {"vscode"})
         self.assertFalse(effective["vscode"].install)
@@ -1754,7 +1757,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
             ),
         )
 
-        checks = engine.ide_preference_warning_checks(manifest, user_config)
+        checks = ide.ide_preference_warning_checks(manifest, user_config)
 
         self.assertEqual(len(checks), 1)
         self.assertEqual(checks[0].status, "warn")
@@ -1789,7 +1792,7 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
+                settings_file = ide.ide_settings_file(ide.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
                 status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="text")
@@ -1825,14 +1828,14 @@ class IdeDiagnosticsTests(unittest.TestCase):
                 artifacts=(),
             )
             manifest = read_manifest(manifest_path)
-            with mock.patch("base_setup.engine.command_exists", return_value=True), mock.patch(
-                "base_setup.engine.run_check",
+            with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+                "base_setup.process.run_check",
                 return_value=True,
             ), mock.patch(
-                "base_setup.engine.list_ide_extensions",
+                "base_setup.ide.list_ide_extensions",
                 return_value={"ms-python.python"},
             ), mock.patch.dict(os.environ, {"HOME": tmpdir, "XDG_CONFIG_HOME": ""}):
-                settings_file = engine.ide_settings_file(engine.IDE_DEFINITIONS["vscode"])
+                settings_file = ide.ide_settings_file(ide.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
                 stdout_buffer = io.StringIO()
@@ -1870,7 +1873,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}), mock.patch(
-                "base_setup.engine.command_exists",
+                "base_setup.process.command_exists",
                 return_value=False,
             ):
                 stdout = io.StringIO()

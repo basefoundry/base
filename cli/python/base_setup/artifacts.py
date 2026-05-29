@@ -1,0 +1,240 @@
+from __future__ import annotations
+
+import os
+import subprocess
+import venv
+from pathlib import Path
+
+import base_cli
+
+from . import process
+from .checks import ArtifactCheck
+from .errors import ArtifactError
+from .manifest import ArtifactRequest
+from .registry import ArtifactDefinition, get_artifact_definition
+
+
+def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tuple[ArtifactDefinition, ...]:
+    definitions: list[ArtifactDefinition] = []
+    for artifact in artifacts:
+        definition = get_artifact_definition(artifact.artifact_type, artifact.name)
+        if definition is None:
+            raise ArtifactError(
+                "Unsupported artifact "
+                f"'{artifact.name}' of type '{artifact.artifact_type}'. "
+                "Base does not know how to manage this artifact yet."
+            )
+        definitions.append(definition)
+    return tuple(definitions)
+
+
+def merge_artifacts(
+    default_artifacts: tuple[ArtifactRequest, ...],
+    manifest_artifacts: tuple[ArtifactRequest, ...],
+) -> tuple[ArtifactRequest, ...]:
+    merged: dict[tuple[str, str], ArtifactRequest] = {}
+
+    for artifact in default_artifacts:
+        merged[(artifact.artifact_type, artifact.name)] = artifact
+
+    for artifact in manifest_artifacts:
+        key = (artifact.artifact_type, artifact.name)
+        existing = merged.get(key)
+        if existing is not None and existing.version != artifact.version:
+            raise ArtifactError(
+                "Artifact "
+                f"'{artifact.name}' of type '{artifact.artifact_type}' is declared by defaults "
+                f"as version '{existing.version}' and by the project manifest as version '{artifact.version}'."
+            )
+        if existing is not None:
+            artifact = ArtifactRequest(
+                artifact_type=artifact.artifact_type,
+                name=artifact.name,
+                version=artifact.version,
+                bootstrap=existing.bootstrap or artifact.bootstrap,
+            )
+        merged[key] = artifact
+
+    return tuple(merged.values())
+
+
+def check_artifact(
+    project: str,
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+) -> ArtifactCheck:
+    if definition.manager == "homebrew":
+        return check_homebrew_artifact(project, artifact, definition)
+    if definition.manager == "pip":
+        return check_python_artifact(project, artifact, definition)
+    return ArtifactCheck(
+        name=artifact.name,
+        ok=False,
+        message=f"Artifact manager '{definition.manager}' is not implemented.",
+        fix=f"basectl setup {project}",
+    )
+
+
+def check_homebrew_artifact(
+    project: str,
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+) -> ArtifactCheck:
+    if artifact.version != "latest":
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=False,
+            message=(
+                f"Homebrew artifact '{artifact.name}' specifies version '{artifact.version}', "
+                "but Base only supports Homebrew artifact version 'latest' right now."
+            ),
+            fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
+        )
+    if not process.command_exists("brew"):
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=False,
+            message=f"Homebrew is required to check artifact '{artifact.name}'.",
+            fix="basectl setup",
+        )
+    ok = process.run_check(["brew", "list", definition.package])
+    if ok:
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=True,
+            message=f"Artifact '{artifact.name}' is installed via Homebrew package '{definition.package}'.",
+            fix="",
+        )
+    return ArtifactCheck(
+        name=artifact.name,
+        ok=False,
+        message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
+        fix=f"basectl setup {project}",
+    )
+
+
+def check_python_artifact(
+    project: str,
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+) -> ArtifactCheck:
+    venv_dir = project_venv_dir(project)
+    python_bin = venv_dir / "bin" / "python"
+    if python_artifact_installed(python_bin, definition.package, artifact.version):
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=True,
+            message=f"Python artifact '{artifact.name}' is installed in the project virtual environment.",
+            fix="",
+        )
+    return ArtifactCheck(
+        name=artifact.name,
+        ok=False,
+        message=f"Python artifact '{artifact.name}' is not installed in the project virtual environment.",
+        fix=f"basectl setup {project}",
+    )
+
+
+def reconcile_artifact(
+    ctx: base_cli.Context,
+    definition: ArtifactDefinition,
+    version: str,
+    project: str,
+    dry_run: bool,
+) -> None:
+    if definition.manager == "homebrew":
+        reconcile_homebrew_artifact(ctx, definition, version, dry_run=dry_run)
+        return
+    if definition.manager == "pip":
+        reconcile_python_artifact(ctx, definition, version, project, dry_run=dry_run)
+        return
+    raise ArtifactError(f"Artifact manager '{definition.manager}' is not implemented.")
+
+
+def reconcile_homebrew_artifact(
+    ctx: base_cli.Context,
+    definition: ArtifactDefinition,
+    version: str,
+    dry_run: bool,
+) -> None:
+    if version != "latest":
+        raise ArtifactError(
+            "Homebrew artifact "
+            f"'{definition.name}' specifies version '{version}', but Base only supports "
+            "Homebrew artifact version 'latest' right now."
+        )
+
+    command = ["brew", "install", definition.package]
+    if dry_run:
+        process.dry_run_command(ctx, command)
+        return
+
+    if not process.command_exists("brew"):
+        raise ArtifactError(f"Homebrew is required to install artifact '{definition.name}'.")
+
+    if process.run_check(["brew", "list", definition.package]):
+        ctx.log.info(
+            "Artifact '%s' is already installed via Homebrew package '%s'.",
+            definition.name,
+            definition.package,
+        )
+        return
+
+    ctx.log.info(
+        "Installing artifact '%s' via Homebrew package '%s' (%s).",
+        definition.name,
+        definition.package,
+        version,
+    )
+    process.run_command(ctx, command)
+
+
+def reconcile_python_artifact(
+    ctx: base_cli.Context,
+    definition: ArtifactDefinition,
+    version: str,
+    project: str,
+    dry_run: bool,
+) -> None:
+    venv_dir = project_venv_dir(project)
+    python_bin = venv_dir / "bin" / "python"
+    requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
+
+    if python_artifact_installed(python_bin, definition.package, version):
+        ctx.log.info("Python artifact '%s' is already installed in the project virtual environment.", definition.name)
+        return
+
+    if dry_run:
+        if not python_bin.exists():
+            ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", venv_dir)
+        process.dry_run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+        return
+
+    if not python_bin.exists():
+        ctx.log.info("Creating project virtual environment at '%s'.", venv_dir)
+        venv.create(venv_dir, with_pip=True)
+
+    ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
+    process.run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+
+
+def project_venv_dir(project: str) -> Path:
+    override = os.environ.get("BASE_PROJECT_VENV_DIR")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / ".base.d" / project / ".venv"
+
+
+def python_artifact_installed(python_bin: Path, package: str, version: str) -> bool:
+    if not python_bin.exists():
+        return False
+    command = [str(python_bin), "-m", "pip", "show", package]
+    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+    if completed.returncode:
+        return False
+    if version == "latest":
+        return True
+    for line in completed.stdout.splitlines():
+        if line.startswith("Version: "):
+            return line.removeprefix("Version: ").strip() == version
+    return False
