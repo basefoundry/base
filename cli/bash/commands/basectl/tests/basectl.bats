@@ -87,10 +87,11 @@ run_basectl() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
-    [[ "$output" == *"<type>/<issue>-<YYYYMMDD>-<slug>"* ]]
+    [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
+    [[ "$output" == *"assigned to codeforester"* ]]
 }
 
-@test "basectl gh issue create applies type label" {
+@test "basectl gh issue create applies category label and assignee" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status" ]]; then
@@ -108,11 +109,11 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --type fix --title "Repair branch pruning"
+            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning"
         '
 
     [ "$status" -eq 0 ]
-    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label type:fix" ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester" ]
 }
 
 @test "basectl gh issue list reports missing gh authentication clearly" {
@@ -155,8 +156,8 @@ EOF
 if [[ "$*" == "auth status" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 117 --json labels --jq .labels[].name | select(startswith(\"type:\")) | sub(\"^type:\"; \"\")" ]]; then
-    printf 'feat\n'
+if [[ "$*" == "issue view 117 --json labels --jq .labels[].name | select(. == \"bug\" or . == \"enhancement\" or . == \"documentation\" or . == \"ci\" or . == \"security\")" ]]; then
+    printf 'enhancement\n'
     exit 0
 fi
 if [[ "$*" == "issue view 117 --json title --jq .title" ]]; then
@@ -180,11 +181,11 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == "feat/117-"*"-add-basectl-gh-workflow-for-issues" ]]
+    [[ "$output" == "enhancement/117-"*"-add-basectl-gh-workflow-for-issues" ]]
     [ "$(git -C "$repo" branch --show-current)" = "$output" ]
 }
 
-@test "basectl gh issue start accepts explicit type and title without gh" {
+@test "basectl gh issue start accepts explicit category and title without gh" {
     local repo
 
     repo="$TEST_TMPDIR/repo"
@@ -199,11 +200,11 @@ EOF
             cd "$1"
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue start 117 --type chore --title "Prune merged branches"
+            base_gh_subcommand_main issue start 117 --category enhancement --title "Prune merged branches"
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == "chore/117-"*"-prune-merged-branches" ]]
+    [[ "$output" == "enhancement/117-"*"-prune-merged-branches" ]]
 }
 
 @test "basectl gh branch prune defaults to dry-run" {
@@ -262,7 +263,7 @@ EOF
     init_git_repo "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
-    git -C "$repo" switch -c "feat/117-20260528-basectl-gh-workflow" >/dev/null
+    git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -323,8 +324,8 @@ EOF
         ' bash "$todo_file"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *$'type:fix\tDetect outdated Xcode Command Line Tools in `basectl doctor`'* ]]
-    [[ "$output" == *$'type:feat\tAdd first-class `mise` integration'* ]]
+    [[ "$output" == *$'bug\tDetect outdated Xcode Command Line Tools in `basectl doctor`'* ]]
+    [[ "$output" == *$'enhancement\tAdd first-class `mise` integration'* ]]
 }
 
 @test "basectl onboard prints help" {

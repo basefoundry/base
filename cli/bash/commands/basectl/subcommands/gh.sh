@@ -8,8 +8,8 @@ base_gh_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create --type <feat|fix|chore|docs> --title <title> [--body <body>]
-  basectl gh issue start <number> [--type <feat|fix|chore|docs>] [--title <title>]
+  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
   basectl gh pr create [gh options...]
   basectl gh pr status [gh options...]
   basectl gh pr checks [gh options...]
@@ -24,10 +24,12 @@ Purpose:
   using Base's opinionated workflow.
 
 Branch naming:
-  <type>/<issue>-<YYYYMMDD>-<slug>
+  <category>/<issue>-<YYYYMMDD>-<slug>
 
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
+  - Issues created through this command are assigned to codeforester.
+  - Pull request implementation work should happen in a dedicated worktree.
   - Branch pruning is dry-run by default and applies only when --yes is passed.
   - TODO import is currently a dry-run planning command.
 EOF
@@ -87,11 +89,11 @@ base_gh_default_branch() {
     printf '%s\n' master
 }
 
-base_gh_validate_type() {
+base_gh_validate_category() {
     case "$1" in
-        feat|fix|chore|docs) return 0 ;;
+        bug|enhancement|documentation|ci|security) return 0 ;;
         *)
-            base_gh_error "Invalid type '$1'. Expected one of: feat, fix, chore, docs."
+            base_gh_error "Invalid category '$1'. Expected one of: bug, enhancement, documentation, ci, security."
             return 1
             ;;
     esac
@@ -108,16 +110,16 @@ base_gh_slug() {
     printf '%.60s\n' "$slug" | sed -E 's/-+$//'
 }
 
-base_gh_issue_type_from_labels() {
+base_gh_issue_category_from_labels() {
     local issue="$1"
-    local issue_type
+    local category
 
-    issue_type="$(gh issue view "$issue" --json labels --jq '.labels[].name | select(startswith("type:")) | sub("^type:"; "")' 2>/dev/null | head -n 1)"
-    if [[ -z "$issue_type" ]]; then
-        issue_type="feat"
+    category="$(gh issue view "$issue" --json labels --jq '.labels[].name | select(. == "bug" or . == "enhancement" or . == "documentation" or . == "ci" or . == "security")' 2>/dev/null | head -n 1)"
+    if [[ -z "$category" ]]; then
+        category="enhancement"
     fi
-    base_gh_validate_type "$issue_type" || return 1
-    printf '%s\n' "$issue_type"
+    base_gh_validate_category "$category" || return 1
+    printf '%s\n' "$category"
 }
 
 base_gh_issue_title() {
@@ -160,12 +162,12 @@ base_gh_do_issue() {
 }
 
 base_gh_issue_create() {
-    local issue_type="" title="" body=""
+    local category="" title="" body=""
 
     while (($#)); do
         case "$1" in
-            --type)
-                issue_type="${2:-}"
+            --category)
+                category="${2:-}"
                 shift
                 ;;
             --title)
@@ -192,19 +194,19 @@ base_gh_issue_create() {
         base_gh_error "Missing required --title."
         return 1
     }
-    issue_type="${issue_type:-feat}"
-    base_gh_validate_type "$issue_type" || return 1
+    category="${category:-enhancement}"
+    base_gh_validate_category "$category" || return 1
     base_gh_require_auth || return 1
 
     if [[ -n "$body" ]]; then
-        gh issue create --title "$title" --body "$body" --label "type:$issue_type"
+        gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester
     else
-        gh issue create --title "$title" --label "type:$issue_type"
+        gh issue create --title "$title" --label "$category" --assignee codeforester
     fi
 }
 
 base_gh_issue_start() {
-    local issue="${1:-}" issue_type="" title="" slug branch today
+    local issue="${1:-}" category="" title="" slug branch today
 
     [[ -n "$issue" ]] || {
         base_gh_error "Missing issue number."
@@ -214,8 +216,8 @@ base_gh_issue_start() {
 
     while (($#)); do
         case "$1" in
-            --type)
-                issue_type="${2:-}"
+            --category)
+                category="${2:-}"
                 shift
                 ;;
             --title)
@@ -235,20 +237,20 @@ base_gh_issue_start() {
     done
 
     base_gh_require_git_repo || return 1
-    if [[ -z "$issue_type" || -z "$title" ]]; then
+    if [[ -z "$category" || -z "$title" ]]; then
         base_gh_require_auth || return 1
     fi
-    if [[ -z "$issue_type" ]]; then
-        issue_type="$(base_gh_issue_type_from_labels "$issue")" || return 1
+    if [[ -z "$category" ]]; then
+        category="$(base_gh_issue_category_from_labels "$issue")" || return 1
     fi
-    base_gh_validate_type "$issue_type" || return 1
+    base_gh_validate_category "$category" || return 1
     if [[ -z "$title" ]]; then
         title="$(base_gh_issue_title "$issue")" || return 1
     fi
 
     slug="$(base_gh_slug "$title")"
     today="$(date +%Y%m%d)"
-    branch="$issue_type/$issue-$today-$slug"
+    branch="$category/$issue-$today-$slug"
 
     git switch --quiet -c "$branch"
     printf '%s\n' "$branch"
@@ -410,24 +412,26 @@ base_gh_do_branch() {
     esac
 }
 
-base_gh_todo_infer_type() {
+base_gh_todo_infer_category() {
     local section="$1"
     local title="${2:-}"
 
     case "$title" in
-        Harden*|Fix*|Repair*) printf '%s\n' fix; return 0 ;;
+        Harden*) printf '%s\n' security; return 0 ;;
+        Fix*|Repair*) printf '%s\n' bug; return 0 ;;
     esac
 
     case "$section" in
-        *Security*|*Correctness*) printf '%s\n' fix ;;
-        *Product*|*Core*|*Composability*) printf '%s\n' feat ;;
-        *Documentation*|*Docs*) printf '%s\n' docs ;;
-        *) printf '%s\n' chore ;;
+        *Correctness*) printf '%s\n' bug ;;
+        *Security*) printf '%s\n' security ;;
+        *CI*|*Test*|*Release*) printf '%s\n' ci ;;
+        *Documentation*|*Docs*) printf '%s\n' documentation ;;
+        *) printf '%s\n' enhancement ;;
     esac
 }
 
 base_gh_todo_import() {
-    local file="$BASE_HOME/TODO.md" dry_run=1 line section="" title issue_type
+    local file="$BASE_HOME/TODO.md" dry_run=1 line section="" title category
 
     while (($#)); do
         case "$1" in
@@ -470,8 +474,8 @@ base_gh_todo_import() {
             "- [ ] "*)
                 title="${line#'- [ ] '}"
                 title="${title%.}"
-                issue_type="$(base_gh_todo_infer_type "$section" "$title")"
-                printf 'type:%s\t%s\n' "$issue_type" "$title"
+                category="$(base_gh_todo_infer_category "$section" "$title")"
+                printf '%s\t%s\n' "$category" "$title"
                 ;;
         esac
     done < "$file"
