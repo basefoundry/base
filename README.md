@@ -11,9 +11,9 @@ Its job is not to be a product repo, a service repo, or a monorepo. Its job is
 to provide the common layer that sits above individual project repositories and
 makes them easier to set up, run, and test in a consistent way.
 
-This repository already existed as a shell-focused project. The next version of
-Base is a deliberate refactor of that idea into a broader workspace bootstrap
-and execution layer.
+Base combines shell environment management, project discovery, setup
+orchestration, diagnostics, and controlled command execution into one
+workspace-level layer.
 
 ## Why Base Exists
 
@@ -34,7 +34,7 @@ are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Top Goals
 
-Base is being refactored around three primary goals.
+Base is organized around three primary goals.
 
 ### 1. Umbrella Interface for Multi-Project Setup and Test
 
@@ -699,7 +699,7 @@ mechanism is still being designed, but the intent is clear:
 
 ## Design Principles
 
-The refactor should follow a few simple principles.
+Base follows a few simple principles.
 
 1. Keep project repos independent.
 2. Prefer explicit conventions over hidden shell magic.
@@ -708,25 +708,24 @@ The refactor should follow a few simple principles.
 5. Let Base provide the common layer without turning into a dumping ground for
    project-specific behavior.
 
-## Status
+## Current Status
 
-This repository is being repositioned and refactored.
-
-The current contents include useful shell-oriented building blocks from the
-older version of Base. The goal now is to evolve those foundations into a more
-general multi-project workspace tool.
+Base has shipped a macOS-first `0.1.0` public baseline. The implemented command
+surface covers setup, checks, diagnostics, project discovery, project
+activation, project test execution, cleanup, updates, onboarding, and GitHub
+workflow helpers.
 
 For the documentation map and naming convention, see
-[docs/README.md](docs/README.md). For the evolving architecture and
-product-direction notes behind that refactor, see
+[docs/README.md](docs/README.md). For the architecture and product direction,
+see
 [docs/architecture.md](docs/architecture.md). For the current `basectl` runtime
 and dispatch contract, see [docs/execution-model.md](docs/execution-model.md).
 For ecosystem boundary and integration decisions, see
 [docs/tool-boundaries.md](docs/tool-boundaries.md).
 
-The first migration pass has already started: the Base CLI, runtime bootstrap,
-setup command, and Bash libraries formerly living in the `banyanlabs` repo now
-live under this repository.
+Release notes are tracked in [CHANGELOG.md](CHANGELOG.md), and upcoming work is
+tracked in GitHub Issues using the workflow in
+[docs/github-workflow.md](docs/github-workflow.md).
 
 ## Short Version
 
