@@ -71,7 +71,7 @@ def setup_dev_artifacts(
 
     try:
         for artifact, definition in zip(manifest.artifacts, definitions, strict=True):
-            reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
+            reconcile_artifact(ctx, definition, artifact.version, manifest.project_name, dry_run=dry_run)
     except ArtifactError as exc:
         ctx.log.error(str(exc))
         return 1
