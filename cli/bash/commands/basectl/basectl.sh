@@ -23,6 +23,8 @@ Commands:
     Diagnose the local Base CLI environment and optional project artifacts.
   gh <area> <command> [options]
     Manage GitHub issues, PRs, branches, and repository hygiene.
+  onboard [options]
+    Guide a user through the first Base setup checklist.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   update [options]
@@ -176,6 +178,11 @@ basectl_do_gh() {
     base_gh_subcommand_main "$@"
 }
 
+basectl_do_onboard() {
+    basectl_source_subcommand_module onboard || return 1
+    base_onboard_subcommand_main "$@"
+}
+
 basectl_do_update_profile() {
     basectl_source_subcommand_module update_profile || return 1
     base_update_profile_subcommand_main "$@"
@@ -293,6 +300,7 @@ basectl_main() {
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;
+        onboard)          basectl_do_onboard "$@" ;;
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;
