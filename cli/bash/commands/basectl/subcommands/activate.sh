@@ -27,7 +27,18 @@ base_activate_resolve_project() {
     local wrapper="$2"
     shift 2
 
-    "$wrapper" --project base base_projects resolve "$project" "$@"
+    env -u BASE_PROJECT_VENV_DIR "$wrapper" --project base base_projects resolve "$project" "$@"
+}
+
+base_activate_project_venv_dir() {
+    local project="$1"
+
+    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+        printf '%s\n' "$BASE_PROJECT_VENV_DIR"
+        return 0
+    fi
+
+    printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
 base_activate_subcommand_main() {
@@ -87,7 +98,7 @@ base_activate_subcommand_main() {
         fatal_error "Unable to resolve project '$project'."
     }
 
-    venv_dir="$HOME/.base.d/$resolved_name/.venv"
+    venv_dir="$(base_activate_project_venv_dir "$resolved_name")"
     [[ -x "$venv_dir/bin/python" ]] || {
         fatal_error "Project virtual environment Python was not found at '$venv_dir/bin/python'. Run 'basectl setup $resolved_name' first."
     }

@@ -1073,6 +1073,45 @@ EOF
     [[ "$output" == *"PWD=$workspace/demo"* ]]
 }
 
+@test "basectl activate honors BASE_PROJECT_VENV_DIR override" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_python="$TEST_TMPDIR/custom-venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_VENV_DIR=%s\n' "$BASE_PROJECT_VENV_DIR"
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_bash" \
+        BASE_PROJECT_VENV_DIR="$TEST_TMPDIR/custom-venv" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_TMPDIR/custom-venv"* ]]
+}
+
 @test "basectl default runtime shell preserves caller working directory" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local project_activate="$TEST_HOME/.base.d/base/.venv/bin/activate"
