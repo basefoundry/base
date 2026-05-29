@@ -96,10 +96,13 @@ artifact management.
 
 ## State Directories
 
-All Base-owned user state remains under `~/.base.d`.
+Base separates durable user state from disposable runtime artifacts.
+Durable config and project virtual environments live under `~/.base.d`.
+Per-run CLI logs, caches, and temp directories live under the Base runtime
+cache root.
 
 ```text
-~/.base.d/
+<base-cache-root>/
   cli/
     <cli-name>/
       logs/
@@ -108,6 +111,16 @@ All Base-owned user state remains under `~/.base.d`.
       tmp/
         <run-id>/
 ```
+
+The default cache root is:
+
+| Platform | Runtime cache root |
+|---|---|
+| macOS | `~/Library/Caches/base` |
+| Linux and other non-macOS platforms | `~/.cache/base` |
+
+Set `BASE_CACHE_DIR` to override this root for tests, CI, or unusual local
+layouts.
 
 Directory lifecycle:
 
