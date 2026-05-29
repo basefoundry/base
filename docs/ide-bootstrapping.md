@@ -25,7 +25,6 @@ Base does not own:
 - workspace `.vscode/settings.json` generation
 - JetBrains IDE configuration
 - generic dotfile synchronization
-- user-local IDE preference layering
 
 ## Manifest Schema
 
@@ -149,9 +148,11 @@ bootstrap and diagnostics for Base-managed projects.
 
 Candidate future work:
 
-- user-local IDE preference config under `~/.base.d`
 - workspace `.vscode` settings if a real project needs shared editor settings
 - Windsurf support if its CLI and settings surface match the VS Code family
 - JetBrains support only after a clean, scriptable configuration surface is
   identified
 - extension pinning only if Base adopts a deliberate VSIX management strategy
+
+Machine-local IDE preferences live in `~/.base.d/config.yaml`. See
+[local-config.md](local-config.md) for the user config schema and sync boundary.

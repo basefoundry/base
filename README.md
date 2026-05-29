@@ -170,6 +170,17 @@ to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durabl
 state such as `~/.base.d/config.yaml` and project virtual environments under
 `~/.base.d/<project>/.venv` are outside this scope.
 
+Inspect machine-local Base config with:
+
+```bash
+basectl config path
+basectl config show
+basectl config doctor
+```
+
+Base owns the meaning of `~/.base.d/config.yaml`, but users own how that file is
+edited, backed up, or synced. See [docs/local-config.md](docs/local-config.md).
+
 Use `--keep-last <count>` to retain the newest log files per CLI log directory
 while pruning older logs. This retention mode applies only to `*.log` files;
 temp and cache artifacts continue to use `--older-than`.
