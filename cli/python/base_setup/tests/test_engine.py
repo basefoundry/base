@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines,too-many-public-methods
+
 import io
 import importlib.util
 import json
