@@ -3,7 +3,7 @@
 ![Tests](https://github.com/codeforester/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/codeforester/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Version](https://img.shields.io/github/v/tag/codeforester/base?label=version)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
 
 Base is a foundational developer tooling repo for a multi-project workspace.
 
