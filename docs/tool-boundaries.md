@@ -507,9 +507,13 @@ looks like any of these:
 - generalized task execution unrelated to workspace orchestration
 - user-home dotfile templating or secret management
 - dependency solving or package-resolution logic
+- project topology complexity such as manifest inheritance, project groups,
+  or sub-repository manifests
 
 Those are the places where Base is most likely to drift away from its real
-strength.
+strength. For project topology specifically, the constraints and rationale are
+recorded in the "Project Model Scope" section of
+[architecture.md](architecture.md).
 
 ## References
 
