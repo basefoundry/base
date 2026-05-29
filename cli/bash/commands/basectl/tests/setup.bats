@@ -503,6 +503,17 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]
     printf 'Project not found: %s\n' "$project" >&2
     exit 1
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "manifest" ]]; then
+    manifest_path="${4:-}"
+    if [[ -f "$manifest_path" ]]; then
+        project="$(awk '/^[[:space:]]*name:/ { print $2; exit }' "$manifest_path")"
+        project_root="$(cd -- "$(dirname -- "$manifest_path")" && pwd -P)"
+        printf '%s\t%s\t%s\n' "$project" "$project_root" "$manifest_path"
+        exit 0
+    fi
+    printf 'Manifest not found: %s\n' "$manifest_path" >&2
+    exit 1
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
@@ -803,6 +814,34 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Running Python project setup layer."* ]]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
+}
+
+@test "basectl setup infers project name from explicit manifest" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local project_root="$TEST_TMPDIR/demo"
+    local resolved_project_root
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$project_root"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$demo_venv_dir"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+    resolved_project_root="$(cd "$project_root" && pwd -P)"
+
+    run_base_command setup --dry-run --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Resolved project 'demo' at '$resolved_project_root'."* ]]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
