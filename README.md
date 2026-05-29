@@ -171,6 +171,41 @@ test:
   mise: test
 ```
 
+For a polyglot project such as `banyanlabs`, keep Base at the workspace
+orchestration layer and let the language-native tools own their usual files.
+Base should see a small manifest contract:
+
+```yaml
+project:
+  name: banyanlabs
+
+brewfile: Brewfile
+
+mise: .mise.toml
+
+test:
+  mise: test
+```
+
+Then `.mise.toml` can pin the project runtimes and expose the task Base should
+delegate to:
+
+```toml
+[tools]
+go = "1.22"
+java = "temurin-21"
+
+[tasks.test]
+run = "go test ./... && ./gradlew test"
+```
+
+Use the `Brewfile` for ordinary workstation tools such as Maven, Gradle,
+`golangci-lint`, `protobuf`, or Docker-related CLIs when Homebrew is the right
+installer. Keep Go dependencies in `go.mod`/`go.sum` and Java dependencies in
+Maven or Gradle project files. Base does not need first-class `go-package` or
+`java-package` artifact types until it has a Base-specific behavior to add on
+top of those native ecosystems.
+
 Base should not run arbitrary setup hooks until there is an explicit,
 reviewable contract for when they run, where they run, whether they are
 interactive, and how dry-run/check/doctor report them.
