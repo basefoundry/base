@@ -10,6 +10,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 ### Added
 
 - Added documentation guidance for using `mise` with Go and Java projects.
+- Added documentation for the boundary between `basectl onboard` and
+  project-owned installers.
 - Added a repo-owned `bin/base-test` runner and declared it through
   `base_manifest.yaml` so Base can dogfood `basectl test base`.
 - Added GitHub CLI authentication diagnostics to developer prerequisite checks.

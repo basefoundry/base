@@ -7,6 +7,21 @@ turning `basectl setup` into an interactive, hand-holding command. The setup
 command should remain the direct, scriptable reconciler. The onboard command can
 be slower, friendlier, and more explanatory because that is its purpose.
 
+## Decision
+
+Base should not grow `basectl onboard <project>` as a product-specific guided
+installer. Project onboarding belongs in the project repository, where the
+installer can speak in that product's language, clone or update that product's
+repo, explain product-specific prerequisites, and call Base for the workspace
+mechanics it owns.
+
+The stable split is:
+
+- `basectl onboard` guides first-run Base setup.
+- `basectl setup <project>` reconciles a Base-managed project from its manifest.
+- `<project>/install.sh` or a packaged project installer guides product-specific
+  onboarding and calls Base internally.
+
 ## Audience
 
 `basectl onboard` is for someone who can use a terminal but does not yet know
