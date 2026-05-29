@@ -35,6 +35,8 @@ reference. The filename should answer "what is this about?"
   installers should use Base without moving product-specific logic into Base.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
+- [`basectl ci`](basectl-ci.md) defines the future non-interactive CI entry
+  point and its relationship to Linux support.
 - [`basectl check` parallelism](check-parallelism.md) records the evaluation and
   implementation constraints for parallel check probes.
 - [Base-managed demo project](base-managed-demo-project.md) defines the proof
