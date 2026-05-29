@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
 from base_cli.paths import discover_manifest
-from base_setup.manifest import ManifestError, read_manifest
+from base_setup.manifest import ManifestError, TestConfig, read_manifest
 
 
 app = base_cli.App(name="base_projects")
@@ -97,40 +98,53 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
 
 
 def test_command_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
-    if not project_name:
-        ctx.log.error("Project name is required.")
-        return 2
-
     try:
-        workspace_root = resolve_workspace_root(ctx, workspace)
-        project = find_project(workspace_root, project_name)
+        if project_name:
+            workspace_root = resolve_workspace_root(ctx, workspace)
+            project = find_project(workspace_root, project_name)
+        else:
+            project = current_project()
         manifest = read_manifest(project.manifest_path)
     except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
 
     if manifest.test is None:
-        ctx.log.error("Project '%s' does not declare test.command in '%s'.", project.name, project.manifest_path)
+        ctx.log.error(
+            "Project '%s' does not declare test.command or test.mise in '%s'.",
+            project.name,
+            project.manifest_path,
+        )
         return 1
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{manifest.test.command}")
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{test_command(manifest.test)}")
     return 0
 
 
 def current_project_command(ctx: base_cli.Context) -> int:
-    manifest_path = discover_manifest(Path.cwd())
-    if manifest_path is None:
-        ctx.log.error("No base_manifest.yaml found from '%s' upward.", Path.cwd())
-        return 1
-
     try:
-        project = read_project(manifest_path)
+        project = current_project()
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return 1
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}")
     return 0
+
+
+def current_project() -> Project:
+    manifest_path = discover_manifest(Path.cwd())
+    if manifest_path is None:
+        raise ProjectDiscoveryError(f"No base_manifest.yaml found from '{Path.cwd()}' upward.")
+
+    return read_project(manifest_path)
+
+
+def test_command(test_config: TestConfig) -> str:
+    if test_config.command is not None:
+        return test_config.command
+    assert test_config.mise is not None
+    return shlex.join(["mise", "run", test_config.mise])
 
 
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:

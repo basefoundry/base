@@ -40,7 +40,7 @@ that delegate to `basectl`.
 
 ## Planned subcommands
 
-- Additional `test` delegation modes such as `mise run test`.
+- Additional `test` backends beyond manifest commands and `mise run`.
 
 ## Notes
 
@@ -65,8 +65,9 @@ that delegate to `basectl`.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
-- `basectl test <project>` runs the project's manifest `test.command` from the
-  project root with Base project environment variables exported.
+- `basectl test [project]` runs the project's manifest `test.command` or
+  `test.mise` from the project root with Base project environment variables
+  exported.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.

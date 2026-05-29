@@ -36,7 +36,8 @@ class IdeConfig:
 
 @dataclass(frozen=True)
 class TestConfig:
-    command: str
+    command: str | None = None
+    mise: str | None = None
 
 
 @dataclass(frozen=True)
@@ -144,15 +145,26 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     if not isinstance(test_data, dict):
         raise ManifestError(f"{path}: test must be a mapping when provided.")
 
-    allowed_keys = {"command"}
+    allowed_keys = {"command", "mise"}
     unknown_keys = sorted(set(test_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: test has unsupported keys: {', '.join(unknown_keys)}.")
 
     command = test_data.get("command")
-    if not isinstance(command, str) or not command.strip():
+    mise = test_data.get("mise")
+    if command is not None and (not isinstance(command, str) or not command.strip()):
         raise ManifestError(f"{path}: test.command must be a non-empty string when provided.")
-    return TestConfig(command=command.strip())
+    if mise is not None and (not isinstance(mise, str) or not mise.strip()):
+        raise ManifestError(f"{path}: test.mise must be a non-empty string when provided.")
+    if command is not None and mise is not None:
+        raise ManifestError(f"{path}: test must declare only one of command or mise.")
+    if command is None and mise is None:
+        raise ManifestError(f"{path}: test must declare command or mise.")
+
+    return TestConfig(
+        command=command.strip() if command is not None else None,
+        mise=mise.strip() if mise is not None else None,
+    )
 
 
 def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:

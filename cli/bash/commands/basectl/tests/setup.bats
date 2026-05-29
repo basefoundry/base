@@ -1553,7 +1553,7 @@ EOF
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"test_projects=base demo"* ]]
     [[ "$output" == *"check_options=--dev --format"* ]]
-    [[ "$output" == *"test_options=--workspace"* ]]
+    [[ "$output" == *"test_options=--workspace --dry-run"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
