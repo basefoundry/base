@@ -51,7 +51,7 @@ Common checks:
 ```bash
 bats cli/bash/commands/basectl/tests/basectl.bats
 bats cli/bash/commands/basectl/tests/setup.bats
-PYTHONPATH=lib/python:cli/python ~/.base.d/base/.venv/bin/python -m unittest discover cli/python
+PYTHONPATH=lib/python:cli/python ~/.base.d/base/.venv/bin/python -m pytest
 git diff --check
 ```
 
