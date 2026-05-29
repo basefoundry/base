@@ -25,6 +25,7 @@ run_basectl() {
     [[ "$output" == *"Usage: basectl [options] <command> [args...]"* ]]
     [[ "$output" == *"activate <project> [options]"* ]]
     [[ "$output" == *"setup [options]"* ]]
+    [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
@@ -58,6 +59,7 @@ run_basectl() {
     grep -Fqx '  gh <area> <command> [options]' <<<"$output"
     grep -Fqx '  onboard [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
+    grep -Fqx '  test [project] [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
@@ -87,6 +89,39 @@ run_basectl() {
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"<type>/<issue>-<YYYYMMDD>-<slug>"* ]]
+}
+
+@test "basectl test prints help" {
+    run_basectl test --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl test [project]"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+}
+
+@test "basectl test delegates to base_test through the Base wrapper" {
+    local fake_base_home="$TEST_TMPDIR/fake-base-home"
+
+    mkdir -p "$fake_base_home/bin"
+    cat > "$fake_base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*"
+EOF
+    chmod +x "$fake_base_home/bin/base-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$1/base_init.sh"
+            BASE_HOME="$2"
+            source "$1/cli/bash/commands/basectl/subcommands/test.sh"
+            base_test_subcommand_main demo --dry-run
+        ' bash "$BASE_REPO_ROOT" "$fake_base_home"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "--project base base_test demo --dry-run" ]
 }
 
 @test "basectl gh issue create applies type label" {

@@ -16,6 +16,7 @@ _base_basectl_completion() {
     commands=(
         'activate:Start an interactive Base runtime subshell for a project'
         'setup:Install and bootstrap the local Base CLI environment'
+        'test:Run a Base-managed project test command'
         'check:Verify the local Base CLI environment'
         'clean:Remove old Base CLI runtime artifacts'
         'config:Inspect Base machine-local user config'
@@ -59,6 +60,16 @@ _base_basectl_completion() {
                 '--no-notify[Disable setup completion notification]' \
                 '--recreate-venv[Recreate the Base venv]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        test)
+            _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--dry-run[Print the test command without running it]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
         check)
             _arguments '--dev[Include developer prerequisite checks]' '--format[Output format]:format:(text json)' \

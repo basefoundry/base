@@ -336,7 +336,6 @@ artifacts:
     name: requests
     version: latest
 
-# Future contract for `basectl test myproject`.
 test:
   command: pytest tests/
 ```
@@ -348,8 +347,9 @@ orchestration actions. The design rule is delegation-first:
 - Use `mise` for tool versions, language runtimes, environment variables, and
   future tasks when a project opts into it. Base runs `mise install` during
   setup and does not reimplement mise's version management.
-- Use a project-owned `test` contract for future `basectl test <project>`
-  delegation.
+- Use a project-owned `test` contract for `basectl test <project>` delegation.
+  The contract can declare either `test.command` for a project-owned shell
+  command or `test.mise` for a `mise run <task>` delegation.
 - Let Base own the project virtual environment and Base-aware package
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety

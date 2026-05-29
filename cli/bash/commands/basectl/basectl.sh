@@ -13,6 +13,8 @@ Commands:
     Start an interactive Base runtime subshell for a project.
   setup [options]
     Install and bootstrap the local Base CLI environment on macOS.
+  test [project] [options]
+    Run a Base-managed project's declared test command.
   check [project] [options]
     Verify the local Base CLI environment and optional project artifacts without making changes.
   clean [--older-than <age>] [--keep-last <count>] [options]
@@ -146,6 +148,11 @@ basectl_source_subcommand_module() {
 basectl_do_setup() {
     basectl_source_subcommand_module setup || return 1
     base_setup_subcommand_main "$@"
+}
+
+basectl_do_test() {
+    basectl_source_subcommand_module test || return 1
+    base_test_subcommand_main "$@"
 }
 
 basectl_do_activate() {
@@ -302,6 +309,7 @@ basectl_main() {
         gh)               basectl_do_gh "$@" ;;
         onboard)          basectl_do_onboard "$@" ;;
         setup)            basectl_do_setup "$@" ;;
+        test)             basectl_do_test "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;
         update)           basectl_do_update "$@" ;;

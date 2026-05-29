@@ -43,6 +43,7 @@ workspace that contains multiple project repositories.
 Current implemented commands include:
 
 - `basectl setup [project]`
+- `basectl test [project]`
 - `basectl check`
 - `basectl doctor`
 - `basectl clean --older-than <age>`
@@ -50,21 +51,15 @@ Current implemented commands include:
 - `basectl config path`
 - `basectl config show`
 - `basectl config doctor`
+- `basectl onboard`
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
 - `basectl activate <project>`
 - `basectl version`
 
-Planned commands include:
-
-- `basectl test`
-- `basectl test <project>`
-- `basectl onboard`
-
 The important idea is that the user should not need to memorize a different
-bootstrap story for every repository in the workspace. Planned commands are
-listed here to describe direction, not current availability.
+bootstrap story for every repository in the workspace.
 
 Base should be able to discover participating project repositories checked out
 next to it under a shared parent directory, for example:
@@ -98,7 +93,6 @@ artifacts:
     name: requests
     version: latest
 
-# Future contract for `basectl test example`.
 test:
   command: pytest tests/
 ```
@@ -117,11 +111,24 @@ package to Base's hand-curated artifact registry.
 
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
-substrate. Later, `basectl test` can delegate task execution to `mise run` when
-declared. A `test` field should give `basectl test` a single project-owned
-command to run. Base should not run arbitrary setup hooks until there is an
-explicit, reviewable contract for when they run, where they run, whether they
-are interactive, and how dry-run/check/doctor report them.
+substrate. A `test` field gives `basectl test` a single project-owned command
+to run from the project root:
+
+```yaml
+test:
+  command: pytest tests/
+```
+
+Projects that keep tasks in `mise` can declare a mise task instead:
+
+```yaml
+test:
+  mise: test
+```
+
+Base should not run arbitrary setup hooks until there is an explicit,
+reviewable contract for when they run, where they run, whether they are
+interactive, and how dry-run/check/doctor report them.
 
 The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
 It should stay small and Base-aware. `python-package` artifacts are pass-through
