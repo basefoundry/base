@@ -126,6 +126,20 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
 
+    def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            other_base = workspace / "base-worktree"
+            write_manifest(base_home, "base")
+            write_manifest(other_base, "base")
+
+            status, stdout, stderr = run_engine(["resolve", "base"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\n")
+
     def test_projects_test_command_prints_project_details_and_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
@@ -141,6 +155,23 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+        )
+
+    def test_projects_test_command_for_base_uses_base_home_without_workspace_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            other_base = workspace / "base-worktree"
+            write_test_manifest(base_home, "base", "./bin/base-test")
+            write_test_manifest(other_base, "base", "false")
+
+            status, stdout, stderr = run_engine(["test-command", "base"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\t./bin/base-test\n",
         )
 
     def test_projects_test_command_prints_mise_task_command(self) -> None:

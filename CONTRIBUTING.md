@@ -49,9 +49,7 @@ shared behavior.
 Common checks:
 
 ```bash
-bats cli/bash/commands/basectl/tests/basectl.bats
-bats cli/bash/commands/basectl/tests/setup.bats
-PYTHONPATH=lib/python:cli/python ~/.base.d/base/.venv/bin/python -m pytest
+basectl test base
 git diff --check
 ```
 
