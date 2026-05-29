@@ -376,6 +376,12 @@ project venv is therefore
 `~/.base.d/base/.venv`. The wrapper `bin/base-wrapper` runs Python packages
 through that project-scoped venv.
 
+A structured `python:` manifest section is the preferred future shape when
+projects need to express requirement files, package requirement strings, or venv
+settings more clearly than artifact rows allow. That section is not part of the
+current manifest contract. See [python-manifest.md](python-manifest.md) for the
+design target and migration boundary.
+
 Homebrew-managed `tool` artifacts currently support `version: latest`. If a
 project requests a pinned Homebrew version, setup fails clearly instead of
 silently installing a different version. New ordinary Homebrew tools should

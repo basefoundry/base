@@ -41,6 +41,9 @@ reference. The filename should answer "what is this about?"
   sync guidance, and the user/project boundary.
 - [Project Installers](project-installers.md) defines how project-owned
   installers should use Base without moving product-specific logic into Base.
+- [Python Manifest Section](python-manifest.md) records the future structured
+  Python manifest shape and its relationship to current `python-package`
+  artifacts.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
 - [`basectl ci`](basectl-ci.md) defines the future non-interactive CI entry

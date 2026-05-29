@@ -218,6 +218,11 @@ PyPI package names and install into the project virtual environment at
 delegation. Pinned Homebrew versions fail clearly until Base grows explicit
 versioned tool support.
 
+A future structured `python:` manifest section can make project venv and
+requirement-file behavior clearer when `python-package` artifact rows become too
+limited. The current supported contract remains `python-package`; the future
+shape is documented in [Python Manifest Section](docs/python-manifest.md).
+
 Artifacts may include `bootstrap: true` when they are part of the minimum Python
 runtime contract needed before Base can reconcile a project's remaining
 artifacts. Base currently uses this marker in `lib/base/default_manifest.yaml`
