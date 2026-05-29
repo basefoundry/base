@@ -35,5 +35,7 @@ reference. The filename should answer "what is this about?"
   installers should use Base without moving product-specific logic into Base.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
+- [`basectl check` parallelism](check-parallelism.md) records the evaluation and
+  implementation constraints for parallel check probes.
 - [base_cli Runtime Package](base-cli.md) describes the Python CLI foundation
   used by Base and Base-supported project CLIs.
