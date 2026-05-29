@@ -223,6 +223,11 @@ Environment variables currently recognized by the config layer:
 Command-line standard options are applied after config is loaded. For example,
 `--environment prod` overrides `environment: dev` from config.
 
+The user config file is machine-local by default. Base owns the semantics of
+`~/.base.d/config.yaml`, while users own backup and sync choices such as iCloud,
+chezmoi, dotfiles repositories, Time Machine, or manual copy. See
+`docs/local-config.md` for the product-level boundary.
+
 ## Project Discovery
 
 When a command runs, `base_cli` walks upward from the current working directory
