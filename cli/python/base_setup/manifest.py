@@ -41,6 +41,7 @@ class BaseManifest:
     brewfile: str | None
     artifacts: tuple[ArtifactRequest, ...]
     ide: dict[str, IdeConfig] = field(default_factory=dict)
+    mise: str | None = None
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -60,13 +61,14 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"project", "brewfile", "ide", "artifacts"}
+    allowed_top_level = {"project", "brewfile", "mise", "ide", "artifacts"}
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
 
     project_name = _read_project_name(path, data.get("project"))
     brewfile = _read_brewfile(path, data.get("brewfile"))
+    mise = _read_mise(path, data.get("mise"))
     ide = _read_ide(path, data.get("ide"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
@@ -76,6 +78,7 @@ def read_manifest(path: Path) -> BaseManifest:
         brewfile=brewfile,
         artifacts=tuple(artifacts),
         ide=ide,
+        mise=mise,
     )
 
 
@@ -100,6 +103,14 @@ def _read_brewfile(path: Path, brewfile_data: Any) -> str | None:
     if not isinstance(brewfile_data, str) or not brewfile_data.strip():
         raise ManifestError(f"{path}: brewfile must be a non-empty string when provided.")
     return brewfile_data.strip()
+
+
+def _read_mise(path: Path, mise_data: Any) -> str | None:
+    if mise_data is None:
+        return None
+    if not isinstance(mise_data, str) or not mise_data.strip():
+        raise ManifestError(f"{path}: mise must be a non-empty string when provided.")
+    return mise_data.strip()
 
 
 def _read_ide(path: Path, ide_data: Any) -> dict[str, IdeConfig]:
