@@ -9,6 +9,7 @@ Usage:
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
+  --format <format>   Output format for list: text or json.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 

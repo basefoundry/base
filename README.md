@@ -138,11 +138,13 @@ You can inspect the projects Base can see with:
 
 ```bash
 basectl projects list
+basectl projects list --format json
 ```
 
 By default this scans the parent directory of `BASE_HOME`, which matches the
 recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
 different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
+Use `--format json` for machine-readable output.
 
 Once a project is discoverable, activate it with:
 

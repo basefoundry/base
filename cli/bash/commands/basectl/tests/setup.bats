@@ -1523,7 +1523,11 @@ EOF
             COMP_WORDS=(basectl check --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
-            printf "check_options=%s\n" "${COMPREPLY[*]}"'
+            printf "check_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl projects list --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "projects_options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
@@ -1532,6 +1536,7 @@ EOF
     [[ "$output" == *"check_projects=base demo"* ]]
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"check_options=--dev --format"* ]]
+    [[ "$output" == *"projects_options=--workspace --format"* ]]
 }
 
 @test "Bash completion includes setup notification options" {
