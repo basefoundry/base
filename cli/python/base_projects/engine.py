@@ -143,8 +143,9 @@ def current_project() -> Project:
 def test_command(test_config: TestConfig) -> str:
     if test_config.command is not None:
         return test_config.command
-    assert test_config.mise is not None
-    return shlex.join(["mise", "run", test_config.mise])
+    if test_config.mise is not None:
+        return shlex.join(["mise", "run", test_config.mise])
+    raise ValueError("TestConfig must have command or mise set.")
 
 
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:
