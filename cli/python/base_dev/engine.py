@@ -86,9 +86,7 @@ def check_dev_artifacts(
     definitions: tuple[ArtifactDefinition, ...],
     output_format: str,
 ) -> int:
-    checks = tuple(
-        check_homebrew_artifact(artifact, definition) for artifact, definition in zip(artifacts, definitions)
-    )
+    checks = dev_checks(artifacts, definitions)
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], indent=2))
     elif output_format == "text":
@@ -109,9 +107,7 @@ def doctor_dev_artifacts(
     definitions: tuple[ArtifactDefinition, ...],
     output_format: str,
 ) -> int:
-    checks = tuple(
-        check_homebrew_artifact(artifact, definition) for artifact, definition in zip(artifacts, definitions)
-    )
+    checks = dev_checks(artifacts, definitions)
     if output_format == "json":
         print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
@@ -128,6 +124,19 @@ def doctor_dev_artifacts(
         else:
             print_doctor_finding(status, check.name, check.message, check.fix)
     return min(error_count, 125)
+
+
+def dev_checks(
+    artifacts: tuple[ArtifactRequest, ...],
+    definitions: tuple[ArtifactDefinition, ...],
+) -> tuple[DevCheck, ...]:
+    checks: list[DevCheck] = []
+    for artifact, definition in zip(artifacts, definitions):
+        check = check_homebrew_artifact(artifact, definition)
+        checks.append(check)
+        if artifact.name == "gh" and check.ok:
+            checks.append(check_github_cli_auth())
+    return tuple(checks)
 
 
 def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefinition) -> DevCheck:
@@ -161,6 +170,23 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
         ok=False,
         message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
         fix="basectl setup --dev",
+    )
+
+
+def check_github_cli_auth() -> DevCheck:
+    ok = run_check(["gh", "auth", "status"])
+    if ok:
+        return DevCheck(
+            name="gh-auth",
+            ok=True,
+            message="GitHub CLI authentication is ready.",
+            fix="",
+        )
+    return DevCheck(
+        name="gh-auth",
+        ok=False,
+        message="GitHub CLI authentication is not ready.",
+        fix="gh auth login -h github.com",
     )
 
 
