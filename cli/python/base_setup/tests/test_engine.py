@@ -1035,7 +1035,11 @@ class BrewfileTests(unittest.TestCase):
                 checks = engine.manifest_checks(default_manifest, manifest)
 
         self.assertIn("mise", [check.name for check in checks])
-        self.assertTrue(next(check for check in checks if check.name == "mise").ok)
+        mise_check = next(check for check in checks if check.name == "mise")
+        self.assertFalse(mise_check.ok)
+        self.assertEqual(mise_check.status, "warn")
+        self.assertIn("installed mise tools are not verified", mise_check.message)
+        self.assertEqual(mise_check.fix, "Run 'basectl setup demo' to install declared mise tools.")
 
 
 class IdeInstallTests(unittest.TestCase):

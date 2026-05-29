@@ -343,9 +343,13 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
 
     return ArtifactCheck(
         name="mise",
-        ok=True,
-        message=f"mise config '{mise_path}' is present and the mise CLI is available.",
-        fix="",
+        ok=False,
+        message=(
+            f"mise config '{mise_path}' is present and the mise CLI is available, "
+            "but installed mise tools are not verified."
+        ),
+        fix=f"Run 'basectl setup {manifest.project_name}' to install declared mise tools.",
+        status="warn",
     )
 
 
