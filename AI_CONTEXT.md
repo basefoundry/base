@@ -159,6 +159,9 @@ env PYTHONPATH=lib/python:cli/python \
   cli/python/base_setup/engine.py cli/python/base_setup/tests/test_engine.py
 ```
 
+- CI installs Python lint dependencies from `requirements-dev.txt`; update that
+  file deliberately when changing the Pylint toolchain.
+
 - Broader Python validation:
 
 ```bash

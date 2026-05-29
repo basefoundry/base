@@ -583,7 +583,10 @@ def check_ide_extensions(manifest: BaseManifest) -> list[ArtifactCheck]:
         if not ide_config.extensions:
             continue
         definition = IDE_DEFINITIONS[ide_name]
-        checks.extend(check_ide_extension(manifest.project_name, definition, extension) for extension in ide_config.extensions)
+        checks.extend(
+            check_ide_extension(manifest.project_name, definition, extension)
+            for extension in ide_config.extensions
+        )
     return checks
 
 
@@ -592,8 +595,14 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
         return ArtifactCheck(
             name=extension,
             ok=False,
-            message=f"Cannot check {definition.label} extension '{extension}' because CLI '{definition.cli}' is not on PATH.",
-            fix=f"Enable the '{definition.cli}' shell command from {definition.label}, then run 'basectl setup {project}'.",
+            message=(
+                f"Cannot check {definition.label} extension '{extension}' "
+                f"because CLI '{definition.cli}' is not on PATH."
+            ),
+            fix=(
+                f"Enable the '{definition.cli}' shell command from {definition.label}, "
+                f"then run 'basectl setup {project}'."
+            ),
         )
 
     try:

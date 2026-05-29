@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-public-methods
+
 import importlib.util
 import io
 import logging
