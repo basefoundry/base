@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import json
 import os
 import shlex
@@ -520,7 +522,10 @@ def ide_preference_warning_checks(manifest: BaseManifest, user_config: UserConfi
                         f"User config setting 'ide.{ide_name}.settings.{key}' is ignored because "
                         "the project manifest declares the same setting."
                     ),
-                    fix=f"Remove 'ide.{ide_name}.settings.{key}' from ~/.base.d/config.yaml or update the project manifest.",
+                    fix=(
+                        f"Remove 'ide.{ide_name}.settings.{key}' from ~/.base.d/config.yaml "
+                        "or update the project manifest."
+                    ),
                     status="warn",
                 )
             )

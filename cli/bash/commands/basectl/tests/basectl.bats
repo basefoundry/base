@@ -759,6 +759,7 @@ EOF
 
     run env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
@@ -829,6 +830,7 @@ EOF
 
     run env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
@@ -842,6 +844,7 @@ EOF
 @test "basectl doctor reports errors with suggested fixes" {
     run env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
@@ -857,6 +860,7 @@ EOF
 @test "basectl doctor --format json reports structured findings" {
     run --separate-stderr env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
@@ -934,6 +938,7 @@ EOF
 
     run env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_PROJECT_ROOT="$workspace/demo" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
@@ -1010,6 +1015,7 @@ EOF
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_PROJECT_ROOT="$workspace/demo" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \

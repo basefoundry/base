@@ -664,6 +664,7 @@ EOF
 
     run_base_command \
         BASE_TEST_MODE=false \
+        CI=false \
         BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
         BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
         setup
@@ -686,6 +687,7 @@ EOF
 
     run_base_command \
         BASE_TEST_MODE=false \
+        CI=false \
         BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
         BASE_SETUP_PYTHON_BIN="$python_bin" \
         setup

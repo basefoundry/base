@@ -360,7 +360,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
-            log_dir = home / "Library" / "Caches" / "base" / "cli" / "demo" / "logs"
+            log_dir = base_cache_root(home) / "cli" / "demo" / "logs"
             self.assertTrue(log_dir.is_dir())
             log_files = tuple(log_dir.glob("*.log"))
             self.assertEqual(len(log_files), 1)
@@ -498,7 +498,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["log_file"], log_file)
             self.assertEqual(
                 seen["temp_dir"].parents[1],
-                home / "Library" / "Caches" / "base" / "cli" / "secret-tool",
+                base_cache_root(home) / "cli" / "secret-tool",
             )
             self.assertEqual(seen["manifest_path"], manifest_path.resolve())
             self.assertEqual(seen["project_root"], project.resolve())
