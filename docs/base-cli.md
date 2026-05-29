@@ -1,4 +1,4 @@
-# base_cli Design
+# base_cli Runtime Package
 
 `base_cli` is the Python CLI foundation for Base and Base-supported projects.
 It wraps Click with Base conventions for runtime context, logging, run-scoped
