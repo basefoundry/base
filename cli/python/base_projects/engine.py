@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,9 +28,16 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.argument("command", required=False)
 @base_cli.argument("project", required=False)
 @base_cli.option("--workspace", help="Workspace directory to scan. Defaults to BASE_HOME's parent.")
-def run(ctx: base_cli.Context, command: str | None, project: str | None, workspace: str | None) -> int:
+@base_cli.option("--format", "output_format", default="text", help="Output format for list: text or json.")
+def run(
+    ctx: base_cli.Context,
+    command: str | None,
+    project: str | None,
+    workspace: str | None,
+    output_format: str,
+) -> int:
     if command in (None, "list"):
-        return list_projects_command(ctx, workspace)
+        return list_projects_command(ctx, workspace, output_format)
     if command == "current":
         return current_project_command(ctx)
     if command == "manifest":
@@ -41,13 +49,26 @@ def run(ctx: base_cli.Context, command: str | None, project: str | None, workspa
     return 2
 
 
-def list_projects_command(ctx: base_cli.Context, workspace: str | None) -> int:
+def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
+    if output_format not in ("text", "json"):
+        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+        return 2
+
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         projects = discover_projects(workspace_root)
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return 1
+
+    if output_format == "json":
+        print(
+            json.dumps(
+                [{"name": project.name, "path": str(project.root)} for project in projects],
+                separators=(",", ":"),
+            )
+        )
+        return 0
 
     for project in projects:
         print(f"{project.name}\t{project.root}")

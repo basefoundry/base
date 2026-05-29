@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -67,6 +68,33 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
+
+    def test_projects_list_supports_json_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "custom"
+            base_home = Path(tmpdir) / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(
+                ["list", "--workspace", str(workspace), "--format", "json"],
+                base_home,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(json.loads(stdout), [{"name": "demo", "path": str((workspace / "demo").resolve())}])
+
+    def test_projects_list_rejects_unknown_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            status, _stdout, stderr = run_engine(["list", "--format", "xml"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertIn("Unsupported output format 'xml'", stderr)
 
     def test_projects_resolve_prints_project_details(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

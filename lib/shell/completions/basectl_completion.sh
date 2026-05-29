@@ -57,6 +57,8 @@ _base_basectl_completion() {
         projects)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "list" "$cur"
+            else
+                _base_basectl_completion_compgen "--workspace --format -v -h --help" "$cur"
             fi
             ;;
         setup)

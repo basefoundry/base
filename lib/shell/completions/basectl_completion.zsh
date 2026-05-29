@@ -46,7 +46,10 @@ _base_basectl_completion() {
             fi
             ;;
         projects)
-            _arguments '1:projects command:(list)'
+            _arguments '1:projects command:(list)' \
+                '--workspace[Workspace directory to scan]:path:_files' \
+                '--format[Output format]:format:(text json)' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         setup)
             _arguments '--dev[Install developer prerequisites]' '--dry-run[Log without making changes]' \
