@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+from base_cli.config import UserConfig, read_user_config
 from base_cli.paths import discover_manifest
 
-from .manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
+from .manifest import ArtifactRequest, BaseManifest, IdeConfig, ManifestError, read_manifest
 from .registry import ArtifactDefinition, get_artifact_definition
 
 
@@ -104,6 +105,9 @@ def run(
     except ManifestError as exc:
         ctx.log.error(str(exc))
         return 1
+    except ValueError as exc:
+        ctx.log.error(str(exc))
+        return 1
     except ArtifactError as exc:
         ctx.log.error(str(exc))
         return 1
@@ -156,27 +160,30 @@ def reconcile_manifest(
 ) -> None:
     ctx.log.info("Reading Base manifest at '%s'.", manifest.path)
     ctx.log.info("Setting up project '%s'.", manifest.project_name)
+    user_config = read_user_config()
+    log_ide_preference_warnings(ctx, ide_preference_warning_checks(manifest, user_config))
+    effective_manifest = effective_manifest_with_user_config(manifest, user_config)
 
-    artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
+    artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
     definitions = resolve_artifact_definitions(artifacts)
-    if not manifest.artifacts:
+    if not effective_manifest.artifacts:
         if artifacts:
             ctx.log.info(
                 "Project '%s' declares no artifacts; installing Base default artifacts only.",
-                manifest.project_name,
+                effective_manifest.project_name,
             )
         else:
-            ctx.log.info("Project '%s' has no artifacts to install.", manifest.project_name)
+            ctx.log.info("Project '%s' has no artifacts to install.", effective_manifest.project_name)
 
-    reconcile_brewfile(ctx, manifest, dry_run=dry_run)
-    reconcile_ide_installs(ctx, manifest, dry_run=dry_run)
-    reconcile_ide_extensions(ctx, manifest, dry_run=dry_run)
-    reconcile_ide_settings(ctx, manifest, dry_run=dry_run)
+    reconcile_brewfile(ctx, effective_manifest, dry_run=dry_run)
+    reconcile_ide_installs(ctx, effective_manifest, dry_run=dry_run)
+    reconcile_ide_extensions(ctx, effective_manifest, dry_run=dry_run)
+    reconcile_ide_settings(ctx, effective_manifest, dry_run=dry_run)
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         reconcile_artifact(ctx, definition, artifact.version, dry_run=dry_run)
 
-    ctx.log.info("Project '%s' setup is complete.", manifest.project_name)
+    ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
 
 def reconcile_bootstrap_artifacts(
@@ -218,7 +225,7 @@ def check_manifest(
     else:
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
         return 2
-    return 0 if all(check.ok for check in checks) else 1
+    return 0 if all(check.ok or doctor_status(check) == "warn" for check in checks) else 1
 
 
 def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, output_format: str) -> int:
@@ -244,25 +251,29 @@ def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, outp
 
 def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
     checks: list[ArtifactCheck] = []
-    artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
+    user_config = read_user_config()
+    effective_manifest = effective_manifest_with_user_config(manifest, user_config)
+    artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
     definitions = resolve_artifact_definitions(artifacts)
 
-    if manifest.brewfile is not None:
-        checks.append(check_brewfile(manifest))
+    checks.extend(ide_preference_warning_checks(manifest, user_config))
 
-    checks.extend(check_ide_installs(manifest))
-    checks.extend(check_ide_extensions(manifest))
-    checks.extend(check_ide_settings(manifest))
+    if effective_manifest.brewfile is not None:
+        checks.append(check_brewfile(effective_manifest))
+
+    checks.extend(check_ide_installs(effective_manifest))
+    checks.extend(check_ide_extensions(effective_manifest))
+    checks.extend(check_ide_settings(effective_manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
-        checks.append(check_artifact(manifest.project_name, artifact, definition))
+        checks.append(check_artifact(effective_manifest.project_name, artifact, definition))
 
     if not checks:
         checks.append(
             ArtifactCheck(
                 name="manifest",
                 ok=True,
-                message=f"Project '{manifest.project_name}' declares no artifacts.",
+                message=f"Project '{effective_manifest.project_name}' declares no artifacts.",
                 fix="",
             )
         )
@@ -421,6 +432,106 @@ def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tupl
             )
         definitions.append(definition)
     return tuple(definitions)
+
+
+def effective_manifest_with_user_config(manifest: BaseManifest, user_config: UserConfig) -> BaseManifest:
+    return BaseManifest(
+        path=manifest.path,
+        project_name=manifest.project_name,
+        brewfile=manifest.brewfile,
+        artifacts=manifest.artifacts,
+        ide=effective_ide_config(manifest.ide, user_config),
+    )
+
+
+def effective_ide_config(project_ide: dict[str, IdeConfig], user_config: UserConfig) -> dict[str, IdeConfig]:
+    if user_config.ide.enabled is False:
+        return {}
+
+    effective: dict[str, IdeConfig] = {}
+    ide_names = sorted(set(project_ide) | set(user_config.ide.preferences))
+    for ide_name in ide_names:
+        user_preference = user_config.ide.preferences.get(ide_name)
+        if user_preference is not None and user_preference.enabled is False:
+            continue
+
+        project_config = project_ide.get(ide_name, IdeConfig(install=False, extensions=(), settings={}))
+        install = project_config.install
+        if user_preference is not None and user_preference.install is not None:
+            install = user_preference.install
+
+        extensions = list(project_config.extensions)
+        if user_preference is not None:
+            for extension in user_preference.extra_extensions:
+                if extension not in extensions:
+                    extensions.append(extension)
+
+        settings = {}
+        if user_preference is not None:
+            settings.update(user_preference.settings)
+        settings.update(project_config.settings)
+
+        if install or extensions or settings:
+            effective[ide_name] = IdeConfig(
+                install=install,
+                extensions=tuple(extensions),
+                settings=settings,
+            )
+    return effective
+
+
+def ide_preference_warning_checks(manifest: BaseManifest, user_config: UserConfig) -> list[ArtifactCheck]:
+    checks: list[ArtifactCheck] = []
+    if user_config.ide.enabled is False and manifest.ide:
+        checks.append(
+            ArtifactCheck(
+                name="user IDE config",
+                ok=False,
+                message="User config disables all IDE setup and checks for this machine.",
+                fix="Remove or change 'ide.enabled: false' in ~/.base.d/config.yaml to re-enable IDE work.",
+                status="warn",
+            )
+        )
+
+    for ide_name, project_config in manifest.ide.items():
+        user_preference = user_config.ide.preferences.get(ide_name)
+        if user_preference is None:
+            continue
+        if user_preference.enabled is False:
+            checks.append(
+                ArtifactCheck(
+                    name=f"user IDE config: {ide_name}",
+                    ok=False,
+                    message=f"User config disables {ide_name} IDE setup and checks for this machine.",
+                    fix=f"Remove or change 'ide.{ide_name}.enabled: false' in ~/.base.d/config.yaml to re-enable it.",
+                    status="warn",
+                )
+            )
+            continue
+        conflicting_settings = sorted(set(project_config.settings) & set(user_preference.settings))
+        for key in conflicting_settings:
+            if project_config.settings[key] == user_preference.settings[key]:
+                continue
+            checks.append(
+                ArtifactCheck(
+                    name=f"user IDE setting: {ide_name}.{key}",
+                    ok=False,
+                    message=(
+                        f"User config setting 'ide.{ide_name}.settings.{key}' is ignored because "
+                        "the project manifest declares the same setting."
+                    ),
+                    fix=f"Remove 'ide.{ide_name}.settings.{key}' from ~/.base.d/config.yaml or update the project manifest.",
+                    status="warn",
+                )
+            )
+    return checks
+
+
+def log_ide_preference_warnings(ctx: base_cli.Context, checks: list[ArtifactCheck]) -> None:
+    for check in checks:
+        ctx.log.warning(check.message)
+        if check.fix:
+            ctx.log.warning("Fix: %s", check.fix)
 
 
 def merge_artifacts(
