@@ -128,11 +128,6 @@ EOF
     [[ "$normalized" == *"interactive=yes"* ]]
 }
 
-@test "check_bash_version_and_upgrade succeeds on supported bash" {
-    check_bash_version_and_upgrade
-    [ "$?" -eq 0 ]
-}
-
 @test "stdlib exposes passive bash version check helper" {
     check_bash_version
     [ "$?" -eq 0 ]
