@@ -540,8 +540,18 @@ setup_resolve_project_manifest() {
     local resolve_output resolved_manifest resolved_name resolved_root
 
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
+        if [[ -z "$project" ]]; then
+            setup_ensure_cached_paths
+            env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+                "$python_bin" -m base_projects manifest "$BASE_SETUP_MANIFEST"
+            return $?
+        fi
         printf '%s\n' "$BASE_SETUP_MANIFEST"
         return 0
+    fi
+
+    if [[ -z "$project" ]]; then
+        project=base
     fi
 
     if [[ "$project" == base ]]; then
@@ -558,7 +568,7 @@ setup_resolve_project_manifest() {
     IFS=$'\t' read -r resolved_name resolved_root resolved_manifest <<<"$resolve_output"
     [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || return 1
 
-    printf '%s\t%s\n' "$resolved_root" "$resolved_manifest"
+    printf '%s\t%s\t%s\n' "$resolved_name" "$resolved_root" "$resolved_manifest"
 }
 
 setup_project_venv_dir() {
@@ -616,7 +626,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path project python_bin resolved_root resolve_output venv_dir
+    local exit_code manifest_path project python_bin resolved_name resolved_root resolve_output venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -624,7 +634,7 @@ setup_run_project_artifact_layer() {
         return 0
     fi
 
-    project="${BASE_SETUP_PROJECT_NAME:-base}"
+    project="${BASE_SETUP_PROJECT_NAME:-}"
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
@@ -634,11 +644,15 @@ setup_run_project_artifact_layer() {
         return 1
     }
     if [[ "$resolve_output" == *$'\t'* ]]; then
-        IFS=$'\t' read -r resolved_root manifest_path <<<"$resolve_output"
+        IFS=$'\t' read -r resolved_name resolved_root manifest_path <<<"$resolve_output"
+        project="$resolved_name"
         if [[ "$output_format" != json ]]; then
             log_info "Resolved project '$project' at '$resolved_root'."
         fi
     else
+        if [[ -z "$project" ]]; then
+            project=base
+        fi
         manifest_path="$resolve_output"
     fi
 

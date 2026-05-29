@@ -32,10 +32,12 @@ def run(ctx: base_cli.Context, command: str | None, project: str | None, workspa
         return list_projects_command(ctx, workspace)
     if command == "current":
         return current_project_command(ctx)
+    if command == "manifest":
+        return manifest_project_command(ctx, project)
     if command == "resolve":
         return resolve_project_command(ctx, project, workspace)
 
-    ctx.log.error("Unknown projects command '%s'. Supported commands: list, current, resolve.", command)
+    ctx.log.error("Unknown projects command '%s'. Supported commands: list, current, manifest, resolve.", command)
     return 2
 
 
@@ -76,6 +78,21 @@ def current_project_command(ctx: base_cli.Context) -> int:
 
     try:
         project = read_project(manifest_path)
+    except ProjectDiscoveryError as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    return 0
+
+
+def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:
+    if not manifest:
+        ctx.log.error("Manifest path is required.")
+        return 2
+
+    try:
+        project = read_project(Path(manifest).expanduser().resolve())
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return 1

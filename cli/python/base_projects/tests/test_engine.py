@@ -82,6 +82,31 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
 
+    def test_projects_manifest_prints_project_details(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            manifest_path = project_root / "base_manifest.yaml"
+            write_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["manifest", str(manifest_path)], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}\n")
+
+    def test_projects_manifest_requires_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_home = Path(tmpdir) / "base"
+            base_home.mkdir()
+
+            status, _stdout, stderr = run_engine(["manifest"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertIn("Manifest path is required", stderr)
+
     def test_projects_current_prints_nearest_project_details(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
