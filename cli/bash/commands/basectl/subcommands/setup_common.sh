@@ -19,6 +19,11 @@ readonly _base_setup_common_sourced
 
 _BASE_SETUP_VENV_DIR_CACHE=""
 _BASE_SETUP_PYTHONPATH_CACHE=""
+_BASE_SETUP_CHECK_NAMES=()
+_BASE_SETUP_CHECK_OK=()
+_BASE_SETUP_CHECK_MESSAGES=()
+_BASE_SETUP_CHECK_RECOVERIES=()
+_BASE_SETUP_CHECK_DEBUG_MESSAGES=()
 
 setup_refresh_cached_paths() {
     local base_pythonpath old_pythonpath
@@ -755,10 +760,36 @@ setup_run_base_dev_layer() {
     "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}"
 }
 
-setup_run_check() {
-    local brew_bin="" click_package pyyaml_package venv_dir missing=0
-    local project="${BASE_SETUP_PROJECT_NAME:-}"
+setup_clear_check_results() {
+    _BASE_SETUP_CHECK_NAMES=()
+    _BASE_SETUP_CHECK_OK=()
+    _BASE_SETUP_CHECK_MESSAGES=()
+    _BASE_SETUP_CHECK_RECOVERIES=()
+    _BASE_SETUP_CHECK_DEBUG_MESSAGES=()
+}
 
+setup_add_check_result() {
+    local name="$1"
+    local ok="$2"
+    local message="$3"
+    local recovery="${4:-}"
+    local debug_message="${5:-}"
+
+    _BASE_SETUP_CHECK_NAMES+=("$name")
+    _BASE_SETUP_CHECK_OK+=("$ok")
+    _BASE_SETUP_CHECK_MESSAGES+=("$message")
+    _BASE_SETUP_CHECK_RECOVERIES+=("$recovery")
+    _BASE_SETUP_CHECK_DEBUG_MESSAGES+=("$debug_message")
+}
+
+setup_collect_base_check_results() {
+    local brew_bin click_ok=false click_package
+    local missing=0
+    local pyyaml_ok=false pyyaml_package
+    local refresh_brew_failure_mode="${1:-warn}"
+    local venv_dir
+
+    setup_clear_check_results
     setup_require_macos
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
@@ -766,54 +797,110 @@ setup_run_check() {
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if brew_bin="$(setup_find_brew_bin)"; then
-        setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
-        log_info "Homebrew is installed."
-        log_debug "Resolved Homebrew binary: $brew_bin"
+        if setup_refresh_brew_path; then
+            setup_add_check_result "homebrew" true "Homebrew is installed." "" "Resolved Homebrew binary: $brew_bin"
+        else
+            if [[ "$refresh_brew_failure_mode" == fatal ]]; then
+                fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
+            fi
+            setup_add_check_result \
+                "homebrew" \
+                false \
+                "Homebrew is installed, but its bin directory could not be added to PATH." \
+                "$(setup_recovery_brew_path)"
+            missing=1
+        fi
     else
-        log_warn "Homebrew is not installed."
-        log_warn "$(setup_recovery_homebrew)"
+        setup_add_check_result "homebrew" false "Homebrew is not installed." "$(setup_recovery_homebrew)"
         missing=1
     fi
 
     if setup_xcode_tools_installed; then
-        log_info "Xcode Command Line Tools are installed."
+        setup_add_check_result "xcode_command_line_tools" true "Xcode Command Line Tools are installed."
     else
-        log_warn "Xcode Command Line Tools are not installed."
-        log_warn "$(setup_recovery_xcode_tools)"
+        setup_add_check_result \
+            "xcode_command_line_tools" \
+            false \
+            "Xcode Command Line Tools are not installed." \
+            "$(setup_recovery_xcode_tools)"
         missing=1
     fi
 
     if setup_python_installed; then
-        log_info "Python formula '$(setup_python_formula)' is installed via Homebrew."
+        setup_add_check_result \
+            "python" \
+            true \
+            "Python formula '$(setup_python_formula)' is installed via Homebrew."
     else
-        log_warn "Python formula '$(setup_python_formula)' is not installed via Homebrew."
-        log_warn "$(setup_recovery_python)"
+        setup_add_check_result \
+            "python" \
+            false \
+            "Python formula '$(setup_python_formula)' is not installed via Homebrew." \
+            "$(setup_recovery_python)"
         missing=1
     fi
 
     if setup_virtualenv_exists; then
-        log_info "Virtual environment exists at '$venv_dir'."
+        setup_add_check_result "base_virtualenv" true "Virtual environment exists at '$venv_dir'."
     else
-        log_warn "Virtual environment is missing at '$venv_dir'."
-        log_warn "$(setup_recovery_venv)"
+        setup_add_check_result \
+            "base_virtualenv" \
+            false \
+            "Virtual environment is missing at '$venv_dir'." \
+            "$(setup_recovery_venv)"
         missing=1
     fi
 
     if setup_base_python_package_installed "$pyyaml_package"; then
-        log_info "$(setup_base_python_package_check_message "$pyyaml_package" true)"
+        pyyaml_ok=true
     else
-        log_warn "$(setup_base_python_package_check_message "$pyyaml_package" false)"
-        log_warn "$(setup_recovery_base_python_package)"
         missing=1
     fi
+    setup_add_check_result \
+        "pyyaml" \
+        "$pyyaml_ok" \
+        "$(setup_base_python_package_check_message "$pyyaml_package" "$pyyaml_ok")" \
+        "$(setup_recovery_base_python_package)"
 
     if setup_base_python_package_installed "$click_package"; then
-        log_info "$(setup_base_python_package_check_message "$click_package" true)"
+        click_ok=true
     else
-        log_warn "$(setup_base_python_package_check_message "$click_package" false)"
-        log_warn "$(setup_recovery_base_python_package)"
         missing=1
     fi
+    setup_add_check_result \
+        "click" \
+        "$click_ok" \
+        "$(setup_base_python_package_check_message "$click_package" "$click_ok")" \
+        "$(setup_recovery_base_python_package)"
+
+    return "$missing"
+}
+
+setup_print_check_text_results() {
+    local count i
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
+            log_info "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
+                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
+            fi
+        else
+            log_warn "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+            if [[ -n "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" ]]; then
+                log_warn "${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
+            fi
+        fi
+    done
+}
+
+setup_run_check() {
+    local missing=0
+    local project="${BASE_SETUP_PROJECT_NAME:-}"
+
+    setup_collect_base_check_results fatal || missing=1
+    setup_print_check_text_results
 
     if setup_dev_dependencies_enabled; then
         setup_run_base_dev_layer check || missing=1
@@ -900,6 +987,23 @@ setup_print_check_json_item() {
         "$trailing_comma"
 }
 
+setup_print_check_json_results() {
+    local count i trailing_comma
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        trailing_comma=","
+        if ((i == count - 1)); then
+            trailing_comma=""
+        fi
+        setup_print_check_json_item \
+            "$trailing_comma" \
+            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
+            "${_BASE_SETUP_CHECK_OK[$i]}" \
+            "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+    done
+}
+
 setup_print_json_property_value() {
     local first_line=true
     local key="$1"
@@ -918,73 +1022,12 @@ setup_print_json_property_value() {
 }
 
 setup_run_check_json() {
-    local brew_bin homebrew_message homebrew_ok=false
-    local click_message click_ok=false click_package
     local dev_json="[]"
     local missing=0
     local project="${BASE_SETUP_PROJECT_NAME:-}"
     local project_json="[]"
-    local pyyaml_message pyyaml_ok=false pyyaml_package
-    local python_message python_ok=false
-    local venv_dir venv_message venv_ok=false
-    local xcode_message xcode_ok=false
 
-    setup_require_macos
-    click_package="$(setup_click_package)"
-    pyyaml_package="$(setup_pyyaml_package)"
-    setup_ensure_cached_paths
-    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
-
-    if brew_bin="$(setup_find_brew_bin)"; then
-        if setup_refresh_brew_path; then
-            homebrew_ok=true
-            homebrew_message="Homebrew is installed."
-        else
-            homebrew_message="Homebrew is installed, but its bin directory could not be added to PATH."
-            missing=1
-        fi
-    else
-        homebrew_message="Homebrew is not installed."
-        missing=1
-    fi
-
-    if setup_xcode_tools_installed; then
-        xcode_ok=true
-        xcode_message="Xcode Command Line Tools are installed."
-    else
-        xcode_message="Xcode Command Line Tools are not installed."
-        missing=1
-    fi
-
-    if setup_python_installed; then
-        python_ok=true
-        python_message="Python formula '$(setup_python_formula)' is installed via Homebrew."
-    else
-        python_message="Python formula '$(setup_python_formula)' is not installed via Homebrew."
-        missing=1
-    fi
-
-    if setup_virtualenv_exists; then
-        venv_ok=true
-        venv_message="Virtual environment exists at '$venv_dir'."
-    else
-        venv_message="Virtual environment is missing at '$venv_dir'."
-        missing=1
-    fi
-
-    if setup_base_python_package_installed "$pyyaml_package"; then
-        pyyaml_ok=true
-    else
-        missing=1
-    fi
-    pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package" "$pyyaml_ok")"
-
-    if setup_base_python_package_installed "$click_package"; then
-        click_ok=true
-    else
-        missing=1
-    fi
-    click_message="$(setup_base_python_package_check_message "$click_package" "$click_ok")"
+    setup_collect_base_check_results warn || missing=1
 
     if setup_dev_dependencies_enabled; then
         if ! dev_json="$(setup_run_base_dev_layer check --format json)"; then
@@ -1006,12 +1049,7 @@ setup_run_check_json() {
         printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
     fi
     printf '  "checks": [\n'
-    setup_print_check_json_item "," "homebrew" "$homebrew_ok" "$homebrew_message"
-    setup_print_check_json_item "," "xcode_command_line_tools" "$xcode_ok" "$xcode_message"
-    setup_print_check_json_item "," "python" "$python_ok" "$python_message"
-    setup_print_check_json_item "," "base_virtualenv" "$venv_ok" "$venv_message"
-    setup_print_check_json_item "," "pyyaml" "$pyyaml_ok" "$pyyaml_message"
-    setup_print_check_json_item "" "click" "$click_ok" "$click_message"
+    setup_print_check_json_results
     printf '  ]'
     if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
         printf ',\n'
