@@ -92,17 +92,28 @@ base_init_resolve_home() {
 }
 
 base_init_export_contract() {
-    local base_home base_os base_host
+    local base_home base_os base_host uname_os
 
     base_home="$(base_init_resolve_home)" || return 1
-    base_os="$(uname -s)" || {
+    uname_os="$(uname -s)" || {
         base_init_error "Unable to determine BASE_OS with uname."
         return 1
     }
-    [[ -n "$base_os" ]] || {
+    [[ -n "$uname_os" ]] || {
         base_init_error "Unable to determine BASE_OS with uname."
         return 1
     }
+    case "$uname_os" in
+        Darwin)
+            base_os=macos
+            ;;
+        Linux)
+            base_os=linux
+            ;;
+        *)
+            base_os="$(printf '%s\n' "$uname_os" | tr '[:upper:]' '[:lower:]')"
+            ;;
+    esac
     base_host="$(hostname -s)" || {
         base_init_error "Unable to determine BASE_HOST with hostname."
         return 1
@@ -122,8 +133,9 @@ base_init_export_contract() {
     BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
     BASE_OS="$base_os"
     BASE_HOST="$base_host"
+    BASE_SHELL="${BASE_SHELL:-bash}"
     export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_HOST
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
 }
 
 base_init_source_stdlib() {
