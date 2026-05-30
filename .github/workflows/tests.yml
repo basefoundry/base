@@ -43,8 +43,7 @@ jobs:
       - name: Run BATS tests
         run: |
           bats \
-            cli/bash/commands/basectl/tests/setup.bats \
-            cli/bash/commands/basectl/tests/basectl.bats \
+            cli/bash/commands/basectl/tests/*.bats \
             cli/bash/commands/caff/tests/caff.bats \
             cli/bash/commands/sort-in-place/tests/sort-in-place.bats \
             lib/bash/file/tests/lib_file.bats \
