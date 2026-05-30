@@ -80,8 +80,7 @@ basectl test base
 env PYTHONPATH=lib/python:cli/python python -m pytest
 
 # Specific BATS test files
-bats cli/bash/commands/basectl/tests/basectl.bats
-bats cli/bash/commands/basectl/tests/setup.bats
+bats cli/bash/commands/basectl/tests/*.bats
 bats lib/bash/std/tests/lib_std.bats
 bats lib/bash/git/tests/lib_git.bats
 bats lib/bash/runtime/tests/runtime_bashrc.bats
