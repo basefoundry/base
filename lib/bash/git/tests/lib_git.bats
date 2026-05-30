@@ -64,6 +64,55 @@ setup() {
     [[ "$output" != *"not 'master'"* ]]
 }
 
+@test "_git_expected_update_branch returns main when origin has main" {
+    local repo="$TEST_TMPDIR/repo"
+    local branch
+
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" update-ref refs/remotes/origin/main HEAD
+    git -C "$repo" checkout --detach >/dev/null 2>&1
+    git -C "$repo" branch -D master >/dev/null 2>&1
+
+    pushd "$repo" >/dev/null
+    branch="$(_git_expected_update_branch)"
+    popd >/dev/null
+
+    [ "$branch" = "main" ]
+}
+
+@test "_git_expected_update_branch returns master when origin only has master" {
+    local repo="$TEST_TMPDIR/repo"
+    local branch
+
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" update-ref refs/remotes/origin/master HEAD
+    git -C "$repo" checkout --detach >/dev/null 2>&1
+    git -C "$repo" branch -D master >/dev/null 2>&1
+
+    pushd "$repo" >/dev/null
+    branch="$(_git_expected_update_branch)"
+    popd >/dev/null
+
+    [ "$branch" = "master" ]
+}
+
+@test "_git_expected_update_branch falls back to master without main or master refs" {
+    local repo="$TEST_TMPDIR/repo"
+    local branch
+
+    init_git_repo "$repo"
+
+    pushd "$repo" >/dev/null
+    branch="$(_git_expected_update_branch)"
+    popd >/dev/null
+
+    [ "$branch" = "master" ]
+}
+
 @test "_git_only_path_dirty accepts multiple dirty files under an allowed directory" {
     local repo="$TEST_TMPDIR/repo"
     local rc
@@ -125,6 +174,33 @@ setup() {
     [ "$status" -eq 0 ]
     [[ "$return_trap" == *"outer return trap"* ]]
     ! compgen -G "$temp_dir/git_log.*" >/dev/null
+}
+
+@test "_git_update_repo_finish removes temp log after success" {
+    local git_log="$TEST_TMPDIR/git.log"
+
+    printf 'pull output\n' > "$git_log"
+
+    bats_run _git_update_repo_finish "$git_log" false 0
+
+    [ "$status" -eq 0 ]
+    [ ! -e "$git_log" ]
+}
+
+@test "_git_update_repo_finish preserves an existing RETURN trap" {
+    local git_log="$TEST_TMPDIR/git.log"
+    local return_trap
+
+    printf 'pull output\n' > "$git_log"
+    trap 'printf "outer return trap\n"' RETURN
+
+    bats_run _git_update_repo_finish "$git_log" false 0
+    return_trap="$(trap -p RETURN)"
+    trap - RETURN
+
+    [ "$status" -eq 0 ]
+    [[ "$return_trap" == *"outer return trap"* ]]
+    [ ! -e "$git_log" ]
 }
 
 @test "_git_pull_with_retry retries once after a transient pull failure" {

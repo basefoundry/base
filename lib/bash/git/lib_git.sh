@@ -49,6 +49,16 @@ _git_expected_update_branch() {
         fi
     fi
 
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        printf '%s\n' main
+        return 0
+    fi
+
+    if git show-ref --verify --quiet refs/remotes/origin/master; then
+        printf '%s\n' master
+        return 0
+    fi
+
     if git show-ref --verify --quiet refs/heads/main; then
         printf '%s\n' main
         return 0
