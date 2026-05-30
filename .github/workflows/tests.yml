@@ -54,6 +54,32 @@ jobs:
             lib/bash/version/tests/lib_version.bats \
             tests/install.bats
 
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .integration-venv
+          .integration-venv/bin/python -m pip install --upgrade pip
+          .integration-venv/bin/python -m pip install -r requirements-dev.txt
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run integration tests
+        env:
+          BASE_INTEGRATION_PYTHON: ${{ github.workspace }}/.integration-venv/bin/python
+        run: |
+          bats tests/integration/base_workflows.bats
+
   security:
     name: Security scanners
     runs-on: ubuntu-latest

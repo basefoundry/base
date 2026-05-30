@@ -1,0 +1,56 @@
+# Testing
+
+Base uses three test layers. Prefer the narrowest layer that proves the behavior,
+then broaden when a change crosses command or runtime boundaries.
+
+## Python Unit Tests
+
+Python engine and helper behavior lives under `cli/python/**/tests/` and
+`lib/python/**/tests/`. These tests should cover parsing, manifest merging,
+artifact decisions, JSON output, and error handling without launching public
+shell commands.
+
+Run them with:
+
+```bash
+PYTHONPATH=lib/python:cli/python python -m pytest
+```
+
+## Bash Command And Library Tests
+
+BATS tests next to Bash commands and libraries cover shell parsing, dispatch,
+small command contracts, and failure messages. Keep these focused on one command
+or library at a time.
+
+Run the full command/library suite through:
+
+```bash
+basectl test base
+```
+
+## Integration Tests
+
+Integration tests live under `tests/integration/`. They run real `basectl`
+launchers against a temporary `HOME`, temporary workspace, copied Base runtime,
+and fake project repositories. External platform tools such as `brew` and
+`xcode-select` are stubbed so the suite stays deterministic, network-free, and
+safe for local machines and CI.
+
+Add integration coverage when a change affects:
+
+- workspace discovery across Base and project repositories
+- `basectl setup`, `check`, `doctor`, or `test` working together
+- shell profile update behavior
+- installation layout assumptions, including Homebrew-style Base homes
+- public command behavior that cannot be proven by a single command unit test
+
+The default integration suite should not install real Homebrew packages, edit
+real shell startup files, depend on network access, or mutate repositories
+outside the temporary BATS workspace.
+
+Run only integration tests with:
+
+```bash
+BASE_INTEGRATION_PYTHON="$HOME/.base.d/base/.venv/bin/python" \
+  bats tests/integration/base_workflows.bats
+```

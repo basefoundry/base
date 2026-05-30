@@ -30,6 +30,8 @@ reference. The filename should answer "what is this about?"
   dispatch order, public launchers, and runtime shell behavior.
 - [Linux Support](linux-support.md) defines the first Ubuntu/Debian runtime
   support plan and bootstrap boundaries.
+- [Testing](testing.md) explains Base's Python, BATS, and hermetic integration
+  test layers.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
   such as `mise`, `direnv`, Homebrew, IDEs, Docker, and dotfile managers.
 
