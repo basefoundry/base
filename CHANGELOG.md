@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-30
+
 ### Added
 
 - Added documentation for the no-hooks manifest boundary and future setup hook
