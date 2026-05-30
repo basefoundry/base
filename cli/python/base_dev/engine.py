@@ -8,7 +8,7 @@ import base_cli
 from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
-from base_setup.process import run_check
+from base_setup.process import command_exists, run_check
 from base_setup.registry import ArtifactDefinition
 
 
@@ -159,6 +159,14 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
             fix="Use version 'latest' for Homebrew-managed developer prerequisites.",
         )
 
+    if not command_exists("brew"):
+        return DevCheck(
+            name=artifact.name,
+            ok=False,
+            message=f"Homebrew is required to check developer prerequisite '{artifact.name}'.",
+            fix="basectl setup",
+        )
+
     ok = run_check(["brew", "list", definition.package])
     if ok:
         return DevCheck(
@@ -176,6 +184,14 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
 
 
 def check_github_cli_auth() -> DevCheck:
+    if not command_exists("gh"):
+        return DevCheck(
+            name="gh-auth",
+            ok=False,
+            message="GitHub CLI 'gh' was not found.",
+            fix="basectl setup --dev",
+        )
+
     ok = run_check(["gh", "auth", "status"])
     if ok:
         return DevCheck(

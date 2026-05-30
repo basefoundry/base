@@ -55,7 +55,10 @@ class DevManifestTests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_manifest_artifacts(self) -> None:
-        with mock.patch("base_dev.engine.run_check", return_value=False):
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False),
+        ):
             status, stdout, stderr = run_engine(["check", "--format", "json"])
 
         self.assertEqual(status, 1)
@@ -75,7 +78,10 @@ class DevManifestTests(unittest.TestCase):
                 return False
             raise AssertionError(f"Unexpected command: {command}")
 
-        with mock.patch("base_dev.engine.run_check", side_effect=fake_run_check):
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", side_effect=fake_run_check),
+        ):
             status, stdout, stderr = run_engine(["check", "--format", "json"])
 
         findings = json.loads(stdout)
@@ -99,11 +105,154 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install bats-core", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install gh", stderr)
 
+    def test_check_homebrew_artifact_reports_installed_formula(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=True) as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.name, "gh")
+        self.assertEqual(check.fix, "")
+        self.assertIn("is installed via Homebrew package 'gh'", check.message)
+        run_check.assert_called_once_with(["brew", "list", "gh"])
+
+    def test_check_homebrew_artifact_reports_missing_formula(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "bats-core", "latest")
+        definition = engine.ArtifactDefinition("bats-core", "tool", "homebrew", "bats-core", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False) as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.fix, "basectl setup --dev")
+        self.assertIn("is not installed via Homebrew package 'bats-core'", check.message)
+        run_check.assert_called_once_with(["brew", "list", "bats-core"])
+
+    def test_check_homebrew_artifact_reports_missing_homebrew(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=False) as command_exists,
+            mock.patch("base_dev.engine.run_check") as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.fix, "basectl setup")
+        self.assertIn("Homebrew is required", check.message)
+        command_exists.assert_called_once_with("brew")
+        run_check.assert_not_called()
+
+    def test_check_homebrew_artifact_rejects_unsupported_version(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "2.0.0")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists") as command_exists,
+            mock.patch("base_dev.engine.run_check") as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertIn("unsupported developer prerequisite version '2.0.0'", check.message)
+        command_exists.assert_not_called()
+        run_check.assert_not_called()
+
+    def test_check_homebrew_artifact_rejects_unsupported_manager(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "manual", "gh", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists") as command_exists,
+            mock.patch("base_dev.engine.run_check") as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertIn("unsupported developer prerequisite manager 'manual'", check.message)
+        command_exists.assert_not_called()
+        run_check.assert_not_called()
+
+    def test_setup_dev_artifacts_runs_installs_when_not_dry_run(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+        manifest = engine.BaseManifest(Path("dev_manifest.yaml"), "base", None, (artifact,))
+        ctx = mock.Mock()
+
+        with mock.patch("base_dev.engine.reconcile_artifact") as reconcile_artifact:
+            status = engine.setup_dev_artifacts(ctx, manifest, (definition,), dry_run=False)
+
+        self.assertEqual(status, 0)
+        reconcile_artifact.assert_called_once_with(ctx, definition, "latest", "base", dry_run=False)
+        ctx.log.info.assert_any_call("Base developer prerequisite setup is complete.")
+
+    def test_setup_dev_artifacts_reports_reconcile_failures(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+        manifest = engine.BaseManifest(Path("dev_manifest.yaml"), "base", None, (artifact,))
+        ctx = mock.Mock()
+
+        with mock.patch("base_dev.engine.reconcile_artifact", side_effect=engine.ArtifactError("install failed")):
+            status = engine.setup_dev_artifacts(ctx, manifest, (definition,), dry_run=False)
+
+        self.assertEqual(status, 1)
+        ctx.log.error.assert_called_once_with("install failed")
+
+    def test_check_github_cli_auth_reports_missing_gh(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=False) as command_exists,
+            mock.patch("base_dev.engine.run_check") as run_check,
+        ):
+            check = engine.check_github_cli_auth()
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.name, "gh-auth")
+        self.assertIn("was not found", check.message)
+        self.assertEqual(check.fix, "basectl setup --dev")
+        command_exists.assert_called_once_with("gh")
+        run_check.assert_not_called()
+
+    def test_check_github_cli_auth_reports_unauthenticated_gh(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False) as run_check,
+        ):
+            check = engine.check_github_cli_auth()
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.message, "GitHub CLI authentication is not ready.")
+        self.assertEqual(check.fix, "gh auth login -h github.com")
+        run_check.assert_called_once_with(["gh", "auth", "status"])
+
+    def test_check_github_cli_auth_reports_authenticated_gh(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=True) as run_check,
+        ):
+            check = engine.check_github_cli_auth()
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.message, "GitHub CLI authentication is ready.")
+        self.assertEqual(check.fix, "")
+        run_check.assert_called_once_with(["gh", "auth", "status"])
+
     def test_doctor_returns_number_of_failed_manifest_artifacts(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         definitions = engine.resolve_artifact_definitions(manifest.artifacts)
 
-        with mock.patch("base_dev.engine.run_check", return_value=False):
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False),
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
@@ -125,7 +274,10 @@ class DevManifestTests(unittest.TestCase):
                 return False
             raise AssertionError(f"Unexpected command: {command}")
 
-        with mock.patch("base_dev.engine.run_check", side_effect=fake_run_check):
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", side_effect=fake_run_check),
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
@@ -139,7 +291,10 @@ class DevManifestTests(unittest.TestCase):
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         definitions = engine.resolve_artifact_definitions(manifest.artifacts)
 
-        with mock.patch("base_dev.engine.run_check", return_value=False):
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False),
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="json")
