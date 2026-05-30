@@ -202,7 +202,7 @@ install_run_update_profile() {
 
 install_main() {
     local repo_url="${BASE_INSTALL_REPO_URL:-https://github.com/codeforester/base.git}"
-    local install_dir="${BASE_INSTALL_DIR:-$HOME/work/base}"
+    local install_dir="${BASE_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local branch="${BASE_INSTALL_BRANCH:-}"
     local update_profile="${BASE_INSTALL_UPDATE_PROFILE:-true}"
     BASE_INSTALL_DRY_RUN="${BASE_INSTALL_DRY_RUN:-false}"
