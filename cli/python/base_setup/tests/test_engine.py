@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_cli.config import UserConfig, UserIdeConfig, UserIdePreference
-from base_setup import artifacts, checks, delegates, engine, ide, process
+from base_setup import artifacts, checks as setup_checks, delegates, engine, ide, process
 from base_setup.artifacts import merge_artifacts
 from base_setup.errors import ArtifactError
 from base_setup.engine import main
@@ -845,7 +845,7 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(findings[0]["fix"], "basectl setup demo")
 
     def test_doctor_warning_status_does_not_fail(self) -> None:
-        check = checks.ArtifactCheck(
+        check = setup_checks.ArtifactCheck(
             name="optional-artifact",
             ok=False,
             message="Optional project artifact is not installed.",
@@ -854,7 +854,7 @@ class ProjectCheckTests(unittest.TestCase):
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(checks.check_to_doctor_json(check)["status"], "warn")
+        self.assertEqual(setup_checks.check_to_doctor_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),
