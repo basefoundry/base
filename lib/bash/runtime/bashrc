@@ -158,6 +158,11 @@ _base_runtime_set_prompt() {
 }
 
 _base_runtime_main() {
+    if [[ -n "${__base_runtime_bashrc_loaded__:-}" ]]; then
+        _base_runtime_debug "already loaded; skipping"
+        return 0
+    fi
+
     [[ -n "${BASE_HOME:-}" ]] || {
         _base_runtime_error "BASE_HOME is not set."
         return 1
@@ -181,6 +186,7 @@ _base_runtime_main() {
     _base_runtime_source_user_bashrc || return $?
     _base_runtime_activate_project_venv || return $?
     _base_runtime_set_prompt
+    __base_runtime_bashrc_loaded__=1
     _base_runtime_debug "complete"
 }
 
