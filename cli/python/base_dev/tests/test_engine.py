@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import io
+import importlib
 import importlib.util
 import json
 import os
+import runpy
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -25,6 +28,24 @@ def run_engine(args: list[str]) -> tuple[int, str, str]:
 
 
 class DevManifestTests(unittest.TestCase):
+    def test_importing_main_module_does_not_execute_main(self) -> None:
+        sys.modules.pop("base_dev.__main__", None)
+
+        with mock.patch("base_dev.engine.main", side_effect=AssertionError("main should not run on import")):
+            module = importlib.import_module("base_dev.__main__")
+
+        self.assertEqual(module.__name__, "base_dev.__main__")
+
+    def test_running_module_dispatches_to_main(self) -> None:
+        sys.modules.pop("base_dev.__main__", None)
+
+        with mock.patch("base_dev.engine.main", return_value=7) as main_mock:
+            with self.assertRaises(SystemExit) as exc:
+                runpy.run_module("base_dev", run_name="__main__", alter_sys=True)
+
+        self.assertEqual(exc.exception.code, 7)
+        main_mock.assert_called_once_with()
+
     def test_dev_manifest_declares_supported_developer_tools(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         artifacts = {(artifact.artifact_type, artifact.name, artifact.version) for artifact in manifest.artifacts}
