@@ -54,11 +54,14 @@ def doctor_config_command() -> int:
     path = user_config_path()
     print("\nBase config doctor\n")
     print_finding("ok", "path", f"Config path: {path}")
-    if path.exists():
-        if path.is_symlink():
+    if path.is_symlink():
+        if path.exists():
             print_finding("ok", "symlink", f"Config path is a symlink to '{safe_resolve(path)}'.")
         else:
-            print_finding("ok", "file", "Config file exists.")
+            print_finding("warn", "symlink", f"Config path is a broken symlink to '{safe_resolve(path)}'.")
+            return 0
+    elif path.exists():
+        print_finding("ok", "file", "Config file exists.")
     else:
         print_finding("warn", "file", "Config file is missing; Base will use an empty user config.")
         return 0
