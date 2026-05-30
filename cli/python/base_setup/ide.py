@@ -5,44 +5,18 @@ import os
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
 from base_cli.config import UserConfig
+from base_cli.ide_schema import IDE_DEFINITIONS
+from base_cli.ide_schema import IdeDefinition
 
 from . import artifacts
 from . import process
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest, IdeConfig
-
-
-@dataclass(frozen=True)
-class IdeDefinition:
-    name: str
-    label: str
-    cli: str
-    cask: str
-    settings_app_dir: str
-
-
-IDE_DEFINITIONS = {
-    "vscode": IdeDefinition(
-        name="vscode",
-        label="VS Code",
-        cli="code",
-        cask="visual-studio-code",
-        settings_app_dir="Code",
-    ),
-    "cursor": IdeDefinition(
-        name="cursor",
-        label="Cursor",
-        cli="cursor",
-        cask="cursor",
-        settings_app_dir="Cursor",
-    ),
-}
 
 
 def effective_ide_config(project_ide: dict[str, IdeConfig], user_config: UserConfig) -> dict[str, IdeConfig]:

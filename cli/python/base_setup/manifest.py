@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
-import json
 from pathlib import Path
 from typing import Any
+
+from base_cli.ide_schema import PROJECT_AUTO_SETTING_KEYS
+from base_cli.ide_schema import SUPPORTED_IDES
+from base_cli.ide_schema import parse_ide_extensions
+from base_cli.ide_schema import parse_ide_settings
 
 try:
     import yaml
@@ -128,8 +132,7 @@ def _read_ide(path: Path, ide_data: Any) -> dict[str, IdeConfig]:
     if not isinstance(ide_data, dict):
         raise ManifestError(f"{path}: ide must be a mapping when provided.")
 
-    allowed_ide_names = {"vscode", "cursor"}
-    unknown_ide_names = sorted(set(ide_data) - allowed_ide_names)
+    unknown_ide_names = sorted(set(ide_data) - SUPPORTED_IDES)
     if unknown_ide_names:
         raise ManifestError(f"{path}: unsupported IDE names: {', '.join(unknown_ide_names)}.")
 
@@ -189,43 +192,21 @@ def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:
 
 
 def _read_ide_extensions(path: Path, ide_name: str, extensions_data: Any) -> tuple[str, ...]:
-    if extensions_data is None:
-        return ()
-    if not isinstance(extensions_data, list):
-        raise ManifestError(f"{path}: ide.{ide_name}.extensions must be a list when provided.")
-
-    extensions: list[str] = []
-    for index, extension in enumerate(extensions_data, start=1):
-        if not isinstance(extension, str) or not extension.strip():
-            raise ManifestError(
-                f"{path}: ide.{ide_name}.extensions[{index}] must be a non-empty string."
-            )
-        extensions.append(extension.strip())
-    return tuple(extensions)
+    try:
+        return parse_ide_extensions(f"{path}: ide.{ide_name}.extensions", extensions_data)
+    except ValueError as exc:
+        raise ManifestError(str(exc)) from exc
 
 
 def _read_ide_settings(path: Path, ide_name: str, settings_data: Any) -> dict[str, Any]:
-    if settings_data is None:
-        return {}
-    if not isinstance(settings_data, dict):
-        raise ManifestError(f"{path}: ide.{ide_name}.settings must be a mapping when provided.")
-
-    settings: dict[str, Any] = {}
-    for key, value in settings_data.items():
-        if not isinstance(key, str) or not key:
-            raise ManifestError(f"{path}: ide.{ide_name}.settings keys must be non-empty strings.")
-        if value == "auto" and key != "python.defaultInterpreterPath":
-            raise ManifestError(
-                f"{path}: ide.{ide_name}.settings.{key} does not support the special value 'auto'."
-            )
-        try:
-            json.dumps(value)
-        except TypeError as exc:
-            raise ManifestError(
-                f"{path}: ide.{ide_name}.settings.{key} must be JSON-serializable."
-            ) from exc
-        settings[key] = value
-    return settings
+    try:
+        return parse_ide_settings(
+            f"{path}: ide.{ide_name}.settings",
+            settings_data,
+            auto_setting_keys=PROJECT_AUTO_SETTING_KEYS,
+        )
+    except ValueError as exc:
+        raise ManifestError(str(exc)) from exc
 
 
 def _read_artifacts(path: Path, artifacts_data: Any) -> list[ArtifactRequest]:
