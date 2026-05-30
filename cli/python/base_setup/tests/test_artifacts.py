@@ -1,0 +1,391 @@
+from __future__ import annotations
+
+import importlib.util
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from base_setup import artifacts, process
+from base_setup.artifacts import merge_artifacts
+from base_setup.errors import ArtifactError
+from base_setup.manifest import ArtifactRequest, read_manifest
+from base_setup.process import format_command
+from base_setup.registry import get_artifact_definition
+from base_setup.tests.helpers import fake_context, run_engine
+
+class ArtifactMergeTests(unittest.TestCase):
+
+    def test_merge_artifacts_keeps_defaults_and_manifest_artifacts(self) -> None:
+        merged = merge_artifacts(
+            (
+                ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1"),
+            ),
+            (
+                ArtifactRequest(artifact_type="tool", name="terraform", version="1.8.5"),
+            ),
+        )
+
+        self.assertEqual(
+            [(artifact.artifact_type, artifact.name, artifact.version, artifact.bootstrap) for artifact in merged],
+            [
+                ("python-package", "click", "8.4.1", False),
+                ("tool", "terraform", "1.8.5", False),
+            ],
+        )
+
+
+
+    def test_merge_artifacts_rejects_conflicting_default_versions(self) -> None:
+        with self.assertRaises(ArtifactError):
+            merge_artifacts(
+                (
+                    ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1"),
+                ),
+                (
+                    ArtifactRequest(artifact_type="python-package", name="click", version="1.0.0"),
+                ),
+            )
+
+
+
+class ArtifactRegistryTests(unittest.TestCase):
+
+    def test_base_manifest_declares_python_dev_tools(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "base_manifest.yaml")
+        tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
+
+        self.assertIn(("python-package", "pylint"), tools)
+        self.assertIn(("python-package", "pytest"), tools)
+        self.assertIsNotNone(get_artifact_definition("python-package", "pylint"))
+        self.assertIsNotNone(get_artifact_definition("python-package", "pytest"))
+
+
+
+    def test_python_package_artifacts_are_pass_through_pip_packages(self) -> None:
+        definition = get_artifact_definition("python-package", "rich")
+
+        self.assertIsNotNone(definition)
+        self.assertEqual(definition.name, "rich")
+        self.assertEqual(definition.artifact_type, "python-package")
+        self.assertEqual(definition.manager, "pip")
+        self.assertEqual(definition.package, "rich")
+        self.assertEqual(definition.target, "project-venv")
+
+
+
+    def test_unknown_tool_artifacts_remain_unsupported(self) -> None:
+        self.assertIsNone(get_artifact_definition("tool", "not-a-real-tool"))
+
+
+
+    def test_base_dev_manifest_declares_supported_tools(self) -> None:
+        manifest = read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
+        tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
+
+        self.assertIn(("tool", "bats-core"), tools)
+        self.assertIn(("tool", "gh"), tools)
+        self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
+        self.assertIsNotNone(get_artifact_definition("tool", "gh"))
+
+
+
+    def test_docker_and_colima_are_supported_tools(self) -> None:
+        docker = get_artifact_definition("tool", "docker")
+        colima = get_artifact_definition("tool", "colima")
+
+        self.assertIsNotNone(docker)
+        self.assertEqual(docker.package, "docker")
+        self.assertEqual(docker.manager, "homebrew")
+        self.assertIsNotNone(colima)
+        self.assertEqual(colima.package, "colima")
+        self.assertEqual(colima.manager, "homebrew")
+
+
+
+class ArtifactReconcileTests(unittest.TestCase):
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_unknown_artifact_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: not-a-real-artifact",
+                        "    version: \"1.0\"",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 1)
+        self.assertIn("Unsupported artifact 'not-a-real-artifact' of type 'tool'", stderr)
+
+
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_unknown_python_package_artifact_dry_run_uses_pip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: rich",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("pip install rich", stderr)
+
+
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: terraform",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+
+
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_docker_and_colima_artifacts_dry_run_through_homebrew(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: docker",
+                        "    version: latest",
+                        "  - type: tool",
+                        "    name: colima",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew install docker", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install colima", stderr)
+
+
+
+    def test_homebrew_artifact_rejects_non_latest_version(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+
+        with self.assertRaisesRegex(ArtifactError, "only supports Homebrew artifact version 'latest'"):
+            artifacts.reconcile_homebrew_artifact(fake_context(), definition, "1.8.5", dry_run=True)
+
+
+
+    def test_homebrew_artifact_latest_invokes_brew_install(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
+            return_value=False,
+        ), mock.patch("base_setup.process.run_command") as run_command:
+            artifacts.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["brew", "install", "terraform"])
+
+
+
+    def test_python_artifact_honors_project_venv_dir_override(self) -> None:
+        definition = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "custom-venv"
+            with mock.patch.dict(
+                os.environ,
+                {"BASE_PROJECT": "wrong-project", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
+            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+                artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(
+            f"[DRY-RUN] Would create project virtual environment at '{venv_dir}'.",
+            info_messages,
+        )
+        self.assertIn(
+            f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install requests",
+            info_messages,
+        )
+
+
+
+    def test_python_artifact_uses_manifest_project_not_environment(self) -> None:
+        definition = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "demo" / ".venv"
+            with mock.patch.dict(os.environ, {"BASE_PROJECT": "wrong-project"}), mock.patch(
+                "base_setup.artifacts.project_venv_dir",
+                return_value=venv_dir,
+            ) as project_venv_dir, mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+                artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
+
+        project_venv_dir.assert_called_once_with("demo")
+
+
+
+class EngineArtifactTests(unittest.TestCase):
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_discovers_manifest_from_start_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            nested = root / "nested"
+            nested.mkdir()
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--start-dir", str(nested)])
+
+        self.assertEqual(status, 0)
+        self.assertIn(f"Reading Base manifest at '{manifest_path.resolve()}'.", stderr)
+
+
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_project_argument_validates_manifest_project_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--manifest", str(manifest_path), "other"])
+
+        self.assertEqual(status, 1)
+        self.assertIn("project.name is 'demo', expected 'other'", stderr)
+
+
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_empty_artifact_list_logs_that_base_defaults_are_used(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Project 'demo' declares no artifacts; installing Base default artifacts only.", stderr)
+
+
+
+class ProcessTests(unittest.TestCase):
+
+    def test_format_command_uses_shell_quoting_for_empty_and_spaced_args(self) -> None:
+        self.assertEqual(
+            format_command(["tool", "", "two words", "plain"]),
+            "tool '' 'two words' plain",
+        )
+
+
+
+    def test_run_command_includes_stderr_on_failure(self) -> None:
+        ctx = fake_context()
+
+        with mock.patch(
+            "base_setup.process.subprocess.run",
+            return_value=mock.Mock(returncode=17, stderr="installer exploded\n"),
+        ):
+            with self.assertRaisesRegex(ArtifactError, "installer exploded"):
+                process.run_command(ctx, ["installer", "--bad"])
+
+
+
+    def test_run_command_logs_success_at_debug(self) -> None:
+        ctx = fake_context()
+
+        with mock.patch(
+            "base_setup.process.subprocess.run",
+            return_value=mock.Mock(returncode=0, stderr=""),
+        ):
+            process.run_command(ctx, ["installer", "--good", "two words"])
+
+        ctx.log.debug.assert_called_once_with(
+            "Command succeeded: %s",
+            "installer --good 'two words'",
+        )

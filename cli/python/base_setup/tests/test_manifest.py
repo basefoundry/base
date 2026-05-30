@@ -1,0 +1,328 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from base_setup.manifest import ManifestError, read_manifest
+
+class ManifestParsingTests(unittest.TestCase):
+
+    def test_reads_basic_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: terraform",
+                        "    version: \"1.8.5\"",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.project_name, "demo")
+        self.assertIsNone(manifest.brewfile)
+        self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
+        self.assertEqual(manifest.artifacts[0].name, "terraform")
+        self.assertEqual(manifest.artifacts[0].version, "1.8.5")
+        self.assertFalse(manifest.artifacts[0].bootstrap)
+
+
+
+    def test_reads_manifest_brewfile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "brewfile: Brewfile",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.brewfile, "Brewfile")
+
+
+
+    def test_reads_manifest_mise_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "mise: .mise.toml",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.mise, ".mise.toml")
+
+
+
+    def test_reads_manifest_test_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: pytest tests/",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.test)
+        self.assertEqual(manifest.test.command, "pytest tests/")
+        self.assertIsNone(manifest.test.mise)
+
+
+
+    def test_reads_manifest_test_mise_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  mise: test",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.test)
+        self.assertIsNone(manifest.test.command)
+        self.assertEqual(manifest.test.mise, "test")
+
+
+
+    def test_rejects_invalid_manifest_test_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: \"\"",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "test.command must be a non-empty string"):
+                read_manifest(manifest_path)
+
+
+
+    def test_rejects_ambiguous_manifest_test_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: pytest",
+                        "  mise: test",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "test must declare only one of command or mise"):
+                read_manifest(manifest_path)
+
+
+
+    def test_empty_artifact_list_is_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.project_name, "demo")
+        self.assertEqual(manifest.artifacts, ())
+
+
+
+class ManifestIdeParsingTests(unittest.TestCase):
+
+    def test_reads_ide_manifest_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    install: true",
+                        "    extensions:",
+                        "      - ms-python.python",
+                        "      - github.copilot",
+                        "    settings:",
+                        "      editor.formatOnSave: true",
+                        "      editor.rulers: [100]",
+                        "      python.defaultInterpreterPath: auto",
+                        "  cursor:",
+                        "    extensions:",
+                        "      - ms-python.python",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(set(manifest.ide), {"vscode", "cursor"})
+        self.assertTrue(manifest.ide["vscode"].install)
+        self.assertEqual(
+            manifest.ide["vscode"].extensions,
+            ("ms-python.python", "github.copilot"),
+        )
+        self.assertEqual(
+            manifest.ide["vscode"].settings,
+            {
+                "editor.formatOnSave": True,
+                "editor.rulers": [100],
+                "python.defaultInterpreterPath": "auto",
+            },
+        )
+        self.assertFalse(manifest.ide["cursor"].install)
+        self.assertEqual(manifest.ide["cursor"].extensions, ("ms-python.python",))
+        self.assertEqual(manifest.ide["cursor"].settings, {})
+
+
+
+    def test_rejects_unknown_ide_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  windows-notepad:",
+                        "    extensions: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "unsupported IDE names: windows-notepad"):
+                read_manifest(manifest_path)
+
+
+
+    def test_rejects_invalid_ide_extension(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    extensions:",
+                        "      - ms-python.python",
+                        "      - 123",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, r"ide.vscode.extensions\[2\] must be a non-empty string"):
+                read_manifest(manifest_path)
+
+
+
+    def test_rejects_non_boolean_ide_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    install: maybe",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "ide.vscode.install must be a boolean"):
+                read_manifest(manifest_path)
+
+
+
+    def test_rejects_unsupported_auto_ide_setting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "ide:",
+                        "  vscode:",
+                        "    settings:",
+                        "      editor.defaultFormatter: auto",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "does not support the special value 'auto'"):
+                read_manifest(manifest_path)

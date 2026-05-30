@@ -176,8 +176,9 @@ All Bash standards are documented in `STANDARDS.md`. Key rules:
 - Use dataclasses for structured data, type hints everywhere.
 - Max line length: 120 characters (`.pylintrc`).
 - `PYTHONPATH` must include `lib/python:cli/python` when running or testing.
-- Tests live under `<package>/tests/test_engine.py` next to the package they
-  validate.
+- Tests live under `<package>/tests/` next to the package they validate. Small
+  packages can use `test_engine.py`; larger packages should split focused
+  `test_*.py` modules by feature area.
 - Standard CLI options (provided by `base_cli`): `--debug`, `--environment`,
   `--config`, `--keep-temp`, `--log-file`.
 
@@ -233,7 +234,7 @@ All Bash standards are documented in `STANDARDS.md`. Key rules:
 ### New Python CLI Command
 
 1. Create a package under `cli/python/<command>/` with `engine.py` (or
-   equivalent) and `tests/test_engine.py`.
+   equivalent) and a focused `tests/test_*.py` module.
 2. Follow the `base_cli.App` pattern.
 3. Run with `PYTHONPATH=lib/python:cli/python python -m <command>`.
 
