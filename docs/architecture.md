@@ -346,6 +346,10 @@ health:
 
 test:
   command: pytest tests/
+
+commands:
+  dev: uvicorn app:app --reload
+  lint: ruff check .
 ```
 
 `schema_version` is a manifest compatibility marker. Missing values are treated
@@ -370,6 +374,11 @@ orchestration actions. The design rule is delegation-first:
   Projects can declare either `test.command` for a shell command or `test.mise`
   for a `mise run <task>` delegation. Extra arguments after `basectl test
   <project> --` are passed through to the delegated command.
+- Use a project-owned `commands` map for additional named commands that
+  `basectl run <project> <command>` can execute from the project root. These
+  commands use the same Base project environment and virtual environment
+  contract as `basectl test`; the command name `test` is reserved for the
+  top-level `test` contract.
 - Use `health.required_env` for local environment contracts that `basectl check`
   and `basectl doctor` should validate without exposing secret values.
 - Let Base own the project virtual environment and Base-aware package

@@ -72,6 +72,11 @@ that delegate to `basectl`.
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments
   to the delegated test command.
+- `basectl run <project> <command>` runs a named command from the project's
+  manifest `commands` map with the same project root, environment variables,
+  virtual environment, dry-run, and extra-argument contract as `basectl test`.
+  `basectl run <project> test` delegates to the top-level manifest `test`
+  contract. Use `basectl run <project> --list` to inspect available commands.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`

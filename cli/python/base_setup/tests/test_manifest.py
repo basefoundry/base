@@ -184,6 +184,67 @@ class ManifestParsingTests(unittest.TestCase):
 
 
 
+    def test_reads_manifest_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "commands:",
+                        "  dev: uvicorn app:app --reload",
+                        "  lint: ruff check .",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(
+            manifest.commands,
+            {
+                "dev": "uvicorn app:app --reload",
+                "lint": "ruff check .",
+            },
+        )
+
+
+
+    def test_rejects_invalid_manifest_commands(self) -> None:
+        invalid_values = {
+            "scalar": "commands: pytest",
+            "empty_name": "commands:\n  '': pytest",
+            "invalid_name": "commands:\n  'bad command': pytest",
+            "reserved_test": "commands:\n  test: pytest",
+            "empty_command": "commands:\n  lint: ''",
+            "non_string_command": "commands:\n  lint: 7",
+        }
+        for name, commands_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                commands_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
+
+
+
     def test_reads_manifest_brewfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"

@@ -132,7 +132,7 @@ EOF
 @test "basectl rejects removed legacy commands" {
     local legacy_command
 
-    for legacy_command in status run set-team set-shared-teams man embrace install shell; do
+    for legacy_command in status set-team set-shared-teams man embrace install shell; do
         run_basectl "$legacy_command"
         [ "$status" -eq 2 ]
         [[ "$output" == *"Unrecognized command: $legacy_command"* ]]
