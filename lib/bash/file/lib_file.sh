@@ -72,6 +72,14 @@ update_file_section() {
         return 0
     fi
 
+    local beginning_marker_count end_marker_count
+    beginning_marker_count=$(grep -cF -- "$beginning_marker" "$target_file" || true)
+    end_marker_count=$(grep -cF -- "$end_marker" "$target_file" || true)
+    if ((beginning_marker_count != end_marker_count)); then
+        log_error "Asymmetric markers in '$target_file': $beginning_marker_count start, $end_marker_count end. Manual repair needed."
+        return 1
+    fi
+
     log_info "Updating '$target_file'"
     local new_content_string=""
     if [[ "$remove_section" == false ]]; then
