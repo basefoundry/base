@@ -51,11 +51,23 @@ base_gh_require_command() {
 base_gh_require_auth() {
     base_gh_require_command gh || return 1
 
-    gh auth status >/dev/null 2>&1 || {
+    gh auth status -h github.com >/dev/null 2>&1 || {
         base_gh_error "GitHub CLI authentication is not ready."
         base_gh_error "Run 'gh auth login -h github.com' and retry."
         return 1
     }
+}
+
+base_gh_args_request_help() {
+    local arg
+
+    [[ "${1:-}" == "help" ]] && return 0
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help) return 0 ;;
+        esac
+    done
+    return 1
 }
 
 base_gh_require_git_repo() {
@@ -141,6 +153,10 @@ base_gh_do_issue() {
 
     case "$command" in
         list)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             gh issue list "$@"
             ;;
@@ -263,6 +279,10 @@ base_gh_do_pr() {
 
     case "$command" in
         create)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             base_gh_require_git_repo || return 1
             issue="$(base_gh_current_issue_from_branch || true)"
@@ -277,18 +297,34 @@ base_gh_do_pr() {
             gh pr create --fill "$@"
             ;;
         status)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             gh pr status "$@"
             ;;
         checks)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             gh pr checks "$@"
             ;;
         ready)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             gh pr ready "$@"
             ;;
         merge)
+            if base_gh_args_request_help "$@"; then
+                base_gh_usage
+                return 0
+            fi
             base_gh_require_auth || return 1
             gh pr merge "$@"
             ;;
