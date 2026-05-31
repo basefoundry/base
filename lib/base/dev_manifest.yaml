@@ -9,3 +9,7 @@ artifacts:
   - type: tool
     name: gh
     version: latest
+
+  - type: tool
+    name: shellcheck
+    version: latest

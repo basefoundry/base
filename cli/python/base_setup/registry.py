@@ -62,6 +62,13 @@ _ARTIFACTS = {
         package="gh",
         target="system",
     ),
+    ("tool", "shellcheck"): ArtifactDefinition(
+        name="shellcheck",
+        artifact_type="tool",
+        manager="homebrew",
+        package="shellcheck",
+        target="system",
+    ),
     ("tool", "docker"): ArtifactDefinition(
         name="docker",
         artifact_type="tool",
