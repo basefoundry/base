@@ -178,11 +178,11 @@ load ./setup_helpers.bash
     [ "${stderr:-}" = "" ]
 }
 
-@test "basectl check --format json escapes all C0 control characters in strings" {
+@test "basectl check --format json escapes C0 control characters and DEL in strings" {
     local control_package
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
-    control_package=$'Py\vYAML'
+    control_package=$'Py\vYAML\177'
     create_brew_stub
     create_xcode_stubs
     touch "$TEST_STATE_DIR/xcode-installed"
@@ -206,7 +206,7 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check --format json
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Py\\u000bYAML"* ]]
+    [[ "$output" == *"Py\\u000bYAML\\u007f"* ]]
     [[ "$output" != *"$control_package"* ]]
     [ "${stderr:-}" = "" ]
 }
