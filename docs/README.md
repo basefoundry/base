@@ -46,6 +46,9 @@ reference. The filename should answer "what is this about?"
 - [Python Manifest Section](python-manifest.md) records the future structured
   Python manifest shape and its relationship to current `python-package`
   artifacts.
+- [Repository Baseline](repo-baseline.md) documents `basectl repo init`,
+  `basectl repo check`, and `basectl repo configure` for standardizing new
+  Base-managed repositories.
 - [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
   arbitrary manifest setup hooks yet.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience

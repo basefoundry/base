@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `basectl repo init/check/configure` to create, validate, and configure
+  a standard Base-managed repository baseline.
+
 ### Fixed
 
 - Updated the README status section to match the current `0.2.0` release.

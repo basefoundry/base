@@ -116,6 +116,9 @@ Current implemented commands include:
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
+- `basectl repo init <name>`
+- `basectl repo check [path]`
+- `basectl repo configure [path]`
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl run <project> <command>`
@@ -296,6 +299,32 @@ directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
 Output is tab-separated as `<project-name><TAB><path>`. Use `--format json` for
 machine-readable output.
+
+Start a new Base-managed repository with:
+
+```bash
+basectl repo init example --path ~/work/example --repo codeforester/example
+```
+
+This creates the local repository baseline: README, version, changelog,
+contributing guide, MIT license, `.gitignore`, `base_manifest.yaml`, a
+`tests/validate.sh` contract, and a GitHub Actions workflow that runs it.
+`repo init` also standardizes the GitHub repository when `--repo <owner/name>`
+is provided or when an existing `origin` remote can be inferred. Use
+`--no-configure` to skip the GitHub step, or rerun it later with
+`basectl repo configure`.
+
+Check and repair the repo baseline with:
+
+```bash
+basectl repo check ~/work/example
+basectl repo configure ~/work/example --repo codeforester/example
+```
+
+`repo configure` is intentionally idempotent. It enables Issues and Projects,
+standardizes merge settings, deletes branches after merge, and creates the
+standard GitHub labels documented in
+[Repository Baseline](docs/repo-baseline.md).
 
 Run a discovered project's declared test command with:
 
@@ -921,8 +950,8 @@ Base follows a few simple principles.
 
 Base `0.2.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
-execution, mise integration, cleanup, updates, onboarding, and GitHub workflow
-helpers.
+execution, mise integration, cleanup, updates, onboarding, repository baseline
+creation, and GitHub workflow helpers.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,
