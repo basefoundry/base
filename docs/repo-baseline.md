@@ -11,7 +11,7 @@ product-specific setup.
 Create a new repo baseline:
 
 ```bash
-basectl repo init base-demo --path ~/work/base-demo --repo codeforester/base-demo
+basectl repo init base-demo --repo codeforester/base-demo
 ```
 
 `repo init` creates the local files and then configures the GitHub repository
@@ -19,6 +19,16 @@ when `--repo <owner/name>` is provided or an existing `origin` remote can be
 inferred. That keeps the common new-repo path to one command. Use
 `--no-configure` when the GitHub repo does not exist yet or when local-only
 initialization is desired.
+
+Without `--path`, `repo init` creates the repository under the configured
+workspace root:
+
+1. `workspace.root` from `~/.base.d/config.yaml` when configured.
+2. The parent directory of `BASE_HOME` when no workspace root is configured.
+
+That keeps `repo init base-demo` stable even when it is run from inside another
+repository or from a nested directory such as `~/work/base/docs`. Use
+`--path <path>` when the new repository should live somewhere else.
 
 Check the local baseline:
 

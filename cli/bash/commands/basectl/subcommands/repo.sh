@@ -24,7 +24,7 @@ Usage:
   basectl repo configure [path] [options]
 
 Options:
-  --path <path>                 Target path for repo init. Defaults to ./<name>.
+  --path <path>                 Target path for repo init. Defaults to workspace root plus <name>.
   --repo <owner/name>           GitHub repository to configure.
   --description <text>          Repository description for generated README.
   --copyright-holder <name>     Copyright holder for generated LICENSE.
@@ -75,6 +75,112 @@ base_repo_target_path() {
         parent="$(cd -- "$(pwd -P)" && pwd -P)/$parent"
     fi
     printf '%s/%s\n' "$parent" "$name"
+}
+
+base_repo_strip_config_value() {
+    local value="$1"
+
+    value="${value%%#*}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    case "$value" in
+        \"*\")
+            value="${value#\"}"
+            value="${value%\"}"
+            ;;
+        \'*\')
+            value="${value#\'}"
+            value="${value%\'}"
+            ;;
+    esac
+
+    printf '%s\n' "$value"
+}
+
+base_repo_expand_path() {
+    local path="$1"
+
+    case "$path" in
+        "~")
+            printf '%s\n' "$HOME"
+            ;;
+        "~/"*)
+            printf '%s/%s\n' "$HOME" "${path#~/}"
+            ;;
+        *)
+            printf '%s\n' "$path"
+            ;;
+    esac
+}
+
+base_repo_configured_workspace_root() {
+    local config_path="$HOME/.base.d/config.yaml"
+    local in_workspace=0 line value
+
+    [[ -f "$config_path" ]] || return 1
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^[[:space:]]*(#.*)?$ ]] && continue
+
+        if [[ "$line" =~ ^workspace:[[:space:]]*(#.*)?$ ]]; then
+            in_workspace=1
+            continue
+        fi
+
+        if ((in_workspace)) && [[ ! "$line" =~ ^[[:space:]] ]]; then
+            return 1
+        fi
+
+        if ((in_workspace)) && [[ "$line" =~ ^[[:space:]]+root:[[:space:]]*(.*)$ ]]; then
+            value="$(base_repo_strip_config_value "${BASH_REMATCH[1]}")"
+            [[ -n "$value" ]] || {
+                log_error "$config_path: workspace.root must be a non-empty path."
+                return 2
+            }
+            value="$(base_repo_expand_path "$value")"
+            [[ "$value" = /* ]] || {
+                log_error "$config_path: workspace.root must be an absolute path or start with '~'."
+                return 2
+            }
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done < "$config_path"
+
+    return 1
+}
+
+base_repo_default_workspace_root() {
+    local configured_root status
+
+    configured_root="$(base_repo_configured_workspace_root)"
+    status=$?
+    case "$status" in
+        0)
+            printf '%s\n' "$configured_root"
+            return 0
+            ;;
+        1)
+            ;;
+        *)
+            return "$status"
+            ;;
+    esac
+
+    [[ -n "${BASE_HOME:-}" ]] || {
+        log_error "BASE_HOME is required to resolve the default repository path."
+        return 1
+    }
+    cd -- "$BASE_HOME/.." && pwd -P
+}
+
+base_repo_default_target_path() {
+    local name="$1"
+    local workspace_root
+
+    workspace_root="$(base_repo_default_workspace_root)" || return $?
+    printf '%s/%s\n' "$workspace_root" "$name"
 }
 
 base_repo_baseline_year() {
@@ -542,7 +648,7 @@ base_repo_init() {
         return $?
     }
     base_repo_validate_name "$name" || return 2
-    [[ -n "$path" ]] || path="./$name"
+    [[ -n "$path" ]] || path="$(base_repo_default_target_path "$name")"
     [[ -n "$description" ]] || description="$(base_repo_default_description "$name")"
     root="$(base_repo_target_path "$path")"
 

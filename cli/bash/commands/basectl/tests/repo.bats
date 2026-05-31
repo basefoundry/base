@@ -26,6 +26,40 @@ load ./basectl_helpers.bash
     [ ! -e "$repo_dir" ]
 }
 
+@test "basectl repo init defaults to configured workspace root" {
+    local nested_dir="$TEST_TMPDIR/nested/current"
+    local workspace_root="$TEST_TMPDIR/workspace-root"
+    local repo_dir="$workspace_root/base-demo"
+
+    mkdir -p "$TEST_HOME/.base.d" "$nested_dir" "$workspace_root"
+    printf 'workspace:\n  root: %s\n' "$workspace_root" > "$TEST_HOME/.base.d/config.yaml"
+
+    cd "$nested_dir"
+    run_basectl repo init base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
+    [[ "$output" != *"$nested_dir/base-demo"* ]]
+    [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo init falls back to BASE_HOME parent when workspace root is not configured" {
+    local nested_dir="$TEST_TMPDIR/nested/current"
+    local workspace_root
+    local repo_dir
+
+    workspace_root="$(cd "$BASE_REPO_ROOT/.." && pwd -P)"
+    repo_dir="$workspace_root/base-demo"
+    mkdir -p "$nested_dir"
+
+    cd "$nested_dir"
+    run_basectl repo init base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
+    [[ "$output" != *"$nested_dir/base-demo"* ]]
+}
+
 @test "basectl repo init creates the standard repository baseline" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 
