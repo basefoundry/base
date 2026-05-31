@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -20,6 +21,7 @@ else:
 
 
 CURRENT_MANIFEST_SCHEMA_VERSION = 1
+ENVIRONMENT_VARIABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class ManifestError(ValueError):
@@ -48,6 +50,11 @@ class TestConfig:
 
 
 @dataclass(frozen=True)
+class HealthConfig:
+    required_env: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
@@ -57,6 +64,7 @@ class BaseManifest:
     mise: str | None = None
     test: TestConfig | None = None
     schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
+    health: HealthConfig = field(default_factory=HealthConfig)
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -76,7 +84,7 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"schema_version", "project", "brewfile", "mise", "ide", "artifacts", "test"}
+    allowed_top_level = {"schema_version", "project", "brewfile", "mise", "ide", "artifacts", "test", "health"}
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
@@ -87,6 +95,7 @@ def read_manifest(path: Path) -> BaseManifest:
     mise = _read_mise(path, data.get("mise"))
     ide = _read_ide(path, data.get("ide"))
     test = _read_test(path, data.get("test"))
+    health = _read_health(path, data.get("health"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -98,6 +107,7 @@ def read_manifest(path: Path) -> BaseManifest:
         mise=mise,
         test=test,
         schema_version=schema_version,
+        health=health,
     )
 
 
@@ -189,6 +199,43 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         command=command.strip() if command is not None else None,
         mise=mise.strip() if mise is not None else None,
     )
+
+
+def _read_health(path: Path, health_data: Any) -> HealthConfig:
+    if health_data is None:
+        return HealthConfig()
+    if not isinstance(health_data, dict):
+        raise ManifestError(f"{path}: health must be a mapping when provided.")
+
+    allowed_keys = {"required_env"}
+    unknown_keys = sorted(set(health_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: health has unsupported keys: {', '.join(unknown_keys)}.")
+
+    return HealthConfig(required_env=_read_required_env(path, health_data.get("required_env", [])))
+
+
+def _read_required_env(path: Path, required_env_data: Any) -> tuple[str, ...]:
+    if required_env_data is None:
+        return ()
+    if not isinstance(required_env_data, list):
+        raise ManifestError(f"{path}: health.required_env must be a list when provided.")
+
+    required_env: list[str] = []
+    seen: set[str] = set()
+    for index, env_name_data in enumerate(required_env_data, start=1):
+        if not isinstance(env_name_data, str) or not env_name_data.strip():
+            raise ManifestError(f"{path}: health.required_env[{index}] must be a non-empty string.")
+        env_name = env_name_data.strip()
+        if not ENVIRONMENT_VARIABLE_NAME_RE.fullmatch(env_name):
+            raise ManifestError(
+                f"{path}: health.required_env[{index}] must be a valid environment variable name."
+            )
+        if env_name in seen:
+            raise ManifestError(f"{path}: health.required_env[{index}] duplicates '{env_name}'.")
+        seen.add(env_name)
+        required_env.append(env_name)
+    return tuple(required_env)
 
 
 def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:

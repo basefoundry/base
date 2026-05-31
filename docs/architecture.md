@@ -339,6 +339,11 @@ artifacts:
     name: requests
     version: latest
 
+health:
+  required_env:
+    - DATABASE_URL
+    - REDIS_URL
+
 test:
   command: pytest tests/
 ```
@@ -365,6 +370,8 @@ orchestration actions. The design rule is delegation-first:
   Projects can declare either `test.command` for a shell command or `test.mise`
   for a `mise run <task>` delegation. Extra arguments after `basectl test
   <project> --` are passed through to the delegated command.
+- Use `health.required_env` for local environment contracts that `basectl check`
+  and `basectl doctor` should validate without exposing secret values.
 - Let Base own the project virtual environment and Base-aware package
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety
