@@ -30,12 +30,12 @@ class BootstrapManifestTests(unittest.TestCase):
             artifacts=(),
         )
 
-        with mock.patch("base_setup.engine.reconcile_artifact") as reconcile_artifact:
+        with mock.patch("base_setup.engine.reconcile_artifacts") as reconcile_artifacts:
             engine.reconcile_bootstrap_artifacts(ctx, default_manifest, manifest, dry_run=True)
 
-        self.assertEqual(reconcile_artifact.call_count, 1)
-        self.assertEqual(reconcile_artifact.call_args.args[1].name, "click")
-        self.assertEqual(reconcile_artifact.call_args.args[3], "demo")
+        reconcile_artifacts.assert_called_once()
+        self.assertEqual(reconcile_artifacts.call_args.args[1][0].name, "click")
+        self.assertEqual(reconcile_artifacts.call_args.args[3], "demo")
 
 
 
