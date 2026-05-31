@@ -961,7 +961,9 @@ setup_json_escape() {
                 ;;
             *)
                 printf -v code '%d' "'$char"
-                if ((code < 32)); then
+                # JSON requires escaping C0 controls and DEL. C1 controls are
+                # valid UTF-8 codepoints and are intentionally left as-is here.
+                if ((code < 32 || code == 127)); then
                     printf -v escaped '\\u%04x' "$code"
                     output+="$escaped"
                 else
