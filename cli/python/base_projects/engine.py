@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+from base_cli.config import read_user_config
 from base_cli.paths import discover_manifest
 from base_setup.manifest import ManifestError, TestConfig, read_manifest
 
@@ -28,7 +29,10 @@ def main(argv: list[str] | None = None) -> int:
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.argument("command", required=False)
 @base_cli.argument("project", required=False)
-@base_cli.option("--workspace", help="Workspace directory to scan. Defaults to BASE_HOME's parent.")
+@base_cli.option(
+    "--workspace",
+    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+)
 @base_cli.option("--format", "output_format", default="text", help="Output format for list: text or json.")
 def run(
     ctx: base_cli.Context,
@@ -168,6 +172,12 @@ class ProjectDiscoveryError(RuntimeError):
 def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
     if workspace:
         return Path(workspace).expanduser().resolve()
+    try:
+        workspace_root = read_user_config().workspace.root
+    except (RuntimeError, ValueError) as exc:
+        raise ProjectDiscoveryError(str(exc)) from exc
+    if workspace_root is not None:
+        return workspace_root
     if ctx.base_home is None:
         raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
     return ctx.base_home.parent.resolve()

@@ -30,6 +30,12 @@ does not require `$BASE_HOME` to be the root of a Git repository. That keeps the
 same runtime model usable when Base is checked out as its own repo or embedded
 inside a larger repository.
 
+`BASE_HOME` is always the physical Base installation root. It is not the
+developer workspace root, and it is not changed by `~/.base.d/config.yaml`.
+Project-discovery commands use the configured `workspace.root` from
+`~/.base.d/config.yaml` when present, then fall back to `BASE_HOME`'s parent for
+source-checkout layouts.
+
 The Base home check validates the expected Base files instead of checking for a
 `.git` directory.
 

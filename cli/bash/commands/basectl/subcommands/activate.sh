@@ -9,7 +9,7 @@ Usage:
   basectl activate <project> [options]
 
 Options:
-  --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --no-cd             Preserve the caller's current directory in the project shell.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.

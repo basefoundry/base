@@ -40,6 +40,15 @@ basectl update-profile
 exec "$SHELL" -l
 ```
 
+For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
+your project workspace. If your repositories live under a shared directory such
+as `~/work`, set the workspace root in `~/.base.d/config.yaml`:
+
+```yaml
+workspace:
+  root: ~/work
+```
+
 Or install from the repository:
 
 ```bash
@@ -114,7 +123,7 @@ The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace.
 
 Base should be able to discover participating project repositories checked out
-next to it under a shared parent directory, for example:
+under a shared workspace root, for example:
 
 ```text
 ~/work/
@@ -237,10 +246,12 @@ basectl projects list
 basectl projects list --format json
 ```
 
-By default this scans the parent directory of `BASE_HOME`, which matches the
-recommended sibling-repo workspace layout. Use `--workspace <path>` to inspect a
-different workspace root. Output is tab-separated as `<project-name><TAB><path>`.
-Use `--format json` for machine-readable output.
+By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
+value is configured. If it is not configured, Base falls back to the parent
+directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
+Use `--workspace <path>` to inspect a different workspace root for one command.
+Output is tab-separated as `<project-name><TAB><path>`. Use `--format json` for
+machine-readable output.
 
 Run a discovered project's declared test command with:
 
@@ -459,6 +470,17 @@ your shell startup path. When installed through Homebrew, update Base with:
 
 ```bash
 brew upgrade codeforester/base/base
+```
+
+When Base is installed through Homebrew, `BASE_HOME` points to the physical
+Homebrew install location. It does not point to your project workspace. Configure
+`workspace.root` in `~/.base.d/config.yaml` so commands such as
+`basectl projects list`, `basectl activate <project>`, and
+`basectl test <project>` can find your repositories:
+
+```yaml
+workspace:
+  root: ~/work
 ```
 
 The standalone installer is also available:

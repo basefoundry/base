@@ -111,6 +111,39 @@ class BaseConfigCommandTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("Config YAML is valid", output)
         self.assertIn("Config contains 1 top-level key", output)
+        self.assertIn("workspace.root is not configured", output)
+
+    def test_doctor_config_reports_configured_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "work"
+            workspace.mkdir()
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(root)
+                path.parent.mkdir(parents=True)
+                path.write_text(f"workspace:\n  root: {workspace}\n", encoding="utf-8")
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_config_command()
+
+        output = stdout.getvalue()
+        self.assertEqual(status, 0)
+        self.assertIn("workspace.root points to", output)
+        self.assertIn(str(workspace), output)
+
+    def test_doctor_config_reports_invalid_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(root)
+                path.parent.mkdir(parents=True)
+                path.write_text("workspace:\n  root: work\n", encoding="utf-8")
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_config_command()
+
+        self.assertEqual(status, 1)
+        self.assertIn("workspace.root must be an absolute path", stdout.getvalue())
 
     def test_doctor_config_reports_broken_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

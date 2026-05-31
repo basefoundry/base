@@ -9,7 +9,7 @@ Usage:
   basectl projects list [options]
 
 Options:
-  --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --format <format>   Output format for list: text or json.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
