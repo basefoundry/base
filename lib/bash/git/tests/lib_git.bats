@@ -47,6 +47,68 @@ setup() {
     [[ "$output" == *"has local changes; skipping auto-update"* ]]
 }
 
+@test "git_update_repo fails clearly when origin remote is missing" {
+    local before_head
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    before_head="$(git -C "$repo" rev-parse HEAD)"
+
+    bats_run git_update_repo "$repo" "" master
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"git pull failed on repo '$repo'"* ]]
+    [ "$(git -C "$repo" rev-parse HEAD)" = "$before_head" ]
+    [ "$(cat "$repo/data.txt")" = "base" ]
+    [ -z "$(git -C "$repo" status --porcelain)" ]
+}
+
+@test "git_update_repo fails clearly when origin remote is unreachable" {
+    local before_head
+    local remote="$TEST_TMPDIR/remote.git"
+    local repo="$TEST_TMPDIR/repo"
+
+    create_tracked_repo_with_upstream "$repo" "$remote" "data.txt" "base"
+    before_head="$(git -C "$repo" rev-parse HEAD)"
+    git -C "$repo" remote set-url origin "$TEST_TMPDIR/missing-remote.git"
+
+    bats_run git_update_repo "$repo" "" master
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"git pull failed on repo '$repo'"* ]]
+    [ "$(git -C "$repo" rev-parse HEAD)" = "$before_head" ]
+    [ "$(cat "$repo/data.txt")" = "base" ]
+    [ -z "$(git -C "$repo" status --porcelain)" ]
+}
+
+@test "git_update_repo fails on non-fast-forward updates without changing HEAD" {
+    local before_head
+    local other="$TEST_TMPDIR/other"
+    local remote="$TEST_TMPDIR/remote.git"
+    local repo="$TEST_TMPDIR/repo"
+
+    create_tracked_repo_with_upstream "$repo" "$remote" "data.txt" "base"
+    before_head="$(git -C "$repo" rev-parse HEAD)"
+
+    git clone "$remote" "$other" >/dev/null 2>&1
+    git -C "$other" config user.name "Bats Test"
+    git -C "$other" config user.email "bats@example.com"
+    printf 'rewritten remote\n' > "$other/data.txt"
+    git -C "$other" add data.txt
+    git -C "$other" commit --amend -m "Rewrite remote history" >/dev/null 2>&1
+    git -C "$other" push --force origin master >/dev/null 2>&1
+
+    bats_run git_update_repo "$repo" "" master
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"git pull failed on repo '$repo'"* ]]
+    [ "$(git -C "$repo" rev-parse HEAD)" = "$before_head" ]
+    [ "$(cat "$repo/data.txt")" = "base" ]
+    [ -z "$(git -C "$repo" status --porcelain)" ]
+}
+
 @test "git_update_repo accepts main as the detected update branch" {
     local repo="$TEST_TMPDIR/repo"
 

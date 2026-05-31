@@ -91,7 +91,7 @@ _git_pull_with_retry() {
     local attempt=1
 
     while ((attempt <= max_attempts)); do
-        if git pull >"$git_log" 2>&1; then
+        if git pull --ff-only >"$git_log" 2>&1; then
             if ((attempt > 1)); then
                 log_debug "git pull succeeded on attempt $attempt."
             fi
