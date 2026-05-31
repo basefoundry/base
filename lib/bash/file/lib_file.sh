@@ -80,7 +80,11 @@ update_file_section() {
         return 1
     fi
 
-    log_info "Updating '$target_file'"
+    local section_exists=false
+    if ((beginning_marker_count > 0)); then
+        section_exists=true
+    fi
+
     local new_content_string=""
     if [[ "$remove_section" == false ]]; then
         if [[ ${#new_content_array[@]} -gt 0 ]]; then
@@ -90,29 +94,73 @@ update_file_section() {
         fi
     fi
 
-    local temp_file new_content_file
-    temp_file=$(mktemp "${target_file}.XXXXXX")
-    if [[ ! -f "$temp_file" ]]; then
-        log_error "Failed to create temporary file for '$target_file'."
-        return 1
+    if [[ "$section_exists" == false && "$remove_section" == true ]]; then
+        log_debug "Section not present in '$target_file'; nothing to remove."
+        return 0
     fi
 
-    new_content_file=$(mktemp "${target_file}.new.XXXXXX")
-    if [[ ! -f "$new_content_file" ]]; then
-        log_error "Failed to create temporary content file for '$target_file'."
-        rm -f "$temp_file"
-        return 1
-    fi
-
+    local current_content_file="" new_content_file="" temp_file
     if [[ "$remove_section" == false ]]; then
+        new_content_file=$(mktemp "${TMPDIR:-/tmp}/base-file-section-new.XXXXXX")
+        if [[ ! -f "$new_content_file" ]]; then
+            log_error "Failed to create temporary content file for '$target_file'."
+            return 1
+        fi
+
         if ! printf '%s' "$new_content_string" > "$new_content_file"; then
             log_error "Failed to write replacement content for '$target_file'."
-            rm -f "$temp_file" "$new_content_file"
+            rm -f "$new_content_file"
             return 1
         fi
     fi
 
-    if grep -qF -- "$beginning_marker" "$target_file" && grep -qF -- "$end_marker" "$target_file"; then
+    if [[ "$section_exists" == true && "$remove_section" == false ]]; then
+        current_content_file=$(mktemp "${TMPDIR:-/tmp}/base-file-section-current.XXXXXX")
+        if [[ ! -f "$current_content_file" ]]; then
+            log_error "Failed to create temporary current content file for '$target_file'."
+            rm -f "$new_content_file"
+            return 1
+        fi
+
+        if ! awk -v START_M="$beginning_marker" -v END_M="$end_marker" '
+        BEGIN {
+            in_section = 0
+            processed = 0
+        }
+        $0 == START_M && processed == 0 {
+            in_section = 1
+            next
+        }
+        $0 == END_M && in_section == 1 {
+            processed = 1
+            exit
+        }
+        in_section == 1 {
+            print $0
+        }
+        ' "$target_file" > "$current_content_file"; then
+            log_error "Failed to read existing section in '$target_file'."
+            rm -f "$current_content_file" "$new_content_file"
+            return 1
+        fi
+
+        if cmp -s "$current_content_file" "$new_content_file"; then
+            log_debug "Section already up to date in '$target_file'."
+            rm -f "$current_content_file" "$new_content_file"
+            return 0
+        fi
+        rm -f "$current_content_file"
+    fi
+
+    log_info "Updating '$target_file'"
+    temp_file=$(mktemp "${target_file}.XXXXXX")
+    if [[ ! -f "$temp_file" ]]; then
+        log_error "Failed to create temporary file for '$target_file'."
+        rm -f "$new_content_file"
+        return 1
+    fi
+
+    if [[ "$section_exists" == true ]]; then
         if [[ "$remove_section" == true ]]; then
             if awk -v START_M="$beginning_marker" -v END_M="$end_marker" '
             BEGIN { in_section = 0 }
@@ -161,42 +209,37 @@ update_file_section() {
         return 1
     else
         # Markers not found in the file
-        if [[ "$remove_section" == true ]]; then
+        if ! cp "$target_file" "$temp_file"; then
+            log_error "Failed to copy '$target_file' to '$temp_file'."
             rm -f "$temp_file" "$new_content_file"
-            return 0
-        else
-            if ! cp "$target_file" "$temp_file"; then
-                log_error "Failed to copy '$target_file' to '$temp_file'."
-                rm -f "$temp_file" "$new_content_file"
-                return 1
-            fi
-
-            if [[ $(tail -c 1 "$temp_file" 2>/dev/null | wc -l) -eq 0 ]]; then
-                if ! printf '\n' >> "$temp_file"; then
-                    log_error "Failed to add trailing newline to '$temp_file'."
-                    rm -f "$temp_file" "$new_content_file"
-                    return 1
-                fi
-            fi
-
-            if ! {
-                printf '%s\n' "$beginning_marker"
-                printf '%s' "$new_content_string"
-                printf '%s\n' "$end_marker"
-            } >> "$temp_file"; then
-                log_error "Failed to add new section to '$target_file'."
-                rm -f "$temp_file" "$new_content_file"
-                return 1
-            fi
-
-            if ! mv -f "$temp_file" "$target_file"; then
-                log_error "Failed to replace '$target_file' with '$temp_file'."
-                rm -f "$temp_file" "$new_content_file"
-                return 1
-            fi
-
-            rm -f "$new_content_file"
-            return 0
+            return 1
         fi
+
+        if [[ $(tail -c 1 "$temp_file" 2>/dev/null | wc -l) -eq 0 ]]; then
+            if ! printf '\n' >> "$temp_file"; then
+                log_error "Failed to add trailing newline to '$temp_file'."
+                rm -f "$temp_file" "$new_content_file"
+                return 1
+            fi
+        fi
+
+        if ! {
+            printf '%s\n' "$beginning_marker"
+            printf '%s' "$new_content_string"
+            printf '%s\n' "$end_marker"
+        } >> "$temp_file"; then
+            log_error "Failed to add new section to '$target_file'."
+            rm -f "$temp_file" "$new_content_file"
+            return 1
+        fi
+
+        if ! mv -f "$temp_file" "$target_file"; then
+            log_error "Failed to replace '$target_file' with '$temp_file'."
+            rm -f "$temp_file" "$new_content_file"
+            return 1
+        fi
+
+        rm -f "$new_content_file"
+        return 0
     fi
 }
