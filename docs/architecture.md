@@ -457,13 +457,20 @@ parent manifest rather than auto-discovering everything.
 
 ### Caching project definitions
 
-A cache for discovered project metadata is premature optimization. The current
-flat workspace scan is a single `readdir` call. Cache invalidation for filesystem
-state — what invalidates the entry: a manifest edit, a new checkout, a `git
-pull` — is harder than the problem it solves. Base already has a cache root
-(`~/Library/Caches/base`) for runtime artifacts; revisit this only after tree
-traversal creates a measured performance problem and a concrete invalidation
-strategy is available.
+Base keeps project discovery flat: it scans direct children of the workspace
+root for `base_manifest.yaml` files instead of traversing repository trees. That
+keeps discovery predictable, but repeated YAML parsing still shows up in
+project-aware commands and shell completion.
+
+The implemented cache is intentionally narrow. Base stores discovered project
+metadata under the runtime cache root in `projects/`, keyed by the resolved
+workspace path. On each discovery run it still checks the immediate workspace
+children, but it reuses cached project names and paths when the manifest path,
+mtime, and size set is unchanged. A new checkout, manifest edit, or manifest
+removal changes that key data and forces a fresh parse.
+
+This cache is an optimization, not an authority. The manifest files remain the
+source of truth, and corrupt or unwritable cache files are ignored.
 
 ---
 
