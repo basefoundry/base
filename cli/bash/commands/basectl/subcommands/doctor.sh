@@ -51,6 +51,49 @@ base_doctor_print_json_finding() {
         "$trailing_comma"
 }
 
+base_doctor_print_check_json_results() {
+    local count fix i status trailing_comma
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        trailing_comma=","
+        if ((i == count - 1)); then
+            trailing_comma=""
+        fi
+
+        fix="${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
+        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
+            status="ok"
+            fix=""
+            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
+                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
+            fi
+        else
+            status="error"
+        fi
+
+        base_doctor_print_json_finding \
+            "$trailing_comma" \
+            "$status" \
+            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
+            "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
+            "$fix"
+    done
+}
+
+base_doctor_count_check_errors() {
+    local count errors=0 i
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" != true ]]; then
+            errors=$((errors + 1))
+        fi
+    done
+
+    printf '%s\n' "$errors"
+}
+
 base_doctor_check_homebrew() {
     local brew_bin
 
@@ -128,89 +171,12 @@ base_doctor_check_python_package() {
 }
 
 base_doctor_run_json() {
-    local brew_bin click_package dev_errors=0 dev_json="[]" errors=0
-    local homebrew_fix="" homebrew_message homebrew_status
+    local dev_errors=0 dev_json="[]" errors=0
     local project="$1"
     local project_errors=0 project_json="[]"
-    local pyyaml_fix="" pyyaml_message pyyaml_package pyyaml_status
-    local python_fix="" python_message python_status
-    local venv_dir venv_fix="" venv_message venv_status
-    local xcode_fix="" xcode_message xcode_status
 
-    click_package="$(setup_click_package)"
-    pyyaml_package="$(setup_pyyaml_package)"
-    setup_ensure_cached_paths
-    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
-
-    if brew_bin="$(setup_find_brew_bin)"; then
-        if setup_refresh_brew_path; then
-            homebrew_status="ok"
-            homebrew_message="Homebrew is installed."
-            log_debug "Resolved Homebrew binary: $brew_bin"
-        else
-            homebrew_status="error"
-            homebrew_message="Homebrew is installed, but its bin directory could not be added to PATH."
-            homebrew_fix="Check Homebrew installation and PATH."
-            errors=$((errors + 1))
-        fi
-    else
-        homebrew_status="error"
-        homebrew_message="Homebrew is not installed."
-        homebrew_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
-
-    if setup_xcode_tools_installed; then
-        xcode_status="ok"
-        xcode_message="Xcode Command Line Tools are installed."
-    else
-        xcode_status="error"
-        xcode_message="Xcode Command Line Tools are not installed."
-        xcode_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
-
-    if setup_python_installed; then
-        python_status="ok"
-        python_message="Python formula '$(setup_python_formula)' is installed via Homebrew."
-    else
-        python_status="error"
-        python_message="Python formula '$(setup_python_formula)' is not installed via Homebrew."
-        python_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
-
-    if setup_virtualenv_exists; then
-        venv_status="ok"
-        venv_message="Virtual environment exists at '$venv_dir'."
-    else
-        venv_status="error"
-        venv_message="Virtual environment is missing at '$venv_dir'."
-        venv_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
-
-    if setup_base_python_package_installed "$pyyaml_package"; then
-        pyyaml_status="ok"
-        pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package" true)"
-        pyyaml_fix=""
-    else
-        pyyaml_status="error"
-        pyyaml_message="$(setup_base_python_package_check_message "$pyyaml_package" false)"
-        pyyaml_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
-
-    if setup_base_python_package_installed "$click_package"; then
-        click_status="ok"
-        click_message="$(setup_base_python_package_check_message "$click_package" true)"
-        click_fix=""
-    else
-        click_status="error"
-        click_message="$(setup_base_python_package_check_message "$click_package" false)"
-        click_fix="basectl setup"
-        errors=$((errors + 1))
-    fi
+    setup_collect_base_check_results warn || true
+    errors="$(base_doctor_count_check_errors)"
 
     if setup_dev_dependencies_enabled; then
         if dev_json="$(setup_run_base_dev_layer doctor --format json)"; then
@@ -240,12 +206,7 @@ base_doctor_run_json() {
     fi
     printf ',\n'
     printf '  "findings": [\n'
-    base_doctor_print_json_finding "," "$homebrew_status" "Homebrew" "$homebrew_message" "$homebrew_fix"
-    base_doctor_print_json_finding "," "$xcode_status" "Xcode Command Line Tools" "$xcode_message" "$xcode_fix"
-    base_doctor_print_json_finding "," "$python_status" "Python" "$python_message" "$python_fix"
-    base_doctor_print_json_finding "," "$venv_status" "Base virtualenv" "$venv_message" "$venv_fix"
-    base_doctor_print_json_finding "," "$pyyaml_status" "$pyyaml_package" "$pyyaml_message" "$pyyaml_fix"
-    base_doctor_print_json_finding "" "$click_status" "$click_package" "$click_message" "$click_fix"
+    base_doctor_print_check_json_results
     printf '  ]'
     if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
         printf ',\n'
