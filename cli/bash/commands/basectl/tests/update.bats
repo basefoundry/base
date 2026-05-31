@@ -40,12 +40,16 @@ load ./basectl_helpers.bash
             base_update_current_branch() { printf "%s\n" master; }
             base_update_default_branch() { printf "%s\n" master; }
             base_update_worktree_clean() { return 1; }
+            base_update_source_git_library() { printf "git library should not load\n"; return 99; }
+            git_update_repo() { printf "git update should not run\n"; return 99; }
             base_update_run_setup() { printf "setup should not run\n"; return 99; }
             base_update_subcommand_main
         '
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Base repository has local changes."* ]]
+    [[ "$output" != *"git library should not load"* ]]
+    [[ "$output" != *"git update should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
 }
 
