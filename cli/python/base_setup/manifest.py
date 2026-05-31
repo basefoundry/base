@@ -22,6 +22,7 @@ else:
 
 CURRENT_MANIFEST_SCHEMA_VERSION = 1
 ENVIRONMENT_VARIABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+COMMAND_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 
 
 class ManifestError(ValueError):
@@ -65,6 +66,7 @@ class BaseManifest:
     test: TestConfig | None = None
     schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
     health: HealthConfig = field(default_factory=HealthConfig)
+    commands: dict[str, str] = field(default_factory=dict)
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -84,7 +86,17 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"schema_version", "project", "brewfile", "mise", "ide", "artifacts", "test", "health"}
+    allowed_top_level = {
+        "schema_version",
+        "project",
+        "brewfile",
+        "mise",
+        "ide",
+        "artifacts",
+        "test",
+        "health",
+        "commands",
+    }
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
@@ -96,6 +108,7 @@ def read_manifest(path: Path) -> BaseManifest:
     ide = _read_ide(path, data.get("ide"))
     test = _read_test(path, data.get("test"))
     health = _read_health(path, data.get("health"))
+    commands = _read_commands(path, data.get("commands"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -108,6 +121,7 @@ def read_manifest(path: Path) -> BaseManifest:
         test=test,
         schema_version=schema_version,
         health=health,
+        commands=commands,
     )
 
 
@@ -213,6 +227,29 @@ def _read_health(path: Path, health_data: Any) -> HealthConfig:
         raise ManifestError(f"{path}: health has unsupported keys: {', '.join(unknown_keys)}.")
 
     return HealthConfig(required_env=_read_required_env(path, health_data.get("required_env", [])))
+
+
+def _read_commands(path: Path, commands_data: Any) -> dict[str, str]:
+    if commands_data is None:
+        return {}
+    if not isinstance(commands_data, dict):
+        raise ManifestError(f"{path}: commands must be a mapping when provided.")
+
+    commands: dict[str, str] = {}
+    for command_name_data, command_data in commands_data.items():
+        if not isinstance(command_name_data, str) or not command_name_data.strip():
+            raise ManifestError(f"{path}: commands keys must be non-empty strings.")
+        command_name = command_name_data.strip()
+        if not COMMAND_NAME_RE.fullmatch(command_name):
+            raise ManifestError(f"{path}: commands.{command_name} must be a valid command name.")
+        if command_name == "test":
+            raise ManifestError(f"{path}: commands.test is reserved; use top-level test.command or test.mise.")
+        if command_name in commands:
+            raise ManifestError(f"{path}: commands duplicates '{command_name}'.")
+        if not isinstance(command_data, str) or not command_data.strip():
+            raise ManifestError(f"{path}: commands.{command_name} must be a non-empty string.")
+        commands[command_name] = command_data.strip()
+    return commands
 
 
 def _read_required_env(path: Path, required_env_data: Any) -> tuple[str, ...]:

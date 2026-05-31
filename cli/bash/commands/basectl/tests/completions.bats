@@ -47,6 +47,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "test_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl run ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "run_projects=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl check --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -55,6 +59,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "test_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl run demo --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "run_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl projects list --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -75,8 +83,10 @@ EOF
     [[ "$output" == *"check_projects=base demo"* ]]
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"test_projects=base demo"* ]]
+    [[ "$output" == *"run_projects=base demo"* ]]
     [[ "$output" == *"check_options=--dev --format"* ]]
     [[ "$output" == *"test_options=--workspace --dry-run"* ]]
+    [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]

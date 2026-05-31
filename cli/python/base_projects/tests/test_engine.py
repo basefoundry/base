@@ -38,6 +38,25 @@ def write_mise_test_manifest(project_root: Path, name: str, task: str) -> None:
     )
 
 
+def write_commands_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        "\n".join(
+            [
+                "project:",
+                f"  name: {name}",
+                "test:",
+                "  command: pytest tests/",
+                "commands:",
+                "  dev: uvicorn app:app --reload",
+                "  lint: ruff check .",
+                "artifacts: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def invoke_engine(
     args: list[str],
     base_home: Path,
@@ -468,6 +487,109 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn("does not declare test.command or test.mise", stderr)
+
+    def test_projects_run_command_prints_project_details_and_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["run-command", "demo", "dev"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\tuvicorn app:app --reload\n",
+        )
+
+    def test_projects_run_command_test_delegates_to_test_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["run-command", "demo", "test"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+        )
+
+    def test_projects_run_command_reports_unknown_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_commands_manifest(project_root, "demo")
+
+            status, _stdout, stderr = run_engine(["run-command", "demo", "serve"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("does not declare command 'serve'", stderr)
+
+    def test_projects_run_commands_lists_test_and_manifest_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["run-commands", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\ttest\tpytest tests/\n"
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\tdev\tuvicorn app:app --reload\n"
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\tlint\truff check .\n",
+        )
+
+    def test_projects_run_commands_defaults_to_current_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            nested = project_root / "docs"
+            write_commands_manifest(project_root, "demo")
+            nested.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["run-commands"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("\ttest\tpytest tests/\n", stdout)
+        self.assertIn("\tdev\tuvicorn app:app --reload\n", stdout)
+
+    def test_projects_run_commands_requires_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, _stdout, stderr = run_engine(["run-commands", "demo"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("does not declare runnable commands", stderr)
 
     def test_projects_manifest_prints_project_details(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -64,6 +64,7 @@ basectl setup <project>
 basectl check <project>
 basectl doctor <project>
 basectl test <project>
+basectl run <project> <command>
 basectl activate <project>
 ```
 
@@ -76,7 +77,8 @@ basectl test base
 Success looks like a workspace where each participating project has a
 `base_manifest.yaml`, appears in `basectl projects list`, can be checked with
 `basectl check <project>`, and can run its declared test command through
-`basectl test <project>`.
+`basectl test <project>` or named project commands through
+`basectl run <project> <command>`.
 
 ## How Base Fits
 
@@ -116,6 +118,7 @@ Current implemented commands include:
 - `basectl projects list`
 - `basectl activate <project>`
 - `basectl test [project]`
+- `basectl run <project> <command>`
 - `basectl onboard`
 - `basectl version`
 
@@ -163,6 +166,10 @@ health:
 
 test:
   command: pytest tests/
+
+commands:
+  dev: uvicorn app:app --reload
+  lint: ruff check .
 ```
 
 `schema_version` is optional for existing manifests and defaults to `1`. It is
@@ -191,11 +198,18 @@ variable values.
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
 substrate. A `test` field gives `basectl test` a single project-owned command
-to run. Projects that keep tasks in `mise` can declare `test.mise` instead:
+to run. A `commands` map gives `basectl run` named project commands that run
+from the project root with the same Base project environment contract as
+`basectl test`. Projects that keep tasks in `mise` can declare `test.mise`
+instead:
 
 ```yaml
 test:
   mise: test
+
+commands:
+  dev: mise run dev
+  lint: mise run lint
 ```
 
 For a polyglot project such as `banyanlabs`, keep Base at the workspace
@@ -299,6 +313,40 @@ basectl test example -- -k focused_case
 ```
 
 For `test.mise`, Base passes those arguments after `mise run <task> --`.
+
+Run other manifest-declared project commands with:
+
+```bash
+basectl run example dev
+basectl run example lint
+```
+
+The `commands` map is intentionally small and declarative:
+
+```yaml
+commands:
+  dev: uvicorn app:app --reload
+  lint: ruff check .
+  format: ruff format .
+```
+
+`basectl run <project> <command>` runs the command from the project root,
+exports the same `BASE_PROJECT`, `BASE_PROJECT_ROOT`,
+`BASE_PROJECT_MANIFEST`, and `BASE_PROJECT_VENV_DIR` variables as
+`basectl test`, prepends the project virtual environment when it exists, and
+returns the command's exit status. Use `basectl run <project> --list` to see a
+project's runnable commands. When the current directory is inside a
+Base-managed project, `basectl run --list` lists that project.
+
+Pass additional arguments after `--`:
+
+```bash
+basectl run example lint -- --fix
+```
+
+The command name `test` is reserved for the top-level `test` contract, so
+`basectl run example test` delegates to the same command as
+`basectl test example`.
 
 Once a project is discoverable, activate it with:
 

@@ -13,7 +13,7 @@ import base_cli
 from base_cli.config import read_user_config
 from base_cli.paths import base_cache_root
 from base_cli.paths import discover_manifest
-from base_setup.manifest import ManifestError, TestConfig, read_manifest
+from base_setup.manifest import BaseManifest, ManifestError, TestConfig, read_manifest
 
 
 app = base_cli.App(name="base_projects")
@@ -39,8 +39,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
-@base_cli.argument("command", required=False)
-@base_cli.argument("project", required=False)
+@base_cli.argument("arguments", nargs=-1)
 @base_cli.option(
     "--workspace",
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
@@ -48,27 +47,100 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--format", "output_format", default="text", help="Output format for list: text or json.")
 def run(
     ctx: base_cli.Context,
-    command: str | None,
-    project: str | None,
+    arguments: tuple[str, ...],
     workspace: str | None,
     output_format: str,
 ) -> int:
-    if command in (None, "list"):
-        return list_projects_command(ctx, workspace, output_format)
-    if command == "current":
-        return current_project_command(ctx)
-    if command == "manifest":
-        return manifest_project_command(ctx, project)
-    if command == "resolve":
-        return resolve_project_command(ctx, project, workspace)
-    if command == "test-command":
-        return test_command_project_command(ctx, project, workspace)
+    try:
+        return dispatch_projects_command(ctx, arguments, workspace, output_format)
+    except ProjectUsageError as exc:
+        ctx.log.error(str(exc))
+        return 2
+
+
+def dispatch_projects_command(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    workspace: str | None,
+    output_format: str,
+) -> int:
+    command = arguments[0] if arguments else "list"
+    command_arguments = arguments[1:] if arguments else ()
+    handlers = {
+        "list": lambda: list_projects_from_args(ctx, command_arguments, workspace, output_format),
+        "current": lambda: current_project_from_args(ctx, command_arguments),
+        "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
+        "resolve": lambda: resolve_project_from_args(ctx, command_arguments, workspace),
+        "test-command": lambda: test_command_project_from_args(ctx, command_arguments, workspace),
+        "run-command": lambda: run_command_project_from_args(ctx, command_arguments, workspace),
+        "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, workspace),
+    }
+    handler = handlers.get(command)
+    if handler is not None:
+        return handler()
 
     ctx.log.error(
-        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, test-command.",
+        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
+        "test-command, run-command, run-commands.",
         command,
     )
     return 2
+
+
+class ProjectUsageError(RuntimeError):
+    pass
+
+
+def require_argument_count(command: str, arguments: tuple[str, ...], minimum: int, maximum: int) -> None:
+    if len(arguments) < minimum:
+        raise ProjectUsageError(f"Project command '{command}' requires at least {minimum} argument(s).")
+    if len(arguments) > maximum:
+        raise ProjectUsageError(f"Project command '{command}' accepts at most {maximum} argument(s).")
+
+
+def optional_project_argument(command: str, arguments: tuple[str, ...]) -> str | None:
+    require_argument_count(command, arguments, 0, 1)
+    return arguments[0] if arguments else None
+
+
+def list_projects_from_args(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    workspace: str | None,
+    output_format: str,
+) -> int:
+    require_argument_count("list", arguments, 0, 0)
+    return list_projects_command(ctx, workspace, output_format)
+
+
+def current_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
+    require_argument_count("current", arguments, 0, 0)
+    return current_project_command(ctx)
+
+
+def manifest_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
+    require_argument_count("manifest", arguments, 0, 1)
+    return manifest_project_command(ctx, arguments[0] if arguments else None)
+
+
+def resolve_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
+    require_argument_count("resolve", arguments, 1, 1)
+    return resolve_project_command(ctx, arguments[0], workspace)
+
+
+def test_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
+    project = optional_project_argument("test-command", arguments)
+    return test_command_project_command(ctx, project, workspace)
+
+
+def run_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
+    require_argument_count("run-command", arguments, 2, 2)
+    return run_command_project_command(ctx, arguments[0], arguments[1], workspace)
+
+
+def list_run_commands_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
+    project = optional_project_argument("run-commands", arguments)
+    return list_run_commands_command(ctx, project, workspace)
 
 
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
@@ -135,6 +207,52 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
     return 0
 
 
+def run_command_project_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    command_name: str | None,
+    workspace: str | None,
+) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+    if not command_name:
+        ctx.log.error("Command name is required.")
+        return 2
+
+    try:
+        project = resolve_named_project(ctx, project_name, workspace)
+        manifest = read_manifest(project.manifest_path)
+        command_text = project_command(manifest, command_name)
+    except (ProjectDiscoveryError, ManifestError, ProjectCommandError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{command_text}")
+    return 0
+
+
+def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    try:
+        if project_name:
+            project = resolve_named_project(ctx, project_name, workspace)
+        else:
+            project = current_project()
+        manifest = read_manifest(project.manifest_path)
+    except (ProjectDiscoveryError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    commands = project_commands(manifest)
+    if not commands:
+        ctx.log.error("Project '%s' does not declare runnable commands in '%s'.", project.name, project.manifest_path)
+        return 1
+
+    for command_name, command_text in commands.items():
+        print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{command_name}\t{command_text}")
+    return 0
+
+
 def current_project_command(ctx: base_cli.Context) -> int:
     try:
         project = current_project()
@@ -160,6 +278,32 @@ def test_command(test_config: TestConfig) -> str:
     if test_config.mise is not None:
         return shlex.join(["mise", "run", test_config.mise])
     raise ValueError("TestConfig must have command or mise set.")
+
+
+class ProjectCommandError(RuntimeError):
+    pass
+
+
+def project_commands(manifest: BaseManifest) -> dict[str, str]:
+    commands: dict[str, str] = {}
+    if manifest.test is not None:
+        commands["test"] = test_command(manifest.test)
+    commands.update(manifest.commands)
+    return commands
+
+
+def project_command(manifest: BaseManifest, command_name: str) -> str:
+    commands = project_commands(manifest)
+    try:
+        return commands[command_name]
+    except KeyError as exc:
+        if command_name == "test":
+            raise ProjectCommandError(
+                f"Project '{manifest.project_name}' does not declare test.command or test.mise in '{manifest.path}'."
+            ) from exc
+        raise ProjectCommandError(
+            f"Project '{manifest.project_name}' does not declare command '{command_name}' in '{manifest.path}'."
+        ) from exc
 
 
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:

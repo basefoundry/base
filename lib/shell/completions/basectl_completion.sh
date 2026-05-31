@@ -35,7 +35,7 @@ _base_basectl_completion_project_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test clean config doctor gh onboard update-profile update projects version help"
+    local commands="activate setup check test run clean config doctor gh onboard update-profile update projects version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -69,6 +69,9 @@ _base_basectl_completion() {
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
+            ;;
+        run)
+            _base_basectl_completion_project_or_options "--workspace --dry-run --list -v -h --help" "$cur"
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --keep-last --dry-run -v -h --help" "$cur"

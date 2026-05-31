@@ -126,6 +126,7 @@ It owns the current Base subcommands:
 - `doctor`
 - `activate`
 - `test`
+- `run`
 - `projects list`
 - `update-profile`
 - `version`
