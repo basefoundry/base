@@ -303,12 +303,15 @@ machine-readable output.
 Start a new Base-managed repository with:
 
 ```bash
-basectl repo init example --path ~/work/example --repo codeforester/example
+basectl repo init example --repo codeforester/example
 ```
 
 This creates the local repository baseline: README, version, changelog,
 contributing guide, MIT license, `.gitignore`, `base_manifest.yaml`, a
 `tests/validate.sh` contract, and a GitHub Actions workflow that runs it.
+By default, `repo init` creates the repository under `workspace.root` from
+`~/.base.d/config.yaml`; if that is not configured, it falls back to the parent
+directory of `BASE_HOME`. Use `--path <path>` for an explicit location.
 `repo init` also standardizes the GitHub repository when `--repo <owner/name>`
 is provided or when an existing `origin` remote can be inferred. Use
 `--no-configure` to skip the GitHub step, or rerun it later with

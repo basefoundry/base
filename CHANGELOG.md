@@ -15,6 +15,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 ### Fixed
 
 - Updated the README status section to match the current `0.2.0` release.
+- Fixed `basectl repo init` to create new repositories under the configured
+  workspace root instead of the caller's current directory.
 
 ## [0.2.0] - 2026-05-30
 
