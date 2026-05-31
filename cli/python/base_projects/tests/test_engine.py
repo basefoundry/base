@@ -38,17 +38,49 @@ def write_mise_test_manifest(project_root: Path, name: str, task: str) -> None:
     )
 
 
-def run_engine(args: list[str], base_home: Path, user_config: str | None = None) -> tuple[int, str, str]:
+def invoke_engine(
+    args: list[str],
+    base_home: Path,
+    home: Path,
+    user_config: str | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
+    if user_config is not None:
+        config_path = home / ".base.d" / "config.yaml"
+        config_path.parent.mkdir(parents=True)
+        config_path.write_text(user_config, encoding="utf-8")
+    env = {
+        "HOME": str(home),
+        "BASE_HOME": str(base_home),
+        "BASE_PROJECT": "",
+        "BASE_PROJECT_MANIFEST": "",
+    }
+    if extra_env is not None:
+        env.update(extra_env)
+    with mock.patch.dict(os.environ, env):
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            status = engine.main(args)
+    return status, stdout.getvalue(), stderr.getvalue()
+
+
+def run_engine(
+    args: list[str],
+    base_home: Path,
+    user_config: str | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> tuple[int, str, str]:
     with tempfile.TemporaryDirectory() as home_dir:
-        if user_config is not None:
-            config_path = Path(home_dir) / ".base.d" / "config.yaml"
-            config_path.parent.mkdir(parents=True)
-            config_path.write_text(user_config, encoding="utf-8")
-        with mock.patch.dict(os.environ, {"HOME": home_dir, "BASE_HOME": str(base_home)}):
-            with redirect_stdout(stdout), redirect_stderr(stderr):
-                status = engine.main(args)
+        return invoke_engine(args, base_home, Path(home_dir), user_config=user_config, extra_env=extra_env)
+
+
+def run_engine_with_home(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_HOME": str(base_home)}):
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
 
 
@@ -145,6 +177,57 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(json.loads(stdout), [{"name": "demo", "path": str((workspace / "demo").resolve())}])
 
+    def test_projects_list_reuses_project_cache_when_manifests_are_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            with mock.patch("base_projects.engine.read_project", wraps=engine.read_project) as read_project_mock:
+                status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
+                self.assertEqual(status, 0)
+                self.assertEqual(stderr, "")
+                self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
+
+                status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
+        self.assertEqual(read_project_mock.call_count, 1)
+
+    def test_projects_list_invalidates_project_cache_when_manifest_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_manifest(project_root, "demo")
+
+            with mock.patch("base_projects.engine.read_project", wraps=engine.read_project) as read_project_mock:
+                status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
+                self.assertEqual(status, 0)
+                self.assertEqual(stderr, "")
+                self.assertEqual(stdout, f"demo\t{project_root.resolve()}\n")
+
+                manifest = project_root / "base_manifest.yaml"
+                manifest.write_text("project:\n  name: renamed\nartifacts: []\n", encoding="utf-8")
+                stat_result = manifest.stat()
+                os.utime(manifest, ns=(stat_result.st_atime_ns, stat_result.st_mtime_ns + 1_000_000_000))
+                status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"renamed\t{project_root.resolve()}\n")
+        self.assertEqual(read_project_mock.call_count, 2)
+
     def test_projects_list_rejects_unknown_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
@@ -169,6 +252,79 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+
+    def test_projects_resolve_uses_active_project_manifest_without_workspace_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base"
+            base_home.mkdir()
+            project_root = root / "active" / "demo"
+            manifest_path = project_root / "base_manifest.yaml"
+            write_manifest(project_root, "demo")
+
+            with mock.patch(
+                "base_projects.engine.discover_projects_cached",
+                side_effect=AssertionError("workspace scan should not run"),
+            ):
+                status, stdout, stderr = run_engine(
+                    ["resolve", "demo"],
+                    base_home,
+                    extra_env={
+                        "BASE_PROJECT": "demo",
+                        "BASE_PROJECT_MANIFEST": str(manifest_path),
+                    },
+                )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}\n")
+
+    def test_projects_resolve_explicit_workspace_wins_over_active_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base"
+            base_home.mkdir()
+            active_root = root / "active" / "demo"
+            explicit_workspace = root / "explicit"
+            explicit_root = explicit_workspace / "demo"
+            write_manifest(active_root, "demo")
+            write_manifest(explicit_root, "demo")
+
+            status, stdout, stderr = run_engine(
+                ["resolve", "demo", "--workspace", str(explicit_workspace)],
+                base_home,
+                extra_env={
+                    "BASE_PROJECT": "demo",
+                    "BASE_PROJECT_MANIFEST": str(active_root / "base_manifest.yaml"),
+                },
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}\n",
+        )
+
+    def test_projects_resolve_rejects_active_project_manifest_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base"
+            base_home.mkdir()
+            project_root = root / "active" / "demo"
+            write_manifest(project_root, "other")
+
+            status, _stdout, stderr = run_engine(
+                ["resolve", "demo"],
+                base_home,
+                extra_env={
+                    "BASE_PROJECT": "demo",
+                    "BASE_PROJECT_MANIFEST": str(project_root / "base_manifest.yaml"),
+                },
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("BASE_PROJECT is 'demo' but BASE_PROJECT_MANIFEST points to project 'other'", stderr)
 
     def test_projects_resolve_prefers_configured_workspace_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -410,7 +566,6 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
             with self.assertRaisesRegex(engine.ProjectDiscoveryError, "Duplicate project names"):
                 engine.discover_projects(workspace)
-
 
 if __name__ == "__main__":
     unittest.main()
