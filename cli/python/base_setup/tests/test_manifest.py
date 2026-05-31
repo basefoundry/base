@@ -35,6 +35,7 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
         self.assertFalse(manifest.artifacts[0].bootstrap)
+        self.assertEqual(manifest.activate.source, ())
 
 
 
@@ -152,6 +153,63 @@ class ManifestParsingTests(unittest.TestCase):
             manifest = read_manifest(manifest_path)
 
         self.assertEqual(manifest.health.required_env, ("DATABASE_URL", "REDIS_URL"))
+
+
+
+    def test_reads_manifest_activation_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "activate:",
+                        "  source:",
+                        "    - .base/activate.sh",
+                        "    - scripts/local-env.sh",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.activate.source, (".base/activate.sh", "scripts/local-env.sh"))
+
+
+
+    def test_rejects_invalid_manifest_activation_sources(self) -> None:
+        invalid_values = {
+            "scalar_activate": "activate: .base/activate.sh",
+            "unknown_key": "activate:\n  run:\n    - .base/activate.sh",
+            "scalar_source": "activate:\n  source: .base/activate.sh",
+            "empty": "activate:\n  source:\n    - ''",
+            "non_string": "activate:\n  source:\n    - 7",
+            "duplicate": "activate:\n  source:\n    - .base/activate.sh\n    - .base/activate.sh",
+            "newline": "activate:\n  source:\n    - \"scripts/env\\n.sh\"",
+        }
+        for name, activate_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                activate_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
 
 
 

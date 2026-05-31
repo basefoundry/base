@@ -55,17 +55,21 @@ def run(
 ) -> int:
     if command in (None, "list"):
         return list_projects_command(ctx, workspace, output_format)
-    if command == "current":
-        return current_project_command(ctx)
-    if command == "manifest":
-        return manifest_project_command(ctx, project)
-    if command == "resolve":
-        return resolve_project_command(ctx, project, workspace)
-    if command == "test-command":
-        return test_command_project_command(ctx, project, workspace)
+
+    command_handlers = {
+        "current": lambda: current_project_command(ctx),
+        "manifest": lambda: manifest_project_command(ctx, project),
+        "resolve": lambda: resolve_project_command(ctx, project, workspace),
+        "activation-sources": lambda: activation_sources_project_command(ctx, project, workspace),
+        "test-command": lambda: test_command_project_command(ctx, project, workspace),
+    }
+    handler = command_handlers.get(command)
+    if handler is not None:
+        return handler()
 
     ctx.log.error(
-        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, test-command.",
+        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
+        "activation-sources, test-command.",
         command,
     )
     return 2
@@ -135,6 +139,24 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
     return 0
 
 
+def activation_sources_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+
+    try:
+        project = resolve_named_project(ctx, project_name, workspace)
+        manifest = read_manifest(project.manifest_path)
+        sources = activation_source_paths(project, manifest.activate.source)
+    except (ProjectDiscoveryError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    for source in sources:
+        print(source)
+    return 0
+
+
 def current_project_command(ctx: base_cli.Context) -> int:
     try:
         project = current_project()
@@ -160,6 +182,37 @@ def test_command(test_config: TestConfig) -> str:
     if test_config.mise is not None:
         return shlex.join(["mise", "run", test_config.mise])
     raise ValueError("TestConfig must have command or mise set.")
+
+
+def activation_source_paths(project: Project, source_paths: tuple[str, ...]) -> tuple[Path, ...]:
+    return tuple(
+        resolve_activation_source_path(project, source_path, index)
+        for index, source_path in enumerate(source_paths, start=1)
+    )
+
+
+def resolve_activation_source_path(project: Project, source_path: str, index: int) -> Path:
+    field = f"activate.source[{index}]"
+    project_root = project.root.resolve()
+    declared_path = Path(source_path)
+    if declared_path.is_absolute():
+        raise ProjectDiscoveryError(
+            f"{project.manifest_path}: {field} must be a relative path inside the project root."
+        )
+
+    candidate = (project_root / declared_path).resolve()
+    try:
+        candidate.relative_to(project_root)
+    except ValueError as exc:
+        raise ProjectDiscoveryError(
+            f"{project.manifest_path}: {field} resolves outside the project root: {source_path}."
+        ) from exc
+
+    if not candidate.exists():
+        raise ProjectDiscoveryError(f"{project.manifest_path}: {field} script '{source_path}' does not exist.")
+    if not candidate.is_file():
+        raise ProjectDiscoveryError(f"{project.manifest_path}: {field} script '{source_path}' is not a file.")
+    return candidate
 
 
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:

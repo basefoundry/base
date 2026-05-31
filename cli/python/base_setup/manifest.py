@@ -55,6 +55,11 @@ class HealthConfig:
 
 
 @dataclass(frozen=True)
+class ActivateConfig:
+    source: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
@@ -65,6 +70,7 @@ class BaseManifest:
     test: TestConfig | None = None
     schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
     health: HealthConfig = field(default_factory=HealthConfig)
+    activate: ActivateConfig = field(default_factory=ActivateConfig)
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -84,7 +90,17 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"schema_version", "project", "brewfile", "mise", "ide", "artifacts", "test", "health"}
+    allowed_top_level = {
+        "schema_version",
+        "project",
+        "brewfile",
+        "mise",
+        "ide",
+        "artifacts",
+        "test",
+        "health",
+        "activate",
+    }
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
@@ -96,6 +112,7 @@ def read_manifest(path: Path) -> BaseManifest:
     ide = _read_ide(path, data.get("ide"))
     test = _read_test(path, data.get("test"))
     health = _read_health(path, data.get("health"))
+    activate = _read_activate(path, data.get("activate"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -108,6 +125,7 @@ def read_manifest(path: Path) -> BaseManifest:
         test=test,
         schema_version=schema_version,
         health=health,
+        activate=activate,
     )
 
 
@@ -213,6 +231,41 @@ def _read_health(path: Path, health_data: Any) -> HealthConfig:
         raise ManifestError(f"{path}: health has unsupported keys: {', '.join(unknown_keys)}.")
 
     return HealthConfig(required_env=_read_required_env(path, health_data.get("required_env", [])))
+
+
+def _read_activate(path: Path, activate_data: Any) -> ActivateConfig:
+    if activate_data is None:
+        return ActivateConfig()
+    if not isinstance(activate_data, dict):
+        raise ManifestError(f"{path}: activate must be a mapping when provided.")
+
+    allowed_keys = {"source"}
+    unknown_keys = sorted(set(activate_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: activate has unsupported keys: {', '.join(unknown_keys)}.")
+
+    return ActivateConfig(source=_read_activate_sources(path, activate_data.get("source", [])))
+
+
+def _read_activate_sources(path: Path, source_data: Any) -> tuple[str, ...]:
+    if source_data is None:
+        return ()
+    if not isinstance(source_data, list):
+        raise ManifestError(f"{path}: activate.source must be a list when provided.")
+
+    sources: list[str] = []
+    seen: set[str] = set()
+    for index, source_path_data in enumerate(source_data, start=1):
+        if not isinstance(source_path_data, str) or not source_path_data.strip():
+            raise ManifestError(f"{path}: activate.source[{index}] must be a non-empty string.")
+        source_path = source_path_data.strip()
+        if any(separator in source_path for separator in ("\0", "\n", "\r")):
+            raise ManifestError(f"{path}: activate.source[{index}] must not contain control line breaks.")
+        if source_path in seen:
+            raise ManifestError(f"{path}: activate.source[{index}] duplicates '{source_path}'.")
+        seen.add(source_path)
+        sources.append(source_path)
+    return tuple(sources)
 
 
 def _read_required_env(path: Path, required_env_data: Any) -> tuple[str, ...]:
