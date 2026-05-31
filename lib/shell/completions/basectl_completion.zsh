@@ -19,6 +19,7 @@ _base_basectl_completion() {
         'check:Verify the local Base CLI environment'
         'test:Run a project test command'
         'run:Run a project command'
+        'repo:Create, check, and configure repository baseline'
         'clean:Remove old Base CLI runtime artifacts'
         'config:Inspect Base machine-local user config'
         'doctor:Diagnose the local Base environment'
@@ -91,6 +92,39 @@ _base_basectl_completion() {
                 project_names=("${(@f)$(_base_basectl_completion_project_names)}")
                 _describe -t projects 'Base project' project_names
             fi
+            ;;
+        repo)
+            case "${words[3]:-}" in
+                init)
+                    _arguments '1:repo command:(init check configure)' \
+                        '2:repository name:' \
+                        '--path[Target path]:path:_files' \
+                        '--repo[GitHub repository]:repo:' \
+                        '--description[Repository description]:description:' \
+                        '--copyright-holder[Copyright holder]:name:' \
+                        '--no-configure[Skip GitHub configuration]' \
+                        '--dry-run[Print planned changes]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                check)
+                    _arguments '1:repo command:(init check configure)' \
+                        '2:path:_files' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                configure)
+                    _arguments '1:repo command:(init check configure)' \
+                        '2:path:_files' \
+                        '--repo[GitHub repository]:repo:' \
+                        '--dry-run[Print planned changes]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '1:repo command:(init check configure)'
+                    ;;
+            esac
             ;;
         clean)
             _arguments '--older-than[Artifact age]:age:' \

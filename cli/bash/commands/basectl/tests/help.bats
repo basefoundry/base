@@ -13,6 +13,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"check [project] [options]"* ]]
     [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"run <project> <command> [options]"* ]]
+    [[ "$output" == *"repo <init|check|configure> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
@@ -46,6 +47,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  onboard [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
+    grep -Fqx '  repo <init|check|configure> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]

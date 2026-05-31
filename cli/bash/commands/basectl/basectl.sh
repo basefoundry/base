@@ -19,6 +19,8 @@ Commands:
     Run a project's declared test command.
   run <project> <command> [options]
     Run a project's declared command.
+  repo <init|check|configure> [options]
+    Create, check, and configure a standard Base-managed repository baseline.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   config <path|show|doctor>
@@ -172,6 +174,11 @@ basectl_do_run() {
     base_run_subcommand_main "$@"
 }
 
+basectl_do_repo() {
+    basectl_source_subcommand_module repo || return 1
+    base_repo_subcommand_main "$@"
+}
+
 basectl_do_clean() {
     basectl_source_subcommand_module clean || return 1
     base_clean_subcommand_main "$@"
@@ -312,6 +319,7 @@ basectl_main() {
         check)            basectl_do_check "$@" ;;
         test)             basectl_do_test "$@" ;;
         run)              basectl_do_run "$@" ;;
+        repo)             basectl_do_repo "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;

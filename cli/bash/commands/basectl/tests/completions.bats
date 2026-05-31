@@ -74,7 +74,19 @@ EOF
             COMP_WORDS=(basectl clean --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
-            printf "clean_options=%s\n" "${COMPREPLY[*]}"'
+            printf "clean_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl repo ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "repo_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl repo init --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "repo_init_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl repo configure --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "repo_configure_options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
@@ -90,6 +102,9 @@ EOF
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
+    [[ "$output" == *"repo_commands=init check configure"* ]]
+    [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --no-configure --dry-run"* ]]
+    [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
 }
 
 @test "Bash completion includes setup notification options" {
