@@ -16,7 +16,7 @@ load ./basectl_helpers.bash
 @test "basectl gh issue create applies category label and assignee" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == "auth status" ]]; then
+if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
@@ -38,10 +38,35 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester" ]
 }
 
+@test "basectl gh issue create help does not require authentication" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --help
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl gh issue create"* ]]
+    [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
+    [[ "$output" != *"unexpected gh args"* ]]
+}
+
 @test "basectl gh issue list reports missing gh authentication clearly" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == "auth status" ]]; then
+if [[ "$*" == "auth status -h github.com" ]]; then
     exit 1
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
@@ -75,7 +100,7 @@ EOF
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == "auth status" ]]; then
+if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
 if [[ "$*" == "issue view 117 --json labels --jq .labels[].name | select(. == \"bug\" or . == \"enhancement\" or . == \"documentation\" or . == \"ci\" or . == \"security\")" ]]; then
@@ -189,7 +214,7 @@ EOF
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == "auth status" ]]; then
+if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
@@ -220,6 +245,31 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$(cat "$TEST_STATE_DIR/gh-args")" == pr\ create\ --fill\ --body-file* ]]
     [ "$(cat "$TEST_STATE_DIR/body")" = "Fixes #117" ]
+}
+
+@test "basectl gh pr create help does not require authentication" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main pr create --help
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl gh pr create"* ]]
+    [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
+    [[ "$output" != *"unexpected gh args"* ]]
 }
 
 @test "basectl gh todo import dry-run classifies TODO items" {
