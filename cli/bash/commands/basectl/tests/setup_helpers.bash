@@ -80,6 +80,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
@@ -153,6 +157,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
@@ -297,6 +305,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
@@ -417,11 +429,16 @@ create_base_venv_stub() {
     local venv_dir="${1:-$TEST_HOME/.base.d/base/.venv}"
 
     mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     printf '%s\n' "$4" >> "${BASE_SETUP_TEST_STATE_DIR:?}/pip-show.log"
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
@@ -458,11 +475,16 @@ create_project_setup_venv_stub() {
     local venv_dir="${1:-$TEST_HOME/.base.d/base/.venv}"
 
     mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     shift 2
     printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"

@@ -26,7 +26,7 @@ Check does:
   1. Verify Homebrew is installed.
   2. Verify Xcode Command Line Tools are installed.
   3. Verify Python 3.13 is installed via Homebrew.
-  4. Verify ~/.base.d/base/.venv exists.
+  4. Verify ~/.base.d/base/.venv is healthy.
   5. Verify developer prerequisites from lib/base/dev_manifest.yaml when --dev is passed.
   6. Verify project manifest artifacts when a project name is passed.
 EOF

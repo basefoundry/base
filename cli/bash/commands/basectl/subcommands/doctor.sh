@@ -175,18 +175,15 @@ base_doctor_check_python() {
 }
 
 base_doctor_check_virtualenv() {
-    local venv_dir
-
     setup_ensure_cached_paths
-    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
-    if setup_virtualenv_exists; then
-        base_doctor_print_finding "ok" "BASE-D004" "Base virtualenv" "Virtual environment exists at '$venv_dir'."
+    if setup_virtualenv_healthy; then
+        base_doctor_print_finding "ok" "BASE-D004" "Base virtualenv" "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
         return 0
     fi
 
     base_doctor_print_finding "error" "BASE-D004" "Base virtualenv" \
-        "Virtual environment is missing at '$venv_dir'." \
-        "basectl setup"
+        "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+        "basectl setup --recreate-venv"
     return 1
 }
 

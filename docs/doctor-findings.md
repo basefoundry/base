@@ -22,7 +22,7 @@ fix text, or severity over time, but its ID keeps the same meaning.
 | `BASE-D001` | Homebrew availability and PATH refresh |
 | `BASE-D002` | Xcode Command Line Tools availability |
 | `BASE-D003` | Homebrew Python formula availability |
-| `BASE-D004` | Base virtual environment availability |
+| `BASE-D004` | Base virtual environment integrity |
 | `BASE-D005` | Base `PyYAML` package availability |
 | `BASE-D006` | Base `click` package availability |
 | `BASE-D101` | Unsupported developer prerequisite manager |
@@ -48,6 +48,7 @@ fix text, or severity over time, but its ID keeps the same meaning.
 | `BASE-P032` | Homebrew unavailable for artifact checks |
 | `BASE-P033` | Homebrew artifact package status |
 | `BASE-P040` | Python package artifact status in the project virtual environment |
+| `BASE-P050` | Project virtual environment integrity |
 | `BASE-P100` | User config disables all IDE setup and checks |
 | `BASE-P101` | User config disables setup and checks for one IDE |
 | `BASE-P102` | User IDE setting conflicts with a project manifest setting |

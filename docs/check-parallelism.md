@@ -15,7 +15,7 @@ Good candidates:
 - Homebrew presence and path discovery
 - Xcode Command Line Tools presence
 - Homebrew Python formula presence
-- Base virtual environment presence
+- Base virtual environment integrity
 - Base bootstrap Python package checks
 
 Do not parallelize steps that mutate process state or depend on an earlier
@@ -51,7 +51,7 @@ order:
 1. Homebrew
 2. Xcode Command Line Tools
 3. Python formula
-4. Base virtual environment
+4. Base virtual environment integrity
 5. PyYAML
 6. click
 7. developer prerequisite checks, when `--dev` is set
