@@ -7,6 +7,10 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Updated the README status section to match the current `0.2.0` release.
+
 ## [0.2.0] - 2026-05-30
 
 ### Added
