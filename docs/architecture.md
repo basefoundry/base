@@ -115,7 +115,7 @@ command can validate the target and launch the configured subshell.
 ```
 basectl activate myproject
   ↓
-1. Look up BASE_HOME, scan known projects
+1. Look up BASE_HOME, resolve the workspace root, and scan known projects
 2. Validate myproject exists and has a valid manifest
 3. Set BASE_PROJECT=myproject
 4. Spawn a new subshell
@@ -130,7 +130,8 @@ basectl activate myproject
 
 - Takes a project name as argument (not a directory path)
 - Works from any current directory — the user does not need to be in the project folder
-- Base looks in `$BASE_HOME` to locate and validate the project
+- Base locates projects from explicit `--workspace`, configured `workspace.root`,
+  or the parent of `$BASE_HOME` as a source-checkout fallback
 - Validates that the target is a recognized Base project with a valid manifest
 
 ---

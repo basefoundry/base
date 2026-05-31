@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from base_cli.config import load_user_config, user_config_path
+from base_cli.config import load_user_config, read_user_config, user_config_path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,6 +74,22 @@ def doctor_config_command() -> int:
 
     print_finding("ok", "yaml", "Config YAML is valid.")
     print_finding("ok", "mapping", f"Config contains {len(config)} top-level key(s).")
+    try:
+        user_config = read_user_config()
+    except (RuntimeError, ValueError) as exc:
+        print_finding("error", "schema", str(exc))
+        return 1
+
+    if user_config.workspace.root is None:
+        print_finding(
+            "warn",
+            "workspace",
+            "workspace.root is not configured; project discovery falls back to BASE_HOME's parent.",
+        )
+    elif user_config.workspace.root.is_dir():
+        print_finding("ok", "workspace", f"workspace.root points to '{user_config.workspace.root}'.")
+    else:
+        print_finding("warn", "workspace", f"workspace.root '{user_config.workspace.root}' is not a directory.")
     return 0
 
 

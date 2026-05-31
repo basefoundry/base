@@ -207,8 +207,41 @@ class BaseCliTests(unittest.TestCase):
             config = read_user_config(Path(tmpdir))
 
         self.assertEqual(config.raw, {})
+        self.assertIsNone(config.workspace.root)
         self.assertIsNone(config.ide.enabled)
         self.assertEqual(config.ide.preferences, {})
+
+    def test_read_user_config_parses_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            workspace = home / "work"
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text(f"workspace:\n  root: {workspace}\n", encoding="utf-8")
+
+            config = read_user_config(home)
+
+        self.assertEqual(config.workspace.root, workspace.resolve(strict=False))
+
+    def test_read_user_config_rejects_non_mapping_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("workspace: true\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "workspace must be a mapping"):
+                read_user_config(home)
+
+    def test_read_user_config_rejects_relative_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text("workspace:\n  root: work\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "workspace.root must be an absolute path"):
+                read_user_config(home)
 
     def test_read_user_config_parses_ide_preferences(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

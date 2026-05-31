@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-public-methods
+
 import io
 import json
 import os
@@ -36,10 +38,14 @@ def write_mise_test_manifest(project_root: Path, name: str, task: str) -> None:
     )
 
 
-def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
+def run_engine(args: list[str], base_home: Path, user_config: str | None = None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
     with tempfile.TemporaryDirectory() as home_dir:
+        if user_config is not None:
+            config_path = Path(home_dir) / ".base.d" / "config.yaml"
+            config_path.parent.mkdir(parents=True)
+            config_path.write_text(user_config, encoding="utf-8")
         with mock.patch.dict(os.environ, {"HOME": home_dir, "BASE_HOME": str(base_home)}):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.main(args)
@@ -85,6 +91,44 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
 
+    def test_projects_list_prefers_configured_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "configured-workspace"
+            base_home = root / "homebrew" / "base" / "libexec"
+            base_home.mkdir(parents=True)
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(
+                ["list"],
+                base_home,
+                user_config=f"workspace:\n  root: {workspace}\n",
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{(workspace / 'demo').resolve()}\n")
+
+    def test_projects_list_workspace_override_wins_over_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            configured_workspace = root / "configured"
+            explicit_workspace = root / "explicit"
+            base_home = root / "homebrew" / "base" / "libexec"
+            base_home.mkdir(parents=True)
+            write_manifest(configured_workspace / "configured-demo", "configured-demo")
+            write_manifest(explicit_workspace / "explicit-demo", "explicit-demo")
+
+            status, stdout, stderr = run_engine(
+                ["list", "--workspace", str(explicit_workspace)],
+                base_home,
+                user_config=f"workspace:\n  root: {configured_workspace}\n",
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"explicit-demo\t{(explicit_workspace / 'explicit-demo').resolve()}\n")
+
     def test_projects_list_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir) / "custom"
@@ -126,6 +170,25 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
 
+    def test_projects_resolve_prefers_configured_workspace_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "configured-workspace"
+            base_home = root / "homebrew" / "base" / "libexec"
+            base_home.mkdir(parents=True)
+            project_root = workspace / "demo"
+            write_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(
+                ["resolve", "demo"],
+                base_home,
+                user_config=f"workspace:\n  root: {workspace}\n",
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+
     def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
@@ -135,6 +198,25 @@ class ProjectDiscoveryTests(unittest.TestCase):
             write_manifest(other_base, "base")
 
             status, stdout, stderr = run_engine(["resolve", "base"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\n")
+
+    def test_projects_resolve_base_uses_base_home_with_configured_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "configured-workspace"
+            base_home = root / "homebrew" / "base" / "libexec"
+            other_base = workspace / "base"
+            write_manifest(base_home, "base")
+            write_manifest(other_base, "base")
+
+            status, stdout, stderr = run_engine(
+                ["resolve", "base"],
+                base_home,
+                user_config=f"workspace:\n  root: {workspace}\n",
+            )
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")

@@ -10,7 +10,7 @@ Usage:
   basectl test [project] [options] [-- extra args...]
 
 Options:
-  --workspace <path>  Workspace directory to scan. Defaults to BASE_HOME's parent.
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --dry-run           Print the resolved test command without running it.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.

@@ -26,9 +26,15 @@ class UserIdeConfig:
 
 
 @dataclass(frozen=True)
+class UserWorkspaceConfig:
+    root: Path | None
+
+
+@dataclass(frozen=True)
 class UserConfig:
     raw: dict[str, Any]
     ide: UserIdeConfig
+    workspace: UserWorkspaceConfig = UserWorkspaceConfig(root=None)
 
 
 def user_config_path(home: Path | None = None) -> Path:
@@ -61,7 +67,38 @@ def load_user_config(home: Path | None = None) -> dict[str, Any]:
 
 def read_user_config(home: Path | None = None) -> UserConfig:
     raw = load_user_config(home)
-    return UserConfig(raw=raw, ide=_read_user_ide_config(user_config_path(home), raw.get("ide")))
+    path = user_config_path(home)
+    return UserConfig(
+        raw=raw,
+        workspace=_read_user_workspace_config(path, raw.get("workspace")),
+        ide=_read_user_ide_config(path, raw.get("ide")),
+    )
+
+
+def _read_user_workspace_config(path: Path, workspace_data: Any) -> UserWorkspaceConfig:
+    if workspace_data is None:
+        return UserWorkspaceConfig(root=None)
+    if not isinstance(workspace_data, dict):
+        raise ValueError(f"{path}: workspace must be a mapping when provided.")
+
+    allowed_keys = {"root"}
+    unknown_keys = sorted(set(workspace_data) - allowed_keys)
+    if unknown_keys:
+        raise ValueError(f"{path}: workspace has unsupported keys: {', '.join(unknown_keys)}.")
+
+    return UserWorkspaceConfig(root=_optional_path(path, "workspace.root", workspace_data.get("root")))
+
+
+def _optional_path(path: Path, key: str, value: Any) -> Path | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{path}: {key} must be a non-empty string when provided.")
+
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        raise ValueError(f"{path}: {key} must be an absolute path or start with '~'.")
+    return candidate.resolve(strict=False)
 
 
 def _read_user_ide_config(path: Path, ide_data: Any) -> UserIdeConfig:

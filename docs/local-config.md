@@ -66,6 +66,34 @@ Recognized environment variables include:
 `BASE_CACHE_DIR` separately controls the runtime cache/log/temp root; it is not
 stored in the user config.
 
+## Workspace Root
+
+`workspace.root` tells Base where to discover project repositories when a command
+needs a workspace scan:
+
+```yaml
+workspace:
+  root: ~/work
+```
+
+Project discovery uses this order:
+
+1. explicit `--workspace <path>` for the current command
+2. `workspace.root` from `~/.base.d/config.yaml`
+3. the parent directory of `BASE_HOME`
+
+This distinction matters for Homebrew installs. In a source checkout,
+`BASE_HOME` is usually the `base` repository inside a shared directory such as
+`~/work/base`, so `BASE_HOME`'s parent is a reasonable fallback. In a Homebrew
+install, `BASE_HOME` points to the physical Homebrew install location, not the
+developer's workspace. Set `workspace.root` to make commands such as
+`basectl projects list`, `basectl activate <project>`, and
+`basectl test <project>` independent of how Base itself was installed.
+
+`workspace.root` must be an absolute path or start with `~`. Base does not
+create the directory automatically; `basectl config doctor` reports whether the
+configured path exists.
+
 ## IDE Preferences
 
 User-local IDE preferences can add machine-specific IDE behavior without

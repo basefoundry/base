@@ -74,7 +74,9 @@ that delegate to `basectl`.
   to the delegated test command.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
-- `basectl projects list` scans a workspace for `base_manifest.yaml` files and prints discovered project names and paths.
+- `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
+  when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
+  project names and paths.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.
