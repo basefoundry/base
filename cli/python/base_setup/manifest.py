@@ -56,6 +56,11 @@ class HealthConfig:
 
 
 @dataclass(frozen=True)
+class ActivateConfig:
+    source: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
@@ -67,6 +72,7 @@ class BaseManifest:
     schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
     health: HealthConfig = field(default_factory=HealthConfig)
     commands: dict[str, str] = field(default_factory=dict)
+    activate: ActivateConfig = field(default_factory=ActivateConfig)
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -96,6 +102,7 @@ def read_manifest(path: Path) -> BaseManifest:
         "test",
         "health",
         "commands",
+        "activate",
     }
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
@@ -109,6 +116,7 @@ def read_manifest(path: Path) -> BaseManifest:
     test = _read_test(path, data.get("test"))
     health = _read_health(path, data.get("health"))
     commands = _read_commands(path, data.get("commands"))
+    activate = _read_activate(path, data.get("activate"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -122,6 +130,7 @@ def read_manifest(path: Path) -> BaseManifest:
         schema_version=schema_version,
         health=health,
         commands=commands,
+        activate=activate,
     )
 
 
@@ -250,6 +259,41 @@ def _read_commands(path: Path, commands_data: Any) -> dict[str, str]:
             raise ManifestError(f"{path}: commands.{command_name} must be a non-empty string.")
         commands[command_name] = command_data.strip()
     return commands
+
+
+def _read_activate(path: Path, activate_data: Any) -> ActivateConfig:
+    if activate_data is None:
+        return ActivateConfig()
+    if not isinstance(activate_data, dict):
+        raise ManifestError(f"{path}: activate must be a mapping when provided.")
+
+    allowed_keys = {"source"}
+    unknown_keys = sorted(set(activate_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: activate has unsupported keys: {', '.join(unknown_keys)}.")
+
+    return ActivateConfig(source=_read_activate_sources(path, activate_data.get("source", [])))
+
+
+def _read_activate_sources(path: Path, source_data: Any) -> tuple[str, ...]:
+    if source_data is None:
+        return ()
+    if not isinstance(source_data, list):
+        raise ManifestError(f"{path}: activate.source must be a list when provided.")
+
+    sources: list[str] = []
+    seen: set[str] = set()
+    for index, source_path_data in enumerate(source_data, start=1):
+        if not isinstance(source_path_data, str) or not source_path_data.strip():
+            raise ManifestError(f"{path}: activate.source[{index}] must be a non-empty string.")
+        source_path = source_path_data.strip()
+        if any(separator in source_path for separator in ("\0", "\n", "\r")):
+            raise ManifestError(f"{path}: activate.source[{index}] must not contain control line breaks.")
+        if source_path in seen:
+            raise ManifestError(f"{path}: activate.source[{index}] duplicates '{source_path}'.")
+        seen.add(source_path)
+        sources.append(source_path)
+    return tuple(sources)
 
 
 def _read_required_env(path: Path, required_env_data: Any) -> tuple[str, ...]:

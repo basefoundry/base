@@ -24,7 +24,13 @@ Instead, use the typed contracts Base already understands:
 - `mise` for language runtimes, tool versions, environment variables, and tasks
 - `ide` for supported IDE app, extension, and settings bootstrap
 - `artifacts` for Base-managed artifacts
+- `activate.source` for explicit activation-time shell scripts that run inside
+  the interactive project runtime shell
 - `test.command` or `test.mise` for project-owned test execution
+
+`activate.source` is intentionally not a setup hook: it does not run during
+`basectl setup`, `basectl check`, or `basectl doctor`, and it exists only for
+shell state that must affect the activated interactive subshell.
 
 When a project needs a product-specific guided installer or imperative
 bootstrap, that logic should live in the project repository, for example:

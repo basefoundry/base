@@ -72,6 +72,7 @@ def dispatch_projects_command(
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
         "resolve": lambda: resolve_project_from_args(ctx, command_arguments, workspace),
         "test-command": lambda: test_command_project_from_args(ctx, command_arguments, workspace),
+        "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, workspace),
         "run-command": lambda: run_command_project_from_args(ctx, command_arguments, workspace),
         "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, workspace),
     }
@@ -81,7 +82,7 @@ def dispatch_projects_command(
 
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "test-command, run-command, run-commands.",
+        "test-command, activation-sources, run-command, run-commands.",
         command,
     )
     return 2
@@ -131,6 +132,15 @@ def resolve_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...],
 def test_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
     project = optional_project_argument("test-command", arguments)
     return test_command_project_command(ctx, project, workspace)
+
+
+def activation_sources_project_from_args(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    workspace: str | None,
+) -> int:
+    require_argument_count("activation-sources", arguments, 1, 1)
+    return activation_sources_project_command(ctx, arguments[0], workspace)
 
 
 def run_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
@@ -204,6 +214,24 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         return 1
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{test_command(manifest.test)}")
+    return 0
+
+
+def activation_sources_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+
+    try:
+        project = resolve_named_project(ctx, project_name, workspace)
+        manifest = read_manifest(project.manifest_path)
+        sources = activation_source_paths(project, manifest.activate.source)
+    except (ProjectDiscoveryError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    for source in sources:
+        print(source)
     return 0
 
 
@@ -304,6 +332,37 @@ def project_command(manifest: BaseManifest, command_name: str) -> str:
         raise ProjectCommandError(
             f"Project '{manifest.project_name}' does not declare command '{command_name}' in '{manifest.path}'."
         ) from exc
+
+
+def activation_source_paths(project: Project, source_paths: tuple[str, ...]) -> tuple[Path, ...]:
+    return tuple(
+        resolve_activation_source_path(project, source_path, index)
+        for index, source_path in enumerate(source_paths, start=1)
+    )
+
+
+def resolve_activation_source_path(project: Project, source_path: str, index: int) -> Path:
+    field = f"activate.source[{index}]"
+    project_root = project.root.resolve()
+    declared_path = Path(source_path)
+    if declared_path.is_absolute():
+        raise ProjectDiscoveryError(
+            f"{project.manifest_path}: {field} must be a relative path inside the project root."
+        )
+
+    candidate = (project_root / declared_path).resolve()
+    try:
+        candidate.relative_to(project_root)
+    except ValueError as exc:
+        raise ProjectDiscoveryError(
+            f"{project.manifest_path}: {field} resolves outside the project root: {source_path}."
+        ) from exc
+
+    if not candidate.exists():
+        raise ProjectDiscoveryError(f"{project.manifest_path}: {field} script '{source_path}' does not exist.")
+    if not candidate.is_file():
+        raise ProjectDiscoveryError(f"{project.manifest_path}: {field} script '{source_path}' is not a file.")
+    return candidate
 
 
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:

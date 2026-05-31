@@ -14,6 +14,8 @@ project manifest is found.
 - sources `base_init.sh`
 - adds `$BASE_PROJECT_ROOT/bin` to `PATH` when it exists, keeping `$BASE_HOME/bin` first
 - sources the user's `~/.bashrc` with guardrails
+- activates the project virtual environment
+- sources manifest-declared `activate.source` scripts
 - owns the final runtime prompt
 
 ## Behavior Notes
