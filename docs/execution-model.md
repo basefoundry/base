@@ -196,10 +196,11 @@ $BASE_HOME/lib/bash/runtime/bashrc
 ```
 
 The runtime rcfile sources `base_init.sh`, sources the user's `~/.bashrc` once
-with guardrails, and then sets the Base runtime prompt. This gives the user their
-normal interactive Bash behavior while also making Base stdlib functions such as
-`import_base_lib` available during user Bash startup. Base still owns the final
-runtime prompt.
+with guardrails, activates the project virtual environment, sources any
+manifest-declared `activate.source` scripts, and then sets the Base runtime
+prompt. This gives the user their normal interactive Bash behavior while also
+making Base stdlib functions such as `import_base_lib` available during user
+Bash startup. Base still owns the final runtime prompt.
 
 Bash startup paths share `lib/shell/baserc_guard.sh` for safe `~/.baserc`
 loading and Base-owned variable protection.

@@ -119,11 +119,12 @@ basectl activate myproject
 2. Validate myproject exists and has a valid manifest
 3. Set BASE_PROJECT=myproject
 4. Spawn a new subshell
-5. In the subshell: source the project's shell environment script
+5. In the subshell: load the Base runtime and user Bash startup with guardrails
 6. In the subshell: activate the project's Python virtual environment
-7. Update the prompt to reflect the active project
-8. User works in subshell
-9. User exits → returns to base shell, prompt resets
+7. In the subshell: source manifest-declared activate.source scripts
+8. Update the prompt to reflect the active project
+9. User works in subshell
+10. User exits → returns to base shell, prompt resets
 ```
 
 ### `basectl activate` — Intelligence
@@ -182,6 +183,7 @@ Contains:
 - Project-specific environment variables
 - Project-specific aliases and functions
 - Project-specific Python virtual environment activation
+- Manifest-declared `activate.source` scripts
 - `BASE_PROJECT` updated to the project name
 
 Project-specific settings layer on top of the Base runtime environment. Settings
@@ -344,6 +346,10 @@ health:
     - DATABASE_URL
     - REDIS_URL
 
+activate:
+  source:
+    - .base/activate.sh
+
 test:
   command: pytest tests/
 
@@ -381,11 +387,15 @@ orchestration actions. The design rule is delegation-first:
   top-level `test` contract.
 - Use `health.required_env` for local environment contracts that `basectl check`
   and `basectl doctor` should validate without exposing secret values.
+- Use `activate.source` for explicit project activation scripts that need to
+  affect the interactive runtime shell, such as local environment loading,
+  aliases, or functions. Source paths must be relative to the project root and
+  must resolve inside that root.
 - Let Base own the project virtual environment and Base-aware package
   reconciliation.
 - Do not run arbitrary project setup hooks until Base has a clear safety
-  contract for execution timing, dry-run behavior, interactivity, and
-  diagnostics. See [setup-hooks.md](setup-hooks.md) for the current no-hooks
+  contract for dry-run behavior, interactivity, setup diagnostics, and broader
+  side effects. See [setup-hooks.md](setup-hooks.md) for the setup no-hooks
   decision and future reconsideration criteria.
 
 Base owns the curated tool artifact registry only for things it must manage

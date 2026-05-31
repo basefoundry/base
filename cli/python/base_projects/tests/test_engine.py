@@ -57,6 +57,15 @@ def write_commands_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_activation_manifest(project_root: Path, name: str, sources: list[str]) -> None:
+    project_root.mkdir(parents=True)
+    source_lines = "\n".join(f"    - {source}" for source in sources)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\nactivate:\n  source:\n{source_lines}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
 def invoke_engine(
     args: list[str],
     base_home: Path,
@@ -447,6 +456,100 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tmise run unit\n",
         )
+
+    def test_projects_activation_sources_prints_validated_source_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            first_source = project_root / ".base" / "activate.sh"
+            second_source = project_root / "scripts" / "local-env.sh"
+            write_activation_manifest(project_root, "demo", [".base/activate.sh", "scripts/local-env.sh"])
+            first_source.parent.mkdir()
+            second_source.parent.mkdir()
+            first_source.write_text("export DEMO=1\n", encoding="utf-8")
+            second_source.write_text("export LOCAL_ENV=1\n", encoding="utf-8")
+
+            status, stdout, stderr = run_engine(["activation-sources", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"{first_source.resolve()}\n{second_source.resolve()}\n")
+
+    def test_projects_activation_sources_uses_active_project_manifest_without_workspace_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base"
+            base_home.mkdir()
+            project_root = root / "active" / "demo"
+            activation_script = project_root / ".base" / "activate.sh"
+            write_activation_manifest(project_root, "demo", [".base/activate.sh"])
+            activation_script.parent.mkdir()
+            activation_script.write_text("export DEMO=1\n", encoding="utf-8")
+
+            with mock.patch(
+                "base_projects.engine.discover_projects_cached",
+                side_effect=AssertionError("workspace scan should not run"),
+            ):
+                status, stdout, stderr = run_engine(
+                    ["activation-sources", "demo"],
+                    base_home,
+                    extra_env={
+                        "BASE_PROJECT": "demo",
+                        "BASE_PROJECT_MANIFEST": str(project_root / "base_manifest.yaml"),
+                    },
+                )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"{activation_script.resolve()}\n")
+
+    def test_projects_activation_sources_supports_empty_manifest_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(["activation-sources", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, "")
+
+    def test_projects_activation_sources_rejects_unsafe_paths(self) -> None:
+        cases = {
+            "absolute": ("/tmp/base-activate.sh", "must be a relative path"),
+            "outside": ("../outside.sh", "resolves outside the project root"),
+            "missing": ("missing.sh", "does not exist"),
+            "directory": ("scripts", "is not a file"),
+        }
+        for name, (source_path, expected_error) in cases.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    workspace = Path(tmpdir)
+                    base_home = workspace / "base"
+                    base_home.mkdir()
+                    project_root = workspace / "demo"
+                    write_activation_manifest(project_root, "demo", [source_path])
+                    if name == "directory":
+                        (project_root / "scripts").mkdir()
+
+                    status, _stdout, stderr = run_engine(["activation-sources", "demo"], base_home)
+
+                self.assertEqual(status, 1)
+                self.assertIn(expected_error, stderr)
+
+    def test_projects_activation_sources_requires_project_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_home = Path(tmpdir) / "base"
+            base_home.mkdir()
+
+        status, _stdout, stderr = run_engine(["activation-sources"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertIn("Project command 'activation-sources' requires at least 1 argument", stderr)
 
     def test_test_command_rejects_invalid_config_without_assert(self) -> None:
         with self.assertRaisesRegex(ValueError, "TestConfig must have command or mise set"):

@@ -28,6 +28,10 @@ _base_runtime_debug() {
     esac
 }
 
+_base_runtime_info() {
+    printf 'INFO: %s\n' "$*" >&2
+}
+
 _base_runtime_source_baserc_guard() {
     local guard_path="$BASE_HOME/lib/shell/baserc_guard.sh"
 
@@ -73,6 +77,36 @@ _base_runtime_activate_project_venv() {
     export VIRTUAL_ENV_DISABLE_PROMPT=1
     # shellcheck source=/dev/null
     source "$activate_script"
+}
+
+_base_runtime_source_project_activation_scripts() {
+    local script
+    local scripts_output
+    local wrapper="$BASE_HOME/bin/base-wrapper"
+
+    [[ -n "${BASE_PROJECT:-}" ]] || return 0
+    [[ -n "${BASE_PROJECT_ROOT:-}" ]] || return 0
+    [[ -n "${BASE_PROJECT_MANIFEST:-}" ]] || return 0
+
+    [[ -x "$wrapper" ]] || {
+        _base_runtime_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+
+    scripts_output="$("$wrapper" base_projects activation-sources "$BASE_PROJECT")" || {
+        _base_runtime_error "Unable to resolve project activation scripts for '$BASE_PROJECT'."
+        return 1
+    }
+
+    while IFS= read -r script; do
+        [[ -n "$script" ]] || continue
+        _base_runtime_info "Sourcing project activation script '$script'."
+        # shellcheck source=/dev/null
+        source "$script" || {
+            _base_runtime_error "Project activation script '$script' failed."
+            return 1
+        }
+    done <<< "$scripts_output"
 }
 
 _base_runtime_add_project_bin_to_path() {
@@ -185,6 +219,7 @@ _base_runtime_main() {
     _base_runtime_add_project_bin_to_path || return $?
     _base_runtime_source_user_bashrc || return $?
     _base_runtime_activate_project_venv || return $?
+    _base_runtime_source_project_activation_scripts || return $?
     _base_runtime_set_prompt
     __base_runtime_bashrc_loaded__=1
     _base_runtime_debug "complete"

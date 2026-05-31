@@ -164,6 +164,10 @@ health:
     - DATABASE_URL
     - REDIS_URL
 
+activate:
+  source:
+    - .base/activate.sh
+
 test:
   command: pytest tests/
 
@@ -194,6 +198,12 @@ the project needs in the local shell. `basectl check <project>` and
 `basectl doctor <project>` report whether those variables are present and
 non-empty. Base only checks presence; it never reads, prints, or logs the
 variable values.
+
+The optional top-level `activate.source` list declares project-root-relative
+shell scripts to source when `basectl activate <project>` starts the runtime
+shell. Base sources those scripts after the Base runtime and project virtual
+environment are ready, rejects paths outside the project root, reports missing
+scripts clearly, and logs only the sourced script path.
 
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
@@ -357,8 +367,9 @@ basectl activate example
 Activation spawns a project-specific subshell, changes to the project root, sets
 `BASE_PROJECT` and related project variables, adds project-owned commands from
 `$PROJECT_ROOT/bin` when that directory exists, and activates the project
-virtual environment at `~/.base.d/<project>/.venv`. Exit that shell to return to
-the original environment.
+virtual environment at `~/.base.d/<project>/.venv`. If the manifest declares
+`activate.source`, Base then sources each declared script in order. Exit that
+shell to return to the original environment.
 
 Use `basectl activate example --no-cd` to keep the caller's current directory
 while still loading the selected project's Base runtime environment.

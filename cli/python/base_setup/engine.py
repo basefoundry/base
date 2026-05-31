@@ -272,4 +272,5 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         schema_version=manifest.schema_version,
         health=manifest.health,
         commands=manifest.commands,
+        activate=manifest.activate,
     )

@@ -74,6 +74,91 @@ EOF
     [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
+@test "Base runtime shell sources manifest-declared project activation scripts" {
+    local project_root="$TEST_TMPDIR/demo"
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+    local activation_script="$project_root/.base/activate.sh"
+
+    mkdir -p "$project_root/.base" "$venv_dir/bin"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+export VIRTUAL_ENV
+EOF
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+    printf '%s\n' "${BASE_TEST_ACTIVATION_SOURCE:?}"
+    exit 0
+fi
+printf 'unexpected base_projects args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$activation_script" <<'EOF'
+export PROJECT_ACTIVATION_PROJECT="$BASE_PROJECT"
+export PROJECT_ACTIVATION_VENV="$VIRTUAL_ENV"
+project_activation_function() {
+    printf '%s:%s\n' "$PROJECT_ACTIVATION_PROJECT" "$PROJECT_ACTIVATION_VENV"
+}
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        BASE_TEST_ACTIVATION_SOURCE="$activation_script" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "PROJECT_ACTIVATION_PROJECT=%s\n" "${PROJECT_ACTIVATION_PROJECT:-}"; \
+            printf "PROJECT_ACTIVATION_VENV=%s\n" "${PROJECT_ACTIVATION_VENV:-}"; \
+            project_activation_function'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"INFO: Sourcing project activation script '$activation_script'."* ]]
+    [[ "$output" == *"PROJECT_ACTIVATION_PROJECT=demo"* ]]
+    [[ "$output" == *"PROJECT_ACTIVATION_VENV=$venv_dir"* ]]
+    [[ "$output" == *"demo:$venv_dir"* ]]
+}
+
+@test "Base runtime shell reports activation source resolution failures clearly" {
+    local project_root="$TEST_TMPDIR/demo"
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+
+    mkdir -p "$project_root" "$venv_dir/bin"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+export VIRTUAL_ENV
+EOF
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+    printf 'ERROR: %s: activate.source[1] script %q does not exist.\n' "$BASE_PROJECT_MANIFEST" ".base/missing.sh" >&2
+    exit 1
+fi
+printf 'unexpected base_projects args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "shell-continued\n"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"activate.source[1]"* ]]
+    [[ "$output" == *".base/missing.sh"* ]]
+    [[ "$output" == *"ERROR: Unable to resolve project activation scripts for 'demo'."* ]]
+}
+
 @test "Base runtime shell loads base_init before user bashrc and owns final prompt" {
     cat > "$TEST_HOME/.bashrc" <<'EOF'
 alias user_bashrc_alias='printf user-bashrc'
