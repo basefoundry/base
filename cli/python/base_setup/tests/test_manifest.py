@@ -28,12 +28,104 @@ class ManifestParsingTests(unittest.TestCase):
 
             manifest = read_manifest(manifest_path)
 
+        self.assertEqual(manifest.schema_version, 1)
         self.assertEqual(manifest.project_name, "demo")
         self.assertIsNone(manifest.brewfile)
         self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
         self.assertEqual(manifest.artifacts[0].name, "terraform")
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
         self.assertFalse(manifest.artifacts[0].bootstrap)
+
+
+
+    def test_reads_manifest_schema_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 1",
+                        "",
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.schema_version, 1)
+
+
+
+    def test_rejects_non_integer_manifest_schema_version(self) -> None:
+        for schema_version in ("true", "1.5", "v1"):
+            with self.subTest(schema_version=schema_version):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                f"schema_version: {schema_version}",
+                                "",
+                                "project:",
+                                "  name: demo",
+                                "",
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(ManifestError, "schema_version must be an integer"):
+                        read_manifest(manifest_path)
+
+
+
+    def test_rejects_manifest_schema_version_below_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 0",
+                        "",
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "schema_version must be greater than or equal to 1"):
+                read_manifest(manifest_path)
+
+
+
+    def test_rejects_newer_manifest_schema_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 2",
+                        "",
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "Upgrade Base to read this manifest"):
+                read_manifest(manifest_path)
 
 
 
