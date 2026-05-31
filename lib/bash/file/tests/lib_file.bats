@@ -8,6 +8,14 @@ setup() {
     source "$BASE_BASH_DIR/file/lib_file.sh"
 }
 
+file_inode() {
+    if stat -c '%i' "$1" >/dev/null 2>&1; then
+        stat -c '%i' "$1"
+    else
+        stat -f '%i' "$1"
+    fi
+}
+
 @test "update_file_section appends a new marked block when markers are absent" {
     local target="$TEST_TMPDIR/config.txt"
     printf 'line-one' > "$target"
@@ -60,6 +68,33 @@ EOF
     update_file_section "$target" "# BEGIN" "# END" "first" "second" "third"
 
     [ "$(cat "$target")" = $'before\n# BEGIN\nfirst\nsecond\nthird\n# END\nafter' ]
+}
+
+@test "update_file_section skips unchanged existing section" {
+    local before_inode
+    local target="$TEST_TMPDIR/config.txt"
+    cat <<'EOF' > "$target"
+before
+# BEGIN
+same
+content
+# END
+after
+EOF
+    before_inode="$(file_inode "$target")"
+
+    bats_run update_file_section "$target" "# BEGIN" "# END" "same" "content"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Updating '$target'"* ]]
+    [ "$(file_inode "$target")" = "$before_inode" ]
+    [ "$(cat "$target")" = $'before\n# BEGIN\nsame\ncontent\n# END\nafter' ]
+
+    set_log_level DEBUG
+    bats_run update_file_section "$target" "# BEGIN" "# END" "same" "content"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Section already up to date in '$target'."* ]]
 }
 
 @test "update_file_section does not export replacement content to awk" {

@@ -43,6 +43,10 @@ load ./setup_helpers.bash
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
+    [[ "$output" != *"Updating '$TEST_HOME/.bash_profile'"* ]]
+    [[ "$output" != *"Updating '$TEST_HOME/.bashrc'"* ]]
+    [[ "$output" != *"Updating '$TEST_HOME/.zprofile'"* ]]
+    [[ "$output" != *"Updating '$TEST_HOME/.zshrc'"* ]]
     [ "$(grep -c '# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
     [ "$(grep -c '# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line before"* ]]
