@@ -86,8 +86,10 @@ class ArtifactRegistryTests(unittest.TestCase):
 
         self.assertIn(("tool", "bats-core"), tools)
         self.assertIn(("tool", "gh"), tools)
+        self.assertIn(("tool", "shellcheck"), tools)
         self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
         self.assertIsNotNone(get_artifact_definition("tool", "gh"))
+        self.assertIsNotNone(get_artifact_definition("tool", "shellcheck"))
 
 
 

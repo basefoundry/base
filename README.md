@@ -422,10 +422,10 @@ installs Base bootstrap Python packages into that environment. For project
 artifact setup, Base first seeds the target project venv with `bootstrap: true`
 default artifacts and then invokes the Python project setup layer through
 `base-wrapper --project <project>`.
-Developer prerequisites such as BATS and the GitHub CLI are opt-in and
-manifest-driven through `lib/base/dev_manifest.yaml`; use `basectl setup --dev`
-to install them and `basectl check --dev` or `basectl doctor --dev` to verify
-them.
+Developer prerequisites such as BATS, the GitHub CLI, and ShellCheck are opt-in
+and manifest-driven through `lib/base/dev_manifest.yaml`; use
+`basectl setup --dev` to install them and `basectl check --dev` or
+`basectl doctor --dev` to verify them.
 
 If Homebrew is missing, `basectl setup` uses Homebrew's official installer URL
 at `https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`. This is

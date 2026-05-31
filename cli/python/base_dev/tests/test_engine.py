@@ -52,6 +52,7 @@ class DevManifestTests(unittest.TestCase):
 
         self.assertIn(("tool", "bats-core", "latest"), artifacts)
         self.assertIn(("tool", "gh", "latest"), artifacts)
+        self.assertIn(("tool", "shellcheck", "latest"), artifacts)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_manifest_artifacts(self) -> None:
@@ -65,6 +66,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn('"name": "bats-core"', stdout)
         self.assertIn('"ok": false', stdout)
         self.assertIn('"name": "gh"', stdout)
+        self.assertIn('"name": "shellcheck"', stdout)
         self.assertEqual(stderr, "")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -73,6 +75,8 @@ class DevManifestTests(unittest.TestCase):
             if command == ["brew", "list", "bats-core"]:
                 return True
             if command == ["brew", "list", "gh"]:
+                return True
+            if command == ["brew", "list", "shellcheck"]:
                 return True
             if command == ["gh", "auth", "status"]:
                 return False
@@ -104,6 +108,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install bats-core", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install gh", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install shellcheck", stderr)
 
     def test_check_homebrew_artifact_reports_installed_formula(self) -> None:
         artifact = engine.ArtifactRequest("tool", "gh", "latest")
@@ -257,7 +262,7 @@ class DevManifestTests(unittest.TestCase):
             with redirect_stdout(stdout):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
 
-        self.assertEqual(status, 2)
+        self.assertEqual(status, 3)
         self.assertIn("error", stdout.getvalue())
         self.assertIn("Fix: basectl setup --dev", stdout.getvalue())
 
@@ -269,6 +274,8 @@ class DevManifestTests(unittest.TestCase):
             if command == ["brew", "list", "bats-core"]:
                 return True
             if command == ["brew", "list", "gh"]:
+                return True
+            if command == ["brew", "list", "shellcheck"]:
                 return True
             if command == ["gh", "auth", "status"]:
                 return False
@@ -300,7 +307,7 @@ class DevManifestTests(unittest.TestCase):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="json")
 
         findings = json.loads(stdout.getvalue())
-        self.assertEqual(status, 2)
+        self.assertEqual(status, 3)
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup --dev")
 
