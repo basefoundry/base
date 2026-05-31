@@ -151,6 +151,31 @@ def reconcile_artifact(
     raise ArtifactError(f"Artifact manager '{definition.manager}' is not implemented.")
 
 
+def reconcile_artifacts(
+    ctx: base_cli.Context,
+    artifacts: tuple[ArtifactRequest, ...],
+    definitions: tuple[ArtifactDefinition, ...],
+    project: str,
+    dry_run: bool,
+) -> None:
+    pending_python_artifacts: list[tuple[ArtifactDefinition, str]] = []
+
+    def flush_python_artifacts() -> None:
+        nonlocal pending_python_artifacts
+        if not pending_python_artifacts:
+            return
+        reconcile_python_artifacts(ctx, tuple(pending_python_artifacts), project, dry_run=dry_run)
+        pending_python_artifacts = []
+
+    for artifact, definition in zip(artifacts, definitions, strict=True):
+        if definition.manager == "pip":
+            pending_python_artifacts.append((definition, artifact.version))
+            continue
+        flush_python_artifacts()
+        reconcile_artifact(ctx, definition, artifact.version, project, dry_run=dry_run)
+    flush_python_artifacts()
+
+
 def reconcile_homebrew_artifact(
     ctx: base_cli.Context,
     definition: ArtifactDefinition,
@@ -196,26 +221,74 @@ def reconcile_python_artifact(
     project: str,
     dry_run: bool,
 ) -> None:
+    reconcile_python_artifacts(ctx, ((definition, version),), project, dry_run=dry_run)
+
+
+def reconcile_python_artifacts(
+    ctx: base_cli.Context,
+    artifact_definitions: tuple[tuple[ArtifactDefinition, str], ...],
+    project: str,
+    dry_run: bool,
+) -> None:
     venv_dir = project_venv_dir(project)
     python_bin = venv_dir / "bin" / "python"
-    requirement = f"{definition.package}=={version}" if version != "latest" else definition.package
+    missing = []
 
-    if python_artifact_installed(python_bin, definition.package, version):
-        ctx.log.info("Python artifact '%s' is already installed in the project virtual environment.", definition.name)
+    for definition, version in artifact_definitions:
+        if python_artifact_installed(python_bin, definition.package, version):
+            ctx.log.info(
+                "Python artifact '%s' is already installed in the project virtual environment.",
+                definition.name,
+            )
+            continue
+        missing.append((definition, version, python_requirement(definition, version)))
+
+    if not missing:
         return
+
+    requirements = [requirement for _definition, _version, requirement in missing]
 
     if dry_run:
         if not python_bin.exists():
             ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", venv_dir)
-        process.dry_run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+        process.dry_run_command(ctx, [str(python_bin), "-m", "pip", "install", *requirements])
         return
 
     if not python_bin.exists():
         ctx.log.info("Creating project virtual environment at '%s'.", venv_dir)
         venv.create(venv_dir, with_pip=True)
 
-    ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
-    process.run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+    names = ", ".join(definition.name for definition, _version, _requirement in missing)
+    ctx.log.info("Installing Python artifacts into project virtual environment: %s.", names)
+    command = [str(python_bin), "-m", "pip", "install", *requirements]
+    try:
+        process.run_command(ctx, command)
+    except ArtifactError as exc:
+        if len(missing) == 1:
+            raise
+        ctx.log.warning("Batch Python artifact install failed; retrying one artifact at a time.")
+        ctx.log.debug("Batch Python artifact install failed: %s", exc)
+        reconcile_python_artifacts_sequential(ctx, python_bin, missing)
+
+
+def reconcile_python_artifacts_sequential(
+    ctx: base_cli.Context,
+    python_bin: Path,
+    missing: list[tuple[ArtifactDefinition, str, str]],
+) -> None:
+    for definition, version, requirement in missing:
+        if python_artifact_installed(python_bin, definition.package, version):
+            ctx.log.info(
+                "Python artifact '%s' is already installed in the project virtual environment.",
+                definition.name,
+            )
+            continue
+        ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
+        process.run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+
+
+def python_requirement(definition: ArtifactDefinition, version: str) -> str:
+    return f"{definition.package}=={version}" if version != "latest" else definition.package
 
 
 def project_venv_dir(project: str) -> Path:

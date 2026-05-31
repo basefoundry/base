@@ -156,7 +156,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("pip install rich", stderr)
+        self.assertIn("pip install click==8.4.1 PyYAML==6.0.3 rich", stderr)
 
 
 
@@ -279,6 +279,82 @@ class ArtifactReconcileTests(unittest.TestCase):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         project_venv_dir.assert_called_once_with("demo")
+
+    def test_reconcile_artifacts_batches_python_installs(self) -> None:
+        click = get_artifact_definition("python-package", "click")
+        requests = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(click)
+        self.assertIsNotNone(requests)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "venv"
+            python_bin = venv_dir / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.touch()
+            with mock.patch(
+                "base_setup.artifacts.project_venv_dir",
+                return_value=venv_dir,
+            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False), mock.patch(
+                "base_setup.process.run_command"
+            ) as run_command:
+                artifacts.reconcile_artifacts(
+                    ctx,
+                    (
+                        ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1"),
+                        ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),
+                    ),
+                    (click, requests),
+                    "demo",
+                    dry_run=False,
+                )
+
+        run_command.assert_called_once_with(
+            ctx,
+            [str(python_bin), "-m", "pip", "install", "click==8.4.1", "requests"],
+        )
+
+    def test_reconcile_artifacts_retries_python_installs_sequentially_after_batch_failure(self) -> None:
+        click = get_artifact_definition("python-package", "click")
+        requests = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(click)
+        self.assertIsNotNone(requests)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            venv_dir = Path(tmpdir) / "venv"
+            python_bin = venv_dir / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.touch()
+            with mock.patch(
+                "base_setup.artifacts.project_venv_dir",
+                return_value=venv_dir,
+            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False), mock.patch(
+                "base_setup.process.run_command",
+                side_effect=[ArtifactError("batch failed"), None, None],
+            ) as run_command:
+                artifacts.reconcile_artifacts(
+                    ctx,
+                    (
+                        ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1"),
+                        ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),
+                    ),
+                    (click, requests),
+                    "demo",
+                    dry_run=False,
+                )
+
+        self.assertEqual(
+            run_command.call_args_list,
+            [
+                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "click==8.4.1", "requests"]),
+                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "click==8.4.1"]),
+                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "requests"]),
+            ],
+        )
+        ctx.log.warning.assert_called_once_with(
+            "Batch Python artifact install failed; retrying one artifact at a time."
+        )
 
 
 

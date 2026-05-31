@@ -10,7 +10,7 @@ from base_cli.paths import discover_manifest
 
 from .artifacts import check_artifact
 from .artifacts import merge_artifacts
-from .artifacts import reconcile_artifact
+from .artifacts import reconcile_artifacts
 from .artifacts import resolve_artifact_definitions
 from .checks import ArtifactCheck
 from .checks import check_to_doctor_json
@@ -158,8 +158,7 @@ def reconcile_manifest(
     reconcile_ide_extensions(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_settings(ctx, effective_manifest, dry_run=dry_run)
 
-    for artifact, definition in zip(artifacts, definitions, strict=True):
-        reconcile_artifact(ctx, definition, artifact.version, effective_manifest.project_name, dry_run=dry_run)
+    reconcile_artifacts(ctx, artifacts, definitions, effective_manifest.project_name, dry_run=dry_run)
 
     ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
@@ -178,8 +177,7 @@ def reconcile_bootstrap_artifacts(
         ctx.log.info("Base default manifest declares no bootstrap artifacts.")
         return
 
-    for artifact, definition in zip(artifacts, definitions, strict=True):
-        reconcile_artifact(ctx, definition, artifact.version, manifest.project_name, dry_run=dry_run)
+    reconcile_artifacts(ctx, artifacts, definitions, manifest.project_name, dry_run=dry_run)
 
 
 def check_manifest(
