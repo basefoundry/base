@@ -106,6 +106,7 @@ class ProjectCheckTests(unittest.TestCase):
 
         findings = json.loads(stdout.getvalue())
         self.assertEqual(status, 1)
+        self.assertEqual(findings[0]["id"], "BASE-P040")
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup demo")
 
@@ -121,6 +122,7 @@ class ProjectCheckTests(unittest.TestCase):
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
+        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P000")
         self.assertEqual(setup_checks.check_to_doctor_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(

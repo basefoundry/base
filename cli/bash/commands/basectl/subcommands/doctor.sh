@@ -26,11 +26,12 @@ EOF
 
 base_doctor_print_finding() {
     local status="$1"
-    local name="$2"
-    local message="$3"
-    local fix="${4:-}"
+    local finding_id="$2"
+    local name="$3"
+    local message="$4"
+    local fix="${5:-}"
 
-    printf '%-5s  %-26s  %s\n' "$status" "$name" "$message"
+    printf '%-5s  %-9s  %-26s  %s\n' "$status" "$finding_id" "$name" "$message"
     if [[ -n "$fix" ]]; then
         printf '       Fix: %s\n' "$fix"
     fi
@@ -39,16 +40,44 @@ base_doctor_print_finding() {
 base_doctor_print_json_finding() {
     local trailing_comma="$1"
     local status="$2"
-    local name="$3"
-    local message="$4"
-    local fix="${5:-}"
+    local finding_id="$3"
+    local name="$4"
+    local message="$5"
+    local fix="${6:-}"
 
-    printf '    {"status":"%s","name":"%s","message":"%s","fix":"%s"}%s\n' \
+    printf '    {"id":"%s","status":"%s","name":"%s","message":"%s","fix":"%s"}%s\n' \
+        "$(setup_json_escape "$finding_id")" \
         "$(setup_json_escape "$status")" \
         "$(setup_json_escape "$name")" \
         "$(setup_json_escape "$message")" \
         "$(setup_json_escape "$fix")" \
         "$trailing_comma"
+}
+
+base_doctor_base_finding_id() {
+    case "$1" in
+        homebrew)
+            printf '%s\n' "BASE-D001"
+            ;;
+        xcode_command_line_tools)
+            printf '%s\n' "BASE-D002"
+            ;;
+        python)
+            printf '%s\n' "BASE-D003"
+            ;;
+        base_virtualenv)
+            printf '%s\n' "BASE-D004"
+            ;;
+        pyyaml)
+            printf '%s\n' "BASE-D005"
+            ;;
+        click)
+            printf '%s\n' "BASE-D006"
+            ;;
+        *)
+            printf '%s\n' "BASE-D000"
+            ;;
+    esac
 }
 
 base_doctor_print_check_json_results() {
@@ -75,6 +104,7 @@ base_doctor_print_check_json_results() {
         base_doctor_print_json_finding \
             "$trailing_comma" \
             "$status" \
+            "$(base_doctor_base_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
             "${_BASE_SETUP_CHECK_NAMES[$i]}" \
             "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
             "$fix"
@@ -99,27 +129,31 @@ base_doctor_check_homebrew() {
 
     if brew_bin="$(setup_find_brew_bin)"; then
         if setup_refresh_brew_path; then
-            base_doctor_print_finding "ok" "Homebrew" "Homebrew is installed."
+            base_doctor_print_finding "ok" "BASE-D001" "Homebrew" "Homebrew is installed."
             log_debug "Resolved Homebrew binary: $brew_bin"
             return 0
         fi
-        base_doctor_print_finding "error" "Homebrew" \
+        base_doctor_print_finding "error" "BASE-D001" "Homebrew" \
             "Homebrew is installed, but its bin directory could not be added to PATH." \
             "Check Homebrew installation and PATH."
         return 1
     fi
 
-    base_doctor_print_finding "error" "Homebrew" "Homebrew is not installed." "basectl setup"
+    base_doctor_print_finding "error" "BASE-D001" "Homebrew" "Homebrew is not installed." "basectl setup"
     return 1
 }
 
 base_doctor_check_xcode() {
     if setup_xcode_tools_installed; then
-        base_doctor_print_finding "ok" "Xcode Command Line Tools" "Xcode Command Line Tools are installed."
+        base_doctor_print_finding \
+            "ok" \
+            "BASE-D002" \
+            "Xcode Command Line Tools" \
+            "Xcode Command Line Tools are installed."
         return 0
     fi
 
-    base_doctor_print_finding "error" "Xcode Command Line Tools" \
+    base_doctor_print_finding "error" "BASE-D002" "Xcode Command Line Tools" \
         "Xcode Command Line Tools are not installed." \
         "basectl setup"
     return 1
@@ -130,11 +164,11 @@ base_doctor_check_python() {
 
     formula="$(setup_python_formula)"
     if setup_python_installed; then
-        base_doctor_print_finding "ok" "Python" "Python formula '$formula' is installed via Homebrew."
+        base_doctor_print_finding "ok" "BASE-D003" "Python" "Python formula '$formula' is installed via Homebrew."
         return 0
     fi
 
-    base_doctor_print_finding "error" "Python" \
+    base_doctor_print_finding "error" "BASE-D003" "Python" \
         "Python formula '$formula' is not installed via Homebrew." \
         "basectl setup"
     return 1
@@ -146,11 +180,11 @@ base_doctor_check_virtualenv() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     if setup_virtualenv_exists; then
-        base_doctor_print_finding "ok" "Base virtualenv" "Virtual environment exists at '$venv_dir'."
+        base_doctor_print_finding "ok" "BASE-D004" "Base virtualenv" "Virtual environment exists at '$venv_dir'."
         return 0
     fi
 
-    base_doctor_print_finding "error" "Base virtualenv" \
+    base_doctor_print_finding "error" "BASE-D004" "Base virtualenv" \
         "Virtual environment is missing at '$venv_dir'." \
         "basectl setup"
     return 1
@@ -158,13 +192,22 @@ base_doctor_check_virtualenv() {
 
 base_doctor_check_python_package() {
     local package="$1"
+    local finding_id="BASE-D005"
+
+    if [[ "$package" == "$(setup_click_package)" ]]; then
+        finding_id="BASE-D006"
+    fi
 
     if setup_base_python_package_installed "$package"; then
-        base_doctor_print_finding "ok" "$package" "$(setup_base_python_package_check_message "$package" true)"
+        base_doctor_print_finding \
+            "ok" \
+            "$finding_id" \
+            "$package" \
+            "$(setup_base_python_package_check_message "$package" true)"
         return 0
     fi
 
-    base_doctor_print_finding "error" "$package" \
+    base_doctor_print_finding "error" "$finding_id" "$package" \
         "$(setup_base_python_package_check_message "$package" false)" \
         "basectl setup"
     return 1

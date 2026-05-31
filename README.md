@@ -409,7 +409,9 @@ while pruning older logs. This retention mode applies only to `*.log` files;
 temp and cache artifacts continue to use `--older-than`.
 
 Use `basectl doctor` when you want a human-oriented diagnosis with suggested
-fixes:
+fixes. Each finding includes a stable identifier that automation can use
+instead of matching on human-readable messages; see
+[docs/doctor-findings.md](docs/doctor-findings.md).
 
 ```bash
 basectl doctor

@@ -17,10 +17,12 @@ def check_required_env_var(env_name: str) -> ArtifactCheck:
             ok=True,
             message=f"Environment variable '{env_name}' is set.",
             fix="",
+            finding_id="BASE-H001",
         )
     return ArtifactCheck(
         name=env_name,
         ok=False,
         message=f"Environment variable '{env_name}' is not set.",
         fix=f"Set {env_name} in your shell, .env, or secrets manager.",
+        finding_id="BASE-H001",
     )

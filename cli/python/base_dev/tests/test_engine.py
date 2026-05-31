@@ -308,6 +308,7 @@ class DevManifestTests(unittest.TestCase):
 
         findings = json.loads(stdout.getvalue())
         self.assertEqual(status, 3)
+        self.assertEqual(findings[0]["id"], "BASE-D104")
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup --dev")
 
@@ -321,6 +322,7 @@ class DevManifestTests(unittest.TestCase):
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
+        self.assertEqual(engine.check_to_doctor_json(check)["id"], "BASE-D100")
         self.assertEqual(engine.check_to_doctor_json(check)["status"], "warn")
 
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")

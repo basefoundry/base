@@ -65,6 +65,7 @@ def ide_preference_warning_checks(manifest: BaseManifest, user_config: UserConfi
                 message="User config disables all IDE setup and checks for this machine.",
                 fix="Remove or change 'ide.enabled: false' in ~/.base.d/config.yaml to re-enable IDE work.",
                 status="warn",
+                finding_id="BASE-P100",
             )
         )
 
@@ -80,6 +81,7 @@ def ide_preference_warning_checks(manifest: BaseManifest, user_config: UserConfi
                     message=f"User config disables {ide_name} IDE setup and checks for this machine.",
                     fix=f"Remove or change 'ide.{ide_name}.enabled: false' in ~/.base.d/config.yaml to re-enable it.",
                     status="warn",
+                    finding_id="BASE-P101",
                 )
             )
             continue
@@ -100,6 +102,7 @@ def ide_preference_warning_checks(manifest: BaseManifest, user_config: UserConfi
                         "or update the project manifest."
                     ),
                     status="warn",
+                    finding_id="BASE-P102",
                 )
             )
     return checks
@@ -227,6 +230,7 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
                 f"Enable the '{definition.cli}' shell command from {definition.label}, "
                 f"then run 'basectl setup {project}'."
             ),
+            finding_id="BASE-P110",
         )
 
     try:
@@ -237,6 +241,7 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
             ok=False,
             message=str(exc),
             fix=f"basectl setup {project}",
+            finding_id="BASE-P111",
         )
 
     if extension in installed_extensions:
@@ -245,12 +250,14 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
             ok=True,
             message=f"{definition.label} extension '{extension}' is installed.",
             fix="",
+            finding_id="BASE-P112",
         )
     return ArtifactCheck(
         name=extension,
         ok=False,
         message=f"{definition.label} extension '{extension}' is not installed.",
         fix=f"basectl setup {project}",
+        finding_id="BASE-P112",
     )
 
 
@@ -372,6 +379,7 @@ def check_ide_setting(
             ok=False,
             message=str(exc),
             fix=f"Repair '{settings_file}' and run 'basectl setup {project}'.",
+            finding_id="BASE-P120",
         )
 
     if key not in current_settings:
@@ -380,6 +388,7 @@ def check_ide_setting(
             ok=False,
             message=f"{definition.label} setting '{key}' is absent from '{settings_file}'.",
             fix=f"basectl setup {project}",
+            finding_id="BASE-P121",
         )
     if current_settings[key] == expected_value:
         return ArtifactCheck(
@@ -387,6 +396,7 @@ def check_ide_setting(
             ok=True,
             message=f"{definition.label} setting '{key}' matches the Base manifest.",
             fix="",
+            finding_id="BASE-P122",
         )
     return ArtifactCheck(
         name=f"{definition.label} setting: {key}",
@@ -396,6 +406,7 @@ def check_ide_setting(
             f"expected {json.dumps(expected_value, sort_keys=True)}. Base will not overwrite user settings."
         ),
         fix=f"Update '{settings_file}' manually or remove the key and run 'basectl setup {project}'.",
+        finding_id="BASE-P123",
     )
 
 
@@ -406,6 +417,7 @@ def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
             ok=False,
             message=f"Homebrew is required to check {definition.label} installation.",
             fix="basectl setup",
+            finding_id="BASE-P130",
         )
 
     cask_installed = process.run_check(["brew", "list", "--cask", definition.cask])
@@ -417,6 +429,7 @@ def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
             ok=True,
             message=f"{definition.label} is installed and CLI '{definition.cli}' is on PATH.",
             fix="",
+            finding_id="BASE-P131",
         )
     if not cask_installed:
         return ArtifactCheck(
@@ -424,10 +437,12 @@ def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
             ok=False,
             message=f"{definition.label} is not installed via Homebrew cask '{definition.cask}'.",
             fix=f"basectl setup {project}",
+            finding_id="BASE-P131",
         )
     return ArtifactCheck(
         name=f"{definition.label} CLI",
         ok=False,
         message=f"{definition.label} is installed, but CLI '{definition.cli}' is not on PATH.",
         fix=f"Enable the '{definition.cli}' shell command from {definition.label}.",
+        finding_id="BASE-P132",
     )
