@@ -19,6 +19,7 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             ok=False,
             message=str(exc),
             fix=f"Update '{manifest.path}' or run 'basectl setup {manifest.project_name}'.",
+            finding_id="BASE-P010",
         )
 
     if not process.command_exists("brew"):
@@ -27,6 +28,7 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             ok=False,
             message=f"Homebrew is required to check Brewfile dependencies from '{brewfile_path}'.",
             fix="basectl setup",
+            finding_id="BASE-P011",
         )
 
     ok = process.run_check(["brew", "bundle", "check", f"--file={brewfile_path}"])
@@ -36,12 +38,14 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             ok=True,
             message=f"Brewfile dependencies are satisfied for '{brewfile_path}'.",
             fix="",
+            finding_id="BASE-P012",
         )
     return ArtifactCheck(
         name="brewfile",
         ok=False,
         message=f"Brewfile dependencies are not satisfied for '{brewfile_path}'.",
         fix=f"basectl setup {manifest.project_name}",
+        finding_id="BASE-P012",
     )
 
 
@@ -54,6 +58,7 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
             ok=False,
             message=str(exc),
             fix=f"Update '{manifest.path}' or run 'basectl setup {manifest.project_name}'.",
+            finding_id="BASE-P020",
         )
 
     if not process.command_exists("mise"):
@@ -62,6 +67,7 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
             ok=False,
             message=f"mise is required for project config '{mise_path}'.",
             fix="Install mise, then run 'basectl setup'.",
+            finding_id="BASE-P021",
         )
 
     return ArtifactCheck(
@@ -73,6 +79,7 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
         ),
         fix=f"Run 'basectl setup {manifest.project_name}' to install declared mise tools.",
         status="warn",
+        finding_id="BASE-P022",
     )
 
 

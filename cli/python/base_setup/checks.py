@@ -10,6 +10,7 @@ class ArtifactCheck:
     message: str
     fix: str
     status: str = ""
+    finding_id: str = "BASE-P000"
 
 
 def check_to_json(check: ArtifactCheck) -> dict[str, str | bool]:
@@ -23,6 +24,7 @@ def check_to_json(check: ArtifactCheck) -> dict[str, str | bool]:
 
 def check_to_doctor_json(check: ArtifactCheck) -> dict[str, str]:
     return {
+        "id": check.finding_id,
         "status": doctor_status(check),
         "name": check.name,
         "message": check.message,
@@ -34,7 +36,7 @@ def doctor_status(check: ArtifactCheck) -> str:
     return check.status or ("ok" if check.ok else "error")
 
 
-def print_doctor_finding(status: str, name: str, message: str, fix: str = "") -> None:
-    print(f"{status:<5}  {name:<26}  {message}")
+def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
+    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}")
     if fix:
         print(f"       Fix: {fix}")

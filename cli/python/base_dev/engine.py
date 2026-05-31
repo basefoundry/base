@@ -22,6 +22,7 @@ class DevCheck:
     message: str
     fix: str
     status: str = ""
+    finding_id: str = "BASE-D100"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -121,10 +122,10 @@ def doctor_dev_artifacts(
     for check in checks:
         status = doctor_status(check)
         if status == "error":
-            print_doctor_finding("error", check.name, check.message, check.fix)
+            print_doctor_finding("error", check.finding_id, check.name, check.message, check.fix)
             error_count += 1
         else:
-            print_doctor_finding(status, check.name, check.message, check.fix)
+            print_doctor_finding(status, check.finding_id, check.name, check.message, check.fix)
     return min(error_count, 125)
 
 
@@ -150,6 +151,7 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
                 f"Artifact '{artifact.name}' uses unsupported developer prerequisite manager '{definition.manager}'."
             ),
             fix="Update lib/base/dev_manifest.yaml to use a Homebrew-managed tool.",
+            finding_id="BASE-D101",
         )
     if artifact.version != "latest":
         return DevCheck(
@@ -157,6 +159,7 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
             ok=False,
             message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
             fix="Use version 'latest' for Homebrew-managed developer prerequisites.",
+            finding_id="BASE-D102",
         )
 
     if not command_exists("brew"):
@@ -165,6 +168,7 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
             ok=False,
             message=f"Homebrew is required to check developer prerequisite '{artifact.name}'.",
             fix="basectl setup",
+            finding_id="BASE-D103",
         )
 
     ok = run_check(["brew", "list", definition.package])
@@ -174,12 +178,14 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
             ok=True,
             message=f"Artifact '{artifact.name}' is installed via Homebrew package '{definition.package}'.",
             fix="",
+            finding_id="BASE-D104",
         )
     return DevCheck(
         name=artifact.name,
         ok=False,
         message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
         fix="basectl setup --dev",
+        finding_id="BASE-D104",
     )
 
 
@@ -190,6 +196,7 @@ def check_github_cli_auth() -> DevCheck:
             ok=False,
             message="GitHub CLI 'gh' was not found.",
             fix="basectl setup --dev",
+            finding_id="BASE-D105",
         )
 
     ok = run_check(["gh", "auth", "status"])
@@ -199,12 +206,14 @@ def check_github_cli_auth() -> DevCheck:
             ok=True,
             message="GitHub CLI authentication is ready.",
             fix="",
+            finding_id="BASE-D106",
         )
     return DevCheck(
         name="gh-auth",
         ok=False,
         message="GitHub CLI authentication is not ready.",
         fix="gh auth login -h github.com",
+        finding_id="BASE-D106",
     )
 
 
@@ -219,6 +228,7 @@ def check_to_json(check: DevCheck) -> dict[str, str | bool]:
 
 def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
     return {
+        "id": check.finding_id,
         "status": doctor_status(check),
         "name": check.name,
         "message": check.message,
@@ -230,7 +240,7 @@ def doctor_status(check: DevCheck) -> str:
     return check.status or ("ok" if check.ok else "error")
 
 
-def print_doctor_finding(status: str, name: str, message: str, fix: str = "") -> None:
-    print(f"{status:<5}  {name:<26}  {message}")
+def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
+    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}")
     if fix:
         print(f"       Fix: {fix}")

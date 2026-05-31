@@ -72,6 +72,7 @@ def check_artifact(
         ok=False,
         message=f"Artifact manager '{definition.manager}' is not implemented.",
         fix=f"basectl setup {project}",
+        finding_id="BASE-P030",
     )
 
 
@@ -89,6 +90,7 @@ def check_homebrew_artifact(
                 "but Base only supports Homebrew artifact version 'latest' right now."
             ),
             fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
+            finding_id="BASE-P031",
         )
     if not process.command_exists("brew"):
         return ArtifactCheck(
@@ -96,6 +98,7 @@ def check_homebrew_artifact(
             ok=False,
             message=f"Homebrew is required to check artifact '{artifact.name}'.",
             fix="basectl setup",
+            finding_id="BASE-P032",
         )
     ok = process.run_check(["brew", "list", definition.package])
     if ok:
@@ -104,12 +107,14 @@ def check_homebrew_artifact(
             ok=True,
             message=f"Artifact '{artifact.name}' is installed via Homebrew package '{definition.package}'.",
             fix="",
+            finding_id="BASE-P033",
         )
     return ArtifactCheck(
         name=artifact.name,
         ok=False,
         message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
         fix=f"basectl setup {project}",
+        finding_id="BASE-P033",
     )
 
 
@@ -126,12 +131,14 @@ def check_python_artifact(
             ok=True,
             message=f"Python artifact '{artifact.name}' is installed in the project virtual environment.",
             fix="",
+            finding_id="BASE-P040",
         )
     return ArtifactCheck(
         name=artifact.name,
         ok=False,
         message=f"Python artifact '{artifact.name}' is not installed in the project virtual environment.",
         fix=f"basectl setup {project}",
+        finding_id="BASE-P040",
     )
 
 

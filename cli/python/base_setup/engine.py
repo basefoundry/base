@@ -219,10 +219,10 @@ def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, outp
     for check in checks:
         status = doctor_status(check)
         if status == "error":
-            print_doctor_finding("error", check.name, check.message, check.fix)
+            print_doctor_finding("error", check.finding_id, check.name, check.message, check.fix)
             error_count += 1
         else:
-            print_doctor_finding(status, check.name, check.message, check.fix)
+            print_doctor_finding(status, check.finding_id, check.name, check.message, check.fix)
     return min(error_count, 125)
 
 
@@ -255,6 +255,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
                 ok=True,
                 message=f"Project '{effective_manifest.project_name}' declares no artifacts.",
                 fix="",
+                finding_id="BASE-P001",
             )
         )
     return tuple(checks)

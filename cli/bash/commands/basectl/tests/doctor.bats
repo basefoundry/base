@@ -181,12 +181,12 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
     [[ "$output" == *'"findings":'* ]]
-    [[ "$output" == *'"status":"error","name":"homebrew","message":"Homebrew is not installed.","fix":"Run '\''basectl setup'\'' to install Homebrew, or install it manually from https://brew.sh/."'* ]]
-    [[ "$output" == *'"status":"error","name":"xcode_command_line_tools"'* ]]
-    [[ "$output" == *'"status":"error","name":"python"'* ]]
-    [[ "$output" == *'"status":"error","name":"base_virtualenv"'* ]]
-    [[ "$output" == *'"status":"error","name":"pyyaml"'* ]]
-    [[ "$output" == *'"status":"error","name":"click"'* ]]
+    [[ "$output" == *'"id":"BASE-D001","status":"error","name":"homebrew","message":"Homebrew is not installed.","fix":"Run '\''basectl setup'\'' to install Homebrew, or install it manually from https://brew.sh/."'* ]]
+    [[ "$output" == *'"id":"BASE-D002","status":"error","name":"xcode_command_line_tools"'* ]]
+    [[ "$output" == *'"id":"BASE-D003","status":"error","name":"python"'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"error","name":"base_virtualenv"'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"error","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"error","name":"click"'* ]]
     [[ "$output" != *"Base doctor"* ]]
     [ "${stderr:-}" = "" ]
 }
@@ -318,7 +318,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
-    printf '[{"status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
+    printf '[{"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
     exit 0
 fi
 printf 'unexpected doctor project json python args: %s\n' "$*" >&2
@@ -343,7 +343,7 @@ EOF
     [[ "$output" == *'"ok": true'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
-    [[ "$output" == *'"status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"'* ]]
+    [[ "$output" == *'"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"'* ]]
     [[ "$output" != *"Running Python project doctor layer."* ]]
     [ "${stderr:-}" = "" ]
 }
