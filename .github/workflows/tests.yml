@@ -112,3 +112,13 @@ jobs:
             'install.sh' \
             'bin/*' \
             | xargs -0 shellcheck --severity=error
+
+      - name: Run ShellCheck warnings
+        continue-on-error: true
+        run: |
+          git ls-files -z \
+            '*.sh' \
+            'base_init.sh' \
+            'install.sh' \
+            'bin/*' \
+            | xargs -0 shellcheck --severity=warning --format=tty
