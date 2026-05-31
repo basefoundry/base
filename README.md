@@ -142,6 +142,8 @@ root. It declares the project name and the project contracts Base should
 orchestrate:
 
 ```yaml
+schema_version: 1
+
 project:
   name: example
 
@@ -157,6 +159,11 @@ artifacts:
 test:
   command: pytest tests/
 ```
+
+`schema_version` is optional for existing manifests and defaults to `1`. It is
+an integer compatibility marker for the manifest contract, not a Base release
+number. Base rejects manifests with a newer schema version than it understands
+and asks the user to upgrade Base.
 
 The manifest intentionally describes what the project needs, not arbitrary
 commands to execute. Base's direction is delegation-first: use mature tools for
@@ -185,6 +192,8 @@ orchestration layer and let the language-native tools own their usual files.
 Base should see a small manifest contract:
 
 ```yaml
+schema_version: 1
+
 project:
   name: banyanlabs
 

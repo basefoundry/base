@@ -30,7 +30,7 @@ manifest `test.command`.
 
 The demo project should include:
 
-- `base_manifest.yaml` with the real project name.
+- `base_manifest.yaml` with `schema_version: 1` and the real project name.
 - a `Brewfile` if it needs Homebrew tools.
 - Python artifacts only when the project actually needs a Base-managed venv.
 - IDE settings or extensions only when they demonstrate a concrete workflow.

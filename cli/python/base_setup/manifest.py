@@ -19,6 +19,9 @@ else:
     _yaml_import_error = None
 
 
+CURRENT_MANIFEST_SCHEMA_VERSION = 1
+
+
 class ManifestError(ValueError):
     pass
 
@@ -53,6 +56,7 @@ class BaseManifest:
     ide: dict[str, IdeConfig] = field(default_factory=dict)
     mise: str | None = None
     test: TestConfig | None = None
+    schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -72,11 +76,12 @@ def read_manifest(path: Path) -> BaseManifest:
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: manifest must be a YAML mapping.")
 
-    allowed_top_level = {"project", "brewfile", "mise", "ide", "artifacts", "test"}
+    allowed_top_level = {"schema_version", "project", "brewfile", "mise", "ide", "artifacts", "test"}
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
         raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
 
+    schema_version = _read_schema_version(path, data.get("schema_version"))
     project_name = _read_project_name(path, data.get("project"))
     brewfile = _read_brewfile(path, data.get("brewfile"))
     mise = _read_mise(path, data.get("mise"))
@@ -92,7 +97,23 @@ def read_manifest(path: Path) -> BaseManifest:
         ide=ide,
         mise=mise,
         test=test,
+        schema_version=schema_version,
     )
+
+
+def _read_schema_version(path: Path, schema_version_data: Any) -> int:
+    if schema_version_data is None:
+        return CURRENT_MANIFEST_SCHEMA_VERSION
+    if isinstance(schema_version_data, bool) or not isinstance(schema_version_data, int):
+        raise ManifestError(f"{path}: schema_version must be an integer when provided.")
+    if schema_version_data < 1:
+        raise ManifestError(f"{path}: schema_version must be greater than or equal to 1.")
+    if schema_version_data > CURRENT_MANIFEST_SCHEMA_VERSION:
+        raise ManifestError(
+            f"{path}: schema_version {schema_version_data} is newer than supported schema version "
+            f"{CURRENT_MANIFEST_SCHEMA_VERSION}. Upgrade Base to read this manifest."
+        )
+    return schema_version_data
 
 
 def _read_project_name(path: Path, project_data: Any) -> str:

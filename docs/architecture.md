@@ -325,6 +325,8 @@ File: `base_manifest.yaml`
 Current and planned structure:
 
 ```yaml
+schema_version: 1
+
 project:
   name: myproject
 
@@ -340,6 +342,12 @@ artifacts:
 test:
   command: pytest tests/
 ```
+
+`schema_version` is a manifest compatibility marker. Missing values are treated
+as schema version `1`, which keeps existing project manifests valid. Base rejects
+manifests with a schema version newer than the installed Base understands so
+future team-facing manifest expansion can fail with a clear upgrade message
+instead of ambiguous parser behavior.
 
 The Python layer interprets this declarative manifest and translates it into
 orchestration actions. The design rule is delegation-first:
