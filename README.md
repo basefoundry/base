@@ -813,10 +813,10 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base has shipped a macOS-first `0.1.0` public baseline. The implemented command
-surface covers setup, checks, diagnostics, project discovery, project
-activation, project test execution, cleanup, updates, onboarding, and GitHub
-workflow helpers.
+Base `0.2.0` is the current release. The implemented command surface covers
+setup, checks, diagnostics, project discovery, project activation, project test
+execution, mise integration, cleanup, updates, onboarding, and GitHub workflow
+helpers.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,
