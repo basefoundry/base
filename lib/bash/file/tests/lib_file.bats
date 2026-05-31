@@ -104,6 +104,36 @@ EOF
     [ "$(cat "$target")" = $'before\nafter' ]
 }
 
+@test "update_file_section rejects a section with only a start marker" {
+    local target="$TEST_TMPDIR/config.txt"
+    cat <<'EOF' > "$target"
+before
+# BEGIN
+orphaned
+EOF
+
+    bats_run update_file_section "$target" "# BEGIN" "# END" "new"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Asymmetric markers in '$target': 1 start, 0 end. Manual repair needed."* ]]
+    [ "$(cat "$target")" = $'before\n# BEGIN\norphaned' ]
+}
+
+@test "update_file_section rejects a section with only an end marker" {
+    local target="$TEST_TMPDIR/config.txt"
+    cat <<'EOF' > "$target"
+before
+orphaned
+# END
+EOF
+
+    bats_run update_file_section "$target" "# BEGIN" "# END" "new"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Asymmetric markers in '$target': 0 start, 1 end. Manual repair needed."* ]]
+    [ "$(cat "$target")" = $'before\norphaned\n# END' ]
+}
+
 @test "update_file_section is a no-op for a missing target file" {
     local target="$TEST_TMPDIR/missing.txt"
 
