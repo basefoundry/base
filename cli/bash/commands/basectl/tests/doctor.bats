@@ -52,6 +52,10 @@ printf 'gh version test\n'
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
     case "${4:-}" in
         PyYAML|click) exit 0 ;;
@@ -82,7 +86,7 @@ EOF
     [[ "$output" == *"ok"*"Homebrew"*"Homebrew is installed."* ]]
     [[ "$output" == *"ok"*"bats-core"*"Artifact 'bats-core' is installed via Homebrew package 'bats-core'."* ]]
     [[ "$output" == *"ok"*"gh"*"Artifact 'gh' is installed via Homebrew package 'gh'."* ]]
-    [[ "$output" == *"ok"*"Base virtualenv"*"Virtual environment exists at"* ]]
+    [[ "$output" == *"ok"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
 
@@ -122,6 +126,10 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
     case "${4:-}" in
         PyYAML|click) exit 0 ;;
@@ -167,6 +175,64 @@ EOF
     [[ "$output" == *"error"*"Homebrew"*"Homebrew is not installed."* ]]
     [[ "$output" == *"Fix: basectl setup"* ]]
     [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
+}
+
+@test "basectl doctor reports broken Base virtualenv integrity" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local missing_home="$TEST_TMPDIR/missing-python-home"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    printf 'home = %s\n' "$missing_home" > "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"error"*"BASE-D004"*"Base virtualenv"*"home path '$missing_home'"* ]]
+    [[ "$output" == *"Fix: basectl setup --recreate-venv"* ]]
 }
 
 @test "basectl doctor --format json reports structured findings" {
@@ -230,6 +296,10 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
     case "${4:-}" in
         PyYAML|click) exit 0 ;;
@@ -251,6 +321,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
 
     run env \
         HOME="$TEST_HOME" \
@@ -308,6 +379,10 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
     case "${4:-}" in
         PyYAML|click) exit 0 ;;
@@ -329,6 +404,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
@@ -345,5 +421,79 @@ EOF
     [[ "$output" == *'"project_findings":'* ]]
     [[ "$output" == *'"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"'* ]]
     [[ "$output" != *"Running Python project doctor layer."* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl doctor project --format json reports broken project virtualenv integrity" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local missing_home="$TEST_TMPDIR/missing-project-python-home"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected doctor project broken venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cp "$venv_python" "$project_python"
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$venv_python" "$project_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+    printf 'home = %s\n' "$missing_home" > "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor demo --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"project_findings":'* ]]
+    [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
+    [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
+    [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
     [ "${stderr:-}" = "" ]
 }

@@ -37,11 +37,16 @@ load ./setup_helpers.bash
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
     mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0

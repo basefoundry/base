@@ -412,6 +412,9 @@ Use `basectl doctor` when you want a human-oriented diagnosis with suggested
 fixes. Each finding includes a stable identifier that automation can use
 instead of matching on human-readable messages; see
 [docs/doctor-findings.md](docs/doctor-findings.md).
+`basectl check` and `basectl doctor` validate virtual environment integrity,
+not just path existence, and recommend `--recreate-venv` when a Base-managed
+venv is broken.
 
 ```bash
 basectl doctor

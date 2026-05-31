@@ -24,6 +24,7 @@ _BASE_SETUP_CHECK_OK=()
 _BASE_SETUP_CHECK_MESSAGES=()
 _BASE_SETUP_CHECK_RECOVERIES=()
 _BASE_SETUP_CHECK_DEBUG_MESSAGES=()
+_BASE_SETUP_VENV_HEALTH_MESSAGE=""
 
 setup_refresh_cached_paths() {
     local base_pythonpath old_pythonpath
@@ -107,6 +108,77 @@ setup_virtualenv_exists() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     [[ -f "$venv_dir/bin/activate" || -f "$venv_dir/pyvenv.cfg" ]]
+}
+
+setup_pyvenv_cfg_value() {
+    local key="$1"
+    local pyvenv_cfg="$2"
+    local line value
+
+    [[ -f "$pyvenv_cfg" ]] || return 1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        case "$line" in
+            "$key = "*)
+                value="${line#"$key = "}"
+                printf '%s\n' "$value"
+                return 0
+                ;;
+        esac
+    done <"$pyvenv_cfg"
+    return 1
+}
+
+setup_virtualenv_home_has_python() {
+    local candidate home_path="$1"
+
+    [[ -d "$home_path" ]] || return 1
+    for candidate in "$home_path"/python*; do
+        [[ -x "$candidate" && ! -d "$candidate" ]] && return 0
+    done
+    return 1
+}
+
+setup_virtualenv_healthy_path() {
+    local executable_path home_path pyvenv_cfg python_bin venv_dir="$1"
+
+    pyvenv_cfg="$venv_dir/pyvenv.cfg"
+    python_bin="$venv_dir/bin/python"
+    if [[ ! -d "$venv_dir" ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment is missing at '$venv_dir'."
+        return 1
+    fi
+    if [[ ! -f "$pyvenv_cfg" ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment is missing pyvenv.cfg at '$pyvenv_cfg'."
+        return 1
+    fi
+    if [[ ! -x "$python_bin" ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment Python is missing or not executable at '$python_bin'."
+        return 1
+    fi
+    if ! "$python_bin" --version >/dev/null 2>&1; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment Python failed to run at '$python_bin'."
+        return 1
+    fi
+
+    executable_path="$(setup_pyvenv_cfg_value executable "$pyvenv_cfg" || true)"
+    if [[ -n "$executable_path" && ! -x "$executable_path" ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment Python is broken because '$executable_path' no longer exists."
+        return 1
+    fi
+
+    home_path="$(setup_pyvenv_cfg_value home "$pyvenv_cfg" || true)"
+    if [[ -n "$home_path" ]] && ! setup_virtualenv_home_has_python "$home_path"; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment Python is broken because home path '$home_path' no longer provides Python."
+        return 1
+    fi
+
+    _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment is healthy at '$venv_dir'."
+    return 0
+}
+
+setup_virtualenv_healthy() {
+    setup_ensure_cached_paths
+    setup_virtualenv_healthy_path "$_BASE_SETUP_VENV_DIR_CACHE"
 }
 
 setup_venv_dir() {
@@ -595,6 +667,34 @@ setup_project_venv_python_bin() {
     printf '%s\n' "$venv_dir/bin/python"
 }
 
+setup_recovery_project_venv() {
+    local project="$1"
+
+    printf "Run 'basectl setup %s --recreate-venv' to back up and recreate the project virtual environment.\n" "$project"
+}
+
+setup_print_project_venv_check_json() {
+    local ok="$1"
+    local message="$2"
+    local fix="$3"
+
+    printf '[{"name":"project_virtualenv","ok":%s,"message":"%s","fix":"%s"}]\n' \
+        "$ok" \
+        "$(setup_json_escape "$message")" \
+        "$(setup_json_escape "$fix")"
+}
+
+setup_print_project_venv_doctor_json() {
+    local status="$1"
+    local message="$2"
+    local fix="$3"
+
+    printf '[{"id":"BASE-P050","status":"%s","name":"project_virtualenv","message":"%s","fix":"%s"}]\n' \
+        "$(setup_json_escape "$status")" \
+        "$(setup_json_escape "$message")" \
+        "$(setup_json_escape "$fix")"
+}
+
 setup_run_project_artifact_setup() {
     setup_run_project_artifact_layer setup text
 }
@@ -631,7 +731,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path project python_bin resolved_name resolved_root resolve_output venv_dir
+    local exit_code manifest_path project project_venv_dir python_bin resolved_name resolved_root resolve_output venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -693,14 +793,30 @@ setup_run_project_artifact_layer() {
         fi
     fi
 
-    if ! setup_project_venv_python_bin "$project" >/dev/null 2>&1; then
+    project_venv_dir="$(setup_project_venv_dir "$project")"
+    if ! setup_virtualenv_healthy_path "$project_venv_dir"; then
         if setup_is_dry_run && [[ "$action" == setup ]]; then
             log_info "[DRY-RUN] Would run Python project setup layer through base-wrapper for project '$project'."
             return 0
         fi
-        if [[ "$output_format" != json ]]; then
-            log_warn "Project virtual environment Python was not found at '$(setup_project_venv_dir "$project")/bin/python'."
-            log_warn "Run 'basectl setup $project' to bootstrap the project virtual environment."
+        if [[ "$output_format" == json ]]; then
+            if [[ "$action" == doctor ]]; then
+                setup_print_project_venv_doctor_json \
+                    "error" \
+                    "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+                    "$(setup_recovery_project_venv "$project")"
+            else
+                setup_print_project_venv_check_json \
+                    false \
+                    "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+                    "$(setup_recovery_project_venv "$project")"
+            fi
+        elif [[ "$action" == doctor ]]; then
+            printf 'error  %-9s  %-26s  %s\n' "BASE-P050" "Project virtualenv" "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+            printf '       Fix: %s\n' "$(setup_recovery_project_venv "$project")"
+        else
+            log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+            log_warn "$(setup_recovery_project_venv "$project")"
         fi
         return 1
     fi
@@ -787,14 +903,12 @@ setup_collect_base_check_results() {
     local missing=0
     local pyyaml_ok=false pyyaml_package
     local refresh_brew_failure_mode="${1:-warn}"
-    local venv_dir
 
     setup_clear_check_results
     setup_require_macos
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
-    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if brew_bin="$(setup_find_brew_bin)"; then
         if setup_refresh_brew_path; then
@@ -840,13 +954,13 @@ setup_collect_base_check_results() {
         missing=1
     fi
 
-    if setup_virtualenv_exists; then
-        setup_add_check_result "base_virtualenv" true "Virtual environment exists at '$venv_dir'."
+    if setup_virtualenv_healthy; then
+        setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
     else
         setup_add_check_result \
             "base_virtualenv" \
             false \
-            "Virtual environment is missing at '$venv_dir'." \
+            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
             "$(setup_recovery_venv)"
         missing=1
     fi

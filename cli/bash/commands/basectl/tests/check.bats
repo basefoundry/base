@@ -33,7 +33,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"Xcode Command Line Tools are installed."* ]]
     [[ "$output" == *"Python formula 'python@3.13' is installed via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]
-    [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
+    [[ "$output" == *"Virtual environment is healthy at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
@@ -81,7 +81,7 @@ load ./setup_helpers.bash
     run_base_command check
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Virtual environment exists at '$venv_dir'."* ]]
+    [[ "$output" == *"Virtual environment is healthy at '$venv_dir'."* ]]
     [[ "$output" == *"Python package 'PyYAML' is not installed in the Base virtual environment."* ]]
     [[ "$output" == *"Run 'basectl setup' to install Base Python bootstrap packages."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
@@ -178,6 +178,39 @@ load ./setup_helpers.bash
     [ "${stderr:-}" = "" ]
 }
 
+@test "basectl check --format json reports broken Base virtualenv integrity" {
+    local missing_home="$TEST_TMPDIR/missing-python-home"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+    printf 'home = %s\n' "$missing_home" > "$venv_dir/pyvenv.cfg"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"name":"base_virtualenv","ok":false'* ]]
+    [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
+    [ "${stderr:-}" = "" ]
+}
+
 @test "basectl check --format json escapes C0 control characters and DEL in strings" {
     local control_package
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
@@ -243,6 +276,46 @@ load ./setup_helpers.bash
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [[ "$output" == *'"name":"demo-artifact","ok":true'* || "$output" == *'"name": "demo-artifact"'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check project --format json reports broken project virtualenv integrity" {
+    local missing_home="$TEST_TMPDIR/missing-project-python-home"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    printf 'home = %s\n' "$missing_home" > "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_TEST_WORKSPACE="$workspace" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check demo --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"project_checks":'* ]]
+    [[ "$output" == *'"name":"project_virtualenv","ok":false'* ]]
+    [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
+    [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
     [ "${stderr:-}" = "" ]
 }
 
