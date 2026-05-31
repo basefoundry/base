@@ -22,6 +22,7 @@ from .delegates import check_mise
 from .delegates import reconcile_brewfile
 from .delegates import reconcile_mise
 from .errors import ArtifactError
+from .health import check_required_env
 from .ide import check_ide_extensions
 from .ide import check_ide_installs
 from .ide import check_ide_settings
@@ -239,6 +240,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
     if effective_manifest.mise is not None:
         checks.append(check_mise(effective_manifest))
 
+    checks.extend(check_required_env(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
@@ -268,4 +270,5 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         mise=manifest.mise,
         test=manifest.test,
         schema_version=manifest.schema_version,
+        health=manifest.health,
     )

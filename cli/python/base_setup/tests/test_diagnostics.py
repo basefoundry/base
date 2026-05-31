@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_setup import artifacts, checks as setup_checks, engine, ide
-from base_setup.manifest import ArtifactRequest, BaseManifest, IdeConfig, read_manifest
+from base_setup.manifest import ArtifactRequest, BaseManifest, HealthConfig, IdeConfig, read_manifest
 from base_setup.registry import get_artifact_definition
 from base_setup.tests.helpers import fake_context, run_engine
 
@@ -142,6 +142,86 @@ class ProjectCheckTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("warn", stdout.getvalue())
+
+
+
+    def test_check_manifest_reports_required_environment_variables(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            health=HealthConfig(
+                required_env=(
+                    "BASE_TEST_REQUIRED_PRESENT",
+                    "BASE_TEST_REQUIRED_MISSING",
+                )
+            ),
+        )
+
+        with mock.patch.dict(os.environ, {"BASE_TEST_REQUIRED_PRESENT": "super-secret-value"}, clear=False):
+            os.environ.pop("BASE_TEST_REQUIRED_MISSING", None)
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+
+        output = stdout.getvalue()
+        parsed_checks = json.loads(output)
+        self.assertEqual(status, 1)
+        self.assertEqual(
+            [check["name"] for check in parsed_checks],
+            ["BASE_TEST_REQUIRED_PRESENT", "BASE_TEST_REQUIRED_MISSING"],
+        )
+        self.assertTrue(parsed_checks[0]["ok"])
+        self.assertFalse(parsed_checks[1]["ok"])
+        self.assertEqual(
+            parsed_checks[1]["fix"],
+            "Set BASE_TEST_REQUIRED_MISSING in your shell, .env, or secrets manager.",
+        )
+        self.assertNotIn("super-secret-value", output)
+
+
+
+    def test_doctor_manifest_reports_required_environment_variables_without_values(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            health=HealthConfig(
+                required_env=(
+                    "BASE_TEST_DOCTOR_PRESENT",
+                    "BASE_TEST_DOCTOR_MISSING",
+                )
+            ),
+        )
+
+        with mock.patch.dict(os.environ, {"BASE_TEST_DOCTOR_PRESENT": "another-secret-value"}, clear=False):
+            os.environ.pop("BASE_TEST_DOCTOR_MISSING", None)
+            with redirect_stdout(io.StringIO()) as stdout:
+                status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
+
+        output = stdout.getvalue()
+        self.assertEqual(status, 1)
+        self.assertIn("ok", output)
+        self.assertIn("BASE_TEST_DOCTOR_PRESENT", output)
+        self.assertIn("Environment variable 'BASE_TEST_DOCTOR_PRESENT' is set.", output)
+        self.assertIn("error", output)
+        self.assertIn("BASE_TEST_DOCTOR_MISSING", output)
+        self.assertIn("Fix: Set BASE_TEST_DOCTOR_MISSING in your shell, .env, or secrets manager.", output)
+        self.assertNotIn("another-secret-value", output)
 
 
 

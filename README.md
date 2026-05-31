@@ -156,6 +156,11 @@ artifacts:
     name: requests
     version: latest
 
+health:
+  required_env:
+    - DATABASE_URL
+    - REDIS_URL
+
 test:
   command: pytest tests/
 ```
@@ -176,6 +181,12 @@ to the project root. When present, `basectl setup` runs
 `brew bundle --file=<project-root>/<brewfile>` before reconciling artifacts. Use
 this for ordinary Homebrew formulae and casks instead of adding every Homebrew
 package to Base's hand-curated artifact registry.
+
+The optional top-level `health.required_env` list declares environment variables
+the project needs in the local shell. `basectl check <project>` and
+`basectl doctor <project>` report whether those variables are present and
+non-empty. Base only checks presence; it never reads, prints, or logs the
+variable values.
 
 Future manifest fields should follow the same rule. A `mise` field causes Base
 to run `mise install` from the project root when a project chooses that
