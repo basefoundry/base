@@ -292,6 +292,49 @@ EOF
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
 }
 
+@test "basectl gh branch prune deletes squash-merged branches confirmed by GitHub" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c squash-work >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" switch master >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head squash-work --state merged --json number --jq length" ]]; then
+    printf '1\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"DELETE squash-work"* ]]
+    [[ "$output" == *"Summary: 1 deleted, 0 skipped worktree, 0 skipped upstream, 0 failed."* ]]
+    ! git -C "$repo" show-ref --verify --quiet refs/heads/squash-work
+}
+
 @test "basectl gh worktree prune defaults to dry-run" {
     local repo worktree
 
@@ -405,10 +448,57 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"SKIP   "*"/unmerged-worktree (unmerged-work)  branch is not merged into master"* ]]
+    [[ "$output" == *"SKIP   "*"/unmerged-worktree (unmerged-work)  branch is not confirmed merged into master or a merged GitHub PR"* ]]
     [[ "$output" == *"Summary: 0 removed, 1 skipped current/default, 0 skipped dirty, 1 skipped unmerged, 0 failed."* ]]
     [ -d "$worktree" ]
     git -C "$repo" show-ref --verify --quiet refs/heads/unmerged-work
+}
+
+@test "basectl gh worktree prune removes squash-merged worktrees confirmed by GitHub" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/squash-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c squash-work >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" worktree add "$worktree" squash-work >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head squash-work --state merged --json number --jq length" ]]; then
+    printf '1\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"REMOVE "*"/squash-worktree (squash-work)"* ]]
+    [[ "$output" == *"DELETE squash-work"* ]]
+    [[ "$output" == *"Summary: 1 removed, 1 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 0 failed."* ]]
+    [ ! -e "$worktree" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/heads/squash-work
 }
 
 @test "basectl gh pr create links current branch issue" {

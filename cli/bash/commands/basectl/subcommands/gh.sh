@@ -414,17 +414,78 @@ base_gh_branch_merged_to_ref() {
     git merge-base --is-ancestor "refs/heads/$branch" "$ref" >/dev/null 2>&1
 }
 
+base_gh_prune_github_ready() {
+    if [[ -z "${_base_gh_prune_github_ready+x}" ]]; then
+        if command -v gh >/dev/null 2>&1 && gh auth status -h github.com >/dev/null 2>&1; then
+            _base_gh_prune_github_ready=1
+        else
+            _base_gh_prune_github_ready=0
+        fi
+    fi
+    [[ "$_base_gh_prune_github_ready" == 1 ]]
+}
+
+base_gh_branch_github_merged() {
+    local branch="$1"
+    local count
+
+    base_gh_prune_github_ready || return 2
+    count="$(gh pr list --head "$branch" --state merged --json number --jq 'length' 2>/dev/null)" || return 2
+    [[ "$count" =~ ^[0-9]+$ ]] || return 2
+    ((count > 0))
+}
+
+base_gh_branch_cleanup_merged() {
+    local branch="$1"
+    local default_branch="$2"
+    local rc
+
+    BASE_GH_BRANCH_MERGE_SOURCE=""
+    if base_gh_branch_merged_to_ref "$branch" "$default_branch"; then
+        BASE_GH_BRANCH_MERGE_SOURCE=git
+        return 0
+    fi
+
+    base_gh_branch_github_merged "$branch"
+    rc=$?
+    if ((rc == 0)); then
+        BASE_GH_BRANCH_MERGE_SOURCE=github
+        return 0
+    fi
+    if ((rc == 2)); then
+        BASE_GH_BRANCH_MERGE_SOURCE=unknown
+    fi
+    return 1
+}
+
+base_gh_branch_delete() {
+    local branch="$1"
+    local merge_source="$2"
+
+    if [[ "$merge_source" == github ]]; then
+        git branch -D "$branch" >/dev/null 2>&1
+    else
+        git branch -d "$branch" >/dev/null 2>&1
+    fi
+}
+
 base_gh_branch_prune_local() {
     local dry_run="$1"
     local default_branch="$2"
-    local branch worktree_path upstream
+    local branch current_branch merge_source worktree_path upstream
     local deleted=0 skipped_worktree=0 skipped_upstream=0 failed=0 candidates=0
 
+    current_branch="$(git branch --show-current)"
     printf 'Local branches\n'
     while read -r branch; do
         branch="${branch#\* }"
         branch="${branch## }"
-        [[ -z "$branch" || "$branch" == "$default_branch" ]] && continue
+        [[ -z "$branch" || "$branch" == "$default_branch" || "$branch" == "$current_branch" ]] && continue
+
+        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch"; then
+            continue
+        fi
+        merge_source="$BASE_GH_BRANCH_MERGE_SOURCE"
         candidates=$((candidates + 1))
 
         worktree_path="$(base_gh_worktree_path_for_branch "$branch" || true)"
@@ -435,23 +496,27 @@ base_gh_branch_prune_local() {
         fi
 
         upstream="$(base_gh_branch_upstream "$branch")"
-        if [[ -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
+        if [[ "$merge_source" != github && -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
             printf 'SKIP   %s  not fully merged to upstream %s\n' "$branch" "$upstream"
             skipped_upstream=$((skipped_upstream + 1))
             continue
         fi
 
         if ((dry_run)); then
-            printf '[DRY-RUN] DELETE %s\n' "$branch"
+            if [[ "$merge_source" == github ]]; then
+                printf '[DRY-RUN] DELETE %s  merged GitHub PR\n' "$branch"
+            else
+                printf '[DRY-RUN] DELETE %s\n' "$branch"
+            fi
             deleted=$((deleted + 1))
-        elif git branch -d "$branch" >/dev/null 2>&1; then
+        elif base_gh_branch_delete "$branch" "$merge_source"; then
             printf 'DELETE %s\n' "$branch"
             deleted=$((deleted + 1))
         else
             printf 'FAIL   %s  git branch -d failed\n' "$branch"
             failed=$((failed + 1))
         fi
-    done < <(git branch --merged "$default_branch" --format='%(refname:short)')
+    done < <(git branch --format='%(refname:short)')
 
     if ((candidates == 0)); then
         printf 'No merged local branches found.\n'
@@ -580,15 +645,16 @@ base_gh_worktree_dirty() {
 
 base_gh_worktree_prune_delete_branch() {
     local branch="$1"
+    local merge_source="$2"
     local upstream
 
     upstream="$(base_gh_branch_upstream "$branch")"
-    if [[ -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
+    if [[ "$merge_source" != github && -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
         printf 'SKIP-BRANCH %s  not fully merged to upstream %s\n' "$branch" "$upstream"
         return 0
     fi
 
-    if git branch -d "$branch" >/dev/null 2>&1; then
+    if base_gh_branch_delete "$branch" "$merge_source"; then
         printf 'DELETE %s\n' "$branch"
     else
         printf 'SKIP-BRANCH %s  git branch -d refused\n' "$branch"
@@ -597,7 +663,7 @@ base_gh_worktree_prune_delete_branch() {
 
 base_gh_worktree_prune() {
     local dry_run=1 default_branch current_worktree
-    local path branch physical_path
+    local path branch merge_source physical_path
     local removed=0 skipped_current=0 skipped_dirty=0 skipped_unmerged=0 failed=0 candidates=0
 
     while (($#)); do
@@ -653,19 +719,28 @@ base_gh_worktree_prune() {
             skipped_dirty=$((skipped_dirty + 1))
             continue
         fi
-        if ! base_gh_branch_merged_to_ref "$branch" "$default_branch"; then
-            printf 'SKIP   %s (%s)  branch is not merged into %s\n' "$path" "$branch" "$default_branch"
+        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch"; then
+            if [[ "$BASE_GH_BRANCH_MERGE_SOURCE" == unknown ]]; then
+                printf 'SKIP   %s (%s)  branch is not confirmed merged into %s or a merged GitHub PR\n' "$path" "$branch" "$default_branch"
+            else
+                printf 'SKIP   %s (%s)  branch is not merged into %s or a merged GitHub PR\n' "$path" "$branch" "$default_branch"
+            fi
             skipped_unmerged=$((skipped_unmerged + 1))
             continue
         fi
+        merge_source="$BASE_GH_BRANCH_MERGE_SOURCE"
 
         if ((dry_run)); then
-            printf '[DRY-RUN] REMOVE %s (%s) and delete local branch\n' "$path" "$branch"
+            if [[ "$merge_source" == github ]]; then
+                printf '[DRY-RUN] REMOVE %s (%s) and delete local branch; merged GitHub PR\n' "$path" "$branch"
+            else
+                printf '[DRY-RUN] REMOVE %s (%s) and delete local branch\n' "$path" "$branch"
+            fi
             removed=$((removed + 1))
         elif git worktree remove "$path" >/dev/null 2>&1; then
             printf 'REMOVE %s (%s)\n' "$path" "$branch"
             removed=$((removed + 1))
-            base_gh_worktree_prune_delete_branch "$branch"
+            base_gh_worktree_prune_delete_branch "$branch" "$merge_source"
         else
             printf 'FAIL   %s (%s)  git worktree remove failed\n' "$path" "$branch"
             failed=$((failed + 1))
