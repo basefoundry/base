@@ -25,6 +25,8 @@ Commands:
     Create, check, and configure a standard Base-managed repository baseline.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
+  logs [options]
+    List and open recent Base CLI runtime logs.
   config <path|show|doctor>
     Inspect Base's machine-local user config.
   doctor [project] [options]
@@ -191,6 +193,11 @@ basectl_do_clean() {
     base_clean_subcommand_main "$@"
 }
 
+basectl_do_logs() {
+    basectl_source_subcommand_module logs || return 1
+    base_logs_subcommand_main "$@"
+}
+
 basectl_do_config() {
     basectl_source_subcommand_module config || return 1
     base_config_subcommand_main "$@"
@@ -329,6 +336,7 @@ basectl_main() {
         run)              basectl_do_run "$@" ;;
         repo)             basectl_do_repo "$@" ;;
         clean)            basectl_do_clean "$@" ;;
+        logs)             basectl_do_logs "$@" ;;
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;

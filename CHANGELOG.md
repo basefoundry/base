@@ -13,6 +13,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   a standard Base-managed repository baseline.
 - Added `basectl gh worktree prune` for dry-run-by-default cleanup of stale,
   merged Git worktrees from PR trains.
+- Added `basectl logs` to list, print, open, and tail recent Base CLI runtime
+  logs.
 
 ### Fixed
 

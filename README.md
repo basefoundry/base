@@ -427,6 +427,20 @@ to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durabl
 state such as `~/.base.d/config.yaml` and project virtual environments under
 `~/.base.d/<project>/.venv` are outside this scope.
 
+Show recent Base CLI logs with:
+
+```bash
+basectl logs
+basectl logs --command check
+basectl logs --path
+basectl logs --open
+basectl logs --tail
+```
+
+`basectl logs` is read-only. It lists the newest runtime logs under the Base
+cache root so failed Python-layer runs can be inspected without rerunning with
+debug output enabled.
+
 Inspect machine-local Base config with:
 
 ```bash
