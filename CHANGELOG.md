@@ -17,6 +17,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   logs.
 - Added `basectl workspace status` as the first read-only workspace-level
   project health summary.
+- Added `bootstrap.sh` as a first-mile macOS bootstrapper for installing
+  Homebrew, Git, Bash, and Base before handing off to `basectl`.
 
 ### Fixed
 

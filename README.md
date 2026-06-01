@@ -31,28 +31,40 @@ are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Start Here
 
-Install Base through Homebrew:
+On a new macOS machine, start with the first-mile bootstrap script:
 
 ```bash
-brew install codeforester/base/base
-basectl setup
-basectl update-profile
-exec "$SHELL" -l
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+```
+
+The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
+chooses an existing Base install when one is present, otherwise defaults to a
+source checkout at `~/work/base`, and prints the exact `basectl setup` and
+`basectl update-profile` commands to finish the installation.
+
+Choose an install mode explicitly when needed:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
 your project workspace. If your repositories live under a shared directory such
-as `~/work`, set the workspace root in `~/.base.d/config.yaml`:
+as `~/work`, set the workspace root in `~/.base.d/config.yaml` after running
+`basectl setup`:
 
 ```yaml
 workspace:
   root: ~/work
 ```
 
-Or install from the repository:
+Or install directly through Homebrew when Homebrew is already available:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash
+brew install codeforester/base/base
+basectl setup
+basectl update-profile
 exec "$SHELL" -l
 ```
 
@@ -590,6 +602,27 @@ to force a notification for quick runs, `basectl setup --no-notify` or
 is requested on macOS, Base warns if `osascript` is not available.
 
 ## Installation Details
+
+For a blank macOS machine, use `bootstrap.sh`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+```
+
+The bootstrapper is intentionally small. It verifies macOS, installs Homebrew
+when missing, installs Git and Bash through Homebrew when needed, then installs
+Base through either a source checkout or Homebrew. It does not edit shell startup
+files automatically. Instead, it prints the exact follow-up commands, typically:
+
+```bash
+~/work/base/bin/basectl setup
+~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
+```
+
+Pass `--source` or `--brew` with `bash -s --` to choose the route explicitly.
+Without an explicit choice, the bootstrapper preserves an existing Homebrew Base
+install, then an existing source checkout, and otherwise defaults to source mode.
 
 Base can be installed through its Homebrew tap:
 
