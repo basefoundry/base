@@ -15,6 +15,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   merged Git worktrees from PR trains.
 - Added `basectl logs` to list, print, open, and tail recent Base CLI runtime
   logs.
+- Added `basectl workspace status` as the first read-only workspace-level
+  project health summary.
 
 ### Fixed
 

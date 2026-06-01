@@ -213,6 +213,77 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(json.loads(stdout), [{"name": "demo", "path": str((workspace / "demo").resolve())}])
 
+    def test_workspace_status_reports_manifest_and_venv_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_manifest(workspace / "base", "base")
+            write_manifest(workspace / "demo", "demo")
+            python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+
+            status, stdout, stderr = invoke_engine(["status", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn(f"Workspace: {workspace.resolve()} (2 projects)", stdout)
+        self.assertIn("base                 ok     ready    valid", stdout)
+        self.assertIn("demo                 warn   missing  valid", stdout)
+        self.assertIn("1 project(s) need attention", stdout)
+
+    def test_workspace_status_supports_json_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = invoke_engine(
+                ["status", "--workspace", str(workspace), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["workspace"], str(workspace.resolve()))
+        self.assertEqual(payload["project_count"], 1)
+        self.assertEqual(payload["projects"][0]["name"], "demo")
+        self.assertEqual(payload["projects"][0]["status"], "warn")
+        self.assertEqual(payload["projects"][0]["venv"], "missing")
+        self.assertEqual(payload["projects"][0]["manifest"], "valid")
+        self.assertIn("project virtual environment missing", payload["projects"][0]["issues"][0])
+
+    def test_workspace_status_reports_invalid_manifest_without_stopping_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+            broken_root = workspace / "broken"
+            broken_root.mkdir(parents=True)
+            (broken_root / "base_manifest.yaml").write_text("project: [", encoding="utf-8")
+
+            status, stdout, stderr = invoke_engine(["status", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("broken               error  unknown  invalid", stdout)
+        self.assertIn("demo                 warn   missing  valid", stdout)
+        self.assertIn("2 project(s) need attention", stdout)
+
     def test_projects_list_reuses_project_cache_when_manifests_are_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

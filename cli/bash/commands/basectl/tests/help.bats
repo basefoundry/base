@@ -22,6 +22,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"onboard [options]"* ]]
     [[ "$output" == *"update [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
+    [[ "$output" == *"workspace status [options]"* ]]
     [[ "$output" == *"Invoking \`basectl\` with no command starts a Base runtime shell"* ]]
     [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
@@ -50,6 +51,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
     grep -Fqx '  repo <init|check|configure> [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
+    grep -Fqx '  workspace status [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
