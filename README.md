@@ -89,6 +89,16 @@ basectl demo base -- --non-interactive
 basectl test base
 ```
 
+To inspect a small, real Base-managed project, clone
+[`codeforester/base-demo`](https://github.com/codeforester/base-demo) next to
+Base and run its walkthrough:
+
+```bash
+git clone https://github.com/codeforester/base-demo.git
+basectl setup base-demo
+basectl demo base-demo
+```
+
 Success looks like a workspace where each participating project has a
 `base_manifest.yaml`, appears in `basectl projects list`, can be checked with
 `basectl check <project>`, and can run its declared test command through
