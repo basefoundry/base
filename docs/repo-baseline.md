@@ -14,10 +14,11 @@ Create a new repo baseline:
 basectl repo init base-demo --repo codeforester/base-demo
 ```
 
-`repo init` creates the local files and then configures the GitHub repository
-when `--repo <owner/name>` is provided or an existing `origin` remote can be
+`repo init` creates the local files, creates the GitHub repository if it does
+not already exist, and then configures that GitHub repository when
+`--repo <owner/name>` is provided or an existing `origin` remote can be
 inferred. That keeps the common new-repo path to one command. Use
-`--no-configure` when the GitHub repo does not exist yet or when local-only
+`--no-configure` when GitHub setup should be skipped or when local-only
 initialization is desired.
 
 Without `--path`, `repo init` creates the repository under the configured
@@ -44,7 +45,9 @@ basectl repo configure ~/work/base-demo --repo codeforester/base-demo
 
 `repo configure` is idempotent and safe to rerun when repository settings drift.
 Use `--dry-run` on `repo init` or `repo configure` to print the planned file and
-GitHub changes without applying them.
+GitHub changes without applying them. In dry-run mode, `repo init` explicitly
+reports whether it would create a GitHub repository or why GitHub creation is
+being skipped.
 
 ## Local Baseline
 
@@ -82,8 +85,8 @@ not a replacement for project tests; it is the seed contract that lets
 
 ## GitHub Configuration
 
-`repo init` and `repo configure` standardize the current GitHub repository
-policy:
+`repo init` creates the GitHub repository when needed, then `repo init` and
+`repo configure` standardize the current GitHub repository policy:
 
 - Issues enabled
 - Projects enabled
@@ -114,8 +117,7 @@ Dry-run mode does not require authentication because it only prints the planned
 
 ## Boundaries
 
-The MVP does not create the remote GitHub repository, configure branch
-protection, manage repository secrets, create teams, or add CODEOWNERS. Those
-are separate workflow and policy decisions. Base can grow those capabilities
-once the baseline command has proven useful for real repos such as the Base demo
-project.
+The MVP does not configure branch protection, manage repository secrets, create
+teams, or add CODEOWNERS. Those are separate workflow and policy decisions.
+Base can grow those capabilities once the baseline command has proven useful
+for real repos such as the Base demo project.

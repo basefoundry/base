@@ -70,12 +70,12 @@ that delegate to `basectl`.
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
 - `basectl repo init <name>` creates the standard local repository baseline and
-  configures the GitHub repository when `--repo <owner/name>` is provided or an
-  existing `origin` remote can be inferred. Without `--path`, it creates the
-  repository under `workspace.root` from `~/.base.d/config.yaml`, then falls
-  back to the parent directory of `BASE_HOME`. `basectl repo check [path]`
-  verifies the local baseline, and `basectl repo configure [path]` reapplies
-  the GitHub settings and labels.
+  creates and configures the GitHub repository when `--repo <owner/name>` is
+  provided or an existing `origin` remote can be inferred. Without `--path`, it
+  creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
+  then falls back to the parent directory of `BASE_HOME`.
+  `basectl repo check [path]` verifies the local baseline, and
+  `basectl repo configure [path]` reapplies the GitHub settings and labels.
 - `basectl test [project]` runs the project's manifest `test.command` or
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments

@@ -21,6 +21,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/tests/validate.sh'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
     [[ "$output" == *"gh label create bug"* ]]
     [ ! -e "$repo_dir" ]
@@ -40,6 +41,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
     [[ "$output" != *"$nested_dir/base-demo"* ]]
+    [[ "$output" == *"[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred."* ]]
     [ ! -e "$repo_dir" ]
 }
 
@@ -58,6 +60,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
     [[ "$output" != *"$nested_dir/base-demo"* ]]
+    [[ "$output" == *"[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred."* ]]
 }
 
 @test "basectl repo init creates the standard repository baseline" {
@@ -141,6 +144,9 @@ load ./basectl_helpers.bash
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
+if [[ "$*" == "repo view codeforester/base-demo" ]]; then
+    exit 1
+fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
@@ -165,6 +171,9 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
+if [[ "$*" == "repo view codeforester/base-demo" ]]; then
+    exit 1
+fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
@@ -177,6 +186,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [ -f "$repo_dir/base_manifest.yaml" ]
+    grep -Fq "repo create codeforester/base-demo --public --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
 }
 
