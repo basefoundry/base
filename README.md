@@ -660,6 +660,7 @@ Key starting points:
 - [Tool Boundaries](docs/tool-boundaries.md)
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
+- [Project Demo Workflow](docs/project-demo-workflow.md)
 
 ## Compatibility
 
