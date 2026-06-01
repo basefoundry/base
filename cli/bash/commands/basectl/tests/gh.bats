@@ -174,8 +174,10 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Local branches merged into"* ]]
-    [[ "$output" == *"merged-work"* ]]
+    [[ "$output" == *"[DRY-RUN] Branch prune preview for default branch master."* ]]
+    [[ "$output" == *"Local branches"* ]]
+    [[ "$output" == *"[DRY-RUN] DELETE merged-work"* ]]
+    [[ "$output" == *"Summary: 1 would delete, 0 skipped worktree, 0 skipped upstream, 0 failed."* ]]
     git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
 }
 
@@ -199,8 +201,94 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Deleted branch merged-work"* ]]
+    [[ "$output" == *"DELETE merged-work"* ]]
+    [[ "$output" == *"Summary: 1 deleted, 0 skipped worktree, 0 skipped upstream, 0 failed."* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh branch prune reports worktree-attached branches as skipped" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/merged-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+    git -C "$repo" worktree add "$worktree" merged-work >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   merged-work  attached to worktree "*"/merged-worktree"* ]]
+    [[ "$output" == *'Hint: run `basectl gh worktree prune` to inspect stale worktrees.'* ]]
+    [[ "$output" == *"Summary: 0 deleted, 1 skipped worktree, 0 skipped upstream, 0 failed."* ]]
+    git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh branch prune reports branches not fully merged to upstream as skipped" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c merged-work >/dev/null
+    git -C "$repo" push -u origin merged-work >/dev/null 2>&1
+    printf 'topic change\n' >> "$repo/README.md"
+    commit_all "$repo" "Topic change"
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" merge --ff-only merged-work >/dev/null
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   merged-work  not fully merged to upstream origin/merged-work"* ]]
+    [[ "$output" == *"Summary: 0 deleted, 0 skipped worktree, 1 skipped upstream, 0 failed."* ]]
+    git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh branch prune --remote prints remote tracking refs separately" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" update-ref refs/remotes/origin/stale-branch HEAD
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Local branches"* ]]
+    [[ "$output" == *"Remote tracking refs"* ]]
+    [[ "$output" == *"PRUNE origin/stale-branch"* ]]
+    [[ "$output" == *"Note: --remote prunes stale origin/* tracking refs; it does not delete GitHub branches."* ]]
+    [[ "$output" != *"Pruning origin"* ]]
+    [[ "$output" != *"URL:"* ]]
+    ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
 }
 
 @test "basectl gh pr create links current branch issue" {
