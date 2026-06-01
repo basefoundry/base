@@ -719,8 +719,11 @@ Update Base itself from the checked-out repository with:
 basectl update
 ```
 
-This command is intentionally conservative: it only runs from a clean `master`
-worktree, pulls the latest changes through Git, and then runs `basectl setup`.
+This command is intentionally conservative: it only runs from the Base
+repository's default branch, requires tracked Base files to be clean, pulls the
+latest changes through Git, and then runs `basectl setup`. Untracked files do
+not block the update; Git still stops the pull if an incoming tracked file would
+overwrite them.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,

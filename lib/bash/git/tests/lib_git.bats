@@ -109,6 +109,32 @@ setup() {
     [ -z "$(git -C "$repo" status --porcelain)" ]
 }
 
+@test "git_update_repo lets git protect untracked files from incoming tracked paths" {
+    local before_head
+    local other="$TEST_TMPDIR/other"
+    local remote="$TEST_TMPDIR/remote.git"
+    local repo="$TEST_TMPDIR/repo"
+
+    create_tracked_repo_with_upstream "$repo" "$remote" "data.txt" "base"
+    before_head="$(git -C "$repo" rev-parse HEAD)"
+    git clone "$remote" "$other" >/dev/null 2>&1
+    git -C "$other" config user.name "Bats Test"
+    git -C "$other" config user.email "bats@example.com"
+    printf 'incoming tracked\n' > "$other/local-notes.md"
+    git -C "$other" add local-notes.md
+    git -C "$other" commit -m "Add tracked notes" >/dev/null 2>&1
+    git -C "$other" push origin master >/dev/null 2>&1
+    printf 'local untracked\n' > "$repo/local-notes.md"
+
+    bats_run git_update_repo "$repo" "" master
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"git pull failed on repo '$repo'"* ]]
+    [ "$(git -C "$repo" rev-parse HEAD)" = "$before_head" ]
+    [ "$(cat "$repo/local-notes.md")" = "local untracked" ]
+    ! git -C "$repo" ls-files --error-unmatch local-notes.md >/dev/null 2>&1
+}
+
 @test "git_update_repo accepts main as the detected update branch" {
     local repo="$TEST_TMPDIR/repo"
 

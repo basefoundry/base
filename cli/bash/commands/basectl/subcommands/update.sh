@@ -23,7 +23,8 @@ Purpose:
 
 Notes:
   - The repository must be on its default branch.
-  - The worktree must be clean, including untracked files.
+  - Tracked Base files must be clean; untracked files are left to Git's normal
+    pull-time overwrite protection.
 EOF
 }
 
@@ -63,7 +64,12 @@ base_update_default_branch() {
 
 base_update_worktree_clean() {
     local repo="$1"
-    [[ -z "$(git -C "$repo" status --porcelain --untracked-files=normal --ignore-submodules=none)" ]]
+    [[ -z "$(git -C "$repo" status --porcelain --untracked-files=no --ignore-submodules=none)" ]]
+}
+
+base_update_has_untracked_files() {
+    local repo="$1"
+    [[ -n "$(git -C "$repo" ls-files --others --exclude-standard --directory --no-empty-directory)" ]]
 }
 
 base_update_run_setup() {
@@ -119,8 +125,11 @@ base_update_subcommand_main() {
     fi
 
     if ! base_update_worktree_clean "$BASE_HOME"; then
-        log_error "Base repository has local changes. Commit, stash, or remove them before running basectl update."
+        log_error "Base repository has tracked local changes. Commit, stash, or remove them before running basectl update."
         return 1
+    fi
+    if base_update_has_untracked_files "$BASE_HOME"; then
+        log_warn "Base repository has untracked files. Continuing because tracked files are clean."
     fi
 
     if ((dry_run)); then

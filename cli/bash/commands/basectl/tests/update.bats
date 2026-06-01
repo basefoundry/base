@@ -10,6 +10,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl update [options]"* ]]
     [[ "$output" == *"Update the Base repository from Git"* ]]
+    [[ "$output" == *"Tracked Base files must be clean"* ]]
 }
 
 @test "basectl update dry-run reports planned update and setup" {
@@ -22,6 +23,7 @@ load ./basectl_helpers.bash
             base_update_current_branch() { printf "%s\n" master; }
             base_update_default_branch() { printf "%s\n" master; }
             base_update_worktree_clean() { return 0; }
+            base_update_has_untracked_files() { return 1; }
             base_update_subcommand_main --dry-run
         '
 
@@ -47,10 +49,40 @@ load ./basectl_helpers.bash
         '
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Base repository has local changes."* ]]
+    [[ "$output" == *"Base repository has tracked local changes."* ]]
     [[ "$output" != *"git library should not load"* ]]
     [[ "$output" != *"git update should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
+}
+
+@test "basectl update allows untracked files before pulling" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    printf 'notes\n' > "$repo/local-notes.md"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            BASE_HOME="$BASE_TEST_REPO"
+            base_update_source_git_library() { :; }
+            git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
+            base_update_head_revision() { printf "%s\n" abc1234; }
+            base_update_run_setup() { printf "setup ran\n"; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base repository has untracked files. Continuing because tracked files are clean."* ]]
+    [[ "$output" == *"git update repo=$repo branch=master"* ]]
+    [[ "$output" == *"setup ran"* ]]
+    [[ "$output" == *"Base update is complete."* ]]
 }
 
 @test "basectl update refuses non-default branches" {
@@ -83,6 +115,7 @@ load ./basectl_helpers.bash
             base_update_current_branch() { printf "%s\n" master; }
             base_update_default_branch() { printf "%s\n" master; }
             base_update_worktree_clean() { return 0; }
+            base_update_has_untracked_files() { return 1; }
             base_update_source_git_library() { :; }
             git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
             base_update_head_revision() { printf "%s\n" abc1234; }
@@ -109,6 +142,7 @@ load ./basectl_helpers.bash
             base_update_current_branch() { printf "%s\n" main; }
             base_update_default_branch() { printf "%s\n" main; }
             base_update_worktree_clean() { return 0; }
+            base_update_has_untracked_files() { return 1; }
             base_update_source_git_library() { :; }
             git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
             base_update_head_revision() {
