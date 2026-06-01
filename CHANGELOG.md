@@ -19,6 +19,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
   project health summary.
 - Added `bootstrap.sh` as a first-mile macOS bootstrapper for installing
   Homebrew, Git, Bash, and Base before handing off to `basectl`.
+- Added a top-level FAQ for common first-run and product questions.
 
 ### Fixed
 

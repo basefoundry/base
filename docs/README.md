@@ -1,8 +1,9 @@
 # Base Documentation
 
 This directory holds design, architecture, and operational documentation for
-Base. The top-level [README](../README.md) is the product front door; this page
-is the documentation map.
+Base. The top-level [README](../README.md) is the product front door, and
+[FAQ.md](../FAQ.md) answers common first-run and product questions. This page is
+the documentation map.
 
 For contribution workflow, branch naming, tests, and PR expectations, see
 [CONTRIBUTING.md](../CONTRIBUTING.md).
