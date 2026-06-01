@@ -11,6 +11,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `basectl repo init/check/configure` to create, validate, and configure
   a standard Base-managed repository baseline.
+- Added GitHub remote branch cleanup to `basectl gh branch prune --remote` so
+  safe merged branches can be deleted from GitHub before stale `origin/*` refs
+  are pruned locally.
 - Added `basectl gh worktree prune` for dry-run-by-default cleanup of stale,
   merged Git worktrees from PR trains.
 - Added `basectl logs` to list, print, open, and tail recent Base CLI runtime

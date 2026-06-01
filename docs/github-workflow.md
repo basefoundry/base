@@ -123,13 +123,20 @@ basectl gh worktree prune --yes
 ```
 
 The command is dry-run by default. It reports merged local branches as delete
-candidates, reports branches attached to worktrees as skipped, and keeps remote
-cleanup scoped to stale `origin/*` tracking refs. Because Base usually uses
-squash merges, pruning checks GitHub PR state when available and falls back to
-Git ancestry when offline. Worktree pruning is also dry-run by default; it
-removes only clean, non-current worktrees whose branches are confirmed merged
-into the default branch or through a merged GitHub PR, then deletes the now-free
-local branch when safe.
+candidates, reports branches attached to worktrees as skipped, and treats
+`--remote` as GitHub remote branch cleanup plus stale `origin/*` tracking-ref
+cleanup. Because Base usually uses squash merges, pruning checks GitHub PR state
+when available and falls back to Git ancestry when offline.
+
+Remote branch pruning is deliberately conservative. Base deletes a GitHub branch
+only when GitHub confirms a merged pull request for that exact branch name. It
+does not delete the default branch, the current branch, or a branch attached to a
+local worktree. After safe GitHub branches are deleted, Base prunes stale local
+`origin/*` refs.
+
+Worktree pruning is also dry-run by default. It removes only clean, non-current
+worktrees whose branches are confirmed merged into the default branch or through
+a merged GitHub PR, then deletes the now-free local branch when safe.
 
 ## Pull Requests
 

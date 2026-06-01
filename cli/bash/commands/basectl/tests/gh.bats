@@ -272,9 +272,20 @@ EOF
     create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
     git -C "$repo" update-ref refs/remotes/origin/stale-branch HEAD
 
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
             source "$BASE_HOME/base_init.sh"
@@ -284,12 +295,151 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Local branches"* ]]
+    [[ "$output" == *"GitHub branches"* ]]
+    [[ "$output" == *"SKIP   GitHub branch cleanup requires authenticated gh."* ]]
     [[ "$output" == *"Remote tracking refs"* ]]
     [[ "$output" == *"PRUNE origin/stale-branch"* ]]
-    [[ "$output" == *"Note: --remote prunes stale origin/* tracking refs; it does not delete GitHub branches."* ]]
+    [[ "$output" == *"Note: remote-tracking ref cleanup prunes stale local origin/* refs after GitHub branch cleanup."* ]]
     [[ "$output" != *"Pruning origin"* ]]
     [[ "$output" != *"URL:"* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
+}
+
+@test "basectl gh branch prune --remote previews safe GitHub branch deletion" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c squash-remote >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" push -u origin squash-remote >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" branch -D squash-remote >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head squash-remote --state merged --json number --jq length" ]]; then
+    printf '1\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Branch prune preview for default branch master."* ]]
+    [[ "$output" == *"GitHub branches"* ]]
+    [[ "$output" == *"[DRY-RUN] DELETE-REMOTE origin/squash-remote  merged GitHub PR"* ]]
+    [[ "$output" == *"Summary: 1 would delete remotely, 0 skipped worktree, 0 skipped unmerged, 0 failed."* ]]
+    git -C "$repo" ls-remote --exit-code --heads origin squash-remote >/dev/null
+}
+
+@test "basectl gh branch prune --remote --yes deletes safe GitHub branches" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c squash-remote >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" push -u origin squash-remote >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" branch -D squash-remote >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head squash-remote --state merged --json number --jq length" ]]; then
+    printf '1\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub branches"* ]]
+    [[ "$output" == *"DELETE-REMOTE origin/squash-remote"* ]]
+    [[ "$output" == *"Summary: 1 deleted remotely, 0 skipped worktree, 0 skipped unmerged, 0 failed."* ]]
+    ! git -C "$repo" ls-remote --exit-code --heads origin squash-remote >/dev/null
+}
+
+@test "basectl gh branch prune --remote skips branches attached to worktrees" {
+    local repo remote worktree
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    worktree="$TEST_TMPDIR/squash-worktree"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c squash-work >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" push -u origin squash-work >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" worktree add "$worktree" squash-work >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head squash-work --state merged --json number --jq length" ]]; then
+    printf '1\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   squash-work  attached to worktree "*"/squash-worktree"* ]]
+    [[ "$output" == *"SKIP   origin/squash-work  attached to worktree "*"/squash-worktree"* ]]
+    [[ "$output" == *"Summary: 0 deleted remotely, 1 skipped worktree, 0 skipped unmerged, 0 failed."* ]]
+    git -C "$repo" ls-remote --exit-code --heads origin squash-work >/dev/null
 }
 
 @test "basectl gh branch prune deletes squash-merged branches confirmed by GitHub" {

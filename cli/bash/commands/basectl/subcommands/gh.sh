@@ -469,6 +469,22 @@ base_gh_branch_delete() {
     fi
 }
 
+base_gh_list_remote_branches() {
+    local output ref
+
+    output="$(git ls-remote --heads origin)" || return 1
+    while read -r _sha ref; do
+        [[ "$ref" == refs/heads/* ]] || continue
+        printf '%s\n' "${ref#refs/heads/}"
+    done <<< "$output"
+}
+
+base_gh_branch_delete_remote() {
+    local branch="$1"
+
+    git push origin --delete "$branch" >/dev/null 2>&1
+}
+
 base_gh_branch_prune_local() {
     local dry_run="$1"
     local default_branch="$2"
@@ -530,7 +546,67 @@ base_gh_branch_prune_local() {
     return "$failed"
 }
 
-base_gh_branch_prune_remote() {
+base_gh_branch_prune_github_branches() {
+    local dry_run="$1"
+    local default_branch="$2"
+    local branch current_branch worktree_path remote_branches
+    local deleted=0 skipped_worktree=0 skipped_unmerged=0 failed=0 candidates=0 found=0
+
+    printf 'GitHub branches\n'
+    if ! base_gh_prune_github_ready; then
+        printf 'SKIP   GitHub branch cleanup requires authenticated gh. Run `gh auth login -h github.com` and retry.\n'
+        printf 'Summary: 0 %s, 0 skipped worktree, 0 skipped unmerged, 0 failed.\n' \
+            "$([[ "$dry_run" -eq 1 ]] && printf 'would delete remotely' || printf 'deleted remotely')"
+        return 0
+    fi
+
+    current_branch="$(git branch --show-current)"
+    remote_branches="$(base_gh_list_remote_branches)" || {
+        base_gh_error "Unable to list remote branches from origin."
+        return 1
+    }
+    while read -r branch; do
+        [[ -n "$branch" ]] || continue
+        found=1
+        [[ "$branch" == "$default_branch" || "$branch" == "$current_branch" ]] && continue
+
+        if ! base_gh_branch_github_merged "$branch"; then
+            skipped_unmerged=$((skipped_unmerged + 1))
+            continue
+        fi
+        candidates=$((candidates + 1))
+
+        worktree_path="$(base_gh_worktree_path_for_branch "$branch" || true)"
+        if [[ -n "$worktree_path" ]]; then
+            printf 'SKIP   origin/%s  attached to worktree %s\n' "$branch" "$worktree_path"
+            skipped_worktree=$((skipped_worktree + 1))
+            continue
+        fi
+
+        if ((dry_run)); then
+            printf '[DRY-RUN] DELETE-REMOTE origin/%s  merged GitHub PR\n' "$branch"
+            deleted=$((deleted + 1))
+        elif base_gh_branch_delete_remote "$branch"; then
+            printf 'DELETE-REMOTE origin/%s\n' "$branch"
+            deleted=$((deleted + 1))
+        else
+            printf 'FAIL   origin/%s  git push origin --delete failed\n' "$branch"
+            failed=$((failed + 1))
+        fi
+    done <<< "$remote_branches"
+
+    if ((found == 0)); then
+        printf 'No GitHub remote branches found.\n'
+    elif ((candidates == 0)); then
+        printf 'No merged GitHub remote branches found.\n'
+    fi
+    printf 'Summary: %s %s, %s skipped worktree, %s skipped unmerged, %s failed.\n' \
+        "$deleted" "$([[ "$dry_run" -eq 1 ]] && printf 'would delete remotely' || printf 'deleted remotely')" \
+        "$skipped_worktree" "$skipped_unmerged" "$failed"
+    return "$failed"
+}
+
+base_gh_branch_prune_remote_tracking_refs() {
     local dry_run="$1"
     local output line ref found=0
 
@@ -567,7 +643,7 @@ base_gh_branch_prune_remote() {
     if ((found == 0)); then
         printf 'No stale remote-tracking refs found.\n'
     fi
-    printf 'Note: --remote prunes stale origin/* tracking refs; it does not delete GitHub branches.\n'
+    printf 'Note: remote-tracking ref cleanup prunes stale local origin/* refs after GitHub branch cleanup.\n'
 }
 
 base_gh_branch_prune() {
@@ -604,7 +680,8 @@ base_gh_branch_prune() {
     base_gh_branch_prune_local "$dry_run" "$default_branch" || status=$?
 
     if ((remote)); then
-        base_gh_branch_prune_remote "$dry_run" || status=$?
+        base_gh_branch_prune_github_branches "$dry_run" "$default_branch" || status=$?
+        base_gh_branch_prune_remote_tracking_refs "$dry_run" || status=$?
     fi
     return "$status"
 }
