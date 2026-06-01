@@ -49,15 +49,16 @@ load ./basectl_helpers.bash
 
 @test "basectl repo init falls back to BASE_HOME parent when workspace root is not configured" {
     local nested_dir="$TEST_TMPDIR/nested/current"
+    local repo_name="base-fallback-${BATS_TEST_NUMBER}"
     local workspace_root
     local repo_dir
 
     workspace_root="$(cd "$BASE_REPO_ROOT/.." && pwd -P)"
-    repo_dir="$workspace_root/base-demo"
+    repo_dir="$workspace_root/$repo_name"
     mkdir -p "$nested_dir"
 
     cd "$nested_dir"
-    run_basectl repo init base-demo --dry-run
+    run_basectl repo init "$repo_name" --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
