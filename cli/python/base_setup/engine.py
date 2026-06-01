@@ -17,6 +17,7 @@ from .checks import check_to_doctor_json
 from .checks import check_to_json
 from .checks import doctor_status
 from .checks import print_doctor_finding
+from .demo import check_demo
 from .delegates import check_brewfile
 from .delegates import check_mise
 from .delegates import reconcile_brewfile
@@ -241,6 +242,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
         checks.append(check_mise(effective_manifest))
 
     checks.extend(check_required_env(effective_manifest))
+    checks.extend(check_demo(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
@@ -274,4 +276,5 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         health=manifest.health,
         commands=manifest.commands,
         activate=manifest.activate,
+        demo=manifest.demo,
     )

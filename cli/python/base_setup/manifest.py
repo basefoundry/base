@@ -51,6 +51,12 @@ class TestConfig:
 
 
 @dataclass(frozen=True)
+class DemoConfig:
+    script: str
+    description: str | None = None
+
+
+@dataclass(frozen=True)
 class HealthConfig:
     required_env: tuple[str, ...] = ()
 
@@ -73,6 +79,7 @@ class BaseManifest:
     health: HealthConfig = field(default_factory=HealthConfig)
     commands: dict[str, str] = field(default_factory=dict)
     activate: ActivateConfig = field(default_factory=ActivateConfig)
+    demo: DemoConfig | None = None
 
 
 def read_manifest(path: Path) -> BaseManifest:
@@ -103,6 +110,7 @@ def read_manifest(path: Path) -> BaseManifest:
         "health",
         "commands",
         "activate",
+        "demo",
     }
     unknown_top_level = sorted(set(data) - allowed_top_level)
     if unknown_top_level:
@@ -117,6 +125,7 @@ def read_manifest(path: Path) -> BaseManifest:
     health = _read_health(path, data.get("health"))
     commands = _read_commands(path, data.get("commands"))
     activate = _read_activate(path, data.get("activate"))
+    demo = _read_demo(path, data.get("demo"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
 
     return BaseManifest(
@@ -131,6 +140,7 @@ def read_manifest(path: Path) -> BaseManifest:
         health=health,
         commands=commands,
         activate=activate,
+        demo=demo,
     )
 
 
@@ -222,6 +232,33 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         command=command.strip() if command is not None else None,
         mise=mise.strip() if mise is not None else None,
     )
+
+
+def _read_demo(path: Path, demo_data: Any) -> DemoConfig | None:
+    if demo_data is None:
+        return None
+    if not isinstance(demo_data, dict):
+        raise ManifestError(f"{path}: demo must be a mapping when provided.")
+
+    allowed_keys = {"script", "description"}
+    unknown_keys = sorted(set(demo_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: demo has unsupported keys: {', '.join(unknown_keys)}.")
+
+    script = demo_data.get("script")
+    if not isinstance(script, str) or not script.strip():
+        raise ManifestError(f"{path}: demo.script must be a non-empty string when demo is provided.")
+    script = script.strip()
+    if any(separator in script for separator in ("\0", "\n", "\r")):
+        raise ManifestError(f"{path}: demo.script must not contain control line breaks.")
+
+    description = demo_data.get("description")
+    if description is not None:
+        if not isinstance(description, str) or not description.strip():
+            raise ManifestError(f"{path}: demo.description must be a non-empty string when provided.")
+        description = description.strip()
+
+    return DemoConfig(script=script, description=description)
 
 
 def _read_health(path: Path, health_data: Any) -> HealthConfig:

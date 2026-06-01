@@ -49,6 +49,8 @@ fix text, or severity over time, but its ID keeps the same meaning.
 | `BASE-P033` | Homebrew artifact package status |
 | `BASE-P040` | Python package artifact status in the project virtual environment |
 | `BASE-P050` | Project virtual environment integrity |
+| `BASE-P060` | Project demo declaration |
+| `BASE-P061` | Project demo script path and executable status |
 | `BASE-P100` | User config disables all IDE setup and checks |
 | `BASE-P101` | User config disables setup and checks for one IDE |
 | `BASE-P102` | User IDE setting conflicts with a project manifest setting |
