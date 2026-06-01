@@ -31,6 +31,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   tracked local changes.
 - Fixed `basectl gh branch prune` output to report worktree-attached and
   upstream-protected branches as clear skips instead of raw Git errors.
+- Fixed `basectl gh branch prune` and `basectl gh worktree prune` to recognize
+  squash-merged PR branches through GitHub when Git ancestry is not enough.
 
 ## [0.2.0] - 2026-05-30
 
