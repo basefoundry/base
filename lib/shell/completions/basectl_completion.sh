@@ -103,7 +103,7 @@ _base_basectl_completion() {
         gh)
             case "${COMP_WORDS[2]:-}" in
                 "")
-                    _base_basectl_completion_compgen "issue pr branch todo" "$cur"
+                    _base_basectl_completion_compgen "issue pr branch worktree todo" "$cur"
                     ;;
                 issue)
                     if ((COMP_CWORD == 3)); then
@@ -122,6 +122,13 @@ _base_basectl_completion() {
                         _base_basectl_completion_compgen "stale prune" "$cur"
                     else
                         _base_basectl_completion_compgen "--days --dry-run --yes --remote -h --help" "$cur"
+                    fi
+                    ;;
+                worktree)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "prune" "$cur"
+                    else
+                        _base_basectl_completion_compgen "--dry-run --yes -h --help" "$cur"
                     fi
                     ;;
                 todo)

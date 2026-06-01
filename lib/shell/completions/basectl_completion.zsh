@@ -147,7 +147,7 @@ _base_basectl_completion() {
         gh)
             case "${words[3]:-}" in
                 issue)
-                    _arguments '1:gh area:(issue pr branch todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo)' \
                         '2:issue command:(list create start)' \
                         '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
@@ -155,11 +155,11 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pr)
-                    _arguments '1:gh area:(issue pr branch todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo)' \
                         '2:pr command:(create status checks ready merge)'
                     ;;
                 branch)
-                    _arguments '1:gh area:(issue pr branch todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo)' \
                         '2:branch command:(stale prune)' \
                         '--days[Stale threshold in days]:days:' \
                         '--dry-run[Show planned deletions]' \
@@ -167,15 +167,22 @@ _base_basectl_completion() {
                         '--remote[Prune stale remote tracking refs]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                worktree)
+                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                        '2:worktree command:(prune)' \
+                        '--dry-run[Show planned removals]' \
+                        '--yes[Apply worktree pruning]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
                 todo)
-                    _arguments '1:gh area:(issue pr branch todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo)' \
                         '2:todo command:(import)' \
                         '--dry-run[Show planned issues]' \
                         '--file[TODO file]:path:_files' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:gh area:(issue pr branch todo)'
+                    _arguments '1:gh area:(issue pr branch worktree todo)'
                     ;;
             esac
             ;;

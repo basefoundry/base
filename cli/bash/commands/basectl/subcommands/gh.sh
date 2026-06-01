@@ -17,6 +17,7 @@ Usage:
   basectl gh pr merge [gh options...]
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
+  basectl gh worktree prune [--dry-run] [--yes]
   basectl gh todo import [--dry-run] [--file <path>]
 
 Purpose:
@@ -30,7 +31,7 @@ Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
   - Issues created through this command are assigned to codeforester.
   - Pull request implementation work should happen in a dedicated worktree.
-  - Branch pruning is dry-run by default and applies only when --yes is passed.
+  - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
   - TODO import is currently a dry-run planning command.
 EOF
 }
@@ -543,6 +544,143 @@ base_gh_branch_prune() {
     return "$status"
 }
 
+base_gh_resolve_physical_path() {
+    local path="$1"
+    (cd "$path" && pwd -P)
+}
+
+base_gh_list_worktree_branches() {
+    local line path="" branch=""
+
+    while IFS= read -r line; do
+        if [[ -z "$line" ]]; then
+            if [[ -n "$path" && -n "$branch" ]]; then
+                branch="${branch#refs/heads/}"
+                printf '%s\t%s\n' "$path" "$branch"
+            fi
+            path=""
+            branch=""
+            continue
+        fi
+        case "$line" in
+            "worktree "*)
+                path="${line#worktree }"
+                ;;
+            "branch "*)
+                branch="${line#branch }"
+                ;;
+        esac
+    done < <(git worktree list --porcelain; printf '\n')
+}
+
+base_gh_worktree_dirty() {
+    local path="$1"
+    [[ -n "$(git -C "$path" status --porcelain --ignore-submodules=none)" ]]
+}
+
+base_gh_worktree_prune_delete_branch() {
+    local branch="$1"
+    local upstream
+
+    upstream="$(base_gh_branch_upstream "$branch")"
+    if [[ -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
+        printf 'SKIP-BRANCH %s  not fully merged to upstream %s\n' "$branch" "$upstream"
+        return 0
+    fi
+
+    if git branch -d "$branch" >/dev/null 2>&1; then
+        printf 'DELETE %s\n' "$branch"
+    else
+        printf 'SKIP-BRANCH %s  git branch -d refused\n' "$branch"
+    fi
+}
+
+base_gh_worktree_prune() {
+    local dry_run=1 default_branch current_worktree
+    local path branch physical_path
+    local removed=0 skipped_current=0 skipped_dirty=0 skipped_unmerged=0 failed=0 candidates=0
+
+    while (($#)); do
+        case "$1" in
+            --dry-run)
+                dry_run=1
+                ;;
+            --yes)
+                dry_run=0
+                ;;
+            -h|--help)
+                base_gh_usage
+                return 0
+                ;;
+            *)
+                base_gh_error "Unknown option '$1'."
+                return 1
+                ;;
+        esac
+        shift
+    done
+
+    base_gh_require_git_repo || return 1
+    default_branch="$(base_gh_default_branch)"
+    current_worktree="$(base_gh_resolve_physical_path "$(git rev-parse --show-toplevel)")" || return 1
+
+    if ((dry_run)); then
+        printf '[DRY-RUN] Worktree prune preview for default branch %s.\n' "$default_branch"
+    fi
+    printf 'Worktrees\n'
+
+    while IFS=$'\t' read -r path branch; do
+        [[ -n "$path" && -n "$branch" ]] || continue
+        physical_path="$(base_gh_resolve_physical_path "$path")" || {
+            printf 'FAIL   %s (%s)  unable to inspect worktree path\n' "$path" "$branch"
+            failed=$((failed + 1))
+            continue
+        }
+        candidates=$((candidates + 1))
+
+        if [[ "$physical_path" == "$current_worktree" ]]; then
+            printf 'SKIP   %s (%s)  current worktree\n' "$path" "$branch"
+            skipped_current=$((skipped_current + 1))
+            continue
+        fi
+        if [[ "$branch" == "$default_branch" ]]; then
+            printf 'SKIP   %s (%s)  default branch worktree\n' "$path" "$branch"
+            skipped_current=$((skipped_current + 1))
+            continue
+        fi
+        if base_gh_worktree_dirty "$path"; then
+            printf 'SKIP   %s (%s)  dirty worktree\n' "$path" "$branch"
+            skipped_dirty=$((skipped_dirty + 1))
+            continue
+        fi
+        if ! base_gh_branch_merged_to_ref "$branch" "$default_branch"; then
+            printf 'SKIP   %s (%s)  branch is not merged into %s\n' "$path" "$branch" "$default_branch"
+            skipped_unmerged=$((skipped_unmerged + 1))
+            continue
+        fi
+
+        if ((dry_run)); then
+            printf '[DRY-RUN] REMOVE %s (%s) and delete local branch\n' "$path" "$branch"
+            removed=$((removed + 1))
+        elif git worktree remove "$path" >/dev/null 2>&1; then
+            printf 'REMOVE %s (%s)\n' "$path" "$branch"
+            removed=$((removed + 1))
+            base_gh_worktree_prune_delete_branch "$branch"
+        else
+            printf 'FAIL   %s (%s)  git worktree remove failed\n' "$path" "$branch"
+            failed=$((failed + 1))
+        fi
+    done < <(base_gh_list_worktree_branches)
+
+    if ((candidates == 0)); then
+        printf 'No Git worktrees found.\n'
+    fi
+    printf 'Summary: %s %s, %s skipped current/default, %s skipped dirty, %s skipped unmerged, %s failed.\n' \
+        "$removed" "$([[ "$dry_run" -eq 1 ]] && printf 'would remove' || printf 'removed')" \
+        "$skipped_current" "$skipped_dirty" "$skipped_unmerged" "$failed"
+    return "$failed"
+}
+
 base_gh_do_branch() {
     local command="${1:-}"
     shift || true
@@ -553,6 +691,21 @@ base_gh_do_branch() {
         -h|--help|help|"") base_gh_usage ;;
         *)
             base_gh_error "Unknown gh branch command '$command'."
+            base_gh_usage >&2
+            return 1
+            ;;
+    esac
+}
+
+base_gh_do_worktree() {
+    local command="${1:-}"
+    shift || true
+
+    case "$command" in
+        prune) base_gh_worktree_prune "$@" ;;
+        -h|--help|help|"") base_gh_usage ;;
+        *)
+            base_gh_error "Unknown gh worktree command '$command'."
             base_gh_usage >&2
             return 1
             ;;
@@ -651,6 +804,7 @@ base_gh_subcommand_main() {
         issue) base_gh_do_issue "$@" ;;
         pr) base_gh_do_pr "$@" ;;
         branch) base_gh_do_branch "$@" ;;
+        worktree) base_gh_do_worktree "$@" ;;
         todo) base_gh_do_todo "$@" ;;
         -h|--help|help|"") base_gh_usage ;;
         *)

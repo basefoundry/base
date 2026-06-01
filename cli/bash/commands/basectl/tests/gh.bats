@@ -9,6 +9,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
+    [[ "$output" == *"basectl gh worktree prune"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
     [[ "$output" == *"assigned to codeforester"* ]]
 }
@@ -289,6 +290,125 @@ EOF
     [[ "$output" != *"Pruning origin"* ]]
     [[ "$output" != *"URL:"* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
+}
+
+@test "basectl gh worktree prune defaults to dry-run" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/merged-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+    git -C "$repo" worktree add "$worktree" merged-work >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Worktree prune preview for default branch master."* ]]
+    [[ "$output" == *"[DRY-RUN] REMOVE "*"/merged-worktree (merged-work) and delete local branch"* ]]
+    [[ "$output" == *"SKIP   "*"/repo (master)  current worktree"* ]]
+    [[ "$output" == *"Summary: 1 would remove, 1 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 0 failed."* ]]
+    [ -d "$worktree" ]
+    git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh worktree prune removes safe merged worktrees and branch" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/merged-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+    git -C "$repo" worktree add "$worktree" merged-work >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"REMOVE "*"/merged-worktree (merged-work)"* ]]
+    [[ "$output" == *"DELETE merged-work"* ]]
+    [[ "$output" == *"Summary: 1 removed, 1 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 0 failed."* ]]
+    [ ! -e "$worktree" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
+@test "basectl gh worktree prune skips dirty worktrees" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/dirty-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch dirty-work
+    git -C "$repo" worktree add "$worktree" dirty-work >/dev/null 2>&1
+    printf 'notes\n' > "$worktree/local-notes.md"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   "*"/dirty-worktree (dirty-work)  dirty worktree"* ]]
+    [[ "$output" == *"Summary: 0 removed, 1 skipped current/default, 1 skipped dirty, 0 skipped unmerged, 0 failed."* ]]
+    [ -d "$worktree" ]
+    git -C "$repo" show-ref --verify --quiet refs/heads/dirty-work
+}
+
+@test "basectl gh worktree prune skips unmerged branches" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/unmerged-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c unmerged-work >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" worktree add "$worktree" unmerged-work >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   "*"/unmerged-worktree (unmerged-work)  branch is not merged into master"* ]]
+    [[ "$output" == *"Summary: 0 removed, 1 skipped current/default, 0 skipped dirty, 1 skipped unmerged, 0 failed."* ]]
+    [ -d "$worktree" ]
+    git -C "$repo" show-ref --verify --quiet refs/heads/unmerged-work
 }
 
 @test "basectl gh pr create links current branch issue" {
