@@ -152,3 +152,82 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"demo.script './demo.sh' does not exist"* ]]
 }
+
+@test "Base manifest declares the self-demo script" {
+    run grep -F "script: ./demo/demo.sh" "$BASE_REPO_ROOT/base_manifest.yaml"
+
+    [ "$status" -eq 0 ]
+    [ -x "$BASE_REPO_ROOT/demo/demo.sh" ]
+}
+
+@test "basectl demo base runs the self-demo in non-interactive mode" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local fake_bin="$TEST_TMPDIR/fake-bin"
+    local state_file="$TEST_TMPDIR/self-demo-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$TEST_HOME/.base.d/base/.venv/bin" "$fake_bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "base" ]]; then
+    printf 'base\t%s\t%s\t%s\n' "${BASE_REPO_ROOT:?}" "${BASE_REPO_ROOT:?}/base_manifest.yaml" "${BASE_REPO_ROOT:?}/demo/demo.sh"
+    exit 0
+fi
+printf 'unexpected self-demo python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bin/basectl" <<'EOF'
+#!/usr/bin/env bash
+printf 'basectl %s\n' "$*" >> "${BASE_TEST_SELF_DEMO_STATE:?}"
+case "$*" in
+    projects\ list\ --workspace\ *)
+        printf 'base\t%s\n' "${BASE_REPO_ROOT:?}"
+        ;;
+    check\ base)
+        printf 'Base CLI environment and project base check passed.\n'
+        ;;
+    doctor\ base)
+        printf 'Base doctor found no blocking issues for project base.\n'
+        ;;
+    run\ base\ test\ --dry-run)
+        printf '[DRY-RUN] Would run command test for project base.\n'
+        ;;
+    test\ base\ --dry-run)
+        printf '[DRY-RUN] Would run tests for project base.\n'
+        ;;
+    *)
+        printf 'unexpected fake basectl args: %s\n' "$*" >&2
+        exit 1
+        ;;
+esac
+EOF
+    cat > "$fake_bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'base-wrapper %s\n' "$*" >> "${BASE_TEST_SELF_DEMO_STATE:?}"
+if [[ "$*" == "--project base base_projects resolve base" ]]; then
+    printf 'base\t%s\t%s\n' "${BASE_REPO_ROOT:?}" "${BASE_REPO_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected fake base-wrapper args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin" "$fake_bin/basectl" "$fake_bin/base-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_TEST_SELF_DEMO_STATE="$state_file" \
+        BASE_DEMO_BASECTL="$fake_bin/basectl" \
+        BASE_DEMO_BASE_WRAPPER="$fake_bin/base-wrapper" \
+        "$BASE_REPO_ROOT/bin/basectl" demo base -- --non-interactive
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base Self-Demo"* ]]
+    [[ "$output" == *"Base self-demo complete."* ]]
+    grep -Fqx "basectl projects list --workspace $(dirname "$BASE_REPO_ROOT")" "$state_file"
+    grep -Fqx "basectl check base" "$state_file"
+    grep -Fqx "basectl doctor base" "$state_file"
+    grep -Fqx "basectl run base test --dry-run" "$state_file"
+    grep -Fqx "basectl test base --dry-run" "$state_file"
+    grep -Fqx "base-wrapper --project base base_projects resolve base" "$state_file"
+}

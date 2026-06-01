@@ -64,13 +64,15 @@ basectl setup <project>
 basectl check <project>
 basectl doctor <project>
 basectl test <project>
+basectl demo <project>
 basectl run <project> <command>
 basectl activate <project>
 ```
 
-For Base itself, run the dogfood test contract:
+For Base itself, run the self-demo or the dogfood test contract:
 
 ```bash
+basectl demo base -- --non-interactive
 basectl test base
 ```
 
