@@ -13,6 +13,8 @@ import base_cli
 from base_cli.config import read_user_config
 from base_cli.paths import base_cache_root
 from base_cli.paths import discover_manifest
+from base_setup.demo import resolve_demo_script_path
+from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, ManifestError, TestConfig, read_manifest
 
 
@@ -72,6 +74,7 @@ def dispatch_projects_command(
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
         "resolve": lambda: resolve_project_from_args(ctx, command_arguments, workspace),
         "test-command": lambda: test_command_project_from_args(ctx, command_arguments, workspace),
+        "demo-script": lambda: demo_script_project_from_args(ctx, command_arguments, workspace),
         "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, workspace),
         "run-command": lambda: run_command_project_from_args(ctx, command_arguments, workspace),
         "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, workspace),
@@ -82,7 +85,7 @@ def dispatch_projects_command(
 
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "test-command, activation-sources, run-command, run-commands.",
+        "test-command, demo-script, activation-sources, run-command, run-commands.",
         command,
     )
     return 2
@@ -132,6 +135,11 @@ def resolve_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...],
 def test_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
     project = optional_project_argument("test-command", arguments)
     return test_command_project_command(ctx, project, workspace)
+
+
+def demo_script_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
+    require_argument_count("demo-script", arguments, 1, 1)
+    return demo_script_project_command(ctx, arguments[0], workspace)
 
 
 def activation_sources_project_from_args(
@@ -214,6 +222,30 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         return 1
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{test_command(manifest.test)}")
+    return 0
+
+
+def demo_script_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+    if not project_name:
+        ctx.log.error("Project name is required.")
+        return 2
+
+    try:
+        project = resolve_named_project(ctx, project_name, workspace)
+        manifest = read_manifest(project.manifest_path)
+        if manifest.demo is None:
+            ctx.log.error(
+                "No demo declared for project '%s'. Add demo.script to '%s'.",
+                project.name,
+                project.manifest_path,
+            )
+            return 1
+        demo_script = resolve_demo_script_path(manifest)
+    except (ProjectDiscoveryError, ManifestError, ArtifactError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{demo_script}")
     return 0
 
 

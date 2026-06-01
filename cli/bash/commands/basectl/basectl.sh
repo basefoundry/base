@@ -17,6 +17,8 @@ Commands:
     Verify the local Base CLI environment and optional project artifacts without making changes.
   test [project] [options]
     Run a project's declared test command.
+  demo <project> [options]
+    Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
   repo <init|check|configure> [options]
@@ -169,6 +171,11 @@ basectl_do_test() {
     base_test_subcommand_main "$@"
 }
 
+basectl_do_demo() {
+    basectl_source_subcommand_module demo || return 1
+    base_demo_subcommand_main "$@"
+}
+
 basectl_do_run() {
     basectl_source_subcommand_module run || return 1
     base_run_subcommand_main "$@"
@@ -318,6 +325,7 @@ basectl_main() {
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
         test)             basectl_do_test "$@" ;;
+        demo)             basectl_do_demo "$@" ;;
         run)              basectl_do_run "$@" ;;
         repo)             basectl_do_repo "$@" ;;
         clean)            basectl_do_clean "$@" ;;

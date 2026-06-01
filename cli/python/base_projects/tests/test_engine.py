@@ -57,6 +57,14 @@ def write_commands_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_demo_manifest(project_root: Path, name: str, script: str) -> None:
+    project_root.mkdir(parents=True, exist_ok=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\ndemo:\n  script: {script}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
 def write_activation_manifest(project_root: Path, name: str, sources: list[str]) -> None:
     project_root.mkdir(parents=True)
     source_lines = "\n".join(f"    - {source}" for source in sources)
@@ -638,6 +646,53 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn("does not declare command 'serve'", stderr)
+
+    def test_projects_demo_script_prints_project_details_and_script(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            script = project_root / "demo" / "demo.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            script.chmod(0o755)
+            write_demo_manifest(project_root, "demo", "./demo/demo.sh")
+
+            status, stdout, stderr = run_engine(["demo-script", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\t{script.resolve()}\n",
+        )
+
+    def test_projects_demo_script_requires_demo_declaration(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, _stdout, stderr = run_engine(["demo-script", "demo"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("No demo declared for project 'demo'", stderr)
+
+    def test_projects_demo_script_rejects_missing_script(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_demo_manifest(project_root, "demo", "./demo/demo.sh")
+
+            status, _stdout, stderr = run_engine(["demo-script", "demo"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertIn("does not exist", stderr)
 
     def test_projects_run_commands_lists_test_and_manifest_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

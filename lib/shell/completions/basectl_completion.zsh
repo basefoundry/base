@@ -18,6 +18,7 @@ _base_basectl_completion() {
         'setup:Install and bootstrap the local Base CLI environment'
         'check:Verify the local Base CLI environment'
         'test:Run a project test command'
+        'demo:Run a project interactive demo'
         'run:Run a project command'
         'repo:Create, check, and configure repository baseline'
         'clean:Remove old Base CLI runtime artifacts'
@@ -75,6 +76,16 @@ _base_basectl_completion() {
         test)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
                 '--dry-run[Print the resolved test command without running it]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
+            ;;
+        demo)
+            _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--dry-run[Print the resolved demo script without running it]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then

@@ -8,6 +8,10 @@ project:
 test:
   command: ./bin/base-test
 
+demo:
+  script: ./demo/demo.sh
+  description: Self-contained walkthrough of Base's core project workflow
+
 # Optional relative path to a Homebrew Brewfile for ordinary macOS tools.
 # Base runs `brew bundle --file=<path>` during setup when this is set.
 # Keep Base-specific managed dependencies in `artifacts`; use Brewfile for
