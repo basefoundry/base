@@ -21,6 +21,9 @@ Use one primary category label on each issue:
 - `security`
   Security hardening, dependency pinning, static analysis, and permission
   tightening.
+- `needs-demo`
+  Changes that should update Base's self-demo, the `base-demo` reference
+  project, or demo documentation. See [Demo Maintenance](demo-maintenance.md).
 
 Avoid creating new `type:*` labels. Older issues may still carry historical
 `type:fix`, `type:feat`, `type:chore`, or `type:docs` labels, but new work
@@ -135,6 +138,7 @@ PR bodies should include:
 - a short summary of the change
 - the validation commands that were run
 - `Fixes #<issue>` or `Closes #<issue>` when the merge should close the issue
+- `Demo Impact` when the issue or PR carries `needs-demo`
 
 Prefer small PR trains over large mixed PRs. A train may contain several
 worktrees and PRs, but each PR should still close one issue cleanly.

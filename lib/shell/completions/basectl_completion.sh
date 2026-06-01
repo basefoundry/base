@@ -35,7 +35,7 @@ _base_basectl_completion_project_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test demo run repo clean config doctor gh onboard update-profile update projects version help"
+    local commands="activate setup check test demo run repo clean logs config doctor gh onboard update-profile update projects workspace version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -57,6 +57,13 @@ _base_basectl_completion() {
         projects)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "list" "$cur"
+            else
+                _base_basectl_completion_compgen "--workspace --format -v -h --help" "$cur"
+            fi
+            ;;
+        workspace)
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen "status" "$cur"
             else
                 _base_basectl_completion_compgen "--workspace --format -v -h --help" "$cur"
             fi
@@ -94,6 +101,9 @@ _base_basectl_completion() {
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --keep-last --dry-run -v -h --help" "$cur"
+            ;;
+        logs)
+            _base_basectl_completion_compgen "--command --limit --path --tail --open --lines -v -h --help" "$cur"
             ;;
         config)
             if ((COMP_CWORD == 2)); then

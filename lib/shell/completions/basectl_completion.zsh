@@ -22,6 +22,7 @@ _base_basectl_completion() {
         'run:Run a project command'
         'repo:Create, check, and configure repository baseline'
         'clean:Remove old Base CLI runtime artifacts'
+        'logs:List and open recent Base CLI runtime logs'
         'config:Inspect Base machine-local user config'
         'doctor:Diagnose the local Base environment'
         'gh:Manage GitHub issues, pull requests, branches, and hygiene'
@@ -29,6 +30,7 @@ _base_basectl_completion() {
         'update-profile:Refresh Base-managed shell startup sections'
         'update:Update Base and rerun setup'
         'projects:List Base-managed projects'
+        'workspace:Show workspace-level project status'
         'version:Show the installed Base version'
         'help:Show help text'
     )
@@ -52,6 +54,12 @@ _base_basectl_completion() {
             ;;
         projects)
             _arguments '1:projects command:(list)' \
+                '--workspace[Workspace directory to scan]:path:_files' \
+                '--format[Output format]:format:(text json)' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        workspace)
+            _arguments '1:workspace command:(status)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
@@ -141,6 +149,15 @@ _base_basectl_completion() {
             _arguments '--older-than[Artifact age]:age:' \
                 '--keep-last[Keep newest log files per CLI log directory]:count:' \
                 '--dry-run[Log without removing files]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        logs)
+            _arguments '--command[Filter by command]:command:' \
+                '--limit[Number of entries]:count:' \
+                '--path[Print most recent log path]' \
+                '--tail[Tail and follow most recent log]' \
+                '--open[Open most recent log]' \
+                '--lines[Lines to show before following]:count:' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)

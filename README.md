@@ -293,14 +293,18 @@ You can inspect the projects Base can see with:
 ```bash
 basectl projects list
 basectl projects list --format json
+basectl workspace status
+basectl workspace status --format json
 ```
 
 By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
 value is configured. If it is not configured, Base falls back to the parent
 directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
-Output is tab-separated as `<project-name><TAB><path>`. Use `--format json` for
-machine-readable output.
+Project list output is tab-separated as `<project-name><TAB><path>`. Use
+`--format json` for machine-readable output. Workspace status is also read-only;
+it reports each discovered project's manifest validity and whether the
+Base-managed project virtual environment is present.
 
 Start a new Base-managed repository with:
 
@@ -426,6 +430,20 @@ Cleanup only targets runtime artifacts under the Base cache root, which defaults
 to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
 state such as `~/.base.d/config.yaml` and project virtual environments under
 `~/.base.d/<project>/.venv` are outside this scope.
+
+Show recent Base CLI logs with:
+
+```bash
+basectl logs
+basectl logs --command check
+basectl logs --path
+basectl logs --open
+basectl logs --tail
+```
+
+`basectl logs` is read-only. It lists the newest runtime logs under the Base
+cache root so failed Python-layer runs can be inspected without rerunning with
+debug output enabled.
 
 Inspect machine-local Base config with:
 
@@ -660,6 +678,7 @@ Key starting points:
 - [Tool Boundaries](docs/tool-boundaries.md)
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
+- [Project Demo Workflow](docs/project-demo-workflow.md)
 
 ## Compatibility
 

@@ -25,6 +25,8 @@ Commands:
     Create, check, and configure a standard Base-managed repository baseline.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
+  logs [options]
+    List and open recent Base CLI runtime logs.
   config <path|show|doctor>
     Inspect Base's machine-local user config.
   doctor [project] [options]
@@ -39,6 +41,8 @@ Commands:
     Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
+  workspace status [options]
+    Show a read-only status summary for workspace projects.
   version
     Show the installed Base version.
   help
@@ -191,6 +195,11 @@ basectl_do_clean() {
     base_clean_subcommand_main "$@"
 }
 
+basectl_do_logs() {
+    basectl_source_subcommand_module logs || return 1
+    base_logs_subcommand_main "$@"
+}
+
 basectl_do_config() {
     basectl_source_subcommand_module config || return 1
     base_config_subcommand_main "$@"
@@ -224,6 +233,11 @@ basectl_do_update() {
 basectl_do_projects() {
     basectl_source_subcommand_module projects || return 1
     base_projects_subcommand_main "$@"
+}
+
+basectl_do_workspace() {
+    basectl_source_subcommand_module workspace || return 1
+    base_workspace_subcommand_main "$@"
 }
 
 basectl_source_version_library() {
@@ -329,6 +343,7 @@ basectl_main() {
         run)              basectl_do_run "$@" ;;
         repo)             basectl_do_repo "$@" ;;
         clean)            basectl_do_clean "$@" ;;
+        logs)             basectl_do_logs "$@" ;;
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;
@@ -336,6 +351,7 @@ basectl_main() {
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;
+        workspace)        basectl_do_workspace "$@" ;;
         update)           basectl_do_update "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;

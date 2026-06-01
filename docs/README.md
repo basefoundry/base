@@ -59,6 +59,10 @@ reference. The filename should answer "what is this about?"
   implementation constraints for parallel check probes.
 - [Base-managed demo project](base-managed-demo-project.md) defines the proof
   project criteria for showing Base's complete workspace workflow.
+- [Project Demo Workflow](project-demo-workflow.md) documents `demo.script`,
+  `basectl demo`, Base's self-demo, and the `base-demo` reference repository.
+- [Demo Maintenance](demo-maintenance.md) defines the `needs-demo` label and PR
+  convention for keeping executable demos aligned with product changes.
 - [base_cli Runtime Package](base-cli.md) describes the Python CLI foundation
   used by Base and Base-supported project CLIs.
 - [GitHub Workflow](github-workflow.md) documents how Base uses GitHub Issues,
