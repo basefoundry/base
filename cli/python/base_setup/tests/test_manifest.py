@@ -181,6 +181,33 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.activate.source, (".base/activate.sh", "scripts/local-env.sh"))
 
 
+    def test_reads_manifest_demo_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "demo:",
+                        "  script: ./demo/demo.sh",
+                        "  description: Interactive project walkthrough",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.demo)
+        assert manifest.demo is not None
+        self.assertEqual(manifest.demo.script, "./demo/demo.sh")
+        self.assertEqual(manifest.demo.description, "Interactive project walkthrough")
+
+
 
     def test_rejects_invalid_manifest_activation_sources(self) -> None:
         invalid_values = {
@@ -202,6 +229,37 @@ class ManifestParsingTests(unittest.TestCase):
                                 "project:",
                                 "  name: demo",
                                 activate_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
+
+
+    def test_rejects_invalid_manifest_demo_config(self) -> None:
+        invalid_values = {
+            "scalar": "demo: ./demo/demo.sh",
+            "unknown_key": "demo:\n  script: ./demo/demo.sh\n  shell: bash",
+            "missing_script": "demo:\n  description: Interactive project walkthrough",
+            "empty_script": "demo:\n  script: ''",
+            "non_string_script": "demo:\n  script: 7",
+            "newline_script": "demo:\n  script: \"demo\\n/demo.sh\"",
+            "empty_description": "demo:\n  script: ./demo/demo.sh\n  description: ''",
+            "non_string_description": "demo:\n  script: ./demo/demo.sh\n  description: 7",
+        }
+        for name, demo_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                demo_yaml,
                                 "artifacts: []",
                             ]
                         ),
