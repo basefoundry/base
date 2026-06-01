@@ -21,6 +21,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   repository creation or explain why GitHub creation is skipped.
 - Fixed `basectl repo` dry-run output to print readable quoted GitHub command
   arguments instead of backslash-escaped words.
+- Fixed `basectl update` to allow harmless untracked files while still blocking
+  tracked local changes.
 
 ## [0.2.0] - 2026-05-30
 
