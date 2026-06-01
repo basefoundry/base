@@ -67,6 +67,14 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "projects_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "workspace_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace status --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl onboard --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -75,6 +83,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "clean_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl logs --); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "logs_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl repo ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -112,8 +124,11 @@ EOF
     [[ "$output" == *"test_options=--workspace --dry-run"* ]]
     [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
+    [[ "$output" == *"workspace_commands=status"* ]]
+    [[ "$output" == *"workspace_options=--workspace --format"* ]]
     [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
+    [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"repo_commands=init check configure"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --no-configure --dry-run"* ]]
     [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
