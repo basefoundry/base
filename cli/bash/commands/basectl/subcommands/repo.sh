@@ -486,16 +486,29 @@ base_repo_require_gh() {
     }
 }
 
+base_repo_pretty_quote() {
+    local value="$1"
+
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    value="${value//$'\r'/\\r}"
+    value="${value//$'\t'/\\t}"
+    printf '"%s"' "$value"
+}
+
 base_repo_configure_label() {
     local color="$3"
     local description="$4"
     local dry_run="$1"
     local label="$2"
     local repo="$5"
+    local quoted_description
 
     if [[ "$dry_run" == "1" ]]; then
-        printf "[DRY-RUN] Would run: gh label create %q --repo %q --color %q --description %q --force\n" \
-            "$label" "$repo" "$color" "$description"
+        quoted_description="$(base_repo_pretty_quote "$description")"
+        printf "[DRY-RUN] Would run: gh label create %s --repo %s --color %s --description %s --force\n" \
+            "$label" "$repo" "$color" "$quoted_description"
         return 0
     fi
 
@@ -528,7 +541,7 @@ base_repo_configure_github() {
     local status=0
 
     if [[ "$dry_run" == "1" ]]; then
-        printf "[DRY-RUN] Would run: gh repo edit %q --enable-issues --enable-projects --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge --squash-merge-commit-message pr-title-description\n" "$repo"
+        printf "[DRY-RUN] Would run: gh repo edit %s --enable-issues --enable-projects --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge --squash-merge-commit-message pr-title-description\n" "$repo"
     else
         base_repo_require_gh || return 1
         gh repo edit "$repo" \

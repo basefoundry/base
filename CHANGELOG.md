@@ -19,6 +19,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   workspace root instead of the caller's current directory.
 - Fixed `basectl repo init --dry-run` to explicitly report planned GitHub
   repository creation or explain why GitHub creation is skipped.
+- Fixed `basectl repo` dry-run output to print readable quoted GitHub command
+  arguments instead of backslash-escaped words.
 
 ## [0.2.0] - 2026-05-30
 
