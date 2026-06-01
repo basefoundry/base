@@ -312,10 +312,10 @@ contributing guide, MIT license, `.gitignore`, `base_manifest.yaml`, a
 By default, `repo init` creates the repository under `workspace.root` from
 `~/.base.d/config.yaml`; if that is not configured, it falls back to the parent
 directory of `BASE_HOME`. Use `--path <path>` for an explicit location.
-`repo init` also standardizes the GitHub repository when `--repo <owner/name>`
-is provided or when an existing `origin` remote can be inferred. Use
-`--no-configure` to skip the GitHub step, or rerun it later with
-`basectl repo configure`.
+`repo init` also creates the GitHub repository when needed and then
+standardizes its settings when `--repo <owner/name>` is provided or when an
+existing `origin` remote can be inferred. Use `--no-configure` to skip the
+GitHub step, or rerun it later with `basectl repo configure`.
 
 Check and repair the repo baseline with:
 

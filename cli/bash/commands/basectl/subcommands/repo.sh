@@ -502,6 +502,26 @@ base_repo_configure_label() {
     gh label create "$label" --repo "$repo" --color "$color" --description "$description" --force
 }
 
+base_repo_ensure_github_repo() {
+    local description="$3"
+    local dry_run="$1"
+    local repo="$2"
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would create GitHub repository '%s' if it does not already exist.\n" "$repo"
+        return 0
+    fi
+
+    base_repo_require_gh || return 1
+    if gh repo view "$repo" >/dev/null 2>&1; then
+        log_info "GitHub repository '$repo' already exists."
+        return 0
+    fi
+
+    log_info "Creating GitHub repository '$repo'."
+    gh repo create "$repo" --public --description "$description"
+}
+
 base_repo_configure_github() {
     local dry_run="$1"
     local repo="$2"
@@ -659,9 +679,14 @@ base_repo_init() {
             github_repo="$(base_repo_infer_github_repo "$root" || true)"
         fi
         if [[ -n "$github_repo" ]]; then
+            base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" || return 1
             base_repo_configure_github "$dry_run" "$github_repo" || return 1
         else
-            log_info "Skipping GitHub repository configuration because no GitHub repo was provided or inferred."
+            if [[ "$dry_run" == "1" ]]; then
+                printf "[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred. Pass --repo <owner/name> to include GitHub repository creation and configuration.\n"
+            else
+                log_info "Skipping GitHub repository creation and configuration because no GitHub repo was provided or inferred."
+            fi
         fi
     fi
 }

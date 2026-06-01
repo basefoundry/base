@@ -17,6 +17,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Updated the README status section to match the current `0.2.0` release.
 - Fixed `basectl repo init` to create new repositories under the configured
   workspace root instead of the caller's current directory.
+- Fixed `basectl repo init --dry-run` to explicitly report planned GitHub
+  repository creation or explain why GitHub creation is skipped.
 
 ## [0.2.0] - 2026-05-30
 
