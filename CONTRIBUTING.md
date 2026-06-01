@@ -34,8 +34,10 @@ opinionated, testable, and useful as a shared workspace control plane.
    ```
 
 5. Keep the PR scoped to the issue. Avoid unrelated refactors.
-6. Link the PR back to the issue with `Fixes #<issue>`.
-7. After merge, sync `master`, remove the worktree, and delete the local and
+6. Link the PR back to the issue with `Fixes #<issue>` or `Closes #<issue>`.
+7. Use the standard PR body and fill in Summary, Issue, Validation, Demo
+   Impact, and Notes.
+8. After merge, sync `master`, remove the worktree, and delete the local and
    remote branches.
 
 For the full policy, including milestone and GitHub Project guidance, see
@@ -99,8 +101,11 @@ When adding or changing a built-in tool artifact:
 Before opening a PR:
 
 - The branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
-- The PR is scoped to one issue.
+- The PR is scoped to one issue, unless a documented multi-issue exception
+  applies.
 - The PR body explains what changed and how it was validated.
 - Relevant BATS and Python tests pass.
 - Documentation is updated when behavior or user-facing commands change.
 - The PR includes `Fixes #<issue>` when it should close the issue.
+- `Demo Impact` is meaningful for `needs-demo` work, or explicitly says
+  `None.` when no demo update is needed.

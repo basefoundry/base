@@ -133,7 +133,12 @@ local branch when safe.
 
 ## Pull Requests
 
-Keep each PR scoped to one issue.
+Base pull requests are issue-backed by default. The issue is the planning
+record: it owns the problem statement, category, priority, milestone, and
+Project tracking. The PR is the implementation and review record: it explains
+what changed, how it was validated, and whether the change is ready to merge.
+
+Keep each PR scoped to one issue by default.
 
 PR bodies should include:
 
@@ -144,6 +149,120 @@ PR bodies should include:
 
 Prefer small PR trains over large mixed PRs. A train may contain several
 worktrees and PRs, but each PR should still close one issue cleanly.
+
+### PR Metadata Inheritance
+
+When a PR is opened for an issue, inherit metadata selectively:
+
+- Copy the primary category label from the issue to the PR.
+- Copy special workflow labels such as `needs-demo` to the PR.
+- Assign the PR to the implementer when assignment is useful for review
+  queues.
+- Link the PR to the issue with `Closes #<issue>` when the merge should close
+  the issue.
+- Use `Refs #<issue>` when the PR is related to an issue but should not close
+  it.
+
+Do not copy milestone or GitHub Project fields to the PR by default. Keep those
+on the issue so release planning and Project views do not double count the same
+work. When a PR opens, move the issue's Project status to `In Review` instead
+of adding a separate PR item to the Project.
+
+PR reviewers are PR-specific and should be selected from the implementation
+surface, ownership, and risk of the change rather than copied from the issue.
+
+### Multi-Issue PRs
+
+One PR may close multiple issues only when the work is atomic and splitting it
+would create artificial churn. Acceptable examples include:
+
+- one small implementation that naturally fixes two related bugs
+- a mechanical documentation or test cleanup across several tiny issues
+- a parent issue plus tightly scoped sub-issues
+- one refactor that unlocks several tightly related follow-ups
+
+Split the PR instead when:
+
+- the issues have different milestones or release intent
+- the issues have different primary categories
+- one issue is user-facing and another is internal cleanup
+- one issue requires demo, migration, security, or release-note handling and
+  the other does not
+- review would be harder because the concerns are unrelated
+
+For a multi-issue PR, choose one primary issue:
+
+- The branch name uses the primary issue number.
+- The PR title is based on the primary issue.
+- Inherited labels come from the primary issue plus any special labels needed
+  for the full PR scope.
+- The PR body lists every closed or referenced issue.
+
+Example:
+
+```markdown
+## Issue
+
+Closes #123
+Closes #124
+Refs #130
+```
+
+Use `Refs` for related or partial issues that should remain open.
+
+### PR Body Sections
+
+Base uses a minimal standard PR body:
+
+```markdown
+## Summary
+
+-
+
+## Issue
+
+Closes #
+
+## Validation
+
+-
+
+## Demo Impact
+
+None.
+
+## Notes
+
+None.
+```
+
+`Demo Impact` is required for Base PRs so demo-related changes are considered
+intentionally. Use `None.` when the change does not affect Base's demo,
+Base-managed demo project, demo docs, or user-visible flows that should be
+shown in a demo.
+
+When the issue or PR carries `needs-demo`, `Demo Impact` must explain what demo
+content should change. Do not leave it as `None.` for a `needs-demo` PR.
+
+Additional sections are added only when a Base policy, label, or touched area
+requires them. Examples include:
+
+- `Security Notes` for security-sensitive changes
+- `Migration Notes` for breaking manifest, config, or CLI behavior
+- `Release Notes` for user-visible release highlights
+- `Docs Impact` for changes that require external documentation updates
+
+Do not add every possible section to every PR. Extra sections should carry
+signal, not template noise.
+
+### Base-Managed Project Policy
+
+This policy is for the Base repository. Future Base-managed projects should be
+able to declare their own PR workflow requirements instead of inheriting
+Base-specific sections such as `Demo Impact` unconditionally.
+
+Base should provide the workflow mechanism and defaults. Each project should
+own its labels, required sections, path-triggered sections, and review policy.
 
 ## Milestones
 
