@@ -378,8 +378,134 @@ base_gh_branch_stale() {
     done < <(git for-each-ref --format='%(committerdate:unix) %(refname)' refs/heads refs/remotes/origin | grep -v ' refs/remotes/origin/HEAD$')
 }
 
+base_gh_worktree_path_for_branch() {
+    local branch="$1"
+    local target_ref="refs/heads/$branch"
+    local line path="" ref
+
+    while IFS= read -r line; do
+        case "$line" in
+            "worktree "*)
+                path="${line#worktree }"
+                ;;
+            "branch "*)
+                ref="${line#branch }"
+                if [[ "$ref" == "$target_ref" ]]; then
+                    printf '%s\n' "$path"
+                    return 0
+                fi
+                ;;
+        esac
+    done < <(git worktree list --porcelain)
+
+    return 1
+}
+
+base_gh_branch_upstream() {
+    local branch="$1"
+    git for-each-ref --format='%(upstream:short)' "refs/heads/$branch"
+}
+
+base_gh_branch_merged_to_ref() {
+    local branch="$1"
+    local ref="$2"
+
+    git merge-base --is-ancestor "refs/heads/$branch" "$ref" >/dev/null 2>&1
+}
+
+base_gh_branch_prune_local() {
+    local dry_run="$1"
+    local default_branch="$2"
+    local branch worktree_path upstream
+    local deleted=0 skipped_worktree=0 skipped_upstream=0 failed=0 candidates=0
+
+    printf 'Local branches\n'
+    while read -r branch; do
+        branch="${branch#\* }"
+        branch="${branch## }"
+        [[ -z "$branch" || "$branch" == "$default_branch" ]] && continue
+        candidates=$((candidates + 1))
+
+        worktree_path="$(base_gh_worktree_path_for_branch "$branch" || true)"
+        if [[ -n "$worktree_path" ]]; then
+            printf 'SKIP   %s  attached to worktree %s\n' "$branch" "$worktree_path"
+            skipped_worktree=$((skipped_worktree + 1))
+            continue
+        fi
+
+        upstream="$(base_gh_branch_upstream "$branch")"
+        if [[ -n "$upstream" ]] && ! base_gh_branch_merged_to_ref "$branch" "$upstream"; then
+            printf 'SKIP   %s  not fully merged to upstream %s\n' "$branch" "$upstream"
+            skipped_upstream=$((skipped_upstream + 1))
+            continue
+        fi
+
+        if ((dry_run)); then
+            printf '[DRY-RUN] DELETE %s\n' "$branch"
+            deleted=$((deleted + 1))
+        elif git branch -d "$branch" >/dev/null 2>&1; then
+            printf 'DELETE %s\n' "$branch"
+            deleted=$((deleted + 1))
+        else
+            printf 'FAIL   %s  git branch -d failed\n' "$branch"
+            failed=$((failed + 1))
+        fi
+    done < <(git branch --merged "$default_branch" --format='%(refname:short)')
+
+    if ((candidates == 0)); then
+        printf 'No merged local branches found.\n'
+    fi
+    if ((skipped_worktree > 0)); then
+        printf 'Hint: run `basectl gh worktree prune` to inspect stale worktrees.\n'
+    fi
+    printf 'Summary: %s %s, %s skipped worktree, %s skipped upstream, %s failed.\n' \
+        "$deleted" "$([[ "$dry_run" -eq 1 ]] && printf 'would delete' || printf 'deleted')" \
+        "$skipped_worktree" "$skipped_upstream" "$failed"
+    return "$failed"
+}
+
+base_gh_branch_prune_remote() {
+    local dry_run="$1"
+    local output line ref found=0
+
+    printf 'Remote tracking refs\n'
+    if ((dry_run)); then
+        output="$(git remote prune origin --dry-run 2>&1)" || {
+            base_gh_error "git remote prune origin --dry-run failed."
+            [[ -n "$output" ]] && printf '%s\n' "$output" >&2
+            return 1
+        }
+    else
+        output="$(git remote prune origin 2>&1)" || {
+            base_gh_error "git remote prune origin failed."
+            [[ -n "$output" ]] && printf '%s\n' "$output" >&2
+            return 1
+        }
+    fi
+
+    while IFS= read -r line; do
+        case "$line" in
+            *"[would prune]"*)
+                ref="${line##*] }"
+                printf '[DRY-RUN] PRUNE %s\n' "$ref"
+                found=1
+                ;;
+            *"[pruned]"*)
+                ref="${line##*] }"
+                printf 'PRUNE %s\n' "$ref"
+                found=1
+                ;;
+        esac
+    done <<< "$output"
+
+    if ((found == 0)); then
+        printf 'No stale remote-tracking refs found.\n'
+    fi
+    printf 'Note: --remote prunes stale origin/* tracking refs; it does not delete GitHub branches.\n'
+}
+
 base_gh_branch_prune() {
-    local dry_run=1 remote=0 default_branch current_branch branch
+    local dry_run=1 remote=0 default_branch status=0
 
     while (($#)); do
         case "$1" in
@@ -406,30 +532,15 @@ base_gh_branch_prune() {
 
     base_gh_require_git_repo || return 1
     default_branch="$(base_gh_default_branch)"
-    current_branch="$(git branch --show-current)"
-
     if ((dry_run)); then
-        printf '[DRY-RUN] Local branches merged into %s that would be deleted:\n' "$default_branch"
+        printf '[DRY-RUN] Branch prune preview for default branch %s.\n' "$default_branch"
     fi
-
-    while read -r branch; do
-        branch="${branch#\* }"
-        branch="${branch## }"
-        [[ -z "$branch" || "$branch" == "$default_branch" || "$branch" == "$current_branch" ]] && continue
-        if ((dry_run)); then
-            printf '%s\n' "$branch"
-        else
-            git branch -d "$branch"
-        fi
-    done < <(git branch --merged "$default_branch" --format='%(refname:short)')
+    base_gh_branch_prune_local "$dry_run" "$default_branch" || status=$?
 
     if ((remote)); then
-        if ((dry_run)); then
-            printf '[DRY-RUN] Remote pruning would run: git remote prune origin\n'
-        else
-            git remote prune origin
-        fi
+        base_gh_branch_prune_remote "$dry_run" || status=$?
     fi
+    return "$status"
 }
 
 base_gh_do_branch() {

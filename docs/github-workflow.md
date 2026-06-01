@@ -109,6 +109,20 @@ git -C ~/work/base push origin --delete <branch>
 Delete remote branches after merge unless there is a specific reason to keep
 one around.
 
+Base can also help with branch cleanup:
+
+```bash
+basectl gh branch prune
+basectl gh branch prune --yes
+basectl gh branch prune --remote --yes
+```
+
+The command is dry-run by default. It reports merged local branches as delete
+candidates, reports branches attached to worktrees as skipped, and keeps remote
+cleanup scoped to stale `origin/*` tracking refs. Removing stale worktree
+directories is intentionally a separate workflow because it deletes files on
+disk.
+
 ## Pull Requests
 
 Keep each PR scoped to one issue.

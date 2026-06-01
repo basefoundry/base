@@ -23,6 +23,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   arguments instead of backslash-escaped words.
 - Fixed `basectl update` to allow harmless untracked files while still blocking
   tracked local changes.
+- Fixed `basectl gh branch prune` output to report worktree-attached and
+  upstream-protected branches as clear skips instead of raw Git errors.
 
 ## [0.2.0] - 2026-05-30
 
