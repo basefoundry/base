@@ -22,6 +22,12 @@ The stable split is:
 - `<project>/install.sh` or a packaged project installer guides product-specific
   onboarding and calls Base internally.
 
+Future workspace or team onboarding should start from a workspace manifest
+design, not from project-specific product logic inside Base. A command such as
+`basectl onboard <workspace>` would need an explicit manifest location, clone
+policy, trust model, partial-failure model, and dry-run story before it becomes
+part of the product surface.
+
 ## Audience
 
 `basectl onboard` is for someone who can use a terminal but does not yet know

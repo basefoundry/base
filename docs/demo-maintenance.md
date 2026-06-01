@@ -40,8 +40,8 @@ edits.
 
 ## `base-demo` Repository
 
-Once `codeforester/base-demo` exists, it should use the same `needs-demo` label
-with the same color and description as this repository:
+`codeforester/base-demo` should use the same `needs-demo` label with the same
+color and description as this repository:
 
 - color: `fbca04`
 - description: `Change should update a project demo`
