@@ -16,6 +16,26 @@ similar constraints.
 
 ---
 
+## Product Direction
+
+Base's long-term product shape is a Mac-first control plane for multi-repo
+developer workspaces. It should make a folder of sibling repositories
+understandable, repeatable, diagnosable, and easy to onboard without becoming a
+replacement for Homebrew, `mise`, Docker, GitHub CLI, IDEs, or project-owned
+build systems.
+
+The coherent product loop is:
+
+```text
+discover -> setup -> activate -> run -> test -> doctor -> fix -> onboard
+```
+
+Major features should strengthen that loop at the project or workspace level.
+Unrelated commands belong outside the core product unless real use proves they
+need Base's orchestration model.
+
+---
+
 ## Core Principles
 
 - **Opinionated over flexible** — Base makes decisions for you. Fewer choices means
@@ -27,6 +47,11 @@ similar constraints.
   through real use.
 - **Idempotent by design** — running any setup command multiple times should produce
   the same result safely.
+- **Orchestrate, do not replace** — Base should discover, sequence, validate,
+  and explain mature tools rather than absorb their full configuration models.
+- **Observable and diagnosable** — Base commands should make local state and
+  failures understandable through clear output, stable finding IDs, JSON where
+  useful, and inspectable logs.
 
 ---
 
@@ -36,15 +61,15 @@ Base is a public GitHub repository. All projects managed by Base are also GitHub
 repositories, checked out as peers under a shared parent directory:
 
 ```
-~/projects/          ← shared parent directory
+~/work/              ← shared workspace root
   base/              ← the Base repository itself
-  myproject-a/       ← peer project with a base manifest
-  myproject-b/       ← peer project with a base manifest
-  banyanlabs/        ← peer project with a base manifest
+  myproject-a/       ← peer project with base_manifest.yaml
+  myproject-b/       ← peer project with base_manifest.yaml
+  banyanlabs/        ← peer project with base_manifest.yaml
 ```
 
-Base discovers peer repositories by scanning the parent directory for repos that contain
-a base manifest file.
+Base discovers peer repositories by scanning the workspace root for repositories
+that contain `base_manifest.yaml`.
 
 ---
 
@@ -76,8 +101,12 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl doctor`
 - `basectl update-profile`
 - `basectl projects list`
+- `basectl workspace status`
 - `basectl activate`
+- `basectl run`
 - `basectl test`
+- `basectl demo`
+- `basectl logs`
 
 Shebang-based Bash scripts can also use:
 
@@ -508,6 +537,58 @@ source of truth, and corrupt or unwritable cache files are ignored.
 
 ---
 
+## Workspace Operations
+
+Base's larger value is managing a full workspace, not just one repository. The
+workspace command surface should make local state visible before it mutates many
+projects.
+
+Current workspace-oriented commands include:
+
+```bash
+basectl projects list
+basectl workspace status
+```
+
+`basectl workspace status` is intentionally read-only. It reports project
+manifest state, virtual environment state, and Git state across discovered
+projects, including invalid manifests without stopping the whole scan. JSON
+output is part of the contract so automation and future CI smoke checks can use
+the same data.
+
+Future workspace commands should follow the same principles:
+
+- start with read-only status, check, and doctor behavior
+- require explicit flags before mutating many repositories
+- treat partial failure as normal in multi-repo workspaces
+- keep sibling repositories under a shared workspace root as the default
+  discovery model
+- report machine-readable summaries early
+
+---
+
+## Doctor And Observability
+
+`basectl doctor` is a core trust-building feature. It should explain what is
+wrong, why it matters, whether Base can fix it, and the safest next command.
+Doctor output must stay non-mutating unless a future explicit fix command is
+designed with dry-run behavior.
+
+Doctor findings use stable identifiers documented in
+[Doctor Finding IDs](doctor-findings.md). Automation and runbooks should match
+on those IDs instead of human-readable messages.
+
+Base should also remain locally observable. `basectl logs` exposes recent Base
+CLI runtime logs from the Base cache root without sending telemetry anywhere.
+Useful command metadata includes the command, target project or workspace,
+start and end time, exit code, manifest version where relevant, external tools
+invoked, and log file paths.
+
+The goal is explainability, not surveillance. Base should help users understand
+what happened on their own machine.
+
+---
+
 ## Mac Bootstrap Sequence
 
 When `basectl setup` runs on a fresh Mac:
@@ -547,6 +628,25 @@ through managed workstation provisioning before invoking `basectl setup`.
 
 ---
 
+## Adoption Signals
+
+Base should measure product readiness through concrete local workflows:
+
+- one-command install works on a clean supported macOS machine
+- a public demo project can be cloned, set up, checked, tested, diagnosed, and
+  demonstrated by Base
+- a technically adjacent user can complete guided onboarding without reading
+  private internal notes
+- multiple project types are supported through adapters instead of
+  special-case code
+- `doctor` identifies and explains the most common local failure modes
+- JSON output is stable enough for automation and CI smoke checks
+
+These are not analytics goals. They are acceptance signals for whether Base is
+becoming useful beyond one personal machine.
+
+---
+
 ## Utility Scripts and Extras
 
 Base ships with a small collection of utility scripts useful for day-to-day Mac
@@ -577,11 +677,12 @@ These extras emerge organically from real needs — they are not designed upfron
 
 ## Open Questions (To Resolve Through Use)
 
-- Exact manifest file name (`base.yaml`, `.base.yaml`, `base_manifest.yaml`)
 - Version conflict resolution strategy across projects with different dependency versions
 - Docker/dev container integration path for banyanlabs
 - How Base handles projects that don't use Python at all
 - Fish shell support — revisit if real demand emerges
+- Workspace manifest location, trust model, and clone/update policy for team
+  onboarding
 
 ---
 

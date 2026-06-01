@@ -12,6 +12,16 @@ dependency model, shell selector, or hidden setup hook. A project declares one
 script, keeps that script in its repository, and tests a non-interactive path
 for CI.
 
+There are two demo layers:
+
+- Base's self-demo lives in this repository and demonstrates Base itself.
+- `codeforester/base-demo` is a separate peer repository that demonstrates how a
+  normal Base-managed project participates in the workflow.
+
+Those layers should stay separate. `basectl demo base` must not depend on the
+external `base-demo` repository, and `base-demo` should remain a normal project
+rather than a hidden Base test fixture.
+
 ## Manifest Contract
 
 Projects opt in through `base_manifest.yaml`:
@@ -120,6 +130,16 @@ external reference repository.
 The public reference repository is
 [`codeforester/base-demo`](https://github.com/codeforester/base-demo).
 
+`base-demo` serves two roles:
+
+- a reference implementation for the files and conventions a small
+  Base-managed repository should carry
+- an interactive walkthrough that a new user can run to see the workflow in
+  action
+
+It is not primarily a test harness. Its tests prove that the walkthrough stays
+executable, but its product role is onboarding and inspection.
+
 Clone it next to Base:
 
 ```bash
@@ -141,6 +161,11 @@ basectl demo base-demo -- --non-interactive
 `base-demo` is the reference implementation for a normal Base-managed project.
 Base's self-demo is for the Base repository itself; `base-demo` is the separate
 peer project that shows how another repository should participate.
+
+Future specialized demos should use separate repositories, such as
+`base-demo-kubernetes` or `base-demo-services`, when they need different
+dependencies or storylines. Avoid using long-lived demo branches for distinct
+demo products.
 
 ## Maintenance
 

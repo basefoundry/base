@@ -37,6 +37,21 @@ Base gets weaker when it drifts into becoming any of these:
 - a generic task runner
 - a full reproducible package manager or environment solver
 
+## Adapter Quality Bar
+
+Base should grow through adapters before it grows through replacements. For any
+external tool integration, the adapter should answer:
+
+- How does Base detect whether this tool is relevant to a project?
+- How does Base check whether the tool is installed and healthy?
+- How does Base invoke the tool without hiding the underlying command?
+- How does Base report failures in Base-native check, doctor, and JSON output?
+- How does Base avoid owning the tool's full configuration model?
+- How does Base behave when the tool is absent?
+
+The result should feel like one workspace story while leaving mature tools in
+charge of their own domains.
+
 ## Quick Decision Matrix
 
 | Tool | What it primarily owns | Build directly into Base? | Coexist with Base? | How much to care |

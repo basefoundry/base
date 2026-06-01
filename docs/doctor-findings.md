@@ -7,6 +7,16 @@ human-readable names or messages.
 Finding IDs are never reused after they ship. A finding may change its message,
 fix text, or severity over time, but its ID keeps the same meaning.
 
+## Principles
+
+Doctor findings should be specific, actionable, and non-alarming. Text output
+is for humans who need a safe next step; JSON output is for automation that
+needs stable IDs, statuses, names, messages, and fix guidance.
+
+`basectl doctor` should not mutate local state. A future fix path must be
+explicit, reviewable, and paired with dry-run behavior before Base offers it as
+part of the doctor workflow.
+
 ## Namespaces
 
 | Prefix | Scope |
