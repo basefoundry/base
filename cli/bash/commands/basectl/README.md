@@ -92,6 +92,8 @@ that delegate to `basectl`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths.
+- `basectl workspace status` reports a read-only workspace summary across
+  discovered projects.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

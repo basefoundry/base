@@ -41,6 +41,8 @@ Commands:
     Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
+  workspace status [options]
+    Show a read-only status summary for workspace projects.
   version
     Show the installed Base version.
   help
@@ -233,6 +235,11 @@ basectl_do_projects() {
     base_projects_subcommand_main "$@"
 }
 
+basectl_do_workspace() {
+    basectl_source_subcommand_module workspace || return 1
+    base_workspace_subcommand_main "$@"
+}
+
 basectl_source_version_library() {
     local version_lib="$BASE_HOME/lib/bash/version/lib_version.sh"
 
@@ -344,6 +351,7 @@ basectl_main() {
         setup)            basectl_do_setup "$@" ;;
         help)             basectl_show_help ;;
         projects)         basectl_do_projects "$@" ;;
+        workspace)        basectl_do_workspace "$@" ;;
         update)           basectl_do_update "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
         version)          basectl_do_version ;;
