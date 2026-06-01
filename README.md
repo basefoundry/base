@@ -26,6 +26,7 @@ A developer may need:
 
 Base exists to provide that missing common layer.
 
+Common first-run and product questions are answered in [FAQ.md](FAQ.md).
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Release notes
 are tracked in [CHANGELOG.md](CHANGELOG.md).
 
@@ -706,6 +707,7 @@ feature designs, and ecosystem boundary decisions.
 
 Key starting points:
 
+- [FAQ](FAQ.md)
 - [Architecture](docs/architecture.md)
 - [Execution Model](docs/execution-model.md)
 - [Tool Boundaries](docs/tool-boundaries.md)
