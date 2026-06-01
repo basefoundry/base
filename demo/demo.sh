@@ -1,4 +1,5 @@
 #!/usr/bin/env basectl
+# shellcheck shell=bash
 
 set -euo pipefail
 
