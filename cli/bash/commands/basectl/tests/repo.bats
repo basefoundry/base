@@ -24,6 +24,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"[DRY-RUN] Would create GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
     [[ "$output" == *"gh label create bug"* ]]
+    [[ "$output" == *'--description "Something is not working"'* ]]
+    [[ "$output" != *'Something\ is\ not\ working'* ]]
     [ ! -e "$repo_dir" ]
 }
 
@@ -133,6 +135,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--enable-squash-merge"* ]]
     [[ "$output" == *"--delete-branch-on-merge"* ]]
     [[ "$output" == *"gh label create needs-demo"* ]]
+    [[ "$output" == *'--description "Change should update a project demo"'* ]]
+    [[ "$output" != *'Change\ should\ update\ a\ project\ demo'* ]]
 }
 
 @test "basectl repo configure applies GitHub settings through gh" {
