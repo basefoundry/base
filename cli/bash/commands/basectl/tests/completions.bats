@@ -86,7 +86,19 @@ EOF
             COMP_WORDS=(basectl repo configure --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
-            printf "repo_configure_options=%s\n" "${COMPREPLY[*]}"'
+            printf "repo_configure_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "gh_areas=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh worktree ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "gh_worktree_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh worktree prune --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "gh_worktree_prune_options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
@@ -105,6 +117,9 @@ EOF
     [[ "$output" == *"repo_commands=init check configure"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --no-configure --dry-run"* ]]
     [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
+    [[ "$output" == *"gh_areas=issue pr branch worktree todo"* ]]
+    [[ "$output" == *"gh_worktree_commands=prune"* ]]
+    [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
 }
 
 @test "Bash completion includes setup notification options" {

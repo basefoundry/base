@@ -11,6 +11,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `basectl repo init/check/configure` to create, validate, and configure
   a standard Base-managed repository baseline.
+- Added `basectl gh worktree prune` for dry-run-by-default cleanup of stale,
+  merged Git worktrees from PR trains.
 
 ### Fixed
 
