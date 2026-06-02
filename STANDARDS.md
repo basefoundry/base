@@ -1,10 +1,108 @@
-# Standards followed in this framework
+# Base Standards
 
-## 1. General shell coding standards
+This document is the normative contributor standard for Base. It describes how
+code should be organized, where logic should live, and how Base-owned Bash,
+Python, CLI, manifest, documentation, and test changes should behave.
+
+For longer rationale, see:
+
+- [Architecture](docs/architecture.md)
+- [Execution Model](docs/execution-model.md)
+- [Testing](docs/testing.md)
+- [GitHub Workflow](docs/github-workflow.md)
+
+## 1. Architecture Standards
+
+Base is a layered developer-workspace tool. Contributors should preserve the
+layer boundaries rather than placing logic wherever it is easiest to call.
+
+### 1.1 Layer Responsibilities
+
+| Need | Owning layer |
+| --- | --- |
+| Public user command surface | `bin/basectl` and small real launchers under `bin/` |
+| Dispatch to Base subcommands | `cli/bash/commands/basectl/basectl.sh` |
+| Host bootstrap such as Homebrew, Xcode CLT, Python, and venv creation | Bash setup layer |
+| Shell runtime, prompt, activation, profile wiring, and dotfile guards | Bash runtime and shell layer |
+| Manifest parsing and validation | Python layer |
+| Artifact reconciliation, project discovery, project status, and structured project data | Python layer |
+| Python package execution inside a project virtual environment | `bin/base-wrapper` |
+| Persistent Base state such as config and project venvs | `~/.base.d` |
+| Ephemeral logs, temp files, and cache | Base cache root, normally `~/Library/Caches/base` on macOS |
+
+### 1.2 Public Command Surface
+
+`$BASE_HOME/bin` is the only public command surface that should be added to
+`PATH`.
+
+Public commands in `bin/` should be real launcher files, not symlinks. Keep them
+small and delegate into the command implementation. For a Bash command:
+
+```bash
+#!/usr/bin/env bash
+exec "$(dirname "$0")/basectl" caff "$@"
+```
+
+The implementation still belongs under:
+
+```text
+cli/bash/commands/<command>/<command>.sh
+```
+
+Python CLIs should not expose `#!/usr/bin/env python` or a venv-specific Python
+path as their public execution contract. If a Python CLI needs a shebang-bearing
+public executable, use a small launcher that execs `base-wrapper` so the package
+runs in the selected project virtual environment:
+
+```bash
+#!/usr/bin/env bash
+exec "$(dirname "$0")/base-wrapper" --project "${BASE_PROJECT:-base}" example_cli "$@"
+```
+
+This keeps direct CLI execution aligned with the same venv and `PYTHONPATH`
+rules that `basectl` uses internally.
+
+### 1.3 `basectl` And `base-wrapper`
+
+`bin/basectl` is the control plane. It decides whether the user asked to:
+
+- run a Base command
+- run an explicit Bash script path inside the Base runtime
+- start an interactive Base runtime shell
+
+`bin/base-wrapper` is the Python execution wrapper. It runs Python packages with:
+
+- `BASE_HOME` set to the physical Base installation
+- `BASE_PROJECT` set to the selected project
+- `PYTHONPATH` containing Base's `lib/python` and `cli/python`
+- Python resolved from `~/.base.d/<project>/.venv`, unless explicitly
+  overridden for tests
+
+Use `base-wrapper --project <project> <python-package>` whenever Bash needs to
+call Base's Python layer.
+
+## 2. General Code Standards
+
+1. Prefer simple, explicit code over clever dispatch.
+2. Keep changes scoped to the layer and module that own the behavior.
+3. Use structured APIs over ad hoc text parsing when a reasonable parser or data
+   model exists.
+4. Keep stdout reserved for command output that users or automation may consume.
+   Logs and diagnostics should go to stderr.
+5. Destructive operations must be dry-run by default or require an explicit
+   confirmation flag such as `--yes`.
+6. Error messages should explain what failed and what the user can do next.
+7. Add a new abstraction only when it removes real duplication or captures a
+   stable product concept.
+8. Do not introduce hidden import-time side effects. Registration of CLI command
+   functions is acceptable; filesystem, network, and process mutations are not.
+
+## 3. Bash Standards
+
+### 3.1 Style
 
 1. Use four spaces for indentation. No tabs.
-2. Shell/local variables and function names follow `snake_case`:
-   only lowercase letters, underscores, and digits.
+2. Shell/local variables and function names follow `snake_case`.
 3. Reserve all-uppercase names for:
    - exported environment variables
    - constants
@@ -17,23 +115,15 @@
 7. Avoid `camelCase` in shell code.
 8. Place most code inside functions and invoke the main function at the bottom
    of the script.
-9. In libraries, have top-level code that prevents the file from being sourced
-   more than once. For example:
-
-   ```bash
-   [[ $__stdlib_sourced__ ]] && return
-   __stdlib_sourced__=1
-   ```
-
-10. Make sure all local variables inside functions are declared `local`.
-11. Use `__func__` naming convention for special-purpose variables and
-    functions when a shared framework-level convention already exists.
-12. Double-quote all variable expansions, except:
-   - inside `[[ ]]` or `(( ))`
-   - places where we need word splitting to take place
-13. Use `[[ $var ]]` to check if `var` has non-zero length, instead of
+9. Make sure all local variables inside functions are declared `local`.
+10. Use `__func__` naming convention for special-purpose variables and functions
+    when a shared framework-level convention already exists.
+11. Double-quote all variable expansions, except:
+    - inside `[[ ]]` or `(( ))`
+    - places where word splitting is intentionally required
+12. Use `[[ $var ]]` to check if `var` has non-zero length, instead of
     `[[ -n $var ]]`.
-14. Use "compact" style for if statements and loops:
+13. Use compact control-flow formatting:
 
     ```bash
     if condition; then
@@ -44,14 +134,28 @@
         ...
     done
 
-    for ((i=0; i < limit; i++)); do
+    for ((i = 0; i < limit; i++)); do
         ...
     done
     ```
 
-15. Make sure the code passes ShellCheck checks.
+14. Make sure shell code passes ShellCheck unless a documented exception is
+    necessary.
 
-## 2. Error-handling standards
+### 3.2 Sourced Libraries
+
+Libraries should guard against repeated sourcing:
+
+```bash
+[[ -n "${_base_example_lib_sourced:-}" ]] && return
+_base_example_lib_sourced=1
+readonly _base_example_lib_sourced
+```
+
+Prefer module-specific guard names to generic names that could collide across
+sourced files.
+
+### 3.3 Error Handling
 
 1. Do not use `set -e` in Base shell scripts or libraries.
 2. Do not rely on implicit shell exit behavior for control flow.
@@ -59,8 +163,8 @@
    - `run`
    - `exit_if_error`
    - `fatal_error`
-4. When a command may fail as part of normal flow, handle that failure
-   intentionally with `if`, `case`, `||`, or an explicit return-code check.
+4. When a command may fail as part of normal flow, handle that failure with
+   `if`, `case`, `||`, or an explicit return-code check.
 5. A script should make its error-handling strategy obvious to the reader.
 
 Rationale:
@@ -72,35 +176,143 @@ Rationale:
 - Explicit error handling is more verbose, but much easier to debug and
   maintain.
 
-## 3. Directory and module structure
+### 3.4 Bash Layer Boundaries
 
-### Commands
+Bash owns bootstrap and runtime coordination. Bash should:
 
-Base-owned CLIs should live in per-command directories.
+- install or verify host prerequisites
+- create and validate virtual environments
+- update shell startup files
+- start runtime shells
+- call Python packages through `base-wrapper`
 
-Recommended layout:
+Bash should not:
+
+- parse project manifests beyond passing manifest paths and project names
+- reimplement artifact reconciliation that belongs in Python
+- emit structured JSON by hand unless the format is tiny and well-tested
+- call Python directly when `base-wrapper` is the intended path
+
+## 4. Python Standards
+
+Base Python code follows PEP 8 style in spirit and the repo's existing patterns
+in practice.
+
+### 4.1 Style And Structure
+
+1. Use `from __future__ import annotations` in Python modules.
+2. Prefer `pathlib.Path` over string path manipulation.
+3. Use dataclasses for small structured records when they make behavior clearer.
+4. Prefer explicit return values over mutation-heavy helper APIs.
+5. Use `json.dumps` for JSON output. Do not assemble JSON with string
+   concatenation.
+6. Keep module-level side effects limited to cheap constants and CLI command
+   registration.
+7. Put CLI behavior in small command functions and pure helper functions where
+   practical.
+8. Avoid broad exception catches. Catch the error type that represents the
+   expected failure and convert it into a clear user-facing message.
+
+### 4.2 Python CLI Pattern
+
+Base Python CLIs should use `base_cli.App`:
+
+```python
+from __future__ import annotations
+
+import base_cli
+import click
+
+
+app = base_cli.App(name="example_cli")
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        result = app.click_command.main(args=argv, standalone_mode=False)
+    except click.ClickException as exc:
+        exc.show()
+        return int(exc.exit_code)
+    return int(result or 0)
+
+
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.option("--dry-run", is_flag=True, help="Preview changes without writing.")
+def run(ctx: base_cli.Context, dry_run: bool) -> int:
+    ctx.log.info("Running example_cli.")
+    if dry_run:
+        print("[DRY-RUN] Would do the work.")
+        return 0
+    return 0
+```
+
+Package entrypoints should provide `__main__.py`:
+
+```python
+from .engine import main
+
+
+raise SystemExit(main())
+```
+
+### 4.3 Logging And Output
+
+1. Use `ctx.log` for diagnostics.
+2. Use stdout only for the command's primary output.
+3. JSON output must be deterministic and parseable.
+4. Redact sensitive option values using `base_cli.option(..., sensitive=True)`
+   when an option may carry credentials, tokens, or secrets.
+5. Python CLI log files are runtime artifacts and should remain under the Base
+   cache root with user-only permissions.
+
+### 4.4 Python Execution
+
+Python packages for Base commands live under:
+
+```text
+cli/python/<package>/
+```
+
+Shared Python libraries live under:
+
+```text
+lib/python/<package>/
+```
+
+Bash should invoke these packages with:
+
+```bash
+"$BASE_HOME/bin/base-wrapper" --project base base_projects list
+```
+
+Project-specific Python commands should run through the project virtual
+environment:
+
+```bash
+: "${BASE_HOME:?BASE_HOME is required. Run through basectl activate <project>.}"
+"$BASE_HOME/bin/base-wrapper" --project "$project" project_cli "$@"
+```
+
+Do not hard-code `~/.base.d/base/.venv/bin/python` in command implementations.
+Do not use `python -m <package>` directly from Bash unless the code is a narrow
+test fixture or bootstrap exception.
+
+## 5. Directory And Module Structure
+
+### 5.1 Bash Commands
+
+Base-owned Bash CLIs should live in per-command directories:
 
 ```text
 cli/bash/commands/
-  setup/
-    setup.sh
-    README.md
-    tests/
-  doctor/
-    doctor.sh
+  caff/
+    caff.sh
     README.md
     tests/
 ```
 
-Why:
-
-- command code, docs, and tests stay together
-- each command can grow without cluttering a shared flat directory
-- the structure scales cleanly as Base adds more commands
-
-For umbrella commands such as `basectl`, keep the entry script in
-the command directory itself and place internal subcommand modules underneath
-that command. For example:
+Umbrella commands such as `basectl` keep the entry script in the command
+directory and place internal subcommand modules underneath:
 
 ```text
 cli/bash/commands/basectl/
@@ -113,29 +325,9 @@ cli/bash/commands/basectl/
     setup.bats
 ```
 
-`$BASE_HOME/bin` is the only public command surface that should be added to
-`PATH`. Do not create separate public `cli/bash/bin` or `cli/python/bin`
-surfaces. A direct public command in `bin/` should be a real launcher file, not
-a symlink, and should delegate to `basectl` in this form:
+### 5.2 Bash Libraries
 
-```bash
-#!/usr/bin/env bash
-exec "$(dirname "$0")/basectl" caff "$@"
-```
-
-The command implementation still lives under
-`cli/bash/commands/<command>/<command>.sh` so code, docs, and tests stay with
-the command module.
-
-Command-level integration tests should be colocated under the command module's
-`tests/` directory. Use a shared command test directory only for tests that are
-truly cross-command and cannot naturally belong to one command module.
-
-### Libraries
-
-Libraries should also live in per-library directories.
-
-Recommended layout:
+Bash libraries should live in per-library directories:
 
 ```text
 lib/bash/
@@ -149,40 +341,74 @@ lib/bash/
     tests/
 ```
 
-Why:
+### 5.3 Python Packages
 
-- each library is treated as a module
-- the README can describe the module in detail
-- tests live next to the library they validate
+Base Python command packages should live under `cli/python`. Shared Python
+libraries should live under `lib/python`.
 
-### Exceptions
+Keep package tests next to the package:
 
-Small framework-level singleton files may remain flat when they are not really
-"modules" in the same sense. Examples include:
+```text
+cli/python/base_projects/
+  engine.py
+  __main__.py
+  tests/
+```
+
+### 5.4 Exceptions
+
+Small framework-level singleton files may remain flat when they are not modules
+in the same sense. Examples include:
 
 - `bin/basectl`
+- `bin/base-wrapper`
 - `base_init.sh`
+- `bootstrap.sh`
 
-### Index documentation
+### 5.5 Index Documentation
 
 Even though commands and libraries live in per-module directories, keep
-high-level index READMEs at the parent level when helpful, for example:
+high-level index READMEs at parent levels when helpful, for example:
 
 - `lib/bash/README.md`
 - `cli/bash/commands/README.md`
 
-Those top-level READMEs should act as catalogs and maps, while each module's
-local `README.md` should document the module itself.
+Top-level READMEs should act as catalogs and maps. Local module READMEs should
+document the module itself.
 
-## 4. Runtime standards
+## 6. CLI Behavior Standards
 
-`bin/basectl` is the public entrypoint for Base runtime execution.
+1. Help should be available through `-h` and `--help` when practical.
+2. User-facing commands should return:
+   - `0` for success
+   - `1` for operational failure
+   - `2` for usage or configuration errors
+3. Destructive commands must be dry-run by default or require `--yes`.
+4. `--dry-run` should print what would change without changing state.
+5. `--format json` should be available when automation reasonably needs stable
+   machine-readable output.
+6. Text output should be readable, stable enough for humans, and not overly
+   clever.
+7. Commands should keep logs on stderr and primary output on stdout.
+8. Commands that can run for a while should log progress at useful boundaries.
+9. Help paths and lightweight diagnostics should avoid requiring the Python venv
+   when Bash can answer directly.
 
-It owns three decisions:
+## 7. Manifest And Artifact Standards
 
-- run the umbrella Base command under `cli/bash/commands/basectl/basectl.sh`
-- run an explicit Bash script path inside the Base runtime
-- start an interactive Bash shell with the Base runtime already loaded
+1. Project manifests are declarative.
+2. The Python layer reads and validates manifests.
+3. Bash setup owns only bootstrap prerequisites needed before Python can run.
+4. Default project artifacts belong in `lib/base/default_manifest.yaml`.
+5. Developer prerequisites belong in `lib/base/dev_manifest.yaml`.
+6. Project-specific artifacts belong in the project's `base_manifest.yaml`.
+7. Prefer delegation to established tools such as Brewfile and mise instead of
+   reimplementing their dependency models.
+8. Artifact setup should be idempotent. Running setup repeatedly should converge
+   on the same state.
+9. Unknown artifact types or unsupported curated artifacts should fail clearly.
+
+## 8. Runtime And Shell Startup Standards
 
 `base_init.sh` owns the runtime contract after `bin/basectl` chooses what should
 run. It must be the single place that establishes convention-based Base paths
@@ -197,11 +423,14 @@ Bash scripts that run through Base should:
 - rely on exported `BASE_*` variables rather than reconstructing Base's repo
   layout locally
 
-Shebang-based Bash scripts may use `#!/usr/bin/env basectl`. In that mode,
-`basectl` receives the script path as its first argument, establishes the Base
-runtime, sources the script, and calls its `main` function.
+Shebang-based Bash scripts may use:
 
-## 5. Shell startup standards
+```bash
+#!/usr/bin/env basectl
+```
+
+In that mode, `basectl` receives the script path as its first argument,
+establishes the Base runtime, sources the script, and calls its `main` function.
 
 Base-managed shell startup files follow this separation of concerns:
 
@@ -224,3 +453,72 @@ Startup files should stay thin and predictable. They must not source
 `BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
 `BASE_ENABLE_ZSH_DEFAULTS`. Shell startup code that sources `~/.baserc` should
 reject attempts to change those variables and restore the previous values.
+
+## 9. Testing Standards
+
+1. Prefer the narrowest test that proves the behavior.
+2. Use pytest for Python engines and helpers.
+3. Use BATS for Bash commands, runtime behavior, shell startup, and Bash
+   libraries.
+4. Use `bin/base-test` as the full confidence gate before merging broad or
+   cross-layer changes.
+5. Add regression coverage for bug fixes when practical.
+6. Avoid tests that depend on the user's real home directory, shell startup
+   files, GitHub account state, or global config.
+7. Prefer fake commands and temporary repositories for shell integration tests.
+8. Keep test output deterministic.
+
+Typical validation commands:
+
+```bash
+bats cli/bash/commands/basectl/tests/gh.bats
+pytest cli/python/base_projects/tests
+BASE_TEST_PYTHON="$HOME/.base.d/base/.venv/bin/python" \
+  env -u BASE_HOME HOME=/private/tmp/base-review-home \
+  bin/base-test
+git diff --check
+```
+
+## 10. Documentation And GitHub Workflow Standards
+
+1. Update docs for user-visible behavior changes.
+2. Keep top-level README content focused on product usage and onboarding.
+3. Keep detailed design and rationale under `docs/`.
+4. Keep module-specific behavior in local module READMEs.
+5. Use GitHub default-style labels:
+   - `bug`
+   - `enhancement`
+   - `documentation`
+   - `ci`
+   - `security`
+   - `needs-demo`
+6. Issues created by Codex or other automation should be assigned to
+   `codeforester`.
+7. Pull request work should happen in a dedicated worktree.
+8. Prefer `basectl gh` when it supports the workflow. Fall back to raw `gh`,
+   the GitHub connector, or `git` when needed.
+9. PR descriptions should include:
+   - what changed
+   - why it changed
+   - validation commands
+   - `Closes #<issue>` or `Fixes #<issue>` when appropriate
+   - demo impact when relevant
+
+## 11. Placement Checklist
+
+Before adding code, ask where it belongs:
+
+| Question | Put it here |
+| --- | --- |
+| Is this host bootstrap or shell runtime behavior? | Bash layer |
+| Is this manifest parsing or project data? | Python layer |
+| Is this artifact reconciliation? | Python layer, invoked by Bash through `base-wrapper` |
+| Is this a public executable? | Small real launcher in `bin/` |
+| Is this a Bash helper used by multiple commands? | `lib/bash/<module>/` |
+| Is this a Python helper used by multiple CLIs? | `lib/python/<package>/` |
+| Is this command-specific behavior? | The command's module and tests |
+| Is this a project-owned task? | `base_manifest.yaml` `test` or `commands` |
+| Is this local machine preference? | `~/.base.d/config.yaml` or `~/.baserc`, depending on scope |
+| Is this temporary runtime output? | Base cache root, not `~/.base.d` |
+
+When in doubt, preserve the layer boundary first and make the call path explicit.
