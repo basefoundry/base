@@ -12,6 +12,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Expanded `STANDARDS.md` into a broader Base contributor standard covering
   architecture layering, Bash, Python CLIs, `base-wrapper`, manifests, testing,
   documentation, and GitHub workflow.
+- Added Go CLI guidance to `STANDARDS.md`, including Cobra as the default
+  framework recommendation and Base's orchestration boundary for Go commands.
 - Added `basectl repo init/check/configure` to create, validate, and configure
   a standard Base-managed repository baseline.
 - Added GitHub remote branch cleanup to `basectl gh branch prune --remote` so
