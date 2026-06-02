@@ -2,7 +2,7 @@
 
 This document is the normative contributor standard for Base. It describes how
 code should be organized, where logic should live, and how Base-owned Bash,
-Python, CLI, manifest, documentation, and test changes should behave.
+Python, Go, CLI, manifest, documentation, and test changes should behave.
 
 For longer rationale, see:
 
@@ -27,6 +27,7 @@ layer boundaries rather than placing logic wherever it is easiest to call.
 | Manifest parsing and validation | Python layer |
 | Artifact reconciliation, project discovery, project status, and structured project data | Python layer |
 | Python package execution inside a project virtual environment | `bin/base-wrapper` |
+| Project-owned Go CLIs and compiled binaries | Project repository, declared through manifest commands |
 | Persistent Base state such as config and project venvs | `~/.base.d` |
 | Ephemeral logs, temp files, and cache | Base cache root, normally `~/Library/Caches/base` on macOS |
 
@@ -297,9 +298,104 @@ Do not hard-code `~/.base.d/base/.venv/bin/python` in command implementations.
 Do not use `python -m <package>` directly from Bash unless the code is a narrow
 test fixture or bootstrap exception.
 
-## 5. Directory And Module Structure
+## 5. Go CLI Standards
 
-### 5.1 Bash Commands
+Base does not currently provide a Go CLI framework. For Go CLIs, Base should
+standardize expectations and orchestration first, then consider helper packages
+only after repeated real boilerplate appears.
+
+### 5.1 CLI Framework
+
+Use Cobra (`github.com/spf13/cobra`) as the default framework for non-trivial Go
+CLIs. Cobra is widely used, supports subcommands, flags, help, and completions,
+and fits Base's expectation for professional command surfaces.
+
+Tiny one-command tools may use the Go standard library when Cobra would add more
+structure than value. Once a tool has subcommands, completion needs, or shared
+flag behavior, prefer Cobra.
+
+Base should not create a `base-go-cli` package until Banyan Labs or another real
+project shows repeated Go CLI boilerplate. If such a package becomes useful, it
+should wrap Base conventions around Cobra rather than replace Cobra.
+
+### 5.2 Go CLI Structure
+
+Prefer conventional Go module layout:
+
+```text
+cmd/<tool>/main.go
+internal/<domain>/
+internal/cli/
+```
+
+Keep `main.go` thin:
+
+```go
+package main
+
+import (
+    "os"
+
+    "example.com/project/internal/cli"
+)
+
+func main() {
+    os.Exit(cli.Run(os.Args[1:]))
+}
+```
+
+The command implementation should return an exit code instead of calling
+`os.Exit` deep inside business logic.
+
+### 5.3 Go CLI Behavior
+
+Go CLIs should follow the same user-facing behavior standards as Base commands:
+
+1. Logs and diagnostics go to stderr.
+2. Primary command output goes to stdout.
+3. JSON output uses `encoding/json`.
+4. Destructive operations require `--yes` or are dry-run by default.
+5. `--dry-run` prints what would change without changing state.
+6. Exit codes follow Base conventions: `0` success, `1` operational failure,
+   `2` usage or configuration error.
+7. User-facing errors should be plain English and actionable.
+8. Use `context.Context` for operations that may need cancellation, timeouts, or
+   request-scoped values.
+9. Avoid panics for normal user or environment errors.
+
+### 5.4 Go And Base Orchestration
+
+Go binaries are compiled executables. They do not use `base-wrapper`, and they
+should not rely on Python virtual environments.
+
+Base should orchestrate Go project commands through manifests:
+
+```yaml
+test:
+  command: go test ./...
+
+commands:
+  lint:
+    command: go vet ./...
+  build:
+    command: go build ./cmd/mytool
+```
+
+Use `basectl test <project>` and `basectl run <project> <command>` to invoke
+those contracts. Let Go own Go modules, builds, and test execution; let Base own
+workspace discovery, setup orchestration, and command delegation.
+
+Typical validation for Go changes:
+
+```bash
+gofmt -w .
+go test ./...
+go vet ./...
+```
+
+## 6. Directory And Module Structure
+
+### 6.1 Bash Commands
 
 Base-owned Bash CLIs should live in per-command directories:
 
@@ -325,7 +421,7 @@ cli/bash/commands/basectl/
     setup.bats
 ```
 
-### 5.2 Bash Libraries
+### 6.2 Bash Libraries
 
 Bash libraries should live in per-library directories:
 
@@ -341,7 +437,7 @@ lib/bash/
     tests/
 ```
 
-### 5.3 Python Packages
+### 6.3 Python Packages
 
 Base Python command packages should live under `cli/python`. Shared Python
 libraries should live under `lib/python`.
@@ -355,7 +451,7 @@ cli/python/base_projects/
   tests/
 ```
 
-### 5.4 Exceptions
+### 6.4 Exceptions
 
 Small framework-level singleton files may remain flat when they are not modules
 in the same sense. Examples include:
@@ -365,7 +461,7 @@ in the same sense. Examples include:
 - `base_init.sh`
 - `bootstrap.sh`
 
-### 5.5 Index Documentation
+### 6.5 Index Documentation
 
 Even though commands and libraries live in per-module directories, keep
 high-level index READMEs at parent levels when helpful, for example:
@@ -376,7 +472,7 @@ high-level index READMEs at parent levels when helpful, for example:
 Top-level READMEs should act as catalogs and maps. Local module READMEs should
 document the module itself.
 
-## 6. CLI Behavior Standards
+## 7. CLI Behavior Standards
 
 1. Help should be available through `-h` and `--help` when practical.
 2. User-facing commands should return:
@@ -394,7 +490,7 @@ document the module itself.
 9. Help paths and lightweight diagnostics should avoid requiring the Python venv
    when Bash can answer directly.
 
-## 7. Manifest And Artifact Standards
+## 8. Manifest And Artifact Standards
 
 1. Project manifests are declarative.
 2. The Python layer reads and validates manifests.
@@ -408,7 +504,7 @@ document the module itself.
    on the same state.
 9. Unknown artifact types or unsupported curated artifacts should fail clearly.
 
-## 8. Runtime And Shell Startup Standards
+## 9. Runtime And Shell Startup Standards
 
 `base_init.sh` owns the runtime contract after `bin/basectl` chooses what should
 run. It must be the single place that establishes convention-based Base paths
@@ -454,7 +550,7 @@ Startup files should stay thin and predictable. They must not source
 `BASE_ENABLE_ZSH_DEFAULTS`. Shell startup code that sources `~/.baserc` should
 reject attempts to change those variables and restore the previous values.
 
-## 9. Testing Standards
+## 10. Testing Standards
 
 1. Prefer the narrowest test that proves the behavior.
 2. Use pytest for Python engines and helpers.
@@ -479,7 +575,7 @@ BASE_TEST_PYTHON="$HOME/.base.d/base/.venv/bin/python" \
 git diff --check
 ```
 
-## 10. Documentation And GitHub Workflow Standards
+## 11. Documentation And GitHub Workflow Standards
 
 1. Update docs for user-visible behavior changes.
 2. Keep top-level README content focused on product usage and onboarding.
@@ -504,7 +600,7 @@ git diff --check
    - `Closes #<issue>` or `Fixes #<issue>` when appropriate
    - demo impact when relevant
 
-## 11. Placement Checklist
+## 12. Placement Checklist
 
 Before adding code, ask where it belongs:
 
@@ -516,6 +612,8 @@ Before adding code, ask where it belongs:
 | Is this a public executable? | Small real launcher in `bin/` |
 | Is this a Bash helper used by multiple commands? | `lib/bash/<module>/` |
 | Is this a Python helper used by multiple CLIs? | `lib/python/<package>/` |
+| Is this a project-owned Go CLI? | Project Go module under `cmd/<tool>/` and `internal/`, declared in `base_manifest.yaml` |
+| Is this repeated Go CLI boilerplate? | Document the convention first; consider a shared Go helper only after real repetition |
 | Is this command-specific behavior? | The command's module and tests |
 | Is this a project-owned task? | `base_manifest.yaml` `test` or `commands` |
 | Is this local machine preference? | `~/.base.d/config.yaml` or `~/.baserc`, depending on scope |
