@@ -43,6 +43,22 @@ EOF
     chmod +x "$TEST_MOCKBIN/git"
 }
 
+create_failing_git_clone_stub() {
+    cat > "$TEST_MOCKBIN/git" <<'EOF'
+#!/bin/sh
+printf 'git %s\n' "$*" >> "${BASE_BOOTSTRAP_TEST_COMMAND_LOG:?}"
+if [ "${1:-}" = "--version" ]; then
+    printf 'git version 2.0.0\n'
+    exit 0
+fi
+if [ "${1:-}" = "clone" ]; then
+    exit 2
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/git"
+}
+
 create_brew_stub() {
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/bin/sh
@@ -87,6 +103,13 @@ EOF
     [[ "$output" == *"--brew"* ]]
 }
 
+@test "bootstrap avoids shell strict mode" {
+    run grep -nE '^[[:space:]]*set[[:space:]].*(-e|-u|pipefail)' "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
 @test "bootstrap source dry-run installs first-mile prerequisites and prints handoff commands" {
     local install_dir="$TEST_HOME/work/base"
 
@@ -108,6 +131,25 @@ EOF
     [[ "$output" == *"$install_dir/bin/basectl setup"* ]]
     [[ "$output" == *"$install_dir/bin/basectl update-profile"* ]]
     [[ "$output" == *"exec \"\$SHELL\" -l"* ]]
+}
+
+@test "bootstrap reports source clone failures without printing handoff commands" {
+    local install_dir="$TEST_HOME/work/base"
+
+    create_brew_stub
+    create_failing_git_clone_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=42 \
+        BASE_BOOTSTRAP_TEST_COMMAND_LOG="$TEST_COMMAND_LOG" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --source --install-dir "$install_dir" --repo-url https://example.test/base.git
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Failed to clone Base repository."* ]]
+    [[ "$output" != *"Run these commands to finish Base setup"* ]]
 }
 
 @test "bootstrap brew dry-run installs Base through Homebrew and prints basectl handoff" {

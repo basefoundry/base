@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# Base shell standards require explicit error handling instead of shell strict mode.
 
 bootstrap_usage() {
     cat <<'EOF'
@@ -125,6 +125,7 @@ bootstrap_refresh_brew() {
 }
 
 bootstrap_install_homebrew() {
+    local installer
     local installer_url="${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
 
     bootstrap_log "Installing Homebrew."
@@ -135,7 +136,8 @@ bootstrap_install_homebrew() {
     fi
 
     command -v curl >/dev/null 2>&1 || bootstrap_die "curl is required to install Homebrew."
-    /bin/bash -c "$(curl -fsSL "$installer_url")"
+    installer="$(curl -fsSL "$installer_url")" || bootstrap_die "Failed to download the Homebrew installer."
+    /bin/bash -c "$installer" || bootstrap_die "Homebrew installer failed."
 }
 
 bootstrap_ensure_homebrew() {
@@ -148,7 +150,7 @@ bootstrap_ensure_homebrew() {
 
     [[ "$allow_install" == "true" ]] || bootstrap_die "Homebrew is required. Install Homebrew from https://brew.sh/ or rerun without --no-homebrew-install."
 
-    bootstrap_install_homebrew
+    bootstrap_install_homebrew || bootstrap_die "Homebrew installation failed."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         return 0
     fi
@@ -169,7 +171,7 @@ bootstrap_ensure_git() {
     fi
 
     bootstrap_log "Installing Git through Homebrew."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install git
+    bootstrap_run "$BOOTSTRAP_BREW_BIN" install git || bootstrap_die "Failed to install Git through Homebrew."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         return 0
     fi
@@ -213,7 +215,7 @@ bootstrap_ensure_supported_bash() {
     fi
 
     bootstrap_log "Installing Bash 4.2+ through Homebrew."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install bash
+    bootstrap_run "$BOOTSTRAP_BREW_BIN" install bash || bootstrap_die "Failed to install Bash through Homebrew."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         return 0
     fi
@@ -274,7 +276,7 @@ bootstrap_install_source() {
 
     if [[ -d "$install_dir/.git" ]]; then
         bootstrap_log "Updating existing Base source checkout at '$install_dir'."
-        bootstrap_run git -C "$install_dir" pull --ff-only
+        bootstrap_run git -C "$install_dir" pull --ff-only || bootstrap_die "Failed to update Base source checkout."
         return 0
     fi
 
@@ -284,11 +286,11 @@ bootstrap_install_source() {
 
     bootstrap_log "Cloning Base into '$install_dir'."
     parent_dir="$(bootstrap_parent_dir "$install_dir")"
-    bootstrap_run mkdir -p "$parent_dir"
+    bootstrap_run mkdir -p "$parent_dir" || bootstrap_die "Failed to create install parent directory '$parent_dir'."
     if [[ -n "$branch" ]]; then
-        bootstrap_run git clone --branch "$branch" "$repo_url" "$install_dir"
+        bootstrap_run git clone --branch "$branch" "$repo_url" "$install_dir" || bootstrap_die "Failed to clone Base repository."
     else
-        bootstrap_run git clone "$repo_url" "$install_dir"
+        bootstrap_run git clone "$repo_url" "$install_dir" || bootstrap_die "Failed to clone Base repository."
     fi
 }
 
@@ -301,7 +303,7 @@ bootstrap_install_brew_base() {
     fi
 
     bootstrap_log "Installing Base with Homebrew formula '$formula'."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install "$formula"
+    bootstrap_run "$BOOTSTRAP_BREW_BIN" install "$formula" || bootstrap_die "Failed to install Base Homebrew formula '$formula'."
 }
 
 bootstrap_find_homebrew_basectl() {
@@ -452,32 +454,32 @@ bootstrap_main() {
         esac
     done
 
-    bootstrap_validate_mode "$mode"
-    install_dir="$(bootstrap_expand_path "$install_dir")"
+    bootstrap_validate_mode "$mode" || return $?
+    install_dir="$(bootstrap_expand_path "$install_dir")" || return $?
 
     bootstrap_log "Base bootstrap"
-    bootstrap_require_macos
-    bootstrap_ensure_homebrew "$allow_homebrew_install"
-    bootstrap_ensure_git
-    bootstrap_ensure_supported_bash
+    bootstrap_require_macos || return $?
+    bootstrap_ensure_homebrew "$allow_homebrew_install" || return $?
+    bootstrap_ensure_git || return $?
+    bootstrap_ensure_supported_bash || return $?
 
-    mode="$(bootstrap_select_mode "$mode" "$install_dir" "$formula")"
+    mode="$(bootstrap_select_mode "$mode" "$install_dir" "$formula")" || return $?
     bootstrap_log "Install mode: $mode"
 
     case "$mode" in
         source)
             bootstrap_log "Repository: $repo_url"
             bootstrap_log "Install path: $install_dir"
-            bootstrap_install_source "$repo_url" "$install_dir" "$branch"
+            bootstrap_install_source "$repo_url" "$install_dir" "$branch" || return $?
             ;;
         brew)
             bootstrap_log "Formula: $formula"
-            bootstrap_install_brew_base "$formula"
+            bootstrap_install_brew_base "$formula" || return $?
             ;;
     esac
 
-    bootstrap_print_provenance "$install_dir" "$mode"
-    bootstrap_print_next_steps "$install_dir" "$mode"
+    bootstrap_print_provenance "$install_dir" "$mode" || return $?
+    bootstrap_print_next_steps "$install_dir" "$mode" || return $?
 }
 
 if [[ "${BASE_BOOTSTRAP_TESTING:-false}" != "true" ]]; then

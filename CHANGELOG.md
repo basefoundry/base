@@ -47,6 +47,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Converted `bootstrap.sh` away from shell strict mode to explicit command
+  failure checks that match Base shell standards.
 - Clarified `BASE-H001` required-environment findings as repeated rule
   instances keyed by `(id, name)` and report empty required variables as empty.
 - Removed the placeholder `BASE-P000` default from `ArtifactCheck` so project
