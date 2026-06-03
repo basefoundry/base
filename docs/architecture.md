@@ -239,8 +239,8 @@ By default, Base updates all four files:
 Base does not symlink over the user's dotfiles and does not own content outside its clearly marked managed sections. The markers are intentionally explicit, for example:
 
 ```bash
-# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---
-# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---
+# >>> base: bashrc managed >>>
+# <<< base: bashrc managed <<<
 ```
 
 Optional Base shell defaults are enabled explicitly with `basectl update-profile --defaults`.

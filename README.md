@@ -805,9 +805,9 @@ variables if `~/.baserc` tries to change them.
 Base-managed sections use explicit markers such as:
 
 ```bash
-# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---
+# >>> base: bashrc managed >>>
 # ... Base-managed content ...
-# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---
+# <<< base: bashrc managed <<<
 ```
 
 ### Base Snippets
