@@ -191,6 +191,14 @@ health:
   required_env:
     - DATABASE_URL
     - REDIS_URL
+  required_ports:
+    - name: postgres
+      host: 127.0.0.1
+      port: 5432
+      state: listening
+    - name: app
+      port: 8000
+      state: free
 
 activate:
   source:
@@ -226,6 +234,13 @@ the project needs in the local shell. `basectl check <project>` and
 `basectl doctor <project>` report whether those variables are present and
 non-empty. Base only checks presence; it never reads, prints, or logs the
 variable values.
+
+The optional top-level `health.required_ports` list declares local TCP ports
+the project expects to be either `listening` or `free`. Each entry must include
+`port` and `state`; `host` defaults to `127.0.0.1`, and `name` is an optional
+display label. Base checks whether a TCP connection succeeds on the declared
+endpoint. It does not start or stop services, inspect process ownership, or
+perform Docker Compose health checks.
 
 The optional top-level `activate.source` list declares project-root-relative
 shell scripts to source when `basectl activate <project>` starts the runtime

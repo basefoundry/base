@@ -24,6 +24,7 @@ from .delegates import reconcile_brewfile
 from .delegates import reconcile_mise
 from .errors import ArtifactError
 from .health import check_required_env
+from .health import check_required_ports
 from .ide import check_ide_extensions
 from .ide import check_ide_installs
 from .ide import check_ide_settings
@@ -242,6 +243,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
         checks.append(check_mise(effective_manifest))
 
     checks.extend(check_required_env(effective_manifest))
+    checks.extend(check_required_ports(effective_manifest))
     checks.extend(check_demo(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))

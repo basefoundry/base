@@ -155,7 +155,6 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.health.required_env, ("DATABASE_URL", "REDIS_URL"))
 
 
-
     def test_reads_manifest_activation_sources(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
@@ -297,7 +296,6 @@ class ManifestParsingTests(unittest.TestCase):
 
                     with self.assertRaises(ManifestError):
                         read_manifest(manifest_path)
-
 
 
     def test_reads_manifest_commands(self) -> None:
@@ -650,3 +648,117 @@ class ManifestIdeParsingTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ManifestError, "does not support the special value 'auto'"):
                 read_manifest(manifest_path)
+
+
+class HealthPortManifestParsingTests(unittest.TestCase):
+
+    def test_reads_manifest_required_ports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "health:",
+                        "  required_ports:",
+                        "    - name: postgres",
+                        "      host: 127.0.0.1",
+                        "      port: 5432",
+                        "      state: listening",
+                        "    - port: 8000",
+                        "      state: free",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(len(manifest.health.required_ports), 2)
+        self.assertEqual(manifest.health.required_ports[0].name, "postgres")
+        self.assertEqual(manifest.health.required_ports[0].host, "127.0.0.1")
+        self.assertEqual(manifest.health.required_ports[0].port, 5432)
+        self.assertEqual(manifest.health.required_ports[0].state, "listening")
+        self.assertEqual(manifest.health.required_ports[1].name, None)
+        self.assertEqual(manifest.health.required_ports[1].host, "127.0.0.1")
+        self.assertEqual(manifest.health.required_ports[1].port, 8000)
+        self.assertEqual(manifest.health.required_ports[1].state, "free")
+
+
+    def test_rejects_invalid_manifest_required_ports(self) -> None:
+        invalid_values = {
+            "scalar": "health:\n  required_ports: 5432",
+            "integer_entry": "health:\n  required_ports:\n    - 5432",
+            "unknown_key": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - port: 5432\n"
+                "      state: listening\n"
+                "      protocol: udp"
+            ),
+            "missing_port": "health:\n  required_ports:\n    - state: listening",
+            "bool_port": "health:\n  required_ports:\n    - port: true\n      state: listening",
+            "low_port": "health:\n  required_ports:\n    - port: 0\n      state: listening",
+            "high_port": "health:\n  required_ports:\n    - port: 65536\n      state: listening",
+            "missing_state": "health:\n  required_ports:\n    - port: 5432",
+            "unsupported_state": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - port: 5432\n"
+                "      state: occupied"
+            ),
+            "empty_name": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - name: ''\n"
+                "      port: 5432\n"
+                "      state: listening"
+            ),
+            "duplicate_name": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - name: db\n"
+                "      port: 5432\n"
+                "      state: listening\n"
+                "    - name: db\n"
+                "      port: 6379\n"
+                "      state: listening"
+            ),
+            "empty_host": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - host: ''\n"
+                "      port: 5432\n"
+                "      state: listening"
+            ),
+            "duplicate_endpoint": (
+                "health:\n"
+                "  required_ports:\n"
+                "    - port: 5432\n"
+                "      state: listening\n"
+                "    - port: 5432\n"
+                "      state: free"
+            ),
+        }
+        for name, health_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                health_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)

@@ -23,6 +23,7 @@ else:
 CURRENT_MANIFEST_SCHEMA_VERSION = 1
 ENVIRONMENT_VARIABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 COMMAND_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+PORT_HEALTH_STATES = {"free", "listening"}
 
 
 class ManifestError(ValueError):
@@ -57,8 +58,17 @@ class DemoConfig:
 
 
 @dataclass(frozen=True)
+class PortHealthConfig:
+    port: int
+    state: str
+    name: str | None = None
+    host: str = "127.0.0.1"
+
+
+@dataclass(frozen=True)
 class HealthConfig:
     required_env: tuple[str, ...] = ()
+    required_ports: tuple[PortHealthConfig, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -267,12 +277,15 @@ def _read_health(path: Path, health_data: Any) -> HealthConfig:
     if not isinstance(health_data, dict):
         raise ManifestError(f"{path}: health must be a mapping when provided.")
 
-    allowed_keys = {"required_env"}
+    allowed_keys = {"required_env", "required_ports"}
     unknown_keys = sorted(set(health_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: health has unsupported keys: {', '.join(unknown_keys)}.")
 
-    return HealthConfig(required_env=_read_required_env(path, health_data.get("required_env", [])))
+    return HealthConfig(
+        required_env=_read_required_env(path, health_data.get("required_env", [])),
+        required_ports=_read_required_ports(path, health_data.get("required_ports", [])),
+    )
 
 
 def _read_commands(path: Path, commands_data: Any) -> dict[str, str]:
@@ -354,6 +367,116 @@ def _read_required_env(path: Path, required_env_data: Any) -> tuple[str, ...]:
         seen.add(env_name)
         required_env.append(env_name)
     return tuple(required_env)
+
+
+def _read_required_ports(path: Path, required_ports_data: Any) -> tuple[PortHealthConfig, ...]:
+    if required_ports_data is None:
+        return ()
+    if not isinstance(required_ports_data, list):
+        raise ManifestError(f"{path}: health.required_ports must be a list when provided.")
+
+    required_ports: list[PortHealthConfig] = []
+    seen_endpoints: set[tuple[str, int]] = set()
+    seen_names: set[str] = set()
+    for index, port_data in enumerate(required_ports_data, start=1):
+        required_ports.append(
+            _read_required_port(path, index, port_data, seen_endpoints, seen_names)
+        )
+
+    return tuple(required_ports)
+
+
+def _read_required_port(
+    path: Path,
+    index: int,
+    port_data: Any,
+    seen_endpoints: set[tuple[str, int]],
+    seen_names: set[str],
+) -> PortHealthConfig:
+    if not isinstance(port_data, dict):
+        raise ManifestError(f"{path}: health.required_ports[{index}] must be a mapping.")
+
+    allowed_keys = {"name", "host", "port", "state"}
+    unknown_keys = sorted(set(port_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}] has unsupported keys: "
+            f"{', '.join(unknown_keys)}."
+        )
+
+    port = _read_required_port_number(path, index, port_data.get("port"))
+    state = _read_required_port_state(path, index, port_data.get("state"))
+    name = _read_required_port_name(path, index, port_data.get("name"), seen_names)
+    host = _read_required_port_host(path, index, port_data.get("host", "127.0.0.1"))
+    endpoint = (host, port)
+    if endpoint in seen_endpoints:
+        raise ManifestError(f"{path}: health.required_ports[{index}] duplicates '{host}:{port}'.")
+    seen_endpoints.add(endpoint)
+    return PortHealthConfig(port=port, state=state, name=name, host=host)
+
+
+def _read_required_port_number(path: Path, index: int, port_data: Any) -> int:
+    if isinstance(port_data, bool) or not isinstance(port_data, int):
+        raise ManifestError(f"{path}: health.required_ports[{index}].port must be an integer.")
+    if port_data < 1 or port_data > 65535:
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].port must be between 1 and 65535."
+        )
+    return port_data
+
+
+def _read_required_port_state(path: Path, index: int, state_data: Any) -> str:
+    if not isinstance(state_data, str) or not state_data.strip():
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].state must be a non-empty string."
+        )
+    state = state_data.strip()
+    if state not in PORT_HEALTH_STATES:
+        supported_states = ", ".join(sorted(PORT_HEALTH_STATES))
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].state must be one of: {supported_states}."
+        )
+    return state
+
+
+def _read_required_port_name(
+    path: Path,
+    index: int,
+    name_data: Any,
+    seen_names: set[str],
+) -> str | None:
+    if name_data is None:
+        return None
+    if not isinstance(name_data, str) or not name_data.strip():
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].name must be a non-empty string."
+        )
+    name = name_data.strip()
+    if _has_control_line_break(name):
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].name must not contain control line breaks."
+        )
+    if name in seen_names:
+        raise ManifestError(f"{path}: health.required_ports[{index}].name duplicates '{name}'.")
+    seen_names.add(name)
+    return name
+
+
+def _read_required_port_host(path: Path, index: int, host_data: Any) -> str:
+    if not isinstance(host_data, str) or not host_data.strip():
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].host must be a non-empty string."
+        )
+    host = host_data.strip()
+    if _has_control_line_break(host):
+        raise ManifestError(
+            f"{path}: health.required_ports[{index}].host must not contain control line breaks."
+        )
+    return host
+
+
+def _has_control_line_break(value: str) -> bool:
+    return any(separator in value for separator in ("\0", "\n", "\r"))
 
 
 def _read_ide_config(path: Path, ide_name: str, config_data: Any) -> IdeConfig:

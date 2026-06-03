@@ -4,14 +4,20 @@ import importlib.util
 import io
 import json
 import os
+import socket
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_setup import artifacts, checks as setup_checks, engine, ide
-from base_setup.manifest import ArtifactRequest, BaseManifest, HealthConfig, IdeConfig, read_manifest
+from base_setup import artifacts, checks as setup_checks, engine, health, ide
+from base_setup.manifest import ArtifactRequest
+from base_setup.manifest import BaseManifest
+from base_setup.manifest import HealthConfig
+from base_setup.manifest import IdeConfig
+from base_setup.manifest import PortHealthConfig
+from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 from base_setup.tests.helpers import fake_context, run_engine
 
@@ -171,7 +177,12 @@ class ProjectCheckTests(unittest.TestCase):
             os.environ.pop("BASE_TEST_REQUIRED_MISSING", None)
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+                status = engine.check_manifest(
+                    fake_context(),
+                    default_manifest,
+                    manifest,
+                    output_format="json",
+                )
 
         output = stdout.getvalue()
         parsed_checks = json.loads(output)
@@ -187,6 +198,73 @@ class ProjectCheckTests(unittest.TestCase):
             "Set BASE_TEST_REQUIRED_MISSING in your shell, .env, or secrets manager.",
         )
         self.assertNotIn("super-secret-value", output)
+
+
+    def test_check_manifest_reports_required_ports(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            health=HealthConfig(
+                required_ports=(
+                    PortHealthConfig(
+                        name="postgres",
+                        host="127.0.0.1",
+                        port=5432,
+                        state="listening",
+                    ),
+                    PortHealthConfig(name="app", host="127.0.0.1", port=8000, state="free"),
+                    PortHealthConfig(name="busy-app", host="127.0.0.1", port=9000, state="free"),
+                )
+            ),
+        )
+
+        def fake_port_probe(_host: str, port: int) -> bool:
+            return port in (5432, 9000)
+
+        with mock.patch("base_setup.health.tcp_port_is_listening", side_effect=fake_port_probe):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = engine.check_manifest(
+                    fake_context(),
+                    default_manifest,
+                    manifest,
+                    output_format="json",
+                )
+
+        parsed_checks = json.loads(stdout.getvalue())
+        self.assertEqual(status, 1)
+        self.assertEqual(
+            [check["name"] for check in parsed_checks],
+            ["postgres", "app", "busy-app"],
+        )
+        self.assertTrue(parsed_checks[0]["ok"])
+        self.assertTrue(parsed_checks[1]["ok"])
+        self.assertFalse(parsed_checks[2]["ok"])
+        self.assertIn("already listening", parsed_checks[2]["message"])
+        self.assertEqual(
+            parsed_checks[2]["fix"],
+            "Stop the process using 127.0.0.1:9000 or choose a different project port.",
+        )
+
+
+    def test_tcp_port_probe_reports_listening_socket(self) -> None:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            try:
+                listener.bind(("127.0.0.1", 0))
+            except PermissionError as exc:
+                self.skipTest(f"Loopback socket bind is not permitted: {exc}")
+            listener.listen(1)
+            port = listener.getsockname()[1]
+
+            self.assertTrue(health.tcp_port_is_listening("127.0.0.1", port))
 
 
 
@@ -224,6 +302,46 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertIn("BASE_TEST_DOCTOR_MISSING", output)
         self.assertIn("Fix: Set BASE_TEST_DOCTOR_MISSING in your shell, .env, or secrets manager.", output)
         self.assertNotIn("another-secret-value", output)
+
+
+    def test_doctor_manifest_reports_required_ports_with_finding_ids(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            health=HealthConfig(
+                required_ports=(
+                    PortHealthConfig(name="postgres", port=5432, state="listening"),
+                    PortHealthConfig(name="app", port=8000, state="free"),
+                )
+            ),
+        )
+
+        with mock.patch("base_setup.health.tcp_port_is_listening", return_value=False):
+            with redirect_stdout(io.StringIO()) as stdout:
+                status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
+
+        findings = json.loads(stdout.getvalue())
+        self.assertEqual(status, 1)
+        self.assertEqual(
+            [finding["id"] for finding in findings],
+            ["BASE-H002", "BASE-H002"],
+        )
+        self.assertEqual(
+            [finding["status"] for finding in findings],
+            ["error", "ok"],
+        )
+        self.assertEqual(
+            findings[0]["fix"],
+            "Start the service that should listen on 127.0.0.1:5432.",
+        )
 
 
 
