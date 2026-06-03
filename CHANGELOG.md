@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added the workspace manifest design document to define the future team-shared
+  repo-set contract and its relationship to discovered local projects.
 - Expanded `STANDARDS.md` into a broader Base contributor standard covering
   architecture layering, Bash, Python CLIs, `base-wrapper`, manifests, testing,
   documentation, and GitHub workflow.
