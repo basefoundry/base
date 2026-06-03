@@ -27,7 +27,7 @@ Options:
   --path <path>                 Target path for repo init. Defaults to workspace root plus <name>.
   --repo <owner/name>           GitHub repository to configure.
   --description <text>          Repository description for generated README.
-  --copyright-holder <name>     Copyright holder for generated LICENSE.
+  --copyright-holder <name>     Copyright holder for generated LICENSE. Defaults to git config user.name.
   --no-configure                Skip GitHub configuration during repo init.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
@@ -47,6 +47,20 @@ base_repo_default_description() {
     local name="$1"
 
     printf 'Base-managed project %s.\n' "$name"
+}
+
+base_repo_default_copyright_holder() {
+    local holder=""
+
+    holder="$(git config --global user.name 2>/dev/null || true)"
+    if [[ -z "$holder" ]]; then
+        holder="$(id -un 2>/dev/null || true)"
+    fi
+    if [[ -z "$holder" ]]; then
+        holder="Unknown"
+    fi
+
+    printf '%s\n' "$holder"
 }
 
 base_repo_validate_name() {
@@ -593,7 +607,7 @@ base_repo_check_baseline() {
 
 base_repo_init() {
     local configure=1
-    local copyright_holder="Ramesh Padmanabhaiah"
+    local copyright_holder=""
     local description=""
     local dry_run=0
     local github_repo=""
@@ -682,6 +696,7 @@ base_repo_init() {
     base_repo_validate_name "$name" || return 2
     [[ -n "$path" ]] || path="$(base_repo_default_target_path "$name")"
     [[ -n "$description" ]] || description="$(base_repo_default_description "$name")"
+    [[ -n "$copyright_holder" ]] || copyright_holder="$(base_repo_default_copyright_holder)"
     root="$(base_repo_target_path "$path")"
 
     base_repo_write_baseline "$dry_run" "$name" "$description" "$copyright_holder" "$root" || return 1

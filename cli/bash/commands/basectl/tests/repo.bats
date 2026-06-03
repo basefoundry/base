@@ -86,6 +86,48 @@ load ./basectl_helpers.bash
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
 }
 
+@test "basectl repo init defaults copyright holder to git user name" {
+    local repo_dir="$TEST_TMPDIR/git-owner"
+
+    cat > "$TEST_MOCKBIN/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "config" && "${2:-}" == "--global" && "${3:-}" == "user.name" ]]; then
+    printf 'Ada Lovelace\n'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/git"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init git-owner --path "$repo_dir" --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fq "Copyright (c) $(date +%Y) Ada Lovelace" "$repo_dir/LICENSE"
+}
+
+@test "basectl repo init falls back to system username for copyright holder" {
+    local repo_dir="$TEST_TMPDIR/system-owner"
+    local username
+
+    cat > "$TEST_MOCKBIN/git" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/git"
+    username="$(id -un)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init system-owner --path "$repo_dir" --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fq "Copyright (c) $(date +%Y) $username" "$repo_dir/LICENSE"
+}
+
 @test "basectl repo init leaves existing files unchanged" {
     local repo_dir="$TEST_TMPDIR/custom"
 
