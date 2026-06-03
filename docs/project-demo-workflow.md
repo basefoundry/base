@@ -46,10 +46,11 @@ as `brewfile`, `artifacts`, `activate.source`, `commands`, and `test`.
 
 ## Command Behavior
 
-`basectl demo <project>`:
+`basectl demo [project]`:
 
 1. Resolves the project through the same workspace discovery path as
-   `basectl test` and `basectl run`.
+   `basectl test` and `basectl run`. When the project is omitted, Base resolves
+   the nearest `base_manifest.yaml` from the current directory.
 2. Reads `demo.script` from the project manifest.
 3. Validates that the script exists, is a file, is executable, and stays inside
    the project root.
@@ -62,6 +63,7 @@ Useful forms:
 
 ```bash
 basectl demo base-demo
+basectl demo
 basectl demo base-demo --dry-run
 basectl demo base-demo -- --non-interactive
 basectl demo base-demo --workspace ~/work -- --non-interactive
