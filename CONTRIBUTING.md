@@ -43,6 +43,23 @@ opinionated, testable, and useful as a shared workspace control plane.
 For the full policy, including milestone and GitHub Project guidance, see
 [GitHub Workflow](docs/github-workflow.md).
 
+## Contributor Setup
+
+On a fresh macOS machine, use `bootstrap.sh` in source mode so the repository is
+available for local edits:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
+~/work/base/bin/basectl setup --dev
+~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
+```
+
+`bootstrap.sh` installs missing first-mile prerequisites such as Homebrew, Git,
+and Bash 4.2+ before handing off to `basectl`. `basectl setup --dev` installs
+developer prerequisites such as BATS, the GitHub CLI, and ShellCheck. See
+[First-Mile Bootstrap](docs/bootstrap.md) for install modes and boundaries.
+
 ## Running Tests
 
 Run the narrowest relevant checks first, then broaden when the change touches

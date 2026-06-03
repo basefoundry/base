@@ -17,9 +17,10 @@ basectl repo init base-demo --repo codeforester/base-demo
 `repo init` creates the local files, creates the GitHub repository if it does
 not already exist, and then configures that GitHub repository when
 `--repo <owner/name>` is provided or an existing `origin` remote can be
-inferred. That keeps the common new-repo path to one command. Use
-`--no-configure` when GitHub setup should be skipped or when local-only
-initialization is desired.
+inferred. New GitHub repositories are private by default; pass `--public` only
+when public visibility is intentional. That keeps the common new-repo path to
+one command. Use `--no-configure` when GitHub setup should be skipped or when
+local-only initialization is desired.
 
 Without `--path`, `repo init` creates the repository under the configured
 workspace root:
@@ -85,8 +86,9 @@ not a replacement for project tests; it is the seed contract that lets
 
 ## GitHub Configuration
 
-`repo init` creates the GitHub repository when needed, then `repo init` and
-`repo configure` standardize the current GitHub repository policy:
+`repo init` creates the GitHub repository when needed, using private visibility
+unless `--public` is passed. Then `repo init` and `repo configure` standardize
+the current GitHub repository policy:
 
 - Issues enabled
 - Projects enabled

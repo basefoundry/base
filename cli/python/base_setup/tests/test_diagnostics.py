@@ -124,11 +124,12 @@ class ProjectCheckTests(unittest.TestCase):
             ok=False,
             message="Optional project artifact is not installed.",
             fix="basectl setup demo",
+            finding_id="BASE-P033",
             status="warn",
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P000")
+        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P033")
         self.assertEqual(setup_checks.check_to_doctor_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(
@@ -151,6 +152,17 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("warn", stdout.getvalue())
 
+    def test_artifact_check_requires_explicit_finding_id(self) -> None:
+        kwargs = {
+            "name": "optional-artifact",
+            "ok": False,
+            "message": "Optional project artifact is not installed.",
+            "fix": "basectl setup demo",
+        }
+
+        with self.assertRaises(TypeError):
+            setup_checks.ArtifactCheck(**kwargs)
+
 
 
     def test_check_manifest_reports_required_environment_variables(self) -> None:
@@ -169,13 +181,22 @@ class ProjectCheckTests(unittest.TestCase):
                 required_env=(
                     "BASE_TEST_REQUIRED_PRESENT",
                     "BASE_TEST_REQUIRED_MISSING",
+                    "BASE_TEST_REQUIRED_EMPTY",
                 )
             ),
         )
 
-        with mock.patch.dict(os.environ, {"BASE_TEST_REQUIRED_PRESENT": "super-secret-value"}, clear=False):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BASE_TEST_REQUIRED_PRESENT": "super-secret-value",
+                "BASE_TEST_REQUIRED_EMPTY": "",
+            },
+            clear=False,
+        ):
             os.environ.pop("BASE_TEST_REQUIRED_MISSING", None)
             stdout = io.StringIO()
+            doctor_stdout = io.StringIO()
             with redirect_stdout(stdout):
                 status = engine.check_manifest(
                     fake_context(),
@@ -183,19 +204,52 @@ class ProjectCheckTests(unittest.TestCase):
                     manifest,
                     output_format="json",
                 )
+            with redirect_stdout(doctor_stdout):
+                doctor_status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
 
         output = stdout.getvalue()
         parsed_checks = json.loads(output)
+        doctor_findings = json.loads(doctor_stdout.getvalue())
         self.assertEqual(status, 1)
+        self.assertEqual(doctor_status, 2)
         self.assertEqual(
             [check["name"] for check in parsed_checks],
-            ["BASE_TEST_REQUIRED_PRESENT", "BASE_TEST_REQUIRED_MISSING"],
+            [
+                "BASE_TEST_REQUIRED_PRESENT",
+                "BASE_TEST_REQUIRED_MISSING",
+                "BASE_TEST_REQUIRED_EMPTY",
+            ],
+        )
+        self.assertEqual(
+            [finding["id"] for finding in doctor_findings],
+            ["BASE-H001", "BASE-H001", "BASE-H001"],
+        )
+        self.assertEqual(
+            [finding["name"] for finding in doctor_findings],
+            [
+                "BASE_TEST_REQUIRED_PRESENT",
+                "BASE_TEST_REQUIRED_MISSING",
+                "BASE_TEST_REQUIRED_EMPTY",
+            ],
         )
         self.assertTrue(parsed_checks[0]["ok"])
         self.assertFalse(parsed_checks[1]["ok"])
+        self.assertFalse(parsed_checks[2]["ok"])
+        self.assertEqual(
+            parsed_checks[1]["message"],
+            "Environment variable 'BASE_TEST_REQUIRED_MISSING' is not set or is empty.",
+        )
+        self.assertEqual(
+            parsed_checks[2]["message"],
+            "Environment variable 'BASE_TEST_REQUIRED_EMPTY' is not set or is empty.",
+        )
         self.assertEqual(
             parsed_checks[1]["fix"],
             "Set BASE_TEST_REQUIRED_MISSING in your shell, .env, or secrets manager.",
+        )
+        self.assertEqual(
+            parsed_checks[2]["fix"],
+            "Set BASE_TEST_REQUIRED_EMPTY in your shell, .env, or secrets manager.",
         )
         self.assertNotIn("super-secret-value", output)
 
@@ -300,6 +354,7 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertIn("Environment variable 'BASE_TEST_DOCTOR_PRESENT' is set.", output)
         self.assertIn("error", output)
         self.assertIn("BASE_TEST_DOCTOR_MISSING", output)
+        self.assertIn("Environment variable 'BASE_TEST_DOCTOR_MISSING' is not set or is empty.", output)
         self.assertIn("Fix: Set BASE_TEST_DOCTOR_MISSING in your shell, .env, or secrets manager.", output)
         self.assertNotIn("another-secret-value", output)
 

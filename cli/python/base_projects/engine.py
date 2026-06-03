@@ -189,8 +189,8 @@ def test_command_project_from_args(ctx: base_cli.Context, arguments: tuple[str, 
 
 
 def demo_script_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...], workspace: str | None) -> int:
-    require_argument_count("demo-script", arguments, 1, 1)
-    return demo_script_project_command(ctx, arguments[0], workspace)
+    project = optional_project_argument("demo-script", arguments)
+    return demo_script_project_command(ctx, project, workspace)
 
 
 def activation_sources_project_from_args(
@@ -337,12 +337,11 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
 
 
 def demo_script_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
-    if not project_name:
-        ctx.log.error("Project name is required.")
-        return 2
-
     try:
-        project = resolve_named_project(ctx, project_name, workspace)
+        if project_name:
+            project = resolve_named_project(ctx, project_name, workspace)
+        else:
+            project = current_project()
         manifest = read_manifest(project.manifest_path)
         if manifest.demo is None:
             ctx.log.error(

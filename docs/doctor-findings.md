@@ -2,10 +2,14 @@
 
 `basectl doctor` emits stable finding identifiers in both text and JSON output.
 Automation, runbooks, and suppression policies should match on `id` instead of
-human-readable names or messages.
+human-readable messages. Findings that intentionally emit multiple instances
+of the same rule should match on the tuple of `id` and `name`.
 
 Finding IDs are never reused after they ship. A finding may change its message,
 fix text, or severity over time, but its ID keeps the same meaning.
+Every doctor finding implementation must provide an explicit ID; placeholder
+IDs such as `BASE-P000` are invalid because they cannot support automation or
+suppression policies.
 
 ## Principles
 
@@ -80,5 +84,5 @@ part of the doctor workflow.
 
 | ID | Finding |
 | --- | --- |
-| `BASE-H001` | Required environment variable presence |
+| `BASE-H001` | Required environment variable presence; each variable is keyed by `(id, name)`. |
 | `BASE-H002` | Required TCP port listening/free state |

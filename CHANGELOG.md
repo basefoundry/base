@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added a first-mile bootstrap documentation page and contributor setup guidance
+  for source-based Base development.
 - Added the workspace manifest design document to define the future team-shared
   repo-set contract and its relationship to discovered local projects.
 - Added `basectl workspace check` and `basectl workspace doctor` for read-only
@@ -35,11 +37,26 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Extracted shared `basectl run`, `basectl test`, and `basectl demo` project
+  command helpers into one Bash helper module.
+- Changed `base_logs` to use `base_cli.App` without default persistent log
+  creation, so `basectl logs -v` enables debug diagnostics without adding a
+  self-log entry.
+- Changed `basectl demo` to infer the current project from the nearest
+  `base_manifest.yaml` when the project argument is omitted.
+- Changed `basectl repo init --repo` to create private GitHub repositories by
+  default, with explicit `--public` and `--private` visibility flags.
 - Updated Base-managed shell profile sections to use shorter `>>> base: ...`
   markers, clearer overwrite guidance, and quoted source paths.
 
 ### Fixed
 
+- Converted `bootstrap.sh` away from shell strict mode to explicit command
+  failure checks that match Base shell standards.
+- Clarified `BASE-H001` required-environment findings as repeated rule
+  instances keyed by `(id, name)` and report empty required variables as empty.
+- Removed the placeholder `BASE-P000` default from `ArtifactCheck` so project
+  doctor findings must declare explicit stable IDs.
 - Updated the README status section to match the current `0.2.0` release.
 - Fixed `basectl repo init` to create new repositories under the configured
   workspace root instead of the caller's current directory.

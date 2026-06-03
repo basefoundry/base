@@ -50,6 +50,9 @@ curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
+For mode selection, dry-run behavior, and contributor setup details, see
+[First-Mile Bootstrap](docs/bootstrap.md).
+
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
 your project workspace. If your repositories live under a shared directory such
 as `~/work`, set the workspace root in `~/.base.d/config.yaml` after running
@@ -77,7 +80,7 @@ basectl setup <project>
 basectl check <project>
 basectl doctor <project>
 basectl test <project>
-basectl demo <project>
+basectl demo [project]
 basectl run <project> <command>
 basectl activate <project>
 ```
@@ -362,8 +365,10 @@ By default, `repo init` creates the repository under `workspace.root` from
 directory of `BASE_HOME`. Use `--path <path>` for an explicit location.
 `repo init` also creates the GitHub repository when needed and then
 standardizes its settings when `--repo <owner/name>` is provided or when an
-existing `origin` remote can be inferred. Use `--no-configure` to skip the
-GitHub step, or rerun it later with `basectl repo configure`.
+existing `origin` remote can be inferred. Newly created GitHub repositories are
+private by default; pass `--public` when a public repository is intentional. Use
+`--no-configure` to skip the GitHub step, or rerun it later with
+`basectl repo configure`.
 
 Check and repair the repo baseline with:
 
@@ -481,11 +486,13 @@ basectl logs --command check
 basectl logs --path
 basectl logs --open
 basectl logs --tail
+basectl logs -v
 ```
 
 `basectl logs` is read-only. It lists the newest runtime logs under the Base
 cache root so failed Python-layer runs can be inspected without rerunning with
-debug output enabled.
+debug output enabled. It supports `-v`/`--debug` for its own diagnostics without
+creating a new default log entry for the inspection run.
 
 Inspect machine-local Base config with:
 
@@ -653,6 +660,7 @@ exec "$SHELL" -l
 Pass `--source` or `--brew` with `bash -s --` to choose the route explicitly.
 Without an explicit choice, the bootstrapper preserves an existing Homebrew Base
 install, then an existing source checkout, and otherwise defaults to source mode.
+See [First-Mile Bootstrap](docs/bootstrap.md) for the full bootstrap contract.
 
 Base can be installed through its Homebrew tap:
 

@@ -4,6 +4,10 @@
 _base_run_subcommand_sourced=1
 readonly _base_run_subcommand_sourced
 
+_base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/project_command_helpers.sh"
+# shellcheck source=/dev/null
+source "$_base_project_command_helpers_path"
+
 base_run_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -26,59 +30,6 @@ base_run_usage_error() {
     base_run_subcommand_usage >&2
     printf 'ERROR: %s\n' "$*" >&2
     return 2
-}
-
-base_run_project_venv_dir() {
-    local project="$1"
-
-    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
-        printf '%s\n' "$BASE_PROJECT_VENV_DIR"
-        return 0
-    fi
-
-    printf '%s\n' "$HOME/.base.d/$project/.venv"
-}
-
-base_run_format_extra_args() {
-    local arg quoted output=""
-
-    for arg in "$@"; do
-        printf -v quoted '%q' "$arg"
-        output+=" $quoted"
-    done
-    printf '%s\n' "$output"
-}
-
-base_run_command_with_extra_args() {
-    local command="$1"
-    shift
-
-    if (($# == 0)); then
-        printf '%s\n' "$command"
-        return 0
-    fi
-
-    if [[ "$command" == mise\ run\ * ]]; then
-        printf '%s -- "$@"\n' "$command"
-    else
-        printf '%s "$@"\n' "$command"
-    fi
-}
-
-base_run_display_command() {
-    local command="$1"
-    shift
-
-    if (($# == 0)); then
-        printf '%s\n' "$command"
-        return 0
-    fi
-
-    if [[ "$command" == mise\ run\ * ]]; then
-        printf '%s --%s\n' "$command" "$(base_run_format_extra_args "$@")"
-    else
-        printf '%s%s\n' "$command" "$(base_run_format_extra_args "$@")"
-    fi
 }
 
 base_run_list_commands() {
@@ -205,7 +156,7 @@ base_run_subcommand_main() {
         fatal_error "Unable to resolve command '$command_name' for project '$project'."
     }
 
-    venv_dir="$(base_run_project_venv_dir "$resolved_name")"
+    venv_dir="$(base_project_venv_dir "$resolved_name")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -218,8 +169,8 @@ base_run_subcommand_main() {
         log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
     fi
 
-    command_to_run="$(base_run_command_with_extra_args "$run_command" "${extra_args[@]}")"
-    display_command="$(base_run_display_command "$run_command" "${extra_args[@]}")"
+    command_to_run="$(base_command_with_extra_args "$run_command" "${extra_args[@]}")"
+    display_command="$(base_display_command "$run_command" "${extra_args[@]}")"
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run command %q for project %q in %q: %s\n' \

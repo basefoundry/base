@@ -118,6 +118,17 @@ class BaseLogsTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn("No Base CLI logs found", stdout)
 
+    def test_debug_uses_base_cli_without_creating_self_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            status, stdout, stderr = invoke(["--debug"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertIn("No Base CLI logs found", stdout)
+        self.assertIn(" DEBUG ", stderr)
+        self.assertIn("cli=base_logs", stderr)
+        self.assertFalse((cache_root / "cli" / "base_logs").exists())
+
     def test_path_errors_when_no_log_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = invoke(["--path"], Path(tmpdir))
@@ -137,3 +148,14 @@ class BaseLogsTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         self.assertIn("Choose only one", stderr)
 
+    def test_invalid_count_options_report_usage_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = invoke(["--limit", "0"], Path(tmpdir))
+            line_status, line_stdout, line_stderr = invoke(["--lines", "abc", "--tail"], Path(tmpdir))
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("Option '--limit' must be greater than zero", stderr)
+        self.assertEqual(line_status, 2)
+        self.assertEqual(line_stdout, "")
+        self.assertIn("Option '--lines' must be a positive integer", line_stderr)

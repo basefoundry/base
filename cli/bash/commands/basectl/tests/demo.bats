@@ -7,7 +7,7 @@ load ./basectl_helpers.bash
     run_basectl demo --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl demo <project> [options]"* ]]
+    [[ "$output" == *"basectl demo [project] [options]"* ]]
 }
 
 @test "basectl demo runs declared project demo from project root" {
@@ -60,6 +60,45 @@ EOF
     [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
     [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
     [[ "$(cat "$state_file")" == *"args=<--non-interactive><name with spaces>"* ]]
+}
+
+@test "basectl demo can resolve the current project when omitted" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/demo-state"
+    local script_path="$workspace/demo/demo.sh"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && -z "${4:-}" ]]; then
+    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo.sh"
+    exit 0
+fi
+printf 'unexpected demo python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$script_path" <<'EOF'
+#!/usr/bin/env bash
+printf 'current-project-demo\n' > "$BASE_TEST_DEMO_STATE"
+EOF
+    chmod +x "$python_bin" "$script_path"
+    printf 'project:\n  name: demo\ndemo:\n  script: ./demo.sh\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_DEMO_STATE="$state_file" \
+        bash -c '
+            cd "$1"
+            shift
+            "$@"
+        ' bash "$workspace/demo" "$BASE_REPO_ROOT/bin/basectl" demo
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$state_file")" = "current-project-demo" ]
 }
 
 @test "basectl demo dry-run prints resolved script without running it" {
