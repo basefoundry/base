@@ -130,7 +130,7 @@ EOF
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"repo_commands=init check configure"* ]]
-    [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --no-configure --dry-run"* ]]
+    [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --dry-run"* ]]
     [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree todo"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]

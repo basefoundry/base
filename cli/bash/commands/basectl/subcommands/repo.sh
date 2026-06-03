@@ -28,6 +28,8 @@ Options:
   --repo <owner/name>           GitHub repository to configure.
   --description <text>          Repository description for generated README.
   --copyright-holder <name>     Copyright holder for generated LICENSE. Defaults to git config user.name.
+  --private                     Create a private GitHub repository when needed. This is the default.
+  --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
@@ -558,9 +560,10 @@ base_repo_ensure_github_repo() {
     local description="$3"
     local dry_run="$1"
     local repo="$2"
+    local visibility="$4"
 
     if [[ "$dry_run" == "1" ]]; then
-        printf "[DRY-RUN] Would create GitHub repository '%s' if it does not already exist.\n" "$repo"
+        printf "[DRY-RUN] Would create %s GitHub repository '%s' if it does not already exist.\n" "$visibility" "$repo"
         return 0
     fi
 
@@ -570,8 +573,8 @@ base_repo_ensure_github_repo() {
         return 0
     fi
 
-    log_info "Creating GitHub repository '$repo'."
-    gh repo create "$repo" --public --description "$description"
+    log_info "Creating $visibility GitHub repository '$repo'."
+    gh repo create "$repo" "--$visibility" --description "$description"
 }
 
 base_repo_configure_github() {
@@ -637,8 +640,11 @@ base_repo_init() {
     local description=""
     local dry_run=0
     local github_repo=""
+    local github_visibility="private"
+    local github_visibility_explicit=0
     local name=""
     local path=""
+    local requested_visibility=""
     local root
 
     while (($#)); do
@@ -687,6 +693,16 @@ base_repo_init() {
                 copyright_holder="$2"
                 shift 2
                 ;;
+            --private|--public)
+                requested_visibility="${1#--}"
+                if ((github_visibility_explicit)) && [[ "$github_visibility" != "$requested_visibility" ]]; then
+                    base_repo_usage_error "Options '--private' and '--public' cannot be used together."
+                    return $?
+                fi
+                github_visibility="$requested_visibility"
+                github_visibility_explicit=1
+                shift
+                ;;
             --no-configure)
                 configure=0
                 shift
@@ -732,7 +748,7 @@ base_repo_init() {
             github_repo="$(base_repo_infer_github_repo "$root" || true)"
         fi
         if [[ -n "$github_repo" ]]; then
-            base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" || return 1
+            base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" "$github_visibility" || return 1
             base_repo_configure_github "$dry_run" "$github_repo" || return 1
         else
             if [[ "$dry_run" == "1" ]]; then

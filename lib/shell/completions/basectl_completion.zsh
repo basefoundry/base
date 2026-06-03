@@ -121,6 +121,8 @@ _base_basectl_completion() {
                         '--repo[GitHub repository]:repo:' \
                         '--description[Repository description]:description:' \
                         '--copyright-holder[Copyright holder]:name:' \
+                        '--private[Create a private GitHub repository when needed]' \
+                        '--public[Create a public GitHub repository when needed]' \
                         '--no-configure[Skip GitHub configuration]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \

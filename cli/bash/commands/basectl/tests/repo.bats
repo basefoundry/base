@@ -21,7 +21,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/tests/validate.sh'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would create GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create private GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
     [[ "$output" == *"gh label create bug"* ]]
     [[ "$output" == *'--description "Something is not working"'* ]]
@@ -249,8 +249,43 @@ EOF
 
     [ "$status" -eq 0 ]
     [ -f "$repo_dir/base_manifest.yaml" ]
-    grep -Fq "repo create codeforester/base-demo --public --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
+    grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+}
+
+@test "basectl repo init can create a public GitHub repo when requested" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo" ]]; then
+    exit 1
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --public
+
+    [ "$status" -eq 0 ]
+    grep -Fq "repo create codeforester/base-demo --public --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
+}
+
+@test "basectl repo init rejects conflicting GitHub repo visibility flags" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --private --public
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Options '--private' and '--public' cannot be used together."* ]]
+    [ ! -e "$repo_dir" ]
 }
 
 @test "basectl repo configure can infer GitHub repo from origin remote" {
