@@ -30,7 +30,7 @@ _base_basectl_completion() {
         'update-profile:Refresh Base-managed shell startup sections'
         'update:Update Base and rerun setup'
         'projects:List Base-managed projects'
-        'workspace:Show workspace-level project status'
+        'workspace:Show workspace-level project status, checks, and diagnostics'
         'version:Show the installed Base version'
         'help:Show help text'
     )
@@ -59,7 +59,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         workspace)
-            _arguments '1:workspace command:(status)' \
+            _arguments '1:workspace command:(status check doctor)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'

@@ -94,6 +94,8 @@ that delegate to `basectl`.
   project names and paths.
 - `basectl workspace status` reports a read-only workspace summary across
   discovered projects.
+- `basectl workspace check` and `basectl workspace doctor` run read-only
+  project checks and diagnostics across discovered projects.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

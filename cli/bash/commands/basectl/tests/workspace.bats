@@ -32,14 +32,76 @@ EOF
     [ "$(cat "$TEST_TMPDIR/workspace-status-state")" = "BASE_PROJECT=base" ]
 }
 
-@test "basectl workspace status prints help without requiring the Base Python venv" {
+@test "basectl workspace check delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "check" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace check python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace check --workspace "$workspace" --format json
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=--workspace $workspace --format json" ]
+}
+
+@test "basectl workspace doctor delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "doctor" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace doctor python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace doctor --workspace "$workspace" --format json
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=--workspace $workspace --format json" ]
+}
+
+@test "basectl workspace commands print help without requiring the Base Python venv" {
     run_basectl workspace status --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl workspace status [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--format <format>"* ]]
+
+    run_basectl workspace check --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
+
+    run_basectl workspace doctor --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
 }
 
 @test "basectl workspace rejects unknown subcommands" {

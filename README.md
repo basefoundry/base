@@ -318,6 +318,8 @@ basectl projects list
 basectl projects list --format json
 basectl workspace status
 basectl workspace status --format json
+basectl workspace check
+basectl workspace doctor
 ```
 
 By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
@@ -325,9 +327,11 @@ value is configured. If it is not configured, Base falls back to the parent
 directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
 Project list output is tab-separated as `<project-name><TAB><path>`. Use
-`--format json` for machine-readable output. Workspace status is also read-only;
-it reports each discovered project's manifest validity and whether the
-Base-managed project virtual environment is present.
+`--format json` for machine-readable output. Workspace status, check, and
+doctor are read-only. Status reports each discovered project's manifest
+validity and whether the Base-managed project virtual environment is present.
+Check and doctor run project diagnostics across discovered projects and keep
+invalid project manifests visible as per-project findings.
 
 Start a new Base-managed repository with:
 

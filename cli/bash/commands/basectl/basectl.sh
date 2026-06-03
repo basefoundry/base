@@ -41,8 +41,8 @@ Commands:
     Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
-  workspace status [options]
-    Show a read-only status summary for workspace projects.
+  workspace <status|check|doctor> [options]
+    Show read-only workspace project status, checks, or diagnostics.
   version
     Show the installed Base version.
   help
