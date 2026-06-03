@@ -21,9 +21,10 @@ def _require_click():
 
 
 class App:
-    def __init__(self, name: str | None = None, version: str | None = None) -> None:
+    def __init__(self, name: str | None = None, version: str | None = None, log_to_file: bool = True) -> None:
         self.name = normalize_cli_name(name or sys.argv[0])
         self.version = version
+        self.log_to_file = log_to_file
         self._click_command = None
         self._command_func: Callable[..., Any] | None = None
         self._command_args: tuple[Any, ...] = ()
@@ -97,7 +98,7 @@ class App:
         temp_dir = state_dir / "tmp" / run_id
 
         log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else None
-        if dry_run:
+        if dry_run or not self.log_to_file:
             if log_file is not None:
                 log_file.parent.mkdir(parents=True, exist_ok=True)
         else:

@@ -440,6 +440,36 @@ class BaseCliTests(unittest.TestCase):
             self.assertIn("dry run", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_can_disable_default_persistent_logging(self) -> None:
+        app = base_cli.App(name="inspect-logs", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["log_file"] = ctx.log_file
+            seen["state_dir"] = ctx.state_dir
+            seen["cache_dir"] = ctx.cache_dir
+            seen["temp_dir"] = ctx.temp_dir
+            ctx.log.debug("debug without persistent log")
+            ctx.log.info("info without persistent log")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
+                from base_cli.testing import invoke
+
+                result = invoke(app, ["--debug"], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertIsNone(seen["log_file"])
+            self.assertFalse(seen["state_dir"].exists())
+            self.assertFalse(seen["cache_dir"].exists())
+            self.assertFalse(seen["temp_dir"].exists())
+            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertIn("debug without persistent log", result.stderr)
+            self.assertIn("info without persistent log", result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_dry_run_honors_explicit_log_file_without_cache_dirs(self) -> None:
         app = base_cli.App(name="dry-run-log-demo", version="0.1.0")
         seen = {}

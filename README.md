@@ -468,11 +468,13 @@ basectl logs --command check
 basectl logs --path
 basectl logs --open
 basectl logs --tail
+basectl logs -v
 ```
 
 `basectl logs` is read-only. It lists the newest runtime logs under the Base
 cache root so failed Python-layer runs can be inspected without rerunning with
-debug output enabled.
+debug output enabled. It supports `-v`/`--debug` for its own diagnostics without
+creating a new default log entry for the inspection run.
 
 Inspect machine-local Base config with:
 

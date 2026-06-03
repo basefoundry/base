@@ -33,6 +33,7 @@ base_logs_subcommand_main() {
                 return 0
                 ;;
             -v)
+                args+=(--debug)
                 shift
                 ;;
             --command|--limit|--lines)

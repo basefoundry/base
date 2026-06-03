@@ -77,7 +77,7 @@ ctx.state_dir      # Base cache root / cli / <cli-name>
 ctx.log_dir        # state_dir/logs
 ctx.cache_dir      # state_dir/cache
 ctx.temp_dir       # state_dir/tmp/<run-id>
-ctx.log_file       # log_dir/<run-id>.log
+ctx.log_file       # log_dir/<run-id>.log, or None when persistent logging is disabled
 ctx.config         # dict
 ctx.environment    # str
 ctx.debug          # bool
@@ -130,6 +130,14 @@ Directory lifecycle:
 | `cache/` | before command execution | explicit CLI logic only |
 | `tmp/<run-id>/` | before command execution | after command execution unless kept |
 
+Commands that inspect runtime artifacts can opt out of default persistent log
+creation with `base_cli.App(log_to_file=False)`. That still provides a context
+and the standard user-facing stderr logger, including `--debug`, but leaves
+`ctx.log_file` as `None` and does not create the default `logs/`, `cache/`, or
+`tmp/<run-id>/` directories. `base_logs` uses this mode so `basectl logs` does
+not create a new log entry while listing logs. Passing `--log-file <path>` still
+writes to that explicit file.
+
 ## Logging
 
 Every run gets two streams:
@@ -137,7 +145,7 @@ Every run gets two streams:
 | Stream | Destination | Level | Format |
 |---|---|---|---|
 | user | stderr | INFO by default, DEBUG with `--debug` | Base-style timestamp, level, source, message |
-| persistent | `ctx.log_file` | DEBUG | Base-style timestamp, level, source, message |
+| persistent | `ctx.log_file` when enabled | DEBUG | Base-style timestamp, level, source, message |
 
 Python user-facing logs should visually align with Bash `lib_std.sh` logs:
 

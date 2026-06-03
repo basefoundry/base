@@ -9,7 +9,7 @@ should get by default:
 
 - standard command options such as `--debug`, `--environment`, `--config`,
   `--keep-temp`, and `--log-file`
-- structured logging to stderr and to a persistent per-run log file
+- structured logging to stderr and, by default, to a persistent per-run log file
 - Base project discovery through `base_manifest.yaml`
 - config loading with predictable precedence
 - per-run temp directories, persistent cache directories, and cleanup hooks
@@ -152,7 +152,8 @@ Important fields include:
 - `ctx.log_dir`: persistent log directory.
 - `ctx.cache_dir`: persistent cache directory.
 - `ctx.temp_dir`: per-run temp directory.
-- `ctx.log_file`: persistent log file for this run.
+- `ctx.log_file`: persistent log file for this run, or `None` when persistent
+  logging is disabled.
 - `ctx.config`: merged configuration dictionary.
 - `ctx.environment`: active environment, defaulting to `dev`.
 - `ctx.debug`: whether debug logging is enabled for the stderr stream.
@@ -177,7 +178,14 @@ def helper() -> None:
 `base_cli` configures two handlers:
 
 - a user-facing stderr handler at INFO by default, DEBUG with `--debug`
-- a persistent file handler that always records DEBUG logs
+- a persistent file handler that records DEBUG logs when persistent logging is
+  enabled
+
+Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
+to keep the standard context and `--debug` behavior without creating default
+`logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this mode so
+`basectl logs` does not appear in its own output. An explicit `--log-file <path>`
+still enables file logging for that invocation.
 
 Logs use the same general shape as Base Bash logs:
 
