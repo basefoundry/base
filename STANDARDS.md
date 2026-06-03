@@ -158,7 +158,8 @@ sourced files.
 
 ### 3.3 Error Handling
 
-1. Do not use `set -e` in Base shell scripts or libraries.
+1. Do not use `set -e`, `set -u`, or `set -o pipefail` in Base shell scripts
+   or libraries.
 2. Do not rely on implicit shell exit behavior for control flow.
 3. Prefer explicit error handling using helper functions such as:
    - `run`
@@ -170,8 +171,9 @@ sourced files.
 
 Rationale:
 
-- `set -e` interacts poorly with conditionals, pipelines, subshells, and
-  sourced code.
+- `set -e`, `set -u`, and `pipefail` interact poorly with conditionals,
+  pipelines, subshells, sourced code, and scripts that are intended to be read
+  as control-plane logic.
 - Base is a runtime- and library-heavy shell framework, so implicit exit rules
   make control flow harder to reason about.
 - Explicit error handling is more verbose, but much easier to debug and

@@ -87,7 +87,6 @@ For shell demos, the common shape is:
 
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
 
 non_interactive=0
 
@@ -102,7 +101,8 @@ done
 
 pause() {
   ((non_interactive)) && return 0
-  read -r -p "Press Enter to continue..." _
+  printf 'Press Enter to continue...'
+  read -r _ || return 1
 }
 ```
 
