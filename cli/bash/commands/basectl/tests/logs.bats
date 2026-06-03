@@ -26,6 +26,27 @@ EOF
     [[ "$output" == *"ARGS=--command check --limit 3 --path"* ]]
 }
 
+@test "basectl logs forwards verbose flag to the Python logs layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected logs python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl logs -v --path
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGS=--debug --path"* ]]
+}
+
 @test "basectl logs prints help without requiring the Base Python venv" {
     run_basectl logs --help
 

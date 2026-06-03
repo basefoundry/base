@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import os
 import re
 import shlex
@@ -11,10 +10,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+import base_cli
+import click
 from base_cli.paths import base_cache_root
 
 
 RUN_ID_RE = re.compile(r"^(?P<stamp>\d{8}T\d{6})_[A-Za-z0-9]+$")
+
+app = base_cli.App(name="base_logs", log_to_file=False)
 
 
 @dataclass(frozen=True)
@@ -27,63 +30,98 @@ class LogEntry:
     status: str
 
 
+@dataclass(frozen=True)
+class LogCommandOptions:
+    command_filter: str | None
+    limit: int
+    path_only: bool
+    tail: bool
+    open_file: bool
+    lines: int
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    return run(args)
+    try:
+        result = app.click_command.main(args=argv, standalone_mode=False)
+    except click.ClickException as exc:
+        exc.show()
+        return int(exc.exit_code)
+    return int(result or 0)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="base_logs", description="List recent Base CLI runtime logs.")
-    parser.add_argument("--command", help="Filter by basectl command or Python CLI name.")
-    parser.add_argument("--limit", type=parse_positive_int, default=10, help="Maximum log entries to list.")
-    parser.add_argument("--path", action="store_true", help="Print the most recent matching log path only.")
-    parser.add_argument("--tail", action="store_true", help="Tail and follow the most recent matching log.")
-    parser.add_argument("--open", action="store_true", help="Open the most recent matching log in PAGER or EDITOR.")
-    parser.add_argument("--lines", type=parse_positive_int, default=40, help="Line count to show before following.")
-    return parser
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.option("--command", "command_filter", help="Filter by basectl command or Python CLI name.")
+@base_cli.option("--limit", default="10", help="Maximum log entries to list.")
+@base_cli.option("--path", "path_only", is_flag=True, help="Print the most recent matching log path only.")
+@base_cli.option("--tail", is_flag=True, help="Tail and follow the most recent matching log.")
+@base_cli.option("--open", "open_file", is_flag=True, help="Open the most recent matching log in PAGER or EDITOR.")
+@base_cli.option("--lines", default="40", help="Line count to show before following.")
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def run(
+    ctx: base_cli.Context,
+    command_filter: str | None,
+    limit: str,
+    path_only: bool,
+    tail: bool,
+    open_file: bool,
+    lines: str,
+) -> int:
+    try:
+        limit_value = parse_positive_int("--limit", limit)
+        line_count = parse_positive_int("--lines", lines)
+    except ValueError as exc:
+        ctx.log.error(str(exc))
+        return 2
+
+    options = LogCommandOptions(
+        command_filter=command_filter,
+        limit=limit_value,
+        path_only=path_only,
+        tail=tail,
+        open_file=open_file,
+        lines=line_count,
+    )
+    selected_actions = sum(1 for selected in (path_only, tail, open_file) if selected)
+    if selected_actions > 1:
+        ctx.log.error("Choose only one of --path, --tail, or --open.")
+        return 2
+
+    cache_root = base_cache_root()
+    ctx.log.debug("Scanning Base cache root '%s'.", cache_root)
+    entries = recent_logs(cache_root, command_filter=options.command_filter)
+    if not entries:
+        return report_no_logs(ctx, cache_root, options)
+    return run_with_entries(entries, options)
 
 
-def parse_positive_int(value: str) -> int:
+def parse_positive_int(option: str, value: str) -> int:
     if not value.isdigit():
-        raise argparse.ArgumentTypeError("must be a positive integer")
+        raise ValueError(f"Option '{option}' must be a positive integer.")
     amount = int(value)
     if amount <= 0:
-        raise argparse.ArgumentTypeError("must be greater than zero")
+        raise ValueError(f"Option '{option}' must be greater than zero.")
     return amount
 
 
-def run(args: argparse.Namespace) -> int:
-    selected_actions = sum(1 for name in ("path", "tail", "open") if getattr(args, name))
-    if selected_actions > 1:
-        print("ERROR: Choose only one of --path, --tail, or --open.", file=sys.stderr)
-        return 2
-
-    entries = recent_logs(base_cache_root(), command_filter=args.command)
-    if not entries:
-        return report_no_logs(args)
-    return run_with_entries(args, entries)
-
-
-def report_no_logs(args: argparse.Namespace) -> int:
-    if args.path or args.tail or args.open:
-        print("ERROR: No Base CLI logs found.", file=sys.stderr)
+def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandOptions) -> int:
+    if options.path_only or options.tail or options.open_file:
+        ctx.log.error("No Base CLI logs found.")
         return 1
-    print(f"No Base CLI logs found under {base_cache_root() / 'cli'}.")
+    print(f"No Base CLI logs found under {cache_root / 'cli'}.")
     return 0
 
 
-def run_with_entries(args: argparse.Namespace, entries: list[LogEntry]) -> int:
+def run_with_entries(entries: list[LogEntry], options: LogCommandOptions) -> int:
     newest = entries[0]
-    if args.path:
+    if options.path_only:
         print(newest.path)
         return 0
-    if args.tail:
-        return tail_log(newest.path, args.lines)
-    if args.open:
+    if options.tail:
+        return tail_log(newest.path, options.lines)
+    if options.open_file:
         return open_log(newest.path)
 
-    print_log_table(entries[: args.limit])
+    print_log_table(entries[: options.limit])
     return 0
 
 

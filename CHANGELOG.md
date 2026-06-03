@@ -35,6 +35,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Changed `base_logs` to use `base_cli.App` without default persistent log
+  creation, so `basectl logs -v` enables debug diagnostics without adding a
+  self-log entry.
 - Changed `basectl demo` to infer the current project from the nearest
   `base_manifest.yaml` when the project argument is omitted.
 - Changed `basectl repo init --repo` to create private GitHub repositories by
