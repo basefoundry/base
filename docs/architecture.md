@@ -518,6 +518,18 @@ If a specific monorepo layout genuinely needs enumeration, the least-invasive
 path is to scan exactly one additional level and require explicit opt-in from a
 parent manifest rather than auto-discovering everything.
 
+### Workspace manifest
+
+A workspace manifest is a future team-shared repo-set contract. It is distinct
+from each project's `base_manifest.yaml`: the workspace manifest says which
+repositories should belong together, while project manifests say how each
+repository participates in Base.
+
+The initial workspace commands operate on discovered local projects only. A
+future `--manifest <path>` option can add expected-repository awareness without
+changing the current discovered-project behavior. See
+[Workspace Manifest](workspace-manifest.md).
+
 ### Caching project definitions
 
 Base keeps project discovery flat: it scans direct children of the workspace

@@ -50,6 +50,8 @@ reference. The filename should answer "what is this about?"
 - [Repository Baseline](repo-baseline.md) documents `basectl repo init`,
   `basectl repo check`, and `basectl repo configure` for standardizing new
   Base-managed repositories.
+- [Workspace Manifest](workspace-manifest.md) defines the future team-shared
+  repo-set contract and its relationship to discovered local projects.
 - [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
   arbitrary manifest setup hooks yet.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience

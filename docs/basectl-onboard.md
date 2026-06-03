@@ -26,7 +26,7 @@ Future workspace or team onboarding should start from a workspace manifest
 design, not from project-specific product logic inside Base. A command such as
 `basectl onboard <workspace>` would need an explicit manifest location, clone
 policy, trust model, partial-failure model, and dry-run story before it becomes
-part of the product surface.
+part of the product surface. See [Workspace Manifest](workspace-manifest.md).
 
 ## Audience
 
