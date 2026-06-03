@@ -201,9 +201,23 @@ base_repo_baseline_year() {
     date +%Y
 }
 
+base_repo_create_directory() {
+    local target_dir="$1"
+
+    [[ -d "$target_dir" ]] && return 0
+
+    if mkdir -p "$target_dir" 2>/dev/null; then
+        return 0
+    fi
+
+    log_error "Failed to create parent directory '$target_dir'."
+    return 1
+}
+
 base_repo_write_stream() {
     local dry_run="$1"
     local target="$2"
+    local target_dir
 
     if [[ -e "$target" ]]; then
         log_info "Repository baseline file already exists at '$target'; leaving it unchanged."
@@ -215,13 +229,18 @@ base_repo_write_stream() {
         return 0
     fi
 
-    mkdir -p "$(dirname -- "$target")"
-    cat > "$target"
+    target_dir="$(dirname -- "$target")"
+    base_repo_create_directory "$target_dir" || return 1
+    if ! cat 2>/dev/null > "$target"; then
+        log_error "Failed to write '$target'."
+        return 1
+    fi
 }
 
 base_repo_write_executable_stream() {
     local dry_run="$1"
     local target="$2"
+    local target_dir
 
     if [[ -e "$target" ]]; then
         log_info "Repository baseline file already exists at '$target'; leaving it unchanged."
@@ -233,9 +252,16 @@ base_repo_write_executable_stream() {
         return 0
     fi
 
-    mkdir -p "$(dirname -- "$target")"
-    cat > "$target"
-    chmod +x "$target"
+    target_dir="$(dirname -- "$target")"
+    base_repo_create_directory "$target_dir" || return 1
+    if ! cat 2>/dev/null > "$target"; then
+        log_error "Failed to write '$target'."
+        return 1
+    fi
+    if ! chmod +x "$target" 2>/dev/null; then
+        log_error "Failed to make '$target' executable."
+        return 1
+    fi
 }
 
 base_repo_write_readme() {
@@ -443,7 +469,7 @@ base_repo_write_baseline() {
     local status=0
 
     if [[ "$dry_run" != "1" ]]; then
-        mkdir -p "$root" || return 1
+        base_repo_create_directory "$root" || return 1
     fi
 
     base_repo_write_readme "$dry_run" "$name" "$description" "$root" || status=1

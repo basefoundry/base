@@ -141,6 +141,22 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
 }
 
+@test "basectl repo init reports baseline parent directory creation failures" {
+    local blocked_parent="$TEST_TMPDIR/blocked"
+    local repo_dir="$blocked_parent/base-demo"
+
+    printf 'not a directory\n' > "$blocked_parent"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --no-configure
+
+    [ "$status" -eq 1 ]
+    [[ "${output:-}${stderr:-}" == *"Failed to create parent directory '$repo_dir'."* ]]
+    [ ! -e "$repo_dir/README.md" ]
+}
+
 @test "basectl repo check passes for a generated baseline" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 
