@@ -7,7 +7,7 @@ readonly _base_demo_subcommand_sourced
 base_demo_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl demo <project> [options] [-- extra args...]
+  basectl demo [project] [options] [-- extra args...]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
@@ -50,7 +50,7 @@ base_demo_format_extra_args() {
 base_demo_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path demo_script venv_dir
     local dry_run=0 workspace_requested=0
-    local args=() extra_args=()
+    local args=() extra_args=() project_args=()
 
     while (($#)); do
         case "$1" in
@@ -101,10 +101,6 @@ base_demo_subcommand_main() {
         esac
     done
 
-    [[ -n "$project" ]] || {
-        base_demo_usage_error "Project name is required."
-        return $?
-    }
     [[ "$workspace_requested" != "1" || -n "$project" ]] || {
         base_demo_usage_error "Option '--workspace' requires an explicit project name."
         return $?
@@ -113,11 +109,12 @@ base_demo_subcommand_main() {
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$("$wrapper" --project base base_projects demo-script "$project" "${args[@]}")" || return $?
+    [[ -n "$project" ]] && project_args+=("$project")
+    resolve_output="$("$wrapper" --project base base_projects demo-script "${project_args[@]}" "${args[@]}")" || return $?
     IFS=$'\t' read -r resolved_name project_root manifest_path demo_script <<<"$resolve_output"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$demo_script" ]] || {
-        fatal_error "Unable to resolve demo script for project '$project'."
+        fatal_error "Unable to resolve demo script for project '${project:-current project}'."
     }
 
     venv_dir="$(base_demo_project_venv_dir "$resolved_name")"

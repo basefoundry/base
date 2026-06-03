@@ -740,6 +740,35 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"\t{script.resolve()}\n",
         )
 
+    def test_projects_demo_script_defaults_to_current_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            nested = project_root / "docs"
+            script = project_root / "demo" / "demo.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            script.chmod(0o755)
+            write_demo_manifest(project_root, "demo", "./demo/demo.sh")
+            nested.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["demo-script"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\t{script.resolve()}\n",
+        )
+
     def test_projects_demo_script_requires_demo_declaration(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)

@@ -77,7 +77,7 @@ basectl setup <project>
 basectl check <project>
 basectl doctor <project>
 basectl test <project>
-basectl demo <project>
+basectl demo [project]
 basectl run <project> <command>
 basectl activate <project>
 ```
