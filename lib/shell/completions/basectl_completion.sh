@@ -89,7 +89,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init check configure" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --no-configure --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --dry-run -v -h --help" "$cur"
                     ;;
                 check)
                     _base_basectl_completion_compgen "-v -h --help" "$cur"

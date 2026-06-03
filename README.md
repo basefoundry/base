@@ -347,8 +347,10 @@ By default, `repo init` creates the repository under `workspace.root` from
 directory of `BASE_HOME`. Use `--path <path>` for an explicit location.
 `repo init` also creates the GitHub repository when needed and then
 standardizes its settings when `--repo <owner/name>` is provided or when an
-existing `origin` remote can be inferred. Use `--no-configure` to skip the
-GitHub step, or rerun it later with `basectl repo configure`.
+existing `origin` remote can be inferred. Newly created GitHub repositories are
+private by default; pass `--public` when a public repository is intentional. Use
+`--no-configure` to skip the GitHub step, or rerun it later with
+`basectl repo configure`.
 
 Check and repair the repo baseline with:
 

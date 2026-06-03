@@ -35,6 +35,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Changed `basectl repo init --repo` to create private GitHub repositories by
+  default, with explicit `--public` and `--private` visibility flags.
 - Updated Base-managed shell profile sections to use shorter `>>> base: ...`
   markers, clearer overwrite guidance, and quoted source paths.
 
