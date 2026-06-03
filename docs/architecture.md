@@ -560,13 +560,16 @@ Current workspace-oriented commands include:
 ```bash
 basectl projects list
 basectl workspace status
+basectl workspace check
+basectl workspace doctor
 ```
 
-`basectl workspace status` is intentionally read-only. It reports project
-manifest state, virtual environment state, and Git state across discovered
-projects, including invalid manifests without stopping the whole scan. JSON
-output is part of the contract so automation and future CI smoke checks can use
-the same data.
+Workspace commands are intentionally read-only. `basectl workspace status`
+reports project manifest state, virtual environment state, and Git state across
+discovered projects, including invalid manifests without stopping the whole
+scan. `basectl workspace check` and `basectl workspace doctor` run project
+checks and diagnostics across discovered projects. JSON output is part of the
+contract so automation and future CI smoke checks can use the same data.
 
 Future workspace commands should follow the same principles:
 

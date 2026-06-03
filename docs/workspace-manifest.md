@@ -41,6 +41,8 @@ Current workspace commands operate on discovered local repositories only:
 ```bash
 basectl projects list
 basectl workspace status
+basectl workspace check
+basectl workspace doctor
 ```
 
 They do not read a workspace manifest and do not report missing expected
@@ -215,10 +217,8 @@ The workspace manifest should not:
 ## Implementation Sequence
 
 1. Keep current commands working against discovered local projects.
-2. Add `basectl workspace check` and `basectl workspace doctor` for discovered
-   projects only.
-3. Add parser and validation support for a local workspace manifest.
-4. Add `--manifest <path>` to read-only workspace commands.
-5. Report expected, missing, discovered, and extra repositories.
-6. Design explicit clone/onboard behavior only after read-only reporting proves
+2. Add parser and validation support for a local workspace manifest.
+3. Add `--manifest <path>` to read-only workspace commands.
+4. Report expected, missing, discovered, and extra repositories.
+5. Design explicit clone/onboard behavior only after read-only reporting proves
    useful.

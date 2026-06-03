@@ -6,15 +6,15 @@ readonly _base_workspace_subcommand_sourced
 base_workspace_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl workspace status [options]
+  basectl workspace <status|check|doctor> [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
-  --format <format>   Output format for status: text or json.
+  --format <format>   Output format for the workspace command: text or json.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Show a read-only status summary for Base-managed projects in the workspace.
+Show read-only status, check, or doctor output for Base-managed projects in the workspace.
 EOF
 }
 
@@ -28,7 +28,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status)
+        status|check|doctor)
             shift
             ;;
         *)
@@ -55,5 +55,5 @@ base_workspace_subcommand_main() {
     done
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_projects status "${args[@]}"
+    "$wrapper" --project base base_projects "$workspace_command" "${args[@]}"
 }

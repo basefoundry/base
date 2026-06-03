@@ -47,6 +47,7 @@ part of the doctor workflow.
 | ID | Finding |
 | --- | --- |
 | `BASE-P001` | Empty project manifest artifact set |
+| `BASE-P002` | Project manifest validity |
 | `BASE-P010` | Brewfile path validity |
 | `BASE-P011` | Homebrew unavailable for Brewfile checks |
 | `BASE-P012` | Brewfile dependency status |
