@@ -118,11 +118,12 @@ class ProjectCheckTests(unittest.TestCase):
             ok=False,
             message="Optional project artifact is not installed.",
             fix="basectl setup demo",
+            finding_id="BASE-P033",
             status="warn",
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P000")
+        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P033")
         self.assertEqual(setup_checks.check_to_doctor_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(
@@ -144,6 +145,17 @@ class ProjectCheckTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("warn", stdout.getvalue())
+
+    def test_artifact_check_requires_explicit_finding_id(self) -> None:
+        kwargs = {
+            "name": "optional-artifact",
+            "ok": False,
+            "message": "Optional project artifact is not installed.",
+            "fix": "basectl setup demo",
+        }
+
+        with self.assertRaises(TypeError):
+            setup_checks.ArtifactCheck(**kwargs)
 
 
 

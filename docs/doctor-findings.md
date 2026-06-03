@@ -6,6 +6,9 @@ human-readable names or messages.
 
 Finding IDs are never reused after they ship. A finding may change its message,
 fix text, or severity over time, but its ID keeps the same meaning.
+Every doctor finding implementation must provide an explicit ID; placeholder
+IDs such as `BASE-P000` are invalid because they cannot support automation or
+suppression policies.
 
 ## Principles
 

@@ -47,6 +47,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Removed the placeholder `BASE-P000` default from `ArtifactCheck` so project
+  doctor findings must declare explicit stable IDs.
 - Updated the README status section to match the current `0.2.0` release.
 - Fixed `basectl repo init` to create new repositories under the configured
   workspace root instead of the caller's current directory.

@@ -9,8 +9,8 @@ class ArtifactCheck:
     ok: bool
     message: str
     fix: str
+    finding_id: str
     status: str = ""
-    finding_id: str = "BASE-P000"
 
 
 def check_to_json(check: ArtifactCheck) -> dict[str, str | bool]:
