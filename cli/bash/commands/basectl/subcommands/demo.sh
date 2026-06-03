@@ -4,6 +4,10 @@
 _base_demo_subcommand_sourced=1
 readonly _base_demo_subcommand_sourced
 
+_base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/project_command_helpers.sh"
+# shellcheck source=/dev/null
+source "$_base_project_command_helpers_path"
+
 base_demo_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -24,27 +28,6 @@ base_demo_usage_error() {
     base_demo_subcommand_usage >&2
     printf 'ERROR: %s\n' "$*" >&2
     return 2
-}
-
-base_demo_project_venv_dir() {
-    local project="$1"
-
-    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
-        printf '%s\n' "$BASE_PROJECT_VENV_DIR"
-        return 0
-    fi
-
-    printf '%s\n' "$HOME/.base.d/$project/.venv"
-}
-
-base_demo_format_extra_args() {
-    local arg quoted output=""
-
-    for arg in "$@"; do
-        printf -v quoted '%q' "$arg"
-        output+=" $quoted"
-    done
-    printf '%s\n' "$output"
 }
 
 base_demo_subcommand_main() {
@@ -117,7 +100,7 @@ base_demo_subcommand_main() {
         fatal_error "Unable to resolve demo script for project '${project:-current project}'."
     }
 
-    venv_dir="$(base_demo_project_venv_dir "$resolved_name")"
+    venv_dir="$(base_project_venv_dir "$resolved_name")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -132,10 +115,10 @@ base_demo_subcommand_main() {
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run demo for project %q in %q: %q%s\n' \
-            "$resolved_name" "$project_root" "$demo_script" "$(base_demo_format_extra_args "${extra_args[@]}")"
+            "$resolved_name" "$project_root" "$demo_script" "$(base_format_extra_args "${extra_args[@]}")"
         return 0
     fi
 
-    log_info "Running demo for project '$resolved_name': $demo_script$(base_demo_format_extra_args "${extra_args[@]}")"
+    log_info "Running demo for project '$resolved_name': $demo_script$(base_format_extra_args "${extra_args[@]}")"
     (cd "$project_root" && "$demo_script" "${extra_args[@]}")
 }

@@ -35,6 +35,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Extracted shared `basectl run`, `basectl test`, and `basectl demo` project
+  command helpers into one Bash helper module.
 - Changed `base_logs` to use `base_cli.App` without default persistent log
   creation, so `basectl logs -v` enables debug diagnostics without adding a
   self-log entry.
