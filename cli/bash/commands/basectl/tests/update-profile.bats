@@ -16,16 +16,18 @@ load ./setup_helpers.bash
         [[ "$(cat "$TEST_HOME/$dotfile")" != *"base_init.sh"* ]]
     done
 
-    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# --- BEGIN base bash_profile MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source $BASE_REPO_ROOT/lib/shell/bash_profile"* ]]
-    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.bashrc")" == *"source $BASE_REPO_ROOT/lib/shell/bashrc"* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"# >>> base: bash_profile managed >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source \"$BASE_REPO_ROOT/lib/shell/bash_profile\""* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"Local edits inside this block may be overwritten."* ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"Refresh with: basectl update-profile"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# >>> base: bashrc managed >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"source \"$BASE_REPO_ROOT/lib/shell/bashrc\""* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"basectl_completion"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"PATH="* ]]
-    [[ "$(cat "$TEST_HOME/.zprofile")" == *"# --- BEGIN base zprofile MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.zprofile")" == *"source $BASE_REPO_ROOT/lib/shell/zprofile"* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" == *"# --- BEGIN base zshrc MANAGED SECTION - DO NOT EDIT ---"* ]]
-    [[ "$(cat "$TEST_HOME/.zshrc")" == *"source $BASE_REPO_ROOT/lib/shell/zshrc"* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"# >>> base: zprofile managed >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"source \"$BASE_REPO_ROOT/lib/shell/zprofile\""* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"# >>> base: zshrc managed >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"source \"$BASE_REPO_ROOT/lib/shell/zshrc\""* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"basectl_completion"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"PATH="* ]]
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_PROFILE_VERSION=1"* ]]
@@ -47,12 +49,12 @@ load ./setup_helpers.bash
     [[ "$output" != *"Updating '$TEST_HOME/.bashrc'"* ]]
     [[ "$output" != *"Updating '$TEST_HOME/.zprofile'"* ]]
     [[ "$output" != *"Updating '$TEST_HOME/.zshrc'"* ]]
-    [ "$(grep -c '# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
-    [ "$(grep -c '# --- END base bashrc MANAGED SECTION - DO NOT EDIT ---' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [ "$(grep -c '# >>> base: bashrc managed >>>' "$TEST_HOME/.bashrc")" -eq 1 ]
+    [ "$(grep -c '# <<< base: bashrc managed <<<' "$TEST_HOME/.bashrc")" -eq 1 ]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line before"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc")" == *$'user line before
 
-# --- BEGIN base bashrc MANAGED SECTION - DO NOT EDIT ---'* ]]
+# >>> base: bashrc managed >>>'* ]]
 }
 
 @test "basectl update-profile makes basectl available in interactive Bash without runtime bootstrap" {

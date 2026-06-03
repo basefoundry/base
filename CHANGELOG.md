@@ -29,6 +29,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
   Homebrew, Git, Bash, and Base before handing off to `basectl`.
 - Added a top-level FAQ for common first-run and product questions.
 
+### Changed
+
+- Updated Base-managed shell profile sections to use shorter `>>> base: ...`
+  markers, clearer overwrite guidance, and quoted source paths.
+
 ### Fixed
 
 - Updated the README status section to match the current `0.2.0` release.

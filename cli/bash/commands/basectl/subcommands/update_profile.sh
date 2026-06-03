@@ -37,16 +37,22 @@ base_update_profile_source_file_library() {
     import_base_lib file/lib_file.sh
 }
 
-base_update_profile_quote() {
+base_update_profile_shell_double_quote() {
     local value="$1"
-    printf '%q\n' "$value"
+    local escaped="$value"
+
+    escaped="${escaped//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+    escaped="${escaped//\$/\\$}"
+    escaped="${escaped//\`/\\\`}"
+    printf '"%s"\n' "$escaped"
 }
 
 base_update_profile_source_line() {
     local source_path="$1"
     local quoted_source_path
 
-    quoted_source_path="$(base_update_profile_quote "$source_path")" || return 1
+    quoted_source_path="$(base_update_profile_shell_double_quote "$source_path")" || return 1
     printf '%s\n' '# shellcheck source=/dev/null'
     printf 'source %s\n' "$quoted_source_path"
 }
@@ -55,7 +61,8 @@ base_update_profile_section_lines() {
     local snippet_name="$1"
     local snippet_path="$BASE_SHELL_DIR/$snippet_name"
 
-    printf '%s\n' "# Managed by Base. Run 'basectl update-profile' to refresh this section."
+    printf '%s\n' "# Managed by Base. Local edits inside this block may be overwritten."
+    printf '%s\n' "# Refresh with: basectl update-profile"
     base_update_profile_source_line "$snippet_path" || return 1
 }
 
@@ -82,8 +89,8 @@ base_update_profile_update_file() {
     local target_file="$1"
     local snippet_name="$2"
     local dry_run="$3"
-    local start_marker="# --- BEGIN base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
-    local end_marker="# --- END base ${snippet_name} MANAGED SECTION - DO NOT EDIT ---"
+    local start_marker="# >>> base: ${snippet_name} managed >>>"
+    local end_marker="# <<< base: ${snippet_name} managed <<<"
     local lines=()
 
     mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
