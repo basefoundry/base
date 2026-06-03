@@ -47,6 +47,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Clarified `BASE-H001` required-environment findings as repeated rule
+  instances keyed by `(id, name)` and report empty required variables as empty.
 - Removed the placeholder `BASE-P000` default from `ArtifactCheck` so project
   doctor findings must declare explicit stable IDs.
 - Updated the README status section to match the current `0.2.0` release.
