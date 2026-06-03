@@ -1,8 +1,6 @@
 #!/usr/bin/env basectl
 # shellcheck shell=bash
 
-set -euo pipefail
-
 base_demo_script_dir() {
     cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
 }
@@ -16,11 +14,17 @@ base_demo_home() {
     cd -- "$(base_demo_script_dir)/.." && pwd -P
 }
 
-BASE_HOME="$(base_demo_home)"
+BASE_HOME="$(base_demo_home)" || {
+    printf 'ERROR: Unable to resolve Base home for demo.\n' >&2
+    exit 1
+}
 export BASE_HOME
 
 # shellcheck source=/dev/null
-source "$BASE_HOME/base_init.sh"
+source "$BASE_HOME/base_init.sh" || {
+    printf 'ERROR: Unable to source Base initialization from %s.\n' "$BASE_HOME/base_init.sh" >&2
+    exit 1
+}
 
 BASE_DEMO_BASECTL="${BASE_DEMO_BASECTL:-basectl}"
 BASE_DEMO_BASE_WRAPPER="${BASE_DEMO_BASE_WRAPPER:-base-wrapper}"
@@ -141,7 +145,7 @@ base_demo_discovery_step() {
     local output
 
     base_demo_step 3 "Project Discovery"
-    workspace_root="$(cd -- "$BASE_HOME/.." && pwd -P)"
+    workspace_root="$(cd -- "$BASE_HOME/.." && pwd -P)" || return 1
     output="$(base_demo_capture "$BASE_DEMO_BASECTL" projects list --workspace "$workspace_root")"
     printf '%s\n' "$output"
     base_demo_require_output "project discovery" "$output" "base"

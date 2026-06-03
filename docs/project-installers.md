@@ -53,29 +53,34 @@ A project installer should be a thin Bash script with a predictable sequence:
 
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
 
 project_name="banyanlabs"
 workspace_dir="${HOME}/work"
 base_dir="${workspace_dir}/base"
 project_dir="${workspace_dir}/${project_name}"
 
-mkdir -p "$workspace_dir"
+installer="${TMPDIR:-/tmp}/base-install.sh"
+
+mkdir -p "$workspace_dir" || {
+    printf 'ERROR: Unable to create workspace directory %s.\n' "$workspace_dir" >&2
+    exit 1
+}
 
 if [[ ! -d "$base_dir/.git" ]]; then
-    curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | BASE_INSTALL_DIR="$base_dir" bash
+    curl -fsSL -o "$installer" https://raw.githubusercontent.com/codeforester/base/master/install.sh || exit 1
+    BASE_INSTALL_DIR="$base_dir" bash "$installer" || exit 1
 else
-    git -C "$base_dir" pull --ff-only
+    git -C "$base_dir" pull --ff-only || exit 1
 fi
 
 if [[ ! -d "$project_dir/.git" ]]; then
-    git clone https://github.com/codeforester/banyanlabs.git "$project_dir"
+    git clone https://github.com/codeforester/banyanlabs.git "$project_dir" || exit 1
 else
-    git -C "$project_dir" pull --ff-only
+    git -C "$project_dir" pull --ff-only || exit 1
 fi
 
-"$base_dir/bin/basectl" setup --manifest "$project_dir/base_manifest.yaml" "$project_name"
-"$base_dir/bin/basectl" update-profile
+"$base_dir/bin/basectl" setup --manifest "$project_dir/base_manifest.yaml" "$project_name" || exit 1
+"$base_dir/bin/basectl" update-profile || exit 1
 ```
 
 This is only a sketch. A real installer should add friendlier output, better

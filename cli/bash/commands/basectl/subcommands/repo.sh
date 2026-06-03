@@ -376,9 +376,8 @@ base_repo_write_validate_script() {
     local dry_run="$1"
     local root="$2"
 
-    base_repo_write_executable_stream "$dry_run" "$root/tests/validate.sh" <<'EOF'
+base_repo_write_executable_stream "$dry_run" "$root/tests/validate.sh" <<'EOF'
 #!/usr/bin/env bash
-set -euo pipefail
 
 required_files=(
   README.md
