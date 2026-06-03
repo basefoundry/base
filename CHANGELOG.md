@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added a first-mile bootstrap documentation page and contributor setup guidance
+  for source-based Base development.
 - Added the workspace manifest design document to define the future team-shared
   repo-set contract and its relationship to discovered local projects.
 - Added `basectl workspace check` and `basectl workspace doctor` for read-only

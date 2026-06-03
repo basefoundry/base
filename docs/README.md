@@ -27,6 +27,8 @@ reference. The filename should answer "what is this about?"
 
 - [Architecture](architecture.md) describes Base's product direction, command
   model, environment model, manifest shape, and repository conventions.
+- [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
+  selection, handoff commands, and contributor setup.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
   dispatch order, public launchers, and runtime shell behavior.
 - [Linux Support](linux-support.md) defines the first Ubuntu/Debian runtime

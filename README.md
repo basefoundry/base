@@ -50,6 +50,9 @@ curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
+For mode selection, dry-run behavior, and contributor setup details, see
+[First-Mile Bootstrap](docs/bootstrap.md).
+
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
 your project workspace. If your repositories live under a shared directory such
 as `~/work`, set the workspace root in `~/.base.d/config.yaml` after running
@@ -642,6 +645,7 @@ exec "$SHELL" -l
 Pass `--source` or `--brew` with `bash -s --` to choose the route explicitly.
 Without an explicit choice, the bootstrapper preserves an existing Homebrew Base
 install, then an existing source checkout, and otherwise defaults to source mode.
+See [First-Mile Bootstrap](docs/bootstrap.md) for the full bootstrap contract.
 
 Base can be installed through its Homebrew tap:
 
