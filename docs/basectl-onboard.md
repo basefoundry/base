@@ -1,13 +1,50 @@
-# `basectl onboard` Design
+# `basectl onboard`
 
 `basectl onboard` is the guided setup experience for Base itself.
 
 It helps technically-adjacent users through the first Base setup without
 turning `basectl setup` into an interactive, hand-holding command. The setup
-command should remain the direct, scriptable reconciler. The onboard command can
-be slower, friendlier, and more explanatory because that is its purpose.
+command remains the direct, scriptable reconciler. The onboard command is
+slower, friendlier, and more explanatory because that is its purpose.
 
-## Decision
+## What It Does
+
+`basectl onboard` runs a checklist-style first-run flow around existing Base
+commands:
+
+1. runs `basectl check`
+2. prompts before running `basectl setup`
+3. prompts before running `basectl update-profile`, unless profile updates are
+   disabled
+4. runs `basectl doctor`
+5. lists discovered projects with `basectl projects list`
+6. suggests the next interactive shell step
+
+It keeps underlying command output visible and shows each Base command before it
+runs it. Use it when you want a guided first setup. Use `basectl setup` directly
+when you want the scriptable reconciler.
+
+## Usage
+
+```bash
+basectl onboard [options]
+```
+
+Options:
+
+```text
+  --dev            Include Base developer prerequisites.
+  --dry-run        Explain and show planned actions without making changes.
+  --yes            Accept default answers for setup/profile prompts.
+  --no-profile     Skip shell profile updates.
+  -v               Enable DEBUG logging for underlying commands.
+  -h, --help       Show help text.
+```
+
+The command defaults to the `base` project. Project-specific guided onboarding
+remains a project installer responsibility.
+
+## Scope Boundary
 
 Base should not grow `basectl onboard <project>` as a product-specific guided
 installer. Project onboarding belongs in the project repository, where the
@@ -23,10 +60,10 @@ The stable split is:
   onboarding and calls Base internally.
 
 Future workspace or team onboarding should start from a workspace manifest
-design, not from project-specific product logic inside Base. A command such as
-`basectl onboard <workspace>` would need an explicit manifest location, clone
-policy, trust model, partial-failure model, and dry-run story before it becomes
-part of the product surface. See [Workspace Manifest](workspace-manifest.md).
+design, not from project-specific product logic inside Base. A future command
+such as `basectl onboard <workspace>` would need an explicit manifest location,
+clone policy, trust model, partial-failure model, and dry-run story before it
+becomes part of the product surface. See [Workspace Manifest](workspace-manifest.md).
 
 ## Audience
 
@@ -47,60 +84,35 @@ boundary.
 
 ## Relationship To Existing Commands
 
-`basectl onboard` should orchestrate existing Base primitives:
+`basectl onboard` orchestrates existing Base primitives:
 
 - `basectl check` for quick environment state
 - `basectl doctor` for human-readable diagnosis and suggested fixes
 - `basectl setup` for actual reconciliation
-- `basectl setup --dev` or `--profile <name>` when the user opts into Base
-  prerequisite profiles
+- `basectl setup --dev` when the user opts into Base developer prerequisites
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
 - `basectl activate base` as the final suggested next step
 
-It should not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
+It does not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
 Those responsibilities already belong to the setup/check/profile commands.
-
-## Command Shape
-
-Initial command shape:
-
-```bash
-basectl onboard [options]
-```
-
-Planned options:
-
-```text
-  --dev            Include Base developer prerequisites.
-  --profile <name> Include a named prerequisite profile.
-  --dry-run        Explain and show planned actions without making changes.
-  --yes            Accept default answers for non-destructive prompts.
-  --no-profile     Skip shell profile updates.
-  -v               Enable DEBUG logging for underlying commands.
-  -h, --help       Show help text.
-```
-
-The command should default to the `base` project. Project-specific guided
-onboarding remains a project installer responsibility.
 
 ## Experience Flow
 
-The first implementation should be simple and checklist-oriented:
+The shipped flow is simple and checklist-oriented:
 
 1. Print a short explanation of what Base is about to verify.
 2. Run `basectl check`.
 3. If checks fail, explain that setup can reconcile the missing pieces.
 4. Ask for confirmation before running `basectl setup`.
-5. If `--dev` or `--profile` was requested, include those prerequisite profiles
-   in setup.
+5. If `--dev` was requested, include developer prerequisites in setup.
 6. Ask for confirmation before running `basectl update-profile`, unless
    `--no-profile` was set.
 7. Run `basectl doctor` to summarize the final state.
 8. Print discovered projects with `basectl projects list` when available.
 9. Suggest `basectl` or `basectl activate base` as the next interactive step.
 
-The command should show the exact Base command before it runs it. For example:
+The command shows the exact Base command before it runs it. For example:
 
 ```text
 Next: basectl setup
@@ -122,7 +134,7 @@ Prompts should be explicit but sparse:
 
 ## Output Style
 
-The command should be friendly without hiding the mechanics:
+The command is friendly without hiding the mechanics:
 
 - Use plain English headings such as `Check`, `Setup`, `Shell Profile`, and
   `Next Steps`.
@@ -133,7 +145,7 @@ The command should be friendly without hiding the mechanics:
 
 ## Failure Behavior
 
-Failures should be recoverable and specific:
+Failures are recoverable and specific:
 
 - If `basectl check` fails, continue to the setup prompt.
 - If `basectl setup` fails, run or recommend `basectl doctor` and stop before
@@ -156,21 +168,10 @@ Failures should be recoverable and specific:
 
 ## Implementation Notes
 
-The first implementation can be a Bash subcommand under
+The implementation is a Bash subcommand under
 `cli/bash/commands/basectl/subcommands/onboard.sh`.
 
 That keeps it close to the setup/check/profile primitives it orchestrates and
 avoids adding Python dependencies for interactive prompting. If a richer UI is
 needed later, the Bash command can delegate to a Python package while preserving
 the same public command.
-
-Tests should cover:
-
-- help text
-- dry-run flow
-- declined setup prompt
-- accepted setup prompt
-- `--yes` non-interactive flow
-- `--dev` and `--profile <name>` passing through to setup and doctor
-- `--no-profile` skipping profile updates
-- setup failure stopping later steps
