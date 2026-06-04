@@ -54,6 +54,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Fixed `basectl gh` authentication diagnostics to include the underlying
+  `gh auth status` output when GitHub access fails.
 - Converted `bootstrap.sh` away from shell strict mode to explicit command
   failure checks that match Base shell standards.
 - Clarified `BASE-H001` required-environment findings as repeated rule

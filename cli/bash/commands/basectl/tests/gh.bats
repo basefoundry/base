@@ -68,6 +68,9 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    printf 'github.com\n' >&2
+    printf '  X failed to reach api.github.com\n' >&2
+    printf '  - check your internet connection or GitHub API access\n' >&2
     exit 1
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
@@ -86,7 +89,10 @@ EOF
         '
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"GitHub CLI authentication is not ready."* ]]
+    [[ "$output" == *"GitHub CLI authentication or GitHub API access is not ready."* ]]
+    [[ "$output" == *"gh auth status: github.com"* ]]
+    [[ "$output" == *"gh auth status:   X failed to reach api.github.com"* ]]
+    [[ "$output" == *"gh auth status:   - check your internet connection or GitHub API access"* ]]
     [[ "$output" == *"gh auth login -h github.com"* ]]
     [[ "$output" != *"unexpected gh args"* ]]
 }

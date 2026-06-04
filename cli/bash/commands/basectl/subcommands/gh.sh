@@ -50,10 +50,15 @@ base_gh_require_command() {
 }
 
 base_gh_require_auth() {
+    local auth_output line
+
     base_gh_require_command gh || return 1
 
-    gh auth status -h github.com >/dev/null 2>&1 || {
-        base_gh_error "GitHub CLI authentication is not ready."
+    auth_output="$(gh auth status -h github.com 2>&1)" || {
+        base_gh_error "GitHub CLI authentication or GitHub API access is not ready."
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ -n "$line" ]] && base_gh_error "gh auth status: $line"
+        done <<<"$auth_output"
         base_gh_error "Run 'gh auth login -h github.com' and retry."
         return 1
     }
