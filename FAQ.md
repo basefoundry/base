@@ -159,6 +159,73 @@ that belongs to that product rather than to Base.
 Project installers should call Base when they need workspace primitives instead
 of reimplementing them.
 
+## Writing Base Scripts
+
+### How do I write a Bash script that uses Base's standard library?
+
+Use `basectl` as the script interpreter:
+
+```bash
+#!/usr/bin/env basectl
+
+main() {
+    local project="${1:-}"
+
+    if [[ -z "$project" ]]; then
+        print_error "Project name is required."
+        return 2
+    fi
+
+    log_info "Checking project '$project'."
+    run git status --short
+}
+```
+
+Make the script executable and run it directly:
+
+```bash
+chmod +x ./scripts/check-project.sh
+./scripts/check-project.sh base
+```
+
+The shebang form requires `basectl` to be on `PATH`. If Base is not on `PATH`
+yet, run the script explicitly through the installed `basectl`:
+
+```bash
+/path/to/base/bin/basectl ./scripts/check-project.sh base
+```
+
+In this mode, the script should define `main` and should not call `main "$@"`
+itself. `basectl` receives the script path from the shebang, establishes the
+Base runtime through `base_init.sh`, loads Base's Bash standard library, sources
+the script, and then calls `main` with the user arguments.
+
+That gives the script helpers such as `log_info`, `print_error`, `fatal_error`,
+`run`, `assert_command_exists`, and `import_base_lib` without sourcing
+`lib_std.sh` directly.
+
+### When should I source lib_std.sh directly instead?
+
+Source `lib_std.sh` directly only for standalone Bash scripts that are not
+intended to run through `basectl`:
+
+```bash
+#!/usr/bin/env bash
+source "/path/to/base/lib/bash/std/lib_std.sh"
+
+main() {
+    run echo "hello"
+}
+
+main "$@"
+```
+
+Base-native scripts should prefer the `#!/usr/bin/env basectl` pattern because
+it uses the same runtime bootstrap path as Base command implementations.
+
+For deeper details, see [Execution Model](docs/execution-model.md), [Base
+Standards](STANDARDS.md), and [`lib_std.sh`](lib/bash/std/README.md).
+
 ## More Information
 
 Useful starting points:

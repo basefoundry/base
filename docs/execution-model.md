@@ -84,8 +84,47 @@ A script can also opt into Base with a shebang:
 #!/usr/bin/env basectl
 
 main() {
-    # script body
+    local project="${1:-}"
+
+    if [[ -z "$project" ]]; then
+        print_error "Project name is required."
+        return 2
+    fi
+
+    log_info "Checking project '$project'."
+    run git status --short
 }
+```
+
+In shebang mode, the script defines `main` but does not call `main "$@"`
+itself. The operating system runs `basectl` with the script path as an
+argument. `basectl` then:
+
+1. resolves `BASE_HOME`
+2. treats the script path as an explicit Bash script
+3. exports runtime metadata such as `BASE_BASH_COMMAND_NAME`,
+   `BASE_BASH_COMMAND_DIR`, and `BASE_BASH_COMMAND_SCRIPT`
+4. sources `base_init.sh`, which loads Base runtime variables and the Bash
+   standard library
+5. sources the script
+6. calls `main` with the remaining user arguments
+
+This makes Base stdlib helpers such as `log_info`, `print_error`,
+`fatal_error`, `run`, `assert_command_exists`, and `import_base_lib` available
+without the script sourcing `lib_std.sh` directly.
+
+Standalone Bash scripts that are not intended to run through Base can still
+source the standard library directly:
+
+```bash
+#!/usr/bin/env bash
+source "/path/to/base/lib/bash/std/lib_std.sh"
+
+main() {
+    run echo "hello"
+}
+
+main "$@"
 ```
 
 ## Command Implementations
