@@ -1014,24 +1014,17 @@ for in a monorepo, without forcing unrelated codebases into a single repository.
 The target shape looks roughly like this:
 
 ```text
-work/
-  base/
-    README.md
-    cli/
-      bash/
-      python/
-    lib/
-    manifests/
-  project-a/
-  project-b/
-  infra/
+work/                          ← shared workspace root (`workspace.root`)
+  base/                        ← Base repository (`BASE_HOME` for source installs)
+  project-a/                   ← peer project with `base_manifest.yaml`
+  project-b/                   ← peer project with `base_manifest.yaml`
+  infra/                       ← another peer repo that can opt into Base
 ```
 
-Projects should be able to opt into Base with minimal coupling. The exact
-mechanism is still being designed, but the intent is clear:
+Projects opt into Base with minimal coupling:
 
 - Base discovers projects in the shared workspace
-- projects expose a small contract to Base
+- projects expose a small contract through `base_manifest.yaml`
 - Base provides common orchestration on top
 
 ## Design Principles
