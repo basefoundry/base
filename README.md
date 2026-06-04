@@ -764,6 +764,7 @@ Key starting points:
 - [Architecture](docs/architecture.md)
 - [Execution Model](docs/execution-model.md)
 - [Tool Boundaries](docs/tool-boundaries.md)
+- [Doctor Finding IDs](docs/doctor-findings.md)
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
 - [Project Demo Workflow](docs/project-demo-workflow.md)
