@@ -374,6 +374,14 @@ health:
   required_env:
     - DATABASE_URL
     - REDIS_URL
+  required_ports:
+    - name: postgres
+      host: 127.0.0.1
+      port: 5432
+      state: listening
+    - name: app
+      port: 8000
+      state: free
 
 activate:
   source:
@@ -416,6 +424,10 @@ orchestration actions. The design rule is delegation-first:
   top-level `test` contract.
 - Use `health.required_env` for local environment contracts that `basectl check`
   and `basectl doctor` should validate without exposing secret values.
+- Use `health.required_ports` for local TCP port contracts that should be
+  explicitly `listening` or `free`. Base checks connection state only; it does
+  not mutate local services, inspect process ownership, or replace future
+  Docker Compose health checks.
 - Use `activate.source` for explicit project activation scripts that need to
   affect the interactive runtime shell, such as local environment loading,
   aliases, or functions. Source paths must be relative to the project root and

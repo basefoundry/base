@@ -85,3 +85,4 @@ part of the doctor workflow.
 | ID | Finding |
 | --- | --- |
 | `BASE-H001` | Required environment variable presence; each variable is keyed by `(id, name)`. |
+| `BASE-H002` | Required TCP port listening/free state |
