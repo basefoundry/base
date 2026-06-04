@@ -157,7 +157,8 @@ The umbrella command implementation lives at:
 $BASE_HOME/cli/bash/commands/basectl/basectl.sh
 ```
 
-It owns the current Base subcommands:
+It owns the current Base subcommands. The canonical, always-current command
+list is `basectl --help`; this list summarizes the shipped public surface:
 
 - `setup`
 - `check`
@@ -166,6 +167,14 @@ It owns the current Base subcommands:
 - `activate`
 - `test`
 - `run`
+- `demo`
+- `repo`
+- `logs`
+- `workspace`
+- `onboard`
+- `gh`
+- `config`
+- `update`
 - `projects list`
 - `update-profile`
 - `version`
