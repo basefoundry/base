@@ -377,15 +377,29 @@ test:
   command: go test ./...
 
 commands:
-  lint:
-    command: go vet ./...
-  build:
-    command: go build ./cmd/mytool
+  lint: go vet ./...
+  build: go build -o ./bin/mytool ./cmd/mytool
+  mytool: ./bin/mytool --help
 ```
 
 Use `basectl test <project>` and `basectl run <project> <command>` to invoke
 those contracts. Let Go own Go modules, builds, and test execution; let Base own
 workspace discovery, setup orchestration, and command delegation.
+
+Project-owned Go binaries should be built into a project-local `bin/`
+directory when they are meant to be run directly. For a richer public command,
+use a thin Bash launcher in the project `bin/` that checks for the compiled
+binary and `exec`s it with the original arguments:
+
+```bash
+#!/usr/bin/env bash
+
+tool_dir="$(cd -- "$(dirname -- "$0")" && pwd -P)" || exit 1
+exec "$tool_dir/mytool" "$@"
+```
+
+Do not route Go binaries through `base-wrapper`; that wrapper is only for
+Python packages that need the selected Base project virtual environment.
 
 Typical validation for Go changes:
 
