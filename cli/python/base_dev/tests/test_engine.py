@@ -73,10 +73,15 @@ class DevManifestTests(unittest.TestCase):
     def test_normalize_profiles_defaults_to_dev_and_deduplicates(self) -> None:
         self.assertEqual(engine.normalize_profiles(()), ("dev",))
         self.assertEqual(engine.normalize_profiles(("dev", "sre", "dev")), ("dev", "sre"))
+        self.assertEqual(engine.normalize_profiles(("dev,SRE",)), ("dev", "sre"))
 
     def test_normalize_profiles_rejects_unknown_profile(self) -> None:
         with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ai'"):
             engine.normalize_profiles(("ai",))
+
+    def test_normalize_profiles_rejects_empty_profile_list_entries(self) -> None:
+        with self.assertRaisesRegex(engine.ProfileError, "Profile list must not contain empty entries"):
+            engine.normalize_profiles(("dev,,sre",))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_profile_sre_uses_sre_manifest(self) -> None:
@@ -109,7 +114,7 @@ class DevManifestTests(unittest.TestCase):
             mock.patch("base_dev.engine.run_check", return_value=False),
         ):
             status, stdout, stderr = run_engine(
-                ["check", "--profile", "dev", "--profile", "sre", "--format", "json"]
+                ["check", "--profile", "dev,sre", "--format", "json"]
             )
 
         findings = json.loads(stdout)
@@ -202,7 +207,7 @@ class DevManifestTests(unittest.TestCase):
             check = engine.check_homebrew_artifact(artifact, definition)
 
         self.assertFalse(check.ok)
-        self.assertEqual(check.fix, "basectl setup --dev")
+        self.assertEqual(check.fix, "basectl setup --profile dev")
         self.assertIn("is not installed via Homebrew package 'bats-core'", check.message)
         run_check.assert_called_once_with(["brew", "list", "bats-core"])
 
@@ -287,7 +292,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertFalse(check.ok)
         self.assertEqual(check.name, "gh-auth")
         self.assertIn("was not found", check.message)
-        self.assertEqual(check.fix, "basectl setup --dev")
+        self.assertEqual(check.fix, "basectl setup --profile dev")
         command_exists.assert_called_once_with("gh")
         run_check.assert_not_called()
 
@@ -329,7 +334,7 @@ class DevManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 3)
         self.assertIn("error", stdout.getvalue())
-        self.assertIn("Fix: basectl setup --dev", stdout.getvalue())
+        self.assertIn("Fix: basectl setup --profile dev", stdout.getvalue())
 
     def test_doctor_reports_invalid_github_auth(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
@@ -375,7 +380,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(status, 3)
         self.assertEqual(findings[0]["id"], "BASE-D104")
         self.assertEqual(findings[0]["status"], "error")
-        self.assertEqual(findings[0]["fix"], "basectl setup --dev")
+        self.assertEqual(findings[0]["fix"], "basectl setup --profile dev")
 
     def test_doctor_warning_status_does_not_fail(self) -> None:
         check = engine.DevCheck(

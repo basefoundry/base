@@ -9,8 +9,8 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl check [project] [options]"* ]]
-    [[ "$output" == *"--dev"* ]]
-    [[ "$output" == *"--profile <name>"* ]]
+    [[ "$output" != *"--dev"* ]]
+    [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
 }
 
@@ -91,7 +91,7 @@ load ./setup_helpers.bash
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
-@test "basectl check --dev includes manifest-driven developer prerequisite checks" {
+@test "basectl check --profile dev includes manifest-driven developer prerequisite checks" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -103,7 +103,7 @@ load ./setup_helpers.bash
     touch "$TEST_STATE_DIR/click-installed"
     create_base_venv_stub "$venv_dir"
 
-    run_base_command check --dev
+    run_base_command check --profile dev
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Artifact 'bats-core' is not installed via Homebrew package 'bats-core'."* ]]
@@ -130,11 +130,37 @@ load ./setup_helpers.bash
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
+@test "basectl check accepts comma separated profile lists case-insensitively" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command check --profile dev,SRE
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile dev,sre)" ]
+    [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+}
+
 @test "basectl check rejects unknown profiles" {
     run_base_command check --profile ai
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+}
+
+@test "basectl check rejects empty profile list entries" {
+    run_base_command check --profile dev,,sre
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Profile list must not contain empty entries."* ]]
 }
 
 @test "basectl check project verifies project artifacts" {
@@ -346,7 +372,7 @@ load ./setup_helpers.bash
     [ "${stderr:-}" = "" ]
 }
 
-@test "basectl check --dev --format json includes developer prerequisite check results" {
+@test "basectl check --profile dev --format json includes developer prerequisite check results" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -367,15 +393,17 @@ load ./setup_helpers.bash
         BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
         BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
-        "$BASE_REPO_ROOT/bin/basectl" check --dev --format json
+        "$BASE_REPO_ROOT/bin/basectl" check --profile dev --format json
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"ok": false'* ]]
-    [[ "$output" == *'"dev_checks":'* ]]
+    [[ "$output" == *'"profile_checks":'* ]]
+    [[ "$output" != *'"dev_checks":'* ]]
     [[ "$output" == *"bats-core"* ]]
     [[ "$output" == *"gh"* ]]
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --format json --profile dev)" ]
     [ "${stderr:-}" = "" ]
 }
 

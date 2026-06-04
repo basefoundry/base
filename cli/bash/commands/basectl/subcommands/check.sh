@@ -14,8 +14,7 @@ Usage:
   basectl check [project] [options]
 
 Options:
-  --dev                 Include manifest-declared developer prerequisite checks.
-  --profile <name>      Include a named prerequisite profile. Known profiles: dev, sre.
+  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre.
   --format <text|json>  Select output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -28,7 +27,7 @@ Check does:
   2. Verify Xcode Command Line Tools are installed.
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify ~/.base.d/base/.venv is healthy.
-  5. Verify prerequisite profiles when --dev or --profile is passed.
+  5. Verify prerequisite profiles when --profile is passed.
   6. Verify project manifest artifacts when a project name is passed.
 EOF
 }
@@ -63,9 +62,6 @@ base_check_subcommand_main() {
                         ;;
                 esac
                 ;;
-            --dev)
-                setup_enable_dev_dependencies
-                ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
@@ -73,8 +69,8 @@ base_check_subcommand_main() {
                     base_check_subcommand_usage >&2
                     return 1
                 fi
-                if ! setup_enable_profile "$1"; then
-                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                if ! setup_enable_profile_argument "$1"; then
+                    print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_check_subcommand_usage >&2
                     return 1
                 fi

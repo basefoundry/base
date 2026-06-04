@@ -9,8 +9,8 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
-    [[ "$output" == *"--dev"* ]]
-    [[ "$output" == *"--profile <name>"* ]]
+    [[ "$output" != *"--dev"* ]]
+    [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
@@ -435,7 +435,7 @@ EOF
     [ ! -f "$TEST_STATE_DIR/osascript-args" ]
 }
 
-@test "basectl setup --dev runs the Python developer prerequisite layer" {
+@test "basectl setup --profile dev runs the Python developer prerequisite layer" {
     local installer
 
     create_xcode_stubs
@@ -444,11 +444,11 @@ EOF
     run_base_command \
         BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
         BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
-        setup --dev
+        setup --profile dev
 
     [ "$status" -eq 0 ]
     [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
-    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "setup" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev)" ]
 }
 
 @test "basectl setup --profile sre runs the Python prerequisite profile layer" {
@@ -467,11 +467,34 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile sre)" ]
 }
 
+@test "basectl setup accepts comma separated profile lists case-insensitively" {
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup --profile dev,SRE
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev,sre)" ]
+}
+
 @test "basectl setup rejects unknown profiles" {
     run_base_command setup --profile ai
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+}
+
+@test "basectl setup rejects empty profile list entries" {
+    run_base_command setup --profile dev,,sre
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Profile list must not contain empty entries."* ]]
 }
 
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
@@ -583,8 +606,8 @@ EOF
     [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
 }
 
-@test "basectl setup --dev dry-run defers developer prerequisites until Python bootstrap dependencies exist" {
-    run_base_command setup --dev --dry-run
+@test "basectl setup --profile dev dry-run defers developer prerequisites until Python bootstrap dependencies exist" {
+    run_base_command setup --profile dev --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would run Python prerequisite profile layer after Base Python bootstrap dependencies are installed."* ]]

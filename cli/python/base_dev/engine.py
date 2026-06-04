@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     "--profile",
     "profiles",
     multiple=True,
-    help="Prerequisite profile to include. Repeat for multiple profiles. Defaults to dev.",
+    help="Comma-separated prerequisite profiles to include. Defaults to dev.",
 )
 def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, profiles: tuple[str, ...]) -> int:
     try:
@@ -78,13 +78,18 @@ def normalize_profiles(profiles: tuple[str, ...]) -> tuple[str, ...]:
         return ("dev",)
 
     normalized: list[str] = []
-    for profile in profiles:
-        if profile not in SUPPORTED_PROFILES:
-            raise ProfileError(
-                f"Unsupported profile '{profile}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
-            )
-        if profile not in normalized:
-            normalized.append(profile)
+    for profile_list in profiles:
+        for raw_profile in profile_list.split(","):
+            profile = raw_profile.strip().lower()
+            if not profile:
+                raise ProfileError("Profile list must not contain empty entries.")
+            if profile not in SUPPORTED_PROFILES:
+                display_profile = raw_profile.strip() or raw_profile
+                raise ProfileError(
+                    f"Unsupported profile '{display_profile}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
+                )
+            if profile not in normalized:
+                normalized.append(profile)
     return tuple(normalized)
 
 
@@ -276,8 +281,6 @@ def dev_checks(
 
 
 def profile_setup_fix(profile: str) -> str:
-    if profile == "dev":
-        return "basectl setup --dev"
     return f"basectl setup --profile {profile}"
 
 
@@ -338,7 +341,7 @@ def check_github_cli_auth() -> DevCheck:
             name="gh-auth",
             ok=False,
             message="GitHub CLI 'gh' was not found.",
-            fix="basectl setup --dev",
+            fix="basectl setup --profile dev",
             finding_id="BASE-D105",
         )
 

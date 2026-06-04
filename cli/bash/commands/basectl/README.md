@@ -54,9 +54,9 @@ that delegate to `basectl`.
   project argument validates `project.name`.
 - `basectl check [project]` verifies the same local requirements without making
   changes and can include project manifest artifacts.
-- `basectl setup/check/doctor --profile <name>` manage opt-in prerequisite
-  profiles. `--dev` remains a shortcut for `--profile dev`; `sre` is the first
-  additional built-in profile.
+- `basectl setup/check/doctor --profile <list>` manage opt-in prerequisite
+  profiles. `sre` is the first additional built-in profile, and profiles compose
+  as comma-separated lists such as `--profile dev,sre`.
 - `basectl clean --older-than <age>` removes old runtime artifacts from the Base cache root.
 - `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
 - `basectl logs` lists recent Base CLI runtime logs and can print, open, or tail

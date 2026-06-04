@@ -14,8 +14,7 @@ Usage:
   basectl doctor [project] [options]
 
 Options:
-  --dev                 Include manifest-declared developer prerequisite checks.
-  --profile <name>      Include a named prerequisite profile. Known profiles: dev, sre.
+  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre.
   --format <text|json>  Select output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -281,9 +280,6 @@ base_doctor_subcommand_main() {
                 base_doctor_subcommand_usage
                 return 0
                 ;;
-            --dev)
-                setup_enable_dev_dependencies
-                ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
@@ -291,8 +287,8 @@ base_doctor_subcommand_main() {
                     base_doctor_subcommand_usage >&2
                     return 2
                 fi
-                if ! setup_enable_profile "$1"; then
-                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                if ! setup_enable_profile_argument "$1"; then
+                    print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_doctor_subcommand_usage >&2
                     return 2
                 fi

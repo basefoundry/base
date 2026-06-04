@@ -519,7 +519,7 @@ venv is broken.
 
 ```bash
 basectl doctor
-basectl doctor --dev
+basectl doctor --profile dev
 basectl doctor --profile sre
 ```
 
@@ -619,18 +619,17 @@ installs Base bootstrap Python packages into that environment. For project
 artifact setup, Base first seeds the target project venv with `bootstrap: true`
 default artifacts and then invokes the Python project setup layer through
 `base-wrapper --project <project>`.
-Prerequisite profiles are opt-in and manifest-driven. `--dev` remains a
-compatibility shortcut for `--profile dev`, which installs Base contributor
-tools such as BATS, the GitHub CLI, and ShellCheck from
+Prerequisite profiles are opt-in and manifest-driven. Use `--profile dev` to
+install Base contributor tools such as BATS, the GitHub CLI, and ShellCheck from
 `lib/base/dev_manifest.yaml`. Use `--profile sre` for the initial
 site-reliability profile in `lib/base/sre_manifest.yaml`, which installs local
 diagnostic tools such as `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`,
-`yq`, `nmap`, and `mtr`.
+`yq`, `nmap`, and `mtr`. Profiles compose with a comma-separated list.
 
 ```bash
 basectl setup --profile dev
 basectl setup --profile sre
-basectl setup --profile dev --profile sre
+basectl setup --profile dev,sre
 basectl check --profile sre
 basectl doctor --profile sre
 ```
