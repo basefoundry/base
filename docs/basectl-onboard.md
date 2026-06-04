@@ -52,7 +52,8 @@ boundary.
 - `basectl check` for quick environment state
 - `basectl doctor` for human-readable diagnosis and suggested fixes
 - `basectl setup` for actual reconciliation
-- `basectl setup --dev` when the user opts into Base developer prerequisites
+- `basectl setup --dev` or `--profile <name>` when the user opts into Base
+  prerequisite profiles
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
 - `basectl activate base` as the final suggested next step
@@ -72,6 +73,7 @@ Planned options:
 
 ```text
   --dev            Include Base developer prerequisites.
+  --profile <name> Include a named prerequisite profile.
   --dry-run        Explain and show planned actions without making changes.
   --yes            Accept default answers for non-destructive prompts.
   --no-profile     Skip shell profile updates.
@@ -90,7 +92,8 @@ The first implementation should be simple and checklist-oriented:
 2. Run `basectl check`.
 3. If checks fail, explain that setup can reconcile the missing pieces.
 4. Ask for confirmation before running `basectl setup`.
-5. If `--dev` was requested, include developer prerequisites in setup.
+5. If `--dev` or `--profile` was requested, include those prerequisite profiles
+   in setup.
 6. Ask for confirmation before running `basectl update-profile`, unless
    `--no-profile` was set.
 7. Run `basectl doctor` to summarize the final state.
@@ -168,6 +171,6 @@ Tests should cover:
 - declined setup prompt
 - accepted setup prompt
 - `--yes` non-interactive flow
-- `--dev` passing through to setup and doctor
+- `--dev` and `--profile <name>` passing through to setup and doctor
 - `--no-profile` skipping profile updates
 - setup failure stopping later steps

@@ -1,0 +1,41 @@
+schema_version: 1
+
+project:
+  name: __base_sre__
+
+artifacts:
+  - type: tool
+    name: kubectl
+    version: latest
+
+  - type: tool
+    name: helm
+    version: latest
+
+  - type: tool
+    name: k9s
+    version: latest
+
+  - type: tool
+    name: httpie
+    version: latest
+
+  - type: tool
+    name: grpcurl
+    version: latest
+
+  - type: tool
+    name: jq
+    version: latest
+
+  - type: tool
+    name: yq
+    version: latest
+
+  - type: tool
+    name: nmap
+    version: latest
+
+  - type: tool
+    name: mtr
+    version: latest

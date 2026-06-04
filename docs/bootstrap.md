@@ -73,9 +73,19 @@ curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.
 exec "$SHELL" -l
 ```
 
-`basectl setup --dev` installs developer prerequisites such as BATS, the GitHub
-CLI, and ShellCheck. After that, use `basectl test base` for the dogfood test
-contract.
+`basectl setup --dev` remains the compatibility shortcut for
+`basectl setup --profile dev`. The `dev` profile installs contributor
+prerequisites such as BATS, the GitHub CLI, and ShellCheck. After that, use
+`basectl test base` for the dogfood test contract.
+
+Named profiles compose when a contributor also wants site-reliability tools:
+
+```bash
+~/work/base/bin/basectl setup --profile dev --profile sre
+```
+
+The `sre` profile installs local diagnostic tools only. It does not configure
+cloud accounts, kube contexts, credentials, or production access.
 
 ## Relationship To Other Install Paths
 

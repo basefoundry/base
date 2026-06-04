@@ -9,6 +9,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
+    [[ "$output" == *"--profile <name>"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
 }
 
@@ -159,6 +160,13 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"error"*"gh"*"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
     [[ "$output" == *"Fix: basectl setup --dev"* ]]
+}
+
+@test "basectl doctor rejects unknown profiles" {
+    run_basectl doctor --profile ai
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
 }
 
 @test "basectl doctor reports errors with suggested fixes" {

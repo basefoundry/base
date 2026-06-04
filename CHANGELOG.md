@@ -15,6 +15,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
   repo-set contract and its relationship to discovered local projects.
 - Added `basectl workspace check` and `basectl workspace doctor` for read-only
   project diagnostics across discovered workspace projects.
+- Added named prerequisite profiles for `basectl setup/check/doctor/onboard`,
+  keeping `--dev` as a shortcut for `--profile dev` and adding an initial
+  local-only `sre` profile.
 - Expanded `STANDARDS.md` into a broader Base contributor standard covering
   architecture layering, Bash, Python CLIs, `base-wrapper`, manifests, testing,
   documentation, and GitHub workflow.

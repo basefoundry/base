@@ -39,10 +39,10 @@ part of the doctor workflow.
 | `BASE-D004` | Base virtual environment integrity |
 | `BASE-D005` | Base `PyYAML` package availability |
 | `BASE-D006` | Base `click` package availability |
-| `BASE-D101` | Unsupported developer prerequisite manager |
-| `BASE-D102` | Unsupported developer prerequisite version |
-| `BASE-D103` | Homebrew unavailable for developer prerequisite checks |
-| `BASE-D104` | Developer prerequisite Homebrew package status |
+| `BASE-D101` | Unsupported prerequisite profile manager |
+| `BASE-D102` | Unsupported prerequisite profile version |
+| `BASE-D103` | Homebrew unavailable for prerequisite profile checks |
+| `BASE-D104` | Prerequisite profile Homebrew package status |
 | `BASE-D105` | GitHub CLI availability |
 | `BASE-D106` | GitHub CLI authentication status |
 

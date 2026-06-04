@@ -55,6 +55,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "check_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl check --profile ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "check_profiles=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl test demo --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -79,6 +83,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "onboard_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl onboard --profile ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "onboard_profiles=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl clean --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -120,13 +128,15 @@ EOF
     [[ "$output" == *"doctor_projects=base demo"* ]]
     [[ "$output" == *"test_projects=base demo"* ]]
     [[ "$output" == *"run_projects=base demo"* ]]
-    [[ "$output" == *"check_options=--dev --format"* ]]
+    [[ "$output" == *"check_options=--dev --profile --format"* ]]
+    [[ "$output" == *"check_profiles=dev sre"* ]]
     [[ "$output" == *"test_options=--workspace --dry-run"* ]]
     [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"workspace_commands=status check doctor"* ]]
     [[ "$output" == *"workspace_options=--workspace --format"* ]]
-    [[ "$output" == *"onboard_options=--dev --dry-run --yes --no-profile"* ]]
+    [[ "$output" == *"onboard_options=--dev --profile --dry-run --yes --no-profile"* ]]
+    [[ "$output" == *"onboard_profiles=dev sre"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"repo_commands=init check configure"* ]]

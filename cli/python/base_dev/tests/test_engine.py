@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-public-methods
+
 import io
 import importlib
 import importlib.util
@@ -53,6 +55,69 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn(("tool", "bats-core", "latest"), artifacts)
         self.assertIn(("tool", "gh", "latest"), artifacts)
         self.assertIn(("tool", "shellcheck", "latest"), artifacts)
+
+    def test_sre_manifest_declares_initial_sre_tools(self) -> None:
+        manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "sre_manifest.yaml")
+        artifacts = {(artifact.artifact_type, artifact.name, artifact.version) for artifact in manifest.artifacts}
+
+        self.assertIn(("tool", "kubectl", "latest"), artifacts)
+        self.assertIn(("tool", "helm", "latest"), artifacts)
+        self.assertIn(("tool", "k9s", "latest"), artifacts)
+        self.assertIn(("tool", "httpie", "latest"), artifacts)
+        self.assertIn(("tool", "grpcurl", "latest"), artifacts)
+        self.assertIn(("tool", "jq", "latest"), artifacts)
+        self.assertIn(("tool", "yq", "latest"), artifacts)
+        self.assertIn(("tool", "nmap", "latest"), artifacts)
+        self.assertIn(("tool", "mtr", "latest"), artifacts)
+
+    def test_normalize_profiles_defaults_to_dev_and_deduplicates(self) -> None:
+        self.assertEqual(engine.normalize_profiles(()), ("dev",))
+        self.assertEqual(engine.normalize_profiles(("dev", "sre", "dev")), ("dev", "sre"))
+
+    def test_normalize_profiles_rejects_unknown_profile(self) -> None:
+        with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ai'"):
+            engine.normalize_profiles(("ai",))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_profile_sre_uses_sre_manifest(self) -> None:
+        status, _stdout, stderr = run_engine(["setup", "--profile", "sre", "--dry-run"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew install kubernetes-cli", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install helm", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install k9s", stderr)
+        self.assertNotIn("brew install bats-core", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_sre_reports_sre_fix_guidance(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False),
+        ):
+            status, stdout, stderr = run_engine(["check", "--profile", "sre", "--format", "json"])
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(findings[0]["name"], "kubectl")
+        self.assertEqual(findings[0]["fix"], "basectl setup --profile sre")
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_multiple_profiles_combines_results_once_per_profile(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=False),
+        ):
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "dev", "--profile", "sre", "--format", "json"]
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        names = [finding["name"] for finding in findings]
+        self.assertIn("bats-core", names)
+        self.assertIn("kubectl", names)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_manifest_artifacts(self) -> None:

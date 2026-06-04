@@ -4,6 +4,10 @@
 _base_onboard_subcommand_sourced=1
 readonly _base_onboard_subcommand_sourced
 
+_base_setup_common_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/setup_common.sh"
+# shellcheck source=/dev/null
+source "$_base_setup_common_path"
+
 base_onboard_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -11,6 +15,7 @@ Usage:
 
 Options:
   --dev         Include Base developer prerequisites.
+  --profile <name>  Include a named prerequisite profile. Known profiles: dev, sre.
   --dry-run     Explain planned onboarding steps without making changes.
   --yes         Accept default answers for setup and shell profile prompts.
   --no-profile  Skip shell profile updates.
@@ -100,6 +105,7 @@ base_onboard_subcommand_main() {
     local setup_status=0
     local check_args=(check base)
     local doctor_args=(doctor base)
+    local prerequisite_args=()
     local setup_args=(setup base)
     local profile_args=(update-profile)
     local projects_args=(projects list)
@@ -108,6 +114,20 @@ base_onboard_subcommand_main() {
         case "$1" in
             --dev)
                 dev=1
+                ;;
+            --profile)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    print_error "Option '--profile' requires an argument."
+                    base_onboard_subcommand_usage >&2
+                    return 1
+                fi
+                if ! setup_profile_supported "$1"; then
+                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                    base_onboard_subcommand_usage >&2
+                    return 1
+                fi
+                prerequisite_args+=(--profile "$1")
                 ;;
             --dry-run)
                 dry_run=1
@@ -138,6 +158,11 @@ base_onboard_subcommand_main() {
         check_args+=(--dev)
         setup_args+=(--dev)
         doctor_args+=(--dev)
+    fi
+    if ((${#prerequisite_args[@]})); then
+        check_args+=("${prerequisite_args[@]}")
+        setup_args+=("${prerequisite_args[@]}")
+        doctor_args+=("${prerequisite_args[@]}")
     fi
     if ((verbose)); then
         check_args+=(-v)

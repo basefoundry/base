@@ -13,6 +13,7 @@ from base_setup.registry import ArtifactDefinition
 
 
 app = base_cli.App(name="base_dev")
+SUPPORTED_PROFILES = ("dev", "sre")
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,17 @@ class DevCheck:
     finding_id: str = "BASE-D100"
 
 
+@dataclass(frozen=True)
+class ProfileManifest:
+    name: str
+    manifest: BaseManifest
+    definitions: tuple[ArtifactDefinition, ...]
+
+
+class ProfileError(ValueError):
+    pass
+
+
 def main(argv: list[str] | None = None) -> int:
     result = app.click_command.main(args=argv, standalone_mode=False)
     return int(result or 0)
@@ -34,33 +46,95 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.argument("action", required=True)
 @base_cli.option("--dry-run", is_flag=True, help="Log planned setup changes without making them.")
 @base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
-def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str) -> int:
+@base_cli.option(
+    "--profile",
+    "profiles",
+    multiple=True,
+    help="Prerequisite profile to include. Repeat for multiple profiles. Defaults to dev.",
+)
+def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, profiles: tuple[str, ...]) -> int:
     try:
-        manifest = read_dev_manifest(ctx)
-        definitions = resolve_artifact_definitions(manifest.artifacts)
+        profile_manifests = read_profile_manifests(ctx, normalize_profiles(profiles))
     except (ManifestError, ArtifactError) as exc:
         ctx.log.error(str(exc))
         return 1
+    except ProfileError as exc:
+        ctx.log.error(str(exc))
+        return 2
 
     if action == "setup":
-        return setup_dev_artifacts(ctx, manifest, definitions, dry_run=dry_run)
+        return setup_profile_manifests(ctx, profile_manifests, dry_run=dry_run)
     if action == "check":
-        return check_dev_artifacts(ctx, manifest.artifacts, definitions, output_format=output_format)
+        return check_profile_manifests(ctx, profile_manifests, output_format=output_format)
     if action == "doctor":
-        return doctor_dev_artifacts(manifest.artifacts, definitions, output_format=output_format)
+        return doctor_profile_manifests(profile_manifests, output_format=output_format)
 
     ctx.log.error("Unsupported base_dev action '%s'. Expected setup, check, or doctor.", action)
     return 2
 
 
+def normalize_profiles(profiles: tuple[str, ...]) -> tuple[str, ...]:
+    if not profiles:
+        return ("dev",)
+
+    normalized: list[str] = []
+    for profile in profiles:
+        if profile not in SUPPORTED_PROFILES:
+            raise ProfileError(
+                f"Unsupported profile '{profile}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
+            )
+        if profile not in normalized:
+            normalized.append(profile)
+    return tuple(normalized)
+
+
+def read_profile_manifests(ctx: base_cli.Context, profiles: tuple[str, ...]) -> tuple[ProfileManifest, ...]:
+    profile_manifests: list[ProfileManifest] = []
+    for profile in profiles:
+        manifest = read_profile_manifest(ctx, profile)
+        definitions = resolve_artifact_definitions(manifest.artifacts)
+        profile_manifests.append(ProfileManifest(profile, manifest, definitions))
+    return tuple(profile_manifests)
+
+
+def read_profile_manifest(ctx: base_cli.Context, profile: str) -> BaseManifest:
+    if ctx.base_home is None:
+        raise ManifestError("BASE_HOME is required to load Base's prerequisite profile manifests.")
+    return read_manifest(profile_manifest_path(ctx.base_home, profile))
+
+
 def read_dev_manifest(ctx: base_cli.Context) -> BaseManifest:
     if ctx.base_home is None:
         raise ManifestError("BASE_HOME is required to load Base's developer prerequisite manifest.")
-    return read_manifest(dev_manifest_path(ctx.base_home))
+    return read_profile_manifest(ctx, "dev")
 
 
 def dev_manifest_path(base_home: Path) -> Path:
     return base_home / "lib" / "base" / "dev_manifest.yaml"
+
+
+def profile_manifest_path(base_home: Path, profile: str) -> Path:
+    if profile == "dev":
+        return dev_manifest_path(base_home)
+    return base_home / "lib" / "base" / f"{profile}_manifest.yaml"
+
+
+def setup_profile_manifests(
+    ctx: base_cli.Context,
+    profile_manifests: tuple[ProfileManifest, ...],
+    dry_run: bool,
+) -> int:
+    for profile_manifest in profile_manifests:
+        status = setup_profile_artifacts(
+            ctx,
+            profile_manifest.name,
+            profile_manifest.manifest,
+            profile_manifest.definitions,
+            dry_run=dry_run,
+        )
+        if status != 0:
+            return status
+    return 0
 
 
 def setup_dev_artifacts(
@@ -69,8 +143,22 @@ def setup_dev_artifacts(
     definitions: tuple[ArtifactDefinition, ...],
     dry_run: bool,
 ) -> int:
-    ctx.log.info("Reading Base developer prerequisite manifest at '%s'.", manifest.path)
-    ctx.log.info("Setting up Base developer prerequisites.")
+    return setup_profile_artifacts(ctx, "dev", manifest, definitions, dry_run=dry_run)
+
+
+def setup_profile_artifacts(
+    ctx: base_cli.Context,
+    profile: str,
+    manifest: BaseManifest,
+    definitions: tuple[ArtifactDefinition, ...],
+    dry_run: bool,
+) -> int:
+    if profile == "dev":
+        ctx.log.info("Reading Base developer prerequisite manifest at '%s'.", manifest.path)
+        ctx.log.info("Setting up Base developer prerequisites.")
+    else:
+        ctx.log.info("Reading Base '%s' prerequisite manifest at '%s'.", profile, manifest.path)
+        ctx.log.info("Setting up Base '%s' prerequisites.", profile)
 
     try:
         for artifact, definition in zip(manifest.artifacts, definitions, strict=True):
@@ -79,8 +167,28 @@ def setup_dev_artifacts(
         ctx.log.error(str(exc))
         return 1
 
-    ctx.log.info("Base developer prerequisite setup is complete.")
+    if profile == "dev":
+        ctx.log.info("Base developer prerequisite setup is complete.")
+    else:
+        ctx.log.info("Base '%s' prerequisite setup is complete.", profile)
     return 0
+
+
+def check_profile_manifests(
+    ctx: base_cli.Context,
+    profile_manifests: tuple[ProfileManifest, ...],
+    output_format: str,
+) -> int:
+    checks = tuple(
+        check
+        for profile_manifest in profile_manifests
+        for check in dev_checks(
+            profile_manifest.manifest.artifacts,
+            profile_manifest.definitions,
+            profile=profile_manifest.name,
+        )
+    )
+    return print_check_results(ctx, checks, output_format=output_format)
 
 
 def check_dev_artifacts(
@@ -89,7 +197,11 @@ def check_dev_artifacts(
     definitions: tuple[ArtifactDefinition, ...],
     output_format: str,
 ) -> int:
-    checks = dev_checks(artifacts, definitions)
+    checks = dev_checks(artifacts, definitions, profile="dev")
+    return print_check_results(ctx, checks, output_format=output_format)
+
+
+def print_check_results(ctx: base_cli.Context, checks: tuple[DevCheck, ...], output_format: str) -> int:
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], indent=2))
     elif output_format == "text":
@@ -105,12 +217,32 @@ def check_dev_artifacts(
     return 0 if all(check.ok for check in checks) else 1
 
 
+def doctor_profile_manifests(
+    profile_manifests: tuple[ProfileManifest, ...],
+    output_format: str,
+) -> int:
+    checks = tuple(
+        check
+        for profile_manifest in profile_manifests
+        for check in dev_checks(
+            profile_manifest.manifest.artifacts,
+            profile_manifest.definitions,
+            profile=profile_manifest.name,
+        )
+    )
+    return print_doctor_results(checks, output_format=output_format)
+
+
 def doctor_dev_artifacts(
     artifacts: tuple[ArtifactRequest, ...],
     definitions: tuple[ArtifactDefinition, ...],
     output_format: str,
 ) -> int:
-    checks = dev_checks(artifacts, definitions)
+    checks = dev_checks(artifacts, definitions, profile="dev")
+    return print_doctor_results(checks, output_format=output_format)
+
+
+def print_doctor_results(checks: tuple[DevCheck, ...], output_format: str) -> int:
     if output_format == "json":
         print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
@@ -132,17 +264,28 @@ def doctor_dev_artifacts(
 def dev_checks(
     artifacts: tuple[ArtifactRequest, ...],
     definitions: tuple[ArtifactDefinition, ...],
+    profile: str = "dev",
 ) -> tuple[DevCheck, ...]:
     checks: list[DevCheck] = []
     for artifact, definition in zip(artifacts, definitions):
-        check = check_homebrew_artifact(artifact, definition)
+        check = check_homebrew_artifact(artifact, definition, profile=profile)
         checks.append(check)
         if artifact.name == "gh" and check.ok:
             checks.append(check_github_cli_auth())
     return tuple(checks)
 
 
-def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefinition) -> DevCheck:
+def profile_setup_fix(profile: str) -> str:
+    if profile == "dev":
+        return "basectl setup --dev"
+    return f"basectl setup --profile {profile}"
+
+
+def check_homebrew_artifact(
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+    profile: str = "dev",
+) -> DevCheck:
     if definition.manager != "homebrew":
         return DevCheck(
             name=artifact.name,
@@ -150,7 +293,7 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
             message=(
                 f"Artifact '{artifact.name}' uses unsupported developer prerequisite manager '{definition.manager}'."
             ),
-            fix="Update lib/base/dev_manifest.yaml to use a Homebrew-managed tool.",
+            fix=f"Update {profile_manifest_path(Path('lib/base'), profile).name} to use a Homebrew-managed tool.",
             finding_id="BASE-D101",
         )
     if artifact.version != "latest":
@@ -184,7 +327,7 @@ def check_homebrew_artifact(artifact: ArtifactRequest, definition: ArtifactDefin
         name=artifact.name,
         ok=False,
         message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
-        fix="basectl setup --dev",
+        fix=profile_setup_fix(profile),
         finding_id="BASE-D104",
     )
 
