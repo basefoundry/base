@@ -63,7 +63,7 @@ part of the doctor workflow.
 | `BASE-P032` | Homebrew unavailable for artifact checks |
 | `BASE-P033` | Homebrew artifact package status |
 | `BASE-P040` | Python package artifact status in the project virtual environment |
-| `BASE-P050` | Project virtual environment integrity |
+| `BASE-P050` | Project virtual environment readiness |
 | `BASE-P060` | Project demo declaration |
 | `BASE-P061` | Project demo script path and executable status |
 | `BASE-P100` | User config disables all IDE setup and checks |
@@ -79,6 +79,13 @@ part of the doctor workflow.
 | `BASE-P130` | Homebrew unavailable for IDE app checks |
 | `BASE-P131` | IDE app install status |
 | `BASE-P132` | IDE CLI PATH status |
+
+`BASE-P050` is the stable project virtual-environment readiness finding. The
+Bash setup/check path reports detailed venv health messages when a project venv
+is missing, incomplete, or has a broken Python executable. Workspace-level
+project discovery currently verifies that the expected project venv Python path
+exists. The finding should be treated as the project-venv readiness contract,
+not as a guarantee that every project dependency import succeeds.
 
 ## Health Findings
 
