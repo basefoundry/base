@@ -54,7 +54,7 @@ order:
 4. Base virtual environment integrity
 5. PyYAML
 6. click
-7. prerequisite profile checks, when `--dev` or `--profile` is set
+7. prerequisite profile checks, when `--profile` is set
 8. project artifact checks, when a project is supplied
 
 ## Constraints

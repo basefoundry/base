@@ -14,8 +14,7 @@ Usage:
   basectl onboard [options]
 
 Options:
-  --dev         Include Base developer prerequisites.
-  --profile <name>  Include a named prerequisite profile. Known profiles: dev, sre.
+  --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre.
   --dry-run     Explain planned onboarding steps without making changes.
   --yes         Accept default answers for setup and shell profile prompts.
   --no-profile  Skip shell profile updates.
@@ -95,7 +94,6 @@ base_onboard_execute() {
 }
 
 base_onboard_subcommand_main() {
-    local dev=0
     local dry_run=0
     local no_profile=0
     local verbose=0
@@ -105,16 +103,12 @@ base_onboard_subcommand_main() {
     local setup_status=0
     local check_args=(check base)
     local doctor_args=(doctor base)
-    local prerequisite_args=()
     local setup_args=(setup base)
     local profile_args=(update-profile)
     local projects_args=(projects list)
 
     while (($#)); do
         case "$1" in
-            --dev)
-                dev=1
-                ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
@@ -122,12 +116,11 @@ base_onboard_subcommand_main() {
                     base_onboard_subcommand_usage >&2
                     return 1
                 fi
-                if ! setup_profile_supported "$1"; then
-                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                if ! setup_enable_profile_argument "$1"; then
+                    print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_onboard_subcommand_usage >&2
                     return 1
                 fi
-                prerequisite_args+=(--profile "$1")
                 ;;
             --dry-run)
                 dry_run=1
@@ -154,15 +147,10 @@ base_onboard_subcommand_main() {
         shift
     done
 
-    if ((dev)); then
-        check_args+=(--dev)
-        setup_args+=(--dev)
-        doctor_args+=(--dev)
-    fi
-    if ((${#prerequisite_args[@]})); then
-        check_args+=("${prerequisite_args[@]}")
-        setup_args+=("${prerequisite_args[@]}")
-        doctor_args+=("${prerequisite_args[@]}")
+    if setup_profiles_enabled; then
+        check_args+=(--profile "$(setup_profiles_csv)")
+        setup_args+=(--profile "$(setup_profiles_csv)")
+        doctor_args+=(--profile "$(setup_profiles_csv)")
     fi
     if ((verbose)); then
         check_args+=(-v)

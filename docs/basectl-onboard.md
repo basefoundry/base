@@ -33,7 +33,7 @@ basectl onboard [options]
 Options:
 
 ```text
-  --dev            Include Base developer prerequisites.
+  --profile <list> Include named prerequisite profiles.
   --dry-run        Explain and show planned actions without making changes.
   --yes            Accept default answers for setup/profile prompts.
   --no-profile     Skip shell profile updates.
@@ -89,13 +89,36 @@ boundary.
 - `basectl check` for quick environment state
 - `basectl doctor` for human-readable diagnosis and suggested fixes
 - `basectl setup` for actual reconciliation
-- `basectl setup --dev` when the user opts into Base developer prerequisites
+- `basectl setup --profile <list>` when the user opts into Base prerequisite
+  profiles
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
 - `basectl activate base` as the final suggested next step
 
 It does not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
 Those responsibilities already belong to the setup/check/profile commands.
+
+## Command Shape
+
+Initial command shape:
+
+```bash
+basectl onboard [options]
+```
+
+Planned options:
+
+```text
+  --profile <list> Include named prerequisite profiles.
+  --dry-run        Explain and show planned actions without making changes.
+  --yes            Accept default answers for non-destructive prompts.
+  --no-profile     Skip shell profile updates.
+  -v               Enable DEBUG logging for underlying commands.
+  -h, --help       Show help text.
+```
+
+The command should default to the `base` project. Project-specific guided
+onboarding remains a project installer responsibility.
 
 ## Experience Flow
 
@@ -105,7 +128,7 @@ The shipped flow is simple and checklist-oriented:
 2. Run `basectl check`.
 3. If checks fail, explain that setup can reconcile the missing pieces.
 4. Ask for confirmation before running `basectl setup`.
-5. If `--dev` was requested, include developer prerequisites in setup.
+5. If `--profile` was requested, include those prerequisite profiles in setup.
 6. Ask for confirmation before running `basectl update-profile`, unless
    `--no-profile` was set.
 7. Run `basectl doctor` to summarize the final state.
@@ -175,3 +198,14 @@ That keeps it close to the setup/check/profile primitives it orchestrates and
 avoids adding Python dependencies for interactive prompting. If a richer UI is
 needed later, the Bash command can delegate to a Python package while preserving
 the same public command.
+
+Tests should cover:
+
+- help text
+- dry-run flow
+- declined setup prompt
+- accepted setup prompt
+- `--yes` non-interactive flow
+- `--profile <list>` passing through to setup and doctor
+- `--no-profile` skipping profile updates
+- setup failure stopping later steps

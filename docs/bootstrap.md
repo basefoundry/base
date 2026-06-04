@@ -68,20 +68,19 @@ Contributors should prefer source mode:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
-~/work/base/bin/basectl setup --dev
+~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
 ```
 
-`basectl setup --dev` remains the compatibility shortcut for
-`basectl setup --profile dev`. The `dev` profile installs contributor
-prerequisites such as BATS, the GitHub CLI, and ShellCheck. After that, use
-`basectl test base` for the dogfood test contract.
+The `dev` profile installs contributor prerequisites such as BATS, the GitHub
+CLI, and ShellCheck. After that, use `basectl test base` for the dogfood test
+contract.
 
 Named profiles compose when a contributor also wants site-reliability tools:
 
 ```bash
-~/work/base/bin/basectl setup --profile dev --profile sre
+~/work/base/bin/basectl setup --profile dev,sre
 ```
 
 The `sre` profile installs local diagnostic tools only. It does not configure

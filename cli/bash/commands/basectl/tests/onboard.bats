@@ -9,7 +9,8 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl onboard [options]"* ]]
-    [[ "$output" == *"--profile <name>"* ]]
+    [[ "$output" == *"--profile <list>"* ]]
+    [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"--no-profile"* ]]
 }
@@ -22,17 +23,17 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "unexpected run: %s\n" "$*" >&2; return 99; }
-            base_onboard_subcommand_main --dry-run --dev
+            base_onboard_subcommand_main --dry-run --profile dev
         '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would run basectl check base --dev"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --dev --dry-run"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl check base --profile dev"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --profile dev --dry-run"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl update-profile --dry-run"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --dev"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl projects list"* ]]
-    [[ "$output" != *"Next: basectl check base --dev"* ]]
-    [[ "$output" != *"Next: basectl setup base --dev --dry-run"* ]]
+    [[ "$output" != *"Next: basectl check base --profile dev"* ]]
+    [[ "$output" != *"Next: basectl setup base --profile dev --dry-run"* ]]
     [[ "$output" != *"Next: basectl update-profile --dry-run"* ]]
     [[ "$output" != *"unexpected run"* ]]
 }
@@ -45,13 +46,13 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "unexpected run: %s\n" "$*" >&2; return 99; }
-            base_onboard_subcommand_main --dry-run --dev --profile sre
+            base_onboard_subcommand_main --dry-run --profile dev,SRE
         '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would run basectl check base --dev --profile sre"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --dev --profile sre --dry-run"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --dev --profile sre"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl check base --profile dev\\,sre"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --profile dev\\,sre --dry-run"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev\\,sre"* ]]
     [[ "$output" != *"unexpected run"* ]]
 }
 
@@ -95,14 +96,14 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "RUN:%s\n" "$*"; return 0; }
-            printf "y\ny\n" | base_onboard_subcommand_main --dev
+            printf "y\ny\n" | base_onboard_subcommand_main --profile dev
         '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"RUN:check base --dev"* ]]
-    [[ "$output" == *"RUN:setup base --dev"* ]]
+    [[ "$output" == *"RUN:check base --profile dev"* ]]
+    [[ "$output" == *"RUN:setup base --profile dev"* ]]
     [[ "$output" == *"RUN:update-profile"* ]]
-    [[ "$output" == *"RUN:doctor base --dev"* ]]
+    [[ "$output" == *"RUN:doctor base --profile dev"* ]]
     [[ "$output" == *"RUN:projects list"* ]]
 }
 

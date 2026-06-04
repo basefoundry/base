@@ -48,7 +48,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
     setup_refresh_cached_paths
 }
 
@@ -59,14 +59,6 @@ setup_enable_dry_run() {
 setup_enable_debug_logging() {
     set_log_level DEBUG
     export LOG_DEBUG=1
-}
-
-setup_enable_dev_dependencies() {
-    setup_enable_profile dev
-}
-
-setup_dev_dependencies_enabled() {
-    setup_profile_enabled dev
 }
 
 setup_supported_profiles() {
@@ -90,6 +82,13 @@ setup_profile_supported() {
     esac
 }
 
+setup_normalize_profile_name() {
+    local profile="$1"
+
+    profile="${profile//[[:space:]]/}"
+    printf '%s' "$profile" | tr '[:upper:]' '[:lower:]'
+}
+
 setup_profile_enabled() {
     local enabled_profile
     local profile="$1"
@@ -109,9 +108,28 @@ setup_enable_profile() {
     fi
     BASE_SETUP_PROFILES="${BASE_SETUP_PROFILES:+$BASE_SETUP_PROFILES }$profile"
     export BASE_SETUP_PROFILES
-    if [[ "$profile" == dev ]]; then
-        export BASE_SETUP_DEV=true
+}
+
+setup_enable_profile_argument() {
+    local compact profile profile_arg="$1"
+    local profiles=()
+
+    BASE_SETUP_PROFILE_ERROR=""
+    compact="${profile_arg//[[:space:]]/}"
+    if [[ -z "$compact" || "$compact" == ,* || "$compact" == *, || "$compact" == *,,* ]]; then
+        BASE_SETUP_PROFILE_ERROR="Profile list must not contain empty entries."
+        return 1
     fi
+
+    IFS=',' read -r -a profiles <<<"$compact"
+    for profile in "${profiles[@]}"; do
+        profile="$(setup_normalize_profile_name "$profile")"
+        if ! setup_profile_supported "$profile"; then
+            BASE_SETUP_PROFILE_ERROR="Unsupported profile '$profile'. Expected one of: $(setup_supported_profiles_display)."
+            return 1
+        fi
+        setup_enable_profile "$profile"
+    done
 }
 
 setup_profiles_enabled() {
@@ -121,11 +139,21 @@ setup_profiles_enabled() {
 setup_profile_json_key() {
     local suffix="$1"
 
-    if [[ "${BASE_SETUP_PROFILES:-}" == dev ]]; then
-        printf 'dev_%s\n' "$suffix"
-    else
-        printf 'profile_%s\n' "$suffix"
-    fi
+    printf 'profile_%s\n' "$suffix"
+}
+
+setup_profiles_csv() {
+    local first=true profile
+
+    for profile in ${BASE_SETUP_PROFILES:-}; do
+        if [[ "$first" == true ]]; then
+            printf '%s' "$profile"
+            first=false
+        else
+            printf ',%s' "$profile"
+        fi
+    done
+    printf '\n'
 }
 
 setup_is_dry_run() {
@@ -915,7 +943,7 @@ setup_run_project_artifact_doctor_json() {
 
 setup_run_base_dev_layer() {
     local args=("$@")
-    local profile profile_args=()
+    local profile_args=()
     local venv_dir
 
     if setup_is_dry_run &&
@@ -933,11 +961,7 @@ setup_run_base_dev_layer() {
         return 1
     fi
 
-    if [[ "${BASE_SETUP_PROFILES:-}" != dev ]]; then
-        for profile in ${BASE_SETUP_PROFILES:-}; do
-            profile_args+=(--profile "$profile")
-        done
-    fi
+    profile_args=(--profile "$(setup_profiles_csv)")
 
     "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}" "${profile_args[@]}"
 }

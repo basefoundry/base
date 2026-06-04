@@ -65,8 +65,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         setup)
-            _arguments '--dev[Install developer prerequisites]' \
-                '--profile[Install prerequisite profile]:profile:(dev sre)' \
+            _arguments '--profile[Install prerequisite profiles]:profile:(dev sre dev,sre)' \
                 '--dry-run[Log without making changes]' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--notify[Force a setup completion notification]' \
@@ -75,8 +74,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         check)
-            _arguments '--dev[Include developer prerequisite checks]' \
-                '--profile[Include prerequisite profile]:profile:(dev sre)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre dev,sre)' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
@@ -170,8 +168,7 @@ _base_basectl_completion() {
             _arguments '1:config command:(path show doctor)'
             ;;
         doctor)
-            _arguments '--dev[Include developer prerequisite checks]' \
-                '--profile[Include prerequisite profile]:profile:(dev sre)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre dev,sre)' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
@@ -224,8 +221,7 @@ _base_basectl_completion() {
             esac
             ;;
         onboard)
-            _arguments '--dev[Include Base developer prerequisites]' \
-                '--profile[Include prerequisite profile]:profile:(dev sre)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre dev,sre)' \
                 '--dry-run[Explain planned onboarding steps without making changes]' \
                 '--yes[Accept default answers for setup and shell profile prompts]' \
                 '--no-profile[Skip shell profile updates]' \

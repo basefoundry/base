@@ -14,8 +14,7 @@ Usage:
   basectl setup [options] [project]
 
 Options:
-  --dev             Install manifest-declared developer prerequisites.
-  --profile <name>  Install a named prerequisite profile. Known profiles: dev, sre.
+  --profile <list>  Install named prerequisite profiles. Known profiles: dev, sre.
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
   --notify           Force a best-effort macOS notification when setup ends.
@@ -31,7 +30,7 @@ Setup does:
   1. Install Homebrew if needed.
   2. Install Xcode Command Line Tools if needed.
   3. Install Python 3.13 via Homebrew if needed.
-  4. Install prerequisite profiles when --dev or --profile is passed.
+  4. Install prerequisite profiles when --profile is passed.
   5. Create ~/.base.d/base/.venv if it does not already exist.
   6. Install Base Python bootstrap packages into the Base virtual environment.
   7. Invoke the Python project setup layer for base_manifest.yaml artifacts.
@@ -59,9 +58,6 @@ base_setup_subcommand_main() {
             --dry-run)
                 setup_enable_dry_run
                 ;;
-            --dev)
-                setup_enable_dev_dependencies
-                ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
@@ -69,8 +65,8 @@ base_setup_subcommand_main() {
                     base_setup_subcommand_usage >&2
                     return 1
                 fi
-                if ! setup_enable_profile "$1"; then
-                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                if ! setup_enable_profile_argument "$1"; then
+                    print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_setup_subcommand_usage >&2
                     return 1
                 fi

@@ -39,7 +39,7 @@ _base_basectl_completion_profiles_or_options() {
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
-        _base_basectl_completion_compgen "dev sre" "$current"
+        _base_basectl_completion_compgen "dev sre dev,sre" "$current"
     else
         _base_basectl_completion_compgen "$options" "$current"
     fi
@@ -51,7 +51,7 @@ _base_basectl_completion_project_profiles_or_options() {
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
-        _base_basectl_completion_compgen "dev sre" "$current"
+        _base_basectl_completion_compgen "dev sre dev,sre" "$current"
     else
         _base_basectl_completion_project_or_options "$options" "$current"
     fi
@@ -95,10 +95,10 @@ _base_basectl_completion() {
         setup)
             _base_basectl_completion_profiles_or_options \
                 "$cur" \
-                "--dev --profile --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help"
+                "--profile --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help"
             ;;
         check)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--dev --profile --format -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format -v -h --help"
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
@@ -137,7 +137,7 @@ _base_basectl_completion() {
             fi
             ;;
         doctor)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--dev --profile --format -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format -v -h --help"
             ;;
         gh)
             case "${COMP_WORDS[2]:-}" in
@@ -182,7 +182,7 @@ _base_basectl_completion() {
         onboard)
             _base_basectl_completion_profiles_or_options \
                 "$cur" \
-                "--dev --profile --dry-run --yes --no-profile -v -h --help"
+                "--profile --dry-run --yes --no-profile -v -h --help"
             ;;
         update-profile)
             _base_basectl_completion_compgen "--defaults --no-defaults --dry-run -v -h --help" "$cur"

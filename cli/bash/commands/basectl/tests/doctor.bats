@@ -9,7 +9,8 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
-    [[ "$output" == *"--profile <name>"* ]]
+    [[ "$output" == *"--profile <list>"* ]]
+    [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
 }
 
@@ -80,7 +81,7 @@ EOF
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
-        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+        "$BASE_REPO_ROOT/bin/basectl" doctor --profile dev
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Base doctor"* ]]
@@ -91,7 +92,7 @@ EOF
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
 
-@test "basectl doctor --dev reports missing GitHub CLI" {
+@test "basectl doctor --profile dev reports missing GitHub CLI" {
     local fake_bin="$TEST_TMPDIR/bin"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
@@ -139,7 +140,7 @@ fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" && "${3:-}" == "doctor" ]]; then
     printf 'ok     bats-core                   Artifact '\''bats-core'\'' is installed via Homebrew package '\''bats-core'\''.\n'
     printf 'error  gh                          Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n'
-    printf '       Fix: basectl setup --dev\n'
+    printf '       Fix: basectl setup --profile dev\n'
     exit 1
 fi
 exit 1
@@ -155,11 +156,11 @@ EOF
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
-        "$BASE_REPO_ROOT/bin/basectl" doctor --dev
+        "$BASE_REPO_ROOT/bin/basectl" doctor --profile dev
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"error"*"gh"*"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
-    [[ "$output" == *"Fix: basectl setup --dev"* ]]
+    [[ "$output" == *"Fix: basectl setup --profile dev"* ]]
 }
 
 @test "basectl doctor rejects unknown profiles" {
