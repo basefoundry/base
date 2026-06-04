@@ -62,6 +62,9 @@ reference. The filename should answer "what is this about?"
   point and its relationship to Linux support.
 - [`basectl check` parallelism](check-parallelism.md) records the evaluation and
   implementation constraints for parallel check probes.
+- [Doctor Finding IDs](doctor-findings.md) is the stable reference for
+  `BASE-D*`, `BASE-P*`, and `BASE-H*` finding identifiers emitted by
+  `basectl doctor --format json`.
 - [Base-managed demo project](base-managed-demo-project.md) defines the proof
   project criteria for showing Base's complete workspace workflow.
 - [Project Demo Workflow](project-demo-workflow.md) documents `demo.script`,
