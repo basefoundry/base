@@ -30,7 +30,7 @@ opinionated, testable, and useful as a shared workspace control plane.
 
    ```bash
    git fetch origin master
-   git worktree add ../base-worktrees/<slug> -b <branch> origin/master
+   git worktree add -b <branch> ~/work/base-worktrees/<slug> origin/master
    ```
 
 5. Keep the PR scoped to the issue. Avoid unrelated refactors.
@@ -38,7 +38,14 @@ opinionated, testable, and useful as a shared workspace control plane.
 7. Use the standard PR body and fill in Summary, Issue, Validation, Demo
    Impact, and Notes.
 8. After merge, sync `master`, remove the worktree, and delete the local and
-   remote branches.
+   remote branches:
+
+   ```bash
+   git -C ~/work/base pull --ff-only origin master
+   git -C ~/work/base worktree remove ~/work/base-worktrees/<slug>
+   git -C ~/work/base branch -d <branch>
+   git -C ~/work/base push origin --delete <branch>
+   ```
 
 For the full policy, including milestone and GitHub Project guidance, see
 [GitHub Workflow](docs/github-workflow.md).
