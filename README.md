@@ -520,6 +520,7 @@ venv is broken.
 ```bash
 basectl doctor
 basectl doctor --dev
+basectl doctor --profile sre
 ```
 
 `basectl check <project>` and `basectl doctor <project>` extend those checks to
@@ -618,10 +619,25 @@ installs Base bootstrap Python packages into that environment. For project
 artifact setup, Base first seeds the target project venv with `bootstrap: true`
 default artifacts and then invokes the Python project setup layer through
 `base-wrapper --project <project>`.
-Developer prerequisites such as BATS, the GitHub CLI, and ShellCheck are opt-in
-and manifest-driven through `lib/base/dev_manifest.yaml`; use
-`basectl setup --dev` to install them and `basectl check --dev` or
-`basectl doctor --dev` to verify them.
+Prerequisite profiles are opt-in and manifest-driven. `--dev` remains a
+compatibility shortcut for `--profile dev`, which installs Base contributor
+tools such as BATS, the GitHub CLI, and ShellCheck from
+`lib/base/dev_manifest.yaml`. Use `--profile sre` for the initial
+site-reliability profile in `lib/base/sre_manifest.yaml`, which installs local
+diagnostic tools such as `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`,
+`yq`, `nmap`, and `mtr`.
+
+```bash
+basectl setup --profile dev
+basectl setup --profile sre
+basectl setup --profile dev --profile sre
+basectl check --profile sre
+basectl doctor --profile sre
+```
+
+AI coding tools are intentionally not part of the plain `dev` or `sre` profile.
+They require explicit account, policy, and authentication choices, so they are
+tracked as a future explicit `ai` profile.
 
 If Homebrew is missing, `basectl setup` uses Homebrew's official installer URL
 at `https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`. This is

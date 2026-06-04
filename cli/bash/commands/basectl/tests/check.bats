@@ -10,6 +10,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl check [project] [options]"* ]]
     [[ "$output" == *"--dev"* ]]
+    [[ "$output" == *"--profile <name>"* ]]
     [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
 }
 
@@ -108,6 +109,32 @@ load ./setup_helpers.bash
     [[ "$output" == *"Artifact 'bats-core' is not installed via Homebrew package 'bats-core'."* ]]
     [[ "$output" == *"Artifact 'gh' is not installed via Homebrew package 'gh'."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+}
+
+@test "basectl check --profile sre forwards profile to prerequisite layer" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command check --profile sre
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile sre)" ]
+    [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
+}
+
+@test "basectl check rejects unknown profiles" {
+    run_base_command check --profile ai
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
 }
 
 @test "basectl check project verifies project artifacts" {
@@ -349,6 +376,36 @@ load ./setup_helpers.bash
     [[ "$output" == *"gh"* ]]
     [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
     [[ "$output" == *'"name":"click","ok":true'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --profile sre --format json writes profile check results" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --profile sre --format json
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"profile_checks":'* ]]
+    [[ "$output" != *'"dev_checks":'* ]]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --format json --profile sre)" ]
     [ "${stderr:-}" = "" ]
 }
 

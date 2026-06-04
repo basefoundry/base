@@ -54,7 +54,7 @@ order:
 4. Base virtual environment integrity
 5. PyYAML
 6. click
-7. developer prerequisite checks, when `--dev` is set
+7. prerequisite profile checks, when `--dev` or `--profile` is set
 8. project artifact checks, when a project is supplied
 
 ## Constraints
@@ -65,7 +65,7 @@ order:
 - Keep `setup_require_macos` before probe collection.
 - Avoid background jobs for project artifact checks until the Python layer has
   an explicit concurrent check API.
-- Avoid background jobs for developer prerequisite checks until `base_dev`
+- Avoid background jobs for prerequisite profile checks until `base_dev`
   exposes a result-only mode that can be merged deterministically.
 
 ## Follow-Up

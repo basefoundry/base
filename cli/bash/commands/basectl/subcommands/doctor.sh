@@ -15,6 +15,7 @@ Usage:
 
 Options:
   --dev                 Include manifest-declared developer prerequisite checks.
+  --profile <name>      Include a named prerequisite profile. Known profiles: dev, sre.
   --format <text|json>  Select output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -211,20 +212,20 @@ base_doctor_check_python_package() {
 }
 
 base_doctor_run_json() {
-    local dev_errors=0 dev_json="[]" errors=0
+    local errors=0 profile_errors=0 profile_json="[]"
     local project="$1"
     local project_errors=0 project_json="[]"
 
     setup_collect_base_check_results warn || true
     errors="$(base_doctor_count_check_errors)"
 
-    if setup_dev_dependencies_enabled; then
-        if dev_json="$(setup_run_base_dev_layer doctor --format json)"; then
-            dev_errors=0
+    if setup_profiles_enabled; then
+        if profile_json="$(setup_run_base_dev_layer doctor --format json)"; then
+            profile_errors=0
         else
-            dev_errors=$?
-            [[ -n "$dev_json" ]] || dev_json="[]"
-            errors=$((errors + dev_errors))
+            profile_errors=$?
+            [[ -n "$profile_json" ]] || profile_json="[]"
+            errors=$((errors + profile_errors))
         fi
     fi
 
@@ -248,13 +249,13 @@ base_doctor_run_json() {
     printf '  "findings": [\n'
     base_doctor_print_check_json_results
     printf '  ]'
-    if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
+    if setup_profiles_enabled || [[ -n "$project" ]]; then
         printf ',\n'
     else
         printf '\n'
     fi
-    if setup_dev_dependencies_enabled; then
-        setup_print_json_property_value "dev_findings" "$dev_json"
+    if setup_profiles_enabled; then
+        setup_print_json_property_value "$(setup_profile_json_key findings)" "$profile_json"
         if [[ -n "$project" ]]; then
             printf ',\n'
         else
@@ -270,7 +271,9 @@ base_doctor_run_json() {
 }
 
 base_doctor_subcommand_main() {
-    local dev_errors=0 errors=0 output_format="text" project=""
+    local errors=0 output_format="text" profile_errors=0 project=""
+
+    setup_clear_run_state
 
     while (($#)); do
         case "$1" in
@@ -280,6 +283,19 @@ base_doctor_subcommand_main() {
                 ;;
             --dev)
                 setup_enable_dev_dependencies
+                ;;
+            --profile)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    print_error "Option '--profile' requires an argument."
+                    base_doctor_subcommand_usage >&2
+                    return 2
+                fi
+                if ! setup_enable_profile "$1"; then
+                    print_error "Unsupported profile '$1'. Expected one of: $(setup_supported_profiles_display)."
+                    base_doctor_subcommand_usage >&2
+                    return 2
+                fi
                 ;;
             --format)
                 shift
@@ -341,10 +357,10 @@ base_doctor_subcommand_main() {
     base_doctor_check_virtualenv || errors=$((errors + 1))
     base_doctor_check_python_package "$(setup_pyyaml_package)" || errors=$((errors + 1))
     base_doctor_check_python_package "$(setup_click_package)" || errors=$((errors + 1))
-    if setup_dev_dependencies_enabled; then
+    if setup_profiles_enabled; then
         setup_run_base_dev_layer doctor
-        dev_errors=$?
-        errors=$((errors + dev_errors))
+        profile_errors=$?
+        errors=$((errors + profile_errors))
     fi
     if [[ -n "$project" ]]; then
         setup_run_project_artifact_doctor

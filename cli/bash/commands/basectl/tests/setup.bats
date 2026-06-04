@@ -10,6 +10,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
     [[ "$output" == *"--dev"* ]]
+    [[ "$output" == *"--profile <name>"* ]]
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
@@ -450,6 +451,29 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "setup" ]
 }
 
+@test "basectl setup --profile sre runs the Python prerequisite profile layer" {
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup --profile sre
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile sre)" ]
+}
+
+@test "basectl setup rejects unknown profiles" {
+    run_base_command setup --profile ai
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+}
+
 @test "basectl setup backs up an existing non-venv path before creating the Base virtual environment" {
     local backup_path
     local installer
@@ -563,7 +587,7 @@ EOF
     run_base_command setup --dev --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would run Python developer prerequisite layer after Base Python bootstrap dependencies are installed."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run Python prerequisite profile layer after Base Python bootstrap dependencies are installed."* ]]
 }
 
 @test "basectl setup ignores inherited DRY_RUN without --dry-run" {

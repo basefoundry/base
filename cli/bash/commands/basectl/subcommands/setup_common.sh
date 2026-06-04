@@ -48,7 +48,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_DEV BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
     setup_refresh_cached_paths
 }
 
@@ -62,11 +62,70 @@ setup_enable_debug_logging() {
 }
 
 setup_enable_dev_dependencies() {
-    export BASE_SETUP_DEV=true
+    setup_enable_profile dev
 }
 
 setup_dev_dependencies_enabled() {
-    [[ "${BASE_SETUP_DEV:-false}" == true ]]
+    setup_profile_enabled dev
+}
+
+setup_supported_profiles() {
+    printf '%s\n' "dev sre"
+}
+
+setup_supported_profiles_display() {
+    printf '%s\n' "dev, sre"
+}
+
+setup_profile_supported() {
+    local profile="$1"
+
+    case "$profile" in
+        dev|sre)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+setup_profile_enabled() {
+    local enabled_profile
+    local profile="$1"
+
+    for enabled_profile in ${BASE_SETUP_PROFILES:-}; do
+        [[ "$enabled_profile" == "$profile" ]] && return 0
+    done
+    return 1
+}
+
+setup_enable_profile() {
+    local profile="$1"
+
+    setup_profile_supported "$profile" || return 1
+    if setup_profile_enabled "$profile"; then
+        return 0
+    fi
+    BASE_SETUP_PROFILES="${BASE_SETUP_PROFILES:+$BASE_SETUP_PROFILES }$profile"
+    export BASE_SETUP_PROFILES
+    if [[ "$profile" == dev ]]; then
+        export BASE_SETUP_DEV=true
+    fi
+}
+
+setup_profiles_enabled() {
+    [[ -n "${BASE_SETUP_PROFILES:-}" ]]
+}
+
+setup_profile_json_key() {
+    local suffix="$1"
+
+    if [[ "${BASE_SETUP_PROFILES:-}" == dev ]]; then
+        printf 'dev_%s\n' "$suffix"
+    else
+        printf 'profile_%s\n' "$suffix"
+    fi
 }
 
 setup_is_dry_run() {
@@ -856,24 +915,31 @@ setup_run_project_artifact_doctor_json() {
 
 setup_run_base_dev_layer() {
     local args=("$@")
+    local profile profile_args=()
     local venv_dir
 
     if setup_is_dry_run &&
         { ! setup_base_python_package_installed "$(setup_pyyaml_package)" ||
             ! setup_base_python_package_installed "$(setup_click_package)"; }; then
-        log_info "[DRY-RUN] Would run Python developer prerequisite layer after Base Python bootstrap dependencies are installed."
+        log_info "[DRY-RUN] Would run Python prerequisite profile layer after Base Python bootstrap dependencies are installed."
         return 0
     fi
 
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     if ! setup_base_venv_python_bin "$venv_dir" >/dev/null 2>&1; then
-        log_warn "Python developer prerequisite layer cannot run because Base virtual environment Python was not found at '$venv_dir/bin/python'."
+        log_warn "Python prerequisite profile layer cannot run because Base virtual environment Python was not found at '$venv_dir/bin/python'."
         log_warn "$(setup_recovery_venv)"
         return 1
     fi
 
-    "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}"
+    if [[ "${BASE_SETUP_PROFILES:-}" != dev ]]; then
+        for profile in ${BASE_SETUP_PROFILES:-}; do
+            profile_args+=(--profile "$profile")
+        done
+    fi
+
+    "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}" "${profile_args[@]}"
 }
 
 setup_clear_check_results() {
@@ -1016,7 +1082,7 @@ setup_run_check() {
     setup_collect_base_check_results fatal || missing=1
     setup_print_check_text_results
 
-    if setup_dev_dependencies_enabled; then
+    if setup_profiles_enabled; then
         setup_run_base_dev_layer check || missing=1
     fi
 
@@ -1138,17 +1204,17 @@ setup_print_json_property_value() {
 }
 
 setup_run_check_json() {
-    local dev_json="[]"
     local missing=0
+    local profile_json="[]"
     local project="${BASE_SETUP_PROJECT_NAME:-}"
     local project_json="[]"
 
     setup_collect_base_check_results warn || missing=1
 
-    if setup_dev_dependencies_enabled; then
-        if ! dev_json="$(setup_run_base_dev_layer check --format json)"; then
+    if setup_profiles_enabled; then
+        if ! profile_json="$(setup_run_base_dev_layer check --format json)"; then
             missing=1
-            [[ -n "$dev_json" ]] || dev_json="[]"
+            [[ -n "$profile_json" ]] || profile_json="[]"
         fi
     fi
 
@@ -1167,13 +1233,13 @@ setup_run_check_json() {
     printf '  "checks": [\n'
     setup_print_check_json_results
     printf '  ]'
-    if setup_dev_dependencies_enabled || [[ -n "$project" ]]; then
+    if setup_profiles_enabled || [[ -n "$project" ]]; then
         printf ',\n'
     else
         printf '\n'
     fi
-    if setup_dev_dependencies_enabled; then
-        setup_print_json_property_value "dev_checks" "$dev_json"
+    if setup_profiles_enabled; then
+        setup_print_json_property_value "$(setup_profile_json_key checks)" "$profile_json"
         if [[ -n "$project" ]]; then
             printf ',\n'
         else
@@ -1196,11 +1262,11 @@ setup_run_install() {
     setup_create_virtualenv
     setup_install_pyyaml
     setup_install_click
-    if setup_dev_dependencies_enabled; then
+    if setup_profiles_enabled; then
         if setup_is_dry_run; then
-            setup_run_base_dev_layer setup --dry-run || fatal_error "Python developer prerequisite layer failed."
+            setup_run_base_dev_layer setup --dry-run || fatal_error "Python prerequisite profile layer failed."
         else
-            setup_run_base_dev_layer setup || fatal_error "Python developer prerequisite layer failed."
+            setup_run_base_dev_layer setup || fatal_error "Python prerequisite profile layer failed."
         fi
     fi
     setup_run_project_artifact_setup || return $?
