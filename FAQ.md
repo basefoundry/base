@@ -120,6 +120,20 @@ integration are available in new interactive shells.
 `basectl doctor` reports what is healthy, missing, or misconfigured. It is the
 best command to run when something does not look right.
 
+### What is the difference between basectl check and basectl doctor?
+
+Both commands are read-only, but they serve different moments.
+
+Use `basectl check [project]` when you want a quick status check that can be
+used in scripts, CI, or a regular "is this ready?" workflow. It verifies the
+same local prerequisites and project health contracts that setup manages, and
+it can emit JSON when automation needs structured output.
+
+Use `basectl doctor [project]` when something failed or feels confusing. Doctor
+is the human-oriented diagnostic command: it reports `ok`, `warn`, and `error`
+findings, includes stable finding IDs, and prints suggested fixes where Base
+knows the recovery path.
+
 ### After Homebrew installation, why do I still need basectl setup?
 
 Homebrew installs Base's files. `basectl setup` prepares the local Base runtime
@@ -196,6 +210,51 @@ read a run log. Base stores logs under the Base cache root, normally
 new run to capture DEBUG details before inspecting it with `basectl logs`.
 
 ## Writing Base Scripts
+
+### How should a project expose a Python CLI?
+
+Expose a small executable launcher from the project's `bin/` directory and have
+that launcher delegate to `base-wrapper`:
+
+```bash
+#!/usr/bin/env bash
+exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_cli "$@"
+```
+
+When `basectl activate <project>` starts a project shell, Base adds the
+project's `bin/` directory to `PATH` if it exists. That lets users run the
+launcher as an ordinary command while Base keeps Python execution tied to the
+selected project virtual environment.
+
+`base-wrapper` runs Python packages, not arbitrary `.py` file paths. The package
+name in the launcher, `example_cli` above, is executed as `python -m
+example_cli` using the Python interpreter from `~/.base.d/<project>/.venv`. The
+wrapper also sets `BASE_HOME`, sets `BASE_PROJECT`, and adds Base's Python
+library roots to `PYTHONPATH`.
+
+### Should users invoke Python CLI packages directly?
+
+Usually no. Treat Python packages as implementation details unless a
+project-owned launcher exposes them from `bin/`.
+
+Direct invocation makes users choose a Python interpreter, virtual environment,
+and `PYTHONPATH` by hand. The launcher plus `base-wrapper` keeps those choices
+consistent with `basectl setup`, project activation, and Base-managed project
+virtual environments.
+
+### What is the base_cli Python package for?
+
+`base_cli` is Base's Python CLI framework. It wraps Click with Base conventions
+so Base and Base-supported projects get the same command behavior without
+rebuilding it for every Python command.
+
+Use `base_cli.App` for Python CLIs that should have Base-style logging, standard
+options such as `--debug` and `--log-file`, run-scoped temp/cache/log
+directories, config loading, manifest-aware project discovery, sensitive
+argument redaction, and test helpers.
+
+`base-wrapper` answers "which Python environment should run this package?"
+`base_cli` answers "how should this Python CLI behave once it starts?"
 
 ### How do I write a Bash script that uses Base's standard library?
 
