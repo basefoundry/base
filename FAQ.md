@@ -159,6 +159,42 @@ that belongs to that product rather than to Base.
 Project installers should call Base when they need workspace primitives instead
 of reimplementing them.
 
+## Project Commands
+
+### What is basectl demo?
+
+`basectl demo <project>` runs the project-declared demo script from
+`base_manifest.yaml`. A project declares the script under `demo.script`, and
+Base runs it from the project root with the same project environment used by
+other Base project commands. Use `-- --non-interactive` when the demo needs to
+run in CI or another non-interactive context. See [Project Demo Workflow](docs/project-demo-workflow.md).
+
+### What does basectl repo init do?
+
+`basectl repo init <name>` creates the standard Base-managed repository
+baseline: README, VERSION, CHANGELOG, CONTRIBUTING, LICENSE, `.gitignore`,
+`base_manifest.yaml`, a validation script, and a GitHub Actions test workflow.
+When a GitHub repo is provided or inferred, Base can also apply the standard
+repository settings and labels; use `--dry-run` to preview everything first.
+See [Repository Baseline](docs/repo-baseline.md).
+
+### How do I see health across all workspace projects?
+
+Use `basectl workspace status`, `basectl workspace check`, or
+`basectl workspace doctor`. These commands discover projects under the
+configured `workspace.root` in `~/.base.d/config.yaml`, falling back to
+`BASE_HOME`'s parent when no workspace root is configured. Invalid manifests
+show up as per-project findings so one broken project does not hide the rest of
+the workspace.
+
+### How do I inspect logs from a failed Base command?
+
+Use `basectl logs list` to find recent command runs and `basectl logs tail` to
+read a run log. Base stores logs under the Base cache root, normally
+`~/Library/Caches/base` on macOS, so they do not accumulate under
+`~/.base.d`. Use command verbosity such as `basectl -v setup` when you want a
+new run to capture DEBUG details before inspecting it with `basectl logs`.
+
 ## Writing Base Scripts
 
 ### How do I write a Bash script that uses Base's standard library?
