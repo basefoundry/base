@@ -170,6 +170,9 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_BASH_DIR"* ]]
     [[ "$output" == *"BASE_BASH_COMMANDS_DIR"* ]]
+    [[ "$output" == *"BASE_BASH_COMMAND_SCRIPT"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR"* ]]
     [[ "$output" != *"BASE_ARCH"* ]]
 }
 

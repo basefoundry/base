@@ -74,6 +74,47 @@ EOF
     [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
+@test "Base runtime shell marks project metadata readonly" {
+    local project_root="$TEST_TMPDIR/demo"
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+
+    mkdir -p "$project_root" "$venv_dir/bin"
+    touch "$project_root/base_manifest.yaml"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+export VIRTUAL_ENV
+EOF
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+    exit 0
+fi
+printf 'unexpected base_projects args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            declare -p BASE_PROJECT; \
+            declare -p BASE_PROJECT_ROOT; \
+            declare -p BASE_PROJECT_MANIFEST; \
+            declare -p BASE_PROJECT_VENV_DIR'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'declare -rx BASE_PROJECT="demo"'* ]]
+    [[ "$output" == *"declare -rx BASE_PROJECT_ROOT=\"$project_root\""* ]]
+    [[ "$output" == *"declare -rx BASE_PROJECT_MANIFEST=\"$project_root/base_manifest.yaml\""* ]]
+    [[ "$output" == *"declare -rx BASE_PROJECT_VENV_DIR=\"$venv_dir\""* ]]
+}
+
 @test "Base runtime shell sources manifest-declared project activation scripts" {
     local project_root="$TEST_TMPDIR/demo"
     local venv_dir="$TEST_TMPDIR/demo-venv"

@@ -214,6 +214,27 @@ EOF
     [[ "$output" == *"script path wins: arg1"* ]]
 }
 
+@test "basectl marks command dispatch metadata readonly" {
+    local script_path="$TEST_TMPDIR/inspect-command-env.sh"
+    local script_dir
+
+    cat > "$script_path" <<'EOF'
+main() {
+    declare -p BASE_BASH_COMMAND_NAME
+    declare -p BASE_BASH_COMMAND_DIR
+    declare -p BASE_BASH_COMMAND_SCRIPT
+}
+EOF
+    script_dir="$(cd "$TEST_TMPDIR" && pwd -P)"
+
+    run_basectl "$script_path"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'declare -rx BASE_BASH_COMMAND_NAME="inspect-command-env"'* ]]
+    [[ "$output" == *"declare -rx BASE_BASH_COMMAND_DIR=\"$script_dir\""* ]]
+    [[ "$output" == *"declare -rx BASE_BASH_COMMAND_SCRIPT=\"$script_dir/inspect-command-env.sh\""* ]]
+}
+
 @test "sort-in-place launcher delegates through basectl" {
     local input_file="$TEST_TMPDIR/input.txt"
 

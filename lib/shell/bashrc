@@ -41,18 +41,25 @@ base_bashrc_source_baserc_guard() {
     source "$guard_path"
 }
 
+base_bashrc_var_is_readonly() {
+    local declaration
+
+    declaration="$(declare -p "$1" 2>/dev/null)" || return 1
+    [[ "$declaration" == declare\ -*r* ]]
+}
+
 base_bashrc_source_baserc_guard || return $?
 base_baserc_guard_source base_bashrc_debug || return $?
 
 if [[ $- != *i* ]]; then
     base_bashrc_debug "non-interactive shell; skipping"
-    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
     return 0
 fi
 
 if [[ -n "${__base_bashrc_sourced__:-}" ]]; then
     base_bashrc_debug "already sourced; skipping"
-    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
     return 0
 fi
 readonly __base_bashrc_sourced__=1
@@ -66,6 +73,17 @@ base_bashrc_set_base_home() {
     base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
+    if [[ -n "${BASE_HOME+x}" ]]; then
+        if [[ "$BASE_HOME" == "$base_home" ]]; then
+            export BASE_HOME
+            base_bashrc_debug "BASE_HOME=$BASE_HOME"
+            return 0
+        fi
+        if base_bashrc_var_is_readonly BASE_HOME; then
+            printf "ERROR: BASE_HOME is readonly and points at '%s', not '%s'.\n" "$BASE_HOME" "$base_home" >&2
+            return 1
+        fi
+    fi
     export BASE_HOME="$base_home"
     base_bashrc_debug "BASE_HOME=$BASE_HOME"
 }
@@ -140,7 +158,7 @@ base_bashrc_source_completions() {
 
 base_bashrc_set_base_home || {
     printf 'ERROR: Unable to determine BASE_HOME from Base bashrc snippet. Run basectl update-profile.\n' >&2
-    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
     return 1
 }
 base_bashrc_prepend_path
@@ -148,7 +166,7 @@ base_bashrc_source_defaults || return 1
 base_bashrc_source_completions || return 1
 base_bashrc_debug "complete"
 
-unset -f base_bashrc_snippet_dir base_bashrc_set_base_home
+unset -f base_bashrc_snippet_dir base_bashrc_var_is_readonly base_bashrc_set_base_home
 unset -f base_bashrc_prepend_path base_bashrc_source_defaults
 unset -f base_bashrc_source_completions
 unset -f base_bashrc_source_baserc_guard base_bashrc_debug

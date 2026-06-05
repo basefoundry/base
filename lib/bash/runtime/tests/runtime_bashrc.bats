@@ -53,6 +53,26 @@ EOF
     [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
+@test "runtime bashrc can source user bashrc with Base-managed snippet after readonly BASE_HOME" {
+    cat > "$TEST_HOME/.bashrc" <<EOF
+source "$BASE_REPO_ROOT/lib/shell/bashrc"
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            command -v basectl; \
+            printf "BASE_HOME=%s\n" "$BASE_HOME"; \
+            declare -p BASE_HOME'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"declare -rx BASE_HOME=\"$BASE_REPO_ROOT\""* ]]
+}
+
 @test "runtime bashrc sources baserc debug preferences" {
     printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
 

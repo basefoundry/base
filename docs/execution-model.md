@@ -221,6 +221,9 @@ has decided what should run.
   libraries
 - PATH additions needed by Base runtime execution
 
+The full variable list, ownership rules, readonly policy, and `~/.baserc`
+behavior are documented in [Runtime Environment](runtime-environment.md).
+
 Downstream Bash scripts should import Base Bash libraries with:
 
 ```bash
@@ -251,7 +254,9 @@ making Base stdlib functions such as `import_base_lib` available during user
 Bash startup. Base still owns the final runtime prompt.
 
 Bash startup paths share `lib/shell/baserc_guard.sh` for safe `~/.baserc`
-loading and Base-owned variable protection.
+loading and Base-owned variable protection. See
+[Runtime Environment](runtime-environment.md) for the exact variables users may
+set there.
 
 ## Dotfile Boundary
 

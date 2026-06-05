@@ -138,6 +138,23 @@ _base_runtime_add_project_bin_to_path() {
     export PATH
 }
 
+_base_runtime_readonly_if_set() {
+    local var_name
+
+    for var_name in "$@"; do
+        [[ -n "${!var_name+x}" ]] || continue
+        readonly "$var_name"
+    done
+}
+
+_base_runtime_mark_project_contract_readonly() {
+    _base_runtime_readonly_if_set \
+        BASE_PROJECT \
+        BASE_PROJECT_ROOT \
+        BASE_PROJECT_MANIFEST \
+        BASE_PROJECT_VENV_DIR
+}
+
 _base_runtime_host_prompt() {
     local host_name=""
 
@@ -215,6 +232,7 @@ _base_runtime_main() {
     _base_runtime_debug "sourcing '$BASE_HOME/base_init.sh'"
     # shellcheck source=/dev/null
     source "$BASE_HOME/base_init.sh" || return $?
+    _base_runtime_mark_project_contract_readonly
 
     _base_runtime_add_project_bin_to_path || return $?
     _base_runtime_source_user_bashrc || return $?

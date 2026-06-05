@@ -59,18 +59,21 @@ load ./basectl_helpers.bash
     local repo="$TEST_TMPDIR/repo"
 
     init_git_repo "$repo"
+    repo="$(cd "$repo" && pwd -P)"
     printf 'base\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
+    cp "$BASE_REPO_ROOT/base_init.sh" "$repo/base_init.sh"
+    cp -R "$BASE_REPO_ROOT/cli" "$repo/cli"
+    cp -R "$BASE_REPO_ROOT/lib" "$repo/lib"
+    mkdir -p "$repo/bin"
     printf 'notes\n' > "$repo/local-notes.md"
 
     run env \
         HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_TEST_REPO="$repo" \
+        BASE_HOME="$repo" \
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
-            BASE_HOME="$BASE_TEST_REPO"
             base_update_source_git_library() { :; }
             git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
             base_update_head_revision() { printf "%s\n" abc1234; }

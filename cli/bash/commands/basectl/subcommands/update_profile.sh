@@ -210,7 +210,10 @@ base_update_profile_subcommand_main() {
         print_error "${BASE_CLI_ERROR_MESSAGE:-Unable to find Base home.}"
         return 1
     }
-    BASE_HOME="$base_home"
+    if [[ "${BASE_HOME:-}" != "$base_home" ]]; then
+        print_error "Resolved Base home '$base_home' does not match runtime BASE_HOME '${BASE_HOME:-unset}'."
+        return 1
+    fi
     export BASE_HOME
 
     base_update_profile_source_file_library || return 1
