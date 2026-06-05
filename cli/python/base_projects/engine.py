@@ -14,6 +14,8 @@ import base_cli
 from base_cli.config import read_user_config
 from base_cli.paths import base_cache_root, base_state_root
 from base_cli.paths import discover_manifest
+from base_projects.build_targets import build_targets_project_from_args
+from base_projects.build_targets import list_build_targets_from_args
 from base_setup.checks import ArtifactCheck
 from base_setup.checks import check_to_doctor_json
 from base_setup.checks import check_to_json
@@ -97,6 +99,7 @@ def dispatch_projects_command(
 ) -> int:
     command = arguments[0] if arguments else "list"
     command_arguments = arguments[1:] if arguments else ()
+    resolver = resolve_named_project
     handlers = {
         "list": lambda: list_projects_from_args(ctx, command_arguments, workspace, output_format),
         "status": lambda: workspace_status_from_args(ctx, command_arguments, workspace, output_format),
@@ -114,6 +117,8 @@ def dispatch_projects_command(
         "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, workspace),
         "run-command": lambda: run_command_project_from_args(ctx, command_arguments, workspace),
         "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, workspace),
+        "build-targets": lambda: build_targets_project_from_args(ctx, command_arguments, workspace, resolver),
+        "build-target-list": lambda: list_build_targets_from_args(ctx, command_arguments, workspace, resolver),
     }
     handler = handlers.get(command)
     if handler is not None:
@@ -121,7 +126,8 @@ def dispatch_projects_command(
 
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "status, check, doctor, test-command, demo-script, activation-sources, run-command, run-commands.",
+        "status, check, doctor, test-command, demo-script, activation-sources, run-command, run-commands, "
+        "build-targets, build-target-list.",
         command,
     )
     return 2

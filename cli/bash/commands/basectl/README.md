@@ -33,6 +33,7 @@ that delegate to `basectl`.
 - `onboard`
 - `repo init/check/configure`
 - `test`
+- `build`
 - `update-profile`
 - `update`
 - `projects list`
@@ -83,6 +84,10 @@ that delegate to `basectl`.
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments
   to the delegated test command.
+- `basectl build <project> [target...]` runs manifest `build.targets` from
+  each target's `working_dir`. With no targets, it runs `build.default`
+  sequentially. Use `basectl build <project> --list` to inspect targets and
+  `--dry-run` to preview commands without running them.
 - `basectl run <project> <command>` runs a named command from the project's
   manifest `commands` map with the same project root, environment variables,
   virtual environment, dry-run, and extra-argument contract as `basectl test`.

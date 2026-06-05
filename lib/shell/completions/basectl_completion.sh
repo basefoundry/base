@@ -59,7 +59,7 @@ _base_basectl_completion_project_profiles_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test demo run repo clean logs config doctor gh onboard update-profile update projects workspace version help"
+    local commands="activate setup check test build demo run repo clean logs config doctor gh onboard update-profile update projects workspace version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -102,6 +102,9 @@ _base_basectl_completion() {
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
+            ;;
+        build)
+            _base_basectl_completion_project_or_options "--workspace --dry-run --list -v -h --help" "$cur"
             ;;
         demo)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"

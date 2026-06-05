@@ -105,6 +105,7 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl activate`
 - `basectl run`
 - `basectl test`
+- `basectl build`
 - `basectl demo`
 - `basectl logs`
 
