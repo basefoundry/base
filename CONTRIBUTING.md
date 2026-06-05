@@ -3,6 +3,12 @@
 Base is a developer tooling repository. Contributions should keep the project
 opinionated, testable, and useful as a shared workspace control plane.
 
+## AI-Assisted Development
+
+Coding agents should follow [AGENTS.md](AGENTS.md). It points to the same
+workflow and standards in this guide while capturing Base-specific instructions
+for issue-backed work, validation, and design-only sessions.
+
 ## Workflow
 
 1. Create or choose a GitHub issue before starting implementation work.
