@@ -762,6 +762,7 @@ Key starting points:
 - [FAQ](FAQ.md)
 - [Architecture](docs/architecture.md)
 - [Execution Model](docs/execution-model.md)
+- [Runtime Environment](docs/runtime-environment.md)
 - [Tool Boundaries](docs/tool-boundaries.md)
 - [Doctor Finding IDs](docs/doctor-findings.md)
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
@@ -837,7 +838,9 @@ overwrite them.
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
 shell-startup-safe Base preferences such as `BASE_DEBUG=1`; it should not become
-a second `.bashrc` with arbitrary setup logic.
+a second `.bashrc` with arbitrary setup logic. See
+[Runtime Environment](docs/runtime-environment.md) for the full variable
+contract and mutability policy.
 
 `~/.baserc` must not set Base-owned runtime or profile variables such as
 `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_SHELL`,

@@ -172,6 +172,7 @@ basectl_run_bash_script() {
     # shellcheck source=/dev/null
     source "$base_home/base_init.sh" "$@" || exit $?
     unset BASE_BASH_BOOTSTRAP_SOURCE
+    readonly BASE_BASH_COMMAND_NAME BASE_BASH_COMMAND_DIR BASE_BASH_COMMAND_SCRIPT
 
     unset -f main
 

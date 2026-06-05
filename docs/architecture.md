@@ -201,7 +201,8 @@ Contains:
 - PATH additions for Base's own executable entrypoints
 
 This layer is established by `base_init.sh`, which is sourced only through the
-`basectl` command path.
+`basectl` command path. The canonical variable reference and mutability policy
+live in [Runtime Environment](runtime-environment.md).
 
 ### Layer 3 — Project-Specific Environment
 

@@ -84,6 +84,79 @@ run_base_init_script() {
     [[ "$output" == *"BASE_OS=linux"* || "$output" == *"BASE_OS=macos"* ]]
 }
 
+@test "base_init marks the Base runtime contract readonly" {
+    local var
+
+    run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+        for var in \
+            BASE_HOME \
+            BASE_BIN_DIR \
+            BASE_CLI_DIR \
+            BASE_BASH_DIR \
+            BASE_BASH_COMMANDS_DIR \
+            BASE_LIB_DIR \
+            BASE_BASH_LIB_DIR \
+            BASE_SHELL_DIR \
+            BASE_OS \
+            BASE_HOST \
+            BASE_SHELL; do
+            declare -p "$var"
+        done
+    '
+
+    [ "$status" -eq 0 ]
+    for var in \
+        BASE_HOME \
+        BASE_BIN_DIR \
+        BASE_CLI_DIR \
+        BASE_BASH_DIR \
+        BASE_BASH_COMMANDS_DIR \
+        BASE_LIB_DIR \
+        BASE_BASH_LIB_DIR \
+        BASE_SHELL_DIR \
+        BASE_OS \
+        BASE_HOST \
+        BASE_SHELL; do
+        [[ "$output" == *"declare -rx $var="* ]]
+    done
+}
+
+@test "base_init readonly contract rejects later mutation" {
+    run_base_init_script '
+        base_home="$1"
+        (
+            source "$base_home/base_init.sh"
+            BASE_HOME=/tmp/not-base
+        )
+        printf "mutation_status=%s\n" "$?"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME: readonly variable"* ]]
+    [[ "$output" == *"mutation_status=1"* ]]
+}
+
+@test "runtime environment docs list the base_init contract variables" {
+    local var
+
+    for var in \
+        BASE_HOME \
+        BASE_BIN_DIR \
+        BASE_CLI_DIR \
+        BASE_BASH_DIR \
+        BASE_BASH_COMMANDS_DIR \
+        BASE_LIB_DIR \
+        BASE_BASH_LIB_DIR \
+        BASE_SHELL_DIR \
+        BASE_OS \
+        BASE_HOST \
+        BASE_SHELL; do
+        grep -F "| \`$var\` |" "$BASE_REPO_ROOT/docs/runtime-environment.md"
+    done
+}
+
 @test "base_init is idempotent when sourced twice" {
     run_base_init_script '
         base_home="$1"
