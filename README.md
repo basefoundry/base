@@ -149,6 +149,7 @@ Current implemented commands include:
 - `basectl repo configure [path]`
 - `basectl activate <project>`
 - `basectl test [project]`
+- `basectl build <project> [target...]`
 - `basectl run <project> <command>`
 - `basectl onboard`
 - `basectl version`
@@ -408,6 +409,46 @@ basectl test example -- -k focused_case
 ```
 
 For `test.mise`, Base passes those arguments after `mise run <task> --`.
+
+Run a discovered project's declared build targets with:
+
+```bash
+basectl build example
+basectl build example api worker
+```
+
+The `build` contract is intentionally declarative. Base does not infer how to
+compile Go, Java, C++, Node.js, or any other language. The project declares the
+targets it owns:
+
+```yaml
+build:
+  default:
+    - api
+    - worker
+  targets:
+    api:
+      description: Build the API service.
+      working_dir: services/api
+      command: go build ./cmd/api
+    worker:
+      description: Build the worker service.
+      working_dir: services/worker
+      command: go build ./cmd/worker
+```
+
+`basectl build <project>` runs `build.default` sequentially. `basectl build
+<project> <target> [target...]` runs only the named targets. Base exports the
+same project environment variables as `basectl test`, prepends the project
+virtual environment when it exists, changes into each target's `working_dir`,
+and returns the first failing build command's exit status.
+
+Use `--list` or `--dry-run` to inspect the manifest contract:
+
+```bash
+basectl build example --list
+basectl build example --dry-run
+```
 
 Run other manifest-declared project commands with:
 

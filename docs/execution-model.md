@@ -166,6 +166,7 @@ list is `basectl --help`; this list summarizes the shipped public surface:
 - `doctor`
 - `activate`
 - `test`
+- `build`
 - `run`
 - `demo`
 - `repo`
