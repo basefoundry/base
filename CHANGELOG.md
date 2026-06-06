@@ -51,6 +51,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   default, with explicit `--public` and `--private` visibility flags.
 - Updated Base-managed shell profile sections to use shorter `>>> base: ...`
   markers, clearer overwrite guidance, and quoted source paths.
+- Moved the optional `caff` and `sort-in-place` utility CLIs out of Base and
+  into `codeforester/base-platform-tools`.
 
 ### Fixed
 
