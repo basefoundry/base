@@ -192,15 +192,8 @@ EOF
     [[ "$output" == *"ARGS=-m base_setup --dry-run demo"* ]]
 }
 
-@test "basectl dispatches command implementations by command name" {
-    run_basectl sort-in-place --help
-
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Sort text files in place."* ]]
-}
-
 @test "basectl treats path-like arguments as scripts before command names" {
-    local script_path="$TEST_TMPDIR/sort-in-place"
+    local script_path="$TEST_TMPDIR/demo-script"
 
     cat > "$script_path" <<'EOF'
 main() {
@@ -233,17 +226,4 @@ EOF
     [[ "$output" == *'declare -rx BASE_BASH_COMMAND_NAME="inspect-command-env"'* ]]
     [[ "$output" == *"declare -rx BASE_BASH_COMMAND_DIR=\"$script_dir\""* ]]
     [[ "$output" == *"declare -rx BASE_BASH_COMMAND_SCRIPT=\"$script_dir/inspect-command-env.sh\""* ]]
-}
-
-@test "sort-in-place launcher delegates through basectl" {
-    local input_file="$TEST_TMPDIR/input.txt"
-
-    printf 'b\na\nb\n' > "$input_file"
-    run env \
-        HOME="$TEST_HOME" \
-        PATH="$BASE_REPO_ROOT/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-        sort-in-place -u "$input_file"
-
-    [ "$status" -eq 0 ]
-    [ "$(cat "$input_file")" = $'a\nb' ]
 }

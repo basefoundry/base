@@ -625,16 +625,17 @@ invoke it from whatever shell state they already had.
 Base exposes its own commands through `$BASE_HOME/bin`. That directory is added
 to `PATH` by Base's managed shell startup snippets.
 
-`bin/basectl` is the control-plane command. Additional public commands, when
-needed, are tiny real launcher files in `bin/` that delegate to `basectl`; their
-implementation remains under `cli/bash/commands/<command>/` or, in the future,
+`bin/basectl` is the control-plane command. Additional Base-owned public
+commands, when needed, are tiny real launcher files in `bin/` that delegate to
+`basectl`; their implementation remains under
+`cli/bash/commands/<command>/` or, in the future,
 `cli/python/commands/<command>/`.
 
-Example launcher:
+Example launcher for a hypothetical Base-owned Bash command:
 
 ```bash
 #!/usr/bin/env bash
-exec "$(dirname "$0")/basectl" caff "$@"
+exec "$(dirname "$0")/basectl" example "$@"
 ```
 
 Projects expose their own commands through `$PROJECT_ROOT/bin`. When
@@ -1017,15 +1018,14 @@ Those defaults are intended to stay conservative:
 - prompt defaults
 - history behavior
 
-## Bonus Utilities
+## Optional Utility Tools
 
-Base currently exposes a small number of convenience utilities through
-`$BASE_HOME/bin`, including `caff` and `sort-in-place`. These are useful helper
-commands that share Base's command conventions, but they are not the core
-workspace orchestration surface.
+Base no longer owns general-purpose utility CLIs such as `caff` and
+`sort-in-place`. Those tools live in
+[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools),
+which is the optional platform/SRE utility layer for Base-managed workspaces.
 
-As Base matures, bonus utilities may stay documented as extras or move behind a
-clearer namespace. The control-plane surface remains `basectl`.
+The Base control-plane surface remains `basectl`.
 
 ## What Base Is Responsible For
 

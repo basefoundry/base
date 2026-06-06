@@ -16,10 +16,9 @@ The public entrypoint lives at `bin/basectl`. It establishes the Base runtime
 for command implementations, then sources this command implementation and calls
 `main`.
 
-`basectl` also dispatches direct command names by convention. For example,
-`basectl caff` loads `cli/bash/commands/caff/caff.sh`. Public convenience
-commands in `$BASE_HOME/bin`, such as `bin/caff`, should remain tiny launchers
-that delegate to `basectl`.
+`basectl` also dispatches direct Base-owned command names by convention when
+such command directories exist. Optional utility CLIs such as `caff` and
+`sort-in-place` live in `codeforester/base-platform-tools` instead of Base core.
 
 ## Current subcommands
 

@@ -138,13 +138,13 @@ $BASE_HOME/cli/bash/commands/<command>/<command>.sh
 For example:
 
 ```bash
-basectl caff
+basectl example
 ```
 
 loads:
 
 ```text
-$BASE_HOME/cli/bash/commands/caff/caff.sh
+$BASE_HOME/cli/bash/commands/example/example.sh
 ```
 
 A command implementation is sourced as Bash and must define `main`.
@@ -189,23 +189,23 @@ $BASE_HOME/cli/bash/commands/basectl/subcommands/
 
 ## Public Command Launchers
 
-Convenience commands in `$BASE_HOME/bin` should be tiny real launcher files,
-not symlinks. They delegate to `basectl` and keep the public command surface in
-one place.
+Base-owned convenience commands in `$BASE_HOME/bin` should be tiny real launcher
+files, not symlinks. They delegate to `basectl` and keep the public command
+surface in one place.
 
-Some launchers may expose bonus utilities such as `caff` or `sort-in-place`.
-Those utilities follow the same command-layout convention, but they are extras,
-not the core workspace control plane.
-
-Example:
+Example for a hypothetical Base-owned Bash command:
 
 ```bash
 #!/usr/bin/env bash
-exec "$(dirname "$0")/basectl" caff "$@"
+exec "$(dirname "$0")/basectl" example "$@"
 ```
 
 The implementation still lives under `cli/bash/commands/<command>/` with its
 local README and tests.
+
+Optional utility CLIs such as `caff` and `sort-in-place` live in
+[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools)
+instead of Base core.
 
 ## Runtime Bootstrap
 

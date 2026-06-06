@@ -37,11 +37,12 @@ layer boundaries rather than placing logic wherever it is easiest to call.
 `PATH`.
 
 Public commands in `bin/` should be real launcher files, not symlinks. Keep them
-small and delegate into the command implementation. For a Bash command:
+small and delegate into the command implementation. For a hypothetical Bash
+command:
 
 ```bash
 #!/usr/bin/env bash
-exec "$(dirname "$0")/basectl" caff "$@"
+exec "$(dirname "$0")/basectl" example "$@"
 ```
 
 The implementation still belongs under:
@@ -417,8 +418,8 @@ Base-owned Bash CLIs should live in per-command directories:
 
 ```text
 cli/bash/commands/
-  caff/
-    caff.sh
+  example/
+    example.sh
     README.md
     tests/
 ```
