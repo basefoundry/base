@@ -12,7 +12,8 @@ project manifest is found.
 - sources `lib/shell/baserc_guard.sh`
 - sources user-managed `~/.baserc` when present
 - sources `base_init.sh`
-- adds `$BASE_PROJECT_ROOT/bin` to `PATH` when it exists, keeping `$BASE_HOME/bin` first
+- adds optional `base-platform-tools/bin` and `$BASE_PROJECT_ROOT/bin` to `PATH`
+  when they exist, keeping `$BASE_HOME/bin` first
 - sources the user's `~/.bashrc` with guardrails
 - activates the project virtual environment
 - sources manifest-declared `activate.source` scripts

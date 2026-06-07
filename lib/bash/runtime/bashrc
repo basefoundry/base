@@ -44,6 +44,18 @@ _base_runtime_source_baserc_guard() {
     source "$guard_path"
 }
 
+_base_runtime_source_platform_tools_helper() {
+    local helper_path="$BASE_HOME/lib/shell/base_platform_tools.sh"
+
+    [[ -f "$helper_path" ]] || {
+        _base_runtime_error "Base Platform Tools helper '$helper_path' was not found."
+        return 1
+    }
+
+    # shellcheck source=/dev/null
+    source "$helper_path"
+}
+
 _base_runtime_source_user_bashrc() {
     local user_bashrc="$HOME/.bashrc"
 
@@ -109,33 +121,20 @@ _base_runtime_source_project_activation_scripts() {
     done <<< "$scripts_output"
 }
 
-_base_runtime_add_project_bin_to_path() {
-    local entry
-    local new_path=""
-    local project_bin
-    local -a path_entries
+_base_runtime_configure_path() {
+    local platform_tools_bin=""
+    local project_bin=""
 
-    [[ -n "${BASE_PROJECT_ROOT:-}" ]] || return 0
-    project_bin="$BASE_PROJECT_ROOT/bin"
-    [[ -d "$project_bin" ]] || return 0
-
-    IFS=: read -ra path_entries <<< "$PATH"
-    for entry in "${path_entries[@]}"; do
-        [[ -n "$entry" ]] || continue
-        [[ "$entry" != "$BASE_BIN_DIR" ]] || continue
-        [[ "$entry" != "$project_bin" ]] || continue
-        if [[ -n "$new_path" ]]; then
-            new_path="$new_path:$entry"
-        else
-            new_path="$entry"
-        fi
-    done
-
-    PATH="$BASE_BIN_DIR:$project_bin"
-    if [[ -n "$new_path" ]]; then
-        PATH="$PATH:$new_path"
+    _base_runtime_source_platform_tools_helper || return $?
+    if base_platform_tools_detect "$BASE_HOME"; then
+        platform_tools_bin="$BASE_PLATFORM_TOOLS_BIN_DIR"
     fi
-    export PATH
+
+    if [[ -n "${BASE_PROJECT_ROOT:-}" && -d "$BASE_PROJECT_ROOT/bin" ]]; then
+        project_bin="$BASE_PROJECT_ROOT/bin"
+    fi
+
+    base_platform_tools_set_ordered_path "$BASE_BIN_DIR" "$platform_tools_bin" "$project_bin"
 }
 
 _base_runtime_readonly_if_set() {
@@ -234,7 +233,7 @@ _base_runtime_main() {
     source "$BASE_HOME/base_init.sh" || return $?
     _base_runtime_mark_project_contract_readonly
 
-    _base_runtime_add_project_bin_to_path || return $?
+    _base_runtime_configure_path || return $?
     _base_runtime_source_user_bashrc || return $?
     _base_runtime_activate_project_venv || return $?
     _base_runtime_source_project_activation_scripts || return $?

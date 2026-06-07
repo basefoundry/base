@@ -207,6 +207,11 @@ Optional utility CLIs such as `caff` and `sort-in-place` live in
 [`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools)
 instead of Base core.
 
+When `base-platform-tools` is checked out next to Base and contains both
+`base_manifest.yaml` and `bin/`, Base's shell startup snippets add its `bin/`
+directory to `PATH` after `$BASE_HOME/bin`. Runtime project shells keep project
+`bin/` entries behind both Base and Base Platform Tools.
+
 ## Runtime Bootstrap
 
 `base_init.sh` is the runtime bootstrap layer. It is sourced after `basectl`
@@ -266,6 +271,7 @@ The normal shell-startup snippets under `lib/shell/` do not source
 
 - deriving `BASE_HOME` for the managed snippet
 - adding `$BASE_HOME/bin` to `PATH`
+- adding an optional sibling `base-platform-tools/bin` to `PATH`
 - loading simple user preferences from `~/.baserc`
 - enabling optional shell defaults when requested
 

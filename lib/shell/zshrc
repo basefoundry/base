@@ -74,24 +74,44 @@ base_zshrc_set_base_home() {
     base_zshrc_debug "BASE_HOME=$BASE_HOME"
 }
 
-base_zshrc_prepend_path() {
-    local bin_dir="$BASE_HOME/bin"
+base_zshrc_source_platform_tools_helper() {
+    local snippet_dir
+    local helper_path
 
-    [[ -d "$bin_dir" ]] || {
-        base_zshrc_debug "bin dir '$bin_dir' does not exist; PATH unchanged"
+    snippet_dir="$(base_zshrc_snippet_dir)" || return 1
+    helper_path="$snippet_dir/base_platform_tools.sh"
+
+    [[ -f "$helper_path" ]] || {
+        printf "ERROR: Base Platform Tools helper '%s' was not found.\n" "$helper_path" >&2
+        return 1
+    }
+
+    source "$helper_path"
+}
+
+base_zshrc_configure_path() {
+    local base_bin="$BASE_HOME/bin"
+    local previous_path="$PATH"
+    local platform_tools_bin=""
+
+    [[ -d "$base_bin" ]] || {
+        base_zshrc_debug "bin dir '$base_bin' does not exist; PATH unchanged"
         return 0
     }
 
-    case ":$PATH:" in
-        *:"$bin_dir":*)
-            base_zshrc_debug "PATH already contains '$bin_dir'"
-            ;;
-        *)
-            PATH="$bin_dir${PATH:+:$PATH}"
-            export PATH
-            base_zshrc_debug "prepended '$bin_dir' to PATH"
-            ;;
-    esac
+    base_zshrc_source_platform_tools_helper || return $?
+    if base_platform_tools_detect "$BASE_HOME"; then
+        platform_tools_bin="$BASE_PLATFORM_TOOLS_BIN_DIR"
+    fi
+
+    base_platform_tools_set_ordered_path "$base_bin" "$platform_tools_bin" ""
+    if [[ "$PATH" == "$previous_path" ]]; then
+        base_zshrc_debug "PATH already contains required Base entries"
+    elif [[ -n "$platform_tools_bin" ]]; then
+        base_zshrc_debug "configured PATH with '$base_bin' and '$platform_tools_bin'"
+    else
+        base_zshrc_debug "prepended '$base_bin' to PATH"
+    fi
 }
 
 base_zshrc_source_defaults() {
@@ -141,12 +161,12 @@ base_zshrc_set_base_home || {
     unset -f base_zshrc_debug base_zshrc_snippet_dir base_zshrc_source_baserc_guard
     return 1
 }
-base_zshrc_prepend_path
+base_zshrc_configure_path || return $?
 base_zshrc_source_defaults || return 1
 base_zshrc_source_completions || return 1
 base_zshrc_debug "complete"
 
 unset -f base_zshrc_snippet_dir base_zshrc_set_base_home
-unset -f base_zshrc_prepend_path base_zshrc_source_defaults
+unset -f base_zshrc_source_platform_tools_helper base_zshrc_configure_path base_zshrc_source_defaults
 unset -f base_zshrc_source_completions
 unset -f base_zshrc_source_baserc_guard base_zshrc_debug

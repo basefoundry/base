@@ -640,9 +640,17 @@ exec "$(dirname "$0")/basectl" example "$@"
 
 Projects expose their own commands through `$PROJECT_ROOT/bin`. When
 `basectl activate <project>` starts a project runtime shell, Base adds that
-directory to `PATH` if it exists, behind `$BASE_HOME/bin`. Project Python command
-packages should be treated as implementation details unless a project-owned
-launcher exposes them from `bin/`.
+directory to `PATH` if it exists, behind `$BASE_HOME/bin` and behind any
+detected optional Base Platform Tools checkout. Project Python command packages
+should be treated as implementation details unless a project-owned launcher
+exposes them from `bin/`.
+
+Optional utility commands live in
+[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools).
+When that repository is checked out next to Base as `base-platform-tools`, Base
+adds its `bin/` directory to `PATH` in new Bash/Zsh shells and Base runtime
+shells. This is detected dynamically by the sourced shell snippets; users do not
+need to rerun `basectl update-profile` after checking out the optional repo.
 
 Project launchers that need to run Python packages should delegate through
 `base-wrapper` so they use the selected project virtual environment and Base's
@@ -886,6 +894,7 @@ contract and mutability policy.
 
 `~/.baserc` must not set Base-owned runtime or profile variables such as
 `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_SHELL`,
+`BASE_PLATFORM_TOOLS_HOME`, `BASE_PLATFORM_TOOLS_BIN_DIR`,
 `BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
 `BASE_ENABLE_ZSH_DEFAULTS`. Base startup snippets reject and restore those
 variables if `~/.baserc` tries to change them.
@@ -934,6 +943,8 @@ They are responsible for:
 - guarding against repeated sourcing
 - deriving and exporting `BASE_HOME` from the sourced Base snippet
 - adding Base's `bin/` directory to `PATH` so `basectl` is available after login
+- adding an optional sibling `base-platform-tools/bin` directory to `PATH` when
+  that repo is present
 - keeping dotfile integration separate from the full Base runtime bootstrap
 - optionally enabling shared shell defaults when `basectl update-profile --defaults` is used
 
@@ -1024,6 +1035,13 @@ Base no longer owns general-purpose utility CLIs such as `caff` and
 `sort-in-place`. Those tools live in
 [`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools),
 which is the optional platform/SRE utility layer for Base-managed workspaces.
+Check it out next to Base to make its launchers available automatically in new
+shells:
+
+```bash
+git clone https://github.com/codeforester/base-platform-tools.git ~/work/base-platform-tools
+exec "$SHELL" -l
+```
 
 The Base control-plane surface remains `basectl`.
 

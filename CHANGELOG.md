@@ -37,6 +37,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `bootstrap.sh` as a first-mile macOS bootstrapper for installing
   Homebrew, Git, Bash, and Base before handing off to `basectl`.
 - Added a top-level FAQ for common first-run and product questions.
+- Added optional shell startup integration for sibling
+  `base-platform-tools` checkouts.
 
 ### Changed
 
@@ -77,6 +79,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
   upstream-protected branches as clear skips instead of raw Git errors.
 - Fixed `basectl gh branch prune` and `basectl gh worktree prune` to recognize
   squash-merged PR branches through GitHub when Git ancestry is not enough.
+- Fixed `bin/base-test` to stop invoking migrated utility CLI test suites.
 
 ## [0.2.0] - 2026-05-30
 

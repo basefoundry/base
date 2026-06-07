@@ -8,6 +8,47 @@ setup() {
     mkdir -p "$TEST_HOME"
 }
 
+create_fake_runtime_base() {
+    local fake_base="$1"
+
+    mkdir -p "$fake_base/bin" "$fake_base/lib/shell"
+    cp "$BASE_REPO_ROOT/lib/shell/baserc_guard.sh" "$fake_base/lib/shell/baserc_guard.sh"
+    cp "$BASE_REPO_ROOT/lib/shell/base_platform_tools.sh" "$fake_base/lib/shell/base_platform_tools.sh"
+    cat > "$fake_base/bin/basectl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake basectl\n'
+EOF
+    chmod +x "$fake_base/bin/basectl"
+    cat > "$fake_base/base_init.sh" <<'EOF'
+#!/usr/bin/env bash
+[[ -n "${__base_init_sourced__:-}" ]] && return 0
+readonly __base_init_sourced__=1
+BASE_HOME="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+BASE_BIN_DIR="$BASE_HOME/bin"
+BASE_LIB_DIR="$BASE_HOME/lib"
+BASE_SHELL_DIR="$BASE_HOME/lib/shell"
+BASE_SHELL="${BASE_SHELL:-bash}"
+export BASE_HOME BASE_BIN_DIR BASE_LIB_DIR BASE_SHELL_DIR BASE_SHELL
+readonly BASE_HOME BASE_BIN_DIR BASE_LIB_DIR BASE_SHELL_DIR BASE_SHELL
+case ":$PATH:" in
+    *:"$BASE_BIN_DIR":*) ;;
+    *) PATH="$BASE_BIN_DIR${PATH:+:$PATH}" ;;
+esac
+export PATH
+import_base_lib() {
+    return 0
+}
+EOF
+    chmod +x "$fake_base/base_init.sh"
+}
+
+create_fake_runtime_platform_tools() {
+    local platform_tools_home="$1"
+
+    mkdir -p "$platform_tools_home/bin"
+    touch "$platform_tools_home/base_manifest.yaml"
+}
+
 @test "non-interactive bash ignores runtime rcfile" {
     cat > "$TEST_HOME/.bashrc" <<'EOF'
 touch "$HOME/user-bashrc-ran"
@@ -142,4 +183,62 @@ EOF
     [[ "$output" == *"BASE_DEBUG runtime: already loaded; skipping"* ]]
     [[ "$output" == *"USER_BASHRC_COUNT=1"* ]]
     [[ "$output" == *"BASE_SHELL=1"* ]]
+}
+
+@test "runtime bashrc adds optional platform tools between Base and project bins" {
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+    local fake_platform_tools="$workspace/base-platform-tools"
+    local project_root="$TEST_TMPDIR/demo"
+
+    create_fake_runtime_base "$fake_base"
+    create_fake_runtime_platform_tools "$fake_platform_tools"
+    mkdir -p "$project_root/bin"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+    fake_platform_tools="$(cd "$fake_platform_tools" && pwd -P)"
+    project_root="$(cd "$project_root" && pwd -P)"
+
+    run env -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        PATH="$fake_platform_tools/bin:$fake_base/bin:/usr/bin:/bin:$project_root/bin:$fake_platform_tools/bin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_PLATFORM_TOOLS_HOME=%s\n" "$BASE_PLATFORM_TOOLS_HOME"; \
+            printf "BASE_PLATFORM_TOOLS_BIN_DIR=%s\n" "$BASE_PLATFORM_TOOLS_BIN_DIR"; \
+            printf "PATH=%s\n" "$PATH"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME=$fake_platform_tools"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR=$fake_platform_tools/bin"* ]]
+    [[ "$output" == *"PATH=$fake_base/bin:$fake_platform_tools/bin:$project_root/bin:/usr/bin:/bin"* ]]
+}
+
+@test "runtime bashrc leaves platform tools unset when sibling repo is absent" {
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+    local project_root="$TEST_TMPDIR/demo"
+
+    create_fake_runtime_base "$fake_base"
+    mkdir -p "$project_root/bin"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+    project_root="$(cd "$project_root" && pwd -P)"
+
+    run env -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_PLATFORM_TOOLS_HOME=%s\n" "${BASE_PLATFORM_TOOLS_HOME-unset}"; \
+            printf "BASE_PLATFORM_TOOLS_BIN_DIR=%s\n" "${BASE_PLATFORM_TOOLS_BIN_DIR-unset}"; \
+            printf "PATH=%s\n" "$PATH"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME=unset"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR=unset"* ]]
+    [[ "$output" == *"PATH=$fake_base/bin:$project_root/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
+    [[ "$output" != *"base-platform-tools/bin"* ]]
 }

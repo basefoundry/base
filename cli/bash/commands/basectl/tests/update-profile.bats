@@ -2,6 +2,35 @@
 
 load ./setup_helpers.bash
 
+create_fake_shell_base() {
+    local fake_base="$1"
+
+    mkdir -p "$fake_base/bin" "$fake_base/lib/shell"
+    touch "$fake_base/base_init.sh"
+    cp "$BASE_REPO_ROOT/lib/shell/bashrc" "$fake_base/lib/shell/bashrc"
+    cp "$BASE_REPO_ROOT/lib/shell/zshrc" "$fake_base/lib/shell/zshrc"
+    cp "$BASE_REPO_ROOT/lib/shell/baserc_guard.sh" "$fake_base/lib/shell/baserc_guard.sh"
+    cp "$BASE_REPO_ROOT/lib/shell/zsh_baserc_guard.zsh" "$fake_base/lib/shell/zsh_baserc_guard.zsh"
+    cp "$BASE_REPO_ROOT/lib/shell/base_platform_tools.sh" "$fake_base/lib/shell/base_platform_tools.sh"
+    cat > "$fake_base/bin/basectl" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake basectl\n'
+EOF
+    chmod +x "$fake_base/bin/basectl"
+}
+
+create_fake_platform_tools() {
+    local platform_tools_home="$1"
+
+    mkdir -p "$platform_tools_home/bin"
+    touch "$platform_tools_home/base_manifest.yaml"
+    cat > "$platform_tools_home/bin/caff" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake caff\n'
+EOF
+    chmod +x "$platform_tools_home/bin/caff"
+}
+
 
 @test "basectl update-profile creates Base-managed sections in all shell dotfiles" {
     run_base_command update-profile
@@ -69,6 +98,75 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "Base-managed Bash startup detects sibling Base Platform Tools without profile rewrite" {
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+    local fake_platform_tools="$workspace/base-platform-tools"
+
+    create_fake_shell_base "$fake_base"
+    create_fake_platform_tools "$fake_platform_tools"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+    fake_platform_tools="$(cd "$fake_platform_tools" && pwd -P)"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$fake_base/lib/shell/bashrc" -i -c '\
+            printf "BASE_HOME=%s\n" "$BASE_HOME"; \
+            printf "BASE_PLATFORM_TOOLS_HOME=%s\n" "$BASE_PLATFORM_TOOLS_HOME"; \
+            printf "BASE_PLATFORM_TOOLS_BIN_DIR=%s\n" "$BASE_PLATFORM_TOOLS_BIN_DIR"; \
+            printf "PATH=%s\n" "$PATH"; \
+            printf "CAFF=%s\n" "$(command -v caff)"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$fake_base"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME=$fake_platform_tools"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR=$fake_platform_tools/bin"* ]]
+    [[ "$output" == *"PATH=$fake_base/bin:$fake_platform_tools/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
+    [[ "$output" == *"CAFF=$fake_platform_tools/bin/caff"* ]]
+}
+
+@test "Base-managed Bash startup leaves platform tools unset when sibling repo is absent" {
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+
+    create_fake_shell_base "$fake_base"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$fake_base/lib/shell/bashrc" -i -c '\
+            printf "BASE_PLATFORM_TOOLS_HOME=%s\n" "${BASE_PLATFORM_TOOLS_HOME-unset}"; \
+            printf "BASE_PLATFORM_TOOLS_BIN_DIR=%s\n" "${BASE_PLATFORM_TOOLS_BIN_DIR-unset}"; \
+            printf "PATH=%s\n" "$PATH"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME=unset"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR=unset"* ]]
+    [[ "$output" == *"PATH=$fake_base/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
+    [[ "$output" != *"base-platform-tools/bin"* ]]
+}
+
+@test "Base-managed Bash startup orders Base before platform tools and removes duplicates" {
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+    local fake_platform_tools="$workspace/base-platform-tools"
+
+    create_fake_shell_base "$fake_base"
+    create_fake_platform_tools "$fake_platform_tools"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+    fake_platform_tools="$(cd "$fake_platform_tools" && pwd -P)"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="$fake_platform_tools/bin:$fake_base/bin:/usr/bin:/bin:$fake_platform_tools/bin:$fake_base/bin" \
+        bash --rcfile "$fake_base/lib/shell/bashrc" -i -c 'printf "PATH=%s\n" "$PATH"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"PATH=$fake_base/bin:$fake_platform_tools/bin:/usr/bin:/bin"* ]]
 }
 
 @test "BASE_DEBUG traces Base-managed Bash startup" {
@@ -173,6 +271,8 @@ load ./setup_helpers.bash
     [[ "$output" == *"BASE_BASH_COMMAND_SCRIPT"* ]]
     [[ "$output" == *"BASE_PROJECT_ROOT"* ]]
     [[ "$output" == *"BASE_PROJECT_VENV_DIR"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR"* ]]
     [[ "$output" != *"BASE_ARCH"* ]]
 }
 
@@ -190,6 +290,31 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "Base-managed Zsh startup detects sibling Base Platform Tools without profile rewrite" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    local workspace="$TEST_TMPDIR/fake-workspace"
+    local fake_base="$workspace/base"
+    local fake_platform_tools="$workspace/base-platform-tools"
+
+    create_fake_shell_base "$fake_base"
+    create_fake_platform_tools "$fake_platform_tools"
+    fake_base="$(cd "$fake_base" && pwd -P)"
+    fake_platform_tools="$(cd "$fake_platform_tools" && pwd -P)"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c 'source "$1"; printf "BASE_HOME=%s\n" "$BASE_HOME"; printf "BASE_PLATFORM_TOOLS_BIN_DIR=%s\n" "$BASE_PLATFORM_TOOLS_BIN_DIR"; printf "PATH=%s\n" "$PATH"; printf "CAFF=%s\n" "$(command -v caff)"' \
+        zsh "$fake_base/lib/shell/zshrc"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$fake_base"* ]]
+    [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR=$fake_platform_tools/bin"* ]]
+    [[ "$output" == *"PATH=$fake_base/bin:$fake_platform_tools/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
+    [[ "$output" == *"CAFF=$fake_platform_tools/bin/caff"* ]]
 }
 
 @test "baserc cannot override BASE_HOME for Base-managed Zsh startup" {
