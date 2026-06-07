@@ -116,12 +116,12 @@ base_build_subcommand_main() {
         esac
     done
 
-    [[ -n "$project" ]] || {
-        base_build_usage_error "Project name is required."
-        return $?
-    }
     [[ -n "$project" || "$workspace_requested" != "1" ]] || {
         base_build_usage_error "Option '--workspace' requires an explicit project name."
+        return $?
+    }
+    [[ -n "$project" ]] || {
+        base_build_usage_error "Project name is required."
         return $?
     }
 

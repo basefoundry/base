@@ -10,6 +10,24 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl build <project> [target...]"* ]]
 }
 
+@test "basectl build reports invalid arguments as usage errors" {
+    run_basectl build
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Project name is required."* ]]
+
+    run_basectl build --workspace
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
+
+    run_basectl build --workspace "$TEST_TMPDIR"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
+
+    run_basectl build --unknown demo
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown build option '--unknown'."* ]]
+}
+
 @test "basectl build runs default targets from target working directories" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
