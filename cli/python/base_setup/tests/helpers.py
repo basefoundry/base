@@ -10,6 +10,14 @@ from unittest import mock
 from base_setup.engine import main
 
 
+PROJECT_RUNTIME_ENV_VARS = (
+    "BASE_PROJECT",
+    "BASE_PROJECT_ROOT",
+    "BASE_PROJECT_MANIFEST",
+    "BASE_PROJECT_VENV_DIR",
+)
+
+
 def run_engine(args: list[str]) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -18,6 +26,8 @@ def run_engine(args: list[str]) -> tuple[int, str, str]:
             os.environ,
             {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])},
         ):
+            for name in PROJECT_RUNTIME_ENV_VARS:
+                os.environ.pop(name, None)
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()

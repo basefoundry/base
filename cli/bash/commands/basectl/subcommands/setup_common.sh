@@ -524,14 +524,15 @@ setup_install_xcode_tools() {
 }
 
 setup_python_installed() {
-    local formula
+    local brew_bin formula
 
     formula="$(setup_python_formula)"
-    command -v brew >/dev/null 2>&1 && brew list "$formula" >/dev/null 2>&1
+    brew_bin="$(setup_find_brew_bin)" || return 1
+    "$brew_bin" list "$formula" >/dev/null 2>&1
 }
 
 setup_install_python() {
-    local formula
+    local brew_bin formula
 
     formula="$(setup_python_formula)"
 
@@ -545,14 +546,14 @@ setup_install_python() {
         return 0
     fi
 
-    command -v brew >/dev/null 2>&1 || fatal_error "Homebrew is required to install Python formula '$formula'. $(setup_recovery_homebrew)"
+    brew_bin="$(setup_find_brew_bin)" || fatal_error "Homebrew is required to install Python formula '$formula'. $(setup_recovery_homebrew)"
 
     log_info "Installing Python formula '$formula' via Homebrew."
-    run brew install "$formula"
+    run "$brew_bin" install "$formula"
 }
 
 setup_find_python_bin() {
-    local formula prefix candidate
+    local brew_bin formula prefix candidate
     local candidates=()
 
     if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" ]]; then
@@ -574,8 +575,8 @@ setup_find_python_bin() {
     done
 
     candidates=()
-    if command -v brew >/dev/null 2>&1; then
-        prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
+    if brew_bin="$(setup_find_brew_bin)"; then
+        prefix="$("$brew_bin" --prefix "$formula" 2>/dev/null || true)"
         if [[ -n "$prefix" ]]; then
             candidates+=("$prefix/bin/python3")
             candidates+=("$prefix/libexec/bin/python3")
