@@ -27,8 +27,8 @@ def build_targets_project_from_args(
     workspace: str | None,
     resolve_project: ProjectResolver,
 ) -> int:
-    if not 1 <= len(arguments) <= 1000:
-        ctx.log.error("Command 'build-targets' expects between 1 and 1000 arguments; got %d.", len(arguments))
+    if len(arguments) < 1:
+        ctx.log.error("Command 'build-targets' requires at least 1 argument (project name); got %d.", len(arguments))
         return 2
     return build_targets_project_command(ctx, arguments[0], arguments[1:], workspace, resolve_project)
 
@@ -40,7 +40,7 @@ def list_build_targets_from_args(
     resolve_project: ProjectResolver,
 ) -> int:
     if len(arguments) != 1:
-        ctx.log.error("Command 'build-target-list' expects between 1 and 1 arguments; got %d.", len(arguments))
+        ctx.log.error("Command 'build-target-list' requires exactly 1 argument (project name); got %d.", len(arguments))
         return 2
     return list_build_targets_command(ctx, arguments[0], workspace, resolve_project)
 
