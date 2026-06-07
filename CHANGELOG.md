@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Expanded `basectl repo init` to seed portable project Git workflow guidance
+  and a standard pull request template for Base-managed repositories.
+
 ## [0.3.0] - 2026-06-06
 
 ### Added
