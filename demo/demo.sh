@@ -14,11 +14,13 @@ base_demo_home() {
     cd -- "$(base_demo_script_dir)/.." && pwd -P
 }
 
-BASE_HOME="$(base_demo_home)" || {
-    printf 'ERROR: Unable to resolve Base home for demo.\n' >&2
-    exit 1
-}
-export BASE_HOME
+if [[ -z "${BASE_HOME:-}" ]]; then
+    BASE_HOME="$(base_demo_home)" || {
+        printf 'ERROR: Unable to resolve Base home for demo.\n' >&2
+        exit 1
+    }
+    export BASE_HOME
+fi
 
 # shellcheck source=/dev/null
 source "$BASE_HOME/base_init.sh" || {
