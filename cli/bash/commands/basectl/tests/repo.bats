@@ -20,6 +20,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/tests/validate.sh'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create private GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
@@ -76,6 +77,7 @@ load ./basectl_helpers.bash
     [ -f "$repo_dir/VERSION" ]
     [ -f "$repo_dir/CHANGELOG.md" ]
     [ -f "$repo_dir/CONTRIBUTING.md" ]
+    [ -f "$repo_dir/.github/pull_request_template.md" ]
     [ -f "$repo_dir/LICENSE" ]
     [ -f "$repo_dir/.gitignore" ]
     [ -f "$repo_dir/base_manifest.yaml" ]
@@ -84,6 +86,16 @@ load ./basectl_helpers.bash
     grep -Fqx "0.1.0" "$repo_dir/VERSION"
     grep -Fq "name: base-demo" "$repo_dir/base_manifest.yaml"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
+    grep -Fq "<category>/<issue>-<YYYYMMDD>-<slug>" "$repo_dir/CONTRIBUTING.md"
+    grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/<default-branch>" "$repo_dir/CONTRIBUTING.md"
+    grep -Fq 'Update `CHANGELOG.md` only for notable user-visible or release-worthy' "$repo_dir/CONTRIBUTING.md"
+    grep -Fq "## Checklist" "$repo_dir/.github/pull_request_template.md"
+    grep -Fq "CHANGELOG is updated for notable user-visible or release-worthy changes." "$repo_dir/.github/pull_request_template.md"
+    ! grep -Fq "Demo Impact" "$repo_dir/.github/pull_request_template.md"
+
+    run bash -c 'cd "$1" && ./tests/validate.sh' _ "$repo_dir"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository baseline is present."* ]]
 }
 
 @test "basectl repo init defaults copyright holder to git user name" {

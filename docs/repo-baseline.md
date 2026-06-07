@@ -58,6 +58,7 @@ being skipped.
 - `VERSION`
 - `CHANGELOG.md`
 - `CONTRIBUTING.md`
+- `.github/pull_request_template.md`
 - `LICENSE`
 - `.gitignore`
 - `base_manifest.yaml`
@@ -83,6 +84,28 @@ test:
 The generated validation script checks for the required baseline files. It is
 not a replacement for project tests; it is the seed contract that lets
 `basectl test <project>` work immediately.
+
+## Git Workflow
+
+The generated `CONTRIBUTING.md` and pull request template seed a portable
+Base-managed project workflow:
+
+- create or choose a GitHub issue before implementation work
+- use one standard category label: `bug`, `enhancement`, `documentation`, `ci`,
+  or `security`
+- branch from the issue with `<category>/<issue>-<YYYYMMDD>-<slug>`
+- use a dedicated Git worktree for each pull request
+- keep each pull request scoped to the issue and link it with `Fixes #<issue>`
+  or `Closes #<issue>` when the merge should close the issue
+- run project checks before opening or updating the pull request
+- update `CHANGELOG.md` only for notable user-visible or release-worthy changes
+- after merge, sync the default branch, remove the worktree, and delete merged
+  local and remote branches when safe
+
+The generated pull request template keeps the project baseline intentionally
+portable: `Summary`, `Issue`, `Validation`, `Notes`, and a short checklist.
+Base-specific sections such as `Demo Impact` belong only in projects that
+choose that policy.
 
 ## GitHub Configuration
 
@@ -120,6 +143,7 @@ Dry-run mode does not require authentication because it only prints the planned
 ## Boundaries
 
 The MVP does not configure branch protection, manage repository secrets, create
-teams, or add CODEOWNERS. Those are separate workflow and policy decisions.
-Base can grow those capabilities once the baseline command has proven useful
-for real repos such as the Base demo project.
+teams, add CODEOWNERS, or force Base-specific PR sections such as `Demo Impact`.
+Those are separate workflow and policy decisions. Base can grow those
+capabilities once the baseline command has proven useful for real repos such as
+the Base demo project.
