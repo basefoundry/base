@@ -12,6 +12,7 @@ from .artifacts import check_artifact
 from .artifacts import merge_artifacts
 from .artifacts import reconcile_artifacts
 from .artifacts import resolve_artifact_definitions
+from .build import check_build
 from .checks import ArtifactCheck
 from .checks import check_to_doctor_json
 from .checks import check_to_json
@@ -244,6 +245,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
 
     checks.extend(check_required_env(effective_manifest))
     checks.extend(check_required_ports(effective_manifest))
+    checks.extend(check_build(effective_manifest))
     checks.extend(check_demo(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
@@ -279,4 +281,5 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         commands=manifest.commands,
         activate=manifest.activate,
         demo=manifest.demo,
+        build=manifest.build,
     )

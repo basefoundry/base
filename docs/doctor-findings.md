@@ -66,6 +66,7 @@ part of the doctor workflow.
 | `BASE-P050` | Project virtual environment readiness |
 | `BASE-P060` | Project demo declaration |
 | `BASE-P061` | Project demo script path and executable status |
+| `BASE-P070` | Build target working directory status |
 | `BASE-P100` | User config disables all IDE setup and checks |
 | `BASE-P101` | User config disables setup and checks for one IDE |
 | `BASE-P102` | User IDE setting conflicts with a project manifest setting |
