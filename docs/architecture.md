@@ -181,6 +181,7 @@ Contains:
 - interactive Bash/Zsh guardrails
 - `BASE_HOME` derived from the sourced Base snippet
 - Base `bin/` added to `PATH` so `basectl` is available after login
+- optional sibling `base-platform-tools/bin` added to `PATH` when present
 - optional shell defaults when the user runs `basectl update-profile --defaults`
 
 This layer must not source `base_init.sh` and must not establish the full Base
@@ -200,6 +201,7 @@ Contains:
 - Base's Bash standard library
 - `import_base_lib` for convention-based Base Bash library imports
 - PATH additions for Base's own executable entrypoints
+- optional PATH additions for the local Base Platform Tools companion repo
 
 This layer is established by `base_init.sh`, which is sourced only through the
 `basectl` command path. The canonical variable reference and mutability policy

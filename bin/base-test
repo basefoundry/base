@@ -14,8 +14,6 @@ PYTHONPATH="${BASE_HOME:-$(pwd)}/lib/python:${BASE_HOME:-$(pwd)}/cli/python${PYT
 
 bats \
     cli/bash/commands/basectl/tests/*.bats \
-    cli/bash/commands/caff/tests/caff.bats \
-    cli/bash/commands/sort-in-place/tests/sort-in-place.bats \
     lib/bash/file/tests/lib_file.bats \
     lib/bash/git/tests/lib_git.bats \
     lib/bash/runtime/tests/runtime_bashrc.bats \

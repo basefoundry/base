@@ -49,10 +49,11 @@ boundary.
 
 `~/.baserc` may set user knobs such as `BASE_DEBUG`. It must not set Base-owned
 runtime or profile variables such as `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`,
-`BASE_OS`, `BASE_HOST`, `BASE_SHELL`, `BASE_PROFILE_VERSION`,
-`BASE_ENABLE_BASH_DEFAULTS`, or `BASE_ENABLE_ZSH_DEFAULTS`. It must also not set
-command or project metadata such as `BASE_BASH_COMMAND_SCRIPT`, `BASE_PROJECT`,
-`BASE_PROJECT_ROOT`, or `BASE_PROJECT_VENV_DIR`.
+`BASE_OS`, `BASE_HOST`, `BASE_SHELL`, `BASE_PLATFORM_TOOLS_HOME`,
+`BASE_PLATFORM_TOOLS_BIN_DIR`, `BASE_PROFILE_VERSION`,
+`BASE_ENABLE_BASH_DEFAULTS`, or `BASE_ENABLE_ZSH_DEFAULTS`. It must also not
+set command or project metadata such as `BASE_BASH_COMMAND_SCRIPT`,
+`BASE_PROJECT`, `BASE_PROJECT_ROOT`, or `BASE_PROJECT_VENV_DIR`.
 
 ## Base Runtime Contract
 
@@ -103,6 +104,23 @@ example, `basectl run` exports project variables to the project command process,
 but a non-Bash command receives normal environment variables. Treat the values
 as read-only contract values even when the operating shell cannot enforce that.
 
+## Optional Companion Repository Variables
+
+Base can integrate with the optional
+[`base-platform-tools`](https://github.com/codeforester/base-platform-tools)
+repository when it is checked out next to Base. Detection is intentionally local
+and conservative: the sibling directory must be named `base-platform-tools` and
+must contain both `base_manifest.yaml` and `bin/`.
+
+These variables are set only when that checkout is detected by ordinary
+Bash/Zsh startup snippets or by a Base runtime Bash shell. Plain `base_init.sh`
+command dispatch does not require the optional repository.
+
+| Variable | Owner | Meaning and impact | User changes |
+| --- | --- | --- | --- |
+| `BASE_PLATFORM_TOOLS_HOME` | Base | Physical path to the optional sibling `base-platform-tools` checkout. | Do not set. Derived during shell startup when the optional repo is present. |
+| `BASE_PLATFORM_TOOLS_BIN_DIR` | Base | `$BASE_PLATFORM_TOOLS_HOME/bin`. Added to `PATH` after `$BASE_HOME/bin` and before project `bin/` directories. | Do not set. Derived during shell startup when the optional repo is present. |
+
 ## Dotfile And Profile Variables
 
 These variables are involved in normal shell startup rather than the full
@@ -116,9 +134,10 @@ These variables are involved in normal shell startup rather than the full
 | `BASE_DEBUG` | User | Enables debug traces in Base-managed shell startup snippets and the runtime Bash rcfile. | Safe to set in `~/.baserc` or as a one-off environment variable. |
 
 The ordinary Bash/Zsh dotfile snippets derive `BASE_HOME` and add
-`$BASE_HOME/bin` to `PATH` so `basectl` is available in new terminals. They do
-not source `base_init.sh`, so they do not establish the full readonly runtime
-contract.
+`$BASE_HOME/bin` to `PATH` so `basectl` is available in new terminals. When a
+valid sibling `base-platform-tools` checkout is present, those same snippets add
+its `bin/` directory immediately after Base's own `bin/`. They do not source
+`base_init.sh`, so they do not establish the full readonly runtime contract.
 
 ## User-Tunable Command Knobs
 
