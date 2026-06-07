@@ -3,16 +3,47 @@
 set -euo pipefail
 
 base_test_python="${BASE_TEST_PYTHON:-$HOME/.base.d/base/.venv/bin/python}"
+base_test_home="${BASE_HOME:-$(pwd)}"
+base_test_unset_env=(
+    -u BASE_HOME
+    -u BASE_BIN_DIR
+    -u BASE_CLI_DIR
+    -u BASE_BASH_DIR
+    -u BASE_BASH_COMMANDS_DIR
+    -u BASE_LIB_DIR
+    -u BASE_BASH_LIB_DIR
+    -u BASE_SHELL_DIR
+    -u BASE_OS
+    -u BASE_HOST
+    -u BASE_SHELL
+    -u BASE_PLATFORM_TOOLS_HOME
+    -u BASE_PLATFORM_TOOLS_BIN_DIR
+    -u BASE_PROFILE_VERSION
+    -u BASE_ENABLE_BASH_DEFAULTS
+    -u BASE_ENABLE_ZSH_DEFAULTS
+    -u BASE_DEBUG
+    -u BASE_BASH_COMMAND_NAME
+    -u BASE_BASH_COMMAND_DIR
+    -u BASE_BASH_COMMAND_SCRIPT
+    -u BASE_BASH_BOOTSTRAP_SOURCE
+    -u BASE_PROJECT
+    -u BASE_PROJECT_ROOT
+    -u BASE_PROJECT_MANIFEST
+    -u BASE_PROJECT_VENV_DIR
+    -u VIRTUAL_ENV
+)
 
 if [[ ! -x "$base_test_python" ]]; then
     printf 'ERROR: Base test Python was not found at %s. Run basectl setup base first.\n' "$base_test_python" >&2
     exit 1
 fi
 
-PYTHONPATH="${BASE_HOME:-$(pwd)}/lib/python:${BASE_HOME:-$(pwd)}/cli/python${PYTHONPATH:+:$PYTHONPATH}" \
+env "${base_test_unset_env[@]}" \
+    PYTHONPATH="$base_test_home/lib/python:$base_test_home/cli/python${PYTHONPATH:+:$PYTHONPATH}" \
     "$base_test_python" -m pytest
 
-bats \
+env "${base_test_unset_env[@]}" \
+    bats \
     cli/bash/commands/basectl/tests/*.bats \
     lib/bash/file/tests/lib_file.bats \
     lib/bash/git/tests/lib_git.bats \

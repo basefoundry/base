@@ -170,6 +170,12 @@ EOF
 }
 
 @test "BASE_DEBUG traces Base-managed Bash startup" {
+    local base_only_trace
+    local platform_tools_trace
+
+    base_only_trace="BASE_DEBUG bashrc: prepended '$BASE_REPO_ROOT/bin' to PATH"
+    platform_tools_trace="BASE_DEBUG bashrc: configured PATH with '$BASE_REPO_ROOT/bin' and "
+
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
@@ -182,7 +188,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_DEBUG bashrc: loading"* ]]
     [[ "$output" == *"BASE_DEBUG bashrc: BASE_HOME=$BASE_REPO_ROOT"* ]]
-    [[ "$output" == *"BASE_DEBUG bashrc: prepended '$BASE_REPO_ROOT/bin' to PATH"* ]]
+    [[ "$output" == *"$base_only_trace"* || "$output" == *"$platform_tools_trace"* ]]
     [[ "$output" == *"BASE_DEBUG bashrc: complete"* ]]
 }
 

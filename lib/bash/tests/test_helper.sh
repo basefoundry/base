@@ -12,7 +12,42 @@ readonly BASE_REPO_ROOT="$(cd "$BASE_BASH_DIR/../.." && pwd -P)"
 readonly BASE_CLI_BASH_DIR="$BASE_REPO_ROOT/cli/bash"
 readonly BASE_TEST_ORIG_PATH="$PATH"
 
+unset_base_runtime_env() {
+    local var_name
+
+    for var_name in \
+        BASE_HOME \
+        BASE_BIN_DIR \
+        BASE_CLI_DIR \
+        BASE_BASH_DIR \
+        BASE_BASH_COMMANDS_DIR \
+        BASE_LIB_DIR \
+        BASE_BASH_LIB_DIR \
+        BASE_SHELL_DIR \
+        BASE_OS \
+        BASE_HOST \
+        BASE_SHELL \
+        BASE_PLATFORM_TOOLS_HOME \
+        BASE_PLATFORM_TOOLS_BIN_DIR \
+        BASE_PROFILE_VERSION \
+        BASE_ENABLE_BASH_DEFAULTS \
+        BASE_ENABLE_ZSH_DEFAULTS \
+        BASE_DEBUG \
+        BASE_BASH_COMMAND_NAME \
+        BASE_BASH_COMMAND_DIR \
+        BASE_BASH_COMMAND_SCRIPT \
+        BASE_BASH_BOOTSTRAP_SOURCE \
+        BASE_PROJECT \
+        BASE_PROJECT_ROOT \
+        BASE_PROJECT_MANIFEST \
+        BASE_PROJECT_VENV_DIR \
+        VIRTUAL_ENV; do
+        unset "$var_name" 2>/dev/null || true
+    done
+}
+
 setup_test_tmpdir() {
+    unset_base_runtime_env
     TEST_TMPDIR="${BATS_TEST_TMPDIR}/workspace"
     mkdir -p "$TEST_TMPDIR"
 }

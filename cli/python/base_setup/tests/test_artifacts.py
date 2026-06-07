@@ -158,7 +158,41 @@ class ArtifactReconcileTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("pip install click==8.4.1 PyYAML==6.0.3 rich", stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_dry_run_ignores_inherited_project_runtime_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(__file__).resolve().parents[4]
+            inherited_venv_dir = Path(tmpdir) / "inherited-base-venv"
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: rich",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
 
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "BASE_PROJECT": "base",
+                    "BASE_PROJECT_ROOT": str(repo_root),
+                    "BASE_PROJECT_MANIFEST": str(repo_root / "base_manifest.yaml"),
+                    "BASE_PROJECT_VENV_DIR": str(inherited_venv_dir),
+                },
+            ):
+                status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertNotIn(str(inherited_venv_dir), stderr)
+        self.assertIn("pip install click==8.4.1 PyYAML==6.0.3 rich", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:

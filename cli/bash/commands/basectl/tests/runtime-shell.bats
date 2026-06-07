@@ -46,7 +46,13 @@ EOF
 @test "Base runtime shell activates project virtual environment" {
     local project_root="$TEST_TMPDIR/demo"
     local venv_dir="$TEST_TMPDIR/demo-venv"
+    local path_with_platform
+    local path_without_platform
+    local workspace_root
 
+    workspace_root="$(cd "$BASE_REPO_ROOT/.." && pwd -P)"
+    path_without_platform="PATH=$venv_dir/bin:$BASE_REPO_ROOT/bin:$project_root/bin:"
+    path_with_platform="PATH=$venv_dir/bin:$BASE_REPO_ROOT/bin:$workspace_root/base-platform-tools/bin:$project_root/bin:"
     mkdir -p "$project_root/bin" "$venv_dir/bin"
     cat > "$venv_dir/bin/activate" <<'EOF'
 VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
@@ -70,7 +76,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=demo"* ]]
     [[ "$output" == *"VIRTUAL_ENV=$venv_dir"* ]]
-    [[ "$output" == *"PATH=$venv_dir/bin:$BASE_REPO_ROOT/bin:$project_root/bin:"* ]]
+    [[ "$output" == *"$path_without_platform"* || "$output" == *"$path_with_platform"* ]]
     [[ "$output" == *'PS1=\T ${_BASE_RUNTIME_HOST_PROMPT:-unknown} ${BASE_PROJECT:+[$BASE_PROJECT] }$(_base_runtime_venv_prompt)$(_base_runtime_git_prompt)\w: '* ]]
 }
 
