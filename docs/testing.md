@@ -28,6 +28,38 @@ Run the full command/library suite through:
 basectl test base
 ```
 
+## Reproducible debugging and completion checks
+
+Before changing behavior, capture a reproducible failure path:
+
+1. Save the exact failing command, args, and environment assumptions.
+2. Re-run once with full command output visible.
+3. Test one hypothesis at a time and stop when evidence confirms or rejects it.
+
+Start with narrow diagnostics in this order:
+
+```bash
+basectl check <project>
+basectl doctor <project>
+basectl test <project>
+```
+
+When failures cross boundaries, map each symptom to ownership:
+
+- Shell startup/profile changes: `lib/bash/` and `cli/bash/`.
+- Manifest and project-discovery behavior: `base_manifest.yaml`, `tests/integration/`, and command mapping code.
+- Runtime orchestration changes: `bin/basectl` and `lib/shell/runtime/`.
+- Python behavior changes: `cli/python/` and `lib/python/`.
+
+Use this completion gate before marking a change complete:
+
+- Run `git diff --check` and capture the command output.
+- Run the narrowest validation commands for the changed layer and capture successful
+  command transcripts in the PR.
+- Re-run the repro command(s) that previously failed to show the fix.
+- Record whether `basectl check` / `basectl doctor` output and exit status changed, and why.
+- If checks cannot run in the current environment, call that out explicitly in the PR notes.
+
 ## Integration Tests
 
 Integration tests live under `tests/integration/`. They run real `basectl`
