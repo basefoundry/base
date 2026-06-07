@@ -3,7 +3,7 @@
 ![Tests](https://github.com/codeforester/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/codeforester/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
@@ -1118,7 +1118,7 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `0.2.0` is the current release. The implemented command surface covers
+Base `0.3.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, and GitHub workflow helpers.
