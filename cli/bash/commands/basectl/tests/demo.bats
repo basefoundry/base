@@ -263,6 +263,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Base Self-Demo"* ]]
     [[ "$output" == *"Base self-demo complete."* ]]
+    [[ "$output" != *"BASE_HOME: readonly variable"* ]]
     grep -Fqx "basectl projects list --workspace $(dirname "$BASE_REPO_ROOT")" "$state_file"
     grep -Fqx "basectl check base" "$state_file"
     grep -Fqx "basectl doctor base" "$state_file"
