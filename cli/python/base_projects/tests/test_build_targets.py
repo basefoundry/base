@@ -84,6 +84,57 @@ def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
 
 
 class BuildTargetTests(unittest.TestCase):
+    def test_projects_build_targets_requires_project_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            status, stdout, stderr = run_engine(["build-targets"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("requires at least 1 argument (project name); got 0", stderr)
+
+    def test_projects_build_targets_does_not_cap_target_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_build_manifest(workspace / "demo", "demo")
+            targets = [f"target-{index}" for index in range(1001)]
+
+            status, stdout, stderr = run_engine(["build-targets", "demo", *targets], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("does not declare build target 'target-0'", stderr)
+        self.assertNotIn("expects between 1 and 1000 arguments", stderr)
+
+    def test_projects_build_target_list_requires_exactly_one_project_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            status, stdout, stderr = run_engine(["build-target-list"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("requires exactly 1 argument (project name); got 0", stderr)
+
+    def test_projects_build_target_list_rejects_extra_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            status, stdout, stderr = run_engine(["build-target-list", "demo", "api"], base_home)
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("requires exactly 1 argument (project name); got 2", stderr)
+
     def test_projects_build_targets_prints_default_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
