@@ -14,7 +14,7 @@ Usage:
   basectl setup [options] [project]
 
 Options:
-  --profile <list>  Install named prerequisite profiles. Known profiles: dev, sre.
+  --profile <list>  Install named prerequisite profiles. Known profiles: dev, sre, ai.
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
   --notify           Force a best-effort macOS notification when setup ends.

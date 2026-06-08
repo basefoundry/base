@@ -142,18 +142,18 @@ load ./setup_helpers.bash
     touch "$TEST_STATE_DIR/click-installed"
     create_base_venv_stub "$venv_dir"
 
-    run_base_command check --profile dev,SRE
+    run_base_command check --profile dev,SRE,AI
 
     [ "$status" -eq 1 ]
-    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile dev,sre)" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile dev,sre,ai)" ]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
 @test "basectl check rejects unknown profiles" {
-    run_base_command check --profile ai
+    run_base_command check --profile ops
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl check rejects empty profile list entries" {
