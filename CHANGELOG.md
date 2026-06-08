@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added an explicit `ai` prerequisite profile for Codex CLI and Claude Code
+  setup, check, doctor, onboard, and shell completion flows.
+
 ### Changed
 
 - Expanded `basectl repo init` to seed portable project Git workflow guidance

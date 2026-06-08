@@ -62,18 +62,18 @@ setup_enable_debug_logging() {
 }
 
 setup_supported_profiles() {
-    printf '%s\n' "dev sre"
+    printf '%s\n' "dev sre ai"
 }
 
 setup_supported_profiles_display() {
-    printf '%s\n' "dev, sre"
+    printf '%s\n' "dev, sre, ai"
 }
 
 setup_profile_supported() {
     local profile="$1"
 
     case "$profile" in
-        dev|sre)
+        dev|sre|ai)
             return 0
             ;;
         *)

@@ -19,14 +19,22 @@ from base_dev import engine
 from base_dev.engine import main
 
 
-def run_engine(args: list[str]) -> tuple[int, str, str]:
+def run_engine(args: list[str], extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
     with tempfile.TemporaryDirectory() as home_dir:
-        with mock.patch.dict(os.environ, {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])}):
+        env = {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])}
+        if extra_env:
+            env.update(extra_env)
+        with mock.patch.dict(os.environ, env):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+def write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(0o755)
 
 
 class DevManifestTests(unittest.TestCase):
@@ -73,11 +81,11 @@ class DevManifestTests(unittest.TestCase):
     def test_normalize_profiles_defaults_to_dev_and_deduplicates(self) -> None:
         self.assertEqual(engine.normalize_profiles(()), ("dev",))
         self.assertEqual(engine.normalize_profiles(("dev", "sre", "dev")), ("dev", "sre"))
-        self.assertEqual(engine.normalize_profiles(("dev,SRE",)), ("dev", "sre"))
+        self.assertEqual(engine.normalize_profiles(("dev,SRE,AI",)), ("dev", "sre", "ai"))
 
     def test_normalize_profiles_rejects_unknown_profile(self) -> None:
-        with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ai'"):
-            engine.normalize_profiles(("ai",))
+        with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ops'"):
+            engine.normalize_profiles(("ops",))
 
     def test_normalize_profiles_rejects_empty_profile_list_entries(self) -> None:
         with self.assertRaisesRegex(engine.ProfileError, "Profile list must not contain empty entries"):
@@ -94,6 +102,42 @@ class DevManifestTests(unittest.TestCase):
         self.assertNotIn("brew install bats-core", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_profile_ai_dry_run_prints_official_installers(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, _stdout, stderr = run_engine(
+                ["setup", "--profile", "ai", "--dry-run"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        self.assertEqual(status, 0)
+        self.assertIn(
+            "[DRY-RUN] Would run: sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'",
+            stderr,
+        )
+        self.assertIn(
+            "[DRY-RUN] Would run: sh -c 'curl -fsSL https://claude.ai/install.sh | bash'",
+            stderr,
+        )
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_profile_ai_skips_installed_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            bin_path = Path(bin_dir)
+            write_executable(bin_path / "codex", "#!/bin/sh\nprintf 'codex 1.2.3\\n'\n")
+            write_executable(bin_path / "claude", "#!/bin/sh\nprintf '1.0.0 (Claude Code)\\n'\n")
+
+            status, _stdout, stderr = run_engine(
+                ["setup", "--profile", "ai", "--dry-run"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        self.assertEqual(status, 0)
+        self.assertIn("Codex CLI is already installed", stderr)
+        self.assertIn("Claude Code is already installed", stderr)
+        self.assertNotIn("chatgpt.com/codex/install.sh", stderr)
+        self.assertNotIn("claude.ai/install.sh", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_profile_sre_reports_sre_fix_guidance(self) -> None:
         with (
             mock.patch("base_dev.engine.command_exists", return_value=True),
@@ -106,6 +150,70 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(findings[0]["name"], "kubectl")
         self.assertEqual(findings[0]["fix"], "basectl setup --profile sre")
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_ai_reports_missing_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "ai", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual([finding["name"] for finding in findings], ["codex", "claude"])
+        self.assertEqual(findings[0]["fix"], "basectl setup --profile ai")
+        self.assertEqual(findings[1]["fix"], "basectl setup --profile ai")
+        self.assertIn("Codex CLI 'codex' was not found", findings[0]["message"])
+        self.assertIn("Claude Code 'claude' was not found", findings[1]["message"])
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_ai_reports_installed_tool_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            bin_path = Path(bin_dir)
+            write_executable(bin_path / "codex", "#!/bin/sh\nprintf 'codex 1.2.3\\n'\n")
+            write_executable(
+                bin_path / "claude",
+                "#!/bin/sh\nprintf 'Warning: update available\\n' >&2\nprintf '1.0.0 (Claude Code)\\n'\n",
+            )
+
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "ai", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertTrue(all(finding["ok"] for finding in findings))
+        self.assertIn(str(bin_path / "codex"), findings[0]["message"])
+        self.assertIn("codex 1.2.3", findings[0]["message"])
+        self.assertIn(str(bin_path / "claude"), findings[1]["message"])
+        self.assertIn("1.0.0 (Claude Code)", findings[1]["message"])
+        self.assertNotIn("Warning: update available", findings[1]["message"])
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_ai_reports_version_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            bin_path = Path(bin_dir)
+            write_executable(bin_path / "codex", "#!/bin/sh\nprintf 'codex crashed\\n' >&2\nexit 7\n")
+            write_executable(bin_path / "claude", "#!/bin/sh\nprintf '1.0.0 (Claude Code)\\n'\n")
+
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "ai", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(findings[0]["name"], "codex")
+        self.assertFalse(findings[0]["ok"])
+        self.assertEqual(findings[0]["fix"], "basectl setup --profile ai")
+        self.assertIn("Codex CLI version check failed with exit 7", findings[0]["message"])
+        self.assertIn("codex crashed", findings[0]["message"])
+        self.assertTrue(findings[1]["ok"])
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_multiple_profiles_combines_results_once_per_profile(self) -> None:
@@ -123,6 +231,24 @@ class DevManifestTests(unittest.TestCase):
         names = [finding["name"] for finding in findings]
         self.assertIn("bats-core", names)
         self.assertIn("kubectl", names)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_doctor_profile_ai_json_uses_stable_finding_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, stdout, stderr = run_engine(
+                ["doctor", "--profile", "ai", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 2)
+        self.assertEqual(stderr, "")
+        self.assertEqual([finding["id"] for finding in findings], ["BASE-D107", "BASE-D107"])
+        self.assertEqual([finding["status"] for finding in findings], ["error", "error"])
+        self.assertEqual(
+            [finding["fix"] for finding in findings],
+            ["basectl setup --profile ai", "basectl setup --profile ai"],
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_manifest_artifacts(self) -> None:

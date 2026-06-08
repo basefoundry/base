@@ -45,6 +45,7 @@ part of the doctor workflow.
 | `BASE-D104` | Prerequisite profile Homebrew package status |
 | `BASE-D105` | GitHub CLI availability |
 | `BASE-D106` | GitHub CLI authentication status |
+| `BASE-D107` | AI developer tool availability and version status |
 
 ## Project Findings
 

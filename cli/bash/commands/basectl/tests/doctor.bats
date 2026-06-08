@@ -164,10 +164,10 @@ EOF
 }
 
 @test "basectl doctor rejects unknown profiles" {
-    run_basectl doctor --profile ai
+    run_basectl doctor --profile ops
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl doctor reports errors with suggested fixes" {

@@ -22,6 +22,10 @@ _base_basectl_completion_compgen() {
     done < <(compgen -W "$words" -- "$current")
 }
 
+_base_basectl_completion_profiles() {
+    printf '%s\n' "dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"
+}
+
 _base_basectl_completion_project_or_options() {
     local options="$1"
     local current="$2"
@@ -39,7 +43,7 @@ _base_basectl_completion_profiles_or_options() {
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
-        _base_basectl_completion_compgen "dev sre dev,sre" "$current"
+        _base_basectl_completion_compgen "$(_base_basectl_completion_profiles)" "$current"
     else
         _base_basectl_completion_compgen "$options" "$current"
     fi
@@ -51,7 +55,7 @@ _base_basectl_completion_project_profiles_or_options() {
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
-        _base_basectl_completion_compgen "dev sre dev,sre" "$current"
+        _base_basectl_completion_compgen "$(_base_basectl_completion_profiles)" "$current"
     else
         _base_basectl_completion_project_or_options "$options" "$current"
     fi

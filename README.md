@@ -674,19 +674,27 @@ install Base contributor tools such as BATS, the GitHub CLI, and ShellCheck from
 `lib/base/dev_manifest.yaml`. Use `--profile sre` for the initial
 site-reliability profile in `lib/base/sre_manifest.yaml`, which installs local
 diagnostic tools such as `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`,
-`yq`, `nmap`, and `mtr`. Profiles compose with a comma-separated list.
+`yq`, `nmap`, and `mtr`. Use `--profile ai` for optional AI coding tools:
+Codex CLI and Claude Code. Profiles compose with a comma-separated list.
 
 ```bash
 basectl setup --profile dev
 basectl setup --profile sre
+basectl setup --profile ai
 basectl setup --profile dev,sre
+basectl setup --profile dev,ai
 basectl check --profile sre
+basectl check --profile ai
 basectl doctor --profile sre
+basectl doctor --profile ai
 ```
 
 AI coding tools are intentionally not part of the plain `dev` or `sre` profile.
-They require explicit account, policy, and authentication choices, so they are
-tracked as a future explicit `ai` profile.
+`basectl setup --profile ai` runs the official Codex CLI installer from
+`https://chatgpt.com/codex/install.sh` and the official Claude Code installer
+from `https://claude.ai/install.sh` only when that profile is explicitly
+requested. Base checks tool presence and version output, but it does not manage
+accounts, credentials, model access, or organization policy.
 
 If Homebrew is missing, `basectl setup` uses Homebrew's official installer URL
 at `https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`. This is

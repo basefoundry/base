@@ -46,13 +46,13 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "unexpected run: %s\n" "$*" >&2; return 99; }
-            base_onboard_subcommand_main --dry-run --profile dev,SRE
+            base_onboard_subcommand_main --dry-run --profile dev,SRE,AI
         '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would run basectl check base --profile dev\\,sre"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --profile dev\\,sre --dry-run"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev\\,sre"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl check base --profile dev\\,sre\\,ai"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl setup base --profile dev\\,sre\\,ai --dry-run"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev\\,sre\\,ai"* ]]
     [[ "$output" != *"unexpected run"* ]]
 }
 
@@ -63,11 +63,11 @@ load ./basectl_helpers.bash
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
-            base_onboard_subcommand_main --profile ai
+            base_onboard_subcommand_main --profile ops
         '
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl onboard declines setup conservatively" {

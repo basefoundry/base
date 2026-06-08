@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,12 +10,12 @@ import base_cli
 from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
-from base_setup.process import command_exists, run_check
+from base_setup.process import command_exists, dry_run_command, run_check, run_command
 from base_setup.registry import ArtifactDefinition
 
 
 app = base_cli.App(name="base_dev")
-SUPPORTED_PROFILES = ("dev", "sre")
+SUPPORTED_PROFILES = ("dev", "sre", "ai")
 
 
 @dataclass(frozen=True)
@@ -33,8 +35,32 @@ class ProfileManifest:
     definitions: tuple[ArtifactDefinition, ...]
 
 
+@dataclass(frozen=True)
+class AITool:
+    name: str
+    display_name: str
+    version_args: tuple[str, ...]
+    installer_command: tuple[str, ...]
+
+
 class ProfileError(ValueError):
     pass
+
+
+AI_TOOLS = (
+    AITool(
+        name="codex",
+        display_name="Codex CLI",
+        version_args=("--version",),
+        installer_command=("sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"),
+    ),
+    AITool(
+        name="claude",
+        display_name="Claude Code",
+        version_args=("--version",),
+        installer_command=("sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"),
+    ),
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
 )
 def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, profiles: tuple[str, ...]) -> int:
     try:
-        profile_manifests = read_profile_manifests(ctx, normalize_profiles(profiles))
+        normalized_profiles = normalize_profiles(profiles)
+        profile_manifests = read_profile_manifests(ctx, normalized_profiles)
     except (ManifestError, ArtifactError) as exc:
         ctx.log.error(str(exc))
         return 1
@@ -63,11 +90,11 @@ def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, p
         return 2
 
     if action == "setup":
-        return setup_profile_manifests(ctx, profile_manifests, dry_run=dry_run)
+        return setup_profiles(ctx, normalized_profiles, profile_manifests, dry_run=dry_run)
     if action == "check":
-        return check_profile_manifests(ctx, profile_manifests, output_format=output_format)
+        return check_profiles(ctx, normalized_profiles, profile_manifests, output_format=output_format)
     if action == "doctor":
-        return doctor_profile_manifests(profile_manifests, output_format=output_format)
+        return doctor_profiles(normalized_profiles, profile_manifests, output_format=output_format)
 
     ctx.log.error("Unsupported base_dev action '%s'. Expected setup, check, or doctor.", action)
     return 2
@@ -96,6 +123,8 @@ def normalize_profiles(profiles: tuple[str, ...]) -> tuple[str, ...]:
 def read_profile_manifests(ctx: base_cli.Context, profiles: tuple[str, ...]) -> tuple[ProfileManifest, ...]:
     profile_manifests: list[ProfileManifest] = []
     for profile in profiles:
+        if profile == "ai":
+            continue
         manifest = read_profile_manifest(ctx, profile)
         definitions = resolve_artifact_definitions(manifest.artifacts)
         profile_manifests.append(ProfileManifest(profile, manifest, definitions))
@@ -142,6 +171,32 @@ def setup_profile_manifests(
     return 0
 
 
+def setup_profiles(
+    ctx: base_cli.Context,
+    profiles: tuple[str, ...],
+    profile_manifests: tuple[ProfileManifest, ...],
+    dry_run: bool,
+) -> int:
+    profile_manifest_by_name = {
+        profile_manifest.name: profile_manifest for profile_manifest in profile_manifests
+    }
+    for profile in profiles:
+        if profile == "ai":
+            status = setup_ai_tools(ctx, dry_run=dry_run)
+        else:
+            profile_manifest = profile_manifest_by_name[profile]
+            status = setup_profile_artifacts(
+                ctx,
+                profile_manifest.name,
+                profile_manifest.manifest,
+                profile_manifest.definitions,
+                dry_run=dry_run,
+            )
+        if status != 0:
+            return status
+    return 0
+
+
 def setup_dev_artifacts(
     ctx: base_cli.Context,
     manifest: BaseManifest,
@@ -179,6 +234,27 @@ def setup_profile_artifacts(
     return 0
 
 
+def setup_ai_tools(ctx: base_cli.Context, dry_run: bool) -> int:
+    ctx.log.info("Setting up Base 'ai' prerequisites.")
+    try:
+        for tool in AI_TOOLS:
+            check = check_ai_tool(tool)
+            if check.ok:
+                ctx.log.info("%s", check.message)
+                continue
+            ctx.log.info("Installing %s.", tool.display_name)
+            if dry_run:
+                dry_run_command(ctx, list(tool.installer_command))
+            else:
+                run_command(ctx, list(tool.installer_command))
+    except ArtifactError as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    ctx.log.info("Base 'ai' prerequisite setup is complete.")
+    return 0
+
+
 def check_profile_manifests(
     ctx: base_cli.Context,
     profile_manifests: tuple[ProfileManifest, ...],
@@ -193,6 +269,16 @@ def check_profile_manifests(
             profile=profile_manifest.name,
         )
     )
+    return print_check_results(ctx, checks, output_format=output_format)
+
+
+def check_profiles(
+    ctx: base_cli.Context,
+    profiles: tuple[str, ...],
+    profile_manifests: tuple[ProfileManifest, ...],
+    output_format: str,
+) -> int:
+    checks = collect_profile_checks(profiles, profile_manifests)
     return print_check_results(ctx, checks, output_format=output_format)
 
 
@@ -238,6 +324,15 @@ def doctor_profile_manifests(
     return print_doctor_results(checks, output_format=output_format)
 
 
+def doctor_profiles(
+    profiles: tuple[str, ...],
+    profile_manifests: tuple[ProfileManifest, ...],
+    output_format: str,
+) -> int:
+    checks = collect_profile_checks(profiles, profile_manifests)
+    return print_doctor_results(checks, output_format=output_format)
+
+
 def doctor_dev_artifacts(
     artifacts: tuple[ArtifactRequest, ...],
     definitions: tuple[ArtifactDefinition, ...],
@@ -266,6 +361,29 @@ def print_doctor_results(checks: tuple[DevCheck, ...], output_format: str) -> in
     return min(error_count, 125)
 
 
+def collect_profile_checks(
+    profiles: tuple[str, ...],
+    profile_manifests: tuple[ProfileManifest, ...],
+) -> tuple[DevCheck, ...]:
+    profile_manifest_by_name = {
+        profile_manifest.name: profile_manifest for profile_manifest in profile_manifests
+    }
+    checks: list[DevCheck] = []
+    for profile in profiles:
+        if profile == "ai":
+            checks.extend(ai_tool_checks())
+            continue
+        profile_manifest = profile_manifest_by_name[profile]
+        checks.extend(
+            dev_checks(
+                profile_manifest.manifest.artifacts,
+                profile_manifest.definitions,
+                profile=profile_manifest.name,
+            )
+        )
+    return tuple(checks)
+
+
 def dev_checks(
     artifacts: tuple[ArtifactRequest, ...],
     definitions: tuple[ArtifactDefinition, ...],
@@ -278,6 +396,60 @@ def dev_checks(
         if artifact.name == "gh" and check.ok:
             checks.append(check_github_cli_auth())
     return tuple(checks)
+
+
+def ai_tool_checks() -> tuple[DevCheck, ...]:
+    return tuple(check_ai_tool(tool) for tool in AI_TOOLS)
+
+
+def check_ai_tool(tool: AITool) -> DevCheck:
+    executable_path = shutil.which(tool.name)
+    if executable_path is None:
+        return DevCheck(
+            name=tool.name,
+            ok=False,
+            message=f"{tool.display_name} '{tool.name}' was not found.",
+            fix=profile_setup_fix("ai"),
+            finding_id="BASE-D107",
+        )
+
+    command = [executable_path, *tool.version_args]
+    completed = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        detail = summarize_command_output(completed.stderr) or summarize_command_output(completed.stdout)
+        message = f"{tool.display_name} version check failed with exit {completed.returncode}."
+        if detail:
+            message = f"{message} {detail}"
+        return DevCheck(
+            name=tool.name,
+            ok=False,
+            message=message,
+            fix=profile_setup_fix("ai"),
+            finding_id="BASE-D107",
+        )
+
+    version = (
+        summarize_command_output(completed.stdout)
+        or summarize_command_output(completed.stderr)
+        or "version unknown"
+    )
+    return DevCheck(
+        name=tool.name,
+        ok=True,
+        message=f"{tool.display_name} is already installed at '{executable_path}' ({version}).",
+        fix="",
+        finding_id="BASE-D107",
+    )
+
+
+def summarize_command_output(output: str | None) -> str:
+    return " ".join((output or "").split())
 
 
 def profile_setup_fix(profile: str) -> str:

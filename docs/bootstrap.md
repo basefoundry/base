@@ -86,6 +86,16 @@ Named profiles compose when a contributor also wants site-reliability tools:
 The `sre` profile installs local diagnostic tools only. It does not configure
 cloud accounts, kube contexts, credentials, or production access.
 
+AI coding tools stay behind an explicit opt-in profile:
+
+```bash
+~/work/base/bin/basectl setup --profile ai
+```
+
+The `ai` profile installs Codex CLI and Claude Code with their official
+installers. Base checks tool availability and version output, but it does not
+configure accounts, credentials, model access, or organization policy.
+
 ## Relationship To Other Install Paths
 
 Use `bootstrap.sh` when the machine may not have Homebrew, Git, or a supported

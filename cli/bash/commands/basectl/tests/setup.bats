@@ -467,6 +467,22 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile sre)" ]
 }
 
+@test "basectl setup --profile ai runs the Python prerequisite profile layer" {
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup --profile ai
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile ai)" ]
+}
+
 @test "basectl setup accepts comma separated profile lists case-insensitively" {
     local installer
 
@@ -476,18 +492,18 @@ EOF
     run_base_command \
         BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
         BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
-        setup --profile dev,SRE
+        setup --profile dev,SRE,AI
 
     [ "$status" -eq 0 ]
     [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
-    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev,sre)" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev,sre,ai)" ]
 }
 
 @test "basectl setup rejects unknown profiles" {
-    run_base_command setup --profile ai
+    run_base_command setup --profile ops
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Unsupported profile 'ai'. Expected one of: dev, sre."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl setup rejects empty profile list entries" {

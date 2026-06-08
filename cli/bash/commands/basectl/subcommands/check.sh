@@ -14,7 +14,7 @@ Usage:
   basectl check [project] [options]
 
 Options:
-  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre.
+  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --format <text|json>  Select output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.

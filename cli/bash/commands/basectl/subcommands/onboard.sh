@@ -14,7 +14,7 @@ Usage:
   basectl onboard [options]
 
 Options:
-  --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre.
+  --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --dry-run     Explain planned onboarding steps without making changes.
   --yes         Accept default answers for setup and shell profile prompts.
   --no-profile  Skip shell profile updates.
