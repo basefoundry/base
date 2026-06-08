@@ -398,6 +398,84 @@ class ProjectCheckTests(unittest.TestCase):
             "Start the service that should listen on 127.0.0.1:5432.",
         )
 
+    def test_manifest_checks_include_same_directory_pyproject(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\nartifacts: []\n", encoding="utf-8")
+            (root / "pyproject.toml").write_text(
+                "[project]\nname = \"demo-python\"\nrequires-python = \">=3.11\"\n",
+                encoding="utf-8",
+            )
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = read_manifest(manifest_path)
+
+            checks = engine.manifest_checks(default_manifest, manifest)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P140"])
+        self.assertIn("demo-python", checks[0].message)
+
+
+    def test_check_json_includes_pyproject_warnings_without_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\nartifacts: []\n", encoding="utf-8")
+            (root / "pyproject.toml").write_text(
+                "[project]\nname = \"demo-python\"\ndependencies = [\"requests\"]\n",
+                encoding="utf-8",
+            )
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = read_manifest(manifest_path)
+
+            with redirect_stdout(io.StringIO()) as stdout:
+                status = engine.check_manifest(
+                    fake_context(),
+                    default_manifest,
+                    manifest,
+                    output_format="json",
+                )
+
+        checks = json.loads(stdout.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual([check["name"] for check in checks], ["pyproject.toml", "pyproject dependencies"])
+        self.assertTrue(checks[0]["ok"])
+        self.assertFalse(checks[1]["ok"])
+        self.assertIn("does not reconcile yet", checks[1]["message"])
+
+
+    def test_doctor_json_reports_pyproject_warnings_without_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\nartifacts: []\n", encoding="utf-8")
+            (root / "pyproject.toml").write_text("[tool.base]\ncommand = \"pytest\"\n", encoding="utf-8")
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = read_manifest(manifest_path)
+
+            with redirect_stdout(io.StringIO()) as stdout:
+                status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
+
+        findings = json.loads(stdout.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual([finding["id"] for finding in findings], ["BASE-P140", "BASE-P143"])
+        self.assertEqual([finding["status"] for finding in findings], ["ok", "warn"])
+
 
 
 class IdeDiagnosticsTests(unittest.TestCase):

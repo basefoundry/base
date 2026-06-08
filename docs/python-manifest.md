@@ -94,6 +94,21 @@ The implementation should reject duplicate requirements only when it can do so
 without guessing. Exact duplicate strings can be de-duplicated; semantically
 overlapping requirement ranges should be left to pip.
 
+## Relationship To `pyproject.toml`
+
+Base observes a same-directory `pyproject.toml` during project diagnostics when
+one exists beside `base_manifest.yaml`. This diagnostic support is read-only:
+Base reports whether the file is readable, summarizes standard `[project]`
+metadata, and warns when Python dependency metadata or unsupported `[tool.base]`
+configuration is present.
+
+`base_manifest.yaml` remains the Base source of truth. Base does not install
+packages from `[project].dependencies`, does not execute build backend hooks,
+and does not treat `[tool.base]` as an alternate manifest.
+
+Future uv-managed Python support should use an explicit `python:` manifest
+contract, tracked separately from the first read-only diagnostics slice.
+
 ## Non-Goals
 
 The structured Python section should not turn Base into a Python packaging

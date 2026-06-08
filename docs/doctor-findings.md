@@ -81,6 +81,10 @@ part of the doctor workflow.
 | `BASE-P130` | Homebrew unavailable for IDE app checks |
 | `BASE-P131` | IDE app install status |
 | `BASE-P132` | IDE CLI PATH status |
+| `BASE-P140` | `pyproject.toml` presence and metadata summary |
+| `BASE-P141` | `pyproject.toml` readability |
+| `BASE-P142` | `pyproject.toml` dependency metadata observed but not reconciled |
+| `BASE-P143` | Unsupported `[tool.base]` configuration |
 
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
@@ -88,6 +92,13 @@ is missing, incomplete, or has a broken Python executable. Workspace-level
 project discovery currently verifies that the expected project venv Python path
 exists. The finding should be treated as the project-venv readiness contract,
 not as a guarantee that every project dependency import succeeds.
+
+`BASE-P140` through `BASE-P143` are read-only `pyproject.toml` diagnostics.
+Base only inspects the `pyproject.toml` file beside the active
+`base_manifest.yaml`. These findings do not make `pyproject.toml` a Base
+configuration source and do not cause Base to install Python dependencies.
+Warnings in this range should guide users toward a valid Python project file
+without failing the Base manifest check by themselves.
 
 ## Health Findings
 
