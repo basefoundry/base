@@ -36,6 +36,7 @@ from .ide import reconcile_ide_extensions
 from .ide import reconcile_ide_installs
 from .ide import reconcile_ide_settings
 from .manifest import BaseManifest, ManifestError, read_manifest
+from .pyproject import check_pyproject
 
 
 app = base_cli.App(name="base_setup")
@@ -250,6 +251,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
+    checks.extend(check_pyproject(effective_manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(effective_manifest.project_name, artifact, definition))
