@@ -11,6 +11,9 @@ For contribution workflow, branch naming, tests, and PR expectations, see
 For GitHub labels, milestones, Projects, issue assignment, branch names, and
 worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 
+For release preparation, tagging, GitHub Releases, and the Homebrew tap update,
+see [Release Process](release-process.md).
+
 ## Naming Convention
 
 Use stable topic names for documentation files:
@@ -35,6 +38,8 @@ reference. The filename should answer "what is this about?"
   support plan and bootstrap boundaries.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
+- [Release Process](release-process.md) defines the Base release ceremony,
+  version-file policy, GitHub Release flow, and Homebrew tap follow-up.
 - [Testing](testing.md) explains Base's Python, BATS, and hermetic integration
   test layers.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools

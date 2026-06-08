@@ -292,6 +292,10 @@ Suggested Base milestones:
 Every issue does not need a milestone. Use milestones when the issue contributes
 to a concrete release goal.
 
+For the release checklist itself, including `VERSION`, changelog, tags, GitHub
+Releases, and the follow-up `codeforester/homebrew-base` tap update, see
+[Release Process](release-process.md).
+
 ## Projects
 
 Use one GitHub Project first: `Base Roadmap`.
