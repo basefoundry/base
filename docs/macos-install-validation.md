@@ -64,6 +64,12 @@ Before starting either install path:
 5. Choose a scratch workspace that does not contain production project changes.
 6. If both Homebrew and source checkouts are present, write down which
    `basectl` executable should win on `PATH`.
+7. On a Base development machine, prefer the source checkout as the active
+   `basectl`. Use Homebrew-managed Base for consumer install and upgrade
+   validation only when that is the run's purpose.
+8. When both installs exist, use explicit paths such as `~/work/base/bin/basectl`
+   and `/opt/homebrew/bin/basectl` or `/usr/local/bin/basectl` so the run does
+   not accidentally test the wrong install route.
 
 The run is acceptable only when failures are actionable and tied to the chosen
 route. For example, an Xcode Command Line Tools prompt is acceptable only if the

@@ -12,6 +12,10 @@ upgrade without losing local Base state.
 - Start from an existing released Homebrew install of Base.
 - Use a test `HOME` when possible so shell startup and `~/.base.d` preservation
   can be checked without mutating a personal account.
+- Avoid using a day-to-day Base development checkout as the active `basectl`
+  for this rehearsal. If a source checkout is present, use explicit Homebrew
+  paths and record `command -v basectl` plus `type -a basectl` before and after
+  the upgrade.
 - Use a scratch workspace with a Base-managed project such as `base-demo`.
 - Confirm Homebrew health before starting:
 

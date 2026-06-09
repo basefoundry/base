@@ -45,7 +45,8 @@ basectl update-profile
 ```
 
 Use a source checkout when you are contributing to Base or want to inspect and
-run the repository directly:
+run the repository directly. This is the preferred mode for a Base development
+machine:
 
 ```bash
 git clone https://github.com/codeforester/base.git ~/work/base
@@ -73,13 +74,33 @@ then an existing source checkout, and otherwise defaults to source mode.
 ### Can Homebrew-installed Base and source-cloned Base coexist?
 
 Yes. They can coexist because the active `basectl` is whichever executable your
-shell resolves first. A source checkout can always be run explicitly:
+shell resolves first. Coexistence is not dangerous, but it can make validation
+ambiguous because both installs normally share user state under `~/.base.d`.
+
+For a Base contributor machine, prefer one active owner: the source checkout.
+Use Homebrew-installed Base when validating the consumer install or upgrade
+experience, preferably in a test account, on a separate machine, or with an
+isolated `HOME`.
+
+A source checkout can always be run explicitly:
 
 ```bash
 ~/work/base/bin/basectl version
 ```
 
 That does not require it to be first on `PATH`.
+
+On Apple Silicon, a Homebrew install is usually available as:
+
+```bash
+/opt/homebrew/bin/basectl version
+```
+
+On Intel macOS, it is usually available as:
+
+```bash
+/usr/local/bin/basectl version
+```
 
 ### How do I know which basectl is active?
 
@@ -92,6 +113,8 @@ type -a basectl
 
 `command -v basectl` shows the command your shell will run by default.
 `type -a basectl` shows every matching command your shell can see.
+When testing a specific install route, use the absolute `basectl` path for that
+route instead of relying on `PATH`.
 
 ### If I have both installs, which one should bootstrap prefer?
 
