@@ -98,7 +98,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P012` | Brewfile dependency status |
 | `BASE-P020` | mise config path validity |
 | `BASE-P021` | mise CLI availability |
-| `BASE-P022` | mise tool verification status |
+| `BASE-P022` | mise trust and missing-tool status |
 | `BASE-P030` | Unsupported artifact manager |
 | `BASE-P031` | Unsupported Homebrew artifact version |
 | `BASE-P032` | Homebrew unavailable for artifact checks |

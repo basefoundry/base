@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 import base_cli
 
@@ -70,17 +72,124 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P021",
         )
 
+    project_root = manifest.path.parent.resolve()
+    details = mise_details(project_root, mise_path)
+    trust_problem = check_mise_trust(project_root, mise_path, details)
+    if trust_problem is not None:
+        return trust_problem
+
+    verified_details = details | {"trusted": True, "missing_tools_checked": True}
+    missing_problem = check_mise_missing_tools(manifest, project_root, mise_path, verified_details)
+    if missing_problem is not None:
+        return missing_problem
+
     return ArtifactCheck(
         name="mise",
-        ok=False,
-        message=(
-            f"mise config '{mise_path}' is present and the mise CLI is available, "
-            "but installed mise tools are not verified."
-        ),
-        fix=f"Run 'basectl setup {manifest.project_name}' to install declared mise tools.",
-        status="warn",
+        ok=True,
+        message=f"mise config '{mise_path}' is trusted and mise-managed tools are installed.",
+        fix="",
         finding_id="BASE-P022",
+        details=verified_details,
     )
+
+
+def check_mise_trust(project_root: Path, mise_path: Path, details: dict[str, object]) -> ArtifactCheck | None:
+    trust_check = process.run_capture(["mise", "trust", "--show"], cwd=project_root)
+    trust_text = command_text(trust_check.stdout, trust_check.stderr)
+    if trust_check.returncode != 0:
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise trust status could not be checked for '{mise_path}'.",
+            fix=f"Run 'mise trust --show' in '{project_root}' for details.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details | {"returncode": trust_check.returncode},
+        )
+    if mise_config_untrusted(trust_text):
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise config '{mise_path}' is not trusted by mise.",
+            fix=f"mise trust {mise_path}",
+            finding_id="BASE-P022",
+            details=details | {"trusted": False},
+        )
+    if "trusted" not in trust_text.lower():
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise trust status for '{mise_path}' could not be determined.",
+            fix=f"Run 'mise trust --show' in '{project_root}' for details.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details,
+        )
+    return None
+
+
+def check_mise_missing_tools(
+    manifest: BaseManifest,
+    project_root: Path,
+    mise_path: Path,
+    details: dict[str, object],
+) -> ArtifactCheck | None:
+    missing_check = process.run_capture(["mise", "ls", "--missing", "--json"], cwd=project_root)
+    if missing_check.returncode != 0:
+        missing_text = command_text(missing_check.stdout, missing_check.stderr)
+        if mise_config_untrusted(missing_text):
+            return ArtifactCheck(
+                name="mise",
+                ok=False,
+                message=f"mise config '{mise_path}' is not trusted by mise.",
+                fix=f"mise trust {mise_path}",
+                finding_id="BASE-P022",
+                details=details | {"trusted": False, "returncode": missing_check.returncode},
+            )
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise missing-tool status could not be checked for '{mise_path}'.",
+            fix=f"Run 'mise ls --missing --json' in '{project_root}' for details.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details | {"returncode": missing_check.returncode},
+        )
+
+    try:
+        missing_payload = json.loads(missing_check.stdout or "{}")
+    except json.JSONDecodeError:
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise missing-tool output for '{mise_path}' could not be parsed as JSON.",
+            fix=f"Run 'mise ls --missing --json' in '{project_root}' for details.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details,
+        )
+
+    missing_tools = missing_tool_names(missing_payload)
+    if missing_tools:
+        tool_list = ", ".join(missing_tools)
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=f"mise-managed tools are missing for project config '{mise_path}': {tool_list}.",
+            fix=f"basectl setup {manifest.project_name}",
+            finding_id="BASE-P022",
+            details=details | {"missing_tools": missing_tools},
+        )
+    return None
+
+
+def mise_details(project_root: Path, mise_path: Path) -> dict[str, object]:
+    return {
+        "project_root": str(project_root),
+        "mise_config": str(mise_path),
+        "trust_checked": True,
+        "missing_tools_checked": False,
+    }
 
 
 def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
@@ -134,6 +243,22 @@ def resolve_brewfile_path(manifest: BaseManifest) -> Path:
     if not brewfile_path.is_file():
         raise ArtifactError(f"{manifest.path}: brewfile '{manifest.brewfile}' does not exist.")
     return brewfile_path
+
+
+def command_text(stdout: str, stderr: str) -> str:
+    return "\n".join(part for part in (stdout, stderr) if part)
+
+
+def mise_config_untrusted(output: str) -> bool:
+    normalized = output.lower()
+    return "untrusted" in normalized or "no trusted config files found" in normalized or "not trusted" in normalized
+
+
+def missing_tool_names(payload: Any) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["unknown"] if payload else []
+    names = [str(name) for name, value in payload.items() if value]
+    return sorted(names)
 
 
 def resolve_mise_path(manifest: BaseManifest) -> Path:
