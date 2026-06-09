@@ -3,6 +3,8 @@
 Use this checklist to validate that Base installs cleanly on supported macOS
 machines. It complements Intel Mac user testing and release-specific Homebrew
 tap validation, but it is not a substitute for either one.
+For the pre-1.0.0 consumer upgrade path, use the dedicated
+[Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md).
 
 The checklist has two goals:
 
