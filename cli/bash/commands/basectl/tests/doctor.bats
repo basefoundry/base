@@ -10,6 +10,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
     [[ "$output" == *"--profile <list>"* ]]
+    [[ "$output" == *"--remote-network"* ]]
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
 }
@@ -351,6 +352,87 @@ EOF
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
 }
 
+@test "basectl doctor project passes opt-in remote network diagnostics flag" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
+    printf 'ok     demo-artifact               Project artifact check passed.\n'
+    exit 0
+fi
+printf 'unexpected doctor project python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cp "$venv_python" "$project_python"
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python" "$project_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ARGS="$TEST_TMPDIR/project-args" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor demo --remote-network
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_TMPDIR/project-args")" = "$(printf '%s\n' -m base_setup --manifest "$workspace/demo/base_manifest.yaml" --action doctor --format text --remote-network demo)" ]
+}
+
 @test "basectl doctor project --format json includes project findings" {
     local fake_bin="$TEST_TMPDIR/bin"
     local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
@@ -483,6 +565,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
     shift 2
     action="setup"
     output_format="text"
@@ -518,10 +601,11 @@ EOF
         HOME="$TEST_HOME" \
         OSTYPE="darwin24" \
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ARGS="$TEST_TMPDIR/project-args" \
         BASE_TEST_PROJECT_ROOT="$workspace/demo" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
-        "$BASE_REPO_ROOT/bin/basectl" doctor demo --format json
+        "$BASE_REPO_ROOT/bin/basectl" doctor demo --remote-network --format json
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"schema_version": 1'* ]]
@@ -533,5 +617,6 @@ EOF
     [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
+    [ "$(cat "$TEST_TMPDIR/project-args")" = "$(printf '%s\n' -m base_setup --manifest "$workspace/demo/base_manifest.yaml" --action predoctor --format json --remote-network demo)" ]
     [ "${stderr:-}" = "" ]
 }

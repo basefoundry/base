@@ -14,6 +14,7 @@ from .manifest import BaseManifest
 
 
 GITHUB_HOST = "github.com"
+REMOTE_REACHABILITY_TIMEOUT_SECONDS = 5
 SCP_REMOTE_RE = re.compile(r"^(?:(?P<user>[^@\s]+)@)?(?P<host>[^:\s/]+):(?P<path>.+)$")
 
 
@@ -30,7 +31,7 @@ class RemoteInfo:
     error: str = ""
 
 
-def check_git_remote(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
+def check_git_remote(manifest: BaseManifest, check_network: bool = False) -> tuple[ArtifactCheck, ...]:
     if not manifest.path.is_absolute() or not manifest.path.is_file():
         return ()
 
@@ -46,6 +47,9 @@ def check_git_remote(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
     checks.append(origin_check)
     if not origin_check.ok or remote_info is None:
         return tuple(checks)
+
+    if check_network:
+        checks.append(check_origin_reachability(project_root, remote_info))
 
     if remote_info.provider == "github":
         checks.append(check_github_cli_auth(remote_info))
@@ -202,6 +206,63 @@ def check_github_cli_auth(remote_info: RemoteInfo) -> ArtifactCheck:
         status="warn",
         details=details | {"gh_available": True, "authenticated": False},
     )
+
+
+def check_origin_reachability(project_root: Path, remote_info: RemoteInfo) -> ArtifactCheck:
+    details = remote_details(remote_info) | {
+        "network_checked": True,
+        "remote": "origin",
+    }
+    try:
+        completed = run_git(
+            project_root,
+            ["ls-remote", "--exit-code", "origin", "HEAD"],
+            timeout_seconds=REMOTE_REACHABILITY_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name="git_origin_reachability",
+            ok=False,
+            message=(
+                "Project Git origin remote reachability check timed out after "
+                f"{REMOTE_REACHABILITY_TIMEOUT_SECONDS} seconds."
+            ),
+            fix="Check network access and Git credentials, then rerun with '--remote-network'.",
+            finding_id="BASE-P083",
+            status="warn",
+            details=details | {"reachable": False, "failure_category": "timeout"},
+        )
+
+    if completed.returncode == 0:
+        return ArtifactCheck(
+            name="git_origin_reachability",
+            ok=True,
+            message="Project Git origin remote is reachable.",
+            fix="",
+            finding_id="BASE-P083",
+            details=details | {"reachable": True},
+        )
+
+    return ArtifactCheck(
+        name="git_origin_reachability",
+        ok=False,
+        message="Project Git origin remote could not be reached with 'git ls-remote'.",
+        fix="Check network access and Git credentials, then rerun with '--remote-network'.",
+        finding_id="BASE-P083",
+        status="warn",
+        details=details
+        | {
+            "reachable": False,
+            "failure_category": reachability_failure_category(completed.stderr),
+        },
+    )
+
+
+def reachability_failure_category(stderr: str | None) -> str:
+    message = (stderr or "").lower()
+    if "auth" in message or "permission denied" in message:
+        return "authentication"
+    return "unreachable"
 
 
 def parse_origin_remote(remote_url: str, project_root: Path) -> RemoteInfo:
@@ -362,11 +423,16 @@ def remote_details(remote_info: RemoteInfo) -> dict[str, object]:
     return details
 
 
-def run_git(project_root: Path, arguments: list[str]) -> subprocess.CompletedProcess[str]:
+def run_git(
+    project_root: Path,
+    arguments: list[str],
+    timeout_seconds: int | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(project_root), *arguments],
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         text=True,
         check=False,
+        timeout=timeout_seconds,
     )

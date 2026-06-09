@@ -53,7 +53,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_PROJECT
     setup_refresh_cached_paths
 }
 
@@ -861,6 +861,7 @@ setup_run_project_pre_venv_layer() {
     local output_format="$2"
     local manifest_path="$3"
     local project="$4"
+    local remote_network="${5:-${BASE_SETUP_REMOTE_NETWORK:-}}"
     local python_bin venv_dir
     local args=()
 
@@ -871,6 +872,9 @@ setup_run_project_pre_venv_layer() {
     args+=(--manifest "$manifest_path")
     args+=(--action "$action")
     args+=(--format "$output_format")
+    if [[ "$remote_network" == true ]]; then
+        args+=(--remote-network)
+    fi
     args+=("$project")
 
     env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
@@ -912,7 +916,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path precheck_json project project_venv_dir python_bin resolved_name resolved_root resolve_output venv_dir
+    local exit_code manifest_path precheck_json project project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -954,6 +958,11 @@ setup_run_project_artifact_layer() {
     if [[ "$action" == check || "$action" == doctor ]]; then
         args+=(--format "$output_format")
     fi
+    remote_network=false
+    if [[ "${BASE_SETUP_REMOTE_NETWORK:-}" == true && ( "$action" == check || "$action" == doctor ) ]]; then
+        args+=(--remote-network)
+        remote_network=true
+    fi
     args+=("$project")
 
     if [[ "$output_format" != json ]]; then
@@ -982,7 +991,7 @@ setup_run_project_artifact_layer() {
         fi
         if [[ "$output_format" == json ]]; then
             if [[ "$action" == doctor ]]; then
-                precheck_json="$(setup_run_project_pre_venv_layer predoctor json "$manifest_path" "$project")" || true
+                precheck_json="$(setup_run_project_pre_venv_layer predoctor json "$manifest_path" "$project" "$remote_network")" || true
                 [[ -n "$precheck_json" ]] || precheck_json="[]"
                 setup_print_project_venv_doctor_json \
                     "$precheck_json" \
@@ -990,7 +999,7 @@ setup_run_project_artifact_layer() {
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
                     "$(setup_recovery_project_venv "$project")"
             else
-                precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project")" || true
+                precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project" "$remote_network")" || true
                 [[ -n "$precheck_json" ]] || precheck_json="[]"
                 setup_print_project_check_json_with_venv \
                     "$precheck_json" \
@@ -1000,11 +1009,11 @@ setup_run_project_artifact_layer() {
                     "$project"
             fi
         elif [[ "$action" == doctor ]]; then
-            setup_run_project_pre_venv_layer predoctor text "$manifest_path" "$project" || true
+            setup_run_project_pre_venv_layer predoctor text "$manifest_path" "$project" "$remote_network" || true
             printf 'error  %-9s  %-26s  %s\n' "BASE-P050" "Project virtualenv" "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             printf '       Fix: %s\n' "$(setup_recovery_project_venv "$project")"
         elif [[ "$action" == check ]]; then
-            setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" || true
+            setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" "$remote_network" || true
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             log_warn "$(setup_recovery_project_venv "$project")"
         else
@@ -1036,6 +1045,10 @@ setup_run_project_artifact_check() {
 }
 
 setup_run_project_artifact_check_json() {
+    if [[ -n "${1:-}" ]]; then
+        BASE_SETUP_REMOTE_NETWORK="$1"
+        export BASE_SETUP_REMOTE_NETWORK
+    fi
     setup_run_project_artifact_layer check json
 }
 
@@ -1044,6 +1057,10 @@ setup_run_project_artifact_doctor() {
 }
 
 setup_run_project_artifact_doctor_json() {
+    if [[ -n "${1:-}" ]]; then
+        BASE_SETUP_REMOTE_NETWORK="$1"
+        export BASE_SETUP_REMOTE_NETWORK
+    fi
     setup_run_project_artifact_layer doctor json
 }
 
@@ -1655,6 +1672,7 @@ setup_run_check_json() {
     local project="${BASE_SETUP_PROJECT_NAME:-}"
     local project_json=""
     local project_status="ok"
+    local remote_network="${1:-${BASE_SETUP_REMOTE_NETWORK:-}}"
     local status
 
     setup_collect_base_check_results warn || true
@@ -1669,7 +1687,7 @@ setup_run_check_json() {
     fi
 
     if [[ -n "$project" ]]; then
-        if ! project_json="$(setup_run_project_artifact_check_json)"; then
+        if ! project_json="$(setup_run_project_artifact_check_json "$remote_network")"; then
             [[ -n "$project_json" ]] || project_json='{"schema_version":1,"status":"error","checks":[]}'
         fi
         project_status="$(setup_json_payload_status "$project_json")"

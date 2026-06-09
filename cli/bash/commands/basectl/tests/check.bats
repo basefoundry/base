@@ -11,6 +11,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"basectl check [project] [options]"* ]]
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"--profile <list>"* ]]
+    [[ "$output" == *"--remote-network"* ]]
     [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
 }
 
@@ -221,6 +222,27 @@ load ./setup_helpers.bash
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format text demo)" ]
 }
 
+@test "basectl check project passes opt-in remote network diagnostics flag" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo --remote-network
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format text --remote-network demo)" ]
+}
+
 @test "basectl check --format json writes successful check results to stdout" {
     local click_line
     local pyyaml_line
@@ -402,7 +424,7 @@ load ./setup_helpers.bash
         BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
         BASE_SETUP_TEST_WORKSPACE="$workspace" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
-        "$BASE_REPO_ROOT/bin/basectl" check demo --format json
+        "$BASE_REPO_ROOT/bin/basectl" check demo --remote-network --format json
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
@@ -443,7 +465,7 @@ load ./setup_helpers.bash
         BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
         BASE_SETUP_TEST_WORKSPACE="$workspace" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
-        "$BASE_REPO_ROOT/bin/basectl" check demo --format json
+        "$BASE_REPO_ROOT/bin/basectl" check demo --remote-network --format json
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"schema_version": 1'* ]]
@@ -451,6 +473,7 @@ load ./setup_helpers.bash
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [[ "$output" == *'"id":"BASE-P080","status":"ok","name":"git_repository"'* ]]
+    [[ "$output" == *'"id":"BASE-P083","status":"ok","name":"git_origin_reachability"'* ]]
     [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
     [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
