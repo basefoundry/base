@@ -498,6 +498,9 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     shift 2
     printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
     printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
+    printf '%s\n' "${BASE_CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-base-ci"
+    printf '%s\n' "${CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-ci"
+    printf '%s\n' "${BASE_SETUP_NOTIFY:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-notify"
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     action="setup"
     output_format="text"

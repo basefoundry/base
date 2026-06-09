@@ -63,7 +63,7 @@ _base_basectl_completion_project_profiles_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test build demo run repo clean logs config doctor gh onboard update-profile update projects workspace version help"
+    local commands="activate setup check test build demo run repo ci clean logs config doctor gh onboard update-profile update projects workspace version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -132,6 +132,19 @@ _base_basectl_completion() {
                     ;;
                 installer-template)
                     _base_basectl_completion_compgen "--dry-run -v -h --help" "$cur"
+                    ;;
+            esac
+            ;;
+        ci)
+            case "${COMP_WORDS[2]:-}" in
+                "")
+                    _base_basectl_completion_compgen "setup check doctor" "$cur"
+                    ;;
+                setup)
+                    _base_basectl_completion_project_profiles_or_options "$cur" "--format --manifest --profile --recreate-venv -v -h --help"
+                    ;;
+                check|doctor)
+                    _base_basectl_completion_project_profiles_or_options "$cur" "--format --manifest --profile -v -h --help"
                     ;;
             esac
             ;;

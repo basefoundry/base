@@ -16,6 +16,7 @@ Usage:
 Options:
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --format <text|json>  Select output format. Defaults to text.
+  --manifest <path>     Use a specific base_manifest.yaml path for project diagnostics.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -100,6 +101,72 @@ base_doctor_count_check_errors() {
     done
 
     printf '%s\n' "$errors"
+}
+
+base_doctor_print_collected_check_results() {
+    local count fix i status
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        fix="${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
+        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
+            status="ok"
+            fix=""
+            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
+                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
+            fi
+        else
+            status="error"
+        fi
+
+        base_doctor_print_finding \
+            "$status" \
+            "$(base_doctor_base_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
+            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
+            "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
+            "$fix"
+    done
+}
+
+base_doctor_run_ci_runtime_text() {
+    local errors=0 profile_errors=0 project="$1"
+
+    setup_collect_base_check_results warn || true
+    errors="$(base_doctor_count_check_errors)"
+
+    if [[ -n "$project" ]]; then
+        printf "Base CI doctor for project '%s'\n\n" "$project"
+    else
+        printf 'Base CI doctor\n\n'
+    fi
+
+    base_doctor_print_collected_check_results
+    if setup_profiles_enabled; then
+        setup_run_base_dev_layer doctor
+        profile_errors=$?
+        errors=$((errors + profile_errors))
+    fi
+    if [[ -n "$project" ]]; then
+        setup_run_project_artifact_doctor
+        errors=$((errors + $?))
+    fi
+
+    printf '\n'
+    if ((errors == 0)); then
+        if [[ -n "$project" ]]; then
+            printf "Base CI doctor found no blocking issues for project '%s'.\n" "$project"
+        else
+            printf 'Base CI doctor found no blocking issues.\n'
+        fi
+        return 0
+    fi
+
+    if [[ -n "$project" ]]; then
+        printf "Base CI doctor found %s blocking issue(s) for project '%s'.\n" "$errors" "$project"
+    else
+        printf 'Base CI doctor found %s blocking issue(s).\n' "$errors"
+    fi
+    return 1
 }
 
 base_doctor_check_homebrew() {
@@ -294,6 +361,16 @@ base_doctor_subcommand_main() {
                         ;;
                 esac
                 ;;
+            --manifest)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    print_error "Option '--manifest' requires an argument."
+                    base_doctor_subcommand_usage >&2
+                    return 2
+                fi
+                BASE_SETUP_MANIFEST="$1"
+                export BASE_SETUP_MANIFEST
+                ;;
             -v)
                 setup_enable_debug_logging
                 ;;
@@ -317,6 +394,15 @@ base_doctor_subcommand_main() {
     BASE_SETUP_PROJECT_NAME="$project"
     export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl doctor'."
+    if setup_ci_runtime_only; then
+        if [[ "$output_format" == json ]]; then
+            base_doctor_run_json "$project"
+        else
+            base_doctor_run_ci_runtime_text "$project"
+        fi
+        return $?
+    fi
+
     setup_require_macos
 
     if [[ "$output_format" == json ]]; then

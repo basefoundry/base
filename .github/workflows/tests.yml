@@ -70,8 +70,16 @@ jobs:
           python -m venv .integration-venv
           .integration-venv/bin/python -m pip install --upgrade pip
           .integration-venv/bin/python -m pip install -r requirements-dev.txt
+          mkdir -p "$HOME/.base.d/base"
+          python -m venv "$HOME/.base.d/base/.venv"
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
           sudo apt-get update
           sudo apt-get install -y bats
+
+      - name: Run basectl ci smoke check
+        run: |
+          ./bin/basectl ci check base --format json
 
       - name: Run integration tests
         env:

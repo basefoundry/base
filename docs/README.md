@@ -70,8 +70,8 @@ reference. The filename should answer "what is this about?"
   arbitrary manifest setup hooks yet.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
-- [`basectl ci`](basectl-ci.md) defines the future non-interactive CI entry
-  point and its relationship to Linux support.
+- [`basectl ci`](basectl-ci.md) defines the non-interactive CI entry point and
+  its relationship to Linux runtime support.
 - [`basectl check` parallelism](check-parallelism.md) records the evaluation and
   implementation constraints for parallel check probes.
 - [Doctor Finding IDs](doctor-findings.md) is the stable reference for

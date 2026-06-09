@@ -16,6 +16,7 @@ Usage:
 Options:
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --format <text|json>  Select output format. Defaults to text.
+  --manifest <path>     Use a specific base_manifest.yaml path for project checks.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -74,6 +75,16 @@ base_check_subcommand_main() {
                     base_check_subcommand_usage >&2
                     return 1
                 fi
+                ;;
+            --manifest)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    print_error "Option '--manifest' requires an argument."
+                    base_check_subcommand_usage >&2
+                    return 1
+                fi
+                BASE_SETUP_MANIFEST="$1"
+                export BASE_SETUP_MANIFEST
                 ;;
             -v)
                 setup_enable_debug_logging

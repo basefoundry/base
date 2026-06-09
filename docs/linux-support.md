@@ -81,12 +81,14 @@ basectl ci check base --format json
 basectl ci doctor base --format json
 ```
 
-The first CI-compatible milestone can document manual prerequisite setup in the
-workflow before invoking Base.
+The first CI-compatible milestone documents manual prerequisite setup in the
+workflow before invoking Base. `basectl ci` then runs runtime checks without
+requiring Homebrew or Xcode on Linux.
 
 ## Implementation Phases
 
-1. Split macOS-only setup checks from portable runtime checks.
+1. Split macOS-only setup checks from portable runtime checks. Initial support
+   exists through `basectl ci`.
 2. Add Linux platform detection and explicit unsupported-platform messages.
 3. Make `basectl check` and `doctor` report Linux prerequisite status without
    requiring Homebrew or Xcode.
