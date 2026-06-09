@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import io
 import importlib.util
 import os
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -478,26 +481,126 @@ class ProcessTests(unittest.TestCase):
 
     def test_run_command_includes_stderr_on_failure(self) -> None:
         ctx = fake_context()
+        command = [
+            sys.executable,
+            "-c",
+            "import sys; print('installer exploded', file=sys.stderr); raise SystemExit(17)",
+        ]
+        stderr = io.StringIO()
 
-        with mock.patch(
-            "base_setup.process.subprocess.run",
-            return_value=mock.Mock(returncode=17, stderr="installer exploded\n"),
-        ):
+        with redirect_stderr(stderr):
             with self.assertRaisesRegex(ArtifactError, "installer exploded"):
-                process.run_command(ctx, ["installer", "--bad"])
+                process.run_command(ctx, command)
+
+    def test_run_command_streams_and_logs_stdout_and_stderr(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "print('install stdout'); "
+                "print('install stderr', file=sys.stderr)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            process.run_command(ctx, command)
+
+        self.assertIn("install stdout", stdout.getvalue())
+        self.assertIn("install stderr", stderr.getvalue())
+        debug_messages = [call.args[0] % call.args[1:] for call in ctx.log.debug.call_args_list]
+        self.assertIn("Command stdout: install stdout", debug_messages)
+        self.assertIn("Command stderr: install stderr", debug_messages)
 
 
+    def test_run_command_failure_includes_bounded_stdout_and_stderr_tail(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "print('stdout before failure'); "
+                "print('stderr before failure', file=sys.stderr); "
+                "raise SystemExit(17)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            with self.assertRaises(ArtifactError) as exc:
+                process.run_command(ctx, command)
+
+        message = str(exc.exception)
+        self.assertIn("Command failed with exit 17", message)
+        self.assertIn("stdout:", message)
+        self.assertIn("stdout before failure", message)
+        self.assertIn("stderr:", message)
+        self.assertIn("stderr before failure", message)
+
+    def test_run_command_redacts_sensitive_output_from_logs_and_failure(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "print('url=https://user:secret@example.invalid/pkg.whl'); "
+                "print('token=super-secret', file=sys.stderr); "
+                "raise SystemExit(9)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            with self.assertRaises(ArtifactError) as exc:
+                process.run_command(ctx, command)
+
+        message = str(exc.exception)
+        debug_text = "\n".join(str(call.args) for call in ctx.log.debug.call_args_list)
+        self.assertNotIn("super-secret", message)
+        self.assertNotIn("super-secret", debug_text)
+        self.assertNotIn("user:secret", message)
+        self.assertNotIn("user:secret", debug_text)
+        self.assertIn("[REDACTED]", message)
+        self.assertIn("[REDACTED]", debug_text)
+
+    def test_run_command_failure_truncates_large_single_chunk_tail(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "sys.stdout.write('x' * 5000 + 'tail-marker'); "
+                "raise SystemExit(17)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
+            with self.assertRaises(ArtifactError) as exc:
+                process.run_command(ctx, command)
+
+        message = str(exc.exception)
+        self.assertLessEqual(
+            len(message.split("stdout:\n", 1)[1]),
+            process.COMMAND_OUTPUT_TAIL_CHARS,
+        )
+        self.assertIn("tail-marker", message)
 
     def test_run_command_logs_success_at_debug(self) -> None:
         ctx = fake_context()
+        command = [sys.executable, "-c", ""]
 
-        with mock.patch(
-            "base_setup.process.subprocess.run",
-            return_value=mock.Mock(returncode=0, stderr=""),
-        ):
-            process.run_command(ctx, ["installer", "--good", "two words"])
+        process.run_command(ctx, command)
 
         ctx.log.debug.assert_called_once_with(
             "Command succeeded: %s",
-            "installer --good 'two words'",
+            format_command(command),
         )
