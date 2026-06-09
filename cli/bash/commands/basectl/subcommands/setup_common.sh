@@ -453,7 +453,7 @@ setup_install_homebrew() {
     fi
 
     if setup_is_dry_run; then
-        log_info "[DRY-RUN] Would install Homebrew using the official installer."
+        log_info "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
         return 0
     fi
 

@@ -610,7 +610,7 @@ EOF
     run_base_command setup --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would install Homebrew using the official installer."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
     [[ "$output" == *"[DRY-RUN] Would install Xcode Command Line Tools and wait for installation to complete."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python formula 'python@3.13' via Homebrew."* ]]
     [[ "$output" != *"BATS formula 'bats-core'"* ]]

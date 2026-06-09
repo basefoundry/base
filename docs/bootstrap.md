@@ -94,12 +94,15 @@ AI coding tools stay behind an explicit opt-in profile:
 
 The `ai` profile installs Codex CLI and Claude Code with their official
 installers. Base checks tool availability and version output, but it does not
-configure accounts, credentials, model access, or organization policy.
+configure accounts, credentials, model access, or organization policy. See
+[Remote Installer Policy](remote-installer-policy.md) for the allowed URLs,
+dry-run behavior, non-interactive behavior, and managed-device guidance.
 
 ## Relationship To Other Install Paths
 
 Use `bootstrap.sh` when the machine may not have Homebrew, Git, or a supported
-Bash yet.
+Bash yet. Homebrew bootstrap follows the remote installer trust model described
+in [Remote Installer Policy](remote-installer-policy.md).
 
 Use Homebrew directly when Homebrew is already installed and Base should be
 managed like a normal formula:
