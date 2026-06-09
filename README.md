@@ -756,6 +756,13 @@ your shell startup path. When installed through Homebrew, update Base with:
 brew upgrade codeforester/base/base
 ```
 
+For a Base development machine, prefer the source checkout as the active
+`basectl`. Homebrew-installed Base and source-cloned Base can coexist, but the
+active command is whichever executable wins on `PATH`, and both normally share
+state under `~/.base.d`. Use Homebrew-managed Base for consumer install or
+upgrade validation in a test account, separate machine, isolated `HOME`, or with
+explicit paths such as `/opt/homebrew/bin/basectl` or `~/work/base/bin/basectl`.
+
 When Base is installed through Homebrew, `BASE_HOME` points to the physical
 Homebrew install location. It does not point to your project workspace. Configure
 `workspace.root` in `~/.base.d/config.yaml` so commands such as
