@@ -23,7 +23,9 @@ Closes #
 - [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - [ ] PR is scoped to one issue, unless a documented multi-issue exception applies.
 - [ ] PR body explains what changed and how it was validated.
+- [ ] Validation commands were run from the current checkout or worktree, or unavailable checks are explained.
 - [ ] Relevant BATS and Python tests pass.
+- [ ] Bug fixes include regression proof or a documented reproduction when practical.
 - [ ] Documentation is updated when behavior or user-facing commands change.
 - [ ] PR includes `Fixes #<issue>` or `Closes #<issue>` when it should close the issue.
 - [ ] `Demo Impact` is meaningful for `needs-demo` work, or explicitly says `None.`

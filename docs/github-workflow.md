@@ -92,6 +92,24 @@ Issue work should use:
 ~/work/base-worktrees/<slug>
 ```
 
+Before creating a worktree, check whether the current checkout is already a
+linked worktree for the intended issue:
+
+```bash
+git rev-parse --git-dir
+git rev-parse --git-common-dir
+git branch --show-current
+git rev-parse --show-superproject-working-tree
+```
+
+When the git directory differs from the common directory, and the checkout is
+not a submodule, the current checkout is already a linked worktree. A
+non-empty `--show-superproject-working-tree` result means the checkout is a
+submodule and should be treated as a normal repository for worktree detection.
+Continue in an existing issue worktree instead of creating a nested or
+duplicate worktree. If the checkout is a normal repository, create the issue
+worktree from current `origin/master`.
+
 Create a worktree from current `origin/master`:
 
 ```bash
@@ -99,6 +117,10 @@ git fetch origin master
 git worktree add -b documentation/241-20260529-document-github-workflow \
   ~/work/base-worktrees/documentation-241-github-workflow origin/master
 ```
+
+Keep the worktree while the pull request is open so review feedback can be
+handled on the same branch. Cleanup happens after merge, or after an explicit
+discard decision.
 
 After a pull request is merged:
 
@@ -177,6 +199,24 @@ of adding a separate PR item to the Project.
 
 PR reviewers are PR-specific and should be selected from the implementation
 surface, ownership, and risk of the change rather than copied from the issue.
+
+### Review Feedback
+
+Review feedback should be handled as technical input, not as an automatic patch
+queue. Before implementing a suggestion, check whether it is correct for Base's
+architecture, product boundaries, supported platforms, and current tests.
+
+Implement clear, correct feedback directly. Push back or ask for clarification
+when feedback would:
+
+- move project-specific behavior into Base
+- make `check` or `doctor` mutate local state
+- broaden a narrow PR into an architecture change
+- conflict with existing command contracts or validation rules
+- add unused behavior that is not required by the issue
+
+Fix one review item or related group at a time, then rerun the narrowest
+verification that proves the change.
 
 ### Multi-Issue PRs
 
