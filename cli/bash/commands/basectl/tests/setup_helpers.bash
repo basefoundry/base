@@ -514,7 +514,15 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         esac
         shift || true
     done
-    if [[ "$action" == "check" && "$output_format" == "json" ]]; then
+    if [[ "$action" == "precheck" && "$output_format" == "json" ]]; then
+        printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+    elif [[ "$action" == "precheck" ]]; then
+        printf 'Project is inside a Git repository.\n' >&2
+    elif [[ "$action" == "predoctor" && "$output_format" == "json" ]]; then
+        printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+    elif [[ "$action" == "predoctor" ]]; then
+        printf 'ok     BASE-P080  git_repository            Project is inside a Git repository.\n'
+    elif [[ "$action" == "check" && "$output_format" == "json" ]]; then
         printf '{"schema_version":1,"status":"ok","project":"demo","checks":[{"id":"BASE-P040","status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]}\n'
     elif [[ "$action" == "check" ]]; then
         printf 'Project artifact check passed.\n' >&2

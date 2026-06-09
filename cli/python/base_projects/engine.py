@@ -25,6 +25,7 @@ from base_setup.checks import doctor_status
 from base_setup.checks import print_doctor_finding
 from base_setup.demo import resolve_demo_script_path
 from base_setup.engine import manifest_checks
+from base_setup.engine import pre_venv_manifest_checks
 from base_setup.engine import read_default_manifest
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, ManifestError, TestConfig, read_manifest
@@ -628,9 +629,11 @@ def workspace_project_check_result(
             checks=checks,
         )
 
-    checks = (project_venv_check(manifest.project_name),)
-    if checks[0].ok:
-        checks += manifest_checks(default_manifest, manifest)
+    venv_check = project_venv_check(manifest.project_name)
+    if venv_check.ok:
+        checks = (venv_check,) + manifest_checks(default_manifest, manifest)
+    else:
+        checks = pre_venv_manifest_checks(manifest) + (venv_check,)
 
     return WorkspaceProjectCheckResult(
         name=manifest.project_name,
