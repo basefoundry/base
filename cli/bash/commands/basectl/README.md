@@ -30,7 +30,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `doctor`
 - `gh`
 - `onboard`
-- `repo init/check/configure`
+- `repo init/check/configure/installer-template`
 - `test`
 - `build`
 - `update-profile`
@@ -79,6 +79,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   then falls back to the parent directory of `BASE_HOME`.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` reapplies the GitHub settings and labels.
+  `basectl repo installer-template [path]` prints or writes the maintained
+  project installer starter script.
 - `basectl test [project]` runs the project's manifest `test.command` or
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments

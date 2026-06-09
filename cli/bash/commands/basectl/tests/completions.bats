@@ -115,6 +115,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "repo_configure_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl repo installer-template --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "repo_installer_template_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl gh ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -149,9 +153,10 @@ EOF
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
-    [[ "$output" == *"repo_commands=init check configure"* ]]
+    [[ "$output" == *"repo_commands=init check configure installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --dry-run"* ]]
     [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
+    [[ "$output" == *"repo_installer_template_options=--dry-run"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree todo"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
