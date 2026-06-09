@@ -25,6 +25,10 @@ them.
   or `security`.
 - Do not create or apply `type:*` issue labels.
 - Assign Codex-created issues to `codeforester` when GitHub allows it.
+- For issues tracked in Base Roadmap, set Project `Status` to `In Progress`
+  before implementation starts, move it to `In Review` when the PR opens, and
+  verify `Done` after merge/closure. If Project V2 access or item state
+  prevents an update, mention that in the work summary.
 - Prefer `basectl gh` for supported issue, branch, PR, check, and cleanup
   operations.
 - Fall back to the GitHub connector, raw `gh`, or `git` when `basectl gh` does
