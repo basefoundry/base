@@ -243,3 +243,42 @@ class IdeSettingsTests(unittest.TestCase):
 
         self.assertEqual(len(checks), 1)
         self.assertTrue(checks[0].ok)
+
+
+
+    def test_check_ide_settings_reuses_probe_for_all_settings_in_ide(self) -> None:
+        definition = ide.IDE_DEFINITIONS["vscode"]
+        settings_file = Path("/tmp/vscode-settings.json")
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=(),
+                    settings={
+                        "editor.formatOnSave": True,
+                        "editor.rulers": [100],
+                    },
+                )
+            },
+        )
+
+        with mock.patch("base_setup.ide.ide_settings_file", return_value=settings_file) as settings_path, mock.patch(
+            "base_setup.ide.read_ide_settings",
+            return_value={
+                "editor.formatOnSave": True,
+                "editor.rulers": [100],
+            },
+        ) as read_settings:
+            checks = ide.check_ide_settings(manifest)
+
+        settings_path.assert_called_once_with(definition)
+        read_settings.assert_called_once_with(definition)
+        self.assertEqual(
+            [check.name for check in checks],
+            ["VS Code setting: editor.formatOnSave", "VS Code setting: editor.rulers"],
+        )
+        self.assertTrue(all(check.ok for check in checks))

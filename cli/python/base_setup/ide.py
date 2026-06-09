@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
@@ -115,6 +116,49 @@ def log_ide_preference_warnings(ctx: base_cli.Context, checks: list[ArtifactChec
             ctx.log.warning("Fix: %s", check.fix)
 
 
+@dataclass
+class IdeDiagnosticSnapshot:
+    definition: IdeDefinition
+    _cli_available: bool | None = None
+    _installed_extensions: set[str] | None = None
+    _extension_error: ArtifactError | None = None
+    _settings_file: Path | None = None
+    _current_settings: dict[str, object] | None = None
+    _settings_error: ArtifactError | None = None
+
+    def cli_available(self) -> bool:
+        if self._cli_available is None:
+            self._cli_available = process.command_exists(self.definition.cli)
+        return self._cli_available
+
+    def installed_extensions(self) -> set[str]:
+        if self._installed_extensions is None and self._extension_error is None:
+            try:
+                self._installed_extensions = list_ide_extensions(self.definition)
+            except ArtifactError as exc:
+                self._extension_error = exc
+        if self._extension_error is not None:
+            raise self._extension_error
+        assert self._installed_extensions is not None
+        return self._installed_extensions
+
+    def settings_file(self) -> Path:
+        if self._settings_file is None:
+            self._settings_file = ide_settings_file(self.definition)
+        return self._settings_file
+
+    def current_settings(self) -> dict[str, object]:
+        if self._current_settings is None and self._settings_error is None:
+            try:
+                self._current_settings = read_ide_settings(self.definition)
+            except ArtifactError as exc:
+                self._settings_error = exc
+        if self._settings_error is not None:
+            raise self._settings_error
+        assert self._current_settings is not None
+        return self._current_settings
+
+
 def reconcile_ide_installs(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
     for ide_name, ide_config in manifest.ide.items():
         definition = IDE_DEFINITIONS[ide_name]
@@ -210,15 +254,22 @@ def check_ide_extensions(manifest: BaseManifest) -> list[ArtifactCheck]:
         if not ide_config.extensions:
             continue
         definition = IDE_DEFINITIONS[ide_name]
+        snapshot = IdeDiagnosticSnapshot(definition)
         checks.extend(
-            check_ide_extension(manifest.project_name, definition, extension)
+            check_ide_extension(manifest.project_name, definition, extension, snapshot=snapshot)
             for extension in ide_config.extensions
         )
     return checks
 
 
-def check_ide_extension(project: str, definition: IdeDefinition, extension: str) -> ArtifactCheck:
-    if not process.command_exists(definition.cli):
+def check_ide_extension(
+    project: str,
+    definition: IdeDefinition,
+    extension: str,
+    snapshot: IdeDiagnosticSnapshot | None = None,
+) -> ArtifactCheck:
+    snapshot = snapshot or IdeDiagnosticSnapshot(definition)
+    if not snapshot.cli_available():
         return ArtifactCheck(
             name=extension,
             ok=False,
@@ -234,7 +285,7 @@ def check_ide_extension(project: str, definition: IdeDefinition, extension: str)
         )
 
     try:
-        installed_extensions = list_ide_extensions(definition)
+        installed_extensions = snapshot.installed_extensions()
     except ArtifactError as exc:
         return ArtifactCheck(
             name=extension,
@@ -356,9 +407,10 @@ def check_ide_settings(manifest: BaseManifest) -> list[ArtifactCheck]:
         if not ide_config.settings:
             continue
         definition = IDE_DEFINITIONS[ide_name]
+        snapshot = IdeDiagnosticSnapshot(definition)
         resolved_settings = resolve_ide_settings(manifest.project_name, ide_config.settings)
         checks.extend(
-            check_ide_setting(manifest.project_name, definition, key, value)
+            check_ide_setting(manifest.project_name, definition, key, value, snapshot=snapshot)
             for key, value in resolved_settings.items()
         )
     return checks
@@ -369,10 +421,12 @@ def check_ide_setting(
     definition: IdeDefinition,
     key: str,
     expected_value: object,
+    snapshot: IdeDiagnosticSnapshot | None = None,
 ) -> ArtifactCheck:
-    settings_file = ide_settings_file(definition)
+    snapshot = snapshot or IdeDiagnosticSnapshot(definition)
+    settings_file = snapshot.settings_file()
     try:
-        current_settings = read_ide_settings(definition)
+        current_settings = snapshot.current_settings()
     except ArtifactError as exc:
         return ArtifactCheck(
             name=f"{definition.label} setting: {key}",
