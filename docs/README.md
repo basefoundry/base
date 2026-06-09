@@ -59,8 +59,9 @@ reference. The filename should answer "what is this about?"
   Python manifest shape and its relationship to current `python-package`
   artifacts.
 - [Repository Baseline](repo-baseline.md) documents `basectl repo init`,
-  `basectl repo check`, and `basectl repo configure` for standardizing new
-  Base-managed repositories.
+  `basectl repo check`, `basectl repo configure`, and the optional
+  `basectl repo agent-guidance` layer for standardizing new Base-managed
+  repositories.
 - [Remote Installer Policy](remote-installer-policy.md) defines the allowed
   remote shell installer URLs, opt-in boundaries, dry-run behavior, and logging
   expectations for setup paths.

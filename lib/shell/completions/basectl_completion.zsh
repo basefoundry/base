@@ -130,7 +130,7 @@ _base_basectl_completion() {
         repo)
             case "${words[3]:-}" in
                 init)
-                    _arguments '1:repo command:(init check configure installer-template)' \
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:repository name:' \
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
@@ -144,28 +144,39 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 check)
-                    _arguments '1:repo command:(init check configure installer-template)' \
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
+                        '--agent-guidance[Include optional agent guidance files]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:repo command:(init check configure installer-template)' \
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                agent-guidance)
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                        '2:path:_files' \
+                        '--repo-name[Repository name for generated guidance]:name:' \
+                        '--default-branch[Default branch for generated guidance]:branch:' \
+                        '--validation-command[Validation command for generated guidance]:command:' \
+                        '--dry-run[Print planned changes]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
                 installer-template)
-                    _arguments '1:repo command:(init check configure installer-template)' \
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:repo command:(init check configure installer-template)'
+                    _arguments '1:repo command:(init check configure agent-guidance installer-template)'
                     ;;
             esac
             ;;

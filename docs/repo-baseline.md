@@ -38,6 +38,12 @@ Check the local baseline:
 basectl repo check ~/work/base-demo
 ```
 
+Seed optional repo-local agent guidance:
+
+```bash
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo
+```
+
 Reapply GitHub-side repository settings and labels:
 
 ```bash
@@ -84,6 +90,35 @@ test:
 The generated validation script checks for the required baseline files. It is
 not a replacement for project tests; it is the seed contract that lets
 `basectl test <project>` work immediately.
+
+## Optional Agent Guidance
+
+`repo agent-guidance` creates repo-local guidance files for agent-assisted
+development when they do not already exist:
+
+- `AGENTS.md`
+- `skills.md`
+- `.github/pull_request_template.md`
+
+The command accepts `--repo-name <name>`, `--default-branch <name>`, and
+`--validation-command <command>` so generated examples match the repository.
+Defaults are inferred from the target path, `main`, and `./tests/validate.sh`.
+
+Existing files are left unchanged. This keeps the guidance layer safe for repos
+that already have their own instructions or pull request template.
+
+Preview the files without writing them:
+
+```bash
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --dry-run
+```
+
+Include the optional guidance files in local baseline checks only when the repo
+has opted into this layer:
+
+```bash
+basectl repo check ~/work/base-demo --agent-guidance
+```
 
 ## Git Workflow
 
@@ -144,6 +179,8 @@ Dry-run mode does not require authentication because it only prints the planned
 
 The MVP does not configure branch protection, manage repository secrets, create
 teams, add CODEOWNERS, or force Base-specific PR sections such as `Demo Impact`.
-Those are separate workflow and policy decisions. Base can grow those
-capabilities once the baseline command has proven useful for real repos such as
-the Base demo project.
+The optional agent guidance baseline also does not install Superpowers, manage
+`~/.codex/config.toml`, or vendor third-party methodology files. Those are
+separate workflow and policy decisions. Base can grow those capabilities once
+the baseline command has proven useful for real repos such as the Base demo
+project.
