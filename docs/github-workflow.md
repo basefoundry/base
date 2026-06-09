@@ -37,6 +37,23 @@ assigned to `codeforester`.
 If assignment fails, the automation should mention that in its summary instead
 of silently leaving the issue unassigned.
 
+## Issue Project Status
+
+When an issue is tracked in the `Base Roadmap` Project, keep the issue's
+`Status` field aligned with the implementation train:
+
+- Set `Status` to `In Progress` before creating the implementation branch or
+  starting work in a worktree.
+- Set `Status` to `In Review` when the pull request opens.
+- After the pull request merges and the issue closes, verify `Status` is
+  `Done`; update it explicitly if automation did not.
+- If Project V2 access is unavailable, the issue is not in the Project, or the
+  status update fails, mention that in the work summary instead of silently
+  skipping it.
+
+Do not add pull requests as separate Project items by default. The issue owns
+milestone and Project tracking so roadmap views do not double count the work.
+
 ## Preferred GitHub Interface
 
 Use `basectl gh` as the preferred interface for Base repository GitHub
@@ -194,8 +211,8 @@ When a PR is opened for an issue, inherit metadata selectively:
 
 Do not copy milestone or GitHub Project fields to the PR by default. Keep those
 on the issue so release planning and Project views do not double count the same
-work. When a PR opens, move the issue's Project status to `In Review` instead
-of adding a separate PR item to the Project.
+work. Follow the issue Project status transitions above instead of adding a
+separate PR item to the Project.
 
 PR reviewers are PR-specific and should be selected from the implementation
 surface, ownership, and risk of the change rather than copied from the issue.

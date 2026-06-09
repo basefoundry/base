@@ -20,7 +20,10 @@ for issue-backed work, validation, and design-only sessions.
    - `ci` for GitHub Actions, tests, release automation, or CI reliability.
    - `security` for security hardening, dependency pinning, static analysis, or
      permission tightening.
-3. Create a branch from the issue using this convention:
+3. When the issue is tracked in Base Roadmap, set its Project `Status` to
+   `In Progress` before branch or worktree work begins. Move it to `In Review`
+   when the PR opens, and verify it is `Done` after merge/closure.
+4. Create a branch from the issue using this convention:
 
    ```text
    <category>/<issue>-<YYYYMMDD>-<slug>
@@ -32,18 +35,18 @@ for issue-backed work, validation, and design-only sessions.
    enhancement/179-20260528-projects-list-json
    ```
 
-4. Use an isolated Git worktree for each pull request:
+5. Use an isolated Git worktree for each pull request:
 
    ```bash
    git fetch origin master
    git worktree add -b <branch> ~/work/base-worktrees/<slug> origin/master
    ```
 
-5. Keep the PR scoped to the issue. Avoid unrelated refactors.
-6. Link the PR back to the issue with `Fixes #<issue>` or `Closes #<issue>`.
-7. Use the standard PR body and fill in Summary, Issue, Validation, Demo
+6. Keep the PR scoped to the issue. Avoid unrelated refactors.
+7. Link the PR back to the issue with `Fixes #<issue>` or `Closes #<issue>`.
+8. Use the standard PR body and fill in Summary, Issue, Validation, Demo
    Impact, and Notes.
-8. After merge, sync `master`, remove the worktree, and delete the local and
+9. After merge, sync `master`, remove the worktree, and delete the local and
    remote branches:
 
    ```bash
