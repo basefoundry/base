@@ -110,23 +110,25 @@ def run_manifest_action(
     action = manifest_action.action
     if action == "setup":
         reconcile_manifest(ctx, default_manifest, base_manifest, dry_run=manifest_action.dry_run)
-        return 0
-    if action == "bootstrap":
+        status = 0
+    elif action == "bootstrap":
         reconcile_bootstrap_artifacts(ctx, default_manifest, base_manifest, dry_run=manifest_action.dry_run)
-        return 0
-    if action == "check":
-        return check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
-    if action == "doctor":
-        return doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
-    if action == "precheck":
-        return check_pre_venv_manifest(ctx, base_manifest, output_format=manifest_action.output_format)
-    if action == "predoctor":
-        return doctor_pre_venv_manifest(base_manifest, output_format=manifest_action.output_format)
-    ctx.log.error(
-        "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, precheck, or predoctor.",
-        action,
-    )
-    return 2
+        status = 0
+    elif action == "check":
+        status = check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
+    elif action == "doctor":
+        status = doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
+    elif action == "precheck":
+        status = check_pre_venv_manifest(ctx, base_manifest, output_format=manifest_action.output_format)
+    elif action == "predoctor":
+        status = doctor_pre_venv_manifest(base_manifest, output_format=manifest_action.output_format)
+    else:
+        ctx.log.error(
+            "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, precheck, or predoctor.",
+            action,
+        )
+        status = 2
+    return status
 
 
 def validate_project_name(manifest: BaseManifest, expected_project: str | None) -> None:
