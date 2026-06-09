@@ -331,6 +331,10 @@ setup_allow_system_python() {
     [[ "${BASE_SETUP_ALLOW_SYSTEM_PYTHON:-false}" == true ]]
 }
 
+setup_ci_runtime_only() {
+    [[ "${BASE_CI:-false}" == true && "$OSTYPE" != darwin* ]]
+}
+
 setup_allow_test_hooks() {
     [[ "${BASE_TEST_MODE:-false}" == true || "${CI:-false}" == true ]]
 }
@@ -364,6 +368,10 @@ setup_recovery_venv() {
 
 setup_recovery_base_python_package() {
     printf "%s\n" "Run 'basectl setup' to install Base Python bootstrap packages."
+}
+
+setup_recovery_ci_python() {
+    printf "%s\n" "Install Python 3.13 or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl ci'."
 }
 
 setup_recovery_project_layer() {
@@ -1296,7 +1304,7 @@ setup_wait_for_base_check_probes() {
     return "$failed"
 }
 
-setup_collect_base_check_results() {
+setup_collect_macos_base_check_results() {
     local click_package
     local missing=0
     local probe_pids=()
@@ -1339,6 +1347,78 @@ setup_collect_base_check_results() {
     rm -rf "$tmpdir"
 
     return "$missing"
+}
+
+setup_collect_ci_runtime_check_results() {
+    local click_package
+    local missing=0
+    local pyyaml_package
+    local python_bin
+
+    setup_clear_check_results
+    click_package="$(setup_click_package)"
+    pyyaml_package="$(setup_pyyaml_package)"
+    setup_ensure_cached_paths
+
+    if python_bin="$(setup_find_python_bin)"; then
+        setup_add_check_result \
+            "python" \
+            true \
+            "Python is available for CI runtime checks." \
+            "" \
+            "Resolved Python binary: $python_bin"
+    else
+        setup_add_check_result \
+            "python" \
+            false \
+            "Python is not available for CI runtime checks." \
+            "$(setup_recovery_ci_python)"
+        missing=1
+    fi
+
+    if setup_virtualenv_healthy; then
+        setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+    else
+        setup_add_check_result \
+            "base_virtualenv" \
+            false \
+            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+            "$(setup_recovery_venv)"
+        missing=1
+    fi
+
+    if setup_base_python_package_installed "$pyyaml_package"; then
+        setup_add_check_result "pyyaml" true "$(setup_base_python_package_check_message "$pyyaml_package" true)"
+    else
+        setup_add_check_result \
+            "pyyaml" \
+            false \
+            "$(setup_base_python_package_check_message "$pyyaml_package" false)" \
+            "$(setup_recovery_base_python_package)"
+        missing=1
+    fi
+
+    if setup_base_python_package_installed "$click_package"; then
+        setup_add_check_result "click" true "$(setup_base_python_package_check_message "$click_package" true)"
+    else
+        setup_add_check_result \
+            "click" \
+            false \
+            "$(setup_base_python_package_check_message "$click_package" false)" \
+            "$(setup_recovery_base_python_package)"
+        missing=1
+    fi
+
+    return "$missing"
+}
+
+setup_collect_base_check_results() {
+    if setup_ci_runtime_only; then
+        setup_collect_ci_runtime_check_results
+        return $?
+    fi
+
+    setup_collect_macos_base_check_results "$@"
 }
 
 setup_print_check_text_results() {
@@ -1626,7 +1706,32 @@ setup_run_check_json() {
     [[ "$status" != error ]]
 }
 
+setup_run_ci_runtime_install() {
+    setup_create_virtualenv
+    setup_install_pyyaml
+    setup_install_click
+    if setup_profiles_enabled; then
+        if setup_is_dry_run; then
+            setup_run_base_dev_layer setup --dry-run || fatal_error "Python prerequisite profile layer failed."
+        else
+            setup_run_base_dev_layer setup || fatal_error "Python prerequisite profile layer failed."
+        fi
+    fi
+    setup_run_project_artifact_setup || return $?
+
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Base CI setup check is complete."
+    else
+        log_info "Base CI setup is complete."
+    fi
+}
+
 setup_run_install() {
+    if setup_ci_runtime_only; then
+        setup_run_ci_runtime_install
+        return $?
+    fi
+
     setup_require_macos
     setup_install_homebrew
     setup_install_xcode_tools

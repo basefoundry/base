@@ -25,6 +25,8 @@ Commands:
     Run a project's declared command.
   repo <init|check|configure|installer-template> [options]
     Create repository baselines and project installer templates.
+  ci <setup|check|doctor> <project> [options]
+    Run Base setup, checks, and diagnostics in non-interactive CI.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]
@@ -197,6 +199,11 @@ basectl_do_repo() {
     base_repo_subcommand_main "$@"
 }
 
+basectl_do_ci() {
+    basectl_source_subcommand_module ci || return 1
+    base_ci_subcommand_main "$@"
+}
+
 basectl_do_clean() {
     basectl_source_subcommand_module clean || return 1
     base_clean_subcommand_main "$@"
@@ -350,6 +357,7 @@ basectl_main() {
         demo)             basectl_do_demo "$@" ;;
         run)              basectl_do_run "$@" ;;
         repo)             basectl_do_repo "$@" ;;
+        ci)               basectl_do_ci "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         logs)             basectl_do_logs "$@" ;;
         config)           basectl_do_config "$@" ;;

@@ -25,6 +25,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `activate`
 - `setup`
 - `check`
+- `ci setup/check/doctor`
 - `clean`
 - `config`
 - `doctor`
@@ -54,6 +55,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   project argument validates `project.name`.
 - `basectl check [project]` verifies the same local requirements without making
   changes and can include project manifest artifacts.
+- `basectl ci setup/check/doctor <project>` runs Base in non-interactive CI
+  mode, sets CI-safe defaults, and supports text or JSON output.
 - `basectl setup/check/doctor --profile <list>` manage opt-in prerequisite
   profiles. `sre` is the first additional built-in profile, and profiles compose
   as comma-separated lists such as `--profile dev,sre`.

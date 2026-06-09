@@ -22,6 +22,7 @@ _base_basectl_completion() {
         'demo:Run a project interactive demo'
         'run:Run a project command'
         'repo:Create, check, and configure repository baseline'
+        'ci:Run Base setup, checks, and diagnostics in CI'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
         'config:Inspect Base machine-local user config'
@@ -167,6 +168,36 @@ _base_basectl_completion() {
                     _arguments '1:repo command:(init check configure installer-template)'
                     ;;
             esac
+            ;;
+        ci)
+            case "${words[3]:-}" in
+                setup)
+                    _arguments '1:ci command:(setup check doctor)' \
+                        '--format[Output format]:format:(text json)' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+                        '--recreate-venv[Recreate the project virtual environment]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]' \
+                        '2:Base project:->projects'
+                    ;;
+                check|doctor)
+                    _arguments '1:ci command:(setup check doctor)' \
+                        '--format[Output format]:format:(text json)' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]' \
+                        '2:Base project:->projects'
+                    ;;
+                *)
+                    _arguments '1:ci command:(setup check doctor)'
+                    ;;
+            esac
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
         clean)
             _arguments '--older-than[Artifact age]:age:' \

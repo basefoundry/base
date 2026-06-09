@@ -1,9 +1,9 @@
 # basectl ci
 
-`basectl ci` is a future non-interactive entry point for running Base in CI
-systems. It should reuse the same setup, check, doctor, and project manifest
-logic as local development, but it should avoid user-facing prompts and
-macOS-specific UI behaviors.
+`basectl ci` is the non-interactive entry point for running Base in CI systems.
+It reuses the same setup, check, doctor, and project manifest logic as local
+development, while avoiding user-facing prompts and macOS-specific UI
+behaviors.
 
 ## Goals
 
@@ -12,7 +12,7 @@ macOS-specific UI behaviors.
 - Reuse project manifests rather than adding a CI-only manifest format.
 - Make Linux support useful before Base has a complete Linux bootstrap story.
 
-## Proposed Interface
+## Interface
 
 ```bash
 basectl ci setup <project> [--format text|json]
@@ -20,8 +20,12 @@ basectl ci check <project> [--format text|json]
 basectl ci doctor <project> [--format text|json]
 ```
 
-The default mode should be non-interactive. If a required action cannot be
-performed without prompting, `basectl ci` should fail with a clear fix message.
+All commands also accept `--manifest <path>` for CI jobs that know the manifest
+path directly, plus `--profile <list>` for opt-in prerequisite profiles.
+`basectl ci setup` additionally accepts `--recreate-venv`.
+
+The default mode is non-interactive. If a required action cannot be performed
+without prompting, `basectl ci` fails with a clear fix message.
 
 ## Behavior
 
@@ -32,11 +36,12 @@ performed without prompting, `basectl ci` should fail with a clear fix message.
 - disable macOS notifications
 - avoid Xcode or UI installer prompts
 - run project artifact setup through the same manifest path as `basectl setup`
+- emit a small JSON wrapper when `--format json` is requested
 
 `basectl ci check <project>` should:
 
 - run read-only Base and project checks
-- prefer JSON output when `--format json` is supplied
+- emit JSON output when `--format json` is supplied
 - exit non-zero only for errors, not warnings
 
 `basectl ci doctor <project>` should:
@@ -47,11 +52,13 @@ performed without prompting, `basectl ci` should fail with a clear fix message.
 
 ## Linux Relationship
 
-The first useful version can support "runtime-only Linux":
+The first useful version supports "runtime-only Linux":
 
 - Base commands run under Linux when prerequisites already exist.
 - Bootstrap/install remains documented as manual.
 - Project checks and Python artifact reconciliation work in CI.
+- Linux CI checks validate Python availability, the Base virtual environment,
+  and Base Python bootstrap packages without requiring Homebrew or Xcode.
 
 Full Linux bootstrap can come later through the Linux support plan.
 
@@ -70,3 +77,17 @@ Full Linux bootstrap can come later through the Linux support plan.
 - The command works in GitHub Actions on Ubuntu when Python and project
   prerequisites are already installed.
 - The implementation has tests for non-interactive behavior and exit codes.
+
+## Example GitHub Actions Step
+
+```yaml
+- name: Prepare Base runtime
+  run: |
+    mkdir -p "$HOME/.base.d/base"
+    python -m venv "$HOME/.base.d/base/.venv"
+    "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
+    "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
+
+- name: Check Base project
+  run: ./bin/basectl ci check base --format json
+```

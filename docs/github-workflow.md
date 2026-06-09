@@ -342,7 +342,7 @@ Suggested Base milestones:
   Project test execution, mise integration, manifest refinement, and a real
   Base-managed demo project.
 - `v0.4.0 - CI and Linux foundation`
-  Linux runtime support, CI-oriented behavior, and `basectl ci` planning.
+  Linux runtime support and CI-oriented `basectl ci` behavior.
 - `v1.0.0 - Stable public release`
   Stable manifest contracts, compatibility expectations, and upgrade policy.
 

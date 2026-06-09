@@ -119,6 +119,14 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "repo_installer_template_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "ci_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci check --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_check_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl gh ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -157,6 +165,8 @@ EOF
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --dry-run"* ]]
     [[ "$output" == *"repo_configure_options=--repo --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--dry-run"* ]]
+    [[ "$output" == *"ci_commands=setup check doctor"* ]]
+    [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree todo"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
