@@ -21,6 +21,46 @@ needs stable IDs, statuses, names, messages, and fix guidance.
 explicit, reviewable, and paired with dry-run behavior before Base offers it as
 part of the doctor workflow.
 
+## Diagnostic JSON Contract
+
+Base diagnostic JSON uses `schema_version: 1` for object-shaped payloads. This
+contract was introduced before Base 1.0 and intentionally replaces the earlier
+experimental check JSON shape that used per-item `ok` booleans.
+
+Every diagnostic item emitted by `basectl check --format json` and
+`basectl doctor --format json` has the same fields:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Stable finding ID, such as `BASE-D001` or `BASE-P050` |
+| `status` | One of `ok`, `warn`, or `error` |
+| `name` | Short machine-readable finding subject |
+| `message` | Human-readable diagnostic detail |
+| `fix` | Suggested remediation, or an empty string when no fix is needed |
+
+Check commands that return an object include an aggregate `status` and a
+`checks` array of diagnostic items:
+
+```json
+{
+  "schema_version": 1,
+  "status": "ok",
+  "checks": []
+}
+```
+
+`basectl check <project> --format json` and
+`basectl check --profile <list> --format json` embed project/profile layer
+results as nested diagnostic payload objects under `project_checks` and
+`profile_checks`. Workspace check and doctor JSON keep their workspace/project
+object shape and use the same diagnostic item fields inside each project's
+`checks` array.
+
+Doctor commands use the same diagnostic item fields. The top-level
+`basectl doctor --format json` wrapper includes `schema_version` and aggregate
+`status`, and keeps doctor-specific arrays named `findings`,
+`profile_findings`, and `project_findings`.
+
 ## Namespaces
 
 | Prefix | Scope |

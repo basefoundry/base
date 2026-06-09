@@ -217,12 +217,14 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check --format json
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'"ok": true'* ]]
-    [[ "$output" == *'"name":"homebrew","ok":true'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
+    [[ "$output" == *'"id":"BASE-D001","status":"ok","name":"homebrew"'* ]]
     [[ "$output" != *'"name":"bats"'* ]]
-    [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
-    [[ "$output" == *'"name":"click","ok":true'* ]]
-    [[ "$output" == *'"name":"base_virtualenv","ok":true'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"ok","name":"base_virtualenv"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     venv_line="$(printf '%s\n' "$output" | grep -n '"name":"base_virtualenv"' | cut -d: -f1)"
     pyyaml_line="$(printf '%s\n' "$output" | grep -n '"name":"pyyaml"' | cut -d: -f1)"
     click_line="$(printf '%s\n' "$output" | grep -n '"name":"click"' | cut -d: -f1)"
@@ -258,8 +260,10 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
-    [[ "$output" == *'"name":"base_virtualenv","ok":false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"error","name":"base_virtualenv"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [ "${stderr:-}" = "" ]
 }
@@ -326,9 +330,13 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check demo --format json
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
-    [[ "$output" == *'"name":"demo-artifact","ok":true'* || "$output" == *'"name": "demo-artifact"'* ]]
+    [[ "$output" == *'"schema_version":1,"status":"ok","project":"demo","checks"'* ]]
+    [[ "$output" == *'"id":"BASE-P040","status":"ok","name":"demo-artifact"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [ "${stderr:-}" = "" ]
 }
 
@@ -363,10 +371,12 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check demo --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
-    [[ "$output" == *'"name":"project_virtualenv","ok":false'* ]]
+    [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
     [ "${stderr:-}" = "" ]
@@ -396,13 +406,15 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check --profile dev --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
     [[ "$output" == *'"profile_checks":'* ]]
     [[ "$output" != *'"dev_checks":'* ]]
     [[ "$output" == *"bats-core"* ]]
     [[ "$output" == *"gh"* ]]
-    [[ "$output" == *'"name":"pyyaml","ok":true'* ]]
-    [[ "$output" == *'"name":"click","ok":true'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --format json --profile dev)" ]
     [ "${stderr:-}" = "" ]
 }
@@ -452,11 +464,13 @@ load ./setup_helpers.bash
         "$BASE_REPO_ROOT/bin/basectl" check --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
-    [[ "$output" == *'"name":"homebrew","ok":false'* ]]
-    [[ "$output" == *'"name":"pyyaml","ok":false'* ]]
-    [[ "$output" == *'"name":"click","ok":false'* ]]
-    [[ "$output" == *'"name":"base_virtualenv","ok":false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
+    [[ "$output" == *'"id":"BASE-D001","status":"error","name":"homebrew"'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"error","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"error","name":"click"'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"error","name":"base_virtualenv"'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [ "${stderr:-}" = "" ]
 }

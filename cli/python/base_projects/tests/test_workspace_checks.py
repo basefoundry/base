@@ -94,6 +94,7 @@ class WorkspaceCheckTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["project_count"], 1)
@@ -101,7 +102,7 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertEqual(payload["projects"][0]["status"], "error")
         self.assertEqual(payload["projects"][0]["checks"][0]["id"], "BASE-P050")
         self.assertEqual(payload["projects"][0]["checks"][0]["status"], "error")
-        self.assertEqual(payload["projects"][0]["checks"][0]["ok"], False)
+        self.assertNotIn("ok", payload["projects"][0]["checks"][0])
 
     def test_workspace_doctor_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -123,6 +124,7 @@ class WorkspaceCheckTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["projects"][0]["checks"][0]["id"], "BASE-P050")
         self.assertEqual(payload["projects"][0]["checks"][0]["status"], "error")

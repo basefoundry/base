@@ -55,29 +55,7 @@ base_doctor_print_json_finding() {
 }
 
 base_doctor_base_finding_id() {
-    case "$1" in
-        homebrew)
-            printf '%s\n' "BASE-D001"
-            ;;
-        xcode_command_line_tools)
-            printf '%s\n' "BASE-D002"
-            ;;
-        python)
-            printf '%s\n' "BASE-D003"
-            ;;
-        base_virtualenv)
-            printf '%s\n' "BASE-D004"
-            ;;
-        pyyaml)
-            printf '%s\n' "BASE-D005"
-            ;;
-        click)
-            printf '%s\n' "BASE-D006"
-            ;;
-        *)
-            printf '%s\n' "BASE-D000"
-            ;;
-    esac
+    setup_base_check_finding_id "$1"
 }
 
 base_doctor_print_check_json_results() {
@@ -214,9 +192,11 @@ base_doctor_run_json() {
     local errors=0 profile_errors=0 profile_json="[]"
     local project="$1"
     local project_errors=0 project_json="[]"
+    local status="ok"
 
     setup_collect_base_check_results warn || true
     errors="$(base_doctor_count_check_errors)"
+    status="$(setup_check_results_status)"
 
     if setup_profiles_enabled; then
         if profile_json="$(setup_run_base_dev_layer doctor --format json)"; then
@@ -226,6 +206,7 @@ base_doctor_run_json() {
             [[ -n "$profile_json" ]] || profile_json="[]"
             errors=$((errors + profile_errors))
         fi
+        status="$(setup_merge_diagnostic_status "$status" "$(setup_json_payload_status "$profile_json")")"
     fi
 
     if [[ -n "$project" ]]; then
@@ -236,10 +217,12 @@ base_doctor_run_json() {
             [[ -n "$project_json" ]] || project_json="[]"
             errors=$((errors + project_errors))
         fi
+        status="$(setup_merge_diagnostic_status "$status" "$(setup_json_payload_status "$project_json")")"
     fi
 
     printf '{\n'
-    printf '  "ok": %s' "$([[ "$errors" -eq 0 ]] && printf true || printf false)"
+    printf '  "schema_version": 1,\n'
+    printf '  "status": "%s"' "$(setup_json_escape "$status")"
     if [[ -n "$project" ]]; then
         printf ',\n'
         printf '  "project": "%s"' "$(setup_json_escape "$project")"

@@ -254,8 +254,10 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" doctor --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
     [[ "$output" == *'"findings":'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *'"id":"BASE-D001","status":"error","name":"homebrew","message":"Homebrew is not installed.","fix":"Run '\''basectl setup'\'' to install Homebrew, or install it manually from https://brew.sh/."'* ]]
     [[ "$output" == *'"id":"BASE-D002","status":"error","name":"xcode_command_line_tools"'* ]]
     [[ "$output" == *'"id":"BASE-D003","status":"error","name":"python"'* ]]
@@ -425,9 +427,11 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" doctor demo --format json
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *'"ok": true'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "warn"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *'"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"'* ]]
     [[ "$output" != *"Running Python project doctor layer."* ]]
     [ "${stderr:-}" = "" ]
@@ -498,9 +502,11 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" doctor demo --format json
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *'"ok": false'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]

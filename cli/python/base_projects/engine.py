@@ -17,8 +17,10 @@ from base_cli.paths import discover_manifest
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
 from base_setup.checks import ArtifactCheck
+from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.checks import check_to_doctor_json
 from base_setup.checks import check_to_json
+from base_setup.checks import checks_status
 from base_setup.checks import doctor_status
 from base_setup.checks import print_doctor_finding
 from base_setup.demo import resolve_demo_script_path
@@ -672,15 +674,6 @@ def project_venv_check(project_name: str) -> ArtifactCheck:
     )
 
 
-def checks_status(checks: tuple[ArtifactCheck, ...]) -> str:
-    statuses = tuple(doctor_status(check) for check in checks)
-    if "error" in statuses:
-        return "error"
-    if "warn" in statuses:
-        return "warn"
-    return "ok"
-
-
 def workspace_error_count(results: tuple[WorkspaceProjectCheckResult, ...]) -> int:
     return sum(1 for result in results for check in result.checks if doctor_status(check) == "error")
 
@@ -718,6 +711,7 @@ def workspace_checks_to_json(
     doctor: bool,
 ) -> dict[str, Any]:
     return {
+        "schema_version": DIAGNOSTIC_JSON_SCHEMA_VERSION,
         "workspace": str(workspace_root),
         "status": checks_status(tuple(check for result in results for check in result.checks)),
         "project_count": len(results),
@@ -735,13 +729,10 @@ def workspace_checks_to_json(
     }
 
 
-def workspace_check_item_to_json(check: ArtifactCheck, doctor: bool) -> dict[str, str | bool]:
+def workspace_check_item_to_json(check: ArtifactCheck, doctor: bool) -> dict[str, str]:
     if doctor:
         return check_to_doctor_json(check)
-    payload = check_to_json(check)
-    payload["id"] = check.finding_id
-    payload["status"] = doctor_status(check)
-    return payload
+    return check_to_json(check)
 
 
 def print_workspace_status(workspace_root: Path, statuses: tuple[WorkspaceProjectStatus, ...]) -> None:

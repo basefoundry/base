@@ -109,10 +109,15 @@ class DemoDiagnosticsTests(unittest.TestCase):
             with redirect_stdout(stdout):
                 status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
 
-        checks = json.loads(stdout.getvalue())
+        payload = json.loads(stdout.getvalue())
+        checks = payload["checks"]
         self.assertEqual(status, 0)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["project"], "demo")
         self.assertEqual([check["name"] for check in checks], ["demo declaration", "demo script"])
-        self.assertTrue(all(check["ok"] for check in checks))
+        self.assertTrue(all(check["status"] == "ok" for check in checks))
+        self.assertTrue(all("ok" not in check for check in checks))
 
     def test_doctor_manifest_reports_demo_finding_ids(self) -> None:
         default_manifest = BaseManifest(

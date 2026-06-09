@@ -15,7 +15,7 @@ from .artifacts import resolve_artifact_definitions
 from .build import check_build
 from .checks import ArtifactCheck
 from .checks import check_to_doctor_json
-from .checks import check_to_json
+from .checks import checks_payload_to_json
 from .checks import doctor_status
 from .checks import print_doctor_finding
 from .demo import check_demo
@@ -193,7 +193,7 @@ def check_manifest(
 ) -> int:
     checks = manifest_checks(default_manifest, manifest)
     if output_format == "json":
-        print(json.dumps([check_to_json(check) for check in checks], indent=2))
+        print(json.dumps(checks_payload_to_json(checks, project=manifest.project_name), indent=2))
     elif output_format == "text":
         ctx.log.info("Checking project '%s' manifest requirements.", manifest.project_name)
         for check in checks:

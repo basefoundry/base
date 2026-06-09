@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
@@ -269,7 +270,12 @@ def check_profile_manifests(
             profile=profile_manifest.name,
         )
     )
-    return print_check_results(ctx, checks, output_format=output_format)
+    return print_check_results(
+        ctx,
+        checks,
+        output_format=output_format,
+        profiles=tuple(profile_manifest.name for profile_manifest in profile_manifests),
+    )
 
 
 def check_profiles(
@@ -279,7 +285,7 @@ def check_profiles(
     output_format: str,
 ) -> int:
     checks = collect_profile_checks(profiles, profile_manifests)
-    return print_check_results(ctx, checks, output_format=output_format)
+    return print_check_results(ctx, checks, output_format=output_format, profiles=profiles)
 
 
 def check_dev_artifacts(
@@ -289,12 +295,27 @@ def check_dev_artifacts(
     output_format: str,
 ) -> int:
     checks = dev_checks(artifacts, definitions, profile="dev")
-    return print_check_results(ctx, checks, output_format=output_format)
+    return print_check_results(ctx, checks, output_format=output_format, profiles=("dev",))
 
 
-def print_check_results(ctx: base_cli.Context, checks: tuple[DevCheck, ...], output_format: str) -> int:
+def print_check_results(
+    ctx: base_cli.Context,
+    checks: tuple[DevCheck, ...],
+    output_format: str,
+    profiles: tuple[str, ...],
+) -> int:
     if output_format == "json":
-        print(json.dumps([check_to_json(check) for check in checks], indent=2))
+        print(
+            json.dumps(
+                {
+                    "schema_version": DIAGNOSTIC_JSON_SCHEMA_VERSION,
+                    "status": checks_status(checks),
+                    "profiles": list(profiles),
+                    "checks": [check_to_json(check) for check in checks],
+                },
+                indent=2,
+            )
+        )
     elif output_format == "text":
         for check in checks:
             if check.ok:
@@ -305,7 +326,7 @@ def print_check_results(ctx: base_cli.Context, checks: tuple[DevCheck, ...], out
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
         return 2
 
-    return 0 if all(check.ok for check in checks) else 1
+    return 0 if all(doctor_status(check) != "error" for check in checks) else 1
 
 
 def doctor_profile_manifests(
@@ -535,16 +556,7 @@ def check_github_cli_auth() -> DevCheck:
     )
 
 
-def check_to_json(check: DevCheck) -> dict[str, str | bool]:
-    return {
-        "name": check.name,
-        "ok": check.ok,
-        "message": check.message,
-        "fix": check.fix,
-    }
-
-
-def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
+def check_to_json(check: DevCheck) -> dict[str, str]:
     return {
         "id": check.finding_id,
         "status": doctor_status(check),
@@ -552,6 +564,19 @@ def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
         "message": check.message,
         "fix": check.fix,
     }
+
+
+def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
+    return check_to_json(check)
+
+
+def checks_status(checks: tuple[DevCheck, ...]) -> str:
+    statuses = tuple(doctor_status(check) for check in checks)
+    if "error" in statuses:
+        return "error"
+    if "warn" in statuses:
+        return "warn"
+    return "ok"
 
 
 def doctor_status(check: DevCheck) -> str:

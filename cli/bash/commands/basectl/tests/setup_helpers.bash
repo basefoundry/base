@@ -175,7 +175,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
             ;;
         check)
             if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
-                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]\n'
+                printf '{"schema_version":1,"status":"error","profiles":["dev"],"checks":[{"id":"BASE-D104","status":"error","name":"bats-core","message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"id":"BASE-D104","status":"error","name":"gh","message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]}\n'
             else
                 printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
                 printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
@@ -222,7 +222,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
             ;;
         check)
             if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
-                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]\n'
+                printf '{"schema_version":1,"status":"error","profiles":["dev"],"checks":[{"id":"BASE-D104","status":"error","name":"bats-core","message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"id":"BASE-D104","status":"error","name":"gh","message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]}\n'
             else
                 printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
                 printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
@@ -323,7 +323,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
             ;;
         check)
             if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
-                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]\n'
+                printf '{"schema_version":1,"status":"error","profiles":["dev"],"checks":[{"id":"BASE-D104","status":"error","name":"bats-core","message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"id":"BASE-D104","status":"error","name":"gh","message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]}\n'
             else
                 printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
                 printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
@@ -455,7 +455,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
     case "${1:-}" in
         check)
             if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
-                printf '[{"name":"bats-core","ok":false,"message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"name":"gh","ok":false,"message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]\n'
+                printf '{"schema_version":1,"status":"error","profiles":["dev"],"checks":[{"id":"BASE-D104","status":"error","name":"bats-core","message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"id":"BASE-D104","status":"error","name":"gh","message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]}\n'
             else
                 printf 'Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.\n' >&2
                 printf 'Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.\n' >&2
@@ -506,7 +506,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         shift || true
     done
     if [[ "$action" == "check" && "$output_format" == "json" ]]; then
-        printf '[{"name":"demo-artifact","ok":true,"message":"Project artifact check passed.","fix":""}]\n'
+        printf '{"schema_version":1,"status":"ok","project":"demo","checks":[{"id":"BASE-P040","status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]}\n'
     elif [[ "$action" == "check" ]]; then
         printf 'Project artifact check passed.\n' >&2
     elif [[ "$action" == "doctor" ]]; then
