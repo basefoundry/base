@@ -141,6 +141,34 @@ class IdeExtensionTests(unittest.TestCase):
 
 
 
+    def test_check_ide_extensions_reuses_probe_for_all_extensions_in_ide(self) -> None:
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python", "github.copilot"),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch("base_setup.process.command_exists", return_value=True) as command_exists, mock.patch(
+            "base_setup.ide.list_ide_extensions",
+            return_value={"ms-python.python"},
+        ) as list_extensions:
+            checks = ide.check_ide_extensions(manifest)
+
+        command_exists.assert_called_once_with("code")
+        list_extensions.assert_called_once_with(ide.IDE_DEFINITIONS["vscode"])
+        self.assertEqual([check.name for check in checks], ["ms-python.python", "github.copilot"])
+        self.assertEqual([check.ok for check in checks], [True, False])
+
+
+
     def test_check_ide_extension_reports_installed_extension(self) -> None:
         definition = ide.IDE_DEFINITIONS["vscode"]
 
