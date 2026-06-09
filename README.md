@@ -815,6 +815,7 @@ Key starting points:
 
 - [FAQ](FAQ.md)
 - [Architecture](docs/architecture.md)
+- [Clean macOS Install Validation](docs/macos-install-validation.md)
 - [Execution Model](docs/execution-model.md)
 - [Runtime Environment](docs/runtime-environment.md)
 - [Tool Boundaries](docs/tool-boundaries.md)
