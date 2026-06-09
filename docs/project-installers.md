@@ -49,42 +49,36 @@ The installer should not reimplement Base's setup logic. It should call Base.
 
 ## Recommended Flow
 
-A project installer should be a thin Bash script with a predictable sequence:
+Start from Base's maintained template, then customize the project-owned copy:
 
 ```bash
-#!/usr/bin/env bash
-
-project_name="banyanlabs"
-workspace_dir="${HOME}/work"
-base_dir="${workspace_dir}/base"
-project_dir="${workspace_dir}/${project_name}"
-
-installer="${TMPDIR:-/tmp}/base-install.sh"
-
-mkdir -p "$workspace_dir" || {
-    printf 'ERROR: Unable to create workspace directory %s.\n' "$workspace_dir" >&2
-    exit 1
-}
-
-if [[ ! -d "$base_dir/.git" ]]; then
-    curl -fsSL -o "$installer" https://raw.githubusercontent.com/codeforester/base/master/install.sh || exit 1
-    BASE_INSTALL_DIR="$base_dir" bash "$installer" || exit 1
-else
-    git -C "$base_dir" pull --ff-only || exit 1
-fi
-
-if [[ ! -d "$project_dir/.git" ]]; then
-    git clone https://github.com/codeforester/banyanlabs.git "$project_dir" || exit 1
-else
-    git -C "$project_dir" pull --ff-only || exit 1
-fi
-
-"$base_dir/bin/basectl" setup --manifest "$project_dir/base_manifest.yaml" "$project_name" || exit 1
-"$base_dir/bin/basectl" update-profile || exit 1
+basectl repo installer-template
+basectl repo installer-template install.sh
 ```
 
-This is only a sketch. A real installer should add friendlier output, better
-error handling, and project-specific next steps.
+With no path, the command prints the template to stdout. With a path, it writes
+an executable script and leaves an existing file unchanged so project
+customizations are not overwritten.
+
+For a project such as Banyan Labs, the generated script should change the
+project-owned values at the top:
+
+```bash
+PROJECT_NAME="${PROJECT_NAME:-banyanlabs}"
+PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/codeforester/banyanlabs.git}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/work}"
+BASE_DIR="${BASE_DIR:-$WORKSPACE_DIR/base}"
+PROJECT_DIR="${PROJECT_DIR:-$WORKSPACE_DIR/$PROJECT_NAME}"
+RUN_UPDATE_PROFILE="${RUN_UPDATE_PROFILE:-true}"
+```
+
+It should also replace the generic success text with project-specific next
+steps, for example:
+
+```bash
+log "Banyan Labs setup is complete."
+log "Next: open the project README and run the first Banyan Labs smoke test."
+```
 
 If a project installer uses Base's standalone installer, it should still avoid
 reimplementing Base setup. Use `BASE_INSTALL_DIR` or `install.sh --dir <path>` to

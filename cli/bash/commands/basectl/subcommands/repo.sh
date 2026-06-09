@@ -23,6 +23,7 @@ Usage:
   basectl repo init <name> [options]
   basectl repo check [path] [options]
   basectl repo configure [path] [options]
+  basectl repo installer-template [path] [options]
 
 Options:
   --path <path>                 Target path for repo init. Defaults to workspace root plus <name>.
@@ -36,7 +37,8 @@ Options:
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
-Create, check, and configure a standard Base-managed repository baseline.
+Create, check, and configure a standard Base-managed repository baseline, or
+write a reusable project installer template.
 EOF
 }
 
@@ -223,7 +225,7 @@ base_repo_write_stream() {
     local target_dir
 
     if [[ -e "$target" ]]; then
-        log_info "Repository baseline file already exists at '$target'; leaving it unchanged."
+        log_info "File already exists at '$target'; leaving it unchanged."
         return 0
     fi
 
@@ -246,7 +248,7 @@ base_repo_write_executable_stream() {
     local target_dir
 
     if [[ -e "$target" ]]; then
-        log_info "Repository baseline file already exists at '$target'; leaving it unchanged."
+        log_info "File already exists at '$target'; leaving it unchanged."
         return 0
     fi
 
@@ -265,6 +267,41 @@ base_repo_write_executable_stream() {
         log_error "Failed to make '$target' executable."
         return 1
     fi
+}
+
+base_repo_installer_template_path() {
+    [[ -n "${BASE_HOME:-}" ]] || {
+        log_error "BASE_HOME is required to locate the project installer template."
+        return 1
+    }
+
+    printf '%s/templates/project-install.sh\n' "$BASE_HOME"
+}
+
+base_repo_print_installer_template() {
+    local template
+
+    template="$(base_repo_installer_template_path)" || return 1
+    [[ -f "$template" ]] || {
+        log_error "Project installer template was not found at '$template'."
+        return 1
+    }
+
+    cat "$template"
+}
+
+base_repo_write_installer_template() {
+    local dry_run="$1"
+    local target="$2"
+    local template
+
+    template="$(base_repo_installer_template_path)" || return 1
+    [[ -f "$template" ]] || {
+        log_error "Project installer template was not found at '$template'."
+        return 1
+    }
+
+    base_repo_write_executable_stream "$dry_run" "$target" < "$template"
 }
 
 base_repo_write_readme() {
@@ -916,6 +953,49 @@ base_repo_configure() {
     base_repo_configure_github "$dry_run" "$github_repo"
 }
 
+base_repo_installer_template() {
+    local dry_run=0
+    local path=""
+
+    while (($#)); do
+        case "$1" in
+            -h|--help|help)
+                base_repo_subcommand_usage
+                return 0
+                ;;
+            --dry-run)
+                dry_run=1
+                shift
+                ;;
+            -v)
+                set_log_level DEBUG
+                export LOG_DEBUG=1
+                shift
+                ;;
+            -*)
+                base_repo_usage_error "Unknown repo installer-template option '$1'."
+                return $?
+                ;;
+            *)
+                if [[ -n "$path" ]]; then
+                    base_repo_usage_error "The 'repo installer-template' command accepts at most one path."
+                    return $?
+                fi
+                path="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$path" ]]; then
+        base_repo_print_installer_template
+        return $?
+    fi
+
+    path="$(base_repo_target_path "$path")"
+    base_repo_write_installer_template "$dry_run" "$path"
+}
+
 base_repo_subcommand_main() {
     local command="${1:-}"
 
@@ -935,6 +1015,10 @@ base_repo_subcommand_main() {
         configure)
             shift
             base_repo_configure "$@"
+            ;;
+        installer-template)
+            shift
+            base_repo_installer_template "$@"
             ;;
         *)
             base_repo_usage_error "Unknown repo command '$command'."

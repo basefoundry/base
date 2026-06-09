@@ -23,8 +23,8 @@ Commands:
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
-  repo <init|check|configure> [options]
-    Create, check, and configure a standard Base-managed repository baseline.
+  repo <init|check|configure|installer-template> [options]
+    Create repository baselines and project installer templates.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]

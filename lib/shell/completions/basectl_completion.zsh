@@ -129,7 +129,7 @@ _base_basectl_completion() {
         repo)
             case "${words[3]:-}" in
                 init)
-                    _arguments '1:repo command:(init check configure)' \
+                    _arguments '1:repo command:(init check configure installer-template)' \
                         '2:repository name:' \
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
@@ -143,21 +143,28 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 check)
-                    _arguments '1:repo command:(init check configure)' \
+                    _arguments '1:repo command:(init check configure installer-template)' \
                         '2:path:_files' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:repo command:(init check configure)' \
+                    _arguments '1:repo command:(init check configure installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                installer-template)
+                    _arguments '1:repo command:(init check configure installer-template)' \
+                        '2:path:_files' \
+                        '--dry-run[Print planned changes]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
                 *)
-                    _arguments '1:repo command:(init check configure)'
+                    _arguments '1:repo command:(init check configure installer-template)'
                     ;;
             esac
             ;;

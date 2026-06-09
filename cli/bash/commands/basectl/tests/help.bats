@@ -13,7 +13,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"check [project] [options]"* ]]
     [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"run <project> <command> [options]"* ]]
-    [[ "$output" == *"repo <init|check|configure> [options]"* ]]
+    [[ "$output" == *"repo <init|check|configure|installer-template> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"logs [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
@@ -49,7 +49,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  onboard [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
-    grep -Fqx '  repo <init|check|configure> [options]' <<<"$output"
+    grep -Fqx '  repo <init|check|configure|installer-template> [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]

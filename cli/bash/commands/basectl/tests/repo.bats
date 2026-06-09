@@ -11,6 +11,48 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl repo init <name>"* ]]
     [[ "$output" == *"basectl repo check [path]"* ]]
     [[ "$output" == *"basectl repo configure [path]"* ]]
+    [[ "$output" == *"basectl repo installer-template [path]"* ]]
+}
+
+@test "basectl repo installer-template prints the maintained template" {
+    run_basectl repo installer-template
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'PROJECT_NAME="${PROJECT_NAME:-example-project}"'* ]]
+    [[ "$output" == *'PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/example/example-project.git}"'* ]]
+    [[ "$output" == *'basectl" setup --manifest "$PROJECT_DIR/base_manifest.yaml" "$PROJECT_NAME"'* ]]
+}
+
+@test "basectl repo installer-template writes an executable template" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo installer-template "$repo_dir/install.sh"
+
+    [ "$status" -eq 0 ]
+    [ -x "$repo_dir/install.sh" ]
+    grep -Fq 'PROJECT_NAME="${PROJECT_NAME:-example-project}"' "$repo_dir/install.sh"
+}
+
+@test "basectl repo installer-template leaves existing files unchanged" {
+    local repo_dir="$TEST_TMPDIR/custom"
+
+    mkdir -p "$repo_dir"
+    printf 'custom\n' > "$repo_dir/install.sh"
+
+    run_basectl repo installer-template "$repo_dir/install.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$repo_dir/install.sh")" = "custom" ]
+}
+
+@test "basectl repo installer-template dry-run reports executable creation" {
+    local repo_dir="$TEST_TMPDIR/dry-run"
+
+    run_basectl repo installer-template "$repo_dir/install.sh" --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/install.sh'."* ]]
+    [ ! -e "$repo_dir/install.sh" ]
 }
 
 @test "basectl repo init dry-run prints baseline and configuration plan" {
