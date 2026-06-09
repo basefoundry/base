@@ -164,7 +164,7 @@ EOF
     [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"workspace_commands=status check doctor"* ]]
-    [[ "$output" == *"workspace_options=--workspace --format"* ]]
+    [[ "$output" == *"workspace_options=--workspace --manifest --format"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]

@@ -338,6 +338,7 @@ basectl projects list
 basectl projects list --format json
 basectl workspace status
 basectl workspace status --format json
+basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
 ```
@@ -352,6 +353,11 @@ doctor are read-only. Status reports each discovered project's manifest
 validity and whether the Base-managed project virtual environment is present.
 Check and doctor run project diagnostics across discovered projects and keep
 invalid project manifests visible as per-project findings.
+
+Use `--manifest <path>` with `basectl workspace status`, `check`, or `doctor`
+to include expected repositories from a local workspace manifest. Missing
+required repositories are errors, missing optional repositories are warnings,
+and Base-managed projects outside the manifest stay visible as warnings.
 
 Start a new Base-managed repository with:
 

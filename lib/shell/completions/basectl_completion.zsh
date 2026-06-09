@@ -63,6 +63,7 @@ _base_basectl_completion() {
         workspace)
             _arguments '1:workspace command:(status check doctor)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
+                '--manifest[Local workspace manifest]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;

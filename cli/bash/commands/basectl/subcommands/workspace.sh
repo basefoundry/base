@@ -10,11 +10,12 @@ Usage:
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
   --format <format>   Output format for the workspace command: text or json.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Show read-only status, check, or doctor output for Base-managed projects in the workspace.
+Show read-only status, check, or doctor output for repositories in the workspace.
 EOF
 }
 
