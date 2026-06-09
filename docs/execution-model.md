@@ -170,6 +170,7 @@ list is `basectl --help`; this list summarizes the shipped public surface:
 - `run`
 - `demo`
 - `repo`
+- `release`
 - `logs`
 - `workspace`
 - `onboard`

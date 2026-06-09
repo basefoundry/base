@@ -1,0 +1,404 @@
+from __future__ import annotations
+
+import re
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import base_cli
+from base_setup.manifest import BaseManifest
+from base_setup.manifest import ManifestError
+from base_setup.manifest import ReleaseConfig
+from base_setup.manifest import read_manifest
+
+
+app = base_cli.App(name="base_release")
+CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
+
+
+class ReleaseUsageError(RuntimeError):
+    pass
+
+
+class ReleaseError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class ReleaseArguments:
+    command: str
+    version: str
+    manifest_path: Path | None
+
+
+@dataclass(frozen=True)
+class ReleaseContext:
+    manifest_path: Path
+    manifest: BaseManifest
+    release: ReleaseConfig
+    version: str
+    tag_name: str
+    version_file: Path
+    changelog: Path
+
+
+@dataclass(frozen=True)
+class ReleaseFinding:
+    status: str
+    name: str
+    message: str
+
+
+def main(argv: list[str] | None = None) -> int:
+    result = app.click_command.main(args=argv, standalone_mode=False)
+    return int(result or 0)
+
+
+@app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "help_option_names": ["-h", "--help"],
+        "ignore_unknown_options": True,
+    }
+)
+@base_cli.argument("arguments", nargs=-1)
+def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
+    try:
+        args = parse_release_args(arguments)
+        release_context = build_release_context(ctx, args)
+        if args.command == "check":
+            return release_check_command(release_context)
+        if args.command == "plan":
+            return release_plan_command(release_context)
+        if args.command == "notes":
+            return release_notes_command(release_context)
+        raise ReleaseUsageError(f"Unknown release command '{args.command}'.")
+    except ReleaseUsageError as exc:
+        print_usage(file=sys.stderr)
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    except (ManifestError, ReleaseError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+
+def parse_release_args(arguments: tuple[str, ...]) -> ReleaseArguments:
+    if not arguments or arguments[0] in ("-h", "--help", "help"):
+        print_usage()
+        raise SystemExit(0)
+
+    command = arguments[0]
+    if command not in ("check", "plan", "notes"):
+        raise ReleaseUsageError(f"Unknown release command '{command}'.")
+
+    version: str | None = None
+    manifest_path: Path | None = None
+    remaining = list(arguments[1:])
+    index = 0
+    while index < len(remaining):
+        arg = remaining[index]
+        if arg in ("-h", "--help"):
+            print_usage()
+            raise SystemExit(0)
+        if arg == "--version":
+            index += 1
+            if index >= len(remaining) or not remaining[index]:
+                raise ReleaseUsageError("Option '--version' requires an argument.")
+            version = remaining[index]
+        elif arg == "--manifest":
+            index += 1
+            if index >= len(remaining) or not remaining[index]:
+                raise ReleaseUsageError("Option '--manifest' requires an argument.")
+            manifest_path = Path(remaining[index]).expanduser()
+        else:
+            raise ReleaseUsageError(f"Unknown release {command} option '{arg}'.")
+        index += 1
+
+    if version is None:
+        raise ReleaseUsageError(f"The 'release {command}' command requires --version.")
+    return ReleaseArguments(command=command, version=version, manifest_path=manifest_path)
+
+
+def print_usage(file=sys.stdout) -> None:
+    print(
+        """Usage:
+  base_release check --version <version> [--manifest <path>]
+  base_release plan --version <version> [--manifest <path>]
+  base_release notes --version <version> [--manifest <path>]
+
+Purpose:
+  Inspect release readiness for a Base-managed project without publishing tags,
+  GitHub Releases, or Homebrew tap changes.""",
+        file=file,
+    )
+
+
+def build_release_context(ctx: base_cli.Context, args: ReleaseArguments) -> ReleaseContext:
+    manifest_path = args.manifest_path or ctx.manifest_path
+    if manifest_path is None:
+        raise ReleaseError("No base_manifest.yaml was found. Pass --manifest <path>.")
+    manifest_path = manifest_path.resolve()
+    manifest = read_manifest(manifest_path)
+    if manifest.release is None:
+        raise ReleaseError(f"{manifest_path}: manifest does not declare release metadata.")
+
+    project_root = manifest_path.parent
+    release = manifest.release
+    return ReleaseContext(
+        manifest_path=manifest_path,
+        manifest=manifest,
+        release=release,
+        version=args.version,
+        tag_name=f"{release.tag_prefix}{args.version}",
+        version_file=project_root / release.version_file,
+        changelog=project_root / release.changelog,
+    )
+
+
+def release_check_command(ctx: ReleaseContext) -> int:
+    findings = release_findings(ctx)
+    print(f"\nRelease check for {ctx.manifest.project_name} v{ctx.version}\n")
+    for finding in findings:
+        print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")
+    if any(finding.status == "error" for finding in findings):
+        return 1
+    return 0
+
+
+def release_plan_command(ctx: ReleaseContext) -> int:
+    title = render_release_title(ctx)
+    print(f"Release plan for {ctx.manifest.project_name} v{ctx.version}")
+    print("")
+    print(f"Version file: {ctx.release.version_file}")
+    print(f"Changelog: {ctx.release.changelog}")
+    print(f"Tag: {ctx.tag_name}")
+    print(f"GitHub repository: {ctx.release.github.repository}")
+    print(f"GitHub release title: {title}")
+    if ctx.release.homebrew is not None and ctx.release.homebrew.required:
+        archive_url = github_tag_archive_url(ctx.release.github.repository, ctx.tag_name)
+        print("")
+        print("Homebrew handoff required:")
+        print(f"  Tap repository: {ctx.release.homebrew.tap_repository}")
+        print(f"  Formula path: {ctx.release.homebrew.formula_path}")
+        print(f"  Package: {ctx.release.homebrew.package}")
+        print(f"  Archive URL: {archive_url}")
+        print(f"  SHA256 command: curl -fsSL {archive_url} | shasum -a 256")
+    else:
+        print("")
+        print("Homebrew handoff: not declared")
+    return 0
+
+
+def release_notes_command(ctx: ReleaseContext) -> int:
+    print(extract_changelog_section(ctx.changelog, ctx.version))
+    return 0
+
+
+def release_findings(ctx: ReleaseContext) -> tuple[ReleaseFinding, ...]:
+    findings: list[ReleaseFinding] = [
+        ReleaseFinding("ok", "manifest", f"Release metadata found in {ctx.manifest_path}."),
+        version_file_finding(ctx),
+        changelog_finding(ctx),
+        git_worktree_finding(ctx.manifest_path.parent),
+        git_branch_finding(ctx.manifest_path.parent),
+        gh_cli_finding(),
+        local_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
+        remote_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
+    ]
+    return tuple(findings)
+
+
+def version_file_finding(ctx: ReleaseContext) -> ReleaseFinding:
+    version = read_version_file(ctx.version_file)
+    if version is None:
+        return ReleaseFinding("error", "version_file", f"{ctx.release.version_file} is missing or empty.")
+    if version != ctx.version:
+        return ReleaseFinding(
+            "error",
+            "version_file",
+            f"{ctx.release.version_file} contains {version}, expected {ctx.version}.",
+        )
+    return ReleaseFinding("ok", "version_file", f"{ctx.release.version_file} matches {ctx.version}.")
+
+
+def changelog_finding(ctx: ReleaseContext) -> ReleaseFinding:
+    try:
+        extract_changelog_section(ctx.changelog, ctx.version)
+    except ReleaseError as exc:
+        return ReleaseFinding("error", "changelog", str(exc))
+    return ReleaseFinding("ok", "changelog", f"{ctx.release.changelog} has a section for {ctx.version}.")
+
+
+def git_worktree_finding(root: Path) -> ReleaseFinding:
+    status = git_status(root)
+    if status is None:
+        return ReleaseFinding("warn", "git", "Unable to inspect Git worktree status.")
+    if status:
+        return ReleaseFinding("error", "git", "Git worktree has tracked or untracked changes.")
+    return ReleaseFinding("ok", "git", "Git worktree is clean.")
+
+
+def git_branch_finding(root: Path) -> ReleaseFinding:
+    branch = current_git_branch(root)
+    if branch is None:
+        return ReleaseFinding("warn", "branch", "Unable to inspect current Git branch.")
+    if not branch:
+        return ReleaseFinding("warn", "branch", "Git worktree is detached from a branch.")
+    return ReleaseFinding("ok", "branch", f"Current branch is {branch}.")
+
+
+def local_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
+    if local_tag_exists(root, tag_name):
+        return ReleaseFinding("error", "local_tag", f"Local tag {tag_name} already exists.")
+    return ReleaseFinding("ok", "local_tag", f"Local tag {tag_name} is available.")
+
+
+def read_version_file(path: Path) -> str | None:
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            value = line.strip()
+            if value:
+                return value
+    except OSError:
+        return None
+    return None
+
+
+def extract_changelog_section(path: Path, version: str) -> str:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ReleaseError(f"{path.name} could not be read: {exc}") from exc
+
+    start: int | None = None
+    for index, line in enumerate(lines):
+        match = CHANGELOG_HEADER_RE.match(line)
+        if match and version in (match.group("bracket"), match.group("plain")):
+            start = index + 1
+            break
+    if start is None:
+        raise ReleaseError(f"{path.name} has no section for {version}.")
+
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+
+    section_lines = lines[start:end]
+    while section_lines and not section_lines[0].strip():
+        section_lines.pop(0)
+    while section_lines and not section_lines[-1].strip():
+        section_lines.pop()
+    if not section_lines:
+        raise ReleaseError(f"{path.name} section for {version} is empty.")
+    return "\n".join(section_lines)
+
+
+def git_status(root: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=root,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def current_git_branch(root: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=root,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def gh_cli_finding() -> ReleaseFinding:
+    if shutil.which("gh") is None:
+        return ReleaseFinding("error", "gh", "GitHub CLI 'gh' was not found.")
+
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "status", "-h", "github.com"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return ReleaseFinding("error", "gh", f"Unable to run GitHub CLI auth check: {exc}.")
+    if result.returncode == 0:
+        return ReleaseFinding("ok", "gh", "GitHub CLI is authenticated for github.com.")
+
+    detail = last_non_empty_line(result.stdout)
+    if detail:
+        return ReleaseFinding("error", "gh", f"GitHub CLI auth check failed: {detail}")
+    return ReleaseFinding("error", "gh", "GitHub CLI is not authenticated for github.com.")
+
+
+def local_tag_exists(root: Path, tag_name: str) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
+        cwd=root,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
+def remote_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "--tags", "origin", f"refs/tags/{tag_name}"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin: {exc}.")
+
+    if result.returncode != 0:
+        detail = last_non_empty_line(result.stderr)
+        if detail:
+            return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin: {detail}")
+        return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin.")
+    if result.stdout.strip():
+        return ReleaseFinding("error", "remote_tag", f"Remote tag {tag_name} already exists on origin.")
+    return ReleaseFinding("ok", "remote_tag", f"Remote tag {tag_name} is available on origin.")
+
+
+def last_non_empty_line(value: str) -> str | None:
+    for line in reversed(value.splitlines()):
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return None
+
+
+def render_release_title(ctx: ReleaseContext) -> str:
+    return ctx.release.github.release_title.format(
+        repository=ctx.release.github.repository,
+        version=ctx.version,
+        tag=ctx.tag_name,
+    )
+
+
+def github_tag_archive_url(repository: str, tag_name: str) -> str:
+    return f"https://github.com/{repository}/archive/refs/tags/{tag_name}.tar.gz"

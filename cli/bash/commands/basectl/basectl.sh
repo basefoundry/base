@@ -27,6 +27,8 @@ Commands:
     Create repository baselines, agent guidance, and project installer templates.
   ci <setup|check|doctor> <project> [options]
     Run Base setup, checks, and diagnostics in non-interactive CI.
+  release <check|plan|notes> --version <version> [options]
+    Inspect release readiness, plan, and changelog notes without publishing.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]
@@ -204,6 +206,11 @@ basectl_do_ci() {
     base_ci_subcommand_main "$@"
 }
 
+basectl_do_release() {
+    basectl_source_subcommand_module release || return 1
+    base_release_subcommand_main "$@"
+}
+
 basectl_do_clean() {
     basectl_source_subcommand_module clean || return 1
     base_clean_subcommand_main "$@"
@@ -358,6 +365,7 @@ basectl_main() {
         run)              basectl_do_run "$@" ;;
         repo)             basectl_do_repo "$@" ;;
         ci)               basectl_do_ci "$@" ;;
+        release)          basectl_do_release "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         logs)             basectl_do_logs "$@" ;;
         config)           basectl_do_config "$@" ;;

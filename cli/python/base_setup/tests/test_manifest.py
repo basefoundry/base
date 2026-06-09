@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-public-methods
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -205,6 +207,148 @@ class ManifestParsingTests(unittest.TestCase):
         assert manifest.demo is not None
         self.assertEqual(manifest.demo.script, "./demo/demo.sh")
         self.assertEqual(manifest.demo.description, "Interactive project walkthrough")
+
+
+    def test_reads_manifest_release_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "release:",
+                        "  version_file: VERSION",
+                        "  changelog: CHANGELOG.md",
+                        "  tag_prefix: v",
+                        "  github:",
+                        "    repository: codeforester/base",
+                        "    release_title: \"Base v{version}\"",
+                        "  homebrew:",
+                        "    required: true",
+                        "    tap_repository: codeforester/homebrew-base",
+                        "    formula_path: Formula/base.rb",
+                        "    package: codeforester/base/base",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.release)
+        assert manifest.release is not None
+        self.assertEqual(manifest.release.version_file, "VERSION")
+        self.assertEqual(manifest.release.changelog, "CHANGELOG.md")
+        self.assertEqual(manifest.release.tag_prefix, "v")
+        self.assertEqual(manifest.release.github.repository, "codeforester/base")
+        self.assertEqual(manifest.release.github.release_title, "Base v{version}")
+        self.assertIsNotNone(manifest.release.homebrew)
+        assert manifest.release.homebrew is not None
+        self.assertTrue(manifest.release.homebrew.required)
+        self.assertEqual(manifest.release.homebrew.tap_repository, "codeforester/homebrew-base")
+        self.assertEqual(manifest.release.homebrew.formula_path, "Formula/base.rb")
+        self.assertEqual(manifest.release.homebrew.package, "codeforester/base/base")
+
+
+    def test_reads_manifest_release_config_without_homebrew(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "release:",
+                        "  github:",
+                        "    repository: codeforester/demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.release)
+        assert manifest.release is not None
+        self.assertEqual(manifest.release.version_file, "VERSION")
+        self.assertEqual(manifest.release.changelog, "CHANGELOG.md")
+        self.assertEqual(manifest.release.tag_prefix, "v")
+        self.assertEqual(manifest.release.github.repository, "codeforester/demo")
+        self.assertEqual(manifest.release.github.release_title, "{repository} v{version}")
+        self.assertIsNone(manifest.release.homebrew)
+
+
+    def test_rejects_invalid_manifest_release_config(self) -> None:
+        invalid_values = {
+            "scalar": "release: true",
+            "unknown_key": "release:\n  github:\n    repository: codeforester/base\n  package: base",
+            "missing_github": "release:\n  version_file: VERSION",
+            "github_scalar": "release:\n  github: codeforester/base",
+            "missing_repository": "release:\n  github:\n    release_title: Base",
+            "invalid_repository": "release:\n  github:\n    repository: codeforester",
+            "absolute_version_file": (
+                "release:\n  version_file: /tmp/VERSION\n  github:\n    repository: codeforester/base"
+            ),
+            "absolute_changelog": (
+                "release:\n  changelog: /tmp/CHANGELOG.md\n  github:\n    repository: codeforester/base"
+            ),
+            "empty_tag_prefix": "release:\n  tag_prefix: ''\n  github:\n    repository: codeforester/base",
+            "homebrew_scalar": "release:\n  github:\n    repository: codeforester/base\n  homebrew: true",
+            "homebrew_required_missing_tap": (
+                "release:\n"
+                "  github:\n"
+                "    repository: codeforester/base\n"
+                "  homebrew:\n"
+                "    required: true\n"
+                "    formula_path: Formula/base.rb\n"
+                "    package: codeforester/base/base"
+            ),
+            "homebrew_absolute_formula": (
+                "release:\n"
+                "  github:\n"
+                "    repository: codeforester/base\n"
+                "  homebrew:\n"
+                "    required: true\n"
+                "    tap_repository: codeforester/homebrew-base\n"
+                "    formula_path: /tmp/base.rb\n"
+                "    package: codeforester/base/base"
+            ),
+            "homebrew_invalid_package": (
+                "release:\n"
+                "  github:\n"
+                "    repository: codeforester/base\n"
+                "  homebrew:\n"
+                "    required: true\n"
+                "    tap_repository: codeforester/homebrew-base\n"
+                "    formula_path: Formula/base.rb\n"
+                "    package: base"
+            ),
+        }
+        for name, release_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                release_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
 
 
 
