@@ -766,6 +766,48 @@ setup_recovery_project_venv() {
     printf "Run 'basectl setup %s --recreate-venv' to back up and recreate the project virtual environment.\n" "$project"
 }
 
+setup_json_array_items() {
+    local value="$1"
+
+    value="${value//$'\n'/}"
+    value="${value//$'\r'/}"
+    value="${value#\[}"
+    value="${value%\]}"
+    printf '%s' "$value"
+}
+
+setup_print_project_check_json_with_venv() {
+    local precheck_json="$1"
+    local ok="$2"
+    local message="$3"
+    local fix="$4"
+    local project="$5"
+    local items precheck_status status venv_status
+
+    venv_status="$(setup_diagnostic_status_from_ok "$ok")"
+    precheck_status="$(setup_json_payload_status "$precheck_json")"
+    status="$(setup_merge_diagnostic_status "$precheck_status" "$venv_status")"
+    items="$(setup_json_array_items "$precheck_json")"
+
+    printf '{\n'
+    printf '  "schema_version": 1,\n'
+    printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
+    printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
+    printf '  "checks": [\n'
+    if [[ -n "$items" ]]; then
+        printf '    %s,\n' "$items"
+    fi
+    setup_print_check_json_item \
+        "" \
+        "BASE-P050" \
+        "$venv_status" \
+        "project_virtualenv" \
+        "$message" \
+        "$fix"
+    printf '  ]\n'
+    printf '}\n'
+}
+
 setup_print_project_venv_check_json() {
     local ok="$1"
     local message="$2"
@@ -788,14 +830,42 @@ setup_print_project_venv_check_json() {
 }
 
 setup_print_project_venv_doctor_json() {
-    local status="$1"
-    local message="$2"
-    local fix="$3"
+    local precheck_json="$1"
+    local status="$2"
+    local message="$3"
+    local fix="$4"
+    local items
 
-    printf '[{"id":"BASE-P050","status":"%s","name":"project_virtualenv","message":"%s","fix":"%s"}]\n' \
+    items="$(setup_json_array_items "$precheck_json")"
+
+    printf '['
+    if [[ -n "$items" ]]; then
+        printf '%s,' "$items"
+    fi
+    printf '{"id":"BASE-P050","status":"%s","name":"project_virtualenv","message":"%s","fix":"%s"}]\n' \
         "$(setup_json_escape "$status")" \
         "$(setup_json_escape "$message")" \
         "$(setup_json_escape "$fix")"
+}
+
+setup_run_project_pre_venv_layer() {
+    local action="$1"
+    local output_format="$2"
+    local manifest_path="$3"
+    local project="$4"
+    local python_bin venv_dir
+    local args=()
+
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
+
+    args+=(--manifest "$manifest_path")
+    args+=(--action "$action")
+    args+=(--format "$output_format")
+    args+=("$project")
+
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
 }
 
 setup_run_project_artifact_setup() {
@@ -834,7 +904,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path project project_venv_dir python_bin resolved_name resolved_root resolve_output venv_dir
+    local exit_code manifest_path precheck_json project project_venv_dir python_bin resolved_name resolved_root resolve_output venv_dir
     local args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
@@ -904,20 +974,31 @@ setup_run_project_artifact_layer() {
         fi
         if [[ "$output_format" == json ]]; then
             if [[ "$action" == doctor ]]; then
+                precheck_json="$(setup_run_project_pre_venv_layer predoctor json "$manifest_path" "$project")" || true
+                [[ -n "$precheck_json" ]] || precheck_json="[]"
                 setup_print_project_venv_doctor_json \
+                    "$precheck_json" \
                     "error" \
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
                     "$(setup_recovery_project_venv "$project")"
             else
-                setup_print_project_venv_check_json \
+                precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project")" || true
+                [[ -n "$precheck_json" ]] || precheck_json="[]"
+                setup_print_project_check_json_with_venv \
+                    "$precheck_json" \
                     false \
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
                     "$(setup_recovery_project_venv "$project")" \
                     "$project"
             fi
         elif [[ "$action" == doctor ]]; then
+            setup_run_project_pre_venv_layer predoctor text "$manifest_path" "$project" || true
             printf 'error  %-9s  %-26s  %s\n' "BASE-P050" "Project virtualenv" "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             printf '       Fix: %s\n' "$(setup_recovery_project_venv "$project")"
+        elif [[ "$action" == check ]]; then
+            setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" || true
+            log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+            log_warn "$(setup_recovery_project_venv "$project")"
         else
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             log_warn "$(setup_recovery_project_venv "$project")"

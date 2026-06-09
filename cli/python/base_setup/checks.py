@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 
 
@@ -16,19 +18,23 @@ class ArtifactCheck:
     fix: str
     finding_id: str
     status: str = ""
+    details: Mapping[str, Any] = field(default_factory=dict)
 
 
-def check_to_json(check: ArtifactCheck) -> dict[str, str]:
-    return {
+def check_to_json(check: ArtifactCheck) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "id": check.finding_id,
         "status": doctor_status(check),
         "name": check.name,
         "message": check.message,
         "fix": check.fix,
     }
+    if check.details:
+        payload["details"] = dict(check.details)
+    return payload
 
 
-def check_to_doctor_json(check: ArtifactCheck) -> dict[str, str]:
+def check_to_doctor_json(check: ArtifactCheck) -> dict[str, Any]:
     return check_to_json(check)
 
 

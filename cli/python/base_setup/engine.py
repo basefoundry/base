@@ -15,6 +15,7 @@ from .artifacts import resolve_artifact_definitions
 from .build import check_build
 from .checks import ArtifactCheck
 from .checks import check_to_doctor_json
+from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import doctor_status
 from .checks import print_doctor_finding
@@ -24,6 +25,7 @@ from .delegates import check_mise
 from .delegates import reconcile_brewfile
 from .delegates import reconcile_mise
 from .errors import ArtifactError
+from .git_remote import check_git_remote
 from .health import check_required_env
 from .health import check_required_ports
 from .ide import check_ide_extensions
@@ -116,7 +118,14 @@ def run_manifest_action(
         return check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
     if action == "doctor":
         return doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
-    ctx.log.error("Unsupported base_setup action '%s'. Expected setup, bootstrap, check, or doctor.", action)
+    if action == "precheck":
+        return check_pre_venv_manifest(ctx, base_manifest, output_format=manifest_action.output_format)
+    if action == "predoctor":
+        return doctor_pre_venv_manifest(base_manifest, output_format=manifest_action.output_format)
+    ctx.log.error(
+        "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, precheck, or predoctor.",
+        action,
+    )
     return 2
 
 
@@ -209,6 +218,24 @@ def check_manifest(
     return 0 if all(check.ok or doctor_status(check) == "warn" for check in checks) else 1
 
 
+def check_pre_venv_manifest(ctx: base_cli.Context, manifest: BaseManifest, output_format: str) -> int:
+    checks = pre_venv_manifest_checks(manifest)
+    if output_format == "json":
+        print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
+    elif output_format == "text":
+        for check in checks:
+            if check.ok:
+                ctx.log.info(check.message)
+            else:
+                ctx.log.warning(check.message)
+                if check.fix:
+                    ctx.log.warning("Fix: %s", check.fix)
+    else:
+        ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
+        return 2
+    return 0 if all(check.ok or doctor_status(check) == "warn" for check in checks) else 1
+
+
 def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, output_format: str) -> int:
     checks = manifest_checks(default_manifest, manifest)
     if output_format == "json":
@@ -230,13 +257,37 @@ def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, outp
     return min(error_count, 125)
 
 
+def doctor_pre_venv_manifest(manifest: BaseManifest, output_format: str) -> int:
+    checks = pre_venv_manifest_checks(manifest)
+    if output_format == "json":
+        print(json.dumps([check_to_doctor_json(check) for check in checks], separators=(",", ":")))
+        return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
+    if output_format != "text":
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
+        return 2
+
+    error_count = 0
+    for check in checks:
+        status = doctor_status(check)
+        print_doctor_finding(status, check.finding_id, check.name, check.message, check.fix)
+        if status == "error":
+            error_count += 1
+    return min(error_count, 125)
+
+
+def pre_venv_manifest_checks(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
+    return check_git_remote(manifest)
+
+
 def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
+    pre_venv_checks: list[ArtifactCheck] = []
     checks: list[ArtifactCheck] = []
     user_config = read_user_config()
     effective_manifest = effective_manifest_with_user_config(manifest, user_config)
     artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
     definitions = resolve_artifact_definitions(artifacts)
 
+    pre_venv_checks.extend(pre_venv_manifest_checks(effective_manifest))
     checks.extend(ide_preference_warning_checks(manifest, user_config))
 
     if effective_manifest.brewfile is not None:
@@ -266,7 +317,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
                 finding_id="BASE-P001",
             )
         )
-    return tuple(checks)
+    return tuple(pre_venv_checks + checks)
 
 
 def effective_manifest_with_user_config(manifest: BaseManifest, user_config: UserConfig) -> BaseManifest:

@@ -450,6 +450,7 @@ load ./setup_helpers.bash
     [[ "$output" == *'"status": "error"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
+    [[ "$output" == *'"id":"BASE-P080","status":"ok","name":"git_repository"'* ]]
     [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
     [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]

@@ -482,6 +482,28 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
     exit 0
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    shift 2
+    action="setup"
+    output_format="text"
+    while (($#)); do
+        case "$1" in
+            --action)
+                shift
+                action="${1:-}"
+                ;;
+            --format)
+                shift
+                output_format="${1:-}"
+                ;;
+        esac
+        shift || true
+    done
+    if [[ "$action" == "predoctor" && "$output_format" == "json" ]]; then
+        printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+        exit 0
+    fi
+fi
 printf 'unexpected doctor project broken venv python args: %s\n' "$*" >&2
 exit 1
 EOF
@@ -507,6 +529,7 @@ EOF
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
     [[ "$output" != *'"ok":'* ]]
+    [[ "$output" == *'"id":"BASE-P080","status":"ok","name":"git_repository"'* ]]
     [[ "$output" == *'"id":"BASE-P050","status":"error","name":"project_virtualenv"'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
