@@ -32,6 +32,8 @@ reference. The filename should answer "what is this about?"
   model, environment model, manifest shape, and repository conventions.
 - [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
   selection, handoff commands, and contributor setup.
+- [Clean macOS Install Validation](macos-install-validation.md) defines the
+  repeatable Homebrew and source checkout validation checklist.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
   dispatch order, public launchers, and runtime shell behavior.
 - [Linux Support](linux-support.md) defines the first Ubuntu/Debian runtime
