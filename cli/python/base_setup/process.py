@@ -56,6 +56,17 @@ def run_check(command: list[str]) -> bool:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
+def run_capture(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+
+
 def run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
     stdout_recorder = CommandOutputRecorder()
     stderr_recorder = CommandOutputRecorder()
