@@ -10,6 +10,9 @@ them.
 - Keep Base focused as the shared developer workspace control plane.
 - Keep project-specific setup, service code, and application behavior in the
   owning project repository unless Base is explicitly the right shared layer.
+- Adopt external agent workflow ideas only after translating them into
+  Base-specific guidance. Do not vendor or require a third-party methodology
+  when a smaller Base-native rule is enough.
 - When the user explicitly says a session is design-only or asks for no code
   changes, stay in discussion mode and do not edit files.
 - Surface unresolved product or architecture decisions instead of silently
@@ -29,6 +32,8 @@ them.
 - Branch from `origin/master` with
   `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - Use a dedicated worktree under `~/work/base-worktrees/<slug>` for PR work.
+- Before creating a worktree, check whether the current checkout is already a
+  linked worktree for the intended issue.
 - Link PRs with `Fixes #<issue>` or `Closes #<issue>` when merge should close
   the issue.
 - After merge, sync `master`, remove the worktree, and delete local and remote
@@ -41,6 +46,10 @@ milestones, GitHub Projects, and cleanup rules.
 
 - Run the narrowest relevant checks first, then broaden when shared behavior is
   touched.
+- For bug fixes, reproduce the symptom and identify the root cause before
+  changing code. Prefer one focused hypothesis and one focused fix at a time.
+- Do not claim work is fixed or complete without fresh verification output from
+  the current checkout or worktree.
 - For documentation-only changes, run `git diff --check`.
 - For general Base changes, run `basectl test base` and `git diff --check`.
 - For shell changes, include the relevant BATS tests and ShellCheck when
@@ -52,6 +61,8 @@ milestones, GitHub Projects, and cleanup rules.
   `docs/testing.md`.
 - If a required check cannot be run locally, say so in the PR and final
   summary.
+- For review feedback, verify the suggestion against Base's architecture,
+  product boundaries, and existing tests before implementing it.
 
 ## Change Boundaries
 

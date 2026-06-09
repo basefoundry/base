@@ -25,11 +25,82 @@ requests for Base.
   `bug/245-20260529-fix-profile-project-prompt`.
 - Do all pull request implementation work in a dedicated worktree under
   `~/work/base-worktrees/<slug>`.
-- After merge, sync `master`, remove the worktree, and delete local and remote
-  branches.
+- Before creating a worktree, check whether the current checkout is already a
+  linked worktree for the issue. Do not create nested or duplicate worktrees.
+- Keep the PR worktree available while review feedback is pending. After merge,
+  sync `master`, remove the worktree, and delete local and remote branches.
 - Link PRs to issues with `Fixes #<issue>` or `Closes #<issue>`.
 - See `docs/github-workflow.md` for the full policy, including milestones and
   GitHub Projects.
+
+## Debug and verify Base behavior
+
+Use this workflow when investigating failed Base commands, broken setup/check/
+doctor output, failed builds, project discovery surprises, runtime shell drift,
+or CI failures.
+
+- Read the full error output first, including stack traces, command output,
+  finding IDs, and paths.
+- Reproduce the symptom from a clean command line before fixing it. If the
+  issue is not reproducible, gather more evidence instead of guessing.
+- Check recent changes with `git status`, `git diff`, and relevant commit or PR
+  context.
+- Trace the bad value or failed state to its source. For cross-layer failures,
+  inspect each boundary separately: public launcher, Bash command, Python
+  helper, manifest parser, project command, environment variables, and working
+  directory.
+- Form one hypothesis, make the smallest change that tests it, and rerun the
+  focused verification. Do not stack unrelated fixes.
+- Keep `basectl check` and `basectl doctor` non-mutating. They should diagnose
+  readiness, not repair local state.
+- Before claiming completion, run the command that proves the claim in the
+  current checkout or worktree and read the output. Report the command and the
+  result in the PR and final summary.
+
+For example, a `basectl doctor` bug should usually have both a focused unit
+test around the finding logic and a smoke test that exercises the command or
+Python entry point that emits the finding.
+
+## Change behavior, fix bugs, or handle review feedback
+
+Use this workflow when changing user-facing Base behavior, shared runtime
+behavior, command output, JSON contracts, doctor findings, setup logic, or
+public workflow docs.
+
+- Start bug fixes with a failing test, fixture, or reproduction whenever
+  practical. Prove it fails for the expected reason before relying on it.
+- Keep test scope proportional to risk: focused BATS or pytest first, then
+  `basectl test base` or integration checks when shared behavior is touched.
+- When an automated test is not practical, document the manual reproduction and
+  verification command clearly.
+- For docs-only or configuration-only changes, `git diff --check` is usually
+  enough unless the change affects CI validation or generated output.
+- Evaluate review feedback against Base's product boundaries before
+  implementing it. Base is the workspace control plane; project-specific
+  application behavior belongs in the owning project.
+- If feedback suggests a larger design or product shift, stop and surface the
+  decision instead of hiding it inside a small PR.
+
+## Add or revise a Base agent workflow
+
+Use this workflow when adding or changing reusable AI-assisted development
+guidance such as this `skills.md` file, `AGENTS.md`, or workflow documentation.
+
+- Put durable repo-local rules in `AGENTS.md`, `CONTRIBUTING.md`,
+  `STANDARDS.md`, `skills.md`, or focused docs. Do not add personal Codex
+  runtime settings to the repo.
+- Prefer trigger-focused workflow names and descriptions. The first lines
+  should make it clear when the workflow applies.
+- Keep entries concise and Base-specific. Link to focused docs for longer
+  policy instead of duplicating it.
+- Align examples with Base conventions: `basectl gh`, `origin/master`,
+  `<category>/<issue>-<YYYYMMDD>-<slug>`, and
+  `~/work/base-worktrees/<slug>`.
+- Review the workflow against likely pressure cases: time pressure, ambiguous
+  review feedback, failing tests, dirty worktrees, and temptation to broaden
+  Base beyond the workspace control-plane boundary.
+- Validate documentation-only workflow changes with `git diff --check`. If a
+  CI workflow validates the guidance, run or update that validation too.
 
 ## Add a basectl subcommand
 

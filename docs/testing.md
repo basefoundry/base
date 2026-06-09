@@ -3,6 +3,27 @@
 Base uses three test layers. Prefer the narrowest layer that proves the behavior,
 then broaden when a change crosses command or runtime boundaries.
 
+## Regression And Completion Evidence
+
+Bug fixes should start with a failing test, fixture, or reproduction whenever
+practical. The useful proof is not just that the final test passes, but that the
+test or reproduction failed for the expected reason before the fix.
+
+Use this order for behavior changes and bug fixes:
+
+1. Reproduce the symptom with the narrowest command or test.
+2. Identify the root cause before changing code.
+3. Add or update the focused test, fixture, or reproduction.
+4. Verify the test fails for the expected reason.
+5. Implement the smallest fix that addresses the root cause.
+6. Rerun the focused verification, then broaden only when shared behavior is
+   touched.
+
+If an automated regression test is not practical, record the manual reproduction
+and the final verification command in the PR. Do not claim a bug is fixed,
+tests pass, or a contract is preserved without fresh output from the current
+checkout or worktree.
+
 ## Python Unit Tests
 
 Python engine and helper behavior lives under `cli/python/**/tests/` and
