@@ -93,6 +93,13 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
    brew upgrade codeforester/base/base
    ```
 
+7. Before 1.0.0, complete the
+   [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) against a
+   release candidate or equivalent test formula. Record the exact commands,
+   host facts, pre-upgrade state, post-upgrade checks, and any follow-up issues.
+   Do not close the rehearsal issue until `brew upgrade codeforester/base/base`
+   and the post-upgrade Base project checks pass on a qualified host.
+
 ## Cleanup
 
 After the Base release PR and Homebrew tap PR are merged, clean up their

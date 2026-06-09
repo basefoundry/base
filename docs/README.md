@@ -42,6 +42,8 @@ reference. The filename should answer "what is this about?"
   Base-managed environment variables, `~/.baserc`, and mutability rules.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
+- [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) defines the
+  pre-1.0.0 consumer upgrade proof and records rehearsal results.
 - [Testing](testing.md) explains Base's Python, BATS, and hermetic integration
   test layers.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
