@@ -690,18 +690,14 @@ basectl doctor --profile ai
 ```
 
 AI coding tools are intentionally not part of the plain `dev` or `sre` profile.
-`basectl setup --profile ai` runs the official Codex CLI installer from
-`https://chatgpt.com/codex/install.sh` and the official Claude Code installer
-from `https://claude.ai/install.sh` only when that profile is explicitly
-requested. Base checks tool presence and version output, but it does not manage
-accounts, credentials, model access, or organization policy.
+`basectl setup --profile ai` uses official remote installers only when that
+profile is explicitly requested. Base checks tool presence and version output,
+but it does not manage accounts, credentials, model access, or organization
+policy.
 
-If Homebrew is missing, `basectl setup` uses Homebrew's official installer URL
-at `https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`. This is
-a deliberate trust decision: Base stays aligned with Homebrew's supported
-bootstrap command instead of pinning and maintaining a reviewed installer
-commit. Teams that require stricter supply-chain controls should install
-Homebrew through their managed device process before running Base.
+For the allowed Homebrew, Codex CLI, and Claude Code installer URLs, dry-run
+behavior, non-interactive behavior, and managed-device guidance, see
+[Remote Installer Policy](docs/remote-installer-policy.md).
 
 On macOS, `basectl setup` sends a best-effort notification when setup completes
 or fails after running for at least 30 seconds. Notifications are skipped during

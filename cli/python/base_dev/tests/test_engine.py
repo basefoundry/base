@@ -91,6 +91,22 @@ class DevManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(engine.ProfileError, "Profile list must not contain empty entries"):
             engine.normalize_profiles(("dev,,sre",))
 
+    def test_ai_remote_installer_urls_are_allowlisted(self) -> None:
+        self.assertEqual(
+            engine.ai_remote_installer_urls(),
+            (
+                "https://chatgpt.com/codex/install.sh",
+                "https://claude.ai/install.sh",
+            ),
+        )
+        self.assertEqual(
+            [engine.ai_tool_installer_command(tool) for tool in engine.AI_TOOLS],
+            [
+                ("sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"),
+                ("sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"),
+            ],
+        )
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_profile_sre_uses_sre_manifest(self) -> None:
         status, _stdout, stderr = run_engine(["setup", "--profile", "sre", "--dry-run"])
@@ -110,6 +126,16 @@ class DevManifestTests(unittest.TestCase):
             )
 
         self.assertEqual(status, 0)
+        self.assertIn(
+            "Remote installer policy: Codex CLI uses allowlisted installer "
+            "https://chatgpt.com/codex/install.sh; execution requires explicit --profile ai.",
+            stderr,
+        )
+        self.assertIn(
+            "Remote installer policy: Claude Code uses allowlisted installer "
+            "https://claude.ai/install.sh; execution requires explicit --profile ai.",
+            stderr,
+        )
         self.assertIn(
             "[DRY-RUN] Would run: sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'",
             stderr,
@@ -136,6 +162,54 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("Claude Code is already installed", stderr)
         self.assertNotIn("chatgpt.com/codex/install.sh", stderr)
         self.assertNotIn("claude.ai/install.sh", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_default_dry_run_does_not_include_ai_remote_installers(self) -> None:
+        status, _stdout, stderr = run_engine(["setup", "--dry-run"])
+
+        self.assertEqual(status, 0)
+        self.assertNotIn("chatgpt.com/codex/install.sh", stderr)
+        self.assertNotIn("claude.ai/install.sh", stderr)
+
+    def test_setup_ai_tools_rejects_unallowlisted_remote_installer(self) -> None:
+        tool = engine.AITool(
+            name="bad-ai",
+            display_name="Bad AI",
+            version_args=("--version",),
+            installer_url="https://example.invalid/install.sh",
+            installer_shell="sh",
+        )
+        ctx = mock.Mock()
+
+        with (
+            mock.patch("base_dev.engine.AI_TOOLS", (tool,)),
+            mock.patch("base_dev.engine.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "")),
+            mock.patch("base_dev.engine.run_command") as run_command,
+        ):
+            status = engine.setup_ai_tools(ctx, dry_run=False)
+
+        self.assertEqual(status, 1)
+        self.assertIn("Remote installer URL is not allowlisted", ctx.log.error.call_args.args[0])
+        run_command.assert_not_called()
+
+    def test_setup_ai_tools_noninteractive_explicit_profile_runs_allowlisted_installers(self) -> None:
+        ctx = mock.Mock()
+
+        with (
+            mock.patch.dict(os.environ, {"CI": "true"}),
+            mock.patch("base_dev.engine.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "")),
+            mock.patch("base_dev.engine.run_command") as run_command,
+        ):
+            status = engine.setup_ai_tools(ctx, dry_run=False)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            [call.args[1] for call in run_command.call_args_list],
+            [
+                ["sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
+                ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
+            ],
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_profile_sre_reports_sre_fix_guidance(self) -> None:

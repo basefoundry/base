@@ -14,6 +14,8 @@
 
 - Modify `cli/python/base_dev/engine.py`: add structured AI remote installer metadata, allowlist helpers, policy logging, and command derivation.
 - Modify `cli/python/base_dev/tests/test_engine.py`: add failing tests for allowlist enforcement, dry-run policy output, non-interactive explicit opt-in, and default profile exclusion.
+- Modify `cli/bash/commands/basectl/subcommands/setup_common.sh`: align `basectl setup --dry-run` Homebrew installer output with bootstrap/install URL-bearing dry-run output.
+- Modify `cli/bash/commands/basectl/tests/setup.bats`: assert the URL-bearing Homebrew dry-run message.
 - Add `docs/remote-installer-policy.md`: canonical user-facing policy.
 - Modify `docs/README.md`: add the policy page to the documentation map.
 - Modify `README.md`: replace the inline trust-policy paragraphs with a concise pointer to the policy page.
@@ -163,7 +165,10 @@ Update `AI_TOOLS` so Codex uses `installer_url="https://chatgpt.com/codex/instal
 Add:
 
 ```python
-AI_REMOTE_INSTALLER_ALLOWLIST = tuple(tool.installer_url for tool in AI_TOOLS)
+AI_REMOTE_INSTALLER_ALLOWLIST = (
+    "https://chatgpt.com/codex/install.sh",
+    "https://claude.ai/install.sh",
+)
 
 
 def ai_remote_installer_urls() -> tuple[str, ...]:
@@ -289,7 +294,39 @@ git diff --check
 
 Expected: no output.
 
-## Task 4: Full Validation And Commit
+## Task 4: Homebrew Setup Dry-Run Alignment
+
+**Files:**
+- Modify: `cli/bash/commands/basectl/subcommands/setup_common.sh`
+- Modify: `cli/bash/commands/basectl/tests/setup.bats`
+
+- [ ] **Step 1: Update the setup dry-run message**
+
+In `setup_install_homebrew()`, change the dry-run log line to:
+
+```bash
+log_info "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
+```
+
+- [ ] **Step 2: Update the setup Bats assertion**
+
+In `basectl setup supports dry-run without making changes`, assert:
+
+```bash
+[[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
+```
+
+- [ ] **Step 3: Run the focused Bats test file**
+
+Run:
+
+```bash
+env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST -u BASE_PROJECT_VENV_DIR bats cli/bash/commands/basectl/tests/setup.bats
+```
+
+Expected: setup Bats tests pass.
+
+## Task 5: Full Validation And Commit
 
 **Files:**
 - All changed files.
