@@ -12,21 +12,25 @@ from typing import Any
 
 import base_cli
 from base_cli.config import read_user_config
-from base_cli.paths import base_cache_root, base_state_root
+from base_cli.paths import base_cache_root
 from base_cli.paths import discover_manifest
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
-from base_setup.checks import ArtifactCheck
-from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
-from base_setup.checks import check_to_doctor_json
-from base_setup.checks import check_to_json
-from base_setup.checks import checks_status
-from base_setup.checks import doctor_status
-from base_setup.checks import print_doctor_finding
+from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_reports import ManifestEntry
+from base_projects.workspace_reports import ProjectDiscoveryError
+from base_projects.workspace_reports import print_workspace_check
+from base_projects.workspace_reports import print_workspace_doctor
+from base_projects.workspace_reports import print_workspace_status
+from base_projects.workspace_reports import resolve_workspace_manifest
+from base_projects.workspace_reports import workspace_check_to_json
+from base_projects.workspace_reports import workspace_doctor_to_json
+from base_projects.workspace_reports import workspace_error_count
+from base_projects.workspace_reports import workspace_manifest_entries
+from base_projects.workspace_reports import workspace_project_check_results
+from base_projects.workspace_reports import workspace_project_statuses
+from base_projects.workspace_reports import workspace_status_to_json
 from base_setup.demo import resolve_demo_script_path
-from base_setup.engine import manifest_checks
-from base_setup.engine import pre_venv_manifest_checks
-from base_setup.engine import read_default_manifest
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, ManifestError, TestConfig, read_manifest
 
@@ -41,34 +45,6 @@ class Project:
     manifest_path: Path
 
 
-@dataclass(frozen=True)
-class ManifestEntry:
-    path: Path
-    mtime_ns: int
-    size: int
-
-
-@dataclass(frozen=True)
-class WorkspaceProjectStatus:
-    name: str
-    root: Path
-    manifest_path: Path
-    status: str
-    venv: str
-    manifest: str
-    issues: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class WorkspaceProjectCheckResult:
-    name: str
-    root: Path
-    manifest_path: Path
-    manifest: str
-    status: str
-    checks: tuple[ArtifactCheck, ...]
-
-
 def main(argv: list[str] | None = None) -> int:
     result = app.click_command.main(args=argv, standalone_mode=False)
     return int(result or 0)
@@ -81,14 +57,16 @@ def main(argv: list[str] | None = None) -> int:
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
+@base_cli.option("--manifest", "workspace_manifest", help="Local workspace manifest to read.")
 def run(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
     workspace: str | None,
     output_format: str,
+    workspace_manifest: str | None,
 ) -> int:
     try:
-        return dispatch_projects_command(ctx, arguments, workspace, output_format)
+        return dispatch_projects_command(ctx, arguments, workspace, output_format, workspace_manifest)
     except ProjectUsageError as exc:
         ctx.log.error(str(exc))
         return 2
@@ -99,18 +77,29 @@ def dispatch_projects_command(
     arguments: tuple[str, ...],
     workspace: str | None,
     output_format: str,
+    workspace_manifest: str | None = None,
 ) -> int:
     command = arguments[0] if arguments else "list"
     command_arguments = arguments[1:] if arguments else ()
     resolver = resolve_named_project
     handlers = {
         "list": lambda: list_projects_from_args(ctx, command_arguments, workspace, output_format),
-        "status": lambda: workspace_status_from_args(ctx, command_arguments, workspace, output_format),
+        "status": lambda: workspace_status_from_args(
+            ctx,
+            command_arguments,
+            workspace,
+            output_format,
+            workspace_manifest,
+        ),
         "check": lambda: require_no_args_and_run(
-            "check", command_arguments, lambda: workspace_check_command(ctx, workspace, output_format)
+            "check",
+            command_arguments,
+            lambda: workspace_check_command(ctx, workspace, output_format, workspace_manifest),
         ),
         "doctor": lambda: require_no_args_and_run(
-            "doctor", command_arguments, lambda: workspace_doctor_command(ctx, workspace, output_format)
+            "doctor",
+            command_arguments,
+            lambda: workspace_doctor_command(ctx, workspace, output_format, workspace_manifest),
         ),
         "current": lambda: current_project_from_args(ctx, command_arguments),
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
@@ -172,9 +161,10 @@ def workspace_status_from_args(
     arguments: tuple[str, ...],
     workspace: str | None,
     output_format: str,
+    workspace_manifest: str | None,
 ) -> int:
     require_argument_count("status", arguments, 0, 0)
-    return workspace_status_command(ctx, workspace, output_format)
+    return workspace_status_command(ctx, workspace, output_format, workspace_manifest)
 
 
 def current_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
@@ -247,62 +237,80 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
     return 0
 
 
-def workspace_status_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
+def workspace_status_command(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    output_format: str = "text",
+    workspace_manifest: str | None = None,
+) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
         return 2
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        statuses = workspace_project_statuses(workspace_root)
-    except ProjectDiscoveryError as exc:
+        manifest = resolve_workspace_manifest(workspace_manifest)
+        statuses = workspace_project_statuses(workspace_root, manifest)
+    except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_status_to_json(workspace_root, statuses), separators=(",", ":")))
+        print(json.dumps(workspace_status_to_json(workspace_root, statuses, manifest), separators=(",", ":")))
     else:
-        print_workspace_status(workspace_root, statuses)
+        print_workspace_status(workspace_root, statuses, manifest)
 
     return 1 if any(project.status == "error" for project in statuses) else 0
 
 
-def workspace_check_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
+def workspace_check_command(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    output_format: str = "text",
+    workspace_manifest: str | None = None,
+) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
         return 2
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        results = workspace_project_check_results(ctx, workspace_root)
-    except (ProjectDiscoveryError, ManifestError) as exc:
+        manifest = resolve_workspace_manifest(workspace_manifest)
+        results = workspace_project_check_results(ctx, workspace_root, manifest)
+    except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_check_to_json(workspace_root, results), separators=(",", ":")))
+        print(json.dumps(workspace_check_to_json(workspace_root, results, manifest), separators=(",", ":")))
     else:
-        print_workspace_check(workspace_root, results)
+        print_workspace_check(workspace_root, results, manifest)
 
     return 1 if any(result.status == "error" for result in results) else 0
 
 
-def workspace_doctor_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
+def workspace_doctor_command(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    output_format: str = "text",
+    workspace_manifest: str | None = None,
+) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
         return 2
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        results = workspace_project_check_results(ctx, workspace_root)
-    except (ProjectDiscoveryError, ManifestError) as exc:
+        manifest = resolve_workspace_manifest(workspace_manifest)
+        results = workspace_project_check_results(ctx, workspace_root, manifest)
+    except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_doctor_to_json(workspace_root, results), separators=(",", ":")))
+        print(json.dumps(workspace_doctor_to_json(workspace_root, results, manifest), separators=(",", ":")))
     else:
-        print_workspace_doctor(workspace_root, results)
+        print_workspace_doctor(workspace_root, results, manifest)
 
     return min(workspace_error_count(results), 125)
 
@@ -531,10 +539,6 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int
     return 0
 
 
-class ProjectDiscoveryError(RuntimeError):
-    pass
-
-
 def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
     if workspace:
         return Path(workspace).expanduser().resolve()
@@ -547,253 +551,6 @@ def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path
     if ctx.base_home is None:
         raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
     return ctx.base_home.parent.resolve()
-
-
-def workspace_project_statuses(workspace_root: Path) -> tuple[WorkspaceProjectStatus, ...]:
-    return tuple(workspace_project_status(entry) for entry in workspace_manifest_entries(workspace_root))
-
-
-def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
-    root = entry.path.parent.resolve()
-    try:
-        manifest = read_manifest(entry.path)
-    except ManifestError as exc:
-        return WorkspaceProjectStatus(
-            name=root.name,
-            root=root,
-            manifest_path=entry.path.resolve(),
-            status="error",
-            venv="unknown",
-            manifest="invalid",
-            issues=(str(exc),),
-        )
-
-    venv_dir = project_venv_dir(manifest.project_name)
-    if project_venv_ready(venv_dir):
-        return WorkspaceProjectStatus(
-            name=manifest.project_name,
-            root=root,
-            manifest_path=entry.path.resolve(),
-            status="ok",
-            venv="ready",
-            manifest="valid",
-            issues=(),
-        )
-
-    return WorkspaceProjectStatus(
-        name=manifest.project_name,
-        root=root,
-        manifest_path=entry.path.resolve(),
-        status="warn",
-        venv="missing",
-        manifest="valid",
-        issues=(f"project virtual environment missing at {venv_dir}",),
-    )
-
-
-def project_venv_dir(project_name: str) -> Path:
-    return base_state_root() / project_name / ".venv"
-
-
-def project_venv_ready(venv_dir: Path) -> bool:
-    return (venv_dir / "bin" / "python").is_file()
-
-
-def workspace_project_check_results(
-    ctx: base_cli.Context,
-    workspace_root: Path,
-) -> tuple[WorkspaceProjectCheckResult, ...]:
-    default_manifest = read_default_manifest(ctx)
-    return tuple(
-        workspace_project_check_result(entry, default_manifest)
-        for entry in workspace_manifest_entries(workspace_root)
-    )
-
-
-def workspace_project_check_result(
-    entry: ManifestEntry,
-    default_manifest: BaseManifest,
-) -> WorkspaceProjectCheckResult:
-    root = entry.path.parent.resolve()
-    manifest_path = entry.path.resolve()
-    try:
-        manifest = read_manifest(entry.path)
-    except ManifestError as exc:
-        checks = (invalid_manifest_check(str(exc)),)
-        return WorkspaceProjectCheckResult(
-            name=root.name,
-            root=root,
-            manifest_path=manifest_path,
-            manifest="invalid",
-            status="error",
-            checks=checks,
-        )
-
-    venv_check = project_venv_check(manifest.project_name)
-    if venv_check.ok:
-        checks = (venv_check,) + manifest_checks(default_manifest, manifest)
-    else:
-        checks = pre_venv_manifest_checks(manifest) + (venv_check,)
-
-    return WorkspaceProjectCheckResult(
-        name=manifest.project_name,
-        root=root,
-        manifest_path=manifest_path,
-        manifest="valid",
-        status=checks_status(checks),
-        checks=checks,
-    )
-
-
-def invalid_manifest_check(message: str) -> ArtifactCheck:
-    return ArtifactCheck(
-        name="project_manifest",
-        ok=False,
-        message=message,
-        fix="Fix base_manifest.yaml syntax and schema.",
-        status="error",
-        finding_id="BASE-P002",
-    )
-
-
-def project_venv_check(project_name: str) -> ArtifactCheck:
-    venv_dir = project_venv_dir(project_name)
-    if project_venv_ready(venv_dir):
-        return ArtifactCheck(
-            name="project_virtualenv",
-            ok=True,
-            message=f"Project virtual environment is ready at '{venv_dir}'.",
-            fix="",
-            finding_id="BASE-P050",
-        )
-
-    return ArtifactCheck(
-        name="project_virtualenv",
-        ok=False,
-        message=f"Project virtual environment is missing or incomplete at '{venv_dir}'.",
-        fix=f"Run 'basectl setup {project_name} --recreate-venv' to recreate the project virtual environment.",
-        status="error",
-        finding_id="BASE-P050",
-    )
-
-
-def workspace_error_count(results: tuple[WorkspaceProjectCheckResult, ...]) -> int:
-    return sum(1 for result in results for check in result.checks if doctor_status(check) == "error")
-
-
-def workspace_status_to_json(workspace_root: Path, statuses: tuple[WorkspaceProjectStatus, ...]) -> dict[str, Any]:
-    return {
-        "workspace": str(workspace_root),
-        "project_count": len(statuses),
-        "projects": [
-            {
-                "name": status.name,
-                "status": status.status,
-                "path": str(status.root),
-                "manifest_path": str(status.manifest_path),
-                "venv": status.venv,
-                "manifest": status.manifest,
-                "issues": list(status.issues),
-            }
-            for status in statuses
-        ],
-    }
-
-
-def workspace_check_to_json(workspace_root: Path, results: tuple[WorkspaceProjectCheckResult, ...]) -> dict[str, Any]:
-    return workspace_checks_to_json(workspace_root, results, doctor=False)
-
-
-def workspace_doctor_to_json(workspace_root: Path, results: tuple[WorkspaceProjectCheckResult, ...]) -> dict[str, Any]:
-    return workspace_checks_to_json(workspace_root, results, doctor=True)
-
-
-def workspace_checks_to_json(
-    workspace_root: Path,
-    results: tuple[WorkspaceProjectCheckResult, ...],
-    doctor: bool,
-) -> dict[str, Any]:
-    return {
-        "schema_version": DIAGNOSTIC_JSON_SCHEMA_VERSION,
-        "workspace": str(workspace_root),
-        "status": checks_status(tuple(check for result in results for check in result.checks)),
-        "project_count": len(results),
-        "projects": [
-            {
-                "name": result.name,
-                "status": result.status,
-                "path": str(result.root),
-                "manifest_path": str(result.manifest_path),
-                "manifest": result.manifest,
-                "checks": [workspace_check_item_to_json(check, doctor) for check in result.checks],
-            }
-            for result in results
-        ],
-    }
-
-
-def workspace_check_item_to_json(check: ArtifactCheck, doctor: bool) -> dict[str, str]:
-    if doctor:
-        return check_to_doctor_json(check)
-    return check_to_json(check)
-
-
-def print_workspace_status(workspace_root: Path, statuses: tuple[WorkspaceProjectStatus, ...]) -> None:
-    print(f"Workspace: {workspace_root} ({len(statuses)} projects)")
-    print()
-    if not statuses:
-        print("No Base-managed projects discovered.")
-        return
-
-    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<8} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
-    for status in statuses:
-        print(
-            f"{status.name:<20} "
-            f"{status.status:<6} "
-            f"{status.venv:<8} "
-            f"{status.manifest:<8} "
-            f"{'-':<10} "
-            f"{status.root}"
-        )
-
-    attention_count = sum(1 for status in statuses if status.status != "ok")
-    if attention_count:
-        print(f"\n{attention_count} project(s) need attention. Run 'basectl doctor <project>' for details.")
-    else:
-        print("\nAll discovered projects look ok.")
-
-
-def print_workspace_check(workspace_root: Path, results: tuple[WorkspaceProjectCheckResult, ...]) -> None:
-    print(f"Workspace check: {workspace_root} ({len(results)} projects)")
-    print_workspace_check_results(results)
-
-
-def print_workspace_doctor(workspace_root: Path, results: tuple[WorkspaceProjectCheckResult, ...]) -> None:
-    print(f"\nWorkspace doctor: {workspace_root} ({len(results)} projects)")
-    print_workspace_check_results(results)
-
-
-def print_workspace_check_results(results: tuple[WorkspaceProjectCheckResult, ...]) -> None:
-    if not results:
-        print("\nNo Base-managed projects discovered.")
-        return
-
-    for result in results:
-        print(f"\nProject: {result.name} [{result.status}]")
-        print(f"Path: {result.root}")
-        for check in result.checks:
-            print_doctor_finding(doctor_status(check), check.finding_id, check.name, check.message, check.fix)
-
-    error_count = workspace_error_count(results)
-    if error_count:
-        print(f"\nWorkspace has {error_count} error finding(s).")
-        return
-
-    warn_count = sum(1 for result in results for check in result.checks if doctor_status(check) == "warn")
-    if warn_count:
-        print(f"\nWorkspace has {warn_count} warning finding(s).")
-    else:
-        print("\nAll discovered projects passed.")
 
 
 def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project:
@@ -841,29 +598,6 @@ def discover_projects_cached(ctx: base_cli.Context, workspace_root: Path) -> tup
         elapsed_ms,
     )
     return projects
-
-
-def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...]:
-    if not workspace_root.is_dir():
-        raise ProjectDiscoveryError(f"Workspace '{workspace_root}' is not a directory.")
-
-    entries: list[ManifestEntry] = []
-    for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
-        if not candidate.is_dir():
-            continue
-        manifest_path = candidate / "base_manifest.yaml"
-        if not manifest_path.is_file():
-            continue
-        stat_result = manifest_path.stat()
-        entries.append(
-            ManifestEntry(
-                path=manifest_path,
-                mtime_ns=stat_result.st_mtime_ns,
-                size=stat_result.st_size,
-            )
-        )
-
-    return tuple(entries)
 
 
 def find_project(workspace_root: Path, project_name: str) -> Project:

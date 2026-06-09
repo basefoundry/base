@@ -1,11 +1,12 @@
 # Workspace Manifest
 
 Base uses "workspace" in a precise way: a workspace is a local directory that
-contains sibling repositories. A workspace manifest is a future optional file
+contains sibling repositories. A workspace manifest is an optional local file
 that describes which repositories are expected to belong to that workspace.
 
-This document defines the model before implementation. It does not add runtime
-behavior by itself.
+Read-only workspace commands can use a manifest when the user supplies
+`--manifest <path>`. Without that flag, workspace commands keep their
+discovered-project behavior.
 
 ## Vocabulary
 
@@ -24,19 +25,20 @@ A Base-managed project is a discovered repository with a `base_manifest.yaml`.
 The project manifest remains the source of truth for that repository's setup,
 activation, commands, tests, demo, IDE requirements, and health declarations.
 
-A workspace manifest is a future team-shared contract that lists repositories
-that should exist in a workspace. It answers "which repos belong together?",
-not "how does each repo set itself up?"
+A workspace manifest is a team-shared contract that lists repositories that
+should exist in a workspace. It answers "which repos belong together?", not
+"how does each repo set itself up?"
 
 An expected repository is listed in the workspace manifest. It may or may not
 exist locally yet.
 
 A discovered project exists locally and has `base_manifest.yaml`. It may or may
-not be listed in a future workspace manifest.
+not be listed in a workspace manifest.
 
 ## Current Behavior
 
-Current workspace commands operate on discovered local repositories only:
+Workspace commands operate on discovered local repositories when no manifest is
+supplied:
 
 ```bash
 basectl projects list
@@ -45,10 +47,9 @@ basectl workspace check
 basectl workspace doctor
 ```
 
-They do not read a workspace manifest and do not report missing expected
-repositories. That is intentional. The discovered-project model is useful today
-and does not require Base to make team onboarding, clone, update, or trust
-decisions.
+With `--manifest <path>`, the same commands also report expected repositories,
+missing required and optional repositories, and discovered Base-managed
+projects outside the manifest.
 
 ## Design Goal
 
@@ -69,7 +70,7 @@ Each repository still owns its own `base_manifest.yaml`. The workspace manifest
 must not duplicate project setup, test, run, activation, demo, or health
 contracts.
 
-## Candidate Shape
+## Manifest Shape
 
 ```yaml
 schema_version: 1
@@ -94,17 +95,18 @@ repos:
     required: true
 ```
 
-`schema_version` should be required before implementation. Versioning the
-contract early lets future Base versions reject unsupported workspace manifest
-shapes with clear upgrade guidance.
+`schema_version` is required. Versioning the contract early lets future Base
+versions reject unsupported workspace manifest shapes with clear upgrade
+guidance.
 
 `workspace.name` is a human-facing name for reports and onboarding output.
 
 `repos[].name` is the local directory name under the workspace root and the
 stable identifier used in reports.
 
-`repos[].url` is a Git clone URL. Base should pass it to Git when clone support
-exists later; Base should not parse credentials or manage authentication.
+`repos[].url` is optional v1 report metadata for a Git clone URL. Base may pass
+it to Git when clone support exists later; Base should not parse credentials or
+manage authentication.
 
 `repos[].default_branch` is advisory metadata for reports and future clone
 validation. It should default to the remote's default branch when omitted, but
@@ -116,7 +118,7 @@ status reports without failing the whole workspace when they are absent.
 
 ## Location
 
-The first implementation should support an explicit local file:
+The v1 implementation supports an explicit local file:
 
 ```bash
 basectl workspace status --manifest ~/work/workspace.yaml
@@ -214,11 +216,20 @@ The workspace manifest should not:
 - require every repository in the workspace to share one language stack
 - introduce nested project discovery or manifest inheritance
 
-## Implementation Sequence
+## V1 Runtime Behavior
 
-1. Keep current commands working against discovered local projects.
-2. Add parser and validation support for a local workspace manifest.
-3. Add `--manifest <path>` to read-only workspace commands.
-4. Report expected, missing, discovered, and extra repositories.
-5. Design explicit clone/onboard behavior only after read-only reporting proves
-   useful.
+`basectl workspace status --manifest <path>` reports one row per expected
+repository, plus discovered Base-managed projects that are outside the manifest.
+Missing required repositories are errors. Missing optional repositories are
+warnings. Present repositories without `base_manifest.yaml` are allowed and
+reported with project diagnostics skipped.
+
+`basectl workspace check --manifest <path>` and
+`basectl workspace doctor --manifest <path>` include normal project diagnostics
+for present Base-managed projects. They also emit stable workspace findings for
+repository presence, outside-manifest discovered projects, and present
+repositories without a Base project manifest.
+
+The read-only v1 implementation is intentionally the foundation for future
+clone/onboard behavior. Explicit clone or update commands should be designed
+only after this reporting model proves useful.

@@ -20,6 +20,32 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_workspace_manifest(path: Path, repos: str | None = None) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "schema_version: 1",
+                "workspace:",
+                "  name: demo-suite",
+                "repos:",
+                repos
+                or "\n".join(
+                    [
+                        "  - name: base",
+                        "  - name: docs",
+                        "  - name: api",
+                        "    required: true",
+                        "  - name: optional-tool",
+                        "    required: false",
+                    ]
+                ),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_default_manifest(base_home: Path) -> None:
     default_manifest = base_home / "lib" / "base" / "default_manifest.yaml"
     default_manifest.parent.mkdir(parents=True)
@@ -45,6 +71,125 @@ def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, st
 
 
 class WorkspaceCheckTests(unittest.TestCase):
+    def test_workspace_check_manifest_reports_expected_missing_and_extra_repositories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path)
+            write_manifest(workspace / "base", "base")
+            (workspace / "docs").mkdir(parents=True)
+            write_manifest(workspace / "extra", "extra")
+            for project_name in ("base", "extra"):
+                python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
+                python_bin.parent.mkdir(parents=True)
+                python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+
+            status, stdout, stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path)],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn(f"Workspace check: {workspace.resolve()} (5 repositories)", stdout)
+        self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
+        self.assertIn("Repository: base [ok]", stdout)
+        self.assertIn("Repository: docs [ok]", stdout)
+        self.assertIn("Repository: api [error]", stdout)
+        self.assertIn("Repository: optional-tool [warn]", stdout)
+        self.assertIn("Repository: extra [warn]", stdout)
+        self.assertIn("BASE-W010", stdout)
+        self.assertIn("BASE-W011", stdout)
+        self.assertIn("BASE-W012", stdout)
+        self.assertIn("Workspace has 1 error finding(s).", stdout)
+
+    def test_workspace_check_manifest_supports_json_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path)
+            write_manifest(workspace / "base", "base")
+            (workspace / "docs").mkdir(parents=True)
+            write_manifest(workspace / "extra", "extra")
+            for project_name in ("base", "extra"):
+                python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
+                python_bin.parent.mkdir(parents=True)
+                python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "check",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest_path),
+                    "--format",
+                    "json",
+                ],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        projects_by_repo = {project["repository"]: project for project in payload["projects"]}
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["workspace_manifest"]["name"], "demo-suite")
+        self.assertEqual(payload["repository_count"], 5)
+        self.assertEqual(projects_by_repo["base"]["checks"][0]["id"], "BASE-W010")
+        self.assertEqual(projects_by_repo["base"]["checks"][0]["status"], "ok")
+        self.assertEqual(projects_by_repo["docs"]["checks"][0]["id"], "BASE-W012")
+        self.assertEqual(projects_by_repo["docs"]["checks"][0]["status"], "ok")
+        self.assertEqual(projects_by_repo["api"]["status"], "error")
+        self.assertEqual(projects_by_repo["api"]["checks"][0]["id"], "BASE-W010")
+        self.assertEqual(projects_by_repo["api"]["checks"][0]["status"], "error")
+        self.assertEqual(projects_by_repo["api"]["checks"][0]["details"]["required"], True)
+        self.assertEqual(projects_by_repo["optional-tool"]["status"], "warn")
+        self.assertEqual(projects_by_repo["optional-tool"]["checks"][0]["status"], "warn")
+        self.assertEqual(projects_by_repo["extra"]["checks"][0]["id"], "BASE-W011")
+        self.assertEqual(projects_by_repo["extra"]["checks"][0]["status"], "warn")
+
+    def test_workspace_check_manifest_reports_invalid_project_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            broken_root = workspace / "broken"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path, repos="  - name: broken")
+            broken_root.mkdir(parents=True)
+            (broken_root / "base_manifest.yaml").write_text("project: [", encoding="utf-8")
+
+            status, stdout, stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path)],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("Repository: broken [error]", stdout)
+        self.assertIn("BASE-P002", stdout)
+
     def test_workspace_check_reports_project_findings_and_invalid_manifests(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

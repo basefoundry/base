@@ -67,8 +67,8 @@ reference. The filename should answer "what is this about?"
 - [Remote Installer Policy](remote-installer-policy.md) defines the allowed
   remote shell installer URLs, opt-in boundaries, dry-run behavior, and logging
   expectations for setup paths.
-- [Workspace Manifest](workspace-manifest.md) defines the future team-shared
-  repo-set contract and its relationship to discovered local projects.
+- [Workspace Manifest](workspace-manifest.md) defines the local team-shared
+  repo-set contract and `basectl workspace --manifest` reporting behavior.
 - [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
   arbitrary manifest setup hooks yet.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
@@ -78,7 +78,7 @@ reference. The filename should answer "what is this about?"
 - [`basectl check` parallelism](check-parallelism.md) records the evaluation and
   implementation constraints for parallel check probes.
 - [Doctor Finding IDs](doctor-findings.md) is the stable reference for
-  `BASE-D*`, `BASE-P*`, and `BASE-H*` finding identifiers emitted by
+  `BASE-D*`, `BASE-P*`, `BASE-H*`, and `BASE-W*` finding identifiers emitted by
   `basectl doctor --format json`.
 - [Base-managed demo project](base-managed-demo-project.md) defines the proof
   project criteria for showing Base's complete workspace workflow.

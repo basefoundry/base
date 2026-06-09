@@ -68,6 +68,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-D` | Base runtime and developer-prerequisite findings |
 | `BASE-P` | Project manifest, artifact, IDE, and command-delegation findings |
 | `BASE-H` | Project health declaration findings |
+| `BASE-W` | Workspace manifest and multi-repository findings |
 
 ## Base Runtime Findings
 
@@ -154,6 +155,26 @@ probe network remote reachability.
 `--remote-network`. It delegates reachability to Git with a bounded
 `git ls-remote` call, reports sanitized provider and transport details, and
 does not print credential-bearing remote URLs.
+
+## Workspace Findings
+
+| ID | Finding |
+| --- | --- |
+| `BASE-W010` | Expected workspace repository presence |
+| `BASE-W011` | Discovered Base-managed project outside the workspace manifest |
+| `BASE-W012` | Present expected repository without a Base project manifest |
+
+`BASE-W010` is emitted for every expected repository when workspace check or
+doctor runs with `--manifest <path>`. It is `error` when a required repository
+is missing, `warn` when an optional repository is missing, and `ok` when the
+repository is present.
+
+`BASE-W011` reports local Base-managed projects that were discovered under the
+workspace root but are not listed in the supplied workspace manifest.
+
+`BASE-W012` reports expected repositories that are present locally but do not
+contain `base_manifest.yaml`. This is an `ok` finding because workspace
+manifests do not require every repository to be Base-managed.
 
 ## Health Findings
 

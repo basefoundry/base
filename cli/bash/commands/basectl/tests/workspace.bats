@@ -6,8 +6,10 @@ load ./basectl_helpers.bash
 @test "basectl workspace status delegates to the Python projects layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
+    local manifest="$TEST_TMPDIR/workspace.yaml"
 
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
+    touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "status" ]]; then
@@ -25,10 +27,10 @@ EOF
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_WORKSPACE_STATUS_STATE="$TEST_TMPDIR/workspace-status-state" \
-        "$BASE_REPO_ROOT/bin/basectl" workspace status --workspace "$workspace" --format json
+        "$BASE_REPO_ROOT/bin/basectl" workspace status --workspace "$workspace" --manifest "$manifest" --format json
 
     [ "$status" -eq 0 ]
-    [ "$output" = "ARGS=--workspace $workspace --format json" ]
+    [ "$output" = "ARGS=--workspace $workspace --manifest $manifest --format json" ]
     [ "$(cat "$TEST_TMPDIR/workspace-status-state")" = "BASE_PROJECT=base" ]
 }
 
@@ -91,6 +93,7 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
     [[ "$output" == *"--format <format>"* ]]
 
     run_basectl workspace check --help
