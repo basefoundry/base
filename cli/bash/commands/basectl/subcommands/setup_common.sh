@@ -24,6 +24,11 @@ _BASE_SETUP_CHECK_OK=()
 _BASE_SETUP_CHECK_MESSAGES=()
 _BASE_SETUP_CHECK_RECOVERIES=()
 _BASE_SETUP_CHECK_DEBUG_MESSAGES=()
+_BASE_SETUP_PARSED_CHECK_NAME=""
+_BASE_SETUP_PARSED_CHECK_OK=""
+_BASE_SETUP_PARSED_CHECK_MESSAGE=""
+_BASE_SETUP_PARSED_CHECK_RECOVERY=""
+_BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE=""
 _BASE_SETUP_VENV_HEALTH_MESSAGE=""
 
 setup_refresh_cached_paths() {
@@ -1000,11 +1005,223 @@ setup_add_check_result() {
     _BASE_SETUP_CHECK_DEBUG_MESSAGES+=("$debug_message")
 }
 
+setup_write_check_result_file() {
+    local debug_message="${6:-}"
+    local message="$4"
+    local name="$2"
+    local ok="$3"
+    local path="$1"
+    local recovery="${5:-}"
+
+    {
+        printf 'name=%s\n' "$name"
+        printf 'ok=%s\n' "$ok"
+        printf 'message=%s\n' "$message"
+        printf 'recovery=%s\n' "$recovery"
+        printf 'debug=%s\n' "$debug_message"
+    } >"$path"
+}
+
+setup_parse_check_result_file() {
+    local line path="$1"
+
+    [[ -f "$path" ]] || fatal_error "Base check probe did not produce result file '$path'."
+
+    _BASE_SETUP_PARSED_CHECK_NAME=""
+    _BASE_SETUP_PARSED_CHECK_OK=""
+    _BASE_SETUP_PARSED_CHECK_MESSAGE=""
+    _BASE_SETUP_PARSED_CHECK_RECOVERY=""
+    _BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE=""
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        case "$line" in
+            name=*)
+                _BASE_SETUP_PARSED_CHECK_NAME="${line#name=}"
+                ;;
+            ok=*)
+                _BASE_SETUP_PARSED_CHECK_OK="${line#ok=}"
+                ;;
+            message=*)
+                _BASE_SETUP_PARSED_CHECK_MESSAGE="${line#message=}"
+                ;;
+            recovery=*)
+                _BASE_SETUP_PARSED_CHECK_RECOVERY="${line#recovery=}"
+                ;;
+            debug=*)
+                _BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE="${line#debug=}"
+                ;;
+        esac
+    done <"$path"
+
+    [[ -n "$_BASE_SETUP_PARSED_CHECK_NAME" ]] || fatal_error "Base check probe result '$path' is missing a name."
+    case "$_BASE_SETUP_PARSED_CHECK_OK" in
+        true|false)
+            ;;
+        *)
+            fatal_error "Base check probe result '$path' has invalid ok value '$_BASE_SETUP_PARSED_CHECK_OK'."
+            ;;
+    esac
+    [[ -n "$_BASE_SETUP_PARSED_CHECK_MESSAGE" ]] || fatal_error "Base check probe result '$path' is missing a message."
+}
+
+setup_add_parsed_check_result() {
+    setup_add_check_result \
+        "$_BASE_SETUP_PARSED_CHECK_NAME" \
+        "$_BASE_SETUP_PARSED_CHECK_OK" \
+        "$_BASE_SETUP_PARSED_CHECK_MESSAGE" \
+        "$_BASE_SETUP_PARSED_CHECK_RECOVERY" \
+        "$_BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE"
+}
+
+setup_read_check_result_file() {
+    setup_parse_check_result_file "$1"
+    setup_add_parsed_check_result
+    [[ "$_BASE_SETUP_PARSED_CHECK_OK" == true ]]
+}
+
+setup_read_homebrew_check_result_file() {
+    local path="$1"
+    local refresh_brew_failure_mode="$2"
+
+    setup_parse_check_result_file "$path"
+    [[ "$_BASE_SETUP_PARSED_CHECK_NAME" == homebrew ]] ||
+        fatal_error "Base check probe result '$path' contains unexpected name '$_BASE_SETUP_PARSED_CHECK_NAME'."
+
+    if [[ "$_BASE_SETUP_PARSED_CHECK_OK" == true ]]; then
+        if setup_refresh_brew_path; then
+            setup_add_parsed_check_result
+            return 0
+        fi
+        if [[ "$refresh_brew_failure_mode" == fatal ]]; then
+            fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
+        fi
+        setup_add_check_result \
+            "homebrew" \
+            false \
+            "Homebrew is installed, but its bin directory could not be added to PATH." \
+            "$(setup_recovery_brew_path)"
+        return 1
+    fi
+
+    setup_add_parsed_check_result
+    return 1
+}
+
+setup_write_homebrew_check_probe() {
+    local brew_bin
+    local result_file="$1"
+
+    if brew_bin="$(setup_find_brew_bin)"; then
+        setup_write_check_result_file \
+            "$result_file" \
+            "homebrew" \
+            true \
+            "Homebrew is installed." \
+            "" \
+            "Resolved Homebrew binary: $brew_bin"
+    else
+        setup_write_check_result_file \
+            "$result_file" \
+            "homebrew" \
+            false \
+            "Homebrew is not installed." \
+            "$(setup_recovery_homebrew)"
+    fi
+}
+
+setup_write_xcode_check_probe() {
+    local result_file="$1"
+
+    if setup_xcode_tools_installed; then
+        setup_write_check_result_file \
+            "$result_file" \
+            "xcode_command_line_tools" \
+            true \
+            "Xcode Command Line Tools are installed."
+    else
+        setup_write_check_result_file \
+            "$result_file" \
+            "xcode_command_line_tools" \
+            false \
+            "Xcode Command Line Tools are not installed." \
+            "$(setup_recovery_xcode_tools)"
+    fi
+}
+
+setup_write_python_check_probe() {
+    local result_file="$1"
+
+    if setup_python_installed; then
+        setup_write_check_result_file \
+            "$result_file" \
+            "python" \
+            true \
+            "Python formula '$(setup_python_formula)' is installed via Homebrew."
+    else
+        setup_write_check_result_file \
+            "$result_file" \
+            "python" \
+            false \
+            "Python formula '$(setup_python_formula)' is not installed via Homebrew." \
+            "$(setup_recovery_python)"
+    fi
+}
+
+setup_write_virtualenv_check_probe() {
+    local result_file="$1"
+
+    if setup_virtualenv_healthy; then
+        setup_write_check_result_file \
+            "$result_file" \
+            "base_virtualenv" \
+            true \
+            "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+    else
+        setup_write_check_result_file \
+            "$result_file" \
+            "base_virtualenv" \
+            false \
+            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+            "$(setup_recovery_venv)"
+    fi
+}
+
+setup_write_python_package_check_probe() {
+    local ok=false
+    local package="$3"
+    local result_file="$1"
+    local result_name="$2"
+
+    if setup_base_python_package_installed "$package"; then
+        ok=true
+    fi
+
+    setup_write_check_result_file \
+        "$result_file" \
+        "$result_name" \
+        "$ok" \
+        "$(setup_base_python_package_check_message "$package" "$ok")" \
+        "$(setup_recovery_base_python_package)"
+}
+
+setup_wait_for_base_check_probes() {
+    local failed=0
+    local pid
+
+    for pid in "$@"; do
+        wait "$pid" || failed=1
+    done
+
+    return "$failed"
+}
+
 setup_collect_base_check_results() {
-    local brew_bin click_ok=false click_package
+    local click_package
     local missing=0
-    local pyyaml_ok=false pyyaml_package
+    local probe_pids=()
+    local pyyaml_package
     local refresh_brew_failure_mode="${1:-warn}"
+    local tmpdir
 
     setup_clear_check_results
     setup_require_macos
@@ -1012,82 +1229,33 @@ setup_collect_base_check_results() {
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
 
-    if brew_bin="$(setup_find_brew_bin)"; then
-        if setup_refresh_brew_path; then
-            setup_add_check_result "homebrew" true "Homebrew is installed." "" "Resolved Homebrew binary: $brew_bin"
-        else
-            if [[ "$refresh_brew_failure_mode" == fatal ]]; then
-                fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
-            fi
-            setup_add_check_result \
-                "homebrew" \
-                false \
-                "Homebrew is installed, but its bin directory could not be added to PATH." \
-                "$(setup_recovery_brew_path)"
-            missing=1
-        fi
-    else
-        setup_add_check_result "homebrew" false "Homebrew is not installed." "$(setup_recovery_homebrew)"
-        missing=1
-    fi
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/base-check.XXXXXX")" ||
+        fatal_error "Unable to create temporary directory for Base check probes."
 
-    if setup_xcode_tools_installed; then
-        setup_add_check_result "xcode_command_line_tools" true "Xcode Command Line Tools are installed."
-    else
-        setup_add_check_result \
-            "xcode_command_line_tools" \
-            false \
-            "Xcode Command Line Tools are not installed." \
-            "$(setup_recovery_xcode_tools)"
-        missing=1
-    fi
+    setup_write_homebrew_check_probe "$tmpdir/homebrew" &
+    probe_pids+=("$!")
+    setup_write_xcode_check_probe "$tmpdir/xcode" &
+    probe_pids+=("$!")
+    setup_write_python_check_probe "$tmpdir/python" &
+    probe_pids+=("$!")
+    setup_write_virtualenv_check_probe "$tmpdir/base_virtualenv" &
+    probe_pids+=("$!")
+    setup_write_python_package_check_probe "$tmpdir/pyyaml" "pyyaml" "$pyyaml_package" &
+    probe_pids+=("$!")
+    setup_write_python_package_check_probe "$tmpdir/click" "click" "$click_package" &
+    probe_pids+=("$!")
 
-    if setup_python_installed; then
-        setup_add_check_result \
-            "python" \
-            true \
-            "Python formula '$(setup_python_formula)' is installed via Homebrew."
-    else
-        setup_add_check_result \
-            "python" \
-            false \
-            "Python formula '$(setup_python_formula)' is not installed via Homebrew." \
-            "$(setup_recovery_python)"
-        missing=1
-    fi
+    setup_wait_for_base_check_probes "${probe_pids[@]}" ||
+        fatal_error "One or more Base check probes failed before writing results."
 
-    if setup_virtualenv_healthy; then
-        setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
-    else
-        setup_add_check_result \
-            "base_virtualenv" \
-            false \
-            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
-            "$(setup_recovery_venv)"
-        missing=1
-    fi
+    setup_read_homebrew_check_result_file "$tmpdir/homebrew" "$refresh_brew_failure_mode" || missing=1
+    setup_read_check_result_file "$tmpdir/xcode" || missing=1
+    setup_read_check_result_file "$tmpdir/python" || missing=1
+    setup_read_check_result_file "$tmpdir/base_virtualenv" || missing=1
+    setup_read_check_result_file "$tmpdir/pyyaml" || missing=1
+    setup_read_check_result_file "$tmpdir/click" || missing=1
 
-    if setup_base_python_package_installed "$pyyaml_package"; then
-        pyyaml_ok=true
-    else
-        missing=1
-    fi
-    setup_add_check_result \
-        "pyyaml" \
-        "$pyyaml_ok" \
-        "$(setup_base_python_package_check_message "$pyyaml_package" "$pyyaml_ok")" \
-        "$(setup_recovery_base_python_package)"
-
-    if setup_base_python_package_installed "$click_package"; then
-        click_ok=true
-    else
-        missing=1
-    fi
-    setup_add_check_result \
-        "click" \
-        "$click_ok" \
-        "$(setup_base_python_package_check_message "$click_package" "$click_ok")" \
-        "$(setup_recovery_base_python_package)"
+    rm -rf "$tmpdir"
 
     return "$missing"
 }

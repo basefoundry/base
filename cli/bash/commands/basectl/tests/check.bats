@@ -42,6 +42,38 @@ load ./setup_helpers.bash
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
+@test "basectl check preserves text order while base probes overlap" {
+    local click_line homebrew_line python_line pyyaml_line venv_line xcode_line
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command \
+        BASE_SETUP_TEST_XCODE_WAIT_FOR_PIP_SHOW=true \
+        BASE_SETUP_TEST_XCODE_PIP_WAIT_SECONDS=2 \
+        check
+
+    [ "$status" -eq 0 ]
+    homebrew_line="$(printf '%s\n' "$output" | grep -n "Homebrew is installed." | head -n 1 | cut -d: -f1)"
+    xcode_line="$(printf '%s\n' "$output" | grep -n "Xcode Command Line Tools are installed." | head -n 1 | cut -d: -f1)"
+    python_line="$(printf '%s\n' "$output" | grep -n "Python formula 'python@3.13' is installed via Homebrew." | head -n 1 | cut -d: -f1)"
+    venv_line="$(printf '%s\n' "$output" | grep -n "Virtual environment is healthy at '$venv_dir'." | head -n 1 | cut -d: -f1)"
+    pyyaml_line="$(printf '%s\n' "$output" | grep -n "Python package 'PyYAML' is installed in the Base virtual environment." | head -n 1 | cut -d: -f1)"
+    click_line="$(printf '%s\n' "$output" | grep -n "Python package 'click' is installed in the Base virtual environment." | head -n 1 | cut -d: -f1)"
+    [ "$homebrew_line" -lt "$xcode_line" ]
+    [ "$xcode_line" -lt "$python_line" ]
+    [ "$python_line" -lt "$venv_line" ]
+    [ "$venv_line" -lt "$pyyaml_line" ]
+    [ "$pyyaml_line" -lt "$click_line" ]
+}
+
 @test "basectl check ignores inherited setup dry-run and recreate state" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
@@ -228,6 +260,49 @@ load ./setup_helpers.bash
     venv_line="$(printf '%s\n' "$output" | grep -n '"name":"base_virtualenv"' | cut -d: -f1)"
     pyyaml_line="$(printf '%s\n' "$output" | grep -n '"name":"pyyaml"' | cut -d: -f1)"
     click_line="$(printf '%s\n' "$output" | grep -n '"name":"click"' | cut -d: -f1)"
+    [ "$venv_line" -lt "$pyyaml_line" ]
+    [ "$pyyaml_line" -lt "$click_line" ]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --format json preserves finding order while base probes overlap" {
+    local click_line homebrew_line python_line pyyaml_line venv_line xcode_line
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="darwin24" \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
+        BASE_SETUP_TEST_XCODE_WAIT_FOR_PIP_SHOW=true \
+        BASE_SETUP_TEST_XCODE_PIP_WAIT_SECONDS=2 \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
+        "$BASE_REPO_ROOT/bin/basectl" check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
+    homebrew_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D001","status":"ok","name":"homebrew"' | cut -d: -f1)"
+    xcode_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D002","status":"ok","name":"xcode_command_line_tools"' | cut -d: -f1)"
+    python_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D003","status":"ok","name":"python"' | cut -d: -f1)"
+    venv_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D004","status":"ok","name":"base_virtualenv"' | cut -d: -f1)"
+    pyyaml_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D005","status":"ok","name":"pyyaml"' | cut -d: -f1)"
+    click_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D006","status":"ok","name":"click"' | cut -d: -f1)"
+    [ "$homebrew_line" -lt "$xcode_line" ]
+    [ "$xcode_line" -lt "$python_line" ]
+    [ "$python_line" -lt "$venv_line" ]
     [ "$venv_line" -lt "$pyyaml_line" ]
     [ "$pyyaml_line" -lt "$click_line" ]
     [ "${stderr:-}" = "" ]

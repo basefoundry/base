@@ -24,6 +24,15 @@ installed_file="$state_dir/xcode-installed"
 case "${1:-}" in
     -p)
         if [[ -f "$installed_file" ]]; then
+            if [[ "${BASE_SETUP_TEST_XCODE_WAIT_FOR_PIP_SHOW:-}" == true ]]; then
+                waited=0
+                wait_seconds="${BASE_SETUP_TEST_XCODE_PIP_WAIT_SECONDS:-5}"
+                while [[ ! -s "$state_dir/pip-show.log" && "$waited" -lt "$wait_seconds" ]]; do
+                    sleep 1
+                    waited=$((waited + 1))
+                done
+                [[ -s "$state_dir/pip-show.log" ]] || exit 1
+            fi
             mkdir -p "$tools_dir/usr/bin"
             touch "$tools_dir/usr/bin/clang"
             printf '%s\n' "$tools_dir"
