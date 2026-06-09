@@ -31,7 +31,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `doctor`
 - `gh`
 - `onboard`
-- `repo init/check/configure/installer-template`
+- `repo init/check/configure/agent-guidance/installer-template`
 - `test`
 - `build`
 - `update-profile`
@@ -82,6 +82,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   then falls back to the parent directory of `BASE_HOME`.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` reapplies the GitHub settings and labels.
+  `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
+  files and `basectl repo check [path] --agent-guidance` verifies that optional
+  layer for repos that opt in.
   `basectl repo installer-template [path]` prints or writes the maintained
   project installer starter script.
 - `basectl test [project]` runs the project's manifest `test.command` or

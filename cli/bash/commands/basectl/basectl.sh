@@ -23,8 +23,8 @@ Commands:
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
-  repo <init|check|configure|installer-template> [options]
-    Create repository baselines and project installer templates.
+  repo <init|check|configure|agent-guidance|installer-template> [options]
+    Create repository baselines, agent guidance, and project installer templates.
   ci <setup|check|doctor> <project> [options]
     Run Base setup, checks, and diagnostics in non-interactive CI.
   clean [--older-than <age>] [--keep-last <count>] [options]

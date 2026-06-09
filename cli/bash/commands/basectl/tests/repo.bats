@@ -11,6 +11,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl repo init <name>"* ]]
     [[ "$output" == *"basectl repo check [path]"* ]]
     [[ "$output" == *"basectl repo configure [path]"* ]]
+    [[ "$output" == *"basectl repo agent-guidance [path]"* ]]
     [[ "$output" == *"basectl repo installer-template [path]"* ]]
 }
 
@@ -53,6 +54,55 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/install.sh'."* ]]
     [ ! -e "$repo_dir/install.sh" ]
+}
+
+@test "basectl repo agent-guidance dry-run reports guidance files" {
+    local repo_dir="$TEST_TMPDIR/agent-demo"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/AGENTS.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/skills.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
+    [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo agent-guidance creates optional guidance baseline" {
+    local repo_dir="$TEST_TMPDIR/agent-demo"
+
+    run_basectl repo agent-guidance "$repo_dir" \
+        --repo-name base-demo \
+        --default-branch master \
+        --validation-command "env -u BASE_HOME ./bin/base-test"
+
+    [ "$status" -eq 0 ]
+    [ -f "$repo_dir/AGENTS.md" ]
+    [ -f "$repo_dir/skills.md" ]
+    [ -f "$repo_dir/.github/pull_request_template.md" ]
+    grep -Fq "# Agent Instructions for base-demo" "$repo_dir/AGENTS.md"
+    grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/master" "$repo_dir/AGENTS.md"
+    grep -Fq "env -u BASE_HOME ./bin/base-test" "$repo_dir/AGENTS.md"
+    grep -Fq '`bug`, `enhancement`, `documentation`,' "$repo_dir/AGENTS.md"
+    grep -Fq '`ci`, or `security`.' "$repo_dir/AGENTS.md"
+    grep -Fq "# Project Skills for base-demo" "$repo_dir/skills.md"
+    grep -Fq "Closes #" "$repo_dir/.github/pull_request_template.md"
+}
+
+@test "basectl repo agent-guidance leaves existing files unchanged" {
+    local repo_dir="$TEST_TMPDIR/custom-guidance"
+
+    mkdir -p "$repo_dir/.github"
+    printf 'custom agents\n' > "$repo_dir/AGENTS.md"
+    printf 'custom skills\n' > "$repo_dir/skills.md"
+    printf 'custom pr\n' > "$repo_dir/.github/pull_request_template.md"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name custom-guidance
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$repo_dir/AGENTS.md")" = "custom agents" ]
+    [ "$(cat "$repo_dir/skills.md")" = "custom skills" ]
+    [ "$(cat "$repo_dir/.github/pull_request_template.md")" = "custom pr" ]
 }
 
 @test "basectl repo init dry-run prints baseline and configuration plan" {
@@ -234,6 +284,35 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"Missing repository baseline file 'VERSION'."* ]]
     [[ "$output" == *"Repository baseline check found missing requirements."* ]]
+}
+
+@test "basectl repo check reports missing agent guidance only when opted in" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+
+    run_basectl repo check "$repo_dir" --agent-guidance
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Missing agent guidance file 'AGENTS.md'."* ]]
+    [[ "$output" == *"Missing agent guidance file 'skills.md'."* ]]
+    [[ "$output" == *"Agent guidance baseline check found missing requirements."* ]]
+}
+
+@test "basectl repo check passes with generated agent guidance when opted in" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo
+    [ "$status" -eq 0 ]
+
+    run_basectl repo check "$repo_dir" --agent-guidance
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository baseline check passed."* ]]
+    [[ "$output" == *"Agent guidance baseline check passed."* ]]
 }
 
 @test "basectl repo configure dry-run prints GitHub settings and labels" {

@@ -147,6 +147,7 @@ Current implemented commands include:
 - `basectl repo init <name>`
 - `basectl repo check [path]`
 - `basectl repo configure [path]`
+- `basectl repo agent-guidance [path]`
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl build <project> [target...]`
@@ -376,6 +377,13 @@ Check and repair the repo baseline with:
 ```bash
 basectl repo check ~/work/example
 basectl repo configure ~/work/example --repo codeforester/example
+```
+
+Seed optional repo-local agent guidance with:
+
+```bash
+basectl repo agent-guidance ~/work/example --repo-name example
+basectl repo check ~/work/example --agent-guidance
 ```
 
 `repo configure` is intentionally idempotent. It enables Issues and Projects,
