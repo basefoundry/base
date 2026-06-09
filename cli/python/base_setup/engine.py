@@ -49,6 +49,7 @@ class ManifestAction:
     action: str
     dry_run: bool
     output_format: str
+    remote_network: bool = False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,6 +68,11 @@ def main(argv: list[str] | None = None) -> int:
     help="Action to run: setup, bootstrap, check, or doctor. Defaults to setup.",
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
+@base_cli.option(
+    "--remote-network",
+    is_flag=True,
+    help="Opt in to bounded network reachability diagnostics for project Git origin.",
+)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -76,6 +82,7 @@ def run(
     dry_run: bool,
     action: str,
     output_format: str,
+    remote_network: bool,
 ) -> int:
     manifest_path = Path(manifest).resolve() if manifest else discover_manifest(Path(start_dir))
     if manifest_path is None:
@@ -89,7 +96,12 @@ def run(
         base_manifest = read_manifest(manifest_path)
         validate_project_name(base_manifest, project)
         default_manifest = read_default_manifest(ctx)
-        return run_manifest_action(ctx, ManifestAction(action, dry_run, output_format), default_manifest, base_manifest)
+        return run_manifest_action(
+            ctx,
+            ManifestAction(action, dry_run, output_format, remote_network),
+            default_manifest,
+            base_manifest,
+        )
     except ManifestError as exc:
         ctx.log.error(str(exc))
         return 1
@@ -115,13 +127,33 @@ def run_manifest_action(
         reconcile_bootstrap_artifacts(ctx, default_manifest, base_manifest, dry_run=manifest_action.dry_run)
         status = 0
     elif action == "check":
-        status = check_manifest(ctx, default_manifest, base_manifest, output_format=manifest_action.output_format)
+        status = check_manifest(
+            ctx,
+            default_manifest,
+            base_manifest,
+            output_format=manifest_action.output_format,
+            remote_network=manifest_action.remote_network,
+        )
     elif action == "doctor":
-        status = doctor_manifest(default_manifest, base_manifest, output_format=manifest_action.output_format)
+        status = doctor_manifest(
+            default_manifest,
+            base_manifest,
+            output_format=manifest_action.output_format,
+            remote_network=manifest_action.remote_network,
+        )
     elif action == "precheck":
-        status = check_pre_venv_manifest(ctx, base_manifest, output_format=manifest_action.output_format)
+        status = check_pre_venv_manifest(
+            ctx,
+            base_manifest,
+            output_format=manifest_action.output_format,
+            remote_network=manifest_action.remote_network,
+        )
     elif action == "predoctor":
-        status = doctor_pre_venv_manifest(base_manifest, output_format=manifest_action.output_format)
+        status = doctor_pre_venv_manifest(
+            base_manifest,
+            output_format=manifest_action.output_format,
+            remote_network=manifest_action.remote_network,
+        )
     else:
         ctx.log.error(
             "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, precheck, or predoctor.",
@@ -201,8 +233,9 @@ def check_manifest(
     default_manifest: BaseManifest,
     manifest: BaseManifest,
     output_format: str,
+    remote_network: bool = False,
 ) -> int:
-    checks = manifest_checks(default_manifest, manifest)
+    checks = manifest_checks(default_manifest, manifest, remote_network=remote_network)
     if output_format == "json":
         print(json.dumps(checks_payload_to_json(checks, project=manifest.project_name), indent=2))
     elif output_format == "text":
@@ -220,8 +253,13 @@ def check_manifest(
     return 0 if all(check.ok or doctor_status(check) == "warn" for check in checks) else 1
 
 
-def check_pre_venv_manifest(ctx: base_cli.Context, manifest: BaseManifest, output_format: str) -> int:
-    checks = pre_venv_manifest_checks(manifest)
+def check_pre_venv_manifest(
+    ctx: base_cli.Context,
+    manifest: BaseManifest,
+    output_format: str,
+    remote_network: bool = False,
+) -> int:
+    checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
     elif output_format == "text":
@@ -238,8 +276,13 @@ def check_pre_venv_manifest(ctx: base_cli.Context, manifest: BaseManifest, outpu
     return 0 if all(check.ok or doctor_status(check) == "warn" for check in checks) else 1
 
 
-def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, output_format: str) -> int:
-    checks = manifest_checks(default_manifest, manifest)
+def doctor_manifest(
+    default_manifest: BaseManifest,
+    manifest: BaseManifest,
+    output_format: str,
+    remote_network: bool = False,
+) -> int:
+    checks = manifest_checks(default_manifest, manifest, remote_network=remote_network)
     if output_format == "json":
         print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
@@ -259,8 +302,12 @@ def doctor_manifest(default_manifest: BaseManifest, manifest: BaseManifest, outp
     return min(error_count, 125)
 
 
-def doctor_pre_venv_manifest(manifest: BaseManifest, output_format: str) -> int:
-    checks = pre_venv_manifest_checks(manifest)
+def doctor_pre_venv_manifest(
+    manifest: BaseManifest,
+    output_format: str,
+    remote_network: bool = False,
+) -> int:
+    checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
         print(json.dumps([check_to_doctor_json(check) for check in checks], separators=(",", ":")))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
@@ -277,11 +324,15 @@ def doctor_pre_venv_manifest(manifest: BaseManifest, output_format: str) -> int:
     return min(error_count, 125)
 
 
-def pre_venv_manifest_checks(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
-    return check_git_remote(manifest)
+def pre_venv_manifest_checks(manifest: BaseManifest, remote_network: bool = False) -> tuple[ArtifactCheck, ...]:
+    return check_git_remote(manifest, check_network=remote_network)
 
 
-def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
+def manifest_checks(
+    default_manifest: BaseManifest,
+    manifest: BaseManifest,
+    remote_network: bool = False,
+) -> tuple[ArtifactCheck, ...]:
     pre_venv_checks: list[ArtifactCheck] = []
     checks: list[ArtifactCheck] = []
     user_config = read_user_config()
@@ -289,7 +340,7 @@ def manifest_checks(default_manifest: BaseManifest, manifest: BaseManifest) -> t
     artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
     definitions = resolve_artifact_definitions(artifacts)
 
-    pre_venv_checks.extend(pre_venv_manifest_checks(effective_manifest))
+    pre_venv_checks.extend(pre_venv_manifest_checks(effective_manifest, remote_network=remote_network))
     checks.extend(ide_preference_warning_checks(manifest, user_config))
 
     if effective_manifest.brewfile is not None:

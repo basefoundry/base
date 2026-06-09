@@ -504,6 +504,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     action="setup"
     output_format="text"
+    remote_network=false
     while (($#)); do
         case "$1" in
             --action)
@@ -514,15 +515,26 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
                 shift
                 output_format="${1:-}"
                 ;;
+            --remote-network)
+                remote_network=true
+                ;;
         esac
         shift || true
     done
     if [[ "$action" == "precheck" && "$output_format" == "json" ]]; then
-        printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+        if [[ "$remote_network" == true ]]; then
+            printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""},{"id":"BASE-P083","status":"ok","name":"git_origin_reachability","message":"Project Git origin remote is reachable.","fix":""}]\n'
+        else
+            printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+        fi
     elif [[ "$action" == "precheck" ]]; then
         printf 'Project is inside a Git repository.\n' >&2
     elif [[ "$action" == "predoctor" && "$output_format" == "json" ]]; then
-        printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+        if [[ "$remote_network" == true ]]; then
+            printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""},{"id":"BASE-P083","status":"ok","name":"git_origin_reachability","message":"Project Git origin remote is reachable.","fix":""}]\n'
+        else
+            printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""}]\n'
+        fi
     elif [[ "$action" == "predoctor" ]]; then
         printf 'ok     BASE-P080  git_repository            Project is inside a Git repository.\n'
     elif [[ "$action" == "check" && "$output_format" == "json" ]]; then

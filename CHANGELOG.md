@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added opt-in project Git `origin` reachability diagnostics with
+  `basectl check|doctor <project> --remote-network`.
 - Added an explicit `ai` prerequisite profile for Codex CLI and Claude Code
   setup, check, doctor, onboard, and shell completion flows.
 

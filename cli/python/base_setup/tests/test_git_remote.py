@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from base_setup import git_remote as git_remote_module
 from base_setup.checks import check_to_json
 from base_setup.checks import doctor_status
 from base_setup.git_remote import check_git_remote
@@ -27,6 +28,15 @@ def git(project_root: Path, *args: str) -> None:
         stderr=subprocess.DEVNULL,
         check=True,
     )
+
+
+def completed_process(
+    args: list[str],
+    returncode: int,
+    stdout: str = "",
+    stderr: str = "",
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(args, returncode, stdout, stderr)
 
 
 @unittest.skipUnless(shutil.which("git"), "Git is not installed")
@@ -147,3 +157,139 @@ class GitRemoteCheckTests(unittest.TestCase):
         self.assertNotIn("secret", payload)
         self.assertIn("https://github.com/codeforester/base.git", payload)
         self.assertEqual(checks[1].details["sanitized_url"], "https://github.com/codeforester/base.git")
+
+    def test_default_remote_checks_do_not_probe_network_reachability(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "https://example.com/team/demo.git")
+            manifest = manifest_for(project_root)
+
+            with mock.patch("base_setup.git_remote.run_git", wraps=git_remote_module.run_git) as run_git:
+                checks = check_git_remote(manifest)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081"])
+        self.assertFalse(any(call.args[1][0] == "ls-remote" for call in run_git.call_args_list))
+        self.assertEqual(checks[1].details["network_checked"], False)
+
+    def test_opt_in_network_check_reports_reachable_origin_remote(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "https://example.com/team/demo.git")
+            manifest = manifest_for(project_root)
+            original_run_git = git_remote_module.run_git
+
+            def run_git(
+                project_root_arg: Path,
+                arguments: list[str],
+                timeout_seconds: int | None = None,
+            ) -> subprocess.CompletedProcess[str]:
+                if arguments[0] == "ls-remote":
+                    self.assertIsNotNone(timeout_seconds)
+                    return completed_process(arguments, 0, "abc123\tHEAD\n")
+                return original_run_git(project_root_arg, arguments)
+
+            with mock.patch("base_setup.git_remote.run_git", side_effect=run_git) as run_git_mock:
+                checks = check_git_remote(manifest, check_network=True)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081", "BASE-P083"])
+        self.assertTrue(checks[2].ok)
+        self.assertEqual(doctor_status(checks[2]), "ok")
+        self.assertEqual(checks[2].details["network_checked"], True)
+        self.assertEqual(checks[2].details["reachable"], True)
+        self.assertEqual(checks[2].details["remote"], "origin")
+        self.assertEqual(checks[2].details["provider"], "other")
+        self.assertEqual(checks[2].details["transport"], "https")
+        self.assertEqual(checks[2].details["sanitized_url"], "https://example.com/team/demo.git")
+        self.assertTrue(
+            any(
+                call.args[1] == ["ls-remote", "--exit-code", "origin", "HEAD"]
+                for call in run_git_mock.call_args_list
+            )
+        )
+
+    def test_opt_in_network_check_reports_unreachable_origin_remote_as_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "https://example.com/team/missing.git")
+            manifest = manifest_for(project_root)
+            original_run_git = git_remote_module.run_git
+
+            def run_git(
+                project_root_arg: Path,
+                arguments: list[str],
+                timeout_seconds: int | None = None,
+            ) -> subprocess.CompletedProcess[str]:
+                if arguments[0] == "ls-remote":
+                    self.assertIsNotNone(timeout_seconds)
+                    return completed_process(arguments, 128, stderr="fatal: repository not found\n")
+                return original_run_git(project_root_arg, arguments)
+
+            with mock.patch("base_setup.git_remote.run_git", side_effect=run_git):
+                checks = check_git_remote(manifest, check_network=True)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081", "BASE-P083"])
+        self.assertFalse(checks[2].ok)
+        self.assertEqual(doctor_status(checks[2]), "warn")
+        self.assertIn("could not be reached", checks[2].message)
+        self.assertEqual(checks[2].details["network_checked"], True)
+        self.assertEqual(checks[2].details["reachable"], False)
+        self.assertEqual(checks[2].details["failure_category"], "unreachable")
+
+    def test_opt_in_network_check_reports_timeout_as_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "git@example.com:team/demo.git")
+            manifest = manifest_for(project_root)
+            original_run_git = git_remote_module.run_git
+
+            def run_git(
+                project_root_arg: Path,
+                arguments: list[str],
+                timeout_seconds: int | None = None,
+            ) -> subprocess.CompletedProcess[str]:
+                if arguments[0] == "ls-remote":
+                    self.assertIsNotNone(timeout_seconds)
+                    raise subprocess.TimeoutExpired(["git", *arguments], 5)
+                return original_run_git(project_root_arg, arguments)
+
+            with mock.patch("base_setup.git_remote.run_git", side_effect=run_git):
+                checks = check_git_remote(manifest, check_network=True)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081", "BASE-P083"])
+        self.assertFalse(checks[2].ok)
+        self.assertEqual(doctor_status(checks[2]), "warn")
+        self.assertIn("timed out", checks[2].message)
+        self.assertEqual(checks[2].details["network_checked"], True)
+        self.assertEqual(checks[2].details["reachable"], False)
+        self.assertEqual(checks[2].details["failure_category"], "timeout")
+
+    def test_network_check_json_does_not_expose_credential_bearing_remote(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "https://token:secret@example.com/team/demo.git")
+            manifest = manifest_for(project_root)
+            original_run_git = git_remote_module.run_git
+
+            def run_git(
+                project_root_arg: Path,
+                arguments: list[str],
+                timeout_seconds: int | None = None,
+            ) -> subprocess.CompletedProcess[str]:
+                if arguments[0] == "ls-remote":
+                    self.assertIsNotNone(timeout_seconds)
+                    return completed_process(arguments, 128, stderr="fatal: authentication failed\n")
+                return original_run_git(project_root_arg, arguments)
+
+            with mock.patch("base_setup.git_remote.run_git", side_effect=run_git):
+                checks = check_git_remote(manifest, check_network=True)
+
+        payload = json.dumps([check_to_json(check) for check in checks])
+        self.assertNotIn("token", payload)
+        self.assertNotIn("secret", payload)
+        self.assertIn("https://example.com/team/demo.git", payload)
+        self.assertEqual(checks[2].details["sanitized_url"], "https://example.com/team/demo.git")

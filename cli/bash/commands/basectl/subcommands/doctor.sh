@@ -17,6 +17,7 @@ Options:
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path for project diagnostics.
+  --remote-network      Opt in to bounded project Git origin reachability diagnostics.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -259,6 +260,7 @@ base_doctor_run_json() {
     local errors=0 profile_errors=0 profile_json="[]"
     local project="$1"
     local project_errors=0 project_json="[]"
+    local remote_network="${2:-${BASE_SETUP_REMOTE_NETWORK:-}}"
     local status="ok"
 
     setup_collect_base_check_results warn || true
@@ -277,7 +279,7 @@ base_doctor_run_json() {
     fi
 
     if [[ -n "$project" ]]; then
-        if project_json="$(setup_run_project_artifact_doctor_json)"; then
+        if project_json="$(setup_run_project_artifact_doctor_json "$remote_network")"; then
             project_errors=0
         else
             project_errors=$?
@@ -321,6 +323,7 @@ base_doctor_run_json() {
 
 base_doctor_subcommand_main() {
     local errors=0 output_format="text" profile_errors=0 project=""
+    local remote_network=false
 
     setup_clear_run_state
 
@@ -371,6 +374,9 @@ base_doctor_subcommand_main() {
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
                 ;;
+            --remote-network)
+                remote_network=true
+                ;;
             -v)
                 setup_enable_debug_logging
                 ;;
@@ -392,11 +398,13 @@ base_doctor_subcommand_main() {
     done
 
     BASE_SETUP_PROJECT_NAME="$project"
+    BASE_SETUP_REMOTE_NETWORK="$remote_network"
     export BASE_SETUP_PROJECT_NAME
+    export BASE_SETUP_REMOTE_NETWORK
     log_debug "Running 'basectl doctor'."
     if setup_ci_runtime_only; then
         if [[ "$output_format" == json ]]; then
-            base_doctor_run_json "$project"
+            base_doctor_run_json "$project" "$remote_network"
         else
             base_doctor_run_ci_runtime_text "$project"
         fi
@@ -406,7 +414,7 @@ base_doctor_subcommand_main() {
     setup_require_macos
 
     if [[ "$output_format" == json ]]; then
-        base_doctor_run_json "$project"
+        base_doctor_run_json "$project" "$remote_network"
         return $?
     fi
 

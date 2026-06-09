@@ -111,6 +111,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P080` | Project Git repository status |
 | `BASE-P081` | Project Git `origin` remote status |
 | `BASE-P082` | GitHub CLI authentication status for a GitHub-hosted project remote |
+| `BASE-P083` | Opt-in project Git `origin` remote reachability status |
 | `BASE-P100` | User config disables all IDE setup and checks |
 | `BASE-P101` | User config disables setup and checks for one IDE |
 | `BASE-P102` | User IDE setting conflicts with a project manifest setting |
@@ -143,11 +144,16 @@ configuration source and do not cause Base to install Python dependencies.
 Warnings in this range should guide users toward a valid Python project file
 without failing the Base manifest check by themselves.
 
-`BASE-P080` through `BASE-P082` are read-only project Git remote diagnostics.
+`BASE-P080` through `BASE-P083` are read-only project Git remote diagnostics.
 They report whether the project directory is inside a Git repository, whether
 `origin` is configured and parseable, and whether GitHub CLI authentication is
 ready when `origin` points at GitHub. Default project check and doctor do not
-probe network remote reachability; that belongs behind an explicit opt-in path.
+probe network remote reachability.
+
+`BASE-P083` appears only when the user explicitly opts in with
+`--remote-network`. It delegates reachability to Git with a bounded
+`git ls-remote` call, reports sanitized provider and transport details, and
+does not print credential-bearing remote URLs.
 
 ## Health Findings
 

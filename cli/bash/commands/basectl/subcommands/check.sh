@@ -17,6 +17,7 @@ Options:
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path for project checks.
+  --remote-network      Opt in to bounded project Git origin reachability checks.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -36,6 +37,7 @@ EOF
 base_check_subcommand_main() {
     local output_format="text"
     local project=""
+    local remote_network=false
 
     setup_clear_run_state
 
@@ -86,6 +88,9 @@ base_check_subcommand_main() {
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
                 ;;
+            --remote-network)
+                remote_network=true
+                ;;
             -v)
                 setup_enable_debug_logging
                 ;;
@@ -107,10 +112,12 @@ base_check_subcommand_main() {
     done
 
     BASE_SETUP_PROJECT_NAME="$project"
+    BASE_SETUP_REMOTE_NETWORK="$remote_network"
     export BASE_SETUP_PROJECT_NAME
+    export BASE_SETUP_REMOTE_NETWORK
     log_debug "Running 'basectl check'."
     if [[ "$output_format" == json ]]; then
-        setup_run_check_json
+        setup_run_check_json "$remote_network"
     else
         setup_run_check
     fi
