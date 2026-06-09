@@ -46,10 +46,17 @@ class ProjectCheckTests(unittest.TestCase):
                 ["--action", "check", "--format", "json", "--manifest", str(manifest_path), "demo"]
             )
 
+        payload = json.loads(stdout)
+        checks = payload["checks"]
         self.assertEqual(status, 1)
-        self.assertIn('"name": "requests"', stdout)
-        self.assertIn('"ok": false', stdout)
-        self.assertIn('"fix": "basectl setup demo"', stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["project"], "demo")
+        request_checks = [check for check in checks if check["name"] == "requests"]
+        self.assertEqual(len(request_checks), 1)
+        self.assertEqual(request_checks[0]["status"], "error")
+        self.assertNotIn("ok", request_checks[0])
+        self.assertEqual(request_checks[0]["fix"], "basectl setup demo")
 
 
 
@@ -208,9 +215,13 @@ class ProjectCheckTests(unittest.TestCase):
                 doctor_status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
 
         output = stdout.getvalue()
-        parsed_checks = json.loads(output)
+        payload = json.loads(output)
+        parsed_checks = payload["checks"]
         doctor_findings = json.loads(doctor_stdout.getvalue())
         self.assertEqual(status, 1)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["project"], "demo")
         self.assertEqual(doctor_status, 2)
         self.assertEqual(
             [check["name"] for check in parsed_checks],
@@ -232,9 +243,8 @@ class ProjectCheckTests(unittest.TestCase):
                 "BASE_TEST_REQUIRED_EMPTY",
             ],
         )
-        self.assertTrue(parsed_checks[0]["ok"])
-        self.assertFalse(parsed_checks[1]["ok"])
-        self.assertFalse(parsed_checks[2]["ok"])
+        self.assertEqual([check["status"] for check in parsed_checks], ["ok", "error", "error"])
+        self.assertTrue(all("ok" not in check for check in parsed_checks))
         self.assertEqual(
             parsed_checks[1]["message"],
             "Environment variable 'BASE_TEST_REQUIRED_MISSING' is not set or is empty.",
@@ -293,15 +303,18 @@ class ProjectCheckTests(unittest.TestCase):
                     output_format="json",
                 )
 
-        parsed_checks = json.loads(stdout.getvalue())
+        payload = json.loads(stdout.getvalue())
+        parsed_checks = payload["checks"]
         self.assertEqual(status, 1)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["project"], "demo")
         self.assertEqual(
             [check["name"] for check in parsed_checks],
             ["postgres", "app", "busy-app"],
         )
-        self.assertTrue(parsed_checks[0]["ok"])
-        self.assertTrue(parsed_checks[1]["ok"])
-        self.assertFalse(parsed_checks[2]["ok"])
+        self.assertEqual([check["status"] for check in parsed_checks], ["ok", "ok", "error"])
+        self.assertTrue(all("ok" not in check for check in parsed_checks))
         self.assertIn("already listening", parsed_checks[2]["message"])
         self.assertEqual(
             parsed_checks[2]["fix"],
@@ -446,11 +459,15 @@ class ProjectCheckTests(unittest.TestCase):
                     output_format="json",
                 )
 
-        checks = json.loads(stdout.getvalue())
+        payload = json.loads(stdout.getvalue())
+        checks = payload["checks"]
         self.assertEqual(status, 0)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "warn")
+        self.assertEqual(payload["project"], "demo")
         self.assertEqual([check["name"] for check in checks], ["pyproject.toml", "pyproject dependencies"])
-        self.assertTrue(checks[0]["ok"])
-        self.assertFalse(checks[1]["ok"])
+        self.assertEqual([check["status"] for check in checks], ["ok", "warn"])
+        self.assertTrue(all("ok" not in check for check in checks))
         self.assertIn("does not reconcile yet", checks[1]["message"])
 
 
@@ -521,13 +538,18 @@ class IdeDiagnosticsTests(unittest.TestCase):
                 with redirect_stdout(stdout_buffer):
                     status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
 
-        checks = json.loads(stdout_buffer.getvalue())
+        payload = json.loads(stdout_buffer.getvalue())
+        checks = payload["checks"]
         self.assertEqual(status, 0)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["project"], "demo")
         self.assertEqual(
             [check["name"] for check in checks],
             ["VS Code app", "ms-python.python", "VS Code setting: editor.formatOnSave"],
         )
-        self.assertTrue(all(check["ok"] for check in checks))
+        self.assertTrue(all(check["status"] == "ok" for check in checks))
+        self.assertTrue(all("ok" not in check for check in checks))
 
 
 

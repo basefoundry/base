@@ -190,18 +190,21 @@ run_basectl_separate_stderr() {
     run_basectl_separate_stderr check demo --format json
     [ "$status" -eq 0 ]
     [ "${stderr:-}" = "" ]
-    [[ "$output" == *'"ok": true'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
+    [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *'"name": "click"'* ]]
 
     run_basectl_separate_stderr doctor demo --format json
     [ "$status" -eq 0 ]
     [ "${stderr:-}" = "" ]
-    [[ "$output" == *'"ok": true'* ]]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_findings":'* ]]
-    [[ "$output" == *'"status": "ok"'* ]]
+    [[ "$output" != *'"ok":'* ]]
 }
 
 @test "basectl test delegates from the project root with project environment" {

@@ -145,10 +145,17 @@ class DevManifestTests(unittest.TestCase):
         ):
             status, stdout, stderr = run_engine(["check", "--profile", "sre", "--format", "json"])
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["sre"])
         self.assertEqual(findings[0]["name"], "kubectl")
+        self.assertEqual(findings[0]["id"], "BASE-D104")
+        self.assertEqual(findings[0]["status"], "error")
+        self.assertNotIn("ok", findings[0])
         self.assertEqual(findings[0]["fix"], "basectl setup --profile sre")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -159,9 +166,13 @@ class DevManifestTests(unittest.TestCase):
                 extra_env={"PATH": bin_dir},
             )
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["ai"])
         self.assertEqual([finding["name"] for finding in findings], ["codex", "claude"])
         self.assertEqual(findings[0]["fix"], "basectl setup --profile ai")
         self.assertEqual(findings[1]["fix"], "basectl setup --profile ai")
@@ -183,10 +194,15 @@ class DevManifestTests(unittest.TestCase):
                 extra_env={"PATH": bin_dir},
             )
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertTrue(all(finding["ok"] for finding in findings))
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["profiles"], ["ai"])
+        self.assertTrue(all(finding["status"] == "ok" for finding in findings))
+        self.assertTrue(all("ok" not in finding for finding in findings))
         self.assertIn(str(bin_path / "codex"), findings[0]["message"])
         self.assertIn("codex 1.2.3", findings[0]["message"])
         self.assertIn(str(bin_path / "claude"), findings[1]["message"])
@@ -205,15 +221,20 @@ class DevManifestTests(unittest.TestCase):
                 extra_env={"PATH": bin_dir},
             )
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["ai"])
         self.assertEqual(findings[0]["name"], "codex")
-        self.assertFalse(findings[0]["ok"])
+        self.assertEqual(findings[0]["status"], "error")
+        self.assertNotIn("ok", findings[0])
         self.assertEqual(findings[0]["fix"], "basectl setup --profile ai")
         self.assertIn("Codex CLI version check failed with exit 7", findings[0]["message"])
         self.assertIn("codex crashed", findings[0]["message"])
-        self.assertTrue(findings[1]["ok"])
+        self.assertEqual(findings[1]["status"], "ok")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_multiple_profiles_combines_results_once_per_profile(self) -> None:
@@ -225,9 +246,13 @@ class DevManifestTests(unittest.TestCase):
                 ["check", "--profile", "dev,sre", "--format", "json"]
             )
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["dev", "sre"])
         names = [finding["name"] for finding in findings]
         self.assertIn("bats-core", names)
         self.assertIn("kubectl", names)
@@ -259,11 +284,16 @@ class DevManifestTests(unittest.TestCase):
             status, stdout, stderr = run_engine(["check", "--format", "json"])
 
         self.assertEqual(status, 1)
-        self.assertIn('"name": "bats-core"', stdout)
-        self.assertIn('"ok": false', stdout)
-        self.assertIn('"name": "gh"', stdout)
-        self.assertIn('"name": "shellcheck"', stdout)
         self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        findings = payload["checks"]
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["dev"])
+        self.assertIn("bats-core", [finding["name"] for finding in findings])
+        self.assertIn("gh", [finding["name"] for finding in findings])
+        self.assertIn("shellcheck", [finding["name"] for finding in findings])
+        self.assertTrue(all("ok" not in finding for finding in findings))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_invalid_github_auth_when_gh_is_installed(self) -> None:
@@ -284,13 +314,15 @@ class DevManifestTests(unittest.TestCase):
         ):
             status, stdout, stderr = run_engine(["check", "--format", "json"])
 
-        findings = json.loads(stdout)
+        payload = json.loads(stdout)
+        findings = payload["checks"]
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
         self.assertIn(
             {
+                "id": "BASE-D106",
+                "status": "error",
                 "name": "gh-auth",
-                "ok": False,
                 "message": "GitHub CLI authentication is not ready.",
                 "fix": "gh auth login -h github.com",
             },
