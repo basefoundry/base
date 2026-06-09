@@ -57,33 +57,33 @@ def run_check(command: list[str]) -> bool:
 
 
 def run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
-    process = subprocess.Popen(
+    stdout_recorder = CommandOutputRecorder()
+    stderr_recorder = CommandOutputRecorder()
+    with subprocess.Popen(
         command,
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    )
-    stdout_recorder = CommandOutputRecorder()
-    stderr_recorder = CommandOutputRecorder()
-    assert process.stdout is not None
-    assert process.stderr is not None
-    threads = (
-        threading.Thread(
-            target=_tee_stream,
-            args=(ctx, process.stdout, sys.stdout, "stdout", stdout_recorder),
-            daemon=True,
-        ),
-        threading.Thread(
-            target=_tee_stream,
-            args=(ctx, process.stderr, sys.stderr, "stderr", stderr_recorder),
-            daemon=True,
-        ),
-    )
-    for thread in threads:
-        thread.start()
-    returncode = process.wait()
-    for thread in threads:
-        thread.join()
+    ) as process:
+        assert process.stdout is not None
+        assert process.stderr is not None
+        threads = (
+            threading.Thread(
+                target=_tee_stream,
+                args=(ctx, process.stdout, sys.stdout, "stdout", stdout_recorder),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=_tee_stream,
+                args=(ctx, process.stderr, sys.stderr, "stderr", stderr_recorder),
+                daemon=True,
+            ),
+        )
+        for thread in threads:
+            thread.start()
+        returncode = process.wait()
+        for thread in threads:
+            thread.join()
     if returncode:
         message = f"Command failed with exit {returncode}: {redact_command_output(format_command(command))}"
         stdout_tail = stdout_recorder.text()
