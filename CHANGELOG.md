@@ -17,6 +17,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   Releases, including post-publish Homebrew handoff reporting.
 - Added read-only `basectl release check|plan|notes` commands backed by
   manifest-owned release metadata.
+- Added a text-first Base newcomer orientation deck and documented the optional
+  PDF/PPTX export path.
 - Added opt-in project Git `origin` reachability diagnostics with
   `basectl check|doctor <project> --remote-network`.
 - Added an explicit `ai` prerequisite profile for Codex CLI and Claude Code

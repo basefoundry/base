@@ -859,6 +859,7 @@ feature designs, and ecosystem boundary decisions.
 Key starting points:
 
 - [FAQ](FAQ.md)
+- [Base Newcomer Orientation](docs/presentations/base-newcomer-orientation.md)
 - [Architecture](docs/architecture.md)
 - [Clean macOS Install Validation](docs/macos-install-validation.md)
 - [Execution Model](docs/execution-model.md)
