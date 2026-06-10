@@ -43,6 +43,7 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" activate demo
 
     [ "$status" -eq 0 ]
+    [[ "$output" != *"BASE_SHELL: readonly variable"* ]]
     [[ "$output" == *"args=--rcfile $BASE_REPO_ROOT/lib/bash/runtime/bashrc"* ]]
     [[ "$output" == *"BASE_PROJECT=demo"* ]]
     [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/demo"* ]]
