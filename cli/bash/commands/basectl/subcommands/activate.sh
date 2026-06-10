@@ -118,7 +118,6 @@ base_activate_subcommand_main() {
     export BASE_PROJECT_MANIFEST="$manifest_path"
     export BASE_PROJECT_VENV_DIR="$venv_dir"
     export BASE_HOME
-    export BASE_SHELL=1
 
     if [[ "$preserve_cwd" != "1" ]]; then
         cd "$project_root" || fatal_error "Unable to enter project root '$project_root'."
