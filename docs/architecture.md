@@ -650,15 +650,16 @@ through managed workstation provisioning before invoking `basectl setup`.
 
 ## GitHub and Repository Conventions
 
-- Base is a public GitHub repository
-- Issues are the official communication channel for bug reports and feedback
-- The README contains a clear "Issues and Feedback" section pointing users to GitHub
-  Issues
-- A stable release tag (e.g. `v0.9.0`) marks the last version of the old Base design
-  before the current rewrite begins
-- The README includes a notice that active development is happening on master and the
-  API is changing significantly
-- Users who want stability should pin to the stable release tag
+- Base uses a public GitHub repository at `codeforester/base`.
+- GitHub Issues are the official product backlog for bugs, feature requests,
+  release work, maintenance, and documentation follow-up.
+- `basectl release` manages annotated tags and GitHub Releases for Base using
+  the manifest-owned release metadata in `base_manifest.yaml`.
+- The Homebrew tap at `codeforester/homebrew-base` owns the formula that installs
+  published Base releases.
+- Homebrew tap updates happen after each GitHub Release and remain a manual
+  handoff. `basectl release` prints the required tap follow-up when the project
+  manifest declares Homebrew metadata.
 
 ---
 
