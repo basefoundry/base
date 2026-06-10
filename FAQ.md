@@ -163,6 +163,35 @@ Homebrew installs Base's files. `basectl setup` prepares the local Base runtime
 under `~/.base.d/base/.venv` and reconciles other prerequisites that Base needs
 to operate.
 
+### Why can setup fail on a Homebrew `brew link` conflict?
+
+Prerequisite profiles install ordinary Homebrew tools. A tool can pull a
+Homebrew dependency that needs to be linked into Homebrew's prefix. If files such
+as `/usr/local/bin/python3`, `/usr/local/bin/pip3`, or `/usr/local/bin/idle3`
+already point at another Python installation, Homebrew may stop with:
+
+```text
+Error: The `brew link` step did not complete successfully
+```
+
+Base reports Homebrew's suggested dry-run command when it sees this failure.
+Run the dry-run first and inspect the files Homebrew would overwrite:
+
+```bash
+brew link --overwrite python@3.14 --dry-run
+```
+
+If the dry-run only lists stale files you are comfortable replacing, run the
+same command without `--dry-run`, then rerun the Base setup command:
+
+```bash
+brew link --overwrite python@3.14
+basectl setup --profile sre
+```
+
+Do not run the overwrite command blindly on a machine where those Python shims
+are intentionally managed outside Homebrew.
+
 ## Workspace Configuration
 
 ### How should I configure my workspace root?

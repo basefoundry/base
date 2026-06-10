@@ -20,6 +20,8 @@ from .errors import ArtifactError
 COMMAND_OUTPUT_TAIL_CHARS = 4000
 SECRET_VALUE_RE = re.compile(r"(?i)\b(token|password|secret|api[-_]?key)=\S+")
 URL_CREDENTIALS_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^@\s/]+@")
+HOMEBREW_LINK_FAILURE = "The `brew link` step did not complete successfully"
+HOMEBREW_LINK_DRY_RUN_RE = re.compile(r"(?m)^\s*(brew link --overwrite [^\r\n]+ --dry-run)\s*$")
 
 
 @dataclass
@@ -103,6 +105,9 @@ def run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = No
             message = f"{message}\nstdout:\n{stdout_tail}"
         if stderr_tail:
             message = f"{message}\nstderr:\n{stderr_tail}"
+        guidance = command_failure_guidance(stdout_tail, stderr_tail)
+        if guidance:
+            message = f"{message}\n\n{guidance}"
         raise ArtifactError(message)
     if cwd is not None:
         ctx.log.debug("Command succeeded in '%s': %s", cwd, format_command(command))
@@ -124,6 +129,35 @@ def format_command(command: list[str]) -> str:
 def redact_command_output(text: str) -> str:
     text = URL_CREDENTIALS_RE.sub(r"\1[REDACTED]@", text)
     return SECRET_VALUE_RE.sub(lambda match: f"{match.group(1)}=[REDACTED]", text)
+
+
+def command_failure_guidance(stdout_tail: str, stderr_tail: str) -> str:
+    output = "\n".join(part for part in (stdout_tail, stderr_tail) if part)
+    return homebrew_link_failure_guidance(output)
+
+
+def homebrew_link_failure_guidance(output: str) -> str:
+    if HOMEBREW_LINK_FAILURE not in output:
+        return ""
+
+    match = HOMEBREW_LINK_DRY_RUN_RE.search(output)
+    if match is None:
+        return (
+            "Homebrew reported a link conflict while installing a dependency. "
+            "Review Homebrew's conflicting-file list, repair the link conflict, "
+            "then rerun the Base command."
+        )
+
+    dry_run_command_text = match.group(1)
+    repair_command_text = dry_run_command_text.removesuffix(" --dry-run")
+    return (
+        "Homebrew reported a link conflict while installing a dependency. "
+        "Review the files Homebrew would overwrite before repairing it:\n"
+        f"  {dry_run_command_text}\n"
+        "If the dry-run only lists stale files you are comfortable replacing, run:\n"
+        f"  {repair_command_text}\n"
+        "Then rerun the Base command."
+    )
 
 
 def _write_bytes(target: TextIO, chunk: bytes) -> None:
