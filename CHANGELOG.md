@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added the local observability model for future command history, last-error
+  explanation, and diagnostic report surfaces.
 - Added read-only workspace manifest support for `basectl workspace status`,
   `check`, and `doctor` with `--manifest <path>`.
 - Added guarded `basectl release publish` for annotated Git tags and GitHub

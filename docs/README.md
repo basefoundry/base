@@ -40,6 +40,8 @@ reference. The filename should answer "what is this about?"
   support plan and bootstrap boundaries.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
+- [Local Observability](observability.md) defines the future local command
+  history, last-error explanation, and report model beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
 - [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) defines the
