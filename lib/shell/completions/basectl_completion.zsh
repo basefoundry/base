@@ -18,6 +18,7 @@ _base_basectl_completion() {
         'setup:Install and bootstrap the local Base CLI environment'
         'check:Verify the local Base CLI environment'
         'test:Run a project test command'
+        'export-context:Export a project AI context bundle'
         'build:Run project build targets'
         'demo:Run a project interactive demo'
         'run:Run a project command'
@@ -90,6 +91,19 @@ _base_basectl_completion() {
         test)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
                 '--dry-run[Print the resolved test command without running it]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
+            ;;
+        export-context)
+            _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--format[Export format]:format:(markdown zip)' \
+                '--output[Output path]:path:_files' \
+                '--print[Print the Markdown export to stdout]' \
+                '--list-files[List files in export order]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then

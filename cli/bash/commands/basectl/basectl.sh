@@ -17,6 +17,8 @@ Commands:
     Verify the local Base CLI environment and optional project artifacts without making changes.
   test [project] [options]
     Run a project's declared test command.
+  export-context [project] [options]
+    Export a project's .ai-context directory as Markdown or Zip.
   build <project> [target...] [options]
     Run a project's declared build targets.
   demo <project> [options]
@@ -179,6 +181,11 @@ basectl_do_check() {
 basectl_do_test() {
     basectl_source_subcommand_module test || return 1
     base_test_subcommand_main "$@"
+}
+
+basectl_do_export_context() {
+    basectl_source_subcommand_module export_context || return 1
+    base_export_context_subcommand_main "$@"
 }
 
 basectl_do_build() {
@@ -360,6 +367,7 @@ basectl_main() {
         activate)         basectl_do_activate "$@" ;;
         check)            basectl_do_check "$@" ;;
         test)             basectl_do_test "$@" ;;
+        export-context)   basectl_do_export_context "$@" ;;
         build)            basectl_do_build "$@" ;;
         demo)             basectl_do_demo "$@" ;;
         run)              basectl_do_run "$@" ;;

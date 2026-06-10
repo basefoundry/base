@@ -25,6 +25,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   setup, check, doctor, onboard, and shell completion flows.
 - Added first-run seeding of `~/.base.d/config.yaml` with
   `workspace.root: ~/work` during `basectl setup`.
+- Added `basectl export-context` for deterministic local Markdown and Zip
+  bundles from a project's `.ai-context/` directory.
 
 ### Changed
 

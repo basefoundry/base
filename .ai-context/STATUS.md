@@ -22,6 +22,7 @@ The current command surface covers:
 - GitHub issue, PR, branch, and worktree helpers
 - workspace status/check/doctor reports
 - release readiness inspection and guarded GitHub release publishing
+- local AI context export bundles
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
 
 ## Active Development Direction
@@ -36,6 +37,7 @@ Recent unreleased work includes:
 - read-only workspace manifest support
 - guarded `basectl release publish`
 - release check, plan, and notes commands
+- local `.ai-context/` export bundles through `basectl export-context`
 - newcomer orientation presentation docs
 - optional project Git remote reachability diagnostics
 - explicit `ai` prerequisite profile

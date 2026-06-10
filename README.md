@@ -83,6 +83,7 @@ basectl doctor <project>
 basectl test <project>
 basectl demo [project]
 basectl run <project> <command>
+basectl export-context <project>
 basectl activate <project>
 ```
 
@@ -157,6 +158,7 @@ Current implemented commands include:
 - `basectl test [project]`
 - `basectl build <project> [target...]`
 - `basectl run <project> <command>`
+- `basectl export-context [project]`
 - `basectl onboard`
 - `basectl version`
 
@@ -502,6 +504,21 @@ basectl run example lint -- --fix
 The command name `test` is reserved for the top-level `test` contract, so
 `basectl run example test` delegates to the same command as
 `basectl test example`.
+
+Export a project's AI context pack with:
+
+```bash
+basectl export-context example
+basectl export-context example --format zip --output /tmp/example-ai-context.zip
+basectl export-context --print
+basectl export-context --list-files
+```
+
+`basectl export-context` reads `.ai-context/` from the current or named
+Base-managed project. Markdown exports combine context Markdown files with
+stable source headings, using `.ai-context/INDEX.md` order when available and
+falling back to deterministic filename order for unlisted files. Zip exports
+contain only files from `.ai-context/` so they can be uploaded manually.
 
 Once a project is discoverable, activate it with:
 

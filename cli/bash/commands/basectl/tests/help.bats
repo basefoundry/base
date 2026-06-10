@@ -12,6 +12,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"setup [options]"* ]]
     [[ "$output" == *"check [project] [options]"* ]]
     [[ "$output" == *"test [project] [options]"* ]]
+    [[ "$output" == *"export-context [project] [options]"* ]]
     [[ "$output" == *"run <project> <command> [options]"* ]]
     [[ "$output" == *"repo <init|check|configure|agent-guidance|installer-template> [options]"* ]]
     [[ "$output" == *"ci <setup|check|doctor> <project> [options]"* ]]
@@ -51,6 +52,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  onboard [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
+    grep -Fqx '  export-context [project] [options]' <<<"$output"
     grep -Fqx '  repo <init|check|configure|agent-guidance|installer-template> [options]' <<<"$output"
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
     grep -Fqx '  release <check|plan|notes|publish> --version <version> [options]' <<<"$output"
