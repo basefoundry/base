@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -124,6 +125,8 @@ def _read_repo(path: Path, index: int, repo_data: Any) -> WorkspaceManifestRepo:
 
     name = _read_repo_name(path, index, repo_data.get("name"))
     url = _read_optional_string(path, f"repos[{index}].url", repo_data.get("url"))
+    if url is not None:
+        _validate_repo_url(path, index, url)
     default_branch = _read_optional_string(
         path,
         f"repos[{index}].default_branch",
@@ -155,6 +158,18 @@ def _read_optional_string(path: Path, field: str, value: Any) -> str | None:
     if not isinstance(value, str) or not value.strip():
         raise WorkspaceManifestError(f"{path}: {field} must be a non-empty string when provided.")
     return value.strip()
+
+
+def _validate_repo_url(path: Path, index: int, url: str) -> None:
+    if url.startswith(("https://", "http://", "git://", "ssh://", "file://")):
+        return
+    if re.match(r"^[^@\s]+@[^:\s]+:.+$", url):
+        return
+    if Path(url).is_absolute():
+        return
+    raise WorkspaceManifestError(
+        f"{path}: repos[{index}].url does not look like a Git URL or local path: '{url}'."
+    )
 
 
 def _read_required(path: Path, index: int, required_data: Any) -> bool:

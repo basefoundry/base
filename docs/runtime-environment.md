@@ -74,6 +74,17 @@ explicit Bash script, or starts a Base runtime Bash shell.
 | `BASE_HOST` | Base | Short host name from `hostname -s`. Used by runtime metadata and prompts. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_SHELL` | Base | Legacy runtime marker. Plain `base_init.sh` defaults it to `bash`; Base runtime shells seed it as `1` before `base_init.sh`. New code should avoid adding new meanings to it. | Do not set in user config. Readonly after `base_init.sh`. |
 
+## CI Runtime Variables
+
+`basectl ci` sets these variables while delegating to setup, check, and doctor
+paths. They are scoped to that command invocation and are not part of the
+readonly `base_init.sh` runtime contract.
+
+| Variable | Owner | Meaning and impact | User changes |
+| --- | --- | --- | --- |
+| `BASE_CI` | Base | Set to `true` by `basectl ci` so Base setup and diagnostics can choose non-interactive CI-safe behavior, including the runtime-only Linux system-Python fallback gate. | Do not set directly; use `basectl ci`. |
+| `CI` | Base/tooling convention | Set to `true` by `basectl ci` for compatibility with common CI-aware tools. | CI systems may already set this. Base sets it for delegated commands when using `basectl ci`. |
+
 ## Command Dispatch Variables
 
 `bin/basectl` sets these before sourcing the selected Bash command or explicit

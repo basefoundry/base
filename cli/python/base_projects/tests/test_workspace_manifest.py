@@ -42,6 +42,62 @@ repos:
         self.assertFalse(manifest.repos[1].required)
         self.assertIsNone(manifest.repos[1].url)
 
+    def test_accepts_common_git_url_forms(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            path = root / "workspace.yaml"
+            local_repo = root / "local-repo"
+            write_workspace_manifest(
+                path,
+                f"""
+schema_version: 1
+workspace:
+  name: demo-workspace
+repos:
+  - name: https-repo
+    url: https://github.com/codeforester/base.git
+  - name: ssh-repo
+    url: ssh://git@github.com/codeforester/base.git
+  - name: scp-repo
+    url: git@github.com:codeforester/base.git
+  - name: local-repo
+    url: {local_repo}
+""",
+            )
+
+            manifest = read_workspace_manifest(path)
+
+        self.assertEqual(
+            [repo.url for repo in manifest.repos],
+            [
+                "https://github.com/codeforester/base.git",
+                "ssh://git@github.com/codeforester/base.git",
+                "git@github.com:codeforester/base.git",
+                str(local_repo),
+            ],
+        )
+
+    def test_rejects_repo_url_without_git_url_form(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "workspace.yaml"
+            write_workspace_manifest(
+                path,
+                """
+schema_version: 1
+workspace:
+  name: demo-workspace
+repos:
+  - name: base
+    url: github.com/codeforester/base.git
+""",
+            )
+
+            with self.assertRaisesRegex(
+                WorkspaceManifestError,
+                "repos\\[1\\]\\.url does not look like a Git URL or local path",
+            ):
+                read_workspace_manifest(path)
+
     def test_requires_schema_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "workspace.yaml"

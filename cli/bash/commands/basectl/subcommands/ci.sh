@@ -26,6 +26,7 @@ Options:
 
 Purpose:
   Run Base setup, checks, and diagnostics in a non-interactive CI environment.
+  Sets BASE_CI=true so setup and diagnostic paths can choose CI-safe behavior.
 EOF
 }
 
@@ -179,19 +180,66 @@ base_ci_print_setup_json() {
     printf '}\n'
 }
 
-base_ci_run_setup() {
-    local args=()
+base_ci_compact_setup_output() {
+    local output_file="$1"
+    local line
+    local message=""
+
+    [[ -f "$output_file" ]] || return 0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -n "$line" ]] || continue
+        if [[ "$line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]][A-Z]+[[:space:]]+[^[:space:]]+[[:space:]]+(.*)$ ]]; then
+            message="${BASH_REMATCH[1]}"
+        else
+            message="$line"
+        fi
+    done < "$output_file"
+
+    printf '%s\n' "$message"
+}
+
+base_ci_run_setup_json() {
+    local args=("$@")
+    local stdout_file
+    local stderr_file
     local command_output
     local exit_code
+
+    stdout_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stdout.XXXXXX")" || return 1
+    stderr_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stderr.XXXXXX")" || {
+        rm -f "$stdout_file"
+        return 1
+    }
+
+    base_setup_subcommand_main "${args[@]}" > "$stdout_file" 2> "$stderr_file"
+    exit_code=$?
+
+    if [[ -s "$stdout_file" ]]; then
+        cat "$stdout_file" >&2
+    fi
+    if [[ -s "$stderr_file" ]]; then
+        cat "$stderr_file" >&2
+    fi
+
+    command_output="$(base_ci_compact_setup_output "$stderr_file")"
+    if [[ -z "$command_output" ]]; then
+        command_output="$(base_ci_compact_setup_output "$stdout_file")"
+    fi
+
+    rm -f "$stdout_file" "$stderr_file"
+    base_ci_print_setup_json "$command_output" "$exit_code"
+    return "$exit_code"
+}
+
+base_ci_run_setup() {
+    local args=()
 
     mapfile -t args < <(base_ci_setup_delegate_args)
     base_ci_source_subcommand_module setup || return 1
 
     if [[ "$BASE_CI_FORMAT" == json ]]; then
-        command_output="$(base_setup_subcommand_main "${args[@]}" 2>&1)"
-        exit_code=$?
-        base_ci_print_setup_json "$command_output" "$exit_code"
-        return "$exit_code"
+        base_ci_run_setup_json "${args[@]}"
+        return $?
     fi
 
     base_setup_subcommand_main "${args[@]}"

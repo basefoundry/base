@@ -331,7 +331,7 @@ Machine-local user configuration managed by Base. Not edited by hand.
 User-managed simple preferences (e.g. `BASE_DEBUG=1`). Must not contain
 `BASE_HOME`, `BASE_BIN_DIR`, or other Base-owned runtime variables.
 
-### Runtime Variables Set by `base_init.sh`
+### Runtime Variables and CI Marker
 
 | Variable | Description |
 |----------|-------------|
@@ -342,6 +342,7 @@ User-managed simple preferences (e.g. `BASE_DEBUG=1`). Must not contain
 | `BASE_OS` | `macos` or `linux` |
 | `BASE_HOST` | Hostname |
 | `BASE_SHELL` | `bash` or `zsh` |
+| `BASE_CI` | Set to `true` by `basectl ci`, not `base_init.sh`, to signal non-interactive CI execution to setup and diagnostic commands |
 
 ---
 

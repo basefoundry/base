@@ -22,6 +22,9 @@ load ./basectl_helpers.bash
     [[ "$output" == *'PROJECT_NAME="${PROJECT_NAME:-example-project}"'* ]]
     [[ "$output" == *'PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/example/example-project.git}"'* ]]
     [[ "$output" == *'basectl" setup --manifest "$PROJECT_DIR/base_manifest.yaml" "$PROJECT_NAME"'* ]]
+    [[ "$output" == *"Explicit error handling is used instead of set -e"* ]]
+    [[ "$output" == *'run git -C "$BASE_DIR" pull --ff-only || die'* ]]
+    [[ "$output" != *"set -euo pipefail"* ]]
 }
 
 @test "basectl repo installer-template writes an executable template" {

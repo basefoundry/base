@@ -40,6 +40,7 @@ prepare_ci_runtime() {
     [[ "$output" == *"basectl ci check <project>"* ]]
     [[ "$output" == *"basectl ci doctor <project>"* ]]
     [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"BASE_CI=true"* ]]
 }
 
 @test "basectl ci requires a command and project" {
@@ -88,6 +89,27 @@ prepare_ci_runtime() {
     [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-notify")" = "false" ]
     [ ! -f "$TEST_STATE_DIR/osascript-args" ]
+}
+
+@test "basectl ci setup json output summarizes stderr without embedding log stream" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+    printf '%s\n' \
+        "2026-06-10 10:15:32 INFO    setup_common.sh:122 Homebrew is already installed." \
+        "2026-06-10 10:15:33 ERROR   setup_common.sh:801 Python project setup layer failed." \
+        > "$TEST_STATE_DIR/project-setup-stderr"
+    printf '%s\n' 17 > "$TEST_STATE_DIR/project-setup-exit-code"
+
+    run_base_command_separate_stderr BASE_SETUP_TEST_WORKSPACE="$workspace" ci setup demo --format json
+
+    [ "$status" -eq 17 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "error"'* ]]
+    [[ "$output" == *'"output": "Python project setup layer failed."'* ]]
+    [[ "$output" != *"setup_common.sh"* ]]
+    [[ "$stderr" == *"Homebrew is already installed."* ]]
+    [[ "$stderr" == *"Python project setup layer failed."* ]]
 }
 
 @test "basectl ci check supports Linux runtime-only JSON checks" {

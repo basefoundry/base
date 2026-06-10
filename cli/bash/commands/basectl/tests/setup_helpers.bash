@@ -434,6 +434,37 @@ run_base_command() {
         "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
 }
 
+run_base_command_separate_stderr() {
+    local arg
+    local env_args=()
+    local command_args=()
+    local python_prefix="$TEST_TMPDIR/python-prefix"
+    local xcode_dir="$TEST_TMPDIR/CommandLineTools"
+
+    for arg in "$@"; do
+        if [[ ${#command_args[@]} -eq 0 && "$arg" == *=* ]]; then
+            env_args+=("$arg")
+        else
+            command_args+=("$arg")
+        fi
+    done
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE="${OSTYPE_OVERRIDE:-darwin24}" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_PYTHON_PREFIX="$python_prefix" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
+        BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
+        BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
+        "${env_args[@]}" \
+        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
+}
+
 create_base_venv_stub() {
     local venv_dir="${1:-$TEST_HOME/.base.d/base/.venv}"
 
@@ -543,6 +574,9 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         printf 'Project artifact check passed.\n' >&2
     elif [[ "$action" == "doctor" ]]; then
         printf 'ok     demo-artifact               Project artifact check passed.\n'
+    fi
+    if [[ -f "$BASE_SETUP_TEST_STATE_DIR/project-setup-stderr" ]]; then
+        cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-stderr" >&2
     fi
     exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
 fi
