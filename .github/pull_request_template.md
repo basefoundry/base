@@ -27,5 +27,6 @@ Closes #
 - [ ] Relevant BATS and Python tests pass.
 - [ ] Bug fixes include regression proof or a documented reproduction when practical.
 - [ ] Documentation is updated when behavior or user-facing commands change.
+- [ ] AI context is updated in `.ai-context/`, or the PR body explains why it is not applicable.
 - [ ] PR includes `Fixes #<issue>` or `Closes #<issue>` when it should close the issue.
 - [ ] `Demo Impact` is meaningful for `needs-demo` work, or explicitly says `None.`

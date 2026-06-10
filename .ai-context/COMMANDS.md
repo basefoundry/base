@@ -1,0 +1,77 @@
+# Base Command Context
+
+`basectl` is the public Base control-plane command. Run `basectl --help` for
+the canonical current command list.
+
+## Current Public Commands
+
+- `basectl activate <project>` - start an interactive Base runtime subshell for
+  a project.
+- `basectl setup [project]` - install and bootstrap the local Base CLI
+  environment and optional project artifacts.
+- `basectl check [project]` - verify local Base and optional project artifacts
+  without making changes.
+- `basectl doctor [project]` - diagnose Base or project readiness and explain
+  fixes.
+- `basectl test [project]` - run a project's declared test command.
+- `basectl build <project> [target...]` - run declared build targets.
+- `basectl demo [project]` - run a declared interactive demo script.
+- `basectl run <project> <command>` - run a declared project command.
+- `basectl projects list` - list Base-managed projects discovered in the
+  workspace.
+- `basectl workspace <status|check|doctor>` - show read-only workspace project
+  status, checks, or diagnostics.
+- `basectl repo <init|check|configure|agent-guidance|installer-template>` -
+  create repository baselines, agent guidance, and installer templates.
+- `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
+  non-interactive CI.
+- `basectl release <check|plan|notes|publish>` - inspect release readiness,
+  print plans/notes, and publish guarded GitHub-side release artifacts.
+- `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, and repo
+  hygiene using Base conventions.
+- `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
+- `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
+- `basectl config <path|show|doctor>` - inspect Base's machine-local user
+  config.
+- `basectl onboard` - guide a user through the first Base setup checklist.
+- `basectl update-profile` - create or update Base-managed Bash/Zsh startup
+  snippets.
+- `basectl update` - update Base from Git and run setup.
+- `basectl version` - show the installed Base version.
+- `basectl help` - show command help.
+
+## Command Implementation Pattern
+
+The umbrella command implementation lives at:
+
+```text
+cli/bash/commands/basectl/basectl.sh
+```
+
+Umbrella subcommand modules live under:
+
+```text
+cli/bash/commands/basectl/subcommands/
+```
+
+Bash command modules handle user-facing dispatch and shell/runtime behavior.
+When structured project data is needed, Bash delegates through `base-wrapper`
+to Python packages under `cli/python/`.
+
+## Python CLI Pattern
+
+Base Python commands use `base_cli.App`. The framework adds standard options,
+logging, config loading, project discovery, temp/cache directories, cleanup
+hooks, and a command context.
+
+Important Python packages include:
+
+- `base_setup` - setup, checks, doctor, manifest parsing, artifacts, delegates,
+  demo resolution, and project health.
+- `base_projects` - project discovery, workspace reports, project command
+  resolution, test command resolution, and build target resolution.
+- `base_config` - local config path/show/doctor behavior.
+- `base_logs` - runtime log inspection.
+- `base_clean` - runtime cache/log/temp cleanup.
+- `base_release` - release check/plan/notes/publish support.
+- `base_dev` - developer profile setup/check/doctor/onboard support.

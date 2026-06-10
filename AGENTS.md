@@ -68,6 +68,22 @@ milestones, GitHub Projects, and cleanup rules.
 - For review feedback, verify the suggestion against Base's architecture,
   product boundaries, and existing tests before implementing it.
 
+## AI Context Maintenance
+
+- Treat `.ai-context/` as the AI-facing orientation layer for Base.
+- For every meaningful PR, decide whether `.ai-context/` needs an update and
+  state the result in the PR body.
+- Update `.ai-context/` when a change affects Base's product shape,
+  architecture, command surface, workflows, manifest model, release status, or
+  durable design decisions.
+- Usually leave `.ai-context/` unchanged for typo-only edits, formatting-only
+  edits, test-only changes with no product behavior impact, or internal
+  refactors that do not change public behavior or architecture.
+- Keep `.ai-context/` public-repo-safe: no secrets, API keys, tokens, private
+  local paths, customer data, or personal notes.
+- Canonical docs remain the source of truth. If `.ai-context/` disagrees with
+  the repo docs or code, update `.ai-context/`.
+
 ## Change Boundaries
 
 - Keep public launchers in `bin/` thin.
