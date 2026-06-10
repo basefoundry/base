@@ -9,14 +9,17 @@ Usage:
   basectl release check --version <version> [options]
   basectl release plan --version <version> [options]
   basectl release notes --version <version> [options]
+  basectl release publish --version <version> [options]
 
 Options:
   --version <version>  Release version to inspect.
   --manifest <path>   Use a specific base_manifest.yaml path.
+  --dry-run           Print publish actions without creating tags or releases.
+  --yes               Publish without an interactive confirmation prompt.
   -h, --help          Show this help text.
 
-Inspect release readiness, plan, and changelog notes without creating tags,
-publishing GitHub Releases, or editing Homebrew taps.
+Inspect release readiness, plan, changelog notes, and guarded GitHub publishing.
+Homebrew tap updates remain a manual handoff.
 EOF
 }
 
@@ -29,7 +32,7 @@ base_release_subcommand_main() {
             base_release_subcommand_usage
             return 0
             ;;
-        check|plan|notes)
+        check|plan|notes|publish)
             ;;
         *)
             base_release_subcommand_usage >&2

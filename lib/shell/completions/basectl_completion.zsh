@@ -23,7 +23,7 @@ _base_basectl_completion() {
         'run:Run a project command'
         'repo:Create, check, and configure repository baseline'
         'ci:Run Base setup, checks, and diagnostics in CI'
-        'release:Inspect release readiness and notes'
+        'release:Inspect release readiness, notes, and publishing'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
         'config:Inspect Base machine-local user config'
@@ -213,9 +213,11 @@ _base_basectl_completion() {
             fi
             ;;
         release)
-            _arguments '1:release command:(check plan notes)' \
+            _arguments '1:release command:(check plan notes publish)' \
                 '--version[Release version]:version:' \
                 '--manifest[Use a specific manifest]:path:_files' \
+                '--dry-run[Print publish actions without creating tags or releases]' \
+                '--yes[Publish without an interactive confirmation prompt]' \
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         clean)

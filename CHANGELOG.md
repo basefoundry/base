@@ -11,6 +11,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added read-only workspace manifest support for `basectl workspace status`,
   `check`, and `doctor` with `--manifest <path>`.
+- Added guarded `basectl release publish` for annotated Git tags and GitHub
+  Releases, including post-publish Homebrew handoff reporting.
 - Added read-only `basectl release check|plan|notes` commands backed by
   manifest-owned release metadata.
 - Added opt-in project Git `origin` reachability diagnostics with

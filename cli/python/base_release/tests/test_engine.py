@@ -15,6 +15,18 @@ from base_release.engine import ReleaseFinding
 from base_release.engine import main
 
 
+READY_FINDINGS = (
+    ReleaseFinding("ok", "manifest", "Release metadata found."),
+    ReleaseFinding("ok", "version_file", "VERSION matches."),
+    ReleaseFinding("ok", "changelog", "CHANGELOG.md has a section."),
+    ReleaseFinding("ok", "git", "Git worktree is clean."),
+    ReleaseFinding("ok", "branch", "Current branch is main."),
+    ReleaseFinding("ok", "gh", "GitHub CLI is authenticated."),
+    ReleaseFinding("ok", "local_tag", "Local tag is available."),
+    ReleaseFinding("ok", "remote_tag", "Remote tag is available."),
+)
+
+
 @contextmanager
 def pushd(path: Path):
     old_cwd = Path.cwd()
@@ -149,6 +161,160 @@ class ReleaseEngineTests(unittest.TestCase):
             "curl -fsSL https://github.com/codeforester/demo/archive/refs/tags/v1.2.3.tar.gz | shasum -a 256",
             stdout,
         )
+        self.assertIn("brew install --build-from-source Formula/demo.rb", stdout)
+        self.assertIn("brew test codeforester/demo/demo", stdout)
+        self.assertIn("brew audit --new --formula Formula/demo.rb", stdout)
+        self.assertIn("brew upgrade codeforester/demo/demo", stdout)
+
+
+    def test_plan_prints_no_homebrew_handoff_for_github_only_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root, homebrew=False)
+
+            status, stdout, stderr = run_engine(
+                ["plan", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                root,
+            )
+
+        self.assertEqual(status, 0, stderr)
+        self.assertIn("Homebrew handoff: not declared", stdout)
+        self.assertNotIn("Homebrew handoff required", stdout)
+
+
+    def test_publish_dry_run_prints_planned_actions_without_running_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS), mock.patch(
+                "base_release.engine.github_release_finding",
+                return_value=ReleaseFinding("ok", "github_release", "GitHub Release is available."),
+                create=True,
+            ), mock.patch("base_release.engine.run_release_step", create=True) as run_step:
+                status, stdout, stderr = run_engine(
+                    ["publish", "--dry-run", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 0, stderr)
+        self.assertIn("DRY RUN", stdout)
+        self.assertIn("Would create annotated tag: v1.2.3", stdout)
+        self.assertIn("Would push tag to origin: v1.2.3", stdout)
+        self.assertIn("Would create GitHub Release: Demo v1.2.3", stdout)
+        self.assertIn("Homebrew handoff required after GitHub release", stdout)
+        run_step.assert_not_called()
+
+
+    def test_publish_requires_yes_when_stdin_is_not_interactive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS), mock.patch(
+                "base_release.engine.github_release_finding",
+                return_value=ReleaseFinding("ok", "github_release", "GitHub Release is available."),
+                create=True,
+            ):
+                status, stdout, stderr = run_engine(
+                    ["publish", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("release publish requires --yes when stdin is not interactive", stderr)
+
+
+    def test_publish_yes_creates_annotated_tag_pushes_and_creates_github_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+            commands: list[tuple[list[str], Path | None]] = []
+
+            def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
+                if command[:3] == ["gh", "release", "create"]:
+                    notes_path = Path(command[-1])
+                    self.assertIn("Added the release assistant.", notes_path.read_text(encoding="utf-8"))
+                commands.append((command, cwd))
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS), mock.patch(
+                "base_release.engine.github_release_finding",
+                return_value=ReleaseFinding("ok", "github_release", "GitHub Release is available."),
+                create=True,
+            ), mock.patch(
+                "base_release.engine.run_release_step",
+                side_effect=fake_run_release_step,
+                create=True,
+            ):
+                status, stdout, stderr = run_engine(
+                    ["publish", "--yes", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 0, stderr)
+        self.assertEqual(commands[0][0], ["git", "tag", "-a", "v1.2.3", "-m", "Release v1.2.3"])
+        self.assertEqual(commands[0][1], root.resolve())
+        self.assertEqual(commands[1][0], ["git", "push", "origin", "v1.2.3"])
+        self.assertEqual(commands[1][1], root.resolve())
+        self.assertEqual(
+            commands[2][0][:7],
+            ["gh", "release", "create", "v1.2.3", "--repo", "codeforester/demo", "--title"],
+        )
+        self.assertEqual(
+            commands[2][1],
+            root.resolve(),
+        )
+        self.assertIn("GitHub Release published: https://github.com/codeforester/demo/releases/tag/v1.2.3", stdout)
+        self.assertIn("Tag URL: https://github.com/codeforester/demo/tree/v1.2.3", stdout)
+        self.assertIn("Homebrew handoff required after GitHub release", stdout)
+
+
+    def test_publish_fails_when_readiness_has_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch(
+                "base_release.engine.release_findings",
+                return_value=(ReleaseFinding("error", "git", "Git worktree has tracked or untracked changes."),),
+            ), mock.patch("base_release.engine.run_release_step", create=True) as run_step:
+                status, stdout, stderr = run_engine(
+                    ["publish", "--yes", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertIn("Release publish blocked by readiness findings", stdout)
+        self.assertIn("error  git", stdout)
+        self.assertEqual(stderr, "")
+        run_step.assert_not_called()
+
+
+    def test_publish_fails_when_github_release_already_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS), mock.patch(
+                "base_release.engine.github_release_finding",
+                return_value=ReleaseFinding(
+                    "error",
+                    "github_release",
+                    "GitHub Release v1.2.3 already exists.",
+                ),
+                create=True,
+            ), mock.patch("base_release.engine.run_release_step", create=True) as run_step:
+                status, stdout, stderr = run_engine(
+                    ["publish", "--yes", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertIn("Release publish blocked by readiness findings", stdout)
+        self.assertIn("GitHub Release v1.2.3 already exists.", stdout)
+        self.assertEqual(stderr, "")
+        run_step.assert_not_called()
 
 
     def test_check_fails_when_version_file_does_not_match(self) -> None:

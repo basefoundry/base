@@ -27,8 +27,8 @@ Commands:
     Create repository baselines, agent guidance, and project installer templates.
   ci <setup|check|doctor> <project> [options]
     Run Base setup, checks, and diagnostics in non-interactive CI.
-  release <check|plan|notes> --version <version> [options]
-    Inspect release readiness, plan, and changelog notes without publishing.
+  release <check|plan|notes|publish> --version <version> [options]
+    Inspect release readiness, plan, notes, and guarded GitHub publishing.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]
