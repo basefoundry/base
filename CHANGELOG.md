@@ -74,6 +74,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Pretty-printed workspace JSON output for `basectl workspace status`, `check`,
+  and `doctor`.
 - Fixed `basectl gh` authentication diagnostics to include the underlying
   `gh auth status` output when GitHub access fails.
 - Converted `bootstrap.sh` away from shell strict mode to explicit command

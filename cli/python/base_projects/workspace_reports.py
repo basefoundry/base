@@ -778,4 +778,4 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
 
 
 def dumps_json(payload: dict[str, Any]) -> str:
-    return json.dumps(payload, separators=(",", ":"))
+    return json.dumps(payload, indent=2)

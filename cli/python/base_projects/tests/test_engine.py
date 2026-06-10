@@ -255,6 +255,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
+        self.assertTrue(stdout.startswith("{\n"))
+        self.assertIn('  "workspace": ', stdout)
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["project_count"], 1)
         self.assertEqual(payload["projects"][0]["name"], "demo")
