@@ -127,6 +127,8 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         projects_by_repo = {project["repository"]: project for project in payload["projects"]}
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertTrue(stdout.startswith("{\n"))
+        self.assertIn('  "workspace": ', stdout)
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["workspace_manifest"]["path"], str(manifest_path.resolve()))
         self.assertEqual(payload["workspace_manifest"]["name"], "demo-suite")

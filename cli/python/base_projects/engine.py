@@ -19,6 +19,7 @@ from base_projects.build_targets import list_build_targets_from_args
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_reports import ManifestEntry
 from base_projects.workspace_reports import ProjectDiscoveryError
+from base_projects.workspace_reports import dumps_json
 from base_projects.workspace_reports import print_workspace_check
 from base_projects.workspace_reports import print_workspace_doctor
 from base_projects.workspace_reports import print_workspace_status
@@ -256,7 +257,7 @@ def workspace_status_command(
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_status_to_json(workspace_root, statuses, manifest), separators=(",", ":")))
+        print(dumps_json(workspace_status_to_json(workspace_root, statuses, manifest)))
     else:
         print_workspace_status(workspace_root, statuses, manifest)
 
@@ -282,7 +283,7 @@ def workspace_check_command(
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_check_to_json(workspace_root, results, manifest), separators=(",", ":")))
+        print(dumps_json(workspace_check_to_json(workspace_root, results, manifest)))
     else:
         print_workspace_check(workspace_root, results, manifest)
 
@@ -308,7 +309,7 @@ def workspace_doctor_command(
         return 1
 
     if output_format == "json":
-        print(json.dumps(workspace_doctor_to_json(workspace_root, results, manifest), separators=(",", ":")))
+        print(dumps_json(workspace_doctor_to_json(workspace_root, results, manifest)))
     else:
         print_workspace_doctor(workspace_root, results, manifest)
 
