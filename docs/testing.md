@@ -44,11 +44,15 @@ basectl doctor <project>
 basectl test <project>
 ```
 
+`basectl check` and `basectl doctor` should be treated as read-only,
+non-mutating diagnostics. Use them to inspect the current workspace state
+before running setup, cleanup, or other commands that intentionally change it.
+
 When failures cross boundaries, map each symptom to ownership:
 
 - Shell startup/profile changes: `lib/bash/` and `cli/bash/`.
 - Manifest and project-discovery behavior: `base_manifest.yaml`, `tests/integration/`, and command mapping code.
-- Runtime orchestration changes: `bin/basectl` and `lib/shell/runtime/`.
+- Runtime orchestration changes: `bin/basectl`, `lib/bash/runtime/`, and `lib/shell/` for startup/profile snippets.
 - Python behavior changes: `cli/python/` and `lib/python/`.
 
 Use this completion gate before marking a change complete:
