@@ -552,6 +552,8 @@ basectl logs -v
 cache root so failed Python-layer runs can be inspected without rerunning with
 debug output enabled. It supports `-v`/`--debug` for its own diagnostics without
 creating a new default log entry for the inspection run.
+The future local command history and diagnostic report model is described in
+[docs/observability.md](docs/observability.md).
 
 Inspect machine-local Base config with:
 
