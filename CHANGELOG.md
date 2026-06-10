@@ -31,6 +31,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Replaced stale pre-1.0 rewrite guidance in the architecture repository
+  conventions with current GitHub release and Homebrew tap ownership.
 - Removed a hardcoded issue number from the 1.0 Homebrew upgrade reminder in
   `basectl release`.
 - Kept `basectl ci setup --format json` output focused on a clean setup summary
