@@ -17,6 +17,8 @@ the canonical current command list.
 - `basectl build <project> [target...]` - run declared build targets.
 - `basectl demo [project]` - run a declared interactive demo script.
 - `basectl run <project> <command>` - run a declared project command.
+- `basectl export-context [project]` - export `.ai-context/` as a Markdown or
+  Zip bundle for manual upload or copy/paste into AI tools.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
 - `basectl workspace <status|check|doctor>` - show read-only workspace project
@@ -75,3 +77,6 @@ Important Python packages include:
 - `base_clean` - runtime cache/log/temp cleanup.
 - `base_release` - release check/plan/notes/publish support.
 - `base_dev` - developer profile setup/check/doctor/onboard support.
+- `base_export_context` - deterministic local Markdown and Zip exports from a
+  project's `.ai-context/` directory. Provider uploads are intentionally out of
+  scope.

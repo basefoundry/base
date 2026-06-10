@@ -29,6 +29,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `clean`
 - `config`
 - `doctor`
+- `export-context`
 - `gh`
 - `onboard`
 - `repo init/check/configure/agent-guidance/installer-template`
@@ -100,6 +101,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   virtual environment, dry-run, and extra-argument contract as `basectl test`.
   `basectl run <project> test` delegates to the top-level manifest `test`
   contract. Use `basectl run <project> --list` to inspect available commands.
+- `basectl export-context [project]` exports a project's `.ai-context`
+  directory for manual AI tool upload or copy/paste. Markdown exports include
+  stable file headings and use `INDEX.md` ordering when available. Zip exports
+  contain only files from `.ai-context`.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update` updates the Base repository from Git and then runs `basectl setup`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
