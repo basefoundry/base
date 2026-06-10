@@ -759,6 +759,49 @@ setup_project_venv_dir() {
     printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
+setup_user_config_path() {
+    printf '%s\n' "$HOME/.base.d/config.yaml"
+}
+
+setup_seed_user_config() {
+    local config_dir config_path temp_file
+
+    config_path="$(setup_user_config_path)"
+    if [[ -e "$config_path" || -L "$config_path" ]]; then
+        return 0
+    fi
+
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Would create Base user config at '$config_path'."
+        return 0
+    fi
+
+    config_dir="$(dirname "$config_path")"
+    safe_mkdir -p "$config_dir"
+    if [[ -e "$config_path" || -L "$config_path" ]]; then
+        return 0
+    fi
+
+    temp_file="$(mktemp "$config_path.XXXXXX")" ||
+        fatal_error "Unable to create temporary Base user config for '$config_path'."
+    {
+        printf 'workspace:\n'
+        printf '  root: ~/work\n'
+    } > "$temp_file" || {
+        rm -f -- "$temp_file"
+        fatal_error "Unable to write Base user config '$config_path'."
+    }
+    mv -n -- "$temp_file" "$config_path" || {
+        rm -f -- "$temp_file"
+        fatal_error "Unable to create Base user config '$config_path'."
+    }
+    if [[ -e "$temp_file" ]]; then
+        rm -f -- "$temp_file"
+        return 0
+    fi
+    log_info "Created Base user config at '$config_path'."
+}
+
 setup_project_venv_python_bin() {
     local project="$1"
     local venv_dir
@@ -1765,6 +1808,7 @@ setup_run_install() {
         fi
     fi
     setup_run_project_artifact_setup || return $?
+    setup_seed_user_config
 
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Base CLI setup check is complete."

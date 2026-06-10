@@ -54,14 +54,15 @@ For mode selection, dry-run behavior, and contributor setup details, see
 [First-Mile Bootstrap](docs/bootstrap.md).
 
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
-your project workspace. If your repositories live under a shared directory such
-as `~/work`, set the workspace root in `~/.base.d/config.yaml` after running
-`basectl setup`:
+your project workspace. On first setup, Base creates `~/.base.d/config.yaml`
+with the default workspace root:
 
 ```yaml
 workspace:
   root: ~/work
 ```
+
+Edit that value if your repositories live under a different shared directory.
 
 Or install directly through Homebrew when Homebrew is already available:
 
@@ -563,8 +564,10 @@ basectl config show
 basectl config doctor
 ```
 
-Base owns the meaning of `~/.base.d/config.yaml`, but users own how that file is
-edited, backed up, or synced. See [docs/local-config.md](docs/local-config.md).
+Base creates `~/.base.d/config.yaml` with a small first-run default when the file
+is missing, then leaves user edits and symlinks alone. Base owns the meaning of
+that file, but users own how it is edited, backed up, or synced. See
+[docs/local-config.md](docs/local-config.md).
 
 Inspect release readiness for a Base-managed repository with:
 

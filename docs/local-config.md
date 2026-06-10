@@ -6,8 +6,16 @@ Base reads machine-local user configuration from:
 ~/.base.d/config.yaml
 ```
 
-This file is optional. When it is missing, Base behaves as though the user
-config is an empty YAML mapping.
+`basectl setup` creates this file with a small first-run default when it is
+missing:
+
+```yaml
+workspace:
+  root: ~/work
+```
+
+Base still treats a missing file as an empty YAML mapping so read-only commands
+and partial installations can run before setup has seeded the file.
 
 Inspect it with:
 
@@ -26,10 +34,12 @@ the path is a symlink.
 
 Base owns the meaning of `~/.base.d/config.yaml`.
 
-The user owns how that file is edited, backed up, copied, or synced.
+The user owns how that file is edited, backed up, copied, or synced. After Base
+creates the first-run default, Base does not overwrite existing config files or
+symlinks.
 
-Base does not edit the file for the user, and Base does not automate iCloud,
-dotfile, or backup setup. Developers can edit the YAML directly.
+Base does not automate iCloud, dotfile, or backup setup. Developers can edit the
+YAML directly.
 
 Good ways to keep this file across machines include:
 
@@ -86,13 +96,14 @@ This distinction matters for Homebrew installs. In a source checkout,
 `BASE_HOME` is usually the `base` repository inside a shared directory such as
 `~/work/base`, so `BASE_HOME`'s parent is a reasonable fallback. In a Homebrew
 install, `BASE_HOME` points to the physical Homebrew install location, not the
-developer's workspace. Set `workspace.root` to make commands such as
+developer's workspace. The first-run default sets `workspace.root` to `~/work`;
+edit that value to make commands such as
 `basectl projects list`, `basectl activate <project>`, and
 `basectl test <project>` independent of how Base itself was installed.
 
 `workspace.root` must be an absolute path or start with `~`. Base does not
-create the directory automatically; `basectl config doctor` reports whether the
-configured path exists.
+create the workspace directory automatically; `basectl config doctor` reports
+whether the configured path exists.
 
 ## IDE Preferences
 
@@ -155,10 +166,10 @@ Supported IDE preference keys are intentionally narrow:
 Unknown IDE names and unsupported keys are rejected. Settings values must be
 JSON-serializable because Base writes them to IDE `settings.json` files.
 
-Base does not edit this file. There is no `basectl config set` or IDE preference
-editor command by design; developers can edit YAML directly, and Base keeps the
-runtime behavior inspectable through `basectl config show` and
-`basectl config doctor`.
+Aside from the first-run seed, Base does not edit this file. There is no
+`basectl config set` or IDE preference editor command by design; developers can
+edit YAML directly, and Base keeps the runtime behavior inspectable through
+`basectl config show` and `basectl config doctor`.
 
 ## Sync Guidance
 
