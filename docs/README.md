@@ -14,6 +14,9 @@ worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 For release preparation, tagging, GitHub Releases, and the Homebrew tap update,
 see [Release Process](release-process.md).
 
+For self-guided or live walkthrough material, see
+[Presentations](presentations/README.md).
+
 ## Naming Convention
 
 Use stable topic names for documentation files:
@@ -50,6 +53,13 @@ reference. The filename should answer "what is this about?"
   test layers.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
   such as `mise`, `direnv`, Homebrew, IDEs, Docker, and dotfile managers.
+
+## Presentations
+
+- [Base Presentations](presentations/README.md) documents the presentation
+  source-of-truth and export policy.
+- [Base Newcomer Orientation](presentations/base-newcomer-orientation.md)
+  introduces Base as a workspace control plane for multi-repo development.
 
 ## Feature And Boundary Documents
 
