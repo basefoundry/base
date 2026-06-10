@@ -542,6 +542,32 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("stderr:", message)
         self.assertIn("stderr before failure", message)
 
+    def test_run_command_failure_adds_homebrew_link_conflict_guidance(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "print('Error: The `brew link` step did not complete successfully', file=sys.stderr); "
+                "print('To list all files that would be deleted:', file=sys.stderr); "
+                "print('  brew link --overwrite python@3.14 --dry-run', file=sys.stderr); "
+                "raise SystemExit(1)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            with self.assertRaises(ArtifactError) as exc:
+                process.run_command(ctx, command)
+
+        message = str(exc.exception)
+        self.assertIn("Homebrew reported a link conflict while installing a dependency.", message)
+        self.assertIn("brew link --overwrite python@3.14 --dry-run", message)
+        self.assertIn("brew link --overwrite python@3.14", message)
+        self.assertIn("Then rerun the Base command.", message)
+
     def test_run_command_redacts_sensitive_output_from_logs_and_failure(self) -> None:
         ctx = fake_context()
         stdout = io.StringIO()
