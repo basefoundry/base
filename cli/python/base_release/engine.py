@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +32,16 @@ class ReleaseArguments:
     command: str
     version: str
     manifest_path: Path | None
+    dry_run: bool = False
+    yes: bool = False
+
+
+@dataclass
+class ReleaseOptionState:
+    version: str | None = None
+    manifest_path: Path | None = None
+    dry_run: bool = False
+    yes: bool = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +85,8 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
             return release_plan_command(release_context)
         if args.command == "notes":
             return release_notes_command(release_context)
+        if args.command == "publish":
+            return release_publish_command(release_context, args)
         raise ReleaseUsageError(f"Unknown release command '{args.command}'.")
     except ReleaseUsageError as exc:
         print_usage(file=sys.stderr)
@@ -90,35 +103,63 @@ def parse_release_args(arguments: tuple[str, ...]) -> ReleaseArguments:
         raise SystemExit(0)
 
     command = arguments[0]
-    if command not in ("check", "plan", "notes"):
+    if command not in ("check", "plan", "notes", "publish"):
         raise ReleaseUsageError(f"Unknown release command '{command}'.")
 
-    version: str | None = None
-    manifest_path: Path | None = None
+    state = ReleaseOptionState()
     remaining = list(arguments[1:])
     index = 0
     while index < len(remaining):
-        arg = remaining[index]
-        if arg in ("-h", "--help"):
-            print_usage()
-            raise SystemExit(0)
-        if arg == "--version":
-            index += 1
-            if index >= len(remaining) or not remaining[index]:
-                raise ReleaseUsageError("Option '--version' requires an argument.")
-            version = remaining[index]
-        elif arg == "--manifest":
-            index += 1
-            if index >= len(remaining) or not remaining[index]:
-                raise ReleaseUsageError("Option '--manifest' requires an argument.")
-            manifest_path = Path(remaining[index]).expanduser()
-        else:
-            raise ReleaseUsageError(f"Unknown release {command} option '{arg}'.")
-        index += 1
+        index = parse_release_option(command, remaining, index, state)
 
-    if version is None:
+    if state.version is None:
         raise ReleaseUsageError(f"The 'release {command}' command requires --version.")
-    return ReleaseArguments(command=command, version=version, manifest_path=manifest_path)
+    return ReleaseArguments(
+        command=command,
+        version=state.version,
+        manifest_path=state.manifest_path,
+        dry_run=state.dry_run,
+        yes=state.yes,
+    )
+
+
+def parse_release_option(
+    command: str,
+    arguments: list[str],
+    index: int,
+    state: ReleaseOptionState,
+) -> int:
+    arg = arguments[index]
+    if arg in ("-h", "--help"):
+        print_usage()
+        raise SystemExit(0)
+    if arg == "--version":
+        state.version = read_release_option_value(arguments, index, "--version")
+        return index + 2
+    if arg == "--manifest":
+        state.manifest_path = Path(read_release_option_value(arguments, index, "--manifest")).expanduser()
+        return index + 2
+    if arg == "--dry-run":
+        require_publish_option(command, "--dry-run")
+        state.dry_run = True
+        return index + 1
+    if arg == "--yes":
+        require_publish_option(command, "--yes")
+        state.yes = True
+        return index + 1
+    raise ReleaseUsageError(f"Unknown release {command} option '{arg}'.")
+
+
+def read_release_option_value(arguments: list[str], index: int, option_name: str) -> str:
+    value_index = index + 1
+    if value_index >= len(arguments) or not arguments[value_index]:
+        raise ReleaseUsageError(f"Option '{option_name}' requires an argument.")
+    return arguments[value_index]
+
+
+def require_publish_option(command: str, option_name: str) -> None:
+    if command != "publish":
+        raise ReleaseUsageError(f"Option '{option_name}' is only supported by release publish.")
 
 
 def print_usage(file=sys.stdout) -> None:
@@ -127,10 +168,11 @@ def print_usage(file=sys.stdout) -> None:
   base_release check --version <version> [--manifest <path>]
   base_release plan --version <version> [--manifest <path>]
   base_release notes --version <version> [--manifest <path>]
+  base_release publish --version <version> [--manifest <path>] [--dry-run] [--yes]
 
 Purpose:
-  Inspect release readiness for a Base-managed project without publishing tags,
-  GitHub Releases, or Homebrew tap changes.""",
+  Inspect release readiness and guarded GitHub publishing for a Base-managed
+  project. Homebrew tap changes remain a manual handoff.""",
         file=file,
     )
 
@@ -176,23 +218,73 @@ def release_plan_command(ctx: ReleaseContext) -> int:
     print(f"Tag: {ctx.tag_name}")
     print(f"GitHub repository: {ctx.release.github.repository}")
     print(f"GitHub release title: {title}")
-    if ctx.release.homebrew is not None and ctx.release.homebrew.required:
-        archive_url = github_tag_archive_url(ctx.release.github.repository, ctx.tag_name)
-        print("")
-        print("Homebrew handoff required:")
-        print(f"  Tap repository: {ctx.release.homebrew.tap_repository}")
-        print(f"  Formula path: {ctx.release.homebrew.formula_path}")
-        print(f"  Package: {ctx.release.homebrew.package}")
-        print(f"  Archive URL: {archive_url}")
-        print(f"  SHA256 command: curl -fsSL {archive_url} | shasum -a 256")
-    else:
-        print("")
-        print("Homebrew handoff: not declared")
+    print("")
+    print_homebrew_handoff(ctx, after_publish=False)
     return 0
 
 
 def release_notes_command(ctx: ReleaseContext) -> int:
     print(extract_changelog_section(ctx.changelog, ctx.version))
+    return 0
+
+
+def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
+    title = render_release_title(ctx)
+    findings = tuple(release_findings(ctx))
+    blockers = tuple(finding for finding in findings if finding.status != "ok")
+    if not blockers:
+        findings = findings + (github_release_finding(ctx),)
+        blockers = tuple(finding for finding in findings if finding.status != "ok")
+    if blockers:
+        print(f"\nRelease publish blocked by readiness findings for {ctx.manifest.project_name} v{ctx.version}\n")
+        print_findings(blockers)
+        return 1
+
+    notes = extract_changelog_section(ctx.changelog, ctx.version)
+
+    if args.dry_run:
+        print(f"DRY RUN: release publish for {ctx.manifest.project_name} v{ctx.version}")
+        print("")
+        print(f"Would create annotated tag: {ctx.tag_name}")
+        print(f"Would push tag to origin: {ctx.tag_name}")
+        print(f"Would create GitHub Release: {title}")
+        print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
+        print(f"GitHub Release URL: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
+        print("")
+        print_homebrew_handoff(ctx, after_publish=True)
+        return 0
+
+    if not args.yes:
+        require_interactive_publish_confirmation(ctx, title)
+
+    project_root = ctx.manifest_path.parent
+    run_release_step(["git", "tag", "-a", ctx.tag_name, "-m", f"Release {ctx.tag_name}"], cwd=project_root)
+    run_release_step(["git", "push", "origin", ctx.tag_name], cwd=project_root)
+
+    notes_path = write_temp_release_notes(notes)
+    try:
+        run_release_step(
+            [
+                "gh",
+                "release",
+                "create",
+                ctx.tag_name,
+                "--repo",
+                ctx.release.github.repository,
+                "--title",
+                title,
+                "--notes-file",
+                str(notes_path),
+            ],
+            cwd=project_root,
+        )
+    finally:
+        notes_path.unlink(missing_ok=True)
+
+    print(f"GitHub Release published: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
+    print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
+    print("")
+    print_homebrew_handoff(ctx, after_publish=True)
     return 0
 
 
@@ -253,6 +345,11 @@ def local_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
     if local_tag_exists(root, tag_name):
         return ReleaseFinding("error", "local_tag", f"Local tag {tag_name} already exists.")
     return ReleaseFinding("ok", "local_tag", f"Local tag {tag_name} is available.")
+
+
+def print_findings(findings: tuple[ReleaseFinding, ...]) -> None:
+    for finding in findings:
+        print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")
 
 
 def read_version_file(path: Path) -> str | None:
@@ -349,6 +446,71 @@ def gh_cli_finding() -> ReleaseFinding:
     return ReleaseFinding("error", "gh", "GitHub CLI is not authenticated for github.com.")
 
 
+def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
+    try:
+        result = subprocess.run(
+            ["gh", "release", "view", ctx.tag_name, "--repo", ctx.release.github.repository],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}: {exc}.")
+
+    if result.returncode == 0:
+        return ReleaseFinding("error", "github_release", f"GitHub Release {ctx.tag_name} already exists.")
+
+    detail = result.stdout.lower()
+    if "release not found" in detail or "could not resolve to a release" in detail:
+        return ReleaseFinding("ok", "github_release", f"GitHub Release {ctx.tag_name} is available.")
+
+    error_detail = last_non_empty_line(result.stdout)
+    if error_detail:
+        return ReleaseFinding(
+            "error",
+            "github_release",
+            f"Unable to inspect GitHub Release {ctx.tag_name}: {error_detail}",
+        )
+    return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}.")
+
+
+def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) -> None:
+    if not sys.stdin.isatty():
+        raise ReleaseError("release publish requires --yes when stdin is not interactive.")
+
+    response = input(
+        f"Publish {ctx.tag_name} to {ctx.release.github.repository} with title '{title}'? [y/N] "
+    )
+    if response.strip().lower() not in ("y", "yes"):
+        raise ReleaseError("release publish cancelled.")
+
+
+def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = last_non_empty_line(result.stdout)
+        joined = " ".join(command)
+        if detail:
+            raise ReleaseError(f"Release command failed: {joined}: {detail}")
+        raise ReleaseError(f"Release command failed: {joined}")
+
+
+def write_temp_release_notes(notes: str) -> Path:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as notes_file:
+        notes_file.write(notes)
+        notes_file.write("\n")
+        return Path(notes_file.name)
+
+
 def local_tag_exists(root: Path, tag_name: str) -> bool:
     result = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
@@ -402,3 +564,47 @@ def render_release_title(ctx: ReleaseContext) -> str:
 
 def github_tag_archive_url(repository: str, tag_name: str) -> str:
     return f"https://github.com/{repository}/archive/refs/tags/{tag_name}.tar.gz"
+
+
+def github_release_url(repository: str, tag_name: str) -> str:
+    return f"https://github.com/{repository}/releases/tag/{tag_name}"
+
+
+def github_tag_url(repository: str, tag_name: str) -> str:
+    return f"https://github.com/{repository}/tree/{tag_name}"
+
+
+def print_homebrew_handoff(ctx: ReleaseContext, *, after_publish: bool) -> None:
+    for line in homebrew_handoff_lines(ctx, after_publish=after_publish):
+        print(line)
+
+
+def homebrew_handoff_lines(ctx: ReleaseContext, *, after_publish: bool) -> tuple[str, ...]:
+    homebrew = ctx.release.homebrew
+    if homebrew is None or not homebrew.required:
+        return ("Homebrew handoff: not declared",)
+
+    archive_url = github_tag_archive_url(ctx.release.github.repository, ctx.tag_name)
+    header = "Homebrew handoff required after GitHub release:" if after_publish else "Homebrew handoff required:"
+    lines = [
+        header,
+        f"  Tap repository: {homebrew.tap_repository}",
+        f"  Formula path: {homebrew.formula_path}",
+        f"  Package: {homebrew.package}",
+        f"  Archive URL: {archive_url}",
+        f"  SHA256 command: curl -fsSL {archive_url} | shasum -a 256",
+        "  Validation commands:",
+        f"    brew install --build-from-source {homebrew.formula_path}",
+        f"    brew test {homebrew.package}",
+        f"    brew audit --new --formula {homebrew.formula_path}",
+        "  Upgrade smoke:",
+        "    brew update",
+        f"    brew upgrade {homebrew.package}",
+    ]
+    if requires_homebrew_upgrade_rehearsal(ctx.version):
+        lines.append("  1.0 reminder: complete the Homebrew upgrade rehearsal tracked by #526.")
+    return tuple(lines)
+
+
+def requires_homebrew_upgrade_rehearsal(version: str) -> bool:
+    return version == "1.0.0" or version.startswith("1.0.0-rc")

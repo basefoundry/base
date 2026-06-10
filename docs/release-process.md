@@ -37,7 +37,7 @@ Base-managed repositories can declare a `release:` section in
 `base_manifest.yaml` with the version file, changelog, tag prefix, GitHub
 repository, GitHub Release title, and optional Homebrew handoff metadata.
 
-The first `basectl release` implementation is read-only:
+The inspection commands are read-only:
 
 ```bash
 basectl release check --version X.Y.Z
@@ -51,9 +51,18 @@ and remote tag availability. Use `plan` to print the GitHub release target and
 downstream handoff requirements. Use `notes` to print the changelog body
 intended for the GitHub Release.
 
-This command does not create tags, publish GitHub Releases, or update the
-Homebrew tap yet. The checklist below remains authoritative for those mutation
-steps until guarded publish behavior is implemented.
+Publishing is guarded:
+
+```bash
+basectl release publish --version X.Y.Z --dry-run
+basectl release publish --version X.Y.Z
+basectl release publish --version X.Y.Z --yes
+```
+
+`publish` reuses the release checks, refuses existing tags or GitHub Releases,
+creates an annotated tag, pushes the tag, and creates the GitHub Release from
+the changelog section. It does not update the Homebrew tap; it prints the tap
+handoff checklist when `release.homebrew` is declared.
 
 ## Base Release Checklist
 
@@ -76,14 +85,20 @@ Complete these steps in `codeforester/base`:
 
 5. Merge the release-prep PR into `master`.
 6. Sync local `master`.
-7. Create an annotated tag from the merged release commit:
+7. Dry-run the guarded publish command:
 
    ```bash
-   git tag -a vX.Y.Z -m "Release vX.Y.Z"
-   git push origin vX.Y.Z
+   basectl release publish --version X.Y.Z --dry-run
    ```
 
-8. Publish the GitHub Release from the corresponding changelog section.
+8. Publish the GitHub-side release artifacts:
+
+   ```bash
+   basectl release publish --version X.Y.Z
+   ```
+
+   Use `--yes` only when running from a trusted non-interactive release shell.
+
 9. Confirm the release tag and GitHub Release are visible on GitHub.
 
 ## Homebrew Tap Checklist

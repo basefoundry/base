@@ -151,6 +151,7 @@ Current implemented commands include:
 - `basectl release check --version <version>`
 - `basectl release plan --version <version>`
 - `basectl release notes --version <version>`
+- `basectl release publish --version <version>`
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl build <project> [target...]`
@@ -569,14 +570,17 @@ Inspect release readiness for a Base-managed repository with:
 basectl release check --version 0.4.0
 basectl release plan --version 0.4.0
 basectl release notes --version 0.4.0
+basectl release publish --version 0.4.0 --dry-run
+basectl release publish --version 0.4.0 --yes
 ```
 
-`basectl release` is read-only in this first slice. It validates the manifest
+`basectl release check|plan|notes` are read-only. They validate the manifest
 release contract, version file, changelog section, Git worktree state, GitHub
-CLI authentication, and local and remote tag availability, then prints the
-GitHub release target and any required Homebrew handoff declared by
-`base_manifest.yaml`. It does not create tags, publish GitHub Releases, or edit
-Homebrew tap repositories yet.
+CLI authentication, local and remote tag availability, and planned downstream
+handoffs. `basectl release publish` reuses those checks, requires confirmation
+unless `--yes` is supplied, creates an annotated tag, pushes the tag, and
+creates the GitHub Release from the matching changelog section. Homebrew tap
+updates remain a manual handoff printed by the command.
 
 Use `--keep-last <count>` to retain the newest log files per CLI log directory
 while pruning older logs. This retention mode applies only to `*.log` files;
@@ -1165,7 +1169,8 @@ Base follows a few simple principles.
 Base `0.3.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
-creation, release readiness inspection, and GitHub workflow helpers.
+creation, release readiness inspection, guarded GitHub release publishing, and
+GitHub workflow helpers.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,

@@ -153,9 +153,9 @@ _base_basectl_completion() {
             ;;
         release)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "check plan notes" "$cur"
+                _base_basectl_completion_compgen "check plan notes publish" "$cur"
             else
-                _base_basectl_completion_compgen "--version --manifest -h --help" "$cur"
+                _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
             fi
             ;;
         clean)

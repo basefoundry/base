@@ -11,6 +11,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl release check --version <version>"* ]]
     [[ "$output" == *"basectl release plan --version <version>"* ]]
     [[ "$output" == *"basectl release notes --version <version>"* ]]
+    [[ "$output" == *"basectl release publish --version <version>"* ]]
 }
 
 @test "basectl release delegates to the Python release layer" {
@@ -35,9 +36,28 @@ EOF
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_TEST_RELEASE_STATE="$TEST_TMPDIR/release-state" \
-        "$BASE_REPO_ROOT/bin/basectl" release plan --version 1.2.3 --manifest "$manifest"
+        "$BASE_REPO_ROOT/bin/basectl" release publish --dry-run --version 1.2.3 --manifest "$manifest"
 
     [ "$status" -eq 0 ]
-    [ "$output" = "ARGS=plan --version 1.2.3 --manifest $manifest" ]
+    [ "$output" = "ARGS=publish --dry-run --version 1.2.3 --manifest $manifest" ]
     [ "$(cat "$TEST_TMPDIR/release-state")" = "BASE_PROJECT=base" ]
+}
+
+@test "Bash completion includes release publish commands and options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '\
+            source "$BASE_HOME/lib/shell/completions/basectl_completion.sh"; \
+            COMP_WORDS=(basectl release ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "release_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl release publish --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "release_publish_options=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"release_commands=check plan notes publish"* ]]
+    [[ "$output" == *"release_publish_options=--version --manifest --dry-run --yes"* ]]
 }
