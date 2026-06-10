@@ -15,6 +15,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
+    [[ "$output" == *"Create ~/.base.d/config.yaml with workspace.root: ~/work if missing."* ]]
 }
 
 @test "basectl setup fails on unsupported operating systems" {
@@ -124,6 +125,79 @@ EOF
     [ -f "$TEST_STATE_DIR/click-install-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
     [ -f "$venv_dir/pyvenv.cfg" ]
+}
+
+@test "basectl setup seeds missing user config with workspace root" {
+    local config_path="$TEST_HOME/.base.d/config.yaml"
+    local installer
+
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_NOTIFY_MIN_SECONDS=999999 \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Created Base user config at '$config_path'."* ]]
+    [ -f "$config_path" ]
+    [ "$(cat "$config_path")" = $'workspace:\n  root: ~/work' ]
+}
+
+@test "basectl setup leaves existing user config unchanged" {
+    local config_path="$TEST_HOME/.base.d/config.yaml"
+    local installer
+
+    mkdir -p "$(dirname "$config_path")"
+    printf 'workspace:\n  root: ~/src\n' > "$config_path"
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_NOTIFY_MIN_SECONDS=999999 \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Created Base user config"* ]]
+    [ "$(cat "$config_path")" = $'workspace:\n  root: ~/src' ]
+}
+
+@test "basectl setup leaves user config symlinks unchanged" {
+    local config_path="$TEST_HOME/.base.d/config.yaml"
+    local config_target="$TEST_TMPDIR/synced-config.yaml"
+    local installer
+
+    mkdir -p "$(dirname "$config_path")"
+    printf 'workspace:\n  root: ~/synced-work\n' > "$config_target"
+    ln -s "$config_target" "$config_path"
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_NOTIFY_MIN_SECONDS=999999 \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Created Base user config"* ]]
+    [ -L "$config_path" ]
+    [ "$(readlink "$config_path")" = "$config_target" ]
+    [ "$(cat "$config_target")" = $'workspace:\n  root: ~/synced-work' ]
+}
+
+@test "basectl setup dry-run reports user config seed without writing it" {
+    local config_path="$TEST_HOME/.base.d/config.yaml"
+
+    run_base_command setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create Base user config at '$config_path'."* ]]
+    [ ! -e "$config_path" ]
 }
 
 @test "basectl setup rejects Homebrew installer override outside test mode" {

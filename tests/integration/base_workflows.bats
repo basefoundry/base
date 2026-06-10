@@ -6,7 +6,7 @@ bats_require_minimum_version 1.5.0
 setup() {
     setup_test_tmpdir
     TEST_HOME="$TEST_TMPDIR/home"
-    TEST_WORKSPACE="$TEST_TMPDIR/workspace"
+    TEST_WORKSPACE="$TEST_HOME/work"
     TEST_STATE_DIR="$TEST_TMPDIR/state"
     TEST_MOCKBIN="$TEST_TMPDIR/mockbin"
     TEST_XCODE_DIR="$TEST_TMPDIR/CommandLineTools"

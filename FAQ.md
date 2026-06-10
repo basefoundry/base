@@ -196,21 +196,22 @@ are intentionally managed outside Homebrew.
 
 ### How should I configure my workspace root?
 
-If repositories live side by side under a directory such as `~/work`, configure:
+On first setup, Base creates `~/.base.d/config.yaml` with:
 
 ```yaml
 workspace:
   root: ~/work
 ```
 
-in:
+If repositories live side by side under a different directory, edit:
 
 ```text
 ~/.base.d/config.yaml
 ```
 
-This helps commands such as `basectl projects list`, `basectl activate
-<project>`, and `basectl test <project>` find participating repositories.
+Base does not overwrite existing config files or symlinks. The workspace root
+helps commands such as `basectl projects list`, `basectl activate <project>`,
+and `basectl test <project>` find participating repositories.
 
 ### What belongs in Base versus a project-owned installer?
 

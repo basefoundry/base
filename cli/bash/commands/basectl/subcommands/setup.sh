@@ -34,6 +34,7 @@ Setup does:
   5. Create ~/.base.d/base/.venv if it does not already exist.
   6. Install Base Python bootstrap packages into the Base virtual environment.
   7. Invoke the Python project setup layer for base_manifest.yaml artifacts.
+  8. Create ~/.base.d/config.yaml with workspace.root: ~/work if missing.
 
 Notes:
   - This command is intentionally idempotent.

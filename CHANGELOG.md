@@ -23,6 +23,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   `basectl check|doctor <project> --remote-network`.
 - Added an explicit `ai` prerequisite profile for Codex CLI and Claude Code
   setup, check, doctor, onboard, and shell completion flows.
+- Added first-run seeding of `~/.base.d/config.yaml` with
+  `workspace.root: ~/work` during `basectl setup`.
 
 ### Changed
 
