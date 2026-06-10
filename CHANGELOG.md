@@ -27,6 +27,15 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Expanded `basectl repo init` to seed portable project Git workflow guidance
   and a standard pull request template for Base-managed repositories.
 
+### Fixed
+
+- Removed a hardcoded issue number from the 1.0 Homebrew upgrade reminder in
+  `basectl release`.
+- Kept `basectl ci setup --format json` output focused on a clean setup summary
+  instead of embedding the delegated setup log stream.
+- Validated workspace manifest repo URLs when a `repos[].url` value is provided.
+- Removed forbidden shell strict mode from the project installer template.
+
 ## [0.3.0] - 2026-06-06
 
 ### Added

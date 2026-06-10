@@ -167,6 +167,34 @@ class ReleaseEngineTests(unittest.TestCase):
         self.assertIn("brew upgrade codeforester/demo/demo", stdout)
 
 
+    def test_plan_prints_1_0_homebrew_upgrade_reminder_without_issue_number(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            changelog = "\n".join(
+                [
+                    "# Changelog",
+                    "",
+                    "## [1.0.0] - 2026-06-10",
+                    "",
+                    "- Stable release.",
+                ]
+            )
+            manifest_path = write_release_project(
+                root,
+                version_file_content="1.0.0\n",
+                changelog=changelog,
+            )
+
+            status, stdout, stderr = run_engine(
+                ["plan", "--version", "1.0.0", "--manifest", str(manifest_path)],
+                root,
+            )
+
+        self.assertEqual(status, 0, stderr)
+        self.assertIn("1.0 reminder: validate the Homebrew upgrade path before publishing.", stdout)
+        self.assertNotIn("#526", stdout)
+
+
     def test_plan_prints_no_homebrew_handoff_for_github_only_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

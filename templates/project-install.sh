@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+
+# Explicit error handling is used instead of set -e to keep failure paths
+# clear and predictable. See Base STANDARDS.md section 2.
 
 # Project-owned values. Copy this template into your project and customize them.
 PROJECT_NAME="${PROJECT_NAME:-example-project}"
@@ -40,7 +42,7 @@ require_command() {
 }
 
 ensure_workspace() {
-    run mkdir -p "$WORKSPACE_DIR"
+    run mkdir -p "$WORKSPACE_DIR" || die "Failed to create workspace directory '$WORKSPACE_DIR'."
 }
 
 install_or_update_base() {
@@ -48,7 +50,7 @@ install_or_update_base() {
 
     if [[ -d "$BASE_DIR/.git" ]]; then
         log "Updating Base at '$BASE_DIR'."
-        run git -C "$BASE_DIR" pull --ff-only
+        run git -C "$BASE_DIR" pull --ff-only || die "Failed to update Base at '$BASE_DIR'."
         return 0
     fi
 
@@ -57,10 +59,10 @@ install_or_update_base() {
     fi
 
     require_command curl
-    INSTALLER_TMP="$(mktemp "${TMPDIR:-/tmp}/base-install.XXXXXX")"
+    INSTALLER_TMP="$(mktemp "${TMPDIR:-/tmp}/base-install.XXXXXX")" || die "Failed to create installer temp file."
     log "Installing Base into '$BASE_DIR'."
-    run curl -fsSL -o "$INSTALLER_TMP" "$BASE_INSTALL_URL"
-    run bash "$INSTALLER_TMP" --dir "$BASE_DIR" --no-profile
+    run curl -fsSL -o "$INSTALLER_TMP" "$BASE_INSTALL_URL" || die "Failed to download Base installer."
+    run bash "$INSTALLER_TMP" --dir "$BASE_DIR" --no-profile || die "Failed to install Base into '$BASE_DIR'."
 }
 
 clone_or_update_project() {
@@ -68,7 +70,7 @@ clone_or_update_project() {
 
     if [[ -d "$PROJECT_DIR/.git" ]]; then
         log "Updating $PROJECT_NAME at '$PROJECT_DIR'."
-        run git -C "$PROJECT_DIR" pull --ff-only
+        run git -C "$PROJECT_DIR" pull --ff-only || die "Failed to update $PROJECT_NAME at '$PROJECT_DIR'."
         return 0
     fi
 
@@ -77,7 +79,7 @@ clone_or_update_project() {
     fi
 
     log "Cloning $PROJECT_NAME into '$PROJECT_DIR'."
-    run git clone "$PROJECT_REPO_URL" "$PROJECT_DIR"
+    run git clone "$PROJECT_REPO_URL" "$PROJECT_DIR" || die "Failed to clone $PROJECT_NAME into '$PROJECT_DIR'."
 }
 
 run_project_setup() {
@@ -96,7 +98,7 @@ run_project_setup() {
 maybe_update_profile() {
     case "$RUN_UPDATE_PROFILE" in
         true|1|yes)
-            run "$BASE_DIR/bin/basectl" update-profile
+            run "$BASE_DIR/bin/basectl" update-profile || die "Failed to update shell profiles."
             ;;
         false|0|no)
             log "Skipping shell profile update."
@@ -111,11 +113,11 @@ main() {
     log "Installing $PROJECT_NAME workspace."
     log "Workspace: $WORKSPACE_DIR"
 
-    ensure_workspace
-    install_or_update_base
-    clone_or_update_project
-    run_project_setup
-    maybe_update_profile
+    ensure_workspace || die "Workspace preparation failed."
+    install_or_update_base || die "Base installation failed."
+    clone_or_update_project || die "$PROJECT_NAME checkout failed."
+    run_project_setup || die "$PROJECT_NAME setup failed."
+    maybe_update_profile || die "Shell profile update failed."
 
     log "$PROJECT_NAME setup is complete."
     log "Project-specific next steps belong here."

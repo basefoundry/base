@@ -602,7 +602,7 @@ def homebrew_handoff_lines(ctx: ReleaseContext, *, after_publish: bool) -> tuple
         f"    brew upgrade {homebrew.package}",
     ]
     if requires_homebrew_upgrade_rehearsal(ctx.version):
-        lines.append("  1.0 reminder: complete the Homebrew upgrade rehearsal tracked by #526.")
+        lines.append("  1.0 reminder: validate the Homebrew upgrade path before publishing.")
     return tuple(lines)
 
 

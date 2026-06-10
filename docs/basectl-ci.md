@@ -38,6 +38,11 @@ without prompting, `basectl ci` fails with a clear fix message.
 - run project artifact setup through the same manifest path as `basectl setup`
 - emit a small JSON wrapper when `--format json` is requested
 
+`BASE_CI=true` is the Base-specific CI marker. Setup and diagnostic code use it
+to select non-interactive, CI-safe behavior, including the runtime-only Linux
+path that can allow system Python when Homebrew bootstrap is not available.
+`CI=true` is also set for compatibility with common CI-aware tools.
+
 `basectl ci check <project>` should:
 
 - run read-only Base and project checks
