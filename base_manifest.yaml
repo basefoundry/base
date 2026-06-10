@@ -12,6 +12,19 @@ demo:
   script: ./demo/demo.sh
   description: Self-contained walkthrough of Base's core project workflow
 
+release:
+  version_file: VERSION
+  changelog: CHANGELOG.md
+  tag_prefix: v
+  github:
+    repository: codeforester/base
+    release_title: "Base v{version}"
+  homebrew:
+    required: true
+    tap_repository: codeforester/homebrew-base
+    formula_path: Formula/base.rb
+    package: codeforester/base/base
+
 # Optional relative path to a Homebrew Brewfile for ordinary macOS tools.
 # Base runs `brew bundle --file=<path>` during setup when this is set.
 # Keep Base-specific managed dependencies in `artifacts`; use Brewfile for

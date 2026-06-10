@@ -23,6 +23,7 @@ _base_basectl_completion() {
         'run:Run a project command'
         'repo:Create, check, and configure repository baseline'
         'ci:Run Base setup, checks, and diagnostics in CI'
+        'release:Inspect release readiness and notes'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
         'config:Inspect Base machine-local user config'
@@ -210,6 +211,12 @@ _base_basectl_completion() {
                 project_names=("${(@f)$(_base_basectl_completion_project_names)}")
                 _describe -t projects 'Base project' project_names
             fi
+            ;;
+        release)
+            _arguments '1:release command:(check plan notes)' \
+                '--version[Release version]:version:' \
+                '--manifest[Use a specific manifest]:path:_files' \
+                '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         clean)
             _arguments '--older-than[Artifact age]:age:' \

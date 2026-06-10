@@ -15,6 +15,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"run <project> <command> [options]"* ]]
     [[ "$output" == *"repo <init|check|configure|agent-guidance|installer-template> [options]"* ]]
     [[ "$output" == *"ci <setup|check|doctor> <project> [options]"* ]]
+    [[ "$output" == *"release <check|plan|notes> --version <version> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"logs [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
@@ -52,6 +53,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
     grep -Fqx '  repo <init|check|configure|agent-guidance|installer-template> [options]' <<<"$output"
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
+    grep -Fqx '  release <check|plan|notes> --version <version> [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]

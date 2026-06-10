@@ -107,6 +107,7 @@ layers. This keeps the product name and the control-plane action separate:
 - `basectl test`
 - `basectl build`
 - `basectl demo`
+- `basectl release`
 - `basectl logs`
 
 Shebang-based Bash scripts can also use:

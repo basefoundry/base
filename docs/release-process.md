@@ -31,6 +31,30 @@ documentation, and maintenance PRs leave it unchanged. A release-prep PR updates
 Keep upcoming changes under the `Unreleased` section in `CHANGELOG.md` until a
 release-prep PR moves them into a dated release section.
 
+## Release Assistant
+
+Base-managed repositories can declare a `release:` section in
+`base_manifest.yaml` with the version file, changelog, tag prefix, GitHub
+repository, GitHub Release title, and optional Homebrew handoff metadata.
+
+The first `basectl release` implementation is read-only:
+
+```bash
+basectl release check --version X.Y.Z
+basectl release plan --version X.Y.Z
+basectl release notes --version X.Y.Z
+```
+
+Use `check` before publishing to validate the version file, changelog section,
+Git worktree cleanliness, current branch, GitHub CLI authentication, and local
+and remote tag availability. Use `plan` to print the GitHub release target and
+downstream handoff requirements. Use `notes` to print the changelog body
+intended for the GitHub Release.
+
+This command does not create tags, publish GitHub Releases, or update the
+Homebrew tap yet. The checklist below remains authoritative for those mutation
+steps until guarded publish behavior is implemented.
+
 ## Base Release Checklist
 
 Complete these steps in `codeforester/base`:

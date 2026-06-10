@@ -148,6 +148,9 @@ Current implemented commands include:
 - `basectl repo check [path]`
 - `basectl repo configure [path]`
 - `basectl repo agent-guidance [path]`
+- `basectl release check --version <version>`
+- `basectl release plan --version <version>`
+- `basectl release notes --version <version>`
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl build <project> [target...]`
@@ -559,6 +562,21 @@ basectl config doctor
 
 Base owns the meaning of `~/.base.d/config.yaml`, but users own how that file is
 edited, backed up, or synced. See [docs/local-config.md](docs/local-config.md).
+
+Inspect release readiness for a Base-managed repository with:
+
+```bash
+basectl release check --version 0.4.0
+basectl release plan --version 0.4.0
+basectl release notes --version 0.4.0
+```
+
+`basectl release` is read-only in this first slice. It validates the manifest
+release contract, version file, changelog section, Git worktree state, GitHub
+CLI authentication, and local and remote tag availability, then prints the
+GitHub release target and any required Homebrew handoff declared by
+`base_manifest.yaml`. It does not create tags, publish GitHub Releases, or edit
+Homebrew tap repositories yet.
 
 Use `--keep-last <count>` to retain the newest log files per CLI log directory
 while pruning older logs. This retention mode applies only to `*.log` files;
@@ -1147,7 +1165,7 @@ Base follows a few simple principles.
 Base `0.3.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
-creation, and GitHub workflow helpers.
+creation, release readiness inspection, and GitHub workflow helpers.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,
