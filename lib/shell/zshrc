@@ -27,7 +27,7 @@ base_zshrc_snippet_dir() {
     source_path="$(eval 'printf "%s\n" "${(%):-%x}"')" || return 1
     [[ -n "$source_path" ]] || return 1
 
-    cd -- "$(dirname -- "$source_path")" && pwd -P
+    cd -L -- "$(dirname -- "$source_path")" && pwd -L
 }
 
 base_zshrc_source_baserc_guard() {
@@ -67,7 +67,7 @@ base_zshrc_set_base_home() {
     local base_home
 
     snippet_dir="$(base_zshrc_snippet_dir)" || return 1
-    base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
+    base_home="$(cd -L -- "$snippet_dir/../.." && pwd -L)" || return 1
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
     export BASE_HOME="$base_home"

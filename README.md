@@ -813,9 +813,10 @@ state under `~/.base.d`. Use Homebrew-managed Base for consumer install or
 upgrade validation in a test account, separate machine, isolated `HOME`, or with
 explicit paths such as `/opt/homebrew/bin/basectl` or `~/work/base/bin/basectl`.
 
-When Base is installed through Homebrew, `BASE_HOME` points to the physical
-Homebrew install location. It does not point to your project workspace. Configure
-`workspace.root` in `~/.base.d/config.yaml` so commands such as
+When Base is installed through Homebrew, `BASE_HOME` points to the stable
+Homebrew install location, such as `/usr/local/opt/base/libexec` or
+`/opt/homebrew/opt/base/libexec`. It does not point to your project workspace.
+Configure `workspace.root` in `~/.base.d/config.yaml` so commands such as
 `basectl projects list`, `basectl activate <project>`, and
 `basectl test <project>` can find your repositories:
 

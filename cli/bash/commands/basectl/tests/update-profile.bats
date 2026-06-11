@@ -64,6 +64,43 @@ EOF
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
 }
 
+@test "basectl update-profile writes stable Homebrew opt-style paths" {
+    local cellar_parent="$TEST_TMPDIR/homebrew/Cellar/base/0.4.0"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+
+    mkdir -p "$cellar_parent" "$opt_dir"
+    ln -s "$BASE_REPO_ROOT" "$cellar_parent/libexec"
+    ln -s "../Cellar/base/0.4.0" "$opt_dir/base"
+
+    run env \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$opt_base" \
+        PATH="$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$TEST_BASH_BIN_DIR/bash" -c '\
+            source "$BASE_HOME/base_init.sh"; \
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"; \
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"; \
+            base_update_profile_subcommand_main'
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_HOME/.bash_profile")" == *"source \"$opt_base/lib/shell/bash_profile\""* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"source \"$opt_base/lib/shell/bashrc\""* ]]
+    [[ "$(cat "$TEST_HOME/.zprofile")" == *"source \"$opt_base/lib/shell/zprofile\""* ]]
+    [[ "$(cat "$TEST_HOME/.zshrc")" == *"source \"$opt_base/lib/shell/zshrc\""* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"/Cellar/base/0.4.0"* ]]
+}
+
 @test "basectl update-profile preserves non-Base dotfile content and is idempotent" {
     printf '%s
 ' 'user line before' > "$TEST_HOME/.bashrc"
@@ -98,6 +135,29 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "Base-managed Bash startup preserves Homebrew opt-style symlink paths" {
+    local cellar_base="$TEST_TMPDIR/homebrew/Cellar/base/0.4.0/libexec"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+
+    mkdir -p "$opt_dir"
+    create_fake_shell_base "$cellar_base"
+    ln -s "../Cellar/base/0.4.0" "$opt_dir/base"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash --rcfile "$opt_base/lib/shell/bashrc" -i -c '\
+            printf "BASE_HOME=%s\n" "$BASE_HOME"; \
+            printf "BASE_BIN=%s\n" "$(command -v basectl)"; \
+            printf "PATH=%s\n" "$PATH"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$opt_base"* ]]
+    [[ "$output" == *"BASE_BIN=$opt_base/bin/basectl"* ]]
+    [[ "$output" == *"PATH=$opt_base/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
 }
 
 @test "Base-managed Bash startup detects sibling Base Platform Tools without profile rewrite" {
@@ -296,6 +356,29 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"$BASE_REPO_ROOT/bin/basectl"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+}
+
+@test "Base-managed Zsh startup preserves Homebrew opt-style symlink paths" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    local cellar_base="$TEST_TMPDIR/homebrew/Cellar/base/0.4.0/libexec"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+
+    mkdir -p "$opt_dir"
+    create_fake_shell_base "$cellar_base"
+    ln -s "../Cellar/base/0.4.0" "$opt_dir/base"
+
+    run env -u BASE_HOME -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c 'source "$1"; printf "BASE_HOME=%s\n" "$BASE_HOME"; printf "BASE_BIN=%s\n" "$(command -v basectl)"; printf "PATH=%s\n" "$PATH"' \
+        zsh "$opt_base/lib/shell/zshrc"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$opt_base"* ]]
+    [[ "$output" == *"BASE_BIN=$opt_base/bin/basectl"* ]]
+    [[ "$output" == *"PATH=$opt_base/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
 }
 
 @test "Base-managed Zsh startup detects sibling Base Platform Tools without profile rewrite" {

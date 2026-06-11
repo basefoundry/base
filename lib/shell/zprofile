@@ -26,7 +26,7 @@ base_zprofile_snippet_dir() {
     source_path="$(eval 'printf "%s\n" "${(%):-%x}"')" || return 1
     [[ -n "$source_path" ]] || return 1
 
-    cd -- "$(dirname -- "$source_path")" && pwd -P
+    cd -L -- "$(dirname -- "$source_path")" && pwd -L
 }
 
 base_zprofile_source_baserc_guard() {

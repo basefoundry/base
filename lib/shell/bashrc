@@ -22,7 +22,7 @@ base_bashrc_debug() {
 }
 
 base_bashrc_snippet_dir() {
-    cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
+    cd -L -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -L
 }
 
 base_bashrc_source_baserc_guard() {
@@ -70,7 +70,7 @@ base_bashrc_set_base_home() {
     local base_home
 
     snippet_dir="$(base_bashrc_snippet_dir)" || return 1
-    base_home="$(cd -- "$snippet_dir/../.." && pwd -P)" || return 1
+    base_home="$(cd -L -- "$snippet_dir/../.." && pwd -L)" || return 1
 
     [[ -f "$base_home/base_init.sh" ]] || return 1
     if [[ -n "${BASE_HOME+x}" ]]; then

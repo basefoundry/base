@@ -69,6 +69,38 @@ run_base_init_script() {
     [[ "$output" == *"BASE_SHELL_DIR=$TEST_BASE_HOME/lib/shell"* ]]
 }
 
+@test "base_init preserves explicit symlinked BASE_HOME paths" {
+    local cellar_base="$TEST_TMPDIR/homebrew/Cellar/base/0.4.0/libexec"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+
+    mkdir -p "$opt_dir"
+    create_minimal_base_home "$cellar_base"
+    ln -s "../Cellar/base/0.4.0" "$opt_dir/base"
+
+    run env \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        BASE_HOME="$opt_base" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            printf "BASE_HOME=%s\n" "$BASE_HOME"
+            printf "BASE_BIN_DIR=%s\n" "$BASE_BIN_DIR"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_HOME=$opt_base"* ]]
+    [[ "$output" == *"BASE_BIN_DIR=$opt_base/bin"* ]]
+}
+
 @test "base_init exports host operating system and shell metadata" {
     run_base_init_script '
         base_home="$1"
