@@ -155,6 +155,7 @@ _base_basectl_completion() {
                         '--private[Create a private GitHub repository when needed]' \
                         '--public[Create a public GitHub repository when needed]' \
                         '--no-configure[Skip GitHub configuration]' \
+                        '--no-protect-default-branch[Skip Base-managed default branch protection]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
@@ -170,6 +171,7 @@ _base_basectl_completion() {
                     _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository]:repo:' \
+                        '--no-protect-default-branch[Skip Base-managed default branch protection]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'

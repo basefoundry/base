@@ -45,6 +45,7 @@ Options:
   --private                     Create a private GitHub repository when needed. This is the default.
   --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
+  --no-protect-default-branch   Skip Base-managed default branch protection during repo configure.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
@@ -852,8 +853,53 @@ base_repo_ensure_github_repo() {
     gh repo create "$repo" "--$visibility" --description "$description"
 }
 
+base_repo_default_branch_ruleset_payload() {
+    cat <<'JSON'
+{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+JSON
+}
+
+base_repo_configure_default_branch_protection() {
+    local dry_run="$1"
+    local payload
+    local repo="$2"
+    local ruleset_id=""
+
+    payload="$(base_repo_default_branch_ruleset_payload)"
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would create or update GitHub ruleset 'Base default branch protection' on '%s' targeting '~DEFAULT_BRANCH'.\n" "$repo"
+        printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --jq %s\n" \
+            "$repo" \
+            "$(base_repo_pretty_quote 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')"
+        printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --method POST --input -\n" "$repo"
+        printf "[DRY-RUN] Payload: %s\n" "$payload"
+        return 0
+    fi
+
+    base_repo_require_gh || return 1
+    ruleset_id="$(gh api "repos/$repo/rulesets" \
+        --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')" || {
+        log_error "Unable to inspect GitHub rulesets for '$repo'."
+        return 1
+    }
+
+    if [[ -n "$ruleset_id" ]]; then
+        printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - || {
+            log_error "Unable to update Base default branch protection ruleset for '$repo'."
+            return 1
+        }
+    else
+        printf '%s\n' "$payload" | gh api "repos/$repo/rulesets" --method POST --input - || {
+            log_error "Unable to create Base default branch protection ruleset for '$repo'."
+            return 1
+        }
+    fi
+}
+
 base_repo_configure_github() {
     local dry_run="$1"
+    local protect_default_branch="${3:-1}"
     local repo="$2"
     local status=0
 
@@ -877,6 +923,9 @@ base_repo_configure_github() {
     base_repo_configure_label "$dry_run" ci "0e8a16" "Continuous integration, tests, automation, or release workflows" "$repo" || status=1
     base_repo_configure_label "$dry_run" security "ee0701" "Security hardening or vulnerability work" "$repo" || status=1
     base_repo_configure_label "$dry_run" needs-demo "fbca04" "Change should update a project demo" "$repo" || status=1
+    if [[ "$protect_default_branch" == "1" ]]; then
+        base_repo_configure_default_branch_protection "$dry_run" "$repo" || status=1
+    fi
 
     return "$status"
 }
@@ -1123,6 +1172,7 @@ base_repo_init() {
     local github_visibility_explicit=0
     local name=""
     local path=""
+    local protect_default_branch=1
     local pr_branch=""
     local requested_visibility=""
     local root
@@ -1189,6 +1239,10 @@ base_repo_init() {
                 ;;
             --no-configure)
                 configure=0
+                shift
+                ;;
+            --no-protect-default-branch)
+                protect_default_branch=0
                 shift
                 ;;
             --dry-run)
@@ -1261,7 +1315,7 @@ base_repo_init() {
         fi
         if [[ -n "$github_repo" ]]; then
             base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" "$github_visibility" || return 1
-            base_repo_configure_github "$dry_run" "$github_repo" || return 1
+            base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
         else
             if [[ "$dry_run" == "1" ]]; then
                 printf "[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred. Pass --repo <owner/name> to include GitHub repository creation and configuration.\n"
@@ -1408,6 +1462,7 @@ base_repo_configure() {
     local dry_run=0
     local github_repo=""
     local path="."
+    local protect_default_branch=1
 
     while (($#)); do
         case "$1" in
@@ -1429,6 +1484,10 @@ base_repo_configure() {
                 ;;
             --dry-run)
                 dry_run=1
+                shift
+                ;;
+            --no-protect-default-branch)
+                protect_default_branch=0
                 shift
                 ;;
             -v)
@@ -1461,7 +1520,7 @@ base_repo_configure() {
         return 1
     }
 
-    base_repo_configure_github "$dry_run" "$github_repo"
+    base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch"
 }
 
 base_repo_installer_template() {
