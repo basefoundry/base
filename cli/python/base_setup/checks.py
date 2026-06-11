@@ -34,10 +34,6 @@ def check_to_json(check: ArtifactCheck) -> dict[str, Any]:
     return payload
 
 
-def check_to_doctor_json(check: ArtifactCheck) -> dict[str, Any]:
-    return check_to_json(check)
-
-
 def checks_status(checks: Iterable[ArtifactCheck]) -> str:
     statuses = tuple(doctor_status(check) for check in checks)
     if "error" in statuses:

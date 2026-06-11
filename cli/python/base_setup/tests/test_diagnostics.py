@@ -136,8 +136,8 @@ class ProjectCheckTests(unittest.TestCase):
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(setup_checks.check_to_doctor_json(check)["id"], "BASE-P033")
-        self.assertEqual(setup_checks.check_to_doctor_json(check)["status"], "warn")
+        self.assertEqual(setup_checks.check_to_json(check)["id"], "BASE-P033")
+        self.assertEqual(setup_checks.check_to_json(check)["status"], "warn")
 
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),
