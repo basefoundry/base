@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Made `basectl test base` package-aware so Homebrew-installed Base runs the
+  packaged Python test layer and skips source-checkout-only BATS tests with
+  clear guidance.
+
 ## [0.4.3] - 2026-06-11
 
 ### Added
