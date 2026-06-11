@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Improved Bash startup recovery guidance when an existing shell still has a
+  stale readonly `BASE_HOME` after a Homebrew upgrade.
+
 ## [0.4.1] - 2026-06-10
 
 ### Fixed

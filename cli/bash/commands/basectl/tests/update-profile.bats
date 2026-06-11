@@ -160,6 +160,32 @@ EOF
     [[ "$output" == *"PATH=$opt_base/bin:/usr/bin:/bin:/usr/sbin:/sbin"* ]]
 }
 
+@test "Base-managed Bash startup explains stale readonly BASE_HOME recovery" {
+    local old_base="$TEST_TMPDIR/homebrew/Cellar/base/0.3.0/libexec"
+    local cellar_base="$TEST_TMPDIR/homebrew/Cellar/base/0.4.1/libexec"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+
+    mkdir -p "$old_base" "$opt_dir"
+    create_fake_shell_base "$cellar_base"
+    ln -s "../Cellar/base/0.4.1" "$opt_dir/base"
+
+    run env -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '\
+            readonly BASE_HOME="$1"; \
+            source "$2"' \
+        bash "$old_base" "$opt_base/lib/shell/bashrc"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: BASE_HOME is readonly and points at '$old_base', not '$opt_base'."* ]]
+    [[ "$output" == *"exec env -u BASE_HOME \\"* ]]
+    [[ "$output" == *"-u BASE_PROJECT_VENV_DIR \\"* ]]
+    [[ "$output" == *'"$SHELL" -l'* ]]
+    [[ "$output" != *"ERROR:   exec env"* ]]
+}
+
 @test "Base-managed Bash startup detects sibling Base Platform Tools without profile rewrite" {
     local workspace="$TEST_TMPDIR/fake-workspace"
     local fake_base="$workspace/base"
