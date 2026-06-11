@@ -14,7 +14,6 @@ from .artifacts import reconcile_artifacts
 from .artifacts import resolve_artifact_definitions
 from .build import check_build
 from .checks import ArtifactCheck
-from .checks import check_to_doctor_json
 from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import doctor_status
@@ -284,7 +283,7 @@ def doctor_manifest(
 ) -> int:
     checks = manifest_checks(default_manifest, manifest, remote_network=remote_network)
     if output_format == "json":
-        print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
+        print(json.dumps([check_to_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
     if output_format != "text":
         print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
@@ -309,7 +308,7 @@ def doctor_pre_venv_manifest(
 ) -> int:
     checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
-        print(json.dumps([check_to_doctor_json(check) for check in checks], separators=(",", ":")))
+        print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
     if output_format != "text":
         print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")

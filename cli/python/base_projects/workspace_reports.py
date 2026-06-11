@@ -13,7 +13,6 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import read_workspace_manifest
 from base_setup.checks import ArtifactCheck
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
-from base_setup.checks import check_to_doctor_json
 from base_setup.checks import check_to_json
 from base_setup.checks import checks_status
 from base_setup.checks import doctor_status
@@ -537,7 +536,7 @@ def workspace_check_to_json(
     results: tuple[WorkspaceProjectCheckResult, ...],
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> dict[str, Any]:
-    return workspace_checks_to_json(workspace_root, results, doctor=False, workspace_manifest=workspace_manifest)
+    return workspace_checks_to_json(workspace_root, results, workspace_manifest=workspace_manifest)
 
 
 def workspace_doctor_to_json(
@@ -545,13 +544,12 @@ def workspace_doctor_to_json(
     results: tuple[WorkspaceProjectCheckResult, ...],
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> dict[str, Any]:
-    return workspace_checks_to_json(workspace_root, results, doctor=True, workspace_manifest=workspace_manifest)
+    return workspace_checks_to_json(workspace_root, results, workspace_manifest=workspace_manifest)
 
 
 def workspace_checks_to_json(
     workspace_root: Path,
     results: tuple[WorkspaceProjectCheckResult, ...],
-    doctor: bool,
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -559,7 +557,7 @@ def workspace_checks_to_json(
         "workspace": str(workspace_root),
         "status": checks_status(tuple(check for result in results for check in result.checks)),
         "project_count": workspace_project_count(results, workspace_manifest),
-        "projects": [workspace_check_result_to_json(result, doctor, workspace_manifest) for result in results],
+        "projects": [workspace_check_result_to_json(result, workspace_manifest) for result in results],
     }
     add_workspace_manifest_json(payload, results, workspace_manifest)
     return payload
@@ -567,7 +565,6 @@ def workspace_checks_to_json(
 
 def workspace_check_result_to_json(
     result: WorkspaceProjectCheckResult,
-    doctor: bool,
     workspace_manifest: WorkspaceManifest | None,
 ) -> dict[str, Any]:
     item: dict[str, Any] = {
@@ -576,7 +573,7 @@ def workspace_check_result_to_json(
         "path": str(result.root),
         "manifest_path": str(result.manifest_path) if result.manifest_path is not None else None,
         "manifest": result.manifest,
-        "checks": [workspace_check_item_to_json(check, doctor) for check in result.checks],
+        "checks": [workspace_check_item_to_json(check) for check in result.checks],
     }
     if workspace_manifest is not None:
         item.update(workspace_manifest_item_metadata(result))
@@ -623,9 +620,7 @@ def add_workspace_manifest_json(
     payload["repository_count"] = len(items)
 
 
-def workspace_check_item_to_json(check: ArtifactCheck, doctor: bool) -> dict[str, Any]:
-    if doctor:
-        return check_to_doctor_json(check)
+def workspace_check_item_to_json(check: ArtifactCheck) -> dict[str, Any]:
     return check_to_json(check)
 
 
