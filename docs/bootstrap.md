@@ -122,4 +122,7 @@ more complete first-mile path for blank machines.
 `bootstrap.sh` is intentionally small. It does not configure project
 repositories, install project dependencies, manage IDE settings, or update shell
 startup files. Those steps belong to `basectl setup`, `basectl repo`,
-`basectl update-profile`, and the project manifest workflow.
+`basectl update-profile`, and the project manifest workflow. When a repository
+already exists and the Base baseline should go through review, use
+`basectl repo init <name> --path <path> --repo <owner/name> --pr` after
+bootstrap and setup are complete.
