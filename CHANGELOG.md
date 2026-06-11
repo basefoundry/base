@@ -7,10 +7,18 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-06-11
+
 ### Added
 
 - Added opt-in pull request creation for `basectl repo init --pr` so generated
   repository baselines can move through review before merge.
+
+### Changed
+
+- Changed `basectl update` to detect Homebrew-managed Base installs, hand off
+  only to `brew upgrade codeforester/base/base`, preserve non-mutating dry-run
+  output, and run setup with inherited Base environment variables cleared.
 
 ### Fixed
 
