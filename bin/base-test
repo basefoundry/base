@@ -38,9 +38,25 @@ if [[ ! -x "$base_test_python" ]]; then
     exit 1
 fi
 
-env "${base_test_unset_env[@]}" \
-    PYTHONPATH="$base_test_home/lib/python:$base_test_home/cli/python${PYTHONPATH:+:$PYTHONPATH}" \
-    "$base_test_python" -m pytest
+base_test_is_source_checkout() {
+    command -v git >/dev/null 2>&1 || return 1
+    git -C "$base_test_home" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
+base_test_run_python_suite() {
+    env "${base_test_unset_env[@]}" \
+        PYTHONPATH="$base_test_home/lib/python:$base_test_home/cli/python${PYTHONPATH:+:$PYTHONPATH}" \
+        "$base_test_python" -m pytest
+}
+
+base_test_run_python_suite
+
+if ! base_test_is_source_checkout; then
+    printf "INFO: Base source checkout not detected at '%s'.\n" "$base_test_home" >&2
+    printf 'INFO: Skipping source-checkout-only Bats tests for packaged Base.\n' >&2
+    printf "INFO: Run 'env -u BASE_HOME ./bin/base-test' from a Base source checkout for the full developer suite.\n" >&2
+    exit 0
+fi
 
 env "${base_test_unset_env[@]}" \
     bats \
@@ -51,6 +67,7 @@ env "${base_test_unset_env[@]}" \
     lib/bash/std/tests/lib_std.bats \
     lib/bash/version/tests/lib_version.bats \
     lib/shell/completions/tests/completions.bats \
+    tests/base_test.bats \
     tests/base_init.bats \
     tests/bootstrap.bats \
     tests/install.bats \

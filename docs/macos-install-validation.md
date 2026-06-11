@@ -132,6 +132,12 @@ Accept the health checks when:
 - `basectl logs --path` prints the log directory path
 - `basectl logs --command setup` can read recent setup logs without a traceback
 
+`basectl test base` is safe to run from a Homebrew-managed Base install, but it
+is not the full developer source suite. It runs the packaged Python test layer
+and skips source-checkout-only BATS and integration tests with guidance to run
+`env -u BASE_HOME ./bin/base-test` from a Base source checkout for full
+developer validation.
+
 ### Reference Project Smoke Test
 
 Use `base-demo` to prove project discovery and project commands from a Homebrew

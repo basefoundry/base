@@ -43,11 +43,17 @@ BATS tests next to Bash commands and libraries cover shell parsing, dispatch,
 small command contracts, and failure messages. Keep these focused on one command
 or library at a time.
 
-Run the full command/library suite through:
+From a source checkout, run the full command/library suite through:
 
 ```bash
-basectl test base
+env -u BASE_HOME ./bin/base-test
 ```
+
+`basectl test base` delegates to the same runner when the `base` project
+resolves to a source checkout. In a packaged install such as Homebrew,
+`basectl test base` is package-aware: it runs the packaged Python test layer and
+skips source-checkout-only BATS and integration tests with a message pointing
+back to the source checkout command above.
 
 ## Integration Tests
 
