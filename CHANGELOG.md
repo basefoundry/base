@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-10
+
 ### Added
 
 - Added the local observability model for future command history, last-error
@@ -107,7 +109,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
   instances keyed by `(id, name)` and report empty required variables as empty.
 - Removed the placeholder `BASE-P000` default from `ArtifactCheck` so project
   doctor findings must declare explicit stable IDs.
-- Updated the README status section to match the current `0.3.0` release.
+- Updated the README status section to match the current `0.4.0` release.
 - Fixed `basectl repo init` to create new repositories under the configured
   workspace root instead of the caller's current directory.
 - Fixed `basectl repo init --dry-run` to explicitly report planned GitHub
