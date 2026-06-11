@@ -503,6 +503,67 @@ EOF
     grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payload"
 }
 
+@test "basectl repo configure warns when GitHub plan blocks rulesets" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    printf '%s\n' "gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" >&2
+    exit 1
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
+    [[ "$output" == *"Default branch protection skipped"* ]]
+    [[ "$output" == *"GitHub Pro"* ]]
+    [[ "$output" == *"make this repository public"* ]]
+}
+
+@test "basectl repo configure fails for unexpected ruleset lookup errors" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    printf '%s\n' "gh: API rate limit exceeded. (HTTP 403)" >&2
+    exit 1
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 1 ]
+    grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
+    [[ "$output" == *"Unable to inspect GitHub rulesets for 'codeforester/base-demo'."* ]]
+    [[ "$output" != *"Default branch protection skipped"* ]]
+}
+
 @test "basectl repo init configures GitHub when repo is provided" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 

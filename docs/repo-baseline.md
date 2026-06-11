@@ -192,6 +192,12 @@ require status checks, approval counts, CODEOWNERS, teams, or repository
 secrets. Pass `--no-protect-default-branch` when a repository intentionally
 skips this Base-managed ruleset.
 
+GitHub rulesets are available for public repositories on GitHub Free and for
+public and private repositories on GitHub Pro, Team, or Enterprise plans. When
+GitHub reports that rulesets are unavailable for a private repository's plan,
+`repo configure` leaves the supported settings and labels in place, logs a
+warning, and skips default branch protection.
+
 In apply mode, GitHub configuration requires the GitHub CLI and an authenticated
 session:
 
