@@ -23,7 +23,7 @@ base_bash_profile_debug() {
 }
 
 base_bash_profile_snippet_dir() {
-    cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
+    cd -L -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -L
 }
 
 base_bash_profile_source_baserc_guard() {

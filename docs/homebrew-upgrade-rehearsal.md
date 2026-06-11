@@ -76,6 +76,13 @@ path, and archive checksum used for the rehearsal.
 Verify the upgraded install:
 
 ```bash
+env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  /usr/local/bin/basectl update-profile
 env HOME="$TEST_ROOT/home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
   bash -lc 'command -v basectl && basectl version'
 env HOME="$TEST_ROOT/home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -101,6 +108,8 @@ Accept the rehearsal only when:
 - The `~/.base.d/config.yaml` checksum is unchanged.
 - The Base virtual environment still exists and `basectl check` accepts it.
 - Fresh Bash and Zsh login shells resolve `basectl` to the Homebrew install.
+- Fresh Bash and Zsh login shells report `BASE_HOME` on the stable Homebrew
+  `opt` path, not on a versioned `Cellar/base/<version>` path.
 - `basectl projects list` still discovers the scratch project.
 - `basectl setup`, `check`, `doctor`, and `test` pass for the scratch project.
 
@@ -162,3 +171,48 @@ Update Command Line Tools on the rehearsal host, or rerun this checklist on a
 host where `brew doctor` does not block package installation. Issue #526 should
 remain open until the actual Homebrew upgrade command and post-upgrade checks
 complete successfully.
+
+## 2026-06-10 Run Record
+
+Issue: #526, with follow-up #576.
+
+Result: upgrade succeeded, but shell startup exposed a stale Cellar path problem.
+
+Observed result:
+
+- `brew upgrade codeforester/base/base` exited zero and upgraded Base from
+  `0.3.0` to `0.4.0`.
+- Homebrew cleanup removed `/usr/local/Cellar/base/0.3.0`.
+- The active shell still attempted to run the removed
+  `/usr/local/Cellar/base/0.3.0/libexec/bin/basectl` until Bash command hashing
+  was cleared.
+- A subsequent login-shell handoff still inherited a readonly `BASE_HOME`
+  pointing at `/usr/local/Cellar/base/0.3.0/libexec`, while the refreshed
+  profile snippet pointed at `/usr/local/Cellar/base/0.4.0/libexec`.
+
+Immediate recovery:
+
+```bash
+hash -r
+env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  /usr/local/bin/basectl update-profile
+exec env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  "$SHELL" -l
+```
+
+Expected fixed behavior:
+
+- Homebrew-managed Base startup preserves `/usr/local/opt/base/libexec` or
+  `/opt/homebrew/opt/base/libexec` when launched through the Homebrew formula.
+- `basectl update-profile` refreshes managed shell snippets with the stable
+  Homebrew install path.
+- Fresh Bash and Zsh login shells no longer depend on a versioned Cellar path
+  that `brew cleanup` can remove during the next upgrade.

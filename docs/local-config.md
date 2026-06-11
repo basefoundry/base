@@ -95,7 +95,8 @@ Project discovery uses this order:
 This distinction matters for Homebrew installs. In a source checkout,
 `BASE_HOME` is usually the `base` repository inside a shared directory such as
 `~/work/base`, so `BASE_HOME`'s parent is a reasonable fallback. In a Homebrew
-install, `BASE_HOME` points to the physical Homebrew install location, not the
+install, `BASE_HOME` points to the stable Homebrew install location, such as
+`/usr/local/opt/base/libexec` or `/opt/homebrew/opt/base/libexec`, not the
 developer's workspace. The first-run default sets `workspace.root` to `~/work`;
 edit that value to make commands such as
 `basectl projects list`, `basectl activate <project>`, and
