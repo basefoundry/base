@@ -24,7 +24,8 @@ the canonical current command list.
 - `basectl workspace <status|check|doctor>` - show read-only workspace project
   status, checks, or diagnostics.
 - `basectl repo <init|check|configure|agent-guidance|installer-template>` -
-  create repository baselines, agent guidance, and installer templates.
+  create repository baselines, configure GitHub repository settings and default
+  branch protection, seed agent guidance, and write installer templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
   non-interactive CI.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,

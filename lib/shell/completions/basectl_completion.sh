@@ -125,13 +125,13 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --dry-run -v -h --help" "$cur"
                     ;;
                 check)
                     _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"
                     ;;
                 configure)
-                    _base_basectl_completion_compgen "--repo --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --dry-run -v -h --help" "$cur"
                     ;;
                 agent-guidance)
                     _base_basectl_completion_compgen "--repo-name --default-branch --validation-command --dry-run -v -h --help" "$cur"

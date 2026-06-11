@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Protected default branches by default during `basectl repo configure`, with
+  `--no-protect-default-branch` for repositories that intentionally skip the
+  Base-managed ruleset.
+
 ### Fixed
 
 - Made `basectl test base` package-aware so Homebrew-installed Base runs the

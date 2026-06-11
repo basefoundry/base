@@ -13,6 +13,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl repo configure [path]"* ]]
     [[ "$output" == *"basectl repo agent-guidance [path]"* ]]
     [[ "$output" == *"basectl repo installer-template [path]"* ]]
+    [[ "$output" == *"--no-protect-default-branch"* ]]
 }
 
 @test "basectl repo installer-template prints the maintained template" {
@@ -365,6 +366,38 @@ EOF
     [[ "$output" != *'Change\ should\ update\ a\ project\ demo'* ]]
 }
 
+@test "basectl repo configure dry-run protects the default branch by default" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base default branch protection"* ]]
+    [[ "$output" == *"~DEFAULT_BRANCH"* ]]
+    [[ "$output" == *"gh api repos/codeforester/base-demo/rulesets"* ]]
+    [[ "$output" == *'"type":"pull_request"'* ]]
+    [[ "$output" == *'"type":"deletion"'* ]]
+    [[ "$output" == *'"type":"non_fast_forward"'* ]]
+}
+
+@test "basectl repo configure can skip default branch protection" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --no-protect-default-branch \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
+    [[ "$output" != *"Base default branch protection"* ]]
+    [[ "$output" != *"rulesets"* ]]
+}
+
 @test "basectl repo configure applies GitHub settings through gh" {
     local repo_dir="$TEST_TMPDIR/repo"
 
@@ -391,6 +424,83 @@ EOF
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create bug --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create needs-demo --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+}
+
+@test "basectl repo configure updates an existing Base ruleset" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    printf '%s\n' "42"
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    printf '%s\n' "api-update $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload"
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "api-update api repos/codeforester/base-demo/rulesets/42 --method PUT" "$TEST_STATE_DIR/gh-args"
+    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payload"
+}
+
+@test "basectl repo configure creates a missing Base ruleset" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
+    printf '%s\n' "api-create $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload"
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "api-create api repos/codeforester/base-demo/rulesets --method POST" "$TEST_STATE_DIR/gh-args"
+    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payload"
 }
 
 @test "basectl repo init configures GitHub when repo is provided" {

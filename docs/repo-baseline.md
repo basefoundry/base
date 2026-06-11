@@ -173,6 +173,7 @@ the current GitHub repository policy:
 - rebase merge disabled
 - delete branch on merge enabled
 - squash commit message set to PR title and description
+- Base-managed default branch protection enabled
 
 They also create or update these labels:
 
@@ -182,6 +183,14 @@ They also create or update these labels:
 - `ci`
 - `security`
 - `needs-demo`
+
+Default branch protection is intentionally modest. `repo configure` creates or
+updates a named repository ruleset, `Base default branch protection`, targeting
+`~DEFAULT_BRANCH`. The ruleset requires pull requests before merge and blocks
+branch deletion and non-fast-forward updates such as force pushes. It does not
+require status checks, approval counts, CODEOWNERS, teams, or repository
+secrets. Pass `--no-protect-default-branch` when a repository intentionally
+skips this Base-managed ruleset.
 
 In apply mode, GitHub configuration requires the GitHub CLI and an authenticated
 session:
@@ -195,10 +204,10 @@ Dry-run mode does not require authentication because it only prints the planned
 
 ## Boundaries
 
-The MVP does not configure branch protection, manage repository secrets, create
-teams, add CODEOWNERS, or force Base-specific PR sections such as `Demo Impact`.
-The optional agent guidance baseline also does not install Superpowers, manage
-`~/.codex/config.toml`, or vendor third-party methodology files. Those are
-separate workflow and policy decisions. Base can grow those capabilities once
-the baseline command has proven useful for real repos such as the Base demo
-project.
+The default branch protection policy does not manage required status checks,
+approval counts, repository secrets, teams, CODEOWNERS, or Base-specific PR
+sections such as `Demo Impact`. The optional agent guidance baseline also does
+not install Superpowers, manage `~/.codex/config.toml`, or vendor third-party
+methodology files. Those are separate workflow and policy decisions. Base can
+grow those capabilities once the baseline command has proven useful for real
+repos such as the Base demo project.
