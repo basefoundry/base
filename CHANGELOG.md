@@ -15,6 +15,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Changed `basectl repo configure` to warn instead of fail when GitHub reports
+  that default branch rulesets are unavailable for a private repository's plan.
 - Made `basectl test base` package-aware so Homebrew-installed Base runs the
   packaged Python test layer and skips source-checkout-only BATS tests with
   clear guidance.

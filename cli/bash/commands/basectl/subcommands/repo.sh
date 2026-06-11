@@ -859,10 +859,19 @@ base_repo_default_branch_ruleset_payload() {
 JSON
 }
 
+base_repo_rulesets_plan_gated_error() {
+    local message="$1"
+
+    [[ "$message" == *"Upgrade to GitHub Pro"* ]] &&
+        [[ "$message" == *"make this repository public"* ]] &&
+        [[ "$message" == *"(HTTP 403)"* ]]
+}
+
 base_repo_configure_default_branch_protection() {
     local dry_run="$1"
     local payload
     local repo="$2"
+    local ruleset_lookup_output=""
     local ruleset_id=""
 
     payload="$(base_repo_default_branch_ruleset_payload)"
@@ -878,11 +887,18 @@ base_repo_configure_default_branch_protection() {
     fi
 
     base_repo_require_gh || return 1
-    ruleset_id="$(gh api "repos/$repo/rulesets" \
-        --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')" || {
+    ruleset_lookup_output="$(gh api "repos/$repo/rulesets" \
+        --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""' 2>&1)" || {
+        if base_repo_rulesets_plan_gated_error "$ruleset_lookup_output"; then
+            log_warn "Default branch protection skipped for '$repo'."
+            log_warn "$ruleset_lookup_output"
+            return 0
+        fi
+        [[ -z "$ruleset_lookup_output" ]] || log_error "$ruleset_lookup_output"
         log_error "Unable to inspect GitHub rulesets for '$repo'."
         return 1
     }
+    ruleset_id="$ruleset_lookup_output"
 
     if [[ -n "$ruleset_id" ]]; then
         printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - || {
