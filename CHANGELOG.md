@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-10
+
 ### Fixed
 
 - Improved Bash startup recovery guidance when an existing shell still has a

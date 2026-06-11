@@ -3,7 +3,7 @@
 ![Tests](https://github.com/codeforester/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/codeforester/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Version](https://img.shields.io/badge/version-0.4.1-blue)
+![Version](https://img.shields.io/badge/version-0.4.2-blue)
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
@@ -589,11 +589,11 @@ that file, but users own how it is edited, backed up, or synced. See
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 0.4.1
-basectl release plan --version 0.4.1
-basectl release notes --version 0.4.1
-basectl release publish --version 0.4.1 --dry-run
-basectl release publish --version 0.4.1 --yes
+basectl release check --version 0.4.2
+basectl release plan --version 0.4.2
+basectl release notes --version 0.4.2
+basectl release publish --version 0.4.2 --dry-run
+basectl release publish --version 0.4.2 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
@@ -1190,7 +1190,7 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `0.4.1` is the current release. The implemented command surface covers
+Base `0.4.2` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, release readiness inspection, guarded GitHub release publishing, and
