@@ -7,6 +7,14 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-10
+
+### Fixed
+
+- Preserved explicit Homebrew `opt` symlink paths for `BASE_HOME` and
+  Base-managed shell startup snippets after upgrades, avoiding stale versioned
+  `Cellar` paths that can disappear after `brew cleanup`.
+
 ## [0.4.0] - 2026-06-10
 
 ### Added

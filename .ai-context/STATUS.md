@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `0.3.0` is the current published release. The repo-root `VERSION` file is
+Base `0.4.1` is the current published release. The repo-root `VERSION` file is
 updated only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -27,11 +27,11 @@ The current command surface covers:
 
 ## Active Development Direction
 
-The `v0.4.0` milestone is focused on CI and Linux foundation work while also
-hardening the release, workflow, workspace, and AI-assisted development
-surfaces needed before `1.0.0`.
+Current pre-1.0 work is tracked toward `v1.0.0`. The `0.4.1` patch release
+preserves Homebrew `opt` paths after Base upgrades so shell startup snippets do
+not point at cleaned-up versioned `Cellar` paths.
 
-Recent unreleased work includes:
+Recent released work includes:
 
 - local observability model for future command history and report surfaces
 - read-only workspace manifest support
@@ -42,6 +42,8 @@ Recent unreleased work includes:
 - optional project Git remote reachability diagnostics
 - explicit `ai` prerequisite profile
 - portable project Git workflow guidance from `basectl repo init`
+- Homebrew upgrade path preservation for explicit `BASE_HOME` and shell startup
+  snippets
 
 ## Recent Merged Changes
 
@@ -55,6 +57,7 @@ Recent commits on `master` include:
 - Local observability model documentation.
 - Guarded `basectl release publish`.
 - Pretty-printed workspace JSON output.
+- Homebrew `opt` path preservation after upgrades.
 
 ## Useful Orientation Links
 
