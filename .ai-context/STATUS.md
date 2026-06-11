@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `0.4.1` is the current published release. The repo-root `VERSION` file is
+Base `0.4.2` is the current published release. The repo-root `VERSION` file is
 updated only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -27,9 +27,9 @@ The current command surface covers:
 
 ## Active Development Direction
 
-Current pre-1.0 work is tracked toward `v1.0.0`. The `0.4.1` patch release
-preserves Homebrew `opt` paths after Base upgrades so shell startup snippets do
-not point at cleaned-up versioned `Cellar` paths.
+Current pre-1.0 work is tracked toward `v1.0.0`. The `0.4.2` patch release
+improves Bash startup recovery guidance when an existing shell still has a
+stale readonly `BASE_HOME` after a Homebrew upgrade.
 
 Recent released work includes:
 
@@ -44,6 +44,7 @@ Recent released work includes:
 - portable project Git workflow guidance from `basectl repo init`
 - Homebrew upgrade path preservation for explicit `BASE_HOME` and shell startup
   snippets
+- stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
 
 ## Recent Merged Changes
 
