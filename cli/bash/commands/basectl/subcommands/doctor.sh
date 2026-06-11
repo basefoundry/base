@@ -39,58 +39,6 @@ base_doctor_print_finding() {
     fi
 }
 
-base_doctor_print_json_finding() {
-    local trailing_comma="$1"
-    local status="$2"
-    local finding_id="$3"
-    local name="$4"
-    local message="$5"
-    local fix="${6:-}"
-
-    printf '    {"id":"%s","status":"%s","name":"%s","message":"%s","fix":"%s"}%s\n' \
-        "$(setup_json_escape "$finding_id")" \
-        "$(setup_json_escape "$status")" \
-        "$(setup_json_escape "$name")" \
-        "$(setup_json_escape "$message")" \
-        "$(setup_json_escape "$fix")" \
-        "$trailing_comma"
-}
-
-base_doctor_base_finding_id() {
-    setup_base_check_finding_id "$1"
-}
-
-base_doctor_print_check_json_results() {
-    local count fix i status trailing_comma
-
-    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
-    for ((i = 0; i < count; i++)); do
-        trailing_comma=","
-        if ((i == count - 1)); then
-            trailing_comma=""
-        fi
-
-        fix="${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
-        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
-            status="ok"
-            fix=""
-            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
-                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
-            fi
-        else
-            status="error"
-        fi
-
-        base_doctor_print_json_finding \
-            "$trailing_comma" \
-            "$status" \
-            "$(base_doctor_base_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
-            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
-            "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
-            "$fix"
-    done
-}
-
 base_doctor_count_check_errors() {
     local count errors=0 i
 
@@ -298,7 +246,7 @@ base_doctor_run_json() {
     fi
     printf ',\n'
     printf '  "findings": [\n'
-    base_doctor_print_check_json_results
+    setup_print_check_json_results
     printf '  ]'
     if setup_profiles_enabled || [[ -n "$project" ]]; then
         printf ',\n'
