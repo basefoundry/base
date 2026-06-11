@@ -12,6 +12,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added opt-in pull request creation for `basectl repo init --pr` so generated
   repository baselines can move through review before merge.
 
+### Fixed
+
+- Fixed `basectl repo agent-guidance` so it works from a repository directory
+  without an explicit path and shows command-specific help.
+
 ## [0.4.2] - 2026-06-10
 
 ### Fixed

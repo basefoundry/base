@@ -60,6 +60,29 @@ base_repo_usage_error() {
     return 2
 }
 
+base_repo_agent_guidance_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo agent-guidance [path] [options]
+
+Options:
+  --repo-name <name>            Repository name for generated agent guidance. Defaults to the target path basename.
+  --default-branch <name>       Default branch for generated agent guidance. Defaults to main.
+  --validation-command <cmd>    Validation command for generated agent guidance. Defaults to ./tests/validate.sh.
+  --dry-run                     Print planned changes without applying them.
+  -v                            Enable DEBUG logging for this subcommand.
+  -h, --help                    Show this help text.
+
+Create optional repo-local agent guidance files for a Base-managed repository.
+EOF
+}
+
+base_repo_agent_guidance_usage_error() {
+    base_repo_agent_guidance_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
 base_repo_default_description() {
     local name="$1"
 
@@ -92,6 +115,13 @@ base_repo_validate_name() {
 base_repo_target_path() {
     local path="$1"
     local parent name
+
+    case "$path" in
+        "."|"./")
+            pwd -P
+            return 0
+            ;;
+    esac
 
     if [[ "$path" = /* ]]; then
         printf '%s\n' "$path"
@@ -1296,12 +1326,12 @@ base_repo_agent_guidance() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_repo_subcommand_usage
+                base_repo_agent_guidance_usage
                 return 0
                 ;;
             --repo-name)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--repo-name' requires an argument."
+                    base_repo_agent_guidance_usage_error "Option '--repo-name' requires an argument."
                     return $?
                 }
                 repo_name="$2"
@@ -1313,7 +1343,7 @@ base_repo_agent_guidance() {
                 ;;
             --default-branch)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--default-branch' requires an argument."
+                    base_repo_agent_guidance_usage_error "Option '--default-branch' requires an argument."
                     return $?
                 }
                 default_branch="$2"
@@ -1325,7 +1355,7 @@ base_repo_agent_guidance() {
                 ;;
             --validation-command)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--validation-command' requires an argument."
+                    base_repo_agent_guidance_usage_error "Option '--validation-command' requires an argument."
                     return $?
                 }
                 validation_command="$2"
@@ -1345,12 +1375,12 @@ base_repo_agent_guidance() {
                 shift
                 ;;
             -*)
-                base_repo_usage_error "Unknown repo agent-guidance option '$1'."
+                base_repo_agent_guidance_usage_error "Unknown repo agent-guidance option '$1'."
                 return $?
                 ;;
             *)
                 if [[ "$path" != "." ]]; then
-                    base_repo_usage_error "The 'repo agent-guidance' command accepts at most one path."
+                    base_repo_agent_guidance_usage_error "The 'repo agent-guidance' command accepts at most one path."
                     return $?
                 fi
                 path="$1"
@@ -1362,11 +1392,11 @@ base_repo_agent_guidance() {
     root="$(base_repo_target_path "$path")"
     [[ -n "$repo_name" ]] || repo_name="$(basename -- "$root")"
     [[ -n "$default_branch" ]] || {
-        base_repo_usage_error "Option '--default-branch' requires a non-empty value."
+        base_repo_agent_guidance_usage_error "Option '--default-branch' requires a non-empty value."
         return $?
     }
     [[ -n "$validation_command" ]] || {
-        base_repo_usage_error "Option '--validation-command' requires a non-empty value."
+        base_repo_agent_guidance_usage_error "Option '--validation-command' requires a non-empty value."
         return $?
     }
     base_repo_validate_name "$repo_name" || return 2

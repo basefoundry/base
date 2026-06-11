@@ -71,6 +71,37 @@ load ./basectl_helpers.bash
     [ ! -e "$repo_dir" ]
 }
 
+@test "basectl repo agent-guidance prints command-specific help" {
+    run_basectl repo agent-guidance --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo agent-guidance [path] [options]"* ]]
+    [[ "$output" == *"--repo-name <name>"* ]]
+    [[ "$output" == *"--default-branch <name>"* ]]
+    [[ "$output" == *"--validation-command <cmd>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--repo <owner/name>"* ]]
+    [[ "$output" != *"--private"* ]]
+    [[ "$output" != *"--public"* ]]
+}
+
+@test "basectl repo agent-guidance defaults to current directory name" {
+    local repo_dir="$TEST_TMPDIR/current-demo"
+
+    mkdir -p "$repo_dir"
+
+    cd "$repo_dir"
+    run_basectl repo agent-guidance
+
+    [ "$status" -eq 0 ]
+    [ -f "$repo_dir/AGENTS.md" ]
+    [ -f "$repo_dir/skills.md" ]
+    [ -f "$repo_dir/.github/pull_request_template.md" ]
+    grep -Fq "# Agent Instructions for current-demo" "$repo_dir/AGENTS.md"
+    grep -Fq "# Project Skills for current-demo" "$repo_dir/skills.md"
+}
+
 @test "basectl repo agent-guidance creates optional guidance baseline" {
     local repo_dir="$TEST_TMPDIR/agent-demo"
 
