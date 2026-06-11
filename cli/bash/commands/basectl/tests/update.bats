@@ -9,8 +9,9 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl update [options]"* ]]
-    [[ "$output" == *"Update the Base repository from Git"* ]]
+    [[ "$output" == *"Update Base from Git for source checkouts, or through Homebrew"* ]]
     [[ "$output" == *"Tracked Base files must be clean"* ]]
+    [[ "$output" == *"brew upgrade codeforester/base/base"* ]]
 }
 
 @test "basectl update dry-run reports planned update and setup" {
@@ -30,6 +31,132 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would update Base repository at '$BASE_REPO_ROOT'."* ]]
     [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after updating."* ]]
+}
+
+@test "basectl update dry-run reports Homebrew handoff without running brew" {
+    local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
+
+    mkdir -p "$fake_base/bin"
+    touch "$fake_base/bin/basectl"
+    chmod +x "$fake_base/bin/basectl"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_run_homebrew_upgrade() { printf "brew should not run\n"; return 99; }
+            base_update_run_homebrew_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main --dry-run
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: brew upgrade codeforester/base/base"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade with inherited Base environment cleared."* ]]
+    [[ "$output" != *"brew should not run"* ]]
+    [[ "$output" != *"setup should not run"* ]]
+}
+
+@test "basectl update runs exact Homebrew package upgrade and clears Base env for setup" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
+    local brew_log="$TEST_TMPDIR/brew.log"
+    local setup_log="$TEST_TMPDIR/setup.log"
+
+    mkdir -p "$fake_bin" "$fake_base/bin"
+    cat > "$fake_bin/brew" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$brew_log"
+exit 0
+EOF
+    chmod +x "$fake_bin/brew"
+    cat > "$fake_base/bin/basectl" <<EOF
+#!/usr/bin/env bash
+printf 'args=%s\n' "\$*" >> "$setup_log"
+printf 'BASE_HOME=%s\n' "\${BASE_HOME-unset}" >> "$setup_log"
+printf 'BASE_PROJECT=%s\n' "\${BASE_PROJECT-unset}" >> "$setup_log"
+EOF
+    chmod +x "$fake_base/bin/basectl"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_PROJECT=stale-project \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$brew_log")" = "upgrade codeforester/base/base" ]
+    [[ "$(cat "$setup_log")" == *"args=setup"* ]]
+    [[ "$(cat "$setup_log")" == *"BASE_HOME=unset"* ]]
+    [[ "$(cat "$setup_log")" == *"BASE_PROJECT=unset"* ]]
+    [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
+    [[ "$output" == *"Running Homebrew upgrade for codeforester/base/base."* ]]
+    [[ "$output" == *"Running basectl setup after Homebrew upgrade."* ]]
+    [[ "$output" == *"Base update is complete."* ]]
+}
+
+@test "basectl update uses current Homebrew opt basectl after Cellar-launched upgrades" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local homebrew="$TEST_TMPDIR/homebrew"
+    local cellar_base="$homebrew/Cellar/base/0.4.0/libexec"
+    local opt_prefix="$homebrew/opt/base"
+    local opt_base="$opt_prefix/libexec"
+    local setup_log="$TEST_TMPDIR/setup.log"
+
+    mkdir -p "$fake_bin" "$cellar_base/bin" "$opt_base/bin"
+    touch "$cellar_base/bin/basectl"
+    chmod +x "$cellar_base/bin/basectl"
+    cat > "$fake_bin/brew" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "--prefix" ]]; then
+    printf '%s\n' "$opt_prefix"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$fake_bin/brew"
+    cat > "$opt_base/bin/basectl" <<EOF
+#!/usr/bin/env bash
+printf 'opt-basectl args=%s\n' "\$*" >> "$setup_log"
+printf 'BASE_HOME=%s\n' "\${BASE_HOME-unset}" >> "$setup_log"
+EOF
+    chmod +x "$opt_base/bin/basectl"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$cellar_base" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$setup_log")" == *"opt-basectl args=setup"* ]]
+    [[ "$(cat "$setup_log")" == *"BASE_HOME=unset"* ]]
 }
 
 @test "basectl update refuses dirty worktrees before pulling" {

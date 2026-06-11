@@ -19,17 +19,159 @@ Options:
   -h, --help  Show this help text.
 
 Purpose:
-  Update the Base repository from Git, then run basectl setup.
+  Update Base from Git for source checkouts, or through Homebrew for Homebrew
+  installs, then run basectl setup.
 
 Notes:
   - The repository must be on its default branch.
   - Tracked Base files must be clean; untracked files are left to Git's normal
     pull-time overwrite protection.
+  - Homebrew installs update only the Base formula:
+    brew upgrade codeforester/base/base
 EOF
 }
 
 base_update_source_git_library() {
     import_base_lib git/lib_git.sh
+}
+
+base_update_homebrew_package() {
+    printf '%s\n' "codeforester/base/base"
+}
+
+base_update_is_homebrew_install() {
+    local base_home="$1"
+
+    case "$base_home" in
+        */opt/base/libexec|*/Cellar/base/*/libexec)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    [[ -d "$base_home" ]] || return 1
+    [[ -f "$base_home/base_init.sh" || -x "$base_home/bin/basectl" ]]
+}
+
+base_update_homebrew_prefix() {
+    local package="$1"
+    local prefix
+
+    if prefix="$(brew --prefix base 2>/dev/null)" && [[ -n "$prefix" ]]; then
+        printf '%s\n' "$prefix"
+        return 0
+    fi
+
+    if prefix="$(brew --prefix "$package" 2>/dev/null)" && [[ -n "$prefix" ]]; then
+        printf '%s\n' "$prefix"
+        return 0
+    fi
+
+    return 1
+}
+
+base_update_homebrew_basectl() {
+    local base_home="$1"
+    local package="$2"
+    local basectl
+    local prefix
+
+    case "$base_home" in
+        */opt/base/libexec)
+            basectl="$base_home/bin/basectl"
+            if [[ -x "$basectl" ]]; then
+                printf '%s\n' "$basectl"
+                return 0
+            fi
+            ;;
+    esac
+
+    if prefix="$(base_update_homebrew_prefix "$package")"; then
+        basectl="$prefix/libexec/bin/basectl"
+        if [[ -x "$basectl" ]]; then
+            printf '%s\n' "$basectl"
+            return 0
+        fi
+
+        basectl="$prefix/bin/basectl"
+        if [[ -x "$basectl" ]]; then
+            printf '%s\n' "$basectl"
+            return 0
+        fi
+    fi
+
+    basectl="$base_home/bin/basectl"
+    if [[ -x "$basectl" ]]; then
+        printf '%s\n' "$basectl"
+        return 0
+    fi
+
+    return 1
+}
+
+base_update_run_homebrew_upgrade() {
+    local package="$1"
+
+    brew upgrade "$package"
+}
+
+base_update_run_homebrew_setup() {
+    local base_home="$1"
+    local package="$2"
+    local basectl
+
+    basectl="$(base_update_homebrew_basectl "$base_home" "$package")" || {
+        log_error "Unable to locate Homebrew-managed basectl after upgrade."
+        return 1
+    }
+
+    env \
+        -u BASE_HOME \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        -u BASE_PLATFORM_TOOLS_HOME \
+        -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        -u BASE_PROJECT \
+        -u BASE_PROJECT_ROOT \
+        -u BASE_PROJECT_MANIFEST \
+        -u BASE_PROJECT_VENV_DIR \
+        "$basectl" setup
+}
+
+base_update_homebrew_install() {
+    local dry_run="$1"
+    local package
+
+    package="$(base_update_homebrew_package)"
+    log_info "Detected Homebrew-managed Base install at '$BASE_HOME'."
+
+    if ((dry_run)); then
+        log_info "[DRY-RUN] Would run: brew upgrade $package"
+        log_info "[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade with inherited Base environment cleared."
+        return 0
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        log_error "Homebrew-managed Base install detected, but 'brew' is not available in PATH."
+        return 1
+    fi
+
+    log_info "Running Homebrew upgrade for $package."
+    base_update_run_homebrew_upgrade "$package" || return $?
+
+    log_info "Running basectl setup after Homebrew upgrade."
+    base_update_run_homebrew_setup "$BASE_HOME" "$package" || return $?
+
+    log_info "Base update is complete."
 }
 
 base_update_current_branch() {
@@ -112,6 +254,10 @@ base_update_subcommand_main() {
     log_debug "Running 'basectl update'."
 
     branch="$(base_update_current_branch "$BASE_HOME")" || {
+        if base_update_is_homebrew_install "$BASE_HOME"; then
+            base_update_homebrew_install "$dry_run"
+            return $?
+        fi
         log_error "Base home '$BASE_HOME' is not a Git repository."
         return 1
     }
