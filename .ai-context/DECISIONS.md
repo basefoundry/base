@@ -31,7 +31,9 @@ architecture discussion.
 ## Activation And Environment
 
 - Project activation uses a subshell rather than deactivate logic.
-- `BASE_HOME` is the physical Base install root, not the workspace root.
+- `BASE_HOME` is the Base install root, not the workspace root. When callers
+  provide an explicit Homebrew `opt` symlink path, Base preserves that logical
+  path instead of normalizing it to a versioned `Cellar` path.
 - Project discovery uses configured `workspace.root` when present, then falls
   back to the parent of `BASE_HOME` in source-checkout layouts.
 - `~/.baserc` is user-managed and narrow; it is not a general shell startup

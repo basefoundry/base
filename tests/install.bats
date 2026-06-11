@@ -59,7 +59,7 @@ run_real_installer() {
 assert_base_init_loads() {
     local install_dir="$1"
     local resolved_install_dir
-    resolved_install_dir="$(cd "$install_dir" && pwd -P)"
+    resolved_install_dir="$(cd -L "$install_dir" && pwd -L)"
 
     run env -i \
         HOME="$TEST_HOME" \
