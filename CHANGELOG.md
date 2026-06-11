@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in pull request creation for `basectl repo init --pr` so generated
+  repository baselines can move through review before merge.
+
 ## [0.4.2] - 2026-06-10
 
 ### Fixed

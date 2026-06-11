@@ -387,6 +387,78 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
+}
+
+@test "basectl repo init --pr opens a baseline pull request" {
+    local commit_files
+    local remote_dir="$TEST_TMPDIR/origin.git"
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Existing project\n' > "$repo_dir/README.md"
+    mkdir -p "$repo_dir/src"
+    printf 'app\n' > "$repo_dir/src/app.txt"
+    commit_all "$repo_dir" "Initial commit"
+    git init --bare "$remote_dir" >/dev/null 2>&1
+    git -C "$repo_dir" remote add origin "$remote_dir"
+    git -C "$repo_dir" push -u origin master >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
+    printf 'master\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_REPO_TEST_STATE_DIR:?}/pr-body"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --pr
+
+    [ "$status" -eq 0 ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "base/repo-baseline-base-demo" ]
+    [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base repository baseline" ]
+    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/repo-baseline-base-demo
+    commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
+    [[ "$commit_files" == *"VERSION"* ]]
+    [[ "$commit_files" == *"base_manifest.yaml"* ]]
+    [[ "$commit_files" != *"src/app.txt"* ]]
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/repo-baseline-base-demo --title Add Base repository baseline --body-file" "$TEST_STATE_DIR/gh-args"
+    ! grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "Add Base-managed repository baseline files." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
+}
+
+@test "basectl repo init --pr requires a clean target worktree" {
+    local repo_dir="$TEST_TMPDIR/dirty-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Dirty demo\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    printf 'draft\n' > "$repo_dir/notes.txt"
+
+    run_basectl repo init dirty-demo --path "$repo_dir" --repo codeforester/dirty-demo --pr
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"repo init --pr requires a clean Git worktree"* ]]
+    [ ! -f "$repo_dir/base_manifest.yaml" ]
 }
 
 @test "basectl repo init can create a public GitHub repo when requested" {

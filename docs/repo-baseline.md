@@ -32,6 +32,24 @@ That keeps `repo init base-demo` stable even when it is run from inside another
 repository or from a nested directory such as `~/work/base/docs`. Use
 `--path <path>` when the new repository should live somewhere else.
 
+Open the generated baseline through a pull request when the target repository
+already exists:
+
+```bash
+basectl repo init base-demo \
+  --path ~/work/base-demo \
+  --repo codeforester/base-demo \
+  --pr
+```
+
+`--pr` requires the target path to be an existing, clean Git worktree. It creates
+or uses the predictable branch `base/repo-baseline-<name>`, writes any missing
+baseline files, commits only the baseline file set, pushes the branch to
+`origin`, and opens a GitHub pull request against the repository default branch.
+This path is for reviewable file changes only; it does not create the GitHub
+repository or change repository settings and labels. Run `basectl repo
+configure` separately when GitHub-side configuration should be applied.
+
 Check the local baseline:
 
 ```bash
