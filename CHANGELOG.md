@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-06-12
+
 ### Added
 
 - Protected default branches by default during `basectl repo configure`, with
@@ -15,6 +17,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added Base-managed GitHub Project metadata configuration through
   `basectl repo init`, `basectl repo configure`, and the lower-level
   `basectl gh project` surface.
+- Added diagnostic workflow guidance for preserving failure evidence and
+  routing follow-up fixes.
 
 ### Fixed
 
