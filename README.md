@@ -138,6 +138,7 @@ Current implemented commands include:
 - `basectl setup [project]`
 - `basectl check`
 - `basectl doctor`
+- `basectl ci <setup|check|doctor> <project>`
 - `basectl clean --older-than <age>`
 - `basectl clean --keep-last <count>`
 - `basectl config path`
@@ -162,6 +163,12 @@ Current implemented commands include:
 - `basectl export-context [project]`
 - `basectl onboard`
 - `basectl version`
+
+`basectl ci` wraps setup, check, and doctor with CI-safe defaults such as
+non-interactive behavior and JSON-capable output. See
+[basectl ci](docs/basectl-ci.md) for the CI contract, and
+[Command Quick Reference](docs/command-reference.md) for a scannable command
+lookup table.
 
 The important idea is that the user should not need to memorize a different
 bootstrap story for every repository in the workspace.
@@ -888,6 +895,7 @@ feature designs, and ecosystem boundary decisions.
 Key starting points:
 
 - [FAQ](FAQ.md)
+- [Command Quick Reference](docs/command-reference.md)
 - [Technical Overview](docs/technical-overview.md)
 - [Base Newcomer Orientation](docs/presentations/base-newcomer-orientation.md)
 - [Architecture](docs/architecture.md)
@@ -1208,8 +1216,8 @@ Base follows a few simple principles.
 Base `0.4.4` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
-creation, release readiness inspection, guarded GitHub release publishing, and
-GitHub workflow helpers.
+creation, CI-safe setup/check/doctor entry points, release readiness inspection,
+guarded GitHub release publishing, and GitHub workflow helpers.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,

@@ -7,10 +7,22 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added a one-page command quick reference for the current `basectl` command
+  surface.
+
 ### Changed
 
 - Updated the Homebrew release process to require bottle publishing for
   supported macOS installs before accepting the 1.0 upgrade rehearsal.
+- Removed the stale `CLAUDE.md` agent guide in favor of the canonical
+  `AGENTS.md` guidance.
+
+### Fixed
+
+- Fixed documentation drift for `basectl logs` syntax, project virtual
+  environment location, and README coverage of the `basectl ci` command.
 
 ## [0.4.4] - 2026-06-12
 

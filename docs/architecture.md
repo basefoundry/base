@@ -339,7 +339,7 @@ active, its venv is active. Showing both would be redundant. The prompt stays cl
 
 - Created per project during `basectl setup <project>` or `basectl setup` when scanning
   all projects
-- Lives inside the project directory (e.g., `.venv/`)
+- Lives at `~/.base.d/<project>/.venv`
 - Activated automatically when `basectl activate <project>` spawns the project subshell
 - Deactivated automatically when the subshell exits
 

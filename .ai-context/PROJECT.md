@@ -4,7 +4,7 @@
 
 - Name: Base
 - Repository: `github.com/codeforester/base`
-- Current release: `0.4.2`
+- Current release: `0.4.4`
 - Primary platform: macOS
 - Future platform direction: Linux support is a design target; Windows is not
   currently in scope.
