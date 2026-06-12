@@ -125,13 +125,13 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 check)
                     _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"
                     ;;
                 configure)
-                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 agent-guidance)
                     _base_basectl_completion_compgen "--repo-name --default-branch --validation-command --dry-run -v -h --help" "$cur"
@@ -178,7 +178,7 @@ _base_basectl_completion() {
         gh)
             case "${COMP_WORDS[2]:-}" in
                 "")
-                    _base_basectl_completion_compgen "issue pr branch worktree todo" "$cur"
+                    _base_basectl_completion_compgen "issue pr branch worktree todo project" "$cur"
                     ;;
                 issue)
                     if ((COMP_CWORD == 3)); then
@@ -212,6 +212,26 @@ _base_basectl_completion() {
                     else
                         _base_basectl_completion_compgen "--dry-run --file -h --help" "$cur"
                     fi
+                    ;;
+                project)
+                    case "${COMP_WORDS[3]:-}" in
+                        "")
+                            _base_basectl_completion_compgen "doctor configure issue" "$cur"
+                            ;;
+                        doctor)
+                            _base_basectl_completion_compgen "--project --owner --schema -h --help" "$cur"
+                            ;;
+                        configure)
+                            _base_basectl_completion_compgen "--project --owner --schema --initiative-option --repo --dry-run -h --help" "$cur"
+                            ;;
+                        issue)
+                            if ((COMP_CWORD == 4)); then
+                                _base_basectl_completion_compgen "set-fields" "$cur"
+                            else
+                                _base_basectl_completion_compgen "--repo --project --owner --status --priority --area --initiative --size --dry-run -h --help" "$cur"
+                            fi
+                            ;;
+                    esac
                     ;;
             esac
             ;;

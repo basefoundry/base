@@ -15,14 +15,17 @@ Usage:
   basectl gh pr checks [gh options...]
   basectl gh pr ready [gh options...]
   basectl gh pr merge [gh options...]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-roadmap]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--initiative-option <name>] [--dry-run]
+  basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
   basectl gh worktree prune [--dry-run] [--yes]
   basectl gh todo import [--dry-run] [--file <path>]
 
 Purpose:
-  Manage GitHub issues, pull requests, branch naming, and repository hygiene
-  using Base's opinionated workflow.
+  Manage GitHub issues, pull requests, Project metadata, branch naming, and
+  repository hygiene using Base's opinionated workflow.
 
 Branch naming:
   <category>/<issue>-<YYYYMMDD>-<slug>
@@ -953,6 +956,16 @@ base_gh_do_todo() {
     esac
 }
 
+base_gh_do_project() {
+    local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
+
+    [[ -x "$wrapper" ]] || {
+        base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+    "$wrapper" --project base base_github_projects project "$@"
+}
+
 base_gh_subcommand_main() {
     local area="${1:-}"
     shift || true
@@ -960,6 +973,7 @@ base_gh_subcommand_main() {
     case "$area" in
         issue) base_gh_do_issue "$@" ;;
         pr) base_gh_do_pr "$@" ;;
+        project) base_gh_do_project "$@" ;;
         branch) base_gh_do_branch "$@" ;;
         worktree) base_gh_do_worktree "$@" ;;
         todo) base_gh_do_todo "$@" ;;

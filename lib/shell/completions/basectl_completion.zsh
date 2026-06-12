@@ -156,6 +156,11 @@ _base_basectl_completion() {
                         '--public[Create a public GitHub repository when needed]' \
                         '--no-configure[Skip GitHub configuration]' \
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
+                        '--project[GitHub Project title]:title:' \
+                        '--project-owner[GitHub Project owner]:owner:' \
+                        '--project-schema[Project metadata schema]:schema:(base-roadmap)' \
+                        '--initiative-option[Initiative option to seed]:name:' \
+                        '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
@@ -172,6 +177,11 @@ _base_basectl_completion() {
                         '2:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
+                        '--project[GitHub Project title]:title:' \
+                        '--project-owner[GitHub Project owner]:owner:' \
+                        '--project-schema[Project metadata schema]:schema:(base-roadmap)' \
+                        '--initiative-option[Initiative option to seed]:name:' \
+                        '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
@@ -268,7 +278,7 @@ _base_basectl_completion() {
         gh)
             case "${words[3]:-}" in
                 issue)
-                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
                         '2:issue command:(list create start)' \
                         '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
@@ -276,11 +286,11 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pr)
-                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
                         '2:pr command:(create status checks ready merge)'
                     ;;
                 branch)
-                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
                         '2:branch command:(stale prune)' \
                         '--days[Stale threshold in days]:days:' \
                         '--dry-run[Show planned deletions]' \
@@ -289,21 +299,64 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 worktree)
-                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
                         '2:worktree command:(prune)' \
                         '--dry-run[Show planned removals]' \
                         '--yes[Apply worktree pruning]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 todo)
-                    _arguments '1:gh area:(issue pr branch worktree todo)' \
+                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
                         '2:todo command:(import)' \
                         '--dry-run[Show planned issues]' \
                         '--file[TODO file]:path:_files' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                project)
+                    case "${words[4]:-}" in
+                        doctor)
+                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                                '2:project command:(doctor configure issue)' \
+                                '--project[GitHub Project title]:title:' \
+                                '--owner[GitHub Project owner]:owner:' \
+                                '--schema[Project metadata schema]:schema:(base-roadmap)' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        configure)
+                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                                '2:project command:(doctor configure issue)' \
+                                '--project[GitHub Project title]:title:' \
+                                '--owner[GitHub Project owner]:owner:' \
+                                '--schema[Project metadata schema]:schema:(base-roadmap)' \
+                                '--initiative-option[Initiative option to seed]:name:' \
+                                '--repo[GitHub repository]:repo:' \
+                                '--dry-run[Print planned changes]' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        issue)
+                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                                '2:project command:(doctor configure issue)' \
+                                '3:issue command:(set-fields)' \
+                                '4:issue number:' \
+                                '--repo[GitHub repository]:repo:' \
+                                '--project[GitHub Project title]:title:' \
+                                '--owner[GitHub Project owner]:owner:' \
+                                '--status[Status option]:status:' \
+                                '--priority[Priority option]:priority:' \
+                                '--area[Area option]:area:' \
+                                '--initiative[Initiative option]:initiative:' \
+                                '--size[Size option]:size:' \
+                                '--dry-run[Print planned changes]' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        *)
+                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                                '2:project command:(doctor configure issue)'
+                            ;;
+                    esac
+                    ;;
                 *)
-                    _arguments '1:gh area:(issue pr branch worktree todo)'
+                    _arguments '1:gh area:(issue pr branch worktree todo project)'
                     ;;
             esac
             ;;

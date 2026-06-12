@@ -74,6 +74,15 @@ GitHub changes without applying them. In dry-run mode, `repo init` explicitly
 reports whether it would create a GitHub repository or why GitHub creation is
 being skipped.
 
+`repo init` and `repo configure` also configure the standard GitHub Project
+metadata schema by default when a GitHub repository is known. Pass
+`--no-project` to skip Project V2 metadata, `--project <title>` to override the
+Project title, `--project-owner <login>` to override the owner,
+`--project-schema base-roadmap` to select the schema, and repeat
+`--initiative-option <name>` to seed repository-specific Initiative values.
+`basectl gh project` is the lower-level direct surface for Project inspection,
+schema repair, and issue field updates.
+
 ## Local Baseline
 
 `repo init` creates these files when they do not already exist:
@@ -174,6 +183,7 @@ the current GitHub repository policy:
 - delete branch on merge enabled
 - squash commit message set to PR title and description
 - Base-managed default branch protection enabled
+- standard GitHub Project metadata enabled
 
 They also create or update these labels:
 
@@ -197,6 +207,23 @@ public and private repositories on GitHub Pro, Team, or Enterprise plans. When
 GitHub reports that rulesets are unavailable for a private repository's plan,
 `repo configure` leaves the supported settings and labels in place, logs a
 warning, and skips default branch protection.
+
+The Project metadata schema creates or updates single-select Project fields:
+
+- `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
+- `Priority`: `P0`, `P1`, `P2`, `P3`
+- `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
+  `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
+- `Size`: `S`, `M`, `L`
+- `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
+  `v1.0 Readiness`, `Adoption Polish`, plus values passed with
+  `--initiative-option`
+
+When Project V2 access is unavailable, `repo init` and `repo configure` log a
+warning that includes `gh auth refresh -h github.com -s project`, keep the
+supported repository settings in place, and skip Project metadata. Other
+Project errors remain failures because they can indicate a conflicting field
+schema or a broken GitHub request.
 
 In apply mode, GitHub configuration requires the GitHub CLI and an authenticated
 session:

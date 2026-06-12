@@ -398,6 +398,55 @@ EOF
     [[ "$output" != *"rulesets"* ]]
 }
 
+@test "basectl repo configure dry-run configures project metadata by default" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would configure GitHub Project 'Base Demo Roadmap' for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"--schema base-roadmap"* ]]
+    [[ "$output" == *"Status, Priority, Area, Size, Initiative"* ]]
+}
+
+@test "basectl repo configure can skip project metadata" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --no-project \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
+    [[ "$output" != *"GitHub Project"* ]]
+    [[ "$output" != *"base_github_projects"* ]]
+}
+
+@test "basectl repo configure accepts project metadata overrides" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/bankbuddy \
+        --project "BankBuddy Roadmap" \
+        --project-owner codeforester \
+        --initiative-option MVP \
+        --initiative-option Imports \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would configure GitHub Project 'BankBuddy Roadmap' for 'codeforester/bankbuddy'."* ]]
+    [[ "$output" == *"--owner codeforester"* ]]
+    [[ "$output" == *"--initiative-option MVP"* ]]
+    [[ "$output" == *"--initiative-option Imports"* ]]
+}
+
 @test "basectl repo configure applies GitHub settings through gh" {
     local repo_dir="$TEST_TMPDIR/repo"
 
@@ -418,12 +467,79 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create bug --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create needs-demo --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+}
+
+@test "basectl repo configure applies project metadata through Base project engine" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
+}
+
+@test "basectl repo configure warns when project metadata needs GitHub project scope" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh auth refresh -h github.com -s project\n' >&2
+exit 3
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub Project metadata skipped for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"gh auth refresh -h github.com -s project"* ]]
 }
 
 @test "basectl repo configure updates an existing Base ruleset" {
@@ -453,7 +569,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
@@ -491,7 +607,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
@@ -525,7 +641,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
@@ -556,7 +672,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 1 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
@@ -578,10 +694,16 @@ fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
 
     run env \
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo
 
@@ -589,6 +711,7 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
 }
 
@@ -682,7 +805,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --public
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --public --no-project
 
     [ "$status" -eq 0 ]
     grep -Fq "repo create codeforester/base-demo --public --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"

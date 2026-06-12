@@ -12,6 +12,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Protected default branches by default during `basectl repo configure`, with
   `--no-protect-default-branch` for repositories that intentionally skip the
   Base-managed ruleset.
+- Added Base-managed GitHub Project metadata configuration through
+  `basectl repo init`, `basectl repo configure`, and the lower-level
+  `basectl gh project` surface.
 
 ### Fixed
 
