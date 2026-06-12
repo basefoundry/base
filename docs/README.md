@@ -31,6 +31,9 @@ reference. The filename should answer "what is this about?"
 
 ## Core Documents
 
+- [Technical Overview](technical-overview.md) is the scannable product and
+  technical reference: workspace shape, tech stack, three-layer architecture,
+  manifest contract, command tables, and file locations.
 - [Architecture](architecture.md) describes Base's product direction, command
   model, environment model, manifest shape, and repository conventions.
 - [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
