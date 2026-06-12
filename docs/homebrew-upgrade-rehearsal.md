@@ -24,6 +24,10 @@ upgrade without losing local Base state.
   brew doctor
   brew info codeforester/base/base
   ```
+- Confirm the target formula has bottles for the host or that
+  `brew install --force-bottle codeforester/base/base` succeeds on an equivalent
+  clean install. The release checklist owns bottle creation; this rehearsal
+  should prove an existing user can upgrade through that bottled formula path.
 
 Do not accept the rehearsal if Homebrew cannot install or upgrade packages on
 the host. Fix the host prerequisite first, then rerun the rehearsal.
@@ -105,6 +109,9 @@ shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 Accept the rehearsal only when:
 
 - `brew upgrade codeforester/base/base` exits zero.
+- The upgrade uses a Homebrew bottle on supported macOS hosts, not a normal
+  source build. If Homebrew falls back to source, record why before accepting
+  the rehearsal.
 - The `~/.base.d/config.yaml` checksum is unchanged.
 - The Base virtual environment still exists and `basectl check` accepts it.
 - Fresh Bash and Zsh login shells resolve `basectl` to the Homebrew install.
@@ -216,3 +223,36 @@ Expected fixed behavior:
   Homebrew install path.
 - Fresh Bash and Zsh login shells no longer depend on a versioned Cellar path
   that `brew cleanup` can remove during the next upgrade.
+
+## 2026-06-12 Run Record
+
+Issue: #526, with bottle follow-up #608.
+
+Result: upgrade reached formula fetch and verification, then failed before Base
+install logic ran while Homebrew prepared its non-interactive source-build
+sandbox.
+
+Observed result:
+
+- `brew upgrade codeforester/base/base` attempted to upgrade Base from `0.4.3`
+  to `0.4.4`.
+- Homebrew fetched and verified the `0.4.4` formula archive.
+- Homebrew then failed in `Sandbox#path_filter` while denying reads under the
+  user's home directory:
+
+  ```text
+  Error: Invalid character '(' in path: /Users/sudha/Library/Logs/Skype Helper (Renderer)
+  /usr/local/Homebrew/Library/Homebrew/sandbox.rb:414:in `Sandbox#path_filter`
+  /usr/local/Homebrew/Library/Homebrew/formula_installer.rb:1145:in `FormulaInstaller#build`
+  ```
+
+- Removing that one directory exposed the same failure on another home-directory
+  path containing parentheses.
+
+Interpretation:
+
+This is not a single user cleanup issue. The failure happens before Base's
+formula install logic runs, so Base cannot recover inside the install step. The
+durable Base-side fix is to publish Homebrew bottles for supported macOS hosts
+so normal installs and upgrades do not depend on Homebrew's source-build
+sandbox. Track that release-process fix in #608 before accepting #526.

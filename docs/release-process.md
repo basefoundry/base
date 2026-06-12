@@ -13,12 +13,13 @@ The release spans two repositories:
 - `codeforester/base` owns Base source, release notes, `VERSION`, Git tags, and
   GitHub Releases.
 - `codeforester/homebrew-base` owns the Homebrew formula that installs published
-  Base releases.
+  Base releases, plus the Homebrew bottle artifacts for supported macOS hosts.
 
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
 The formula points at a versioned tag archive and records that archive's
 `sha256`, so the archive must be available before the formula can be updated and
-validated.
+validated. Supported macOS installs should use Homebrew bottles; source builds
+remain a fallback for unsupported hosts or explicit source-build validation.
 
 ## Version Policy
 
@@ -101,22 +102,25 @@ Complete these steps in `codeforester/base`:
 
 9. Confirm the release tag and GitHub Release are visible on GitHub.
 
-## Homebrew Tap Checklist
+## Homebrew Tap And Bottle Checklist
 
 Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
 
 1. Create a Homebrew tap update issue or PR for the new Base version.
-2. Update `Formula/base.rb`:
+2. Create a tap release branch. Do not run the bottle workflow from `master`;
+   it pushes the generated bottle stanza back to the branch that triggered it.
+3. Update `Formula/base.rb`:
    - `url` to the new Base tag archive
    - `sha256` to the checksum of that archive
    - `version` to the new Base version
-3. Compute the archive checksum from the published tag:
+4. Compute the archive checksum from the published tag:
 
    ```bash
    curl -fsSL https://github.com/codeforester/base/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256
    ```
 
-4. Validate the formula from the tap repository:
+5. Validate the formula source-build path from the tap repository when the host
+   can run Homebrew source builds:
 
    ```bash
    brew install --build-from-source Formula/base.rb
@@ -124,15 +128,27 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
    brew audit --new --formula Formula/base.rb
    ```
 
-5. Open and merge the tap PR.
-6. Smoke-test the consumer upgrade path:
+6. Run the `Build Base Bottles` GitHub Actions workflow from the tap release
+   branch. The workflow builds bottles on supported macOS runners, uploads
+   bottle tarballs to the tap GitHub Release named `base-vX.Y.Z`, merges the
+   generated bottle JSON into `Formula/base.rb`, and pushes the bottle stanza
+   back to the branch.
+7. Confirm the tap PR includes a `bottle do` block for supported macOS targets
+   before merging. The bottle `root_url` should point at the tap release created
+   by the workflow.
+8. Open or update the tap PR, wait for checks, and merge it.
+9. Smoke-test the consumer bottle and upgrade paths:
 
    ```bash
    brew update
+   brew install --force-bottle codeforester/base/base
+   brew test codeforester/base
    brew upgrade codeforester/base/base
    ```
 
-7. Before 1.0.0, complete the
+   Use `brew reinstall --force-bottle codeforester/base/base` when Base is
+   already installed on the validation host.
+10. Before 1.0.0, complete the
    [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) against a
    release candidate or equivalent test formula. Record the exact commands,
    host facts, pre-upgrade state, post-upgrade checks, and any follow-up issues.

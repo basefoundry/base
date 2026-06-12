@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the Homebrew release process to require bottle publishing for
+  supported macOS installs before accepting the 1.0 upgrade rehearsal.
+
 ## [0.4.4] - 2026-06-12
 
 ### Added
