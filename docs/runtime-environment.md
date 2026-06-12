@@ -108,7 +108,7 @@ are available to project commands, runtime shells, and activation scripts.
 | `BASE_PROJECT` | Base | Resolved project name. Used by Base wrappers, prompts, logs, and project command dispatch. | Do not change after project resolution. Readonly in interactive Base runtime Bash shells. |
 | `BASE_PROJECT_ROOT` | Base | Physical project root directory. Project commands run from this directory. | Do not change after project resolution. Readonly in interactive Base runtime Bash shells. |
 | `BASE_PROJECT_MANIFEST` | Base | Physical path to the project's `base_manifest.yaml`. | Do not change after project resolution. Readonly in interactive Base runtime Bash shells. |
-| `BASE_PROJECT_VENV_DIR` | Shared | Project virtual environment directory. Users may set it before `basectl activate`, `basectl run`, or `basectl demo` to override the default `~/.base.d/<project>/.venv`. | May be set before project resolution. Do not change after Base resolves the project. Readonly in interactive Base runtime Bash shells. |
+| `BASE_PROJECT_VENV_DIR` | Shared | Project virtual environment directory. Users may set it before `basectl activate`, `basectl run`, or `basectl demo` to override the default. Activation defaults to `~/.base.d/<project>/.venv`, except uv-shaped projects with both `pyproject.toml` and `uv.lock` default to `<project-root>/.venv`. | May be set before project resolution. Do not change after Base resolves the project. Readonly in interactive Base runtime Bash shells. |
 
 Readonly shell attributes do not cross arbitrary process boundaries. For
 example, `basectl run` exports project variables to the project command process,

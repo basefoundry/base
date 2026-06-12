@@ -109,6 +109,25 @@ and does not treat `[tool.base]` as an alternate manifest.
 Future uv-managed Python support should use an explicit `python:` manifest
 contract, tracked separately from the first read-only diagnostics slice.
 
+## Interim `uv` Activation Behavior
+
+Until the full uv-managed Python contract is implemented, `basectl activate`
+uses a conservative project-shape detector to avoid a misleading dual-venv
+shell. When the project root contains both `pyproject.toml` and `uv.lock`, and
+the caller has not set `BASE_PROJECT_VENV_DIR`, activation uses the repo-local
+uv environment at:
+
+```text
+<project-root>/.venv
+```
+
+This only affects the activated shell's virtual environment path. It does not
+make Base install dependencies from `pyproject.toml`, run `uv sync`, enforce the
+lockfile, or delegate `basectl run` through `uv run`. Full uv-managed setup,
+diagnostics, and command delegation remain part of the later uv support work.
+If the repo-local uv environment does not exist yet, activation asks the user to
+run `uv sync` in the project root.
+
 ## Non-Goals
 
 The structured Python section should not turn Base into a Python packaging

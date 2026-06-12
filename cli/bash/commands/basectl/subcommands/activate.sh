@@ -32,11 +32,23 @@ base_activate_resolve_project() {
     env -u BASE_PROJECT_VENV_DIR "$wrapper" --project base base_projects resolve "$project" "$@"
 }
 
+base_activate_project_uses_uv() {
+    local project_root="$1"
+
+    [[ -n "$project_root" && -f "$project_root/pyproject.toml" && -f "$project_root/uv.lock" ]]
+}
+
 base_activate_project_venv_dir() {
     local project="$1"
+    local project_root="${2:-}"
 
     if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
+        return 0
+    fi
+
+    if base_activate_project_uses_uv "$project_root"; then
+        printf '%s\n' "$project_root/.venv"
         return 0
     fi
 
@@ -44,7 +56,7 @@ base_activate_project_venv_dir() {
 }
 
 base_activate_subcommand_main() {
-    local project="" wrapper resolve_output activate_shell
+    local project="" wrapper resolve_output activate_shell venv_fix
     local resolved_name project_root manifest_path venv_dir shell_rc
     local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
     local args=()
@@ -105,9 +117,13 @@ base_activate_subcommand_main() {
         fatal_error "Unable to resolve project '$project'."
     }
 
-    venv_dir="$(base_activate_project_venv_dir "$resolved_name")"
+    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root")"
+    venv_fix="Run 'basectl setup $resolved_name' first."
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_activate_project_uses_uv "$project_root"; then
+        venv_fix="Run 'uv sync' in '$project_root' first."
+    fi
     [[ -x "$venv_dir/bin/python" ]] || {
-        fatal_error "Project virtual environment Python was not found at '$venv_dir/bin/python'. Run 'basectl setup $resolved_name' first."
+        fatal_error "Project virtual environment Python was not found at '$venv_dir/bin/python'. $venv_fix"
     }
 
     shell_rc="$BASE_HOME/lib/bash/runtime/bashrc"

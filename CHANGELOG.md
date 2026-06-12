@@ -23,6 +23,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Fixed documentation drift for `basectl logs` syntax, project virtual
   environment location, and README coverage of the `basectl ci` command.
+- Made `basectl activate` prefer a uv project's repo-local `.venv` when
+  `pyproject.toml` and `uv.lock` are present, avoiding a misleading
+  Base-managed virtual environment in activated shells.
 
 ## [0.4.4] - 2026-06-12
 
