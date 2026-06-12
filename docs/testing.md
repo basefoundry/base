@@ -24,6 +24,34 @@ and the final verification command in the PR. Do not claim a bug is fixed,
 tests pass, or a contract is preserved without fresh output from the current
 checkout or worktree.
 
+## Diagnostic Workflow
+
+When a failure crosses Base boundaries, inspect current state before running
+commands that intentionally change the checkout or machine. Start with narrow
+diagnostics in this order:
+
+```bash
+basectl check <project>
+basectl doctor <project>
+basectl test <project>
+```
+
+`basectl check` and `basectl doctor` are non-mutating diagnostics. They should
+not install dependencies, rewrite shell profiles, change manifests, or mutate
+repositories.
+
+Map each symptom to its likely ownership before changing code:
+
+- Shell startup/profile changes: `lib/shell/` and
+  `cli/bash/commands/basectl/subcommands/update_profile.sh`.
+- Runtime shell behavior: `lib/bash/runtime/`.
+- Public command dispatch and Bash command behavior: `bin/basectl`,
+  `cli/bash/commands/basectl/`, and nearby BATS tests.
+- Manifest and project-discovery behavior: `base_manifest.yaml`,
+  `cli/python/`, `lib/python/`, and integration tests when multiple commands
+  interact.
+- Python CLI and helper behavior: `cli/python/` and `lib/python/`.
+
 ## Python Unit Tests
 
 Python engine and helper behavior lives under `cli/python/**/tests/` and
