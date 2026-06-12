@@ -256,11 +256,15 @@ the workspace.
 
 ### How do I inspect logs from a failed Base command?
 
-Use `basectl logs list` to find recent command runs and `basectl logs tail` to
-read a run log. Base stores logs under the Base cache root, normally
-`~/Library/Caches/base` on macOS, so they do not accumulate under
-`~/.base.d`. Use command verbosity such as `basectl -v setup` when you want a
-new run to capture DEBUG details before inspecting it with `basectl logs`.
+Use `basectl logs` to list recent command runs and `basectl logs --tail` to
+follow the newest log in real time. Filter by command name with
+`basectl logs --command setup`, print only the matching path with
+`basectl logs --path`, or open the newest matching log with
+`basectl logs --open`. Base stores logs under the Base cache root, normally
+`~/Library/Caches/base` on macOS, so they do not accumulate under `~/.base.d`.
+Use command verbosity such as `basectl -v setup` when you want a new run to
+capture DEBUG details before inspecting it with `basectl logs`. See
+`basectl logs --help` for all options.
 
 ## Writing Base Scripts
 

@@ -31,6 +31,8 @@ reference. The filename should answer "what is this about?"
 
 ## Core Documents
 
+- [Command Quick Reference](command-reference.md) is the one-page lookup table
+  for the current `basectl` command surface and important flags.
 - [Technical Overview](technical-overview.md) is the scannable product and
   technical reference: workspace shape, tech stack, three-layer architecture,
   manifest contract, command tables, and file locations.
