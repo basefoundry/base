@@ -9,6 +9,9 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
+    [[ "$output" == *"basectl gh project doctor --project <title>"* ]]
+    [[ "$output" == *"basectl gh project configure --project <title>"* ]]
+    [[ "$output" == *"basectl gh project issue set-fields <number>"* ]]
     [[ "$output" == *"basectl gh worktree prune"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
     [[ "$output" == *"assigned to codeforester"* ]]
@@ -62,6 +65,29 @@ EOF
     [[ "$output" == *"basectl gh issue create"* ]]
     [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
     [[ "$output" != *"unexpected gh args"* ]]
+}
+
+@test "basectl gh project dispatches to Python engine" {
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main project doctor --project "Base Roadmap" --owner codeforester
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project doctor --project Base Roadmap --owner codeforester" ]
 }
 
 @test "basectl gh issue list reports missing gh authentication clearly" {

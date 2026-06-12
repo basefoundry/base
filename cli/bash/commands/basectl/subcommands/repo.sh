@@ -46,6 +46,11 @@ Options:
   --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
   --no-protect-default-branch   Skip Base-managed default branch protection during repo configure.
+  --project <title>             GitHub Project title to configure. Defaults to <repo-name> Roadmap.
+  --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
+  --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
+  --initiative-option <name>    Initiative option to seed. May be repeated.
+  --no-project                  Skip GitHub Project metadata configuration.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
@@ -814,6 +819,16 @@ base_repo_pretty_quote() {
     printf '"%s"' "$value"
 }
 
+base_repo_pretty_arg() {
+    local value="$1"
+
+    if [[ "$value" =~ ^[A-Za-z0-9_./:=@+-]+$ ]]; then
+        printf '%s' "$value"
+    else
+        base_repo_pretty_quote "$value"
+    fi
+}
+
 base_repo_configure_label() {
     local color="$3"
     local description="$4"
@@ -911,6 +926,97 @@ base_repo_configure_default_branch_protection() {
             return 1
         }
     fi
+}
+
+base_repo_title_case_name() {
+    local name="$1"
+
+    printf '%s\n' "$name" |
+        tr '._-' '   ' |
+        awk '{ for (i = 1; i <= NF; i++) { $i = toupper(substr($i, 1, 1)) substr($i, 2) } print }'
+}
+
+base_repo_default_project_title() {
+    local name
+    local repo="$1"
+
+    name="${repo#*/}"
+    if [[ "$repo" == "codeforester/base" || "$name" == "base" ]]; then
+        printf '%s\n' "Base Roadmap"
+        return 0
+    fi
+
+    printf '%s Roadmap\n' "$(base_repo_title_case_name "$name")"
+}
+
+base_repo_project_owner_from_repo() {
+    local repo="$1"
+
+    printf '%s\n' "${repo%%/*}"
+}
+
+base_repo_configure_project_metadata() {
+    local dry_run="$1"
+    local option
+    local owner="$4"
+    local output=""
+    local project_title="$3"
+    local repo="$2"
+    local schema="$5"
+    local status=0
+    local wrapper="${BASE_REPO_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
+    shift 5
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would configure GitHub Project '%s' for '%s'.\n" "$project_title" "$repo"
+        printf "[DRY-RUN] Would run: %s --project base base_github_projects project configure --project %s --owner %s --repo %s --schema %s" \
+            "$wrapper" \
+            "$(base_repo_pretty_arg "$project_title")" \
+            "$owner" \
+            "$repo" \
+            "$schema"
+        for option in "$@"; do
+            printf " --initiative-option %s" "$(base_repo_pretty_arg "$option")"
+        done
+        printf "\n"
+        printf "[DRY-RUN] Project fields: Status, Priority, Area, Size, Initiative\n"
+        return 0
+    fi
+
+    [[ -x "$wrapper" ]] || {
+        log_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+
+    local command=(
+        "$wrapper"
+        --project base
+        base_github_projects
+        project
+        configure
+        --project "$project_title"
+        --owner "$owner"
+        --repo "$repo"
+        --schema "$schema"
+    )
+    for option in "$@"; do
+        command+=(--initiative-option "$option")
+    done
+
+    output="$("${command[@]}" 2>&1)" || status=$?
+    if [[ "$status" -eq 0 ]]; then
+        [[ -z "$output" ]] || printf '%s\n' "$output"
+        return 0
+    fi
+    if [[ "$status" -eq 3 ]]; then
+        log_warn "GitHub Project metadata skipped for '$repo'."
+        [[ -z "$output" ]] || log_warn "$output"
+        return 0
+    fi
+
+    [[ -z "$output" ]] || log_error "$output"
+    log_error "Unable to configure GitHub Project metadata for '$repo'."
+    return 1
 }
 
 base_repo_configure_github() {
@@ -1188,10 +1294,15 @@ base_repo_init() {
     local github_visibility_explicit=0
     local name=""
     local path=""
+    local project_owner=""
+    local project_schema="base-roadmap"
+    local project_title=""
     local protect_default_branch=1
     local pr_branch=""
     local requested_visibility=""
     local root
+    local configure_project=1
+    local initiative_options=()
 
     while (($#)); do
         case "$1" in
@@ -1259,6 +1370,58 @@ base_repo_init() {
                 ;;
             --no-protect-default-branch)
                 protect_default_branch=0
+                shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                project_title="$2"
+                shift 2
+                ;;
+            --project=*)
+                project_title="${1#--project=}"
+                shift
+                ;;
+            --project-owner)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project-owner' requires an argument."
+                    return $?
+                }
+                project_owner="$2"
+                shift 2
+                ;;
+            --project-owner=*)
+                project_owner="${1#--project-owner=}"
+                shift
+                ;;
+            --project-schema)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project-schema' requires an argument."
+                    return $?
+                }
+                project_schema="$2"
+                shift 2
+                ;;
+            --project-schema=*)
+                project_schema="${1#--project-schema=}"
+                shift
+                ;;
+            --initiative-option)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--initiative-option' requires an argument."
+                    return $?
+                }
+                initiative_options+=("$2")
+                shift 2
+                ;;
+            --initiative-option=*)
+                initiative_options+=("${1#--initiative-option=}")
+                shift
+                ;;
+            --no-project)
+                configure_project=0
                 shift
                 ;;
             --dry-run)
@@ -1332,6 +1495,17 @@ base_repo_init() {
         if [[ -n "$github_repo" ]]; then
             base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" "$github_visibility" || return 1
             base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
+            if ((configure_project)); then
+                [[ -n "$project_title" ]] || project_title="$(base_repo_default_project_title "$github_repo")"
+                [[ -n "$project_owner" ]] || project_owner="$(base_repo_project_owner_from_repo "$github_repo")"
+                base_repo_configure_project_metadata \
+                    "$dry_run" \
+                    "$github_repo" \
+                    "$project_title" \
+                    "$project_owner" \
+                    "$project_schema" \
+                    "${initiative_options[@]}" || return 1
+            fi
         else
             if [[ "$dry_run" == "1" ]]; then
                 printf "[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred. Pass --repo <owner/name> to include GitHub repository creation and configuration.\n"
@@ -1475,9 +1649,14 @@ base_repo_agent_guidance() {
 }
 
 base_repo_configure() {
+    local configure_project=1
     local dry_run=0
     local github_repo=""
+    local initiative_options=()
     local path="."
+    local project_owner=""
+    local project_schema="base-roadmap"
+    local project_title=""
     local protect_default_branch=1
 
     while (($#)); do
@@ -1504,6 +1683,58 @@ base_repo_configure() {
                 ;;
             --no-protect-default-branch)
                 protect_default_branch=0
+                shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                project_title="$2"
+                shift 2
+                ;;
+            --project=*)
+                project_title="${1#--project=}"
+                shift
+                ;;
+            --project-owner)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project-owner' requires an argument."
+                    return $?
+                }
+                project_owner="$2"
+                shift 2
+                ;;
+            --project-owner=*)
+                project_owner="${1#--project-owner=}"
+                shift
+                ;;
+            --project-schema)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--project-schema' requires an argument."
+                    return $?
+                }
+                project_schema="$2"
+                shift 2
+                ;;
+            --project-schema=*)
+                project_schema="${1#--project-schema=}"
+                shift
+                ;;
+            --initiative-option)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--initiative-option' requires an argument."
+                    return $?
+                }
+                initiative_options+=("$2")
+                shift 2
+                ;;
+            --initiative-option=*)
+                initiative_options+=("${1#--initiative-option=}")
+                shift
+                ;;
+            --no-project)
+                configure_project=0
                 shift
                 ;;
             -v)
@@ -1536,7 +1767,18 @@ base_repo_configure() {
         return 1
     }
 
-    base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch"
+    base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
+    if ((configure_project)); then
+        [[ -n "$project_title" ]] || project_title="$(base_repo_default_project_title "$github_repo")"
+        [[ -n "$project_owner" ]] || project_owner="$(base_repo_project_owner_from_repo "$github_repo")"
+        base_repo_configure_project_metadata \
+            "$dry_run" \
+            "$github_repo" \
+            "$project_title" \
+            "$project_owner" \
+            "$project_schema" \
+            "${initiative_options[@]}"
+    fi
 }
 
 base_repo_installer_template() {

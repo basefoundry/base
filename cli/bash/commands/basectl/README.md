@@ -68,11 +68,12 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
-- `basectl gh` manages GitHub issues, pull requests, branch naming, and
-  repository hygiene using Base's opinionated workflow. It uses standard
-  GitHub-style issue categories such as `bug`, `enhancement`, `documentation`,
-  `ci`, and `security`, and derives branch names from those categories. Prefer
-  this command for Base repository GitHub workflows when it supports the task.
+- `basectl gh` manages GitHub issues, pull requests, branch naming, repository
+  hygiene, and GitHub Project metadata using Base's opinionated workflow. It
+  uses standard GitHub-style issue categories such as `bug`, `enhancement`,
+  `documentation`, `ci`, and `security`, and derives branch names from those
+  categories. Prefer this command for Base repository GitHub workflows when it
+  supports the task.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
@@ -82,7 +83,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
   then falls back to the parent directory of `BASE_HOME`.
   `basectl repo check [path]` verifies the local baseline, and
-  `basectl repo configure [path]` reapplies the GitHub settings and labels.
+  `basectl repo configure [path]` reapplies the GitHub settings, labels,
+  default branch protection, and standard GitHub Project metadata. Use
+  `--no-project` to skip Project metadata or `--initiative-option <name>` to
+  seed repository-specific Initiative values.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
   layer for repos that opt in.

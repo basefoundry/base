@@ -25,13 +25,20 @@ the canonical current command list.
   status, checks, or diagnostics.
 - `basectl repo <init|check|configure|agent-guidance|installer-template>` -
   create repository baselines, configure GitHub repository settings and default
-  branch protection, seed agent guidance, and write installer templates.
+  branch protection, configure standard GitHub Project metadata, seed agent
+  guidance, and write installer templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
   non-interactive CI.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
   print plans/notes, and publish guarded GitHub-side release artifacts.
-- `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, and repo
-  hygiene using Base conventions.
+- `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, repo
+  hygiene, and Project metadata using Base conventions.
+  - `basectl gh project doctor --project <title>` - inspect Project metadata
+    fields against the Base roadmap schema.
+  - `basectl gh project configure --project <title>` - create or repair the
+    standard Project metadata schema.
+  - `basectl gh project issue set-fields <number>` - add an issue to the
+    Project if needed and update its metadata fields.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
 - `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
 - `basectl config <path|show|doctor>` - inspect Base's machine-local user
@@ -81,3 +88,5 @@ Important Python packages include:
 - `base_export_context` - deterministic local Markdown and Zip exports from a
   project's `.ai-context/` directory. Provider uploads are intentionally out of
   scope.
+- `base_github_projects` - GitHub Project V2 schema inspection, configuration,
+  and issue field updates for Base roadmap metadata.

@@ -1,0 +1,260 @@
+from __future__ import annotations
+
+import pytest
+
+from base_github_projects import engine
+
+
+def test_parse_project_configure_arguments() -> None:
+    args = engine.parse_args(
+        (
+            "project",
+            "configure",
+            "--project",
+            "BankBuddy Roadmap",
+            "--owner",
+            "codeforester",
+            "--repo",
+            "codeforester/bankbuddy",
+            "--schema",
+            "base-roadmap",
+            "--initiative-option",
+            "MVP",
+            "--initiative-option",
+            "Imports",
+            "--dry-run",
+        )
+    )
+
+    assert args.area == "project"
+    assert args.command == "configure"
+    assert args.project_title == "BankBuddy Roadmap"
+    assert args.owner == "codeforester"
+    assert args.repo == "codeforester/bankbuddy"
+    assert args.schema == "base-roadmap"
+    assert args.initiative_options == ("MVP", "Imports")
+    assert args.dry_run is True
+
+
+def test_parse_project_arguments_accept_equals_options() -> None:
+    args = engine.parse_args(
+        (
+            "project",
+            "issue",
+            "set-fields",
+            "604",
+            "--project=Base Roadmap",
+            "--repo=codeforester/base",
+            "--status=Backlog",
+            "--priority=P2",
+            "--area=CLI",
+            "--initiative=v1.0 Readiness",
+            "--size=M",
+            "--dry-run",
+        )
+    )
+
+    assert args.command == "issue-set-fields"
+    assert args.project_title == "Base Roadmap"
+    assert args.repo == "codeforester/base"
+    assert args.issue_number == 604
+    assert args.field_values == {
+        "status": "Backlog",
+        "priority": "P2",
+        "area": "CLI",
+        "initiative": "v1.0 Readiness",
+        "size": "M",
+    }
+    assert args.dry_run is True
+
+
+def test_compare_schema_reports_missing_fields_wrong_types_and_missing_options() -> None:
+    fields = (
+        engine.ProjectField(field_id="status", name="Status", data_type="TEXT"),
+        engine.ProjectField(
+            field_id="priority",
+            name="Priority",
+            data_type="SINGLE_SELECT",
+            options=(
+                engine.SelectOption(name="P1", color="ORANGE", description="High priority", option_id="priority-p1"),
+            ),
+        ),
+    )
+
+    findings = engine.compare_schema(fields, engine.BASE_ROADMAP_SCHEMA)
+
+    assert engine.Finding("error", "Status", "Status exists with type TEXT; expected SINGLE_SELECT.") in findings
+    assert engine.Finding("missing", "Area", "Area field is missing.") in findings
+    assert engine.Finding("missing-option", "Priority", "Priority option P0 is missing.") in findings
+
+
+def test_configuration_plan_preserves_extra_options_and_adds_required_options() -> None:
+    field = engine.ProjectField(
+        field_id="priority",
+        name="Priority",
+        data_type="SINGLE_SELECT",
+        options=(
+            engine.SelectOption(name="P1", color="ORANGE", description="High priority", option_id="priority-p1"),
+            engine.SelectOption(name="Later", color="GRAY", description="Manual option", option_id="manual-later"),
+        ),
+    )
+
+    actions = engine.configuration_plan(
+        project_exists=True,
+        fields=(field,),
+        schema=engine.ProjectSchema(fields=(engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority"),)),
+    )
+
+    assert actions == (
+        engine.ConfigureAction("update-field", "Priority", "Add missing options: P0, P2, P3."),
+    )
+    updated = engine.merged_options(field, engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority"))
+    assert [option.name for option in updated] == ["P1", "Later", "P0", "P2", "P3"]
+    assert updated[0].option_id == "priority-p1"
+    assert updated[1].option_id == "manual-later"
+
+
+def test_resolve_issue_field_updates_returns_only_explicit_fields() -> None:
+    fields = (
+        engine.ProjectField(
+            field_id="status-field",
+            name="Status",
+            data_type="SINGLE_SELECT",
+            options=(
+                engine.SelectOption(name="Backlog", color="BLUE", description="Accepted", option_id="status-backlog"),
+            ),
+        ),
+        engine.ProjectField(
+            field_id="priority-field",
+            name="Priority",
+            data_type="SINGLE_SELECT",
+            options=(
+                engine.SelectOption(name="P2", color="YELLOW", description="Normal", option_id="priority-p2"),
+            ),
+        ),
+        engine.ProjectField(
+            field_id="area-field",
+            name="Area",
+            data_type="SINGLE_SELECT",
+            options=(
+                engine.SelectOption(name="CLI", color="GRAY", description="Command surface", option_id="area-cli"),
+            ),
+        ),
+    )
+
+    updates = engine.resolve_issue_field_updates(
+        fields,
+        {"status": "Backlog", "priority": "P2"},
+        project_title="Base Roadmap",
+    )
+
+    assert updates == (
+        engine.FieldUpdate("status-field", "status-backlog", "Status", "Backlog"),
+        engine.FieldUpdate("priority-field", "priority-p2", "Priority", "P2"),
+    )
+
+
+def test_resolve_issue_field_updates_reports_missing_initiative_option() -> None:
+    fields = (
+        engine.ProjectField(
+            field_id="initiative-field",
+            name="Initiative",
+            data_type="SINGLE_SELECT",
+            options=(),
+        ),
+    )
+
+    with pytest.raises(engine.ProjectUsageError) as excinfo:
+        engine.resolve_issue_field_updates(
+            fields,
+            {"initiative": "New Theme"},
+            project_title="Base Roadmap",
+        )
+
+    assert str(excinfo.value) == (
+        "Initiative option 'New Theme' was not found in Project 'Base Roadmap'. "
+        'Run `basectl gh project configure --project "Base Roadmap" '
+        '--initiative-option "New Theme"` first.'
+    )
+
+
+def test_doctor_command_fails_when_schema_is_incomplete(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        engine,
+        "find_owner_and_project",
+        lambda owner, title: engine.OwnerInfo(
+            owner_id="owner-id",
+            login=owner,
+            project=engine.ProjectInfo(project_id="project-id", title=title),
+        ),
+    )
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: ())
+
+    status = engine.doctor_command(
+        engine.ProjectArguments(
+            area="project",
+            command="doctor",
+            project_title="Base Roadmap",
+            owner="codeforester",
+        )
+    )
+
+    assert status == 1
+    assert "MISSING Status" in capsys.readouterr().out
+
+
+def test_find_owner_and_project_uses_user_lookup_without_organization_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
+        assert "user(login:" in query
+        assert "organization(login:" not in query
+        assert variables == {"login": "codeforester"}
+        return {
+            "data": {
+                "user": {
+                    "id": "owner-id",
+                    "login": "codeforester",
+                    "projectsV2": {"nodes": [{"id": "project-id", "title": "Base Roadmap"}]},
+                }
+            }
+        }
+
+    monkeypatch.setattr(engine, "run_graphql", fake_run_graphql)
+
+    owner = engine.find_owner_and_project("codeforester", "Base Roadmap")
+
+    assert owner == engine.OwnerInfo(
+        owner_id="owner-id",
+        login="codeforester",
+        project=engine.ProjectInfo(project_id="project-id", title="Base Roadmap"),
+    )
+
+
+def test_find_owner_and_project_falls_back_to_organization_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
+        assert variables == {"login": "example-org"}
+        if "user(login:" in query:
+            calls.append("user")
+            raise engine.ProjectError("Could not resolve to a User with the login of 'example-org'.")
+        if "organization(login:" in query:
+            calls.append("organization")
+            return {
+                "data": {
+                    "organization": {
+                        "id": "owner-id",
+                        "login": "example-org",
+                        "projectsV2": {"nodes": []},
+                    }
+                }
+            }
+        raise AssertionError("unexpected GraphQL query")
+
+    monkeypatch.setattr(engine, "run_graphql", fake_run_graphql)
+
+    owner = engine.find_owner_and_project("example-org", "Roadmap")
+
+    assert calls == ["user", "organization"]
+    assert owner == engine.OwnerInfo(owner_id="owner-id", login="example-org", project=None)

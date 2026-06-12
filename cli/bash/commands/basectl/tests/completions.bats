@@ -147,6 +147,18 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "gh_areas=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh project ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "gh_project_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh project configure --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "gh_project_configure_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh project issue set-fields 604 --); \
+            COMP_CWORD=6; \
+            _base_basectl_completion; \
+            printf "gh_project_issue_set_fields_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl gh worktree ""); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -180,14 +192,17 @@ EOF
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"repo_commands=init check configure agent-guidance installer-template"* ]]
-    [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --dry-run"* ]]
+    [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run"* ]]
     [[ "$output" == *"repo_check_options=--agent-guidance"* ]]
-    [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --dry-run"* ]]
+    [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo-name --default-branch --validation-command --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--dry-run"* ]]
     [[ "$output" == *"ci_commands=setup check doctor"* ]]
     [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
-    [[ "$output" == *"gh_areas=issue pr branch worktree todo"* ]]
+    [[ "$output" == *"gh_areas=issue pr branch worktree todo project"* ]]
+    [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
+    [[ "$output" == *"gh_project_configure_options=--project --owner --schema --initiative-option --repo --dry-run"* ]]
+    [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --status --priority --area --initiative --size --dry-run"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
 }

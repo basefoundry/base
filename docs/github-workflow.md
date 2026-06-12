@@ -37,10 +37,20 @@ assigned to `codeforester`.
 If assignment fails, the automation should mention that in its summary instead
 of silently leaving the issue unassigned.
 
-## Issue Project Status
+## Issue Project Metadata
 
-When an issue is tracked in the `Base Roadmap` Project, keep the issue's
-`Status` field aligned with the implementation train:
+When an issue is tracked in the `Base Roadmap` Project, use the standard
+Base roadmap fields:
+
+- `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
+- `Priority`: `P0`, `P1`, `P2`, `P3`
+- `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
+  `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
+- `Size`: `S`, `M`, `L`
+- `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
+  `v1.0 Readiness`, `Adoption Polish`
+
+Keep the issue's `Status` field aligned with the implementation train:
 
 - Set `Status` to `In Progress` before creating the implementation branch or
   starting work in a worktree.
@@ -53,6 +63,17 @@ When an issue is tracked in the `Base Roadmap` Project, keep the issue's
 
 Do not add pull requests as separate Project items by default. The issue owns
 milestone and Project tracking so roadmap views do not double count the work.
+
+`basectl repo init` and `basectl repo configure` configure the standard Project
+metadata by default when a GitHub repository is available. Use
+`basectl gh project` directly for lower-level Project inspection, schema
+repair, or issue field updates.
+
+```bash
+basectl gh project doctor --project "Base Roadmap" --owner codeforester
+basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap
+basectl gh project issue set-fields 604 --repo codeforester/base --project "Base Roadmap" --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
+```
 
 ## Preferred GitHub Interface
 
