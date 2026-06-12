@@ -288,6 +288,7 @@ base_repo_write_stream() {
         log_error "Failed to write '$target'."
         return 1
     fi
+    printf "Created '%s'.\n" "$target"
 }
 
 base_repo_write_executable_stream() {
@@ -315,6 +316,13 @@ base_repo_write_executable_stream() {
         log_error "Failed to make '$target' executable."
         return 1
     fi
+    printf "Created executable '%s'.\n" "$target"
+}
+
+base_repo_print_review_hint() {
+    local target_dir="$1"
+
+    printf "Run git -C '%s' status --short to review changes.\n" "$target_dir"
 }
 
 base_repo_installer_template_path() {
@@ -1645,7 +1653,10 @@ base_repo_agent_guidance() {
     }
     base_repo_validate_name "$repo_name" || return 2
 
-    base_repo_write_agent_guidance "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root"
+    base_repo_write_agent_guidance "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || return $?
+    if [[ "$dry_run" != "1" ]]; then
+        base_repo_print_review_hint "$root"
+    fi
 }
 
 base_repo_configure() {
@@ -1821,7 +1832,10 @@ base_repo_installer_template() {
     fi
 
     path="$(base_repo_target_path "$path")"
-    base_repo_write_installer_template "$dry_run" "$path"
+    base_repo_write_installer_template "$dry_run" "$path" || return $?
+    if [[ "$dry_run" != "1" ]]; then
+        base_repo_print_review_hint "$(dirname -- "$path")"
+    fi
 }
 
 base_repo_subcommand_main() {
