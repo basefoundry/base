@@ -38,6 +38,16 @@ load ./basectl_helpers.bash
     grep -Fq 'PROJECT_NAME="${PROJECT_NAME:-example-project}"' "$repo_dir/install.sh"
 }
 
+@test "basectl repo installer-template reports non-dry-run creation" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo installer-template "$repo_dir/install.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Created executable '$repo_dir/install.sh'."* ]]
+    [[ "$output" == *"Run git -C '$repo_dir' status --short to review changes."* ]]
+}
+
 @test "basectl repo installer-template leaves existing files unchanged" {
     local repo_dir="$TEST_TMPDIR/custom"
 
@@ -70,6 +80,18 @@ load ./basectl_helpers.bash
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/skills.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
     [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo agent-guidance reports non-dry-run creation" {
+    local repo_dir="$TEST_TMPDIR/agent-demo"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Created '$repo_dir/AGENTS.md'."* ]]
+    [[ "$output" == *"Created '$repo_dir/skills.md'."* ]]
+    [[ "$output" == *"Created '$repo_dir/.github/pull_request_template.md'."* ]]
+    [[ "$output" == *"Run git -C '$repo_dir' status --short to review changes."* ]]
 }
 
 @test "basectl repo agent-guidance prints command-specific help" {
