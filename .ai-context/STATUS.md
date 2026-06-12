@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `0.4.2` is the current published release. The repo-root `VERSION` file is
+Base `0.4.4` is the current published release. The repo-root `VERSION` file is
 updated only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -27,9 +27,9 @@ The current command surface covers:
 
 ## Active Development Direction
 
-Current pre-1.0 work is tracked toward `v1.0.0`. The `0.4.2` patch release
-improves Bash startup recovery guidance when an existing shell still has a
-stale readonly `BASE_HOME` after a Homebrew upgrade.
+Current pre-1.0 work is tracked toward `v1.0.0`. The Homebrew upgrade contract
+remains open until supported macOS releases publish bottles and the bottled
+upgrade path passes the #526 rehearsal.
 
 Recent released work includes:
 
@@ -45,6 +45,8 @@ Recent released work includes:
 - Homebrew upgrade path preservation for explicit `BASE_HOME` and shell startup
   snippets
 - stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
+- Homebrew `basectl update` handoff and package-aware `basectl test base`
+- Base `0.4.4` release artifacts and Homebrew tap update
 
 ## Recent Merged Changes
 
