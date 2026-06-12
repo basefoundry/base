@@ -205,6 +205,64 @@ def test_doctor_command_fails_when_schema_is_incomplete(
     assert "MISSING Status" in capsys.readouterr().out
 
 
+def test_configure_command_refetches_default_fields_after_project_creation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    default_status_field = engine.ProjectField(
+        field_id="status-field",
+        name="Status",
+        data_type="SINGLE_SELECT",
+        options=(
+            engine.SelectOption(name="Todo", color="GRAY", description="", option_id="status-todo"),
+            engine.SelectOption(
+                name="In Progress",
+                color="YELLOW",
+                description="",
+                option_id="status-in-progress",
+            ),
+            engine.SelectOption(name="Done", color="PURPLE", description="", option_id="status-done"),
+        ),
+    )
+    created_fields: list[str] = []
+    updated_fields: list[str] = []
+
+    monkeypatch.setattr(
+        engine,
+        "find_owner_and_project",
+        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=None),
+    )
+    monkeypatch.setattr(
+        engine,
+        "create_project",
+        lambda owner_id, title: engine.ProjectInfo(project_id="project-id", title=title),
+    )
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: (default_status_field,))
+    monkeypatch.setattr(
+        engine,
+        "create_single_select_field",
+        lambda project_id, spec: created_fields.append(spec.name),
+    )
+    monkeypatch.setattr(
+        engine,
+        "update_single_select_field",
+        lambda field, spec: updated_fields.append(field.name),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="Base Demo Roadmap",
+            owner="codeforester",
+        )
+    )
+
+    assert status == 0
+    assert "Status" not in created_fields
+    assert "Status" in updated_fields
+    assert created_fields == ["Priority", "Area", "Size", "Initiative"]
+
+
 def test_find_owner_and_project_uses_user_lookup_without_organization_error(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
         assert "user(login:" in query

@@ -510,7 +510,7 @@ def configure_command(args: ProjectArguments) -> int:
         return 0
     if project is None:
         project = create_project(owner_info.owner_id, args.project_title or "")
-        fields = ()
+        fields = fetch_project_fields(project.project_id)
     by_name = {field.name: field for field in fields}
     for spec in schema.fields:
         field = by_name.get(spec.name)
