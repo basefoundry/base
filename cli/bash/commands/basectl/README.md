@@ -87,8 +87,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   default branch protection, and standard repo Project setup. By default, the
   Project title matches the repository name; missing Projects are copied from
   `base-project-template`, linked to the repository, and backfilled with
-  repository issues. Use `--no-project` to skip Project setup,
-  `--project <title>` to override the Project title, or
+  repository issues. When `.github/base-project.yml` exists, repo-specific
+  `Area` and `Initiative` options are added from that file. Use `--no-project`
+  to skip Project setup, `--project <title>` to override the Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional

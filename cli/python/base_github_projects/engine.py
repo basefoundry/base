@@ -4,8 +4,11 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from . import graphql_queries as queries
+from .project_config import ProjectConfig, ProjectConfigError
+from .project_config import read_project_config as _read_project_config
 
 
 class ProjectUsageError(RuntimeError):
@@ -102,6 +105,7 @@ class ProjectArguments:
     owner: str | None = None
     repo: str | None = None
     schema: str = "base-roadmap"
+    config_path: str | None = None
     initiative_options: tuple[str, ...] = ()
     dry_run: bool = False
     issue_number: int | None = None
@@ -184,7 +188,7 @@ FIELD_OPTION_TO_PROJECT_FIELD = {
     "size": "Size",
 }
 HELP_OPTIONS = ("-h", "--help", "help")
-PROJECT_VALUE_OPTIONS = ("--project", "--owner", "--repo", "--schema", "--initiative-option")
+PROJECT_VALUE_OPTIONS = ("--project", "--owner", "--repo", "--schema", "--config", "--initiative-option")
 ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--size")
 
 
@@ -215,7 +219,7 @@ def print_usage(file=sys.stdout) -> None:
                 "  base_github_projects project doctor --project <title> "
                 "[--owner <login>] [--schema base-roadmap]",
                 "  base_github_projects project configure --project <title> "
-                "[--owner <login>] [--repo <owner/name>] [--schema base-roadmap] "
+                "[--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--config <path>] "
                 "[--initiative-option <name>] [--dry-run]",
                 "  base_github_projects project issue set-fields <number> "
                 "--repo <owner/name> --project <title> [field options...]",
@@ -267,6 +271,7 @@ class OptionState:
     owner: str | None = None
     repo: str | None = None
     schema: str = "base-roadmap"
+    config_path: str | None = None
     initiative_options: list[str] | None = None
     dry_run: bool = False
     field_values: dict[str, str] | None = None
@@ -343,6 +348,8 @@ def apply_project_option(state: OptionState, option: str, value: str) -> None:
         state.repo = value
     elif option == "--schema":
         state.schema = value
+    elif option == "--config":
+        state.config_path = value
     elif option == "--initiative-option":
         state.initiative_options.append(value)
 
@@ -360,6 +367,7 @@ def state_to_args(command: str, state: OptionState, issue_number: int | None = N
         owner=state.owner,
         repo=state.repo,
         schema=state.schema,
+        config_path=state.config_path,
         initiative_options=tuple(state.initiative_options or ()),
         dry_run=state.dry_run,
         issue_number=issue_number,
@@ -380,22 +388,52 @@ def run_command(args: ProjectArguments) -> int:
 def schema_for_args(args: ProjectArguments) -> ProjectSchema:
     if args.schema != "base-roadmap":
         raise ProjectUsageError("Only project schema 'base-roadmap' is supported.")
+    config = project_config_for_args(args)
     if args.initiative_options:
-        return schema_with_initiatives(BASE_ROADMAP_SCHEMA, args.initiative_options)
-    return BASE_ROADMAP_SCHEMA
+        return schema_with_project_config(
+            schema_with_initiatives(BASE_ROADMAP_SCHEMA, args.initiative_options),
+            config,
+        )
+    return schema_with_project_config(BASE_ROADMAP_SCHEMA, config)
+
+
+def project_config_for_args(args: ProjectArguments) -> ProjectConfig:
+    if not args.config_path:
+        return ProjectConfig()
+    return read_project_config(Path(args.config_path))
+
+
+def read_project_config(path: Path) -> ProjectConfig:
+    try:
+        return _read_project_config(path)
+    except ProjectConfigError as exc:
+        raise ProjectUsageError(str(exc)) from exc
 
 
 def schema_with_initiatives(schema: ProjectSchema, initiative_options: tuple[str, ...]) -> ProjectSchema:
+    return schema_with_extra_options(schema, "Initiative", initiative_options, "Project-specific initiative.")
+
+
+def schema_with_project_config(schema: ProjectSchema, config: ProjectConfig) -> ProjectSchema:
+    schema = schema_with_extra_options(schema, "Area", config.areas, "Repository-specific area.")
+    return schema_with_extra_options(schema, "Initiative", config.initiatives, "Repository-specific initiative.")
+
+
+def schema_with_extra_options(
+    schema: ProjectSchema, field_name: str, option_names: tuple[str, ...], description: str
+) -> ProjectSchema:
+    if not option_names:
+        return schema
     fields: list[SelectFieldSpec] = []
     for field in schema.fields:
-        if field.name != "Initiative":
+        if field.name != field_name:
             fields.append(field)
             continue
         existing = {option.name for option in field.options}
         options = list(field.options)
-        for option_name in initiative_options:
+        for option_name in option_names:
             if option_name not in existing:
-                options.append(SelectOption(option_name, "GRAY", "Project-specific initiative."))
+                options.append(SelectOption(option_name, "GRAY", description))
                 existing.add(option_name)
         fields.append(SelectFieldSpec(field.name, tuple(options)))
     return ProjectSchema(tuple(fields))
@@ -508,6 +546,7 @@ def doctor_command(args: ProjectArguments) -> int:
 
 def configure_command(args: ProjectArguments) -> int:
     owner = require_owner(args)
+    project_config = project_config_for_args(args)
     schema = schema_for_args(args)
     owner_info = find_owner_and_project(owner, args.project_title or "")
     project = owner_info.project
@@ -526,7 +565,12 @@ def configure_command(args: ProjectArguments) -> int:
             print(f"ERROR   {action.name}  {action.message}", file=sys.stderr)
         return 1
     if args.dry_run:
-        render_dry_run_configure(args, actions, would_copy_template=should_copy_template)
+        render_dry_run_configure(
+            args,
+            actions,
+            would_copy_template=should_copy_template,
+            project_config=project_config,
+        )
         return 0
     if project is None:
         if args.repo:
@@ -551,7 +595,11 @@ def configure_command(args: ProjectArguments) -> int:
 
 
 def render_dry_run_configure(
-    args: ProjectArguments, actions: tuple[ConfigureAction, ...], *, would_copy_template: bool = False
+    args: ProjectArguments,
+    actions: tuple[ConfigureAction, ...],
+    *,
+    would_copy_template: bool = False,
+    project_config: ProjectConfig | None = None,
 ) -> None:
     print(
         f"[DRY-RUN] Would configure GitHub Project '{args.project_title}' "
@@ -562,6 +610,13 @@ def render_dry_run_configure(
     if args.repo:
         print(f"[DRY-RUN] Would link GitHub Project '{args.project_title}' to repository '{args.repo}'.")
         print(f"[DRY-RUN] Would backfill issues from '{args.repo}' into GitHub Project '{args.project_title}'.")
+    if args.config_path:
+        print(f"[DRY-RUN] Would read GitHub Project config from '{args.config_path}'.")
+    config = project_config or ProjectConfig()
+    for option in config.areas:
+        print(f"[DRY-RUN] Would ensure Area option {option}.")
+    for option in config.initiatives:
+        print(f"[DRY-RUN] Would ensure Initiative option {option}.")
     print("[DRY-RUN] Fields: Status, Priority, Area, Size, Initiative")
     if args.initiative_options:
         for option in args.initiative_options:
