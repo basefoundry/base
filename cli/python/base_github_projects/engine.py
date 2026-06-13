@@ -5,6 +5,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+from . import graphql_queries as queries
+
 
 class ProjectUsageError(RuntimeError):
     pass
@@ -77,6 +79,12 @@ class FieldUpdate:
 class ProjectInfo:
     project_id: str
     title: str
+
+
+@dataclass(frozen=True)
+class ProjectView:
+    name: str
+    layout: str
 
 
 @dataclass(frozen=True)
@@ -161,6 +169,13 @@ BASE_ROADMAP_SCHEMA = ProjectSchema(
 )
 
 
+DEFAULT_TEMPLATE_PROJECT = "base-project-template"
+STANDARD_TEMPLATE_VIEWS = (
+    ProjectView("Backlog", "TABLE_LAYOUT"),
+    ProjectView("Board", "BOARD_LAYOUT"),
+    ProjectView("By Status", "TABLE_LAYOUT"),
+    ProjectView("Roadmap", "ROADMAP_LAYOUT"),
+)
 FIELD_OPTION_TO_PROJECT_FIELD = {
     "status": "Status",
     "priority": "Priority",
@@ -496,20 +511,29 @@ def configure_command(args: ProjectArguments) -> int:
     schema = schema_for_args(args)
     owner_info = find_owner_and_project(owner, args.project_title or "")
     project = owner_info.project
+    should_copy_template = args.repo is not None and project is None
     fields: tuple[ProjectField, ...] = ()
     if project is not None:
         fields = fetch_project_fields(project.project_id)
-    actions = configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
+    actions = (
+        ()
+        if should_copy_template
+        else configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
+    )
     errors = [action for action in actions if action.action == "error"]
     if errors:
         for action in errors:
             print(f"ERROR   {action.name}  {action.message}", file=sys.stderr)
         return 1
     if args.dry_run:
-        render_dry_run_configure(args, actions)
+        render_dry_run_configure(args, actions, would_copy_template=should_copy_template)
         return 0
     if project is None:
-        project = create_project(owner_info.owner_id, args.project_title or "")
+        if args.repo:
+            project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
+            verify_standard_template_views(fetch_project_views(project.project_id))
+        else:
+            project = create_project(owner_info.owner_id, args.project_title or "")
         fields = fetch_project_fields(project.project_id)
     by_name = {field.name: field for field in fields}
     for spec in schema.fields:
@@ -518,15 +542,26 @@ def configure_command(args: ProjectArguments) -> int:
             create_single_select_field(project.project_id, spec)
         elif missing_option_names(field, spec):
             update_single_select_field(field, spec)
+    if args.repo:
+        link_project_to_repository(project.project_id, args.repo)
+        count = backfill_repository_issues(project.project_id, args.repo)
+        print(f"✓ Backfilled {count} issue(s) from {args.repo}")
     print(f"✓ Configured GitHub Project {args.project_title}")
     return 0
 
 
-def render_dry_run_configure(args: ProjectArguments, actions: tuple[ConfigureAction, ...]) -> None:
+def render_dry_run_configure(
+    args: ProjectArguments, actions: tuple[ConfigureAction, ...], *, would_copy_template: bool = False
+) -> None:
     print(
         f"[DRY-RUN] Would configure GitHub Project '{args.project_title}' "
         f"for '{args.repo or args.owner or ''}' with --schema {args.schema}."
     )
+    if would_copy_template:
+        print(f"[DRY-RUN] Would copy GitHub Project '{DEFAULT_TEMPLATE_PROJECT}' to '{args.project_title}'.")
+    if args.repo:
+        print(f"[DRY-RUN] Would link GitHub Project '{args.project_title}' to repository '{args.repo}'.")
+        print(f"[DRY-RUN] Would backfill issues from '{args.repo}' into GitHub Project '{args.project_title}'.")
     print("[DRY-RUN] Fields: Status, Priority, Area, Size, Initiative")
     if args.initiative_options:
         for option in args.initiative_options:
@@ -662,6 +697,13 @@ def find_owner_and_project(owner: str, title: str) -> OwnerInfo:
     return OwnerInfo(owner_id=owner_node["id"], login=owner_node["login"], project=project)
 
 
+def copy_template_project(owner: str, owner_id: str, title: str) -> ProjectInfo:
+    template = find_owner_and_project(owner, DEFAULT_TEMPLATE_PROJECT).project
+    if template is None:
+        raise ProjectError(f"Template Project '{DEFAULT_TEMPLATE_PROJECT}' was not found for owner '{owner}'.")
+    return copy_project(template.project_id, owner_id, title)
+
+
 def find_owner_node(kind: str, owner: str) -> dict[str, object] | None:
     query = f"""
 query($login: String!) {{
@@ -689,27 +731,7 @@ def is_missing_owner_lookup_error(message: str, kind: str) -> bool:
 
 
 def fetch_project_fields(project_id: str) -> tuple[ProjectField, ...]:
-    query = """
-query($id: ID!) {
-  node(id: $id) {
-    ... on ProjectV2 {
-      fields(first: 50) {
-        nodes {
-          __typename
-          ... on ProjectV2Field { id name dataType }
-          ... on ProjectV2SingleSelectField {
-            id
-            name
-            dataType
-            options { id name color description }
-          }
-        }
-      }
-    }
-  }
-}
-"""
-    payload = run_graphql(query, {"id": project_id})
+    payload = run_graphql(queries.FETCH_PROJECT_FIELDS, {"id": project_id})
     node = payload["data"].get("node")
     if node is None:
         raise ProjectError("GitHub Project was not found.")
@@ -730,47 +752,85 @@ query($id: ID!) {
     return tuple(fields)
 
 
+def fetch_project_views(project_id: str) -> tuple[ProjectView, ...]:
+    payload = run_graphql(queries.FETCH_PROJECT_VIEWS, {"id": project_id})
+    node = payload["data"].get("node")
+    if node is None:
+        raise ProjectError("GitHub Project was not found.")
+    return tuple(ProjectView(raw["name"], raw["layout"]) for raw in node["views"]["nodes"])
+
+
+def verify_standard_template_views(views: tuple[ProjectView, ...]) -> None:
+    by_name = {view.name: view for view in views}
+    errors: list[str] = []
+    for expected in STANDARD_TEMPLATE_VIEWS:
+        actual = by_name.get(expected.name)
+        if actual is None:
+            errors.append(f"{expected.name} view is missing")
+        elif actual.layout != expected.layout:
+            errors.append(f"{expected.name} view has layout {actual.layout}; expected {expected.layout}")
+    if errors:
+        raise ProjectError("Copied Project does not match template views: " + "; ".join(errors))
+
+
 def create_project(owner_id: str, title: str) -> ProjectInfo:
-    query = """
-mutation($ownerId: ID!, $title: String!) {
-  createProjectV2(input: {ownerId: $ownerId, title: $title}) {
-    projectV2 { id title }
-  }
-}
-"""
-    payload = run_graphql(query, {"ownerId": owner_id, "title": title})
+    payload = run_graphql(queries.CREATE_PROJECT, {"ownerId": owner_id, "title": title})
     project = payload["data"]["createProjectV2"]["projectV2"]
     return ProjectInfo(project_id=project["id"], title=project["title"])
 
 
+def copy_project(template_project_id: str, owner_id: str, title: str) -> ProjectInfo:
+    payload = run_graphql(
+        queries.COPY_PROJECT,
+        {"projectId": template_project_id, "ownerId": owner_id, "title": title},
+    )
+    project = payload["data"]["copyProjectV2"]["projectV2"]
+    return ProjectInfo(project_id=project["id"], title=project["title"])
+
+
+def fetch_repository_id(repo: str) -> str:
+    owner, name = split_repo(repo)
+    payload = run_graphql(queries.FETCH_REPOSITORY_ID, {"owner": owner, "name": name})
+    repository = payload["data"].get("repository")
+    if repository is None:
+        raise ProjectError(f"Repository '{repo}' was not found.")
+    return repository["id"]
+
+
+def link_project_to_repository(project_id: str, repo: str) -> None:
+    if repo in fetch_project_repository_names(project_id):
+        return
+    repository_id = fetch_repository_id(repo)
+    run_graphql(queries.LINK_PROJECT_TO_REPOSITORY, {"projectId": project_id, "repositoryId": repository_id})
+
+
+def fetch_project_repository_names(project_id: str) -> set[str]:
+    repo_names: set[str] = set()
+    cursor: str | None = None
+    while True:
+        payload = run_graphql(queries.FETCH_PROJECT_REPOSITORY_NAMES, {"projectId": project_id, "cursor": cursor})
+        node = payload["data"].get("node")
+        if node is None:
+            raise ProjectError("GitHub Project was not found.")
+        repositories = node["repositories"]
+        repo_names.update(raw["nameWithOwner"] for raw in repositories["nodes"])
+        if not repositories["pageInfo"]["hasNextPage"]:
+            return repo_names
+        cursor = repositories["pageInfo"]["endCursor"]
+
+
 def create_single_select_field(project_id: str, spec: SelectFieldSpec) -> None:
-    query = """
-mutation($projectId: ID!, $name: String!, $options: [ProjectV2SingleSelectFieldOptionInput!]) {
-  createProjectV2Field(input: {
-    projectId: $projectId,
-    dataType: SINGLE_SELECT,
-    name: $name,
-    singleSelectOptions: $options
-  }) {
-    projectV2Field { ... on ProjectV2SingleSelectField { id name } }
-  }
-}
-"""
-    run_graphql(query, {"projectId": project_id, "name": spec.name, "options": options_payload(spec.options)})
+    run_graphql(
+        queries.CREATE_SINGLE_SELECT_FIELD,
+        {"projectId": project_id, "name": spec.name, "options": options_payload(spec.options)},
+    )
 
 
 def update_single_select_field(field: ProjectField, spec: SelectFieldSpec) -> None:
-    query = """
-mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]) {
-  updateProjectV2Field(input: {
-    fieldId: $fieldId,
-    singleSelectOptions: $options
-  }) {
-    projectV2Field { ... on ProjectV2SingleSelectField { id name } }
-  }
-}
-"""
-    run_graphql(query, {"fieldId": field.field_id, "options": options_payload(merged_options(field, spec))})
+    run_graphql(
+        queries.UPDATE_SINGLE_SELECT_FIELD,
+        {"fieldId": field.field_id, "options": options_payload(merged_options(field, spec))},
+    )
 
 
 def options_payload(options: tuple[SelectOption, ...]) -> list[dict[str, str]]:
@@ -789,36 +849,61 @@ def missing_option_names(field: ProjectField, spec: SelectFieldSpec) -> tuple[st
 
 
 def fetch_issue_id(owner: str, name: str, number: int) -> str:
-    query = """
-query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) {
-    issue(number: $number) { id }
-  }
-}
-"""
-    payload = run_graphql(query, {"owner": owner, "name": name, "number": number})
+    payload = run_graphql(queries.FETCH_ISSUE_ID, {"owner": owner, "name": name, "number": number})
     issue = payload["data"]["repository"]["issue"]
     if issue is None:
         raise ProjectError(f"Issue #{number} was not found in {owner}/{name}.")
     return issue["id"]
 
 
+def fetch_repository_issue_ids(repo: str) -> tuple[str, ...]:
+    owner, name = split_repo(repo)
+    issue_ids: list[str] = []
+    cursor: str | None = None
+    while True:
+        payload = run_graphql(queries.FETCH_REPOSITORY_ISSUE_IDS, {"owner": owner, "name": name, "cursor": cursor})
+        repository = payload["data"].get("repository")
+        if repository is None:
+            raise ProjectError(f"Repository '{repo}' was not found.")
+        issues = repository["issues"]
+        issue_ids.extend(node["id"] for node in issues["nodes"])
+        if not issues["pageInfo"]["hasNextPage"]:
+            return tuple(issue_ids)
+        cursor = issues["pageInfo"]["endCursor"]
+
+
+def fetch_project_issue_content_ids(project_id: str) -> set[str]:
+    issue_ids: set[str] = set()
+    cursor: str | None = None
+    while True:
+        payload = run_graphql(queries.FETCH_PROJECT_ISSUE_CONTENT_IDS, {"projectId": project_id, "cursor": cursor})
+        node = payload["data"].get("node")
+        if node is None:
+            raise ProjectError("GitHub Project was not found.")
+        items = node["items"]
+        for item in items["nodes"]:
+            issue_id = item.get("content", {}).get("id")
+            if issue_id:
+                issue_ids.add(issue_id)
+        if not items["pageInfo"]["hasNextPage"]:
+            return issue_ids
+        cursor = items["pageInfo"]["endCursor"]
+
+
+def backfill_repository_issues(project_id: str, repo: str) -> int:
+    existing = fetch_project_issue_content_ids(project_id)
+    added = 0
+    for issue_id in fetch_repository_issue_ids(repo):
+        if issue_id in existing:
+            continue
+        add_project_item(project_id, issue_id)
+        existing.add(issue_id)
+        added += 1
+    return added
+
+
 def find_project_item_id(project_id: str, issue_id: str) -> str | None:
-    query = """
-query($projectId: ID!) {
-  node(id: $projectId) {
-    ... on ProjectV2 {
-      items(first: 100) {
-        nodes {
-          id
-          content { ... on Issue { id } }
-        }
-      }
-    }
-  }
-}
-"""
-    payload = run_graphql(query, {"projectId": project_id})
+    payload = run_graphql(queries.FIND_PROJECT_ITEM_ID, {"projectId": project_id})
     for item in payload["data"]["node"]["items"]["nodes"]:
         if item.get("content", {}).get("id") == issue_id:
             return item["id"]
@@ -826,32 +911,13 @@ query($projectId: ID!) {
 
 
 def add_project_item(project_id: str, issue_id: str) -> str:
-    query = """
-mutation($projectId: ID!, $contentId: ID!) {
-  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-    item { id }
-  }
-}
-"""
-    payload = run_graphql(query, {"projectId": project_id, "contentId": issue_id})
+    payload = run_graphql(queries.ADD_PROJECT_ITEM, {"projectId": project_id, "contentId": issue_id})
     return payload["data"]["addProjectV2ItemById"]["item"]["id"]
 
 
 def update_item_field(project_id: str, item_id: str, update: FieldUpdate) -> None:
-    query = """
-mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-  updateProjectV2ItemFieldValue(input: {
-    projectId: $projectId,
-    itemId: $itemId,
-    fieldId: $fieldId,
-    value: {singleSelectOptionId: $optionId}
-  }) {
-    projectV2Item { id }
-  }
-}
-"""
     run_graphql(
-        query,
+        queries.UPDATE_ITEM_FIELD,
         {
             "projectId": project_id,
             "itemId": item_id,

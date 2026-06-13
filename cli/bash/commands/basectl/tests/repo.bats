@@ -428,7 +428,10 @@ EOF
     run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Would configure GitHub Project 'Base Demo Roadmap' for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"Would configure GitHub Project 'base-demo' for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"Would copy GitHub Project 'base-project-template' to 'base-demo' if missing."* ]]
+    [[ "$output" == *"Would link GitHub Project 'base-demo' to repository 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"Would backfill issues from 'codeforester/base-demo' into GitHub Project 'base-demo'."* ]]
     [[ "$output" == *"--schema base-roadmap"* ]]
     [[ "$output" == *"Status, Priority, Area, Size, Initiative"* ]]
 }
@@ -527,7 +530,7 @@ EOF
 
     [ "$status" -eq 0 ]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
 }
 
 @test "basectl repo configure warns when project metadata needs GitHub project scope" {
@@ -733,7 +736,7 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
 }
 

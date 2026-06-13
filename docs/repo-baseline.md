@@ -74,12 +74,14 @@ GitHub changes without applying them. In dry-run mode, `repo init` explicitly
 reports whether it would create a GitHub repository or why GitHub creation is
 being skipped.
 
-`repo init` and `repo configure` also configure the standard GitHub Project
-metadata schema by default when a GitHub repository is known. Pass
-`--no-project` to skip Project V2 metadata, `--project <title>` to override the
-Project title, `--project-owner <login>` to override the owner,
-`--project-schema base-roadmap` to select the schema, and repeat
-`--initiative-option <name>` to seed repository-specific Initiative values.
+`repo init` and `repo configure` also configure a repo-named GitHub Project by
+default when a GitHub repository is known. If the Project is missing, Base copies
+`base-project-template`, links the new Project to the repository, and backfills
+the repository's existing issues into it. Pass `--no-project` to skip Project V2
+metadata, `--project <title>` to override the Project title, `--project-owner
+<login>` to override the owner, `--project-schema base-roadmap` to select the
+schema, and repeat `--initiative-option <name>` to seed repository-specific
+Initiative values.
 `basectl gh project` is the lower-level direct surface for Project inspection,
 schema repair, and issue field updates.
 
@@ -208,7 +210,8 @@ GitHub reports that rulesets are unavailable for a private repository's plan,
 `repo configure` leaves the supported settings and labels in place, logs a
 warning, and skips default branch protection.
 
-The Project metadata schema creates or updates single-select Project fields:
+The Project metadata schema creates or updates single-select Project fields on
+the repo Project:
 
 - `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
 - `Priority`: `P0`, `P1`, `P2`, `P3`

@@ -84,9 +84,12 @@ such command directories exist. Optional utility CLIs such as `caff` and
   then falls back to the parent directory of `BASE_HOME`.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` reapplies the GitHub settings, labels,
-  default branch protection, and standard GitHub Project metadata. Use
-  `--no-project` to skip Project metadata or `--initiative-option <name>` to
-  seed repository-specific Initiative values.
+  default branch protection, and standard repo Project setup. By default, the
+  Project title matches the repository name; missing Projects are copied from
+  `base-project-template`, linked to the repository, and backfilled with
+  repository issues. Use `--no-project` to skip Project setup,
+  `--project <title>` to override the Project title, or
+  `--initiative-option <name>` to seed repository-specific Initiative values.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
   layer for repos that opt in.
