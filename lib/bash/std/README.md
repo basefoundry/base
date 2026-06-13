@@ -249,6 +249,11 @@ assert_file_exists "$manifest_path"
 assert_dir_exists "$project_root"
 ```
 
+`assert_not_null` takes variable names, not expanded values. Use
+`assert_not_null TOKEN`, not `assert_not_null "$TOKEN"`. When an argument is not
+a valid Bash variable name, `assert_not_null` reports likely misuse without
+echoing the invalid value.
+
 The assertions favor clear failure messages over scattered one-off tests. Some
 helpers check all provided values and report all missing items together.
 

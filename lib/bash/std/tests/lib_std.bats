@@ -669,6 +669,23 @@ EOF
     [[ "$output" == *"These required variables are not set or are empty"* ]]
 }
 
+@test "assert_not_null rejects value-like arguments without echoing them" {
+    local script="$TEST_TMPDIR/assert-not-null-value.sh"
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+token="secret token with spaces"
+assert_not_null "\$token"
+EOF
+
+    bats_run bash "$script"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"assert_not_null expects variable names, not values"* ]]
+    [[ "$output" != *"secret token with spaces"* ]]
+}
+
 @test "assert_integer accepts integers and rejects invalid values" {
     local count=42
     local signed=-3
