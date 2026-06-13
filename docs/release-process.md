@@ -74,7 +74,9 @@ Complete these steps in `codeforester/base`:
 2. Create a release-prep branch and worktree from `origin/master`.
 3. Update release metadata:
    - `VERSION`
-   - README version badge and current-release text
+   - README version badge
+   - README `Current Status` section current-release prose
+   - `.ai-context/STATUS.md` `Current Release` section
    - `CHANGELOG.md`, moving relevant `Unreleased` entries into the new release
      section
 4. Validate the release-prep PR:

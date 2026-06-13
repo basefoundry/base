@@ -35,6 +35,9 @@ for issue-backed work, validation, and design-only sessions.
    enhancement/179-20260528-projects-list-json
    ```
 
+   `basectl gh issue start <number>` can generate the branch name and matching
+   `git worktree add` command from the issue label and title.
+
 5. Use an isolated Git worktree for each pull request:
 
    ```bash
@@ -66,14 +69,14 @@ available for local edits:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
-~/work/base/bin/basectl setup --dev
+~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
 ```
 
 `bootstrap.sh` installs missing first-mile prerequisites such as Homebrew, Git,
-and Bash 4.2+ before handing off to `basectl`. `basectl setup --dev` installs
-developer prerequisites such as BATS, the GitHub CLI, and ShellCheck. See
+and Bash 4.2+ before handing off to `basectl`. `basectl setup --profile dev`
+installs developer prerequisites such as BATS, the GitHub CLI, and ShellCheck. See
 [First-Mile Bootstrap](docs/bootstrap.md) for install modes and boundaries.
 
 ## Running Tests
@@ -93,9 +96,9 @@ workspace discovery, setup/check/doctor behavior, shell profile wiring, or
 installation layout assumptions. See [Testing](docs/testing.md) for the testing
 layers and integration-test boundaries.
 
-Use `basectl setup --dev` to install developer prerequisites such as BATS, the
-GitHub CLI, and ShellCheck. Use `basectl check --dev` or `basectl doctor --dev`
-to diagnose missing developer tools.
+Use `basectl setup --profile dev` to install developer prerequisites such as
+BATS, the GitHub CLI, and ShellCheck. Use `basectl check --profile dev` or
+`basectl doctor --profile dev` to diagnose missing developer tools.
 
 Shell files should pass ShellCheck. Python changes should pass the existing
 Python tests and lint workflows.

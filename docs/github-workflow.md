@@ -382,8 +382,8 @@ Recommended fields:
 
 - `Status`: Triage, Backlog, Ready, In Progress, In Review, Done
 - `Priority`: P0, P1, P2, P3
-- `Area`: CLI, Setup, Manifest, Shell, Python, Docs, CI, Packaging, Security,
-  Product
+- `Area`: CLI, Setup, Workspace, Manifest, Runtime, Shell, Python, Docs, CI,
+  Packaging, Security, Product
 - `Size`: S, M, L
 - `PR Train`: optional text field for batch work
 
