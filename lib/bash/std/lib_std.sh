@@ -34,7 +34,7 @@
 #   assert_* utilities           # Validation helpers (assert_not_null / assert_integer / ...).
 #
 # Patterns:
-#   run some_cmd                 # exits on failure; DRY_RUN=true prints instead.
+#   run some_cmd                 # exits on failure; DRY_RUN=true/1/yes/on prints instead.
 #   some_cmd || fatal_error ...  # preserves failing exit code before terminating.
 #   add_to_path -p "/opt/tools"  # inject directories without duplicates.
 #
@@ -579,6 +579,25 @@ fatal_error() {
 #################################################### COMMAND EXECUTION #################################################
 
 #
+# is_dry_run - Returns true when dry-run mode is enabled.
+#
+# Dry-run mode may be enabled through either DRY_RUN or dry_run. Both names
+# accept common truthy values so callers do not need to duplicate normalization.
+#
+is_dry_run() {
+    local value
+
+    for value in "${DRY_RUN-}" "${dry_run-}"; do
+        case "${value,,}" in
+            true | 1 | yes | on)
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+#
 # run - Safely executes a simple command with its arguments.
 #
 # This function is designed to be a secure and robust replacement for using
@@ -588,8 +607,8 @@ fatal_error() {
 # Features:
 #   - Secure: Does not use `eval`, preventing arbitrary code execution.
 #   - Argument Safe: Correctly handles spaces and special characters in arguments.
-#   - Dry-Run Mode: If the global variable DRY_RUN (or dry_run) is true, it prints the
-#     command instead of running it.
+#   - Dry-Run Mode: If the global variable DRY_RUN (or dry_run) is truthy, it
+#     prints the command instead of running it.
 #   - Exit on Failure: By default, it will exit the script if the command
 #     returns a non-zero exit code.
 #   - Optional No-Exit: If the first argument is `--no-exit`, the function
@@ -640,7 +659,7 @@ run() {
     printable_command="${printable_command% }"
 
     # --- Dry-Run Handling ---
-    if [[ "${DRY_RUN-}" == true || "${dry_run-}" == true ]]; then
+    if is_dry_run; then
         # Use printf with the %q format specifier. This is the safest way to
         # print a command and its arguments in a way that is unambiguous and
         # could be copied and pasted back into a shell.
