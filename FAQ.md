@@ -178,14 +178,14 @@ Base reports Homebrew's suggested dry-run command when it sees this failure.
 Run the dry-run first and inspect the files Homebrew would overwrite:
 
 ```bash
-brew link --overwrite python@3.14 --dry-run
+brew link --overwrite python@3.13 --dry-run
 ```
 
 If the dry-run only lists stale files you are comfortable replacing, run the
 same command without `--dry-run`, then rerun the Base setup command:
 
 ```bash
-brew link --overwrite python@3.14
+brew link --overwrite python@3.13
 basectl setup --profile sre
 ```
 
