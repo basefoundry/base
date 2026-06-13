@@ -57,6 +57,25 @@ def test_parse_project_configure_accepts_config_path() -> None:
     assert args.config_path == ".github/base-project.yml"
 
 
+def test_parse_project_configure_accepts_copy_fields_from_project() -> None:
+    args = engine.parse_args(
+        (
+            "project",
+            "configure",
+            "--project",
+            "base",
+            "--owner",
+            "codeforester",
+            "--repo",
+            "codeforester/base",
+            "--copy-fields-from",
+            "Base Roadmap",
+        )
+    )
+
+    assert args.copy_fields_from_project == "Base Roadmap"
+
+
 def test_parse_project_arguments_accept_equals_options() -> None:
     args = engine.parse_args(
         (
@@ -441,6 +460,54 @@ def test_configure_command_copies_template_for_repo_project_and_backfills_issues
     assert backfilled == [("project-id", "codeforester/base-demo")]
 
 
+def test_configure_command_copies_missing_project_fields_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    copied: list[tuple[str, str]] = []
+
+    def fake_find_owner_and_project(owner: str, title: str) -> engine.OwnerInfo:
+        if title == "base":
+            return engine.OwnerInfo(
+                owner_id="owner-id",
+                login=owner,
+                project=engine.ProjectInfo(project_id="target-project", title=title),
+            )
+        if title == "Base Roadmap":
+            return engine.OwnerInfo(
+                owner_id="owner-id",
+                login=owner,
+                project=engine.ProjectInfo(project_id="source-project", title=title),
+            )
+        raise AssertionError(f"unexpected project lookup: {title}")
+
+    monkeypatch.setattr(engine, "find_owner_and_project", fake_find_owner_and_project)
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: ())
+    monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
+    monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
+    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: engine.STANDARD_TEMPLATE_VIEWS)
+    monkeypatch.setattr(engine, "link_project_to_repository", lambda project_id, repo: None)
+    monkeypatch.setattr(engine, "backfill_repository_issues", lambda project_id, repo: 0)
+    monkeypatch.setattr(
+        engine,
+        "copy_missing_project_item_fields",
+        lambda source_id, target_id: copied.append((source_id, target_id)) or engine.FieldCopySummary(3, ()),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base",
+            owner="codeforester",
+            repo="codeforester/base",
+            copy_fields_from_project="Base Roadmap",
+        )
+    )
+
+    assert status == 0
+    assert copied == [("source-project", "target-project")]
+
+
 def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -467,6 +534,99 @@ def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
     assert "Would copy GitHub Project 'base-project-template' to 'base-demo'." in output
     assert "Would link GitHub Project 'base-demo' to repository 'codeforester/base-demo'." in output
     assert "Would backfill issues from 'codeforester/base-demo' into GitHub Project 'base-demo'." in output
+
+
+def test_configure_command_dry_run_reports_field_copy_source(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        engine,
+        "find_owner_and_project",
+        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=None),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base",
+            owner="codeforester",
+            repo="codeforester/base",
+            copy_fields_from_project="Base Roadmap",
+            dry_run=True,
+        )
+    )
+
+    assert status == 0
+    output = capsys.readouterr().out
+    assert "Would copy missing item field values from GitHub Project 'Base Roadmap'." in output
+
+
+def test_plan_project_item_field_copies_skips_existing_values_and_missing_options() -> None:
+    from base_github_projects import project_item_fields
+
+    source_items = {
+        "issue-1": project_item_fields.ProjectIssueItem(
+            item_id="source-item-1",
+            issue_id="issue-1",
+            issue_number=1,
+            title="one",
+            values={"Priority": "P1", "Size": "M", "Area": "CLI"},
+        ),
+        "issue-2": project_item_fields.ProjectIssueItem(
+            item_id="source-item-2",
+            issue_id="issue-2",
+            issue_number=2,
+            title="two",
+            values={"Priority": "P2"},
+        ),
+    }
+    target_items = {
+        "issue-1": project_item_fields.ProjectIssueItem(
+            item_id="target-item-1",
+            issue_id="issue-1",
+            issue_number=1,
+            title="one",
+            values={"Priority": "P0"},
+        ),
+        "issue-2": project_item_fields.ProjectIssueItem(
+            item_id="target-item-2",
+            issue_id="issue-2",
+            issue_number=2,
+            title="two",
+            values={},
+        ),
+    }
+    target_fields = {
+        "Priority": project_item_fields.ProjectSelectField(
+            field_id="priority-field",
+            options={"P1": "priority-p1", "P2": "priority-p2"},
+        ),
+        "Size": project_item_fields.ProjectSelectField(field_id="size-field", options={"S": "size-s"}),
+    }
+
+    plan = project_item_fields.plan_missing_field_copies(
+        source_items=source_items,
+        target_items=target_items,
+        target_fields=target_fields,
+        field_names=("Priority", "Size", "Area"),
+    )
+
+    assert plan.updates == (
+        project_item_fields.ProjectFieldCopy(
+            item_id="target-item-2",
+            issue_number=2,
+            field_name="Priority",
+            option_name="P2",
+            field_id="priority-field",
+            option_id="priority-p2",
+        ),
+    )
+    assert plan.skipped == (
+        project_item_fields.ProjectFieldCopySkip(1, "Size", "M", "target option is missing"),
+        project_item_fields.ProjectFieldCopySkip(1, "Area", "CLI", "target field is missing"),
+    )
 
 
 def test_backfill_repository_issues_adds_only_missing_project_items(monkeypatch: pytest.MonkeyPatch) -> None:

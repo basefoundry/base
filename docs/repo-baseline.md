@@ -84,6 +84,10 @@ schema, and repeat `--initiative-option <name>` to seed repository-specific
 Initiative values. If `.github/base-project.yml` exists, Base reads repo-owned
 `Area` and `Initiative` options from that file and adds missing Project options
 without deleting or renaming existing options.
+During migration from an older shared Project, pass
+`--copy-project-fields-from <title>` to copy missing Project item field values
+by issue, field name, and option name into the repo Project. Existing target
+values are preserved.
 `basectl gh project` is the lower-level direct surface for Project inspection,
 schema repair, and issue field updates.
 
@@ -243,6 +247,11 @@ the repo Project:
 - `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
   `v1.0 Readiness`, `Adoption Polish`, plus values passed with
   `--initiative-option`
+
+`--copy-project-fields-from <title>` copies these single-select fields when the
+source Project item has a value and the target repo Project item does not:
+`Status`, `Priority`, `Area`, `Initiative`, and `Size`. Values are skipped and
+reported when the repo Project does not have a matching option.
 
 When Project V2 access is unavailable, `repo init` and `repo configure` log a
 warning that includes `gh auth refresh -h github.com -s project`, keep the

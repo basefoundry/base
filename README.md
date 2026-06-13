@@ -418,7 +418,10 @@ Pass `--no-protect-default-branch` when a repository intentionally skips that
 ruleset. Pass `--no-project` when a repository intentionally skips Base-managed
 Project metadata, or `--project`, `--project-owner`, and
 `--initiative-option` when the default Project title or Initiative values need
-to vary by repository.
+to vary by repository. During Project migration, pass
+`--copy-project-fields-from <title>` to copy missing issue item field values
+from an existing Project into the repo Project without overwriting values that
+are already set.
 
 Run a discovered project's declared test command with:
 

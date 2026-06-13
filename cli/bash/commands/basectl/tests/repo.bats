@@ -14,6 +14,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl repo agent-guidance [path]"* ]]
     [[ "$output" == *"basectl repo installer-template [path]"* ]]
     [[ "$output" == *"--no-protect-default-branch"* ]]
+    [[ "$output" == *"--copy-project-fields-from"* ]]
 }
 
 @test "basectl repo installer-template prints the maintained template" {
@@ -491,6 +492,21 @@ EOF
     [[ "$output" == *"--initiative-option Imports"* ]]
 }
 
+@test "basectl repo configure can copy project fields from a source project" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/base \
+        --copy-project-fields-from "Base Roadmap" \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would copy missing Project item field values from 'Base Roadmap' into 'base'."* ]]
+    [[ "$output" == *'--copy-fields-from "Base Roadmap"'* ]]
+}
+
 @test "basectl repo configure applies GitHub settings through gh" {
     local repo_dir="$TEST_TMPDIR/repo"
 
@@ -550,13 +566,15 @@ EOF
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
+            --repo codeforester/base-demo \
+            --copy-project-fields-from "Base Roadmap"
 
     [ "$status" -eq 0 ]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     [[ "$output" == *"Configuring GitHub Project 'base-demo' for 'codeforester/base-demo'."* ]]
-    [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml"* ]]
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml" ]
+    [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from \"Base Roadmap\""* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 
 @test "basectl repo configure warns when project metadata needs GitHub project scope" {

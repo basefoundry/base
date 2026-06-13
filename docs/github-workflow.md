@@ -71,10 +71,15 @@ the repository, and backfills existing repository issues. When
 `.github/base-project.yml` exists, Base also adds missing repo-specific `Area`
 and `Initiative` options from that file. Use `basectl gh project` directly for
 lower-level Project inspection, schema repair, or issue field updates.
+When migrating from an existing shared Project, pass
+`--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,
+`Area`, `Initiative`, and `Size` issue item values into the repo Project without
+overwriting values already set there.
 
 ```bash
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
 basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap
+basectl repo configure ~/work/base --repo codeforester/base --copy-project-fields-from "Base Roadmap"
 basectl gh project issue set-fields 604 --repo codeforester/base --project "Base Roadmap" --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
 ```
 

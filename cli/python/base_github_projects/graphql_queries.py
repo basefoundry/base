@@ -132,6 +132,37 @@ query($projectId: ID!, $cursor: String) {
 }
 """
 
+FETCH_PROJECT_ISSUE_ITEMS_WITH_FIELDS = """
+query($projectId: ID!, $cursor: String) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          content {
+            ... on Issue {
+              id
+              number
+              title
+            }
+          }
+          fieldValues(first: 50) {
+            nodes {
+              __typename
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field { ... on ProjectV2SingleSelectField { name } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 FIND_PROJECT_ITEM_ID = """
 query($projectId: ID!) {
   node(id: $projectId) {
