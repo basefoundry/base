@@ -81,9 +81,31 @@ the repository's existing issues into it. Pass `--no-project` to skip Project V2
 metadata, `--project <title>` to override the Project title, `--project-owner
 <login>` to override the owner, `--project-schema base-roadmap` to select the
 schema, and repeat `--initiative-option <name>` to seed repository-specific
-Initiative values.
+Initiative values. If `.github/base-project.yml` exists, Base reads repo-owned
+`Area` and `Initiative` options from that file and adds missing Project options
+without deleting or renaming existing options.
 `basectl gh project` is the lower-level direct surface for Project inspection,
 schema repair, and issue field updates.
+
+Repo Project taxonomy config uses this shape:
+
+```yaml
+project:
+  areas:
+    - Demo App
+    - Documentation
+  initiatives:
+    - Demo Polish
+    - Portfolio Dashboard
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+```
+
+`areas` and `initiatives` are applied by `repo configure`. `issue_defaults` is
+validated and reserved for issue intake automation; it does not set fields on
+existing issues during Project configuration.
 
 ## Local Baseline
 

@@ -436,6 +436,25 @@ EOF
     [[ "$output" == *"Status, Priority, Area, Size, Initiative"* ]]
 }
 
+@test "basectl repo configure dry-run passes repo project config when present" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-project.yml" <<'EOF'
+project:
+  areas:
+    - Demo App
+  initiatives:
+    - Repo Dashboard
+EOF
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would read GitHub Project config from '$repo_dir/.github/base-project.yml'."* ]]
+    [[ "$output" == *"--config $repo_dir/.github/base-project.yml"* ]]
+}
+
 @test "basectl repo configure can skip project metadata" {
     local repo_dir="$TEST_TMPDIR/repo"
 
@@ -503,7 +522,12 @@ EOF
 @test "basectl repo configure applies project metadata through Base project engine" {
     local repo_dir="$TEST_TMPDIR/repo"
 
-    mkdir -p "$repo_dir"
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-project.yml" <<'EOF'
+project:
+  areas:
+    - Demo App
+EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
@@ -530,7 +554,7 @@ EOF
 
     [ "$status" -eq 0 ]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml" ]
 }
 
 @test "basectl repo configure warns when project metadata needs GitHub project scope" {

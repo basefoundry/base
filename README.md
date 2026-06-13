@@ -412,6 +412,8 @@ standardizes merge settings, deletes branches after merge, applies the
 Base-managed default branch protection ruleset, configures a repo-named GitHub
 Project copied from `base-project-template`, and creates the standard GitHub
 labels documented in [Repository Baseline](docs/repo-baseline.md).
+When `.github/base-project.yml` exists, `repo configure` also adds missing
+repo-specific `Area` and `Initiative` Project options from that file.
 Pass `--no-protect-default-branch` when a repository intentionally skips that
 ruleset. Pass `--no-project` when a repository intentionally skips Base-managed
 Project metadata, or `--project`, `--project-owner`, and

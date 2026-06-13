@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from base_github_projects import engine
@@ -36,6 +38,25 @@ def test_parse_project_configure_arguments() -> None:
     assert args.dry_run is True
 
 
+def test_parse_project_configure_accepts_config_path() -> None:
+    args = engine.parse_args(
+        (
+            "project",
+            "configure",
+            "--project",
+            "base-demo",
+            "--owner",
+            "codeforester",
+            "--repo",
+            "codeforester/base-demo",
+            "--config",
+            ".github/base-project.yml",
+        )
+    )
+
+    assert args.config_path == ".github/base-project.yml"
+
+
 def test_parse_project_arguments_accept_equals_options() -> None:
     args = engine.parse_args(
         (
@@ -66,6 +87,70 @@ def test_parse_project_arguments_accept_equals_options() -> None:
         "size": "M",
     }
     assert args.dry_run is True
+
+
+def test_read_project_config_loads_repo_taxonomy(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(
+        "\n".join(
+            (
+                "project:",
+                "  areas:",
+                "    - Demo App",
+                "    - Documentation",
+                "  initiatives:",
+                "    - Demo Polish",
+                "    - Portfolio Dashboard",
+                "  issue_defaults:",
+                "    status: Backlog",
+                "    priority: P2",
+                "    size: S",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    config = engine.read_project_config(config_path)
+
+    assert config.areas == ("Demo App", "Documentation")
+    assert config.initiatives == ("Demo Polish", "Portfolio Dashboard")
+    assert config.issue_defaults == {"status": "Backlog", "priority": "P2", "size": "S"}
+
+
+def test_read_project_config_rejects_non_string_options(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project:\n  areas:\n    - Demo App\n    - 42\n", encoding="utf-8")
+
+    with pytest.raises(engine.ProjectUsageError) as excinfo:
+        engine.read_project_config(config_path)
+
+    assert str(excinfo.value) == f"{config_path}: project.areas[1] must be a non-empty string."
+
+
+def test_schema_for_args_adds_repo_project_config_options(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(
+        "project:\n"
+        "  areas:\n"
+        "    - Demo App\n"
+        "  initiatives:\n"
+        "    - Demo Polish\n",
+        encoding="utf-8",
+    )
+
+    schema = engine.schema_for_args(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base-demo",
+            owner="codeforester",
+            repo="codeforester/base-demo",
+            config_path=str(config_path),
+        )
+    )
+
+    assert "Demo App" in {option.name for option in schema.field_by_name("Area").options}
+    assert "Demo Polish" in {option.name for option in schema.field_by_name("Initiative").options}
 
 
 def test_compare_schema_reports_missing_fields_wrong_types_and_missing_options() -> None:

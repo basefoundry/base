@@ -67,9 +67,10 @@ milestone and Project tracking so roadmap views do not double count the work.
 `basectl repo init` and `basectl repo configure` configure a repo-named Project
 by default when a GitHub repository is available. Base copies
 `base-project-template` when the repo Project is missing, links the Project to
-the repository, and backfills existing repository issues. Use `basectl gh
-project` directly for lower-level Project inspection, schema repair, or issue
-field updates.
+the repository, and backfills existing repository issues. When
+`.github/base-project.yml` exists, Base also adds missing repo-specific `Area`
+and `Initiative` options from that file. Use `basectl gh project` directly for
+lower-level Project inspection, schema repair, or issue field updates.
 
 ```bash
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
@@ -386,10 +387,13 @@ Recommended fields:
 
 - `Status`: Triage, Backlog, Ready, In Progress, In Review, Done
 - `Priority`: P0, P1, P2, P3
-- `Area`: CLI, Setup, Workspace, Manifest, Runtime, Shell, Python, Docs, CI,
-  Packaging, Security, Product
+- `Area`: repo-specific options declared in `.github/base-project.yml`
 - `Size`: S, M, L
-- `PR Train`: optional text field for batch work
+- `Initiative`: repo-specific options declared in `.github/base-project.yml`
+
+Keep `Status`, `Priority`, and `Size` standardized across repos. Keep `Area`
+and `Initiative` repo-specific, and let `basectl repo configure` add missing
+options additively from the repo config file.
 
 Useful views:
 

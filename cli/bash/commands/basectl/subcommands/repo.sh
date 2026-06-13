@@ -56,7 +56,8 @@ Options:
   -h, --help                    Show this help text.
 
 Create, check, and configure a standard Base-managed repository baseline, or
-write a reusable project installer template.
+write a reusable project installer template. When .github/base-project.yml
+exists, repo configure uses it for repo-specific GitHub Project taxonomy.
 EOF
 }
 
@@ -956,8 +957,18 @@ base_repo_project_owner_from_repo() {
     printf '%s\n' "${repo%%/*}"
 }
 
+base_repo_project_config_path() {
+    local root="$1"
+    local path="$root/.github/base-project.yml"
+
+    if [[ -f "$path" ]]; then
+        printf '%s\n' "$path"
+    fi
+}
+
 base_repo_configure_project_metadata() {
     local dry_run="$1"
+    local config_path="$6"
     local option
     local owner="$4"
     local output=""
@@ -966,19 +977,25 @@ base_repo_configure_project_metadata() {
     local schema="$5"
     local status=0
     local wrapper="${BASE_REPO_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
-    shift 5
+    shift 6
 
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would configure GitHub Project '%s' for '%s'.\n" "$project_title" "$repo"
         printf "[DRY-RUN] Would copy GitHub Project 'base-project-template' to '%s' if missing.\n" "$project_title"
         printf "[DRY-RUN] Would link GitHub Project '%s' to repository '%s'.\n" "$project_title" "$repo"
         printf "[DRY-RUN] Would backfill issues from '%s' into GitHub Project '%s'.\n" "$repo" "$project_title"
+        if [[ -n "$config_path" ]]; then
+            printf "[DRY-RUN] Would read GitHub Project config from '%s'.\n" "$config_path"
+        fi
         printf "[DRY-RUN] Would run: %s --project base base_github_projects project configure --project %s --owner %s --repo %s --schema %s" \
             "$wrapper" \
             "$(base_repo_pretty_arg "$project_title")" \
             "$owner" \
             "$repo" \
             "$schema"
+        if [[ -n "$config_path" ]]; then
+            printf " --config %s" "$(base_repo_pretty_arg "$config_path")"
+        fi
         for option in "$@"; do
             printf " --initiative-option %s" "$(base_repo_pretty_arg "$option")"
         done
@@ -1003,6 +1020,9 @@ base_repo_configure_project_metadata() {
         --repo "$repo"
         --schema "$schema"
     )
+    if [[ -n "$config_path" ]]; then
+        command+=(--config "$config_path")
+    fi
     for option in "$@"; do
         command+=(--initiative-option "$option")
     done
@@ -1508,6 +1528,7 @@ base_repo_init() {
                     "$project_title" \
                     "$project_owner" \
                     "$project_schema" \
+                    "$(base_repo_project_config_path "$root")" \
                     "${initiative_options[@]}" || return 1
             fi
         else
@@ -1784,6 +1805,7 @@ base_repo_configure() {
             "$project_title" \
             "$project_owner" \
             "$project_schema" \
+            "$(base_repo_project_config_path "$path")" \
             "${initiative_options[@]}"
     fi
 }
