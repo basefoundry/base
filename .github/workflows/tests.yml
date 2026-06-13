@@ -53,6 +53,49 @@ jobs:
             tests/base_init.bats \
             tests/install.bats
 
+  macos:
+    name: macOS smoke tests
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Homebrew tools
+        run: |
+          brew install bash bats-core
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Run Base setup and check smoke tests
+        run: |
+          ./bin/basectl ci setup base --format json
+          ./bin/basectl ci check base --format json
+
+      - name: Verify shell profile integration
+        run: |
+          test_home="$(mktemp -d)"
+          brew_bash="$(brew --prefix)/bin/bash"
+
+          HOME="$test_home" ./bin/basectl update-profile
+          test -f "$test_home/.bash_profile"
+          test -f "$test_home/.bashrc"
+
+          env -u BASE_HOME \
+            HOME="$test_home" \
+            PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+            "$brew_bash" --rcfile "$test_home/.bashrc" -i -c 'command -v basectl >/dev/null && basectl --version'
+
+      - name: Run focused macOS BATS tests
+        run: |
+          bats \
+            cli/bash/commands/basectl/tests/update-profile.bats \
+            tests/base_init.bats \
+            tests/install.bats
+
   integration:
     name: Integration tests
     runs-on: ubuntu-latest

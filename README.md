@@ -916,12 +916,21 @@ Python installed through Base setup.
 
 Intended supported platforms are:
 
-- macOS on Apple Silicon
-- macOS on Intel Macs
+- macOS 14 Sonoma or newer on Apple Silicon
+- macOS 14 Sonoma or newer on Intel Macs
 - at least one Linux variant in the future, with the first target still to be decided
 
-The supported macOS version floor is still TBD. Linux support is a design target,
-but not yet an implemented or tested support contract. Windows is out of scope.
+The supported macOS version floor is macOS 14 Sonoma. Support means Base is
+tested and expected to work on macOS 14 or newer with Homebrew's supported
+install contract, Xcode Command Line Tools, a Homebrew-managed Bash, Git, and
+Python installed through Base setup. Older macOS releases may work from source,
+but they are outside Base's tested support contract. Linux support is a design
+target, but not yet an implemented or tested support contract. Windows is out of
+scope.
+
+The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
+be added for coverage, but the floor job should stay until Base intentionally
+raises the support floor.
 
 OS-specific behavior should stay isolated behind small helpers instead of being
 scattered through command code. For example, the Base runtime prompt can prefer

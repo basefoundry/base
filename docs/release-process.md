@@ -20,6 +20,10 @@ The formula points at a versioned tag archive and records that archive's
 `sha256`, so the archive must be available before the formula can be updated and
 validated. Supported macOS installs should use Homebrew bottles; source builds
 remain a fallback for unsupported hosts or explicit source-build validation.
+Base's current supported macOS floor is macOS 14 Sonoma. Keep Homebrew bottle
+workflows, formula validation, and Base's macOS CI floor aligned with that
+support contract until the Compatibility section in the top-level README is
+changed intentionally.
 
 ## Version Policy
 
