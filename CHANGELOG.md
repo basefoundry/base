@@ -21,6 +21,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `assert_not_null` reject invalid variable-name arguments without logging
+  the raw value, and clarified that callers must pass variable names.
 - Fixed documentation drift for `basectl logs` syntax, project virtual
   environment location, and README coverage of the `basectl ci` command.
 - Made `basectl activate` prefer a uv project's repo-local `.venv` when

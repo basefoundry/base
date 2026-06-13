@@ -780,17 +780,21 @@ safe_truncate() {
 #   TOKEN=""
 #   assert_not_null USER       # This will succeed.
 #   assert_not_null USER TOKEN # This will fail, listing TOKEN as empty.
+#   assert_not_null "$TOKEN"   # Wrong: pass variable names, not values.
 #
 # Arguments:
 #   $@: One or more variable names to check.
 #
 assert_not_null() {
-    local unset_vars=() var_name
+    local unset_vars=() var_name var_name_re='^[A-Za-z_][A-Za-z0-9_]*$'
     if (($# == 0)); then
         fatal_error "assert_not_null: No variable names provided for validation."
     fi
 
     for var_name in "$@"; do
+        if ! [[ "$var_name" =~ $var_name_re ]]; then
+            fatal_error "assert_not_null expects variable names, not values; one or more arguments are not valid Bash variable names."
+        fi
         # Use indirection to get the value of the variable whose name is stored in var_name.
         # The -v check is for unset variables, -z is for empty strings.
         # We check for empty string as per the request.
