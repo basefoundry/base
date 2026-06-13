@@ -838,6 +838,20 @@ base_repo_pretty_arg() {
     fi
 }
 
+base_repo_pretty_command() {
+    local arg
+    local first=1
+
+    for arg in "$@"; do
+        if ((first)); then
+            first=0
+        else
+            printf ' '
+        fi
+        base_repo_pretty_arg "$arg"
+    done
+}
+
 base_repo_configure_label() {
     local color="$3"
     local description="$4"
@@ -1027,6 +1041,8 @@ base_repo_configure_project_metadata() {
         command+=(--initiative-option "$option")
     done
 
+    log_info "Configuring GitHub Project '$project_title' for '$repo'."
+    log_info "Running: $(base_repo_pretty_command "${command[@]}")"
     output="$("${command[@]}" 2>&1)" || status=$?
     if [[ "$status" -eq 0 ]]; then
         [[ -z "$output" ]] || printf '%s\n' "$output"
