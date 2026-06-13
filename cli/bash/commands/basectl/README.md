@@ -91,6 +91,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `Area` and `Initiative` options are added from that file. Use `--no-project`
   to skip Project setup, `--project <title>` to override the Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
+  Use `--copy-project-fields-from <title>` during migration to copy missing
+  issue item field values from an existing Project into the repo Project.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
   layer for repos that opt in.

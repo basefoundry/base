@@ -50,6 +50,8 @@ Options:
   --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
   --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
   --initiative-option <name>    Initiative option to seed. May be repeated.
+  --copy-project-fields-from <title>
+                                Copy missing Project item field values from another Project.
   --no-project                  Skip GitHub Project metadata configuration.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
@@ -983,6 +985,7 @@ base_repo_project_config_path() {
 base_repo_configure_project_metadata() {
     local dry_run="$1"
     local config_path="$6"
+    local copy_fields_from_project="$7"
     local option
     local owner="$4"
     local output=""
@@ -991,7 +994,7 @@ base_repo_configure_project_metadata() {
     local schema="$5"
     local status=0
     local wrapper="${BASE_REPO_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
-    shift 6
+    shift 7
 
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would configure GitHub Project '%s' for '%s'.\n" "$project_title" "$repo"
@@ -1001,6 +1004,11 @@ base_repo_configure_project_metadata() {
         if [[ -n "$config_path" ]]; then
             printf "[DRY-RUN] Would read GitHub Project config from '%s'.\n" "$config_path"
         fi
+        if [[ -n "$copy_fields_from_project" ]]; then
+            printf "[DRY-RUN] Would copy missing Project item field values from '%s' into '%s'.\n" \
+                "$copy_fields_from_project" \
+                "$project_title"
+        fi
         printf "[DRY-RUN] Would run: %s --project base base_github_projects project configure --project %s --owner %s --repo %s --schema %s" \
             "$wrapper" \
             "$(base_repo_pretty_arg "$project_title")" \
@@ -1009,6 +1017,9 @@ base_repo_configure_project_metadata() {
             "$schema"
         if [[ -n "$config_path" ]]; then
             printf " --config %s" "$(base_repo_pretty_arg "$config_path")"
+        fi
+        if [[ -n "$copy_fields_from_project" ]]; then
+            printf " --copy-fields-from %s" "$(base_repo_pretty_arg "$copy_fields_from_project")"
         fi
         for option in "$@"; do
             printf " --initiative-option %s" "$(base_repo_pretty_arg "$option")"
@@ -1036,6 +1047,9 @@ base_repo_configure_project_metadata() {
     )
     if [[ -n "$config_path" ]]; then
         command+=(--config "$config_path")
+    fi
+    if [[ -n "$copy_fields_from_project" ]]; then
+        command+=(--copy-fields-from "$copy_fields_from_project")
     fi
     for option in "$@"; do
         command+=(--initiative-option "$option")
@@ -1337,6 +1351,7 @@ base_repo_init() {
     local project_owner=""
     local project_schema="base-roadmap"
     local project_title=""
+    local copy_project_fields_from=""
     local protect_default_branch=1
     local pr_branch=""
     local requested_visibility=""
@@ -1460,6 +1475,18 @@ base_repo_init() {
                 initiative_options+=("${1#--initiative-option=}")
                 shift
                 ;;
+            --copy-project-fields-from)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--copy-project-fields-from' requires an argument."
+                    return $?
+                }
+                copy_project_fields_from="$2"
+                shift 2
+                ;;
+            --copy-project-fields-from=*)
+                copy_project_fields_from="${1#--copy-project-fields-from=}"
+                shift
+                ;;
             --no-project)
                 configure_project=0
                 shift
@@ -1545,6 +1572,7 @@ base_repo_init() {
                     "$project_owner" \
                     "$project_schema" \
                     "$(base_repo_project_config_path "$root")" \
+                    "$copy_project_fields_from" \
                     "${initiative_options[@]}" || return 1
             fi
         else
@@ -1694,6 +1722,7 @@ base_repo_agent_guidance() {
 
 base_repo_configure() {
     local configure_project=1
+    local copy_project_fields_from=""
     local dry_run=0
     local github_repo=""
     local initiative_options=()
@@ -1777,6 +1806,18 @@ base_repo_configure() {
                 initiative_options+=("${1#--initiative-option=}")
                 shift
                 ;;
+            --copy-project-fields-from)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_usage_error "Option '--copy-project-fields-from' requires an argument."
+                    return $?
+                }
+                copy_project_fields_from="$2"
+                shift 2
+                ;;
+            --copy-project-fields-from=*)
+                copy_project_fields_from="${1#--copy-project-fields-from=}"
+                shift
+                ;;
             --no-project)
                 configure_project=0
                 shift
@@ -1822,6 +1863,7 @@ base_repo_configure() {
             "$project_owner" \
             "$project_schema" \
             "$(base_repo_project_config_path "$path")" \
+            "$copy_project_fields_from" \
             "${initiative_options[@]}"
     fi
 }
