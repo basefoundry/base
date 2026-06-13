@@ -409,13 +409,13 @@ basectl repo check ~/work/example --agent-guidance
 
 `repo configure` is intentionally idempotent. It enables Issues and Projects,
 standardizes merge settings, deletes branches after merge, applies the
-Base-managed default branch protection ruleset, configures standard GitHub
-Project metadata fields, and creates the standard GitHub labels documented in
-[Repository Baseline](docs/repo-baseline.md).
+Base-managed default branch protection ruleset, configures a repo-named GitHub
+Project copied from `base-project-template`, and creates the standard GitHub
+labels documented in [Repository Baseline](docs/repo-baseline.md).
 Pass `--no-protect-default-branch` when a repository intentionally skips that
 ruleset. Pass `--no-project` when a repository intentionally skips Base-managed
 Project metadata, or `--project`, `--project-owner`, and
-`--initiative-option` when the default roadmap title or Initiative values need
+`--initiative-option` when the default Project title or Initiative values need
 to vary by repository.
 
 Run a discovered project's declared test command with:

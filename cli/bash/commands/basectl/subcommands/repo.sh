@@ -46,7 +46,7 @@ Options:
   --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
   --no-protect-default-branch   Skip Base-managed default branch protection during repo configure.
-  --project <title>             GitHub Project title to configure. Defaults to <repo-name> Roadmap.
+  --project <title>             GitHub Project title to configure. Defaults to the repository name.
   --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
   --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
   --initiative-option <name>    Initiative option to seed. May be repeated.
@@ -945,16 +945,9 @@ base_repo_title_case_name() {
 }
 
 base_repo_default_project_title() {
-    local name
     local repo="$1"
 
-    name="${repo#*/}"
-    if [[ "$repo" == "codeforester/base" || "$name" == "base" ]]; then
-        printf '%s\n' "Base Roadmap"
-        return 0
-    fi
-
-    printf '%s Roadmap\n' "$(base_repo_title_case_name "$name")"
+    printf '%s\n' "${repo#*/}"
 }
 
 base_repo_project_owner_from_repo() {
@@ -977,6 +970,9 @@ base_repo_configure_project_metadata() {
 
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would configure GitHub Project '%s' for '%s'.\n" "$project_title" "$repo"
+        printf "[DRY-RUN] Would copy GitHub Project 'base-project-template' to '%s' if missing.\n" "$project_title"
+        printf "[DRY-RUN] Would link GitHub Project '%s' to repository '%s'.\n" "$project_title" "$repo"
+        printf "[DRY-RUN] Would backfill issues from '%s' into GitHub Project '%s'.\n" "$repo" "$project_title"
         printf "[DRY-RUN] Would run: %s --project base base_github_projects project configure --project %s --owner %s --repo %s --schema %s" \
             "$wrapper" \
             "$(base_repo_pretty_arg "$project_title")" \

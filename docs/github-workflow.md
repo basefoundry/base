@@ -64,10 +64,12 @@ Keep the issue's `Status` field aligned with the implementation train:
 Do not add pull requests as separate Project items by default. The issue owns
 milestone and Project tracking so roadmap views do not double count the work.
 
-`basectl repo init` and `basectl repo configure` configure the standard Project
-metadata by default when a GitHub repository is available. Use
-`basectl gh project` directly for lower-level Project inspection, schema
-repair, or issue field updates.
+`basectl repo init` and `basectl repo configure` configure a repo-named Project
+by default when a GitHub repository is available. Base copies
+`base-project-template` when the repo Project is missing, links the Project to
+the repository, and backfills existing repository issues. Use `basectl gh
+project` directly for lower-level Project inspection, schema repair, or issue
+field updates.
 
 ```bash
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
@@ -376,7 +378,9 @@ Releases, and the follow-up `codeforester/homebrew-base` tap update, see
 
 ## Projects
 
-Use one GitHub Project first: `Base Roadmap`.
+Use one operational GitHub Project per repository. The repo Project title should
+match the repository name, and new repo Projects should be copied from
+`base-project-template`.
 
 Recommended fields:
 
@@ -389,10 +393,11 @@ Recommended fields:
 
 Useful views:
 
+- Backlog table for open Backlog issues
 - Board by status
-- Priority view
-- Release view grouped by milestone
-- Bugs and CI
-- Ready for PR train
+- By Status table
+- Roadmap timeline
 
-Projects show workflow and prioritization. Milestones show release grouping.
+Repo Projects show workflow and prioritization. Milestones show release
+grouping. Cross-repo portfolio Projects should be curated roll-ups rather than
+the default destination for every repo issue.

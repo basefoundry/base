@@ -58,7 +58,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 |---|---|---|
 | `basectl repo init <name>` | Create a Base-managed repository baseline and optionally create/configure the GitHub repo. | `--path <path>`, `--repo <owner/name>`, `--public`, `--private`, `--pr`, `--dry-run` |
 | `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance` |
-| `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and Project metadata. | `--repo <owner/name>`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
+| `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and repo Project metadata. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files. | `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--dry-run` |
 | `basectl repo installer-template [path]` | Print the maintained project installer starter script, or write it to a path. | `--dry-run` |
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |

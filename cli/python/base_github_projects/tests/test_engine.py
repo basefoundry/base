@@ -263,6 +263,166 @@ def test_configure_command_refetches_default_fields_after_project_creation(
     assert created_fields == ["Priority", "Area", "Size", "Initiative"]
 
 
+def test_configure_command_copies_template_for_repo_project_and_backfills_issues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    status_field = engine.ProjectField(
+        field_id="status-field",
+        name="Status",
+        data_type="SINGLE_SELECT",
+        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Status").options,
+    )
+    priority_field = engine.ProjectField(
+        field_id="priority-field",
+        name="Priority",
+        data_type="SINGLE_SELECT",
+        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority").options,
+    )
+    area_field = engine.ProjectField(
+        field_id="area-field",
+        name="Area",
+        data_type="SINGLE_SELECT",
+        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Area").options,
+    )
+    size_field = engine.ProjectField(
+        field_id="size-field",
+        name="Size",
+        data_type="SINGLE_SELECT",
+        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Size").options,
+    )
+    initiative_field = engine.ProjectField(
+        field_id="initiative-field",
+        name="Initiative",
+        data_type="SINGLE_SELECT",
+        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Initiative").options,
+    )
+    calls: list[tuple[str, str]] = []
+    linked: list[tuple[str, str]] = []
+    backfilled: list[tuple[str, str]] = []
+
+    def fake_find_owner_and_project(owner: str, title: str) -> engine.OwnerInfo:
+        calls.append((owner, title))
+        if title == "base-demo":
+            return engine.OwnerInfo(owner_id="owner-id", login=owner, project=None)
+        if title == engine.DEFAULT_TEMPLATE_PROJECT:
+            return engine.OwnerInfo(
+                owner_id="owner-id",
+                login=owner,
+                project=engine.ProjectInfo(project_id="template-id", title=title),
+            )
+        raise AssertionError(f"unexpected project lookup: {title}")
+
+    monkeypatch.setattr(engine, "find_owner_and_project", fake_find_owner_and_project)
+    monkeypatch.setattr(
+        engine,
+        "copy_project",
+        lambda template_id, owner_id, title: engine.ProjectInfo(project_id="project-id", title=title),
+    )
+    monkeypatch.setattr(
+        engine,
+        "fetch_project_fields",
+        lambda project_id: (status_field, priority_field, area_field, size_field, initiative_field),
+    )
+    monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
+    monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
+    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: engine.STANDARD_TEMPLATE_VIEWS)
+    monkeypatch.setattr(
+        engine,
+        "link_project_to_repository",
+        lambda project_id, repo: linked.append((project_id, repo)),
+    )
+    monkeypatch.setattr(
+        engine,
+        "backfill_repository_issues",
+        lambda project_id, repo: backfilled.append((project_id, repo)),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base-demo",
+            owner="codeforester",
+            repo="codeforester/base-demo",
+        )
+    )
+
+    assert status == 0
+    assert calls == [
+        ("codeforester", "base-demo"),
+        ("codeforester", engine.DEFAULT_TEMPLATE_PROJECT),
+    ]
+    assert linked == [("project-id", "codeforester/base-demo")]
+    assert backfilled == [("project-id", "codeforester/base-demo")]
+
+
+def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        engine,
+        "find_owner_and_project",
+        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=None),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base-demo",
+            owner="codeforester",
+            repo="codeforester/base-demo",
+            dry_run=True,
+        )
+    )
+
+    assert status == 0
+    output = capsys.readouterr().out
+    assert "Would copy GitHub Project 'base-project-template' to 'base-demo'." in output
+    assert "Would link GitHub Project 'base-demo' to repository 'codeforester/base-demo'." in output
+    assert "Would backfill issues from 'codeforester/base-demo' into GitHub Project 'base-demo'." in output
+
+
+def test_backfill_repository_issues_adds_only_missing_project_items(monkeypatch: pytest.MonkeyPatch) -> None:
+    added: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(engine, "fetch_repository_issue_ids", lambda repo: ("issue-1", "issue-2", "issue-3"))
+    monkeypatch.setattr(engine, "fetch_project_issue_content_ids", lambda project_id: {"issue-2"})
+    monkeypatch.setattr(
+        engine,
+        "add_project_item",
+        lambda project_id, issue_id: added.append((project_id, issue_id)) or f"item-{issue_id}",
+    )
+
+    engine.backfill_repository_issues("project-id", "codeforester/base-demo")
+
+    assert added == [("project-id", "issue-1"), ("project-id", "issue-3")]
+
+
+def test_link_project_to_repository_skips_existing_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(message: str) -> None:
+        raise AssertionError(message)
+
+    monkeypatch.setattr(
+        engine,
+        "fetch_project_repository_names",
+        lambda project_id: {"codeforester/base-demo"},
+    )
+    monkeypatch.setattr(
+        engine,
+        "fetch_repository_id",
+        lambda repo: fail("repository id should not be fetched"),
+    )
+    monkeypatch.setattr(
+        engine,
+        "run_graphql",
+        lambda query, variables: fail("mutation should not run"),
+    )
+
+    engine.link_project_to_repository("project-id", "codeforester/base-demo")
+
+
 def test_find_owner_and_project_uses_user_lookup_without_organization_error(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
         assert "user(login:" in query
