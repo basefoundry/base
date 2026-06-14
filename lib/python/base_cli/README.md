@@ -332,6 +332,11 @@ The helper wraps Click's `CliRunner`, sets `HOME` when requested, changes to
 support it. Use `cwd` for commands whose behavior depends on project discovery,
 including tests that intentionally run outside a Base project.
 
+When `home` is supplied, `invoke()` also defaults `BASE_CACHE_DIR` to
+`<home>/.cache/base` so helper-based tests do not inherit a developer's real
+cache root. Pass `env={"BASE_CACHE_DIR": str(path)}` when a test needs an
+explicit cache location.
+
 ## When To Use `base_cli`
 
 Use `base_cli` for Python commands that are part of Base or a Base-supported

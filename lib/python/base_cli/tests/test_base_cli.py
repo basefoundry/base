@@ -411,25 +411,24 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                stderr = io.StringIO()
-                with redirect_stderr(stderr):
-                    result = invoke(app, ["--name", "Ada"], home=home)
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = invoke(app, ["--name", "Ada"], home=home)
 
-                self.assertEqual(result.exit_code, 0, result.output)
-                self.assertEqual(seen["name"], "Ada")
-                self.assertFalse(seen["temp_dir"].exists())
-                self.assertTrue(seen["cache_dir"].is_dir())
-                log_dir = base_cache_root(home) / "cli" / "demo" / "logs"
-                self.assertTrue(log_dir.is_dir())
-                log_files = tuple(log_dir.glob("*.log"))
-                self.assertEqual(len(log_files), 1)
-                self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
-                self.assertFalse((home / ".base.d" / "cli").exists())
-                self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
-                self.assertIn("hello Ada", result.stderr)
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(seen["name"], "Ada")
+            self.assertFalse(seen["temp_dir"].exists())
+            self.assertTrue(seen["cache_dir"].is_dir())
+            log_dir = home / ".cache" / "base" / "cli" / "demo" / "logs"
+            self.assertTrue(log_dir.is_dir())
+            log_files = tuple(log_dir.glob("*.log"))
+            self.assertEqual(len(log_files), 1)
+            self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
+            self.assertFalse((home / ".base.d" / "cli").exists())
+            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
+            self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_dry_run_avoids_default_cache_writes(self) -> None:
@@ -448,10 +447,9 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                result = invoke(app, ["--dry-run"], home=home)
+            result = invoke(app, ["--dry-run"], home=home)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(seen["dry_run"])
@@ -459,7 +457,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertFalse(seen["temp_dir"].exists())
             self.assertFalse(seen["cache_dir"].exists())
             self.assertFalse(seen["log_dir"].exists())
-            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertFalse((home / ".cache" / "base").exists())
             self.assertIn("dry run", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -478,17 +476,16 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                result = invoke(app, ["--debug"], home=home)
+            result = invoke(app, ["--debug"], home=home)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertIsNone(seen["log_file"])
             self.assertFalse(seen["state_dir"].exists())
             self.assertFalse(seen["cache_dir"].exists())
             self.assertFalse(seen["temp_dir"].exists())
-            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertFalse((home / ".cache" / "base").exists())
             self.assertIn("debug without persistent log", result.stderr)
             self.assertIn("info without persistent log", result.stderr)
 
@@ -509,10 +506,9 @@ class BaseCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
             log_file = home / "logs" / "dry-run.log"
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                result = invoke(app, ["--dry-run", "--log-file", str(log_file)], home=home)
+            result = invoke(app, ["--dry-run", "--log-file", str(log_file)], home=home)
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(seen["dry_run"])
@@ -521,7 +517,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
             self.assertFalse(seen["temp_dir"].exists())
             self.assertFalse(seen["cache_dir"].exists())
-            self.assertFalse((home / "Library" / "Caches" / "base").exists())
+            self.assertFalse((home / ".cache" / "base").exists())
             self.assertIn("dry run with log", log_file.read_text(encoding="utf-8"))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -535,10 +531,9 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                result = invoke(app, [], home=home)
+            result = invoke(app, [], home=home)
 
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("stdout text", result.stdout)
@@ -631,6 +626,68 @@ class BaseCliTests(unittest.TestCase):
         self.assertEqual(Path.cwd(), original_cwd)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_defaults_base_cache_dir_under_home(self) -> None:
+        app = base_cli.App(name="cache-default")
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["state_dir"] = ctx.state_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            inherited_cache = root / "real-cache"
+            home.mkdir()
+
+            from base_cli.testing import invoke
+
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(inherited_cache)}):
+                result = invoke(app, [], home=home)
+
+            expected_cache_root = home / ".cache" / "base"
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(seen["state_dir"], expected_cache_root / "cli" / "cache-default")
+            self.assertTrue(expected_cache_root.is_dir())
+            self.assertFalse(inherited_cache.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_preserves_explicit_environment_overrides(self) -> None:
+        app = base_cli.App(name="cache-override")
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["home"] = Path.home()
+            seen["state_dir"] = ctx.state_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            override_home = root / "override-home"
+            override_cache = root / "override-cache"
+            home.mkdir()
+            override_home.mkdir()
+
+            from base_cli.testing import invoke
+
+            result = invoke(
+                app,
+                [],
+                home=home,
+                env={
+                    "HOME": str(override_home),
+                    "BASE_CACHE_DIR": str(override_cache),
+                },
+            )
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(seen["home"], override_home)
+            self.assertEqual(seen["state_dir"], override_cache / "cli" / "cache-override")
+            self.assertTrue(override_cache.is_dir())
+            self.assertFalse((home / ".cache" / "base").exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_standard_options_manifest_context_and_sensitive_redaction(self) -> None:
         app = base_cli.App(name="secret-tool", version="0.1.0")
         seen = {}
@@ -655,17 +712,18 @@ class BaseCliTests(unittest.TestCase):
             manifest_path.write_text("project:\n  name: demo\n", encoding="utf-8")
             log_file = home / "custom.log"
 
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}), mock.patch.object(
+            with mock.patch.object(
                 os.sys,
                 "argv",
                 ["secret-tool", "--debug", "--token", "super-secret"],
-            ), change_directory(project):
+            ):
                 from base_cli.testing import invoke
 
                 result = invoke(
                     app,
                     ["--debug", "--keep-temp", "--log-file", str(log_file), "--token", "super-secret"],
                     home=home,
+                    cwd=project,
                 )
 
                 self.assertEqual(result.exit_code, 0, result.output)
@@ -675,7 +733,7 @@ class BaseCliTests(unittest.TestCase):
                 self.assertEqual(seen["log_file"], log_file)
                 self.assertEqual(
                     seen["temp_dir"].parents[1],
-                    base_cache_root(home) / "cli" / "secret-tool",
+                    home / ".cache" / "base" / "cli" / "secret-tool",
                 )
                 self.assertEqual(seen["manifest_path"], manifest_path.resolve())
                 self.assertEqual(seen["project_root"], project.resolve())

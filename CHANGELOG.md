@@ -15,6 +15,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   from an explicit project context without leaking the process working
   directory.
 - Added `assert_executable` to `lib_std.sh` for explicit executable path checks.
+- Added a test-local `BASE_CACHE_DIR` default to `base_cli.testing.invoke()`
+  when `home` is supplied, with explicit environment overrides still honored.
 
 ### Fixed
 
