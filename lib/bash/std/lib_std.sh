@@ -170,21 +170,16 @@ __stdlib_init__() {
 # to the function and be unavailable to other functions.
 #
 import() {
-    local lib
+    local lib import_path
     for lib; do
-        local pushed=0
-        # Unless an absolute library path is given, make it relative to the script's location
+        import_path="$lib"
         if [[ "$lib" != /* ]]; then
            [[ $__SCRIPT_DIR__ ]] || { printf '%s\n' "ERROR: __SCRIPT_DIR__ not set; import functionality needs it" >&2; exit 1; }
-           pushd "$__SCRIPT_DIR__" >/dev/null || exit_if_error 1 "Failed to enter script directory '$__SCRIPT_DIR__'."
-           pushed=1
+           import_path="$__SCRIPT_DIR__/$lib"
         fi
-        if [[ -f "$lib" ]]; then
-            source "$lib"
+        if [[ -f "$import_path" ]]; then
+            source "$import_path"
             exit_if_error $? "Import of library '$lib' not successful."
-            if ((pushed)); then
-                popd >/dev/null || exit_if_error 1 "Failed to leave script directory '$__SCRIPT_DIR__'."
-            fi
         else
             exit_if_error 1 "Library '$lib' does not exist"
         fi
