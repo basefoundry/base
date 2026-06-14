@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import inspect
+import os
 from pathlib import Path
 from typing import Any
 
 
-def invoke(app: Any, args: list[str] | None = None, home: Path | None = None):
+def invoke(
+    app: Any,
+    args: list[str] | None = None,
+    home: Path | None = None,
+    cwd: Path | str | None = None,
+):
     try:
         from click.testing import CliRunner
     except ImportError as exc:
@@ -18,4 +24,11 @@ def invoke(app: Any, args: list[str] | None = None, home: Path | None = None):
     if "mix_stderr" in inspect.signature(CliRunner).parameters:
         runner_kwargs["mix_stderr"] = False
     runner = CliRunner(**runner_kwargs)
-    return runner.invoke(app.click_command, args or [], env=env)
+    original_cwd = Path.cwd()
+    if cwd is not None:
+        os.chdir(cwd)
+    try:
+        return runner.invoke(app.click_command, args or [], env=env)
+    finally:
+        if cwd is not None:
+            os.chdir(original_cwd)

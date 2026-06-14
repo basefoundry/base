@@ -11,6 +11,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `base_cli.ExitCode` constants for Base's standard command return
   values.
+- Added `cwd` support to `base_cli.testing.invoke()` so tests can run commands
+  from an explicit project context without leaking the process working
+  directory.
 
 ### Fixed
 

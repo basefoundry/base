@@ -277,11 +277,12 @@ ctx.on_cleanup(close_connection)
 The package should include a small test helper:
 
 ```python
-result = base_cli.testing.invoke(app, ["--debug"])
+result = base_cli.testing.invoke(app, ["--debug"], cwd=project_root)
 ```
 
 This wraps Click's test runner and gives tests access to isolated `HOME`,
-captured output, and generated Base state.
+captured output, generated Base state, and an explicit invocation directory for
+project discovery or no-project test cases.
 
 ## Phases
 
