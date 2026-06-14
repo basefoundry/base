@@ -1020,6 +1020,42 @@ EOF
     [[ "$output" == *"do not exist or are not regular files"* ]]
 }
 
+@test "assert_executable validates executable paths and warns on empty input" {
+    local target="$TEST_TMPDIR/tool.sh"
+    local stderr_file="$TEST_TMPDIR/assert-executable.err"
+
+    create_script "$target" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+    assert_executable "$target"
+
+    assert_executable 2>"$stderr_file"
+    [ "$?" -eq 0 ]
+    [[ "$(cat "$stderr_file")" == *"assert_executable: No executable paths provided to check."* ]]
+}
+
+@test "assert_executable exits for missing or non-executable paths" {
+    local script="$TEST_TMPDIR/assert-executable-fail.sh"
+    local target="$TEST_TMPDIR/not-executable.sh"
+
+    printf '#!/usr/bin/env bash\n' > "$target"
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+assert_executable "$TEST_TMPDIR/missing-tool" "$target"
+EOF
+
+    bats_run bash "$script"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"do not exist, are not regular files, or are not executable"* ]]
+    [[ "$output" == *"$TEST_TMPDIR/missing-tool"* ]]
+    [[ "$output" == *"$target"* ]]
+}
+
 @test "assert_dir_exists validates directories and warns on empty input" {
     local target="$TEST_TMPDIR/dir"
     local stderr_file="$TEST_TMPDIR/assert-dir.err"

@@ -250,6 +250,7 @@ assert_integer retry_count
 assert_integer_range retry_count 0 5
 assert_command_exists git brew
 assert_file_exists "$manifest_path"
+assert_executable "$project_root/bin/build"
 assert_dir_exists "$project_root"
 ```
 
@@ -260,6 +261,9 @@ echoing the invalid value.
 
 The assertions favor clear failure messages over scattered one-off tests. Some
 helpers check all provided values and report all missing items together.
+Use `assert_executable` for explicit paths to project-local tools or scripts;
+use `assert_command_exists` for commands that should be discoverable through
+`PATH`.
 
 ## Interactive Helpers
 

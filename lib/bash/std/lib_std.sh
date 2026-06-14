@@ -987,6 +987,45 @@ assert_file_exists() {
 }
 
 #
+# assert_executable - Checks that one or more paths exist and are executable files.
+#
+# This function iterates through all provided paths. If any path does not
+# exist, is not a regular file, or is not executable, it collects the names
+# and reports them all in a single fatal error.
+#
+# Use this for explicit paths such as project-local scripts. Use
+# `assert_command_exists` when checking whether a command is discoverable
+# through PATH.
+#
+# Usage:
+#   assert_executable "./bin/tool" "/opt/vendor/bin/tool"
+#
+# Arguments:
+#   $@: One or more executable file paths to check.
+#
+assert_executable() {
+    local missing_executables=()
+    local executable
+
+    if (($# == 0)); then
+        log_warn "assert_executable: No executable paths provided to check."
+        return 0
+    fi
+
+    for executable; do
+        if [[ ! -f "$executable" || ! -x "$executable" ]]; then
+            missing_executables+=("$executable")
+        fi
+    done
+
+    if ((${#missing_executables[@]} > 0)); then
+        fatal_error "These required executable paths do not exist, are not regular files, or are not executable: ${missing_executables[*]}"
+    fi
+
+    return 0
+}
+
+#
 # assert_dir_exists - Checks that one or more paths exist and are directories.
 #
 # This function iterates through all provided paths. If any path does not
