@@ -24,7 +24,8 @@
 #   __SCRIPT_DIR__    Absolute path to the script that sourced the library.
 #
 # Core helpers:
-#   run [--no-exit] cmd ...      # Safe command runner with dry-run & failure handling.
+#   run [--no-exit] [--quiet] cmd ...
+#                                # Safe command runner with dry-run & failure handling.
 #   exit_if_error rc msg...      # Log + exit when rc != 0 (preserves original status).
 #   fatal_error msg...           # Convenience wrapper: exit with last status or 1.
 #   add_to_path [-n] [-p] dir    # Append/prepend unique PATH entries.
@@ -625,16 +626,21 @@ is_dry_run() {
 #     prints the command instead of running it.
 #   - Exit on Failure: By default, it will exit the script if the command
 #     returns a non-zero exit code.
-#   - Optional No-Exit: If the first argument is `--no-exit`, the function
+#   - Optional No-Exit: If an initial argument is `--no-exit`, the function
 #     will not exit on failure, allowing the calling script to handle the error.
+#   - Optional Quiet Probe: If an initial argument is `--quiet`, handled
+#     failures do not log warnings. This is intended for expected probe
+#     failures and is most useful with `--no-exit`.
 #
 # Usage:
 #   run [options] command [arg1] [arg2] ...
 #
 # Options:
-#   --no-exit   If provided as the very first argument, the script will not
+#   --no-exit   If provided as an initial argument, the script will not
 #               exit if the command fails. The function will return the
 #               command's original exit code.
+#   --quiet     If provided as an initial argument with `--no-exit`, suppress
+#               the warning normally logged when the command fails.
 #
 # Examples:
 #   # Run a simple command. Exits if `ls` fails.
@@ -654,13 +660,28 @@ is_dry_run() {
 #
 ################################################################################
 run() {
-    local exit_on_failure=1
+    local exit_on_failure=1 quiet=0
 
-    # Check for the optional --no-exit flag.
-    if [[ "${1-}" == "--no-exit" ]]; then
-        exit_on_failure=0
-        shift # Remove the --no-exit flag from the arguments list.
-    fi
+    # Parse optional run flags before the command.
+    while (($#)); do
+        case "${1-}" in
+            --no-exit)
+                exit_on_failure=0
+                shift
+                ;;
+            --quiet)
+                quiet=1
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 
     # Check if the command is empty.
     if [[ $# -eq 0 ]]; then
@@ -691,7 +712,9 @@ run() {
         if ((exit_on_failure)); then
             exit_if_error "$exit_code" "Command failed (exit $exit_code): ${printable_command}"
         else
-            log_warn "Command failed (exit $exit_code): ${printable_command} (continuing)."
+            if ((! quiet)); then
+                log_warn "Command failed (exit $exit_code): ${printable_command} (continuing)."
+            fi
             return $exit_code
         fi
     fi

@@ -760,6 +760,20 @@ EOF
     [[ "$(cat "$stderr_file")" == *"continuing"* ]]
 }
 
+@test "run --no-exit --quiet suppresses failure warning" {
+    local stderr_file="$TEST_TMPDIR/run-no-exit-quiet.err"
+    local rc
+
+    if run --no-exit --quiet bash -c 'exit 7' 2>"$stderr_file"; then
+        rc=0
+    else
+        rc=$?
+    fi
+
+    [ "$rc" -eq 7 ]
+    [ ! -s "$stderr_file" ]
+}
+
 @test "run exits the script on failure by default" {
     local script="$TEST_TMPDIR/run-fail.sh"
 
