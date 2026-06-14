@@ -57,6 +57,7 @@ charge of their own domains.
 | Tool | What it primarily owns | Build directly into Base? | Coexist with Base? | How much to care |
 |---|---|---|---|---|
 | `mise` | tool versions, env vars, tasks | Partially borrow ideas, do not reimplement wholesale | Yes, strongly | High |
+| `uv` | Python projects, dependencies, lockfiles, project venvs, Python versions, tools | No, use an adapter and explicit Python contract | Yes, strongly | High |
 | `direnv` | automatic directory-based env loading | No | Yes, optionally | Medium |
 | `asdf` | tool version management | No | Yes, lightly | Medium |
 | `devbox` | reproducible project shells and packages | No | Yes, strongly | High |
@@ -102,6 +103,57 @@ How Base should coexist:
 
 Current stance: strong coexistence, selective borrowing, no wholesale
 reimplementation.
+
+### `uv`
+
+What it does well:
+
+- manages Python project dependencies, environments, lockfiles, and workspaces
+- runs scripts and project commands through Python-aware environments
+- installs and runs Python command-line tools
+- installs and switches Python versions
+- provides a pip-compatible interface for Python package workflows
+
+What Base should borrow:
+
+- the idea that Python project environments should be explicit, inspectable, and
+  close to the project contract
+- the steady-state preference for one active project Python environment when a
+  project has clearly opted into uv
+- the discipline that lockfile and sync state should be surfaced clearly before
+  Base mutates anything
+
+What Base should not do:
+
+- reimplement Python dependency resolution, lockfile generation, tool
+  installation, or Python version management
+- treat any `pyproject.toml` as proof that Base owns Python setup for the
+  project
+- run `uv sync`, enforce `uv.lock`, or route `basectl run` and `basectl test`
+  through `uv run` without an explicit Base contract
+- maintain a parallel Base-managed project venv as the long-term state once a
+  project has explicitly adopted uv-managed Python
+
+How Base should coexist:
+
+- continue observing same-directory `pyproject.toml` through read-only
+  diagnostics
+- preserve the current conservative activation behavior for uv-shaped projects:
+  when `pyproject.toml` and `uv.lock` are both present and the user has not
+  overridden `BASE_PROJECT_VENV_DIR`, `basectl activate` uses the repo-local
+  `.venv`
+- grow future uv support through an explicit `python:` manifest contract rather
+  than ad hoc `pyproject.toml` ownership
+- report missing uv, missing `.venv`, or needed `uv sync` steps through
+  Base-native check and doctor output when the project has opted into that
+  contract
+- invoke uv transparently when delegation is added, so logs and diagnostics show
+  the underlying uv command instead of hiding it behind Base
+
+Current stance: strong coexistence. Base already has conservative activation and
+read-only pyproject diagnostics for uv-shaped projects; fuller setup, check,
+run, and test delegation should wait for an explicit Python manifest contract.
+See [Python Manifest Section](python-manifest.md) for the current boundary.
 
 ### `direnv`
 
@@ -470,6 +522,7 @@ These are the lines worth defending as Base grows.
 
 - Homebrew and `brew bundle`
 - `mise`
+- `uv`
 - `asdf`
 - `task`
 - `just`
@@ -507,6 +560,8 @@ That suggests the next generation of Base should lean toward:
 - first-class support for pointing at existing artifacts such as:
   - `Brewfile`
   - `mise.toml`
+  - `pyproject.toml`
+  - `uv.lock`
   - `.tool-versions`
   - `Taskfile.yml`
   - `justfile`
@@ -538,6 +593,7 @@ recorded in the "Project Model Scope" section of
 Official references that informed this boundary note:
 
 - `mise`: <https://mise.jdx.dev/>
+- `uv`: <https://docs.astral.sh/uv/>
 - `direnv`: <https://direnv.net/>
 - `asdf`: <https://asdf-vm.com/guide/introduction.html>
 - `devbox`: <https://www.jetify.com/docs/devbox>
