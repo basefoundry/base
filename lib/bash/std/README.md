@@ -177,6 +177,15 @@ if ! run --no-exit grep "needle" "$file"; then
 fi
 ```
 
+For expected probe failures where the caller handles the status, add `--quiet`
+to suppress the warning:
+
+```bash
+if ! run --no-exit --quiet test -f "$optional_file"; then
+    log_debug "Optional file is absent."
+fi
+```
+
 Use `run` for commands plus arguments. Keep shell features such as pipelines,
 redirection, process substitution, and complex conditionals explicit in the
 calling script so the code remains clear.
