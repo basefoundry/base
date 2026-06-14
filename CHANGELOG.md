@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Compared `lib_std.sh` Bash major and minor versions arithmetically so older
+  major versions with two-digit minors cannot bypass the Bash 4.2 minimum.
 - Resolved `lib_std.sh` relative imports without changing directories so
   failing imports cannot leave the caller on the script directory stack.
 - Bounded `lib_std.sh` log caller stack walking so unusual stdlib-only frame

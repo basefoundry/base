@@ -94,10 +94,24 @@ is_interactive() {
 # Note: This function is called before logging is initialized, so it uses `echo` to stderr.
 #
 check_bash_version() {
-    local current_version
+    local bash_major bash_minor test_version
 
-    current_version="${BASE_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
-    if ((current_version < 42)); then
+    if [[ -n "${BASE_TEST_BASH_VERSION:-}" ]]; then
+        test_version="$BASE_TEST_BASH_VERSION"
+        if [[ "$test_version" == *.* ]]; then
+            bash_major="${test_version%%.*}"
+            bash_minor="${test_version#*.}"
+        else
+            bash_major="${test_version:0:1}"
+            bash_minor="${test_version:1}"
+        fi
+    else
+        bash_major="${BASH_VERSINFO[0]}"
+        bash_minor="${BASH_VERSINFO[1]}"
+    fi
+    bash_minor="${bash_minor:-0}"
+
+    if ((bash_major < 4 || (bash_major == 4 && bash_minor < 2))); then
         echo "Error: This script requires Bash 4.2 or higher." >&2
         echo "Your version ($BASH_VERSION) is not compatible." >&2
         return 1

@@ -148,6 +148,21 @@ EOF
     [[ "$output" == *"requires Bash 4.2 or higher"* ]]
 }
 
+@test "stdlib passive bash version check rejects Bash 3.10 arithmetically" {
+    local script="$TEST_TMPDIR/bash-version-3-10.sh"
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+BASE_TEST_BASH_VERSION=310 check_bash_version
+EOF
+
+    bats_run "$script"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"requires Bash 4.2 or higher"* ]]
+}
+
 @test "color initialization honors tty mode when --color is passed" {
     local script="$TEST_TMPDIR/tty-colors.sh"
     local normalized
