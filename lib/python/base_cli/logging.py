@@ -65,6 +65,9 @@ def _source_path(record: logging.LogRecord) -> str:
     base_home = os.environ.get("BASE_HOME")
     if base_home:
         candidates.append(Path(base_home))
+    project_root = _active_project_root()
+    if project_root is not None:
+        candidates.append(project_root)
     candidates.append(Path.cwd())
 
     for root in candidates:
@@ -73,6 +76,14 @@ def _source_path(record: logging.LogRecord) -> str:
         except ValueError:
             continue
     return str(path.resolve())
+
+
+def _active_project_root() -> Path | None:
+    try:
+        context = get_current_context()
+    except RuntimeError:
+        return None
+    return context.project_root
 
 
 def log_invocation(logger: logging.Logger, argv: list[str], sensitive_options: set[str]) -> None:

@@ -15,6 +15,7 @@ from unittest import mock
 import base_cli
 from base_cli import config as config_module
 from base_cli.config import load_config, load_user_config, read_user_config, user_config_path
+from base_cli.context import reset_current_context, set_current_context
 from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_cache_root, base_state_root, discover_manifest, normalize_cli_name
 from base_cli.redaction import redact_argv
@@ -103,6 +104,69 @@ class BaseCliTests(unittest.TestCase):
             redact_argv(argv, {"api_key", "token"}),
             ["tool", "--api-key", "[REDACTED]", "--token=[REDACTED]", "--name", "visible"],
         )
+
+    def test_log_source_prefers_base_home(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            base_home = root / "base-home"
+            project = root / "project"
+            source = base_home / "lib" / "python" / "tool.py"
+            base_home.mkdir()
+            project.mkdir()
+            source.parent.mkdir(parents=True)
+            source.write_text("# test\n", encoding="utf-8")
+            context, _ = self.make_context(tmpdir)
+            context.project_root = project
+            record = logging.LogRecord(
+                name="base_cli.test",
+                level=logging.INFO,
+                pathname=str(source),
+                lineno=11,
+                msg="hello",
+                args=(),
+                exc_info=None,
+            )
+
+            token = set_current_context(context)
+            try:
+                with mock.patch.dict(os.environ, {"BASE_HOME": str(base_home)}):
+                    formatted = BaseCliFormatter().format(record)
+            finally:
+                reset_current_context(token)
+
+        self.assertIn("lib/python/tool.py:11 hello", formatted)
+
+    def test_log_source_uses_context_project_root_before_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            project = root / "project"
+            cwd = root / "runner"
+            source = project / "src" / "tool.py"
+            project.mkdir()
+            cwd.mkdir()
+            source.parent.mkdir(parents=True)
+            source.write_text("# test\n", encoding="utf-8")
+            context, _ = self.make_context(tmpdir)
+            context.project_root = project
+            record = logging.LogRecord(
+                name="base_cli.test",
+                level=logging.INFO,
+                pathname=str(source),
+                lineno=13,
+                msg="hello",
+                args=(),
+                exc_info=None,
+            )
+
+            token = set_current_context(context)
+            try:
+                with mock.patch.dict(os.environ, {"BASE_HOME": ""}), change_directory(cwd):
+                    formatted = BaseCliFormatter().format(record)
+            finally:
+                reset_current_context(token)
+
+        self.assertIn("src/tool.py:13 hello", formatted)
+        self.assertNotIn(str(source.resolve()), formatted)
 
     def test_log_source_fallback_uses_resolved_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
