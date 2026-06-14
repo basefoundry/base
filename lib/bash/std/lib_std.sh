@@ -1085,21 +1085,36 @@ ask_yes_no() {
         return 1
     fi
 
-    local message=$1 user_input
+    local message=$1 user_input tty_fd
+    if ! exec {tty_fd}</dev/tty 2>/dev/null; then
+        log_error "ask_yes_no: /dev/tty is not available"
+        return 1
+    fi
+
     while true; do
         # Prompt the user for input.
         # -n 1: Reads only one character.
         # -r: Prevents backslash from acting as an escape character.
         # -p: Displays the prompt string.
         # The text "[y/N]" suggests that 'N' is the default choice.
-        read -r -n 1 -p "$message [y/N]: " user_input
+        if ! read -r -n 1 -p "$message [y/N]: " user_input <&"$tty_fd"; then
+            exec {tty_fd}<&-
+            echo
+            return 1
+        fi
         
         # Add a newline since the user won't press Enter.
         echo
 
         case "$user_input" in
-            [yY]) return 0;;
-            [nN]) return 1;;
+            [yY])
+                exec {tty_fd}<&-
+                return 0
+                ;;
+            [nN])
+                exec {tty_fd}<&-
+                return 1
+                ;;
             *) echo "Invalid input. Please enter 'y' or 'n'.";;
         esac
     done

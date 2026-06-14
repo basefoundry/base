@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `lib_std.sh` yes/no prompts read from the controlling terminal so
+  redirected stdin stays available to the caller.
 - Compared `lib_std.sh` Bash major and minor versions arithmetically so older
   major versions with two-digit minors cannot bypass the Bash 4.2 minimum.
 - Resolved `lib_std.sh` relative imports without changing directories so
