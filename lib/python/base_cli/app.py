@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -21,10 +22,19 @@ def _require_click():
 
 
 class App:
-    def __init__(self, name: str | None = None, version: str | None = None, log_to_file: bool = True) -> None:
+    def __init__(
+        self,
+        name: str | None = None,
+        version: str | None = None,
+        log_to_file: bool = True,
+        max_log_files: int | None = None,
+    ) -> None:
+        if max_log_files is not None and max_log_files < 1:
+            raise ValueError("max_log_files must be greater than 0 when set.")
         self.name = normalize_cli_name(name or sys.argv[0])
         self.version = version
         self.log_to_file = log_to_file
+        self.max_log_files = max_log_files
         self._click_command = None
         self._command_func: Callable[..., Any] | None = None
         self._command_args: tuple[Any, ...] = ()
@@ -104,6 +114,7 @@ class App:
         temp_dir = state_dir / "tmp" / run_id
 
         log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else None
+        uses_default_log_file = log_file is None
         if dry_run or not self.log_to_file:
             if log_file is not None:
                 log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +126,8 @@ class App:
             log_file.parent.mkdir(parents=True, exist_ok=True)
         logger = configure_logger(self.name, log_file, debug)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
+        if self.max_log_files is not None and uses_default_log_file and log_file is not None:
+            _prune_log_files(log_dir, log_file, self.max_log_files, logger)
 
         return Context(
             cli_name=self.name,
@@ -182,3 +195,38 @@ def _pop_standard_options(kwargs: dict[str, Any]) -> dict[str, Any]:
     for key in ("debug", "environment", "config", "keep_temp", "log_file"):
         standard[key] = kwargs.pop(key, None)
     return standard
+
+
+def _prune_log_files(
+    log_dir: Path,
+    current_log_file: Path,
+    max_log_files: int,
+    logger: logging.Logger,
+) -> None:
+    candidates: list[tuple[float, str, Path]] = []
+    for path in log_dir.glob("*.log"):
+        if _same_path(path, current_log_file):
+            continue
+        try:
+            stat = path.stat()
+        except OSError as exc:
+            logger.warning("Could not inspect log file '%s' for pruning: %s", path, exc)
+            continue
+        candidates.append((stat.st_mtime, path.name, path))
+
+    excess_count = len(candidates) + 1 - max_log_files
+    if excess_count <= 0:
+        return
+
+    for _, _, path in sorted(candidates)[:excess_count]:
+        try:
+            path.unlink()
+        except OSError as exc:
+            logger.warning("Could not prune log file '%s': %s", path, exc)
+
+
+def _same_path(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve()
+    except OSError:
+        return left.absolute() == right.absolute()
