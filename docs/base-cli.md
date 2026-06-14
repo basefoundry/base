@@ -284,6 +284,11 @@ This wraps Click's test runner and gives tests access to isolated `HOME`,
 captured output, generated Base state, and an explicit invocation directory for
 project discovery or no-project test cases.
 
+When a test `HOME` is supplied, the helper should default `BASE_CACHE_DIR` to
+`<home>/.cache/base` so invocations do not inherit a developer's real cache
+root. Tests that need a custom cache path can pass an explicit environment
+override.
+
 ## Phases
 
 ### V1
