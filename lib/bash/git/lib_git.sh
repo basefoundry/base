@@ -219,7 +219,7 @@ git_get_current_branch() {
 
     # --- Argument Validation ---
     if [[ -z "$target_dir" || -z "$result_var_name" ]]; then
-        log_error "Usage: get_git_branch <directory> <result_variable_name>"
+        log_error "Usage: git_get_current_branch <directory> <result_variable_name>"
         return 1
     fi
 

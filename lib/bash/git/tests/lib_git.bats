@@ -32,6 +32,14 @@ setup() {
     [ "$branch" = "detached head" ]
 }
 
+@test "git_get_current_branch usage names the current function" {
+    bats_run git_get_current_branch
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Usage: git_get_current_branch <directory> <result_variable_name>"* ]]
+    [[ "$output" != *"Usage: get_git_branch"* ]]
+}
+
 @test "git_update_repo skips dirty repositories when no dirty path is allowed" {
     local repo="$TEST_TMPDIR/repo"
 

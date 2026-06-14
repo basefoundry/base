@@ -37,6 +37,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Corrected the `git_get_current_branch` usage message to name the current
+  helper.
 - Avoided subshell timestamp formatting in Bash `LOG_UTC` logging.
 - Made `lib_std.sh` yes/no prompts read from the controlling terminal so
   redirected stdin stays available to the caller.
