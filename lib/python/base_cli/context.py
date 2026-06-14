@@ -7,11 +7,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from .config import UserConfig, UserIdeConfig
+
 
 _current_context: contextvars.ContextVar[Context | None] = contextvars.ContextVar(
     "base_cli_current_context",
     default=None,
 )
+
+
+def _default_user_config() -> UserConfig:
+    return UserConfig(raw={}, ide=UserIdeConfig(enabled=None, preferences={}))
 
 
 @dataclass
@@ -32,6 +38,7 @@ class Context:
     base_home: Path | None = None
     project_root: Path | None = None
     manifest_path: Path | None = None
+    user_config: UserConfig = field(default_factory=_default_user_config)
     cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
 
     def on_cleanup(self, hook: Callable[[], None]) -> None:

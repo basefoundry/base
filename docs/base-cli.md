@@ -79,6 +79,7 @@ ctx.cache_dir      # state_dir/cache
 ctx.temp_dir       # state_dir/tmp/<run-id>
 ctx.log_file       # log_dir/<run-id>.log, or None when persistent logging is disabled
 ctx.config         # dict
+ctx.user_config    # typed user config from ~/.base.d/config.yaml
 ctx.environment    # str
 ctx.debug          # bool
 ctx.dry_run        # bool
@@ -219,6 +220,11 @@ V1 implements the shape and context fields, but only needs a minimal config
 loader: YAML files are merged when present, environment is read from
 `BASE_CLI_ENVIRONMENT`, and CLI options can override `--environment`, `--debug`,
 `--keep-temp`, and `--log-file`.
+
+`ctx.config` remains the merged raw configuration dictionary. `ctx.user_config`
+is the typed machine-local user config, so command authors can read
+`ctx.user_config.workspace.root` and IDE preferences without re-parsing the user
+config file.
 
 Standard environment variables:
 

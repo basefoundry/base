@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from .config import load_config
+from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
 from .logging import configure_logger, log_invocation
 from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
@@ -102,6 +102,7 @@ class App:
         manifest_path = discover_manifest(Path.cwd())
         project_root = manifest_path.parent if manifest_path is not None else None
         explicit_config = Path(standard["config"]).expanduser() if standard.get("config") else None
+        user_config = read_user_config()
         config = load_config(project_root, explicit_config)
 
         environment = standard.get("environment") or config.get("environment") or "dev"
@@ -145,6 +146,7 @@ class App:
             debug=debug,
             keep_temp=keep_temp,
             log=logger,
+            user_config=user_config,
             dry_run=dry_run,
         )
 

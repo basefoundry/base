@@ -14,7 +14,7 @@ from unittest import mock
 
 import base_cli
 from base_cli import config as config_module
-from base_cli.config import load_config, load_user_config, read_user_config, user_config_path
+from base_cli.config import UserConfig, load_config, load_user_config, read_user_config, user_config_path
 from base_cli.context import reset_current_context, set_current_context
 from base_cli.logging import BaseCliFormatter
 from base_cli.paths import base_cache_root, base_state_root, discover_manifest, normalize_cli_name
@@ -429,6 +429,76 @@ class BaseCliTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "ide.vscode.settings must be a mapping"):
                 read_user_config(home)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_context_exposes_default_typed_user_config(self) -> None:
+        app = base_cli.App(name="typed-config-default", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["config"] = ctx.config
+            seen["user_config"] = ctx.user_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            from base_cli.testing import invoke
+
+            result = invoke(app, [], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["config"], {})
+        self.assertIsInstance(seen["user_config"], UserConfig)
+        self.assertEqual(seen["user_config"].raw, {})
+        self.assertIsNone(seen["user_config"].workspace.root)
+        self.assertIsNone(seen["user_config"].ide.enabled)
+        self.assertEqual(seen["user_config"].ide.preferences, {})
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_context_exposes_populated_typed_user_config(self) -> None:
+        app = base_cli.App(name="typed-config-populated", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["config"] = ctx.config
+            seen["workspace_root"] = ctx.user_config.workspace.root
+            seen["ide_enabled"] = ctx.user_config.ide.enabled
+            seen["vscode"] = ctx.user_config.ide.preferences["vscode"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            workspace.mkdir()
+            path.write_text(
+                "\n".join(
+                    [
+                        "workspace:",
+                        f"  root: {workspace}",
+                        "ide:",
+                        "  enabled: true",
+                        "  vscode:",
+                        "    install: false",
+                        "    extra_extensions:",
+                        "      - github.copilot",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            from base_cli.testing import invoke
+
+            result = invoke(app, [], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["workspace_root"], workspace.resolve())
+        self.assertTrue(seen["ide_enabled"])
+        self.assertFalse(seen["vscode"].install)
+        self.assertEqual(seen["vscode"].extra_extensions, ("github.copilot",))
+        self.assertEqual(seen["config"]["workspace"]["root"], str(workspace))
+        self.assertTrue(seen["config"]["ide"]["enabled"])
 
     def test_log_debug_enables_python_debug_logging(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

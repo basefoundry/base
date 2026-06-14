@@ -23,6 +23,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   explicitly connect nonstandard preview flags to Base's no-durable-write mode.
 - Added `base_cli.App(max_log_files=...)` to let high-frequency CLIs prune old
   default log files during startup.
+- Added `ctx.user_config` so Python commands can read typed user config without
+  re-parsing `~/.base.d/config.yaml`.
 
 ### Changed
 
