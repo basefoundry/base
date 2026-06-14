@@ -30,6 +30,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Aligned bootstrap and installer candidate-list splitting with the scoped
+  `IFS=: read -ra` Bash pattern.
 - Made `base_cli` log source paths prefer the active project root before
   falling back to the process working directory.
 

@@ -110,6 +110,16 @@ EOF
     [ "$output" = "" ]
 }
 
+@test "bootstrap uses scoped colon splitting for candidate lists" {
+    run grep -n 'old_ifs' "$BASE_REPO_ROOT/bootstrap.sh"
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+
+    run grep -c 'IFS=: read -ra' "$BASE_REPO_ROOT/bootstrap.sh"
+    [ "$status" -eq 0 ]
+    [ "$output" -eq 2 ]
+}
+
 @test "bootstrap source dry-run installs first-mile prerequisites and prints handoff commands" {
     local install_dir="$TEST_HOME/work/base"
 

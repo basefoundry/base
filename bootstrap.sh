@@ -83,7 +83,7 @@ BOOTSTRAP_BREW_BIN=""
 bootstrap_find_brew() {
     local candidate
     local candidates="${BASE_BOOTSTRAP_BREW_CANDIDATES:-/opt/homebrew/bin/brew:/usr/local/bin/brew}"
-    local old_ifs
+    local -a candidate_paths
 
     if [[ -n "${BASE_BOOTSTRAP_BREW_BIN:-}" && -x "${BASE_BOOTSTRAP_BREW_BIN:-}" ]]; then
         printf '%s\n' "$BASE_BOOTSTRAP_BREW_BIN"
@@ -95,15 +95,13 @@ bootstrap_find_brew() {
         return 0
     fi
 
-    old_ifs="$IFS"
-    IFS=:
-    for candidate in $candidates; do
-        IFS="$old_ifs"
+    IFS=: read -ra candidate_paths <<< "$candidates"
+    for candidate in "${candidate_paths[@]}"; do
+        [[ -n "$candidate" ]] || continue
         [[ -x "$candidate" ]] || continue
         printf '%s\n' "$candidate"
         return 0
     done
-    IFS="$old_ifs"
 
     return 1
 }
@@ -187,7 +185,7 @@ bootstrap_find_supported_bash() {
     local candidate
     local candidates="${BASE_BOOTSTRAP_BASH_CANDIDATES:-/opt/homebrew/bin/bash:/usr/local/bin/bash}"
     local current_version
-    local old_ifs
+    local -a candidate_paths
 
     current_version="$(bootstrap_bash_version_number)"
     if [[ "$current_version" -ge 42 ]]; then
@@ -195,15 +193,13 @@ bootstrap_find_supported_bash() {
         return 0
     fi
 
-    old_ifs="$IFS"
-    IFS=:
-    for candidate in $candidates; do
-        IFS="$old_ifs"
+    IFS=: read -ra candidate_paths <<< "$candidates"
+    for candidate in "${candidate_paths[@]}"; do
+        [[ -n "$candidate" ]] || continue
         [[ -x "$candidate" ]] || continue
         printf '%s\n' "$candidate"
         return 0
     done
-    IFS="$old_ifs"
 
     return 1
 }
