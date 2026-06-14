@@ -111,6 +111,7 @@ managed like a normal formula:
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
+exec "$SHELL" -l
 ```
 
 Use `install.sh` when you specifically want the source-install script to clone
