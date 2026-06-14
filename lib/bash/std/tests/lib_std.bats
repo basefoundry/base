@@ -32,6 +32,83 @@ run_tty_script() {
     fi
 }
 
+run_pty_command() {
+    local input="$1"
+    local driver="$TEST_TMPDIR/pty-driver.py"
+    shift
+
+    cat > "$driver" <<'PY'
+import errno
+import os
+import pty
+import select
+import signal
+import sys
+import time
+
+input_bytes = sys.argv[1].encode()
+command = sys.argv[2:]
+
+pid, fd = pty.fork()
+if pid == 0:
+    os.execvp(command[0], command)
+
+os.write(fd, input_bytes)
+output = bytearray()
+status = None
+deadline = time.monotonic() + 10
+
+while True:
+    if time.monotonic() > deadline:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        status = 124
+        break
+
+    readable, _, _ = select.select([fd], [], [], 0.05)
+    if readable:
+        try:
+            chunk = os.read(fd, 4096)
+        except OSError as exc:
+            if exc.errno == errno.EIO:
+                chunk = b""
+            else:
+                raise
+        if chunk:
+            output.extend(chunk)
+
+    waited, child_status = os.waitpid(pid, os.WNOHANG)
+    if waited:
+        if os.WIFEXITED(child_status):
+            status = os.WEXITSTATUS(child_status)
+        elif os.WIFSIGNALED(child_status):
+            status = 128 + os.WTERMSIG(child_status)
+        else:
+            status = 1
+        while True:
+            readable, _, _ = select.select([fd], [], [], 0)
+            if not readable:
+                break
+            try:
+                chunk = os.read(fd, 4096)
+            except OSError as exc:
+                if exc.errno == errno.EIO:
+                    break
+                raise
+            if not chunk:
+                break
+            output.extend(chunk)
+        break
+
+sys.stdout.buffer.write(output)
+sys.exit(status if status is not None else 1)
+PY
+
+    bats_run python3 "$driver" "$input" "$@"
+}
+
 setup() {
     setup_test_tmpdir
     PATH="$BASE_TEST_ORIG_PATH"
@@ -1026,14 +1103,14 @@ EOF
     create_script "$script" <<EOF
 #!/usr/bin/env bash
 source "$STDLIB_PATH"
-if ask_yes_no "Proceed" <<<"y"; then
+if ask_yes_no "Proceed"; then
     echo "answer=yes"
 else
     echo "answer=no"
 fi
 EOF
 
-    bats_run bash "$script"
+    run_pty_command $'y\n' "$script"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"answer=yes"* ]]
@@ -1045,17 +1122,42 @@ EOF
     create_script "$script" <<EOF
 #!/usr/bin/env bash
 source "$STDLIB_PATH"
-if ask_yes_no "Proceed" <<<"n"; then
+if ask_yes_no "Proceed"; then
     echo "answer=yes"
 else
     echo "answer=no"
 fi
 EOF
 
-    bats_run bash "$script"
+    run_pty_command $'n\n' "$script"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"answer=no"* ]]
+}
+
+@test "ask_yes_no reads from terminal when stdin is redirected" {
+    local script="$TEST_TMPDIR/ask-tty.sh"
+    local normalized
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+if ask_yes_no "Proceed"; then
+    echo "answer=yes"
+else
+    echo "answer=no"
+fi
+printf 'stdin='
+cat
+EOF
+
+    run_pty_command $'y\n' bash -c "printf 'n\npayload\n' | \"$script\""
+    normalized="${output//$'\r'/}"
+
+    [ "$status" -eq 0 ]
+    [[ "$normalized" == *"answer=yes"* ]]
+    [[ "$normalized" == *"stdin=n"* ]]
+    [[ "$normalized" == *"payload"* ]]
 }
 
 @test "ask_yes_no validates argument count" {
