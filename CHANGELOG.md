@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Resolved `lib_std.sh` relative imports without changing directories so
+  failing imports cannot leave the caller on the script directory stack.
 - Bounded `lib_std.sh` log caller stack walking so unusual stdlib-only frame
   chains cannot scan indefinitely while finding a source location.
 - Made Bash `lib_std.sh` logging honor `LOG_UTC=1` so wrapper-driven Bash and

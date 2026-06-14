@@ -236,6 +236,33 @@ EOF
     [[ "$output" != *"after"* ]]
 }
 
+@test "import failure does not leave relative import directory on the stack" {
+    local script_dir="$TEST_TMPDIR/driver"
+    local helper_dir="$script_dir/helpers"
+    local run_dir="$TEST_TMPDIR/run"
+    local script="$script_dir/import-failing-helper.sh"
+    local cwd_file="$TEST_TMPDIR/import-exit-pwd.txt"
+    local dirs_file="$TEST_TMPDIR/import-exit-dirs.txt"
+
+    mkdir -p "$helper_dir" "$run_dir"
+    cat > "$helper_dir/failing.sh" <<EOF
+trap 'pwd > "$cwd_file"; dirs -p > "$dirs_file"' EXIT
+exit_if_error 7 "helper failed during import"
+EOF
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+import helpers/failing.sh
+EOF
+
+    bats_run bash -c "cd \"$run_dir\" && \"$script\""
+
+    [ "$status" -eq 7 ]
+    [ "$(cat "$cwd_file")" = "$run_dir" ]
+    [ "$(head -n 1 "$dirs_file")" = "$run_dir" ]
+    [[ "$(cat "$dirs_file")" != *"$script_dir"* ]]
+}
+
 @test "add_to_path appends an existing directory only once" {
     mkdir -p "$TEST_TMPDIR/bin"
     PATH="/usr/bin:/bin"
