@@ -225,6 +225,15 @@ Commands running with `ctx.dry_run` also skip default `logs/`, `cache/`, and
 `tmp/<run-id>/` creation. Passing `--log-file <path>` still writes to that
 explicit file so tests and diagnostics can inspect dry-run logs when needed.
 
+High-frequency tools can set `base_cli.App(max_log_files=<count>)` to keep at
+most that many default persistent log files for the CLI. Retention runs during
+startup after the current run's default log file is resolved, and the current
+run's log file is never pruned. The policy is skipped for `ctx.dry_run`,
+`log_to_file=False`, and explicit `--log-file` paths so no-durable-write modes
+and caller-selected log locations stay under caller control. Use this as a
+small guardrail for busy local tools; `basectl clean` remains the broader
+maintenance command for caches, logs, and retained temp files.
+
 Logs use the same general shape as Base Bash logs:
 
 ```text
