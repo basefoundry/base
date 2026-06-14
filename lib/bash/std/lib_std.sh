@@ -300,8 +300,8 @@ __join_message__() {
 # This is called from __stdlib_init__
 #
 __init_colors__() {
-    # If --color was not passed, or if the output is not a terminal, disable colors.
-    if [[ "$__color__" != 1 || ! -t 1 ]]; then
+    # If --color was not passed, or if the log stream is not a terminal, disable colors.
+    if [[ "$__color__" != 1 || ! -t 2 ]]; then
         COLOR_BOLD=""
         COLOR_RED=""
         COLOR_GREEN=""
