@@ -36,7 +36,25 @@ are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Start Here
 
-On a new macOS machine, start with the first-mile bootstrap script:
+### Already Have Homebrew And Bash?
+
+If your Mac already has Homebrew and a supported Bash, install just Base through
+Homebrew:
+
+```bash
+brew install codeforester/base/base
+basectl setup
+basectl update-profile
+exec "$SHELL" -l
+```
+
+This is the shortest path when the first-mile macOS prerequisites are already
+in place.
+
+### New Or Uncertain macOS Machine?
+
+On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
+may be missing, start with the first-mile bootstrap script:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
@@ -67,15 +85,6 @@ workspace:
 ```
 
 Edit that value if your repositories live under a different shared directory.
-
-Or install directly through Homebrew when Homebrew is already available:
-
-```bash
-brew install codeforester/base/base
-basectl setup
-basectl update-profile
-exec "$SHELL" -l
-```
 
 After Base is installed, the common development loop is:
 

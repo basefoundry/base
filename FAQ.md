@@ -36,12 +36,14 @@ bootstrap prints, typically:
 Use `bootstrap.sh` on a new or uncertain macOS machine. It handles missing
 first-mile prerequisites and then hands off to Base.
 
-Use Homebrew when you want Base managed like an ordinary installed tool:
+Use Homebrew when you already have Homebrew and Bash and want Base managed like
+an ordinary installed tool:
 
 ```bash
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
+exec "$SHELL" -l
 ```
 
 Use a source checkout when you are contributing to Base or want to inspect and
