@@ -12,8 +12,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `docs/why-base.md` as a concise evaluator page comparing Base with
   adjacent developer-environment tools.
 - Documented Base's `uv` ecosystem boundary in `docs/tool-boundaries.md`.
-- Clarified the direct Homebrew install path for users who already have
-  Homebrew and Bash.
+- Clarified the Homebrew and source checkout install choices for users who
+  already have Homebrew, Git, and Bash.
 - Added a one-page command quick reference for the current `basectl` command
   surface.
 - Added `.github/base-project.yml` to the standard `basectl repo init`
