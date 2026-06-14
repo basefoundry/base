@@ -60,11 +60,12 @@ class App:
         click = _require_click()
         func = self._command_func
         sensitive_options = set(getattr(func, "__base_cli_sensitive_options__", set()))
+        dry_run_parameter = getattr(func, "__base_cli_dry_run_parameter__", "dry_run")
 
         @functools.wraps(func)
         def wrapper(**kwargs: Any):
             standard = _pop_standard_options(kwargs)
-            context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get("dry_run")))
+            context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get(dry_run_parameter)))
             token = set_current_context(context)
             try:
                 log_invocation(context.log, sys.argv, sensitive_options)
@@ -131,6 +132,7 @@ class App:
             debug=debug,
             keep_temp=keep_temp,
             log=logger,
+            dry_run=dry_run,
         )
 
 
@@ -138,7 +140,7 @@ def command(*args: Any, **kwargs: Any):
     return App().command(*args, **kwargs)
 
 
-def option(*param_decls: str, sensitive: bool = False, **attrs: Any):
+def option(*param_decls: str, sensitive: bool = False, dry_run: bool = False, **attrs: Any):
     def decorator(func: Callable[..., Any]):
         specs = list(getattr(func, "__base_cli_param_specs__", []))
         specs.append(("option", param_decls, attrs))
@@ -147,6 +149,8 @@ def option(*param_decls: str, sensitive: bool = False, **attrs: Any):
             options = set(getattr(func, "__base_cli_sensitive_options__", set()))
             options.add(parameter_name_from_decls(param_decls))
             func.__base_cli_sensitive_options__ = options
+        if dry_run:
+            func.__base_cli_dry_run_parameter__ = parameter_name_from_decls(param_decls)
         return func
 
     return decorator

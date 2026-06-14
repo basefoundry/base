@@ -81,6 +81,7 @@ ctx.log_file       # log_dir/<run-id>.log, or None when persistent logging is di
 ctx.config         # dict
 ctx.environment    # str
 ctx.debug          # bool
+ctx.dry_run        # bool
 ctx.keep_temp      # bool
 ctx.log            # logging.Logger
 ```
@@ -129,6 +130,9 @@ Directory lifecycle:
 | `logs/` | before command execution | never by default |
 | `cache/` | before command execution | explicit CLI logic only |
 | `tmp/<run-id>/` | before command execution | after command execution unless kept |
+
+Commands running with `ctx.dry_run` skip default `logs/`, `cache/`, and
+`tmp/<run-id>/` creation unless an explicit log file is supplied.
 
 Commands that inspect runtime artifacts can opt out of default persistent log
 creation with `base_cli.App(log_to_file=False)`. That still provides a context
@@ -181,6 +185,13 @@ Options may be marked sensitive:
 
 ```python
 @base_cli.option("--api-key", sensitive=True)
+```
+
+Options may also be marked as the command's dry-run control when they use a
+nonstandard parameter name:
+
+```python
+@base_cli.option("--preview", is_flag=True, dry_run=True)
 ```
 
 For v1, sensitive values are redacted from automatic invocation logging. More

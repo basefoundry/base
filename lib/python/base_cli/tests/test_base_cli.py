@@ -439,6 +439,7 @@ class BaseCliTests(unittest.TestCase):
         @base_cli.option("--dry-run", is_flag=True)
         def main(ctx: base_cli.Context, dry_run: bool) -> None:
             seen["dry_run"] = dry_run
+            seen["ctx_dry_run"] = ctx.dry_run
             seen["temp_dir"] = ctx.temp_dir
             seen["cache_dir"] = ctx.cache_dir
             seen["log_dir"] = ctx.log_dir
@@ -453,12 +454,45 @@ class BaseCliTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(seen["dry_run"])
+            self.assertTrue(seen["ctx_dry_run"])
             self.assertIsNone(seen["log_file"])
             self.assertFalse(seen["temp_dir"].exists())
             self.assertFalse(seen["cache_dir"].exists())
             self.assertFalse(seen["log_dir"].exists())
             self.assertFalse((home / ".cache" / "base").exists())
             self.assertIn("dry run", result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_custom_dry_run_option_sets_context_and_avoids_cache_writes(self) -> None:
+        app = base_cli.App(name="preview-demo", version="0.1.0")
+        seen = {}
+
+        @app.command()
+        @base_cli.option("--preview", is_flag=True, dry_run=True)
+        def main(ctx: base_cli.Context, preview: bool) -> None:
+            seen["preview"] = preview
+            seen["ctx_dry_run"] = ctx.dry_run
+            seen["temp_dir"] = ctx.temp_dir
+            seen["cache_dir"] = ctx.cache_dir
+            seen["log_dir"] = ctx.log_dir
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("preview")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            from base_cli.testing import invoke
+
+            result = invoke(app, ["--preview"], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(seen["preview"])
+            self.assertTrue(seen["ctx_dry_run"])
+            self.assertIsNone(seen["log_file"])
+            self.assertFalse(seen["temp_dir"].exists())
+            self.assertFalse(seen["cache_dir"].exists())
+            self.assertFalse(seen["log_dir"].exists())
+            self.assertFalse((home / ".cache" / "base").exists())
+            self.assertIn("preview", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_can_disable_default_persistent_logging(self) -> None:
@@ -498,6 +532,7 @@ class BaseCliTests(unittest.TestCase):
         @base_cli.option("--dry-run", is_flag=True)
         def main(ctx: base_cli.Context, dry_run: bool) -> None:
             seen["dry_run"] = dry_run
+            seen["ctx_dry_run"] = ctx.dry_run
             seen["temp_dir"] = ctx.temp_dir
             seen["cache_dir"] = ctx.cache_dir
             seen["log_file"] = ctx.log_file
@@ -512,6 +547,7 @@ class BaseCliTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertTrue(seen["dry_run"])
+            self.assertTrue(seen["ctx_dry_run"])
             self.assertEqual(seen["log_file"], log_file)
             self.assertTrue(log_file.is_file())
             self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)

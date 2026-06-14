@@ -28,6 +28,7 @@ class Context:
     debug: bool
     keep_temp: bool
     log: logging.Logger
+    dry_run: bool = False
     base_home: Path | None = None
     project_root: Path | None = None
     manifest_path: Path | None = None
