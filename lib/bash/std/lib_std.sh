@@ -392,11 +392,11 @@ _print_log() {
         esac
 
         local source_path="${BASH_SOURCE[2]:-}" source_line="${BASH_LINENO[1]:-0}"
-        local frame=1 caller_info caller_line _caller_func caller_file
+        local frame=1 max_caller_frames=20 caller_info caller_line _caller_func caller_file
         if [[ -z "$source_path" || "$source_path" == "$__LIB_STD_PATH__" ]]; then
             source_path=""
             source_line=""
-            while caller_info=$(caller "$frame"); do
+            while ((frame <= max_caller_frames)) && caller_info=$(caller "$frame"); do
                 read -r caller_line _caller_func caller_file <<<"$caller_info"
                 if [[ -n "$caller_file" && "$caller_file" != "$__LIB_STD_PATH__" ]]; then
                     source_path="$caller_file"

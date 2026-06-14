@@ -380,6 +380,33 @@ EOF
     [[ "$output" == *"utc timestamp"* ]]
 }
 
+@test "_print_log bounds stdlib caller stack walking" {
+    local script="$TEST_TMPDIR/log-bounded-caller.sh"
+    local caller_log="$TEST_TMPDIR/caller-count.log"
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+source "$STDLIB_PATH"
+caller_log="$caller_log"
+: > "\$caller_log"
+caller() {
+    printf 'call\n' >> "\$caller_log"
+    caller_count="\$(wc -l < "\$caller_log")"
+    if ((caller_count > 20)); then
+        return 1
+    fi
+    printf '%s stdlib_frame %s\n' "\$1" "\$__LIB_STD_PATH__"
+}
+_print_log INFO "bounded stack walk" >/dev/null
+printf 'caller_count=%s\n' "\$(( \$(wc -l < "\$caller_log") ))"
+EOF
+
+    bats_run bash "$script"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"caller_count=20"* ]]
+}
+
 @test "file logging helpers print contents and warn on unknown loggers" {
     local target="$TEST_TMPDIR/log-target.txt"
     local stderr_file="$TEST_TMPDIR/log-file.err"
