@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `base_cli.ExitCode` constants for Base's standard command return
+  values.
+
 ### Fixed
 
 - Compared `lib_std.sh` Bash major and minor versions arithmetically so older
