@@ -35,6 +35,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Avoided subshell timestamp formatting in Bash `LOG_UTC` logging.
 - Made `lib_std.sh` yes/no prompts read from the controlling terminal so
   redirected stdin stays available to the caller.
 - Compared `lib_std.sh` Bash major and minor versions arithmetically so older
