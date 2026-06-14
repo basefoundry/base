@@ -169,6 +169,30 @@ EOF
     [[ "$normalized" == *"colors=enabled"* ]]
 }
 
+@test "color initialization uses stderr terminal for log colors" {
+    local script="$TEST_TMPDIR/stderr-colors.sh"
+    local stdout_file="$TEST_TMPDIR/stdout.txt"
+    local normalized
+
+    create_script "$script" <<EOF
+#!/usr/bin/env bash
+exec >"\$1"
+source "$STDLIB_PATH"
+if [[ -n "\${COLOR_RED:-}" ]]; then
+    printf 'colors=enabled\n' >&2
+else
+    printf 'colors=disabled\n' >&2
+fi
+EOF
+
+    run_tty_script "$script" "$stdout_file" --color
+    normalized="$(normalize_tty_output "$output")"
+
+    [ "$status" -eq 0 ]
+    [[ "$normalized" == *"colors=enabled"* ]]
+    [ ! -s "$stdout_file" ]
+}
+
 @test "import loads relative and absolute libraries" {
     local relative_dir="$TEST_TMPDIR/helpers"
     local absolute_lib="$TEST_TMPDIR/absolute.sh"
