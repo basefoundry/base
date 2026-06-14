@@ -136,6 +136,26 @@ Every `base_cli.App` command gets these options:
 The command receives only its own application-specific options. Standard options
 are consumed before the command function is called.
 
+## Exit Codes
+
+Use `base_cli.ExitCode` when command code or tests need to name Base's standard
+command result meanings:
+
+- `ExitCode.SUCCESS` (`0`): the command completed successfully.
+- `ExitCode.FAILURE` (`1`): the command was valid, but an operational problem
+  prevented successful completion.
+- `ExitCode.USAGE_ERROR` (`2`): the command could not proceed because user
+  input, configuration, or environment setup was invalid or incomplete.
+
+Existing commands can keep returning integers. New code should prefer the named
+constants when it makes intent clearer:
+
+```python
+if ctx.project_root is None:
+    ctx.log.error("run this command from a Base project")
+    return base_cli.ExitCode.USAGE_ERROR
+```
+
 ## Context
 
 `Context` is the object command code should pass around instead of rediscovering

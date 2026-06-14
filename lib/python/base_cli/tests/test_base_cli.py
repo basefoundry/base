@@ -373,6 +373,14 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(config["log_level"], "debug")
 
+    def test_exit_code_constants_match_base_conventions(self) -> None:
+        from base_cli import ExitCode
+
+        self.assertEqual(ExitCode.SUCCESS, 0)
+        self.assertEqual(ExitCode.FAILURE, 1)
+        self.assertEqual(ExitCode.USAGE_ERROR, 2)
+        self.assertIs(ExitCode, base_cli.ExitCode)
+
     def test_app_rejects_duplicate_command_registration(self) -> None:
         app = base_cli.App(name="demo")
 
