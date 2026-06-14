@@ -351,6 +351,35 @@ EOF
     [[ "$(cat "$stderr_file")" == *"VERBOSE"* ]]
 }
 
+@test "_print_log uses local timestamps by default" {
+    local stderr_file="$TEST_TMPDIR/log-local-time.err"
+    local expected_before expected_after output
+
+    expected_before="$(TZ=Pacific/Honolulu printf '%(%Y-%m-%d %H)T' -1)"
+    TZ=Pacific/Honolulu log_info "local timestamp" 2>"$stderr_file"
+    expected_after="$(TZ=Pacific/Honolulu printf '%(%Y-%m-%d %H)T' -1)"
+    output="$(cat "$stderr_file")"
+
+    [[ "$output" == "$expected_before"* || "$output" == "$expected_after"* ]]
+    [[ "$output" == *"local timestamp"* ]]
+}
+
+@test "_print_log honors LOG_UTC for Bash timestamps" {
+    local stderr_file="$TEST_TMPDIR/log-utc-time.err"
+    local expected_before expected_after output local_before local_after
+
+    expected_before="$(TZ=UTC printf '%(%Y-%m-%d %H)T' -1)"
+    local_before="$(TZ=Pacific/Honolulu printf '%(%Y-%m-%d %H)T' -1)"
+    TZ=Pacific/Honolulu LOG_UTC=1 log_info "utc timestamp" 2>"$stderr_file"
+    expected_after="$(TZ=UTC printf '%(%Y-%m-%d %H)T' -1)"
+    local_after="$(TZ=Pacific/Honolulu printf '%(%Y-%m-%d %H)T' -1)"
+    output="$(cat "$stderr_file")"
+
+    [[ "$expected_before" != "$local_before" || "$expected_after" != "$local_after" ]]
+    [[ "$output" == "$expected_before"* || "$output" == "$expected_after"* ]]
+    [[ "$output" == *"utc timestamp"* ]]
+}
+
 @test "file logging helpers print contents and warn on unknown loggers" {
     local target="$TEST_TMPDIR/log-target.txt"
     local stderr_file="$TEST_TMPDIR/log-file.err"
