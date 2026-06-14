@@ -37,6 +37,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Removed `eval` from Bash `.baserc` guard variable snapshots while preserving
+  Bash 4.2 compatibility.
 - Replaced `install.sh` shell strict mode with explicit installer command
   failure handling.
 - Corrected the `git_get_current_branch` usage message to name the current
