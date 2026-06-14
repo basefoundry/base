@@ -2,8 +2,8 @@
 
 ## Current Release
 
-Base `0.4.4` is the current published release. The repo-root `VERSION` file is
-updated only during release-prep PRs, not on every ordinary PR.
+Base `1.0.0` is the current release. The repo-root `VERSION` file is updated
+only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
 
@@ -27,9 +27,14 @@ The current command surface covers:
 
 ## Active Development Direction
 
-Current pre-1.0 work is tracked toward `v1.0.0`. The Homebrew upgrade contract
-remains open until supported macOS releases publish bottles and the bottled
-upgrade path passes the #526 rehearsal.
+The `v1.0.0` milestone is complete. Post-1.0 work is tracked toward `v1.1.0`,
+with Linux runtime support, uv-managed Python project behavior, Docker/service
+artifacts, and shell stdlib hardening remaining outside the 1.0 release
+contract.
+
+The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
+Supported macOS installs should continue to use bottled Homebrew packages, with
+source builds treated as fallback validation rather than the normal user path.
 
 Recent released work includes:
 
@@ -46,21 +51,18 @@ Recent released work includes:
   snippets
 - stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
-- Base `0.4.4` release artifacts and Homebrew tap update
+- Base `1.0.0` release artifacts and Homebrew tap update
 
 ## Recent Merged Changes
 
 Recent commits on `master` include:
 
-- Homebrew link conflict guidance.
-- `BASE_SHELL` readonly warning fix during activation.
-- Architecture GitHub convention updates.
-- Base newcomer presentation docs.
-- Claude-reported Base issue fixes.
-- Local observability model documentation.
-- Guarded `basectl release publish`.
-- Pretty-printed workspace JSON output.
-- Homebrew `opt` path preservation after upgrades.
+- public evaluator documentation through `docs/why-base.md`
+- Homebrew and source checkout install-path clarification
+- uv ecosystem boundary documentation
+- repo Project metadata handoff and command-specific `basectl repo` help
+- shell stdlib dry-run safety fixes from BankBuddy dogfooding
+- Homebrew bottle and upgrade-path release process hardening
 
 ## Useful Orientation Links
 

@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-14
+
 ### Added
 
 - Added `docs/why-base.md` as a concise evaluator page comparing Base with
