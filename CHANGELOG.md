@@ -14,6 +14,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `cwd` support to `base_cli.testing.invoke()` so tests can run commands
   from an explicit project context without leaking the process working
   directory.
+- Added a test-local `BASE_CACHE_DIR` default to `base_cli.testing.invoke()`
+  when callers supply a test `home`.
 
 ### Fixed
 

@@ -535,15 +535,73 @@ class BaseCliTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
-            with mock.patch.dict(os.environ, {"HOME": str(home), "BASE_CACHE_DIR": ""}):
-                from base_cli.testing import invoke
+            from base_cli.testing import invoke
 
-                result = invoke(app, [], home=home)
+            result = invoke(app, [], home=home)
 
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("stdout text", result.stdout)
         self.assertNotIn("stderr text", result.stdout)
         self.assertIn("stderr text", result.stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_defaults_cache_dir_under_home(self) -> None:
+        app = base_cli.App(name="cache-default", version="0.1.0")
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["state_dir"] = ctx.state_dir
+            seen["cache_dir"] = ctx.cache_dir
+            ctx.log.info("cache default")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            inherited_cache = root / "inherited-cache"
+            home.mkdir()
+
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(inherited_cache)}):
+                from base_cli.testing import invoke
+
+                result = invoke(app, [], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(seen["state_dir"].is_relative_to(home))
+            self.assertTrue(seen["cache_dir"].is_dir())
+            self.assertFalse(inherited_cache.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_preserves_explicit_cache_dir_env(self) -> None:
+        app = base_cli.App(name="cache-override", version="0.1.0")
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["state_dir"] = ctx.state_dir
+            seen["cache_dir"] = ctx.cache_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            override_cache = root / "override-cache"
+            inherited_cache = root / "inherited-cache"
+            home.mkdir()
+
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(inherited_cache)}):
+                from base_cli.testing import invoke
+
+                result = invoke(
+                    app,
+                    [],
+                    home=home,
+                    env={"BASE_CACHE_DIR": str(override_cache)},
+                )
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(seen["state_dir"], override_cache / "cli" / "cache-override")
+            self.assertTrue(seen["cache_dir"].is_dir())
+            self.assertFalse(inherited_cache.exists())
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_testing_invoke_uses_supplied_cwd_for_manifest_discovery(self) -> None:

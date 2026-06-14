@@ -327,10 +327,12 @@ def test_command(tmp_path: Path) -> None:
     assert "hello Ada" in result.stdout
 ```
 
-The helper wraps Click's `CliRunner`, sets `HOME` when requested, changes to
-`cwd` only for the invocation, and keeps stderr separate on Click versions that
-support it. Use `cwd` for commands whose behavior depends on project discovery,
-including tests that intentionally run outside a Base project.
+The helper wraps Click's `CliRunner`, sets `HOME` when requested, defaults
+`BASE_CACHE_DIR` under that test home, changes to `cwd` only for the invocation,
+and keeps stderr separate on Click versions that support it. Use `cwd` for
+commands whose behavior depends on project discovery, including tests that
+intentionally run outside a Base project. Pass `env={"BASE_CACHE_DIR": ...}` to
+test a specific cache root.
 
 ## When To Use `base_cli`
 

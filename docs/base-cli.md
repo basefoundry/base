@@ -280,9 +280,9 @@ The package should include a small test helper:
 result = base_cli.testing.invoke(app, ["--debug"], cwd=project_root)
 ```
 
-This wraps Click's test runner and gives tests access to isolated `HOME`,
-captured output, generated Base state, and an explicit invocation directory for
-project discovery or no-project test cases.
+This wraps Click's test runner and gives tests access to isolated `HOME`, a
+test-local `BASE_CACHE_DIR`, captured output, generated Base state, and an
+explicit invocation directory for project discovery or no-project test cases.
 
 ## Phases
 
