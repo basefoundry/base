@@ -425,16 +425,15 @@ _print_log() {
         source_path="${source_path#"$__SCRIPT_DIR__"/}"
         source_path="${source_path#./}"
 
-        local message timestamp
+        local message
         message="$(__join_message__ "$@")"
-        if [[ "${LOG_UTC:-}" == 1 ]]; then
-            timestamp="$(TZ=UTC0 printf '%(%Y-%m-%d %H:%M:%S)T' -1)"
-        else
-            timestamp="$(printf '%(%Y-%m-%d %H:%M:%S)T' -1)"
-        fi
         {
             printf '%b' "$color"
-            printf '%s %-7s %s ' "$timestamp" "$in_level" "${source_path}:${source_line}"
+            if [[ "${LOG_UTC:-}" == 1 ]]; then
+                TZ=UTC0 printf '%(%Y-%m-%d %H:%M:%S)T %-7s %s ' -1 "$in_level" "${source_path}:${source_line}"
+            else
+                printf '%(%Y-%m-%d %H:%M:%S)T %-7s %s ' -1 "$in_level" "${source_path}:${source_line}"
+            fi
             printf '%s' "$message"
             printf '%b\n' "$COLOR_OFF"
         } >&2

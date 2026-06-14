@@ -445,6 +445,13 @@ EOF
     ! _print_log
 }
 
+@test "_print_log formats timestamps without command substitution" {
+    bats_run grep -nE 'timestamp="\$\((TZ=UTC0 )?printf' "$STDLIB_PATH"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
 @test "log wrappers respect the configured log level" {
     local stderr_file="$TEST_TMPDIR/log-wrappers.err"
 
