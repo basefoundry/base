@@ -65,8 +65,8 @@ base_baserc_guard_reject_owned_var() {
     local after_set
     local after_value
 
-    eval "after_set=\"\${$var_name+x}\""
-    eval "after_value=\"\${$var_name-}\""
+    after_set="${!var_name+x}"
+    after_value="${!var_name-}"
 
     if [[ "$after_set" == "$before_set" && "$after_value" == "$before_value" ]]; then
         return 0
@@ -88,6 +88,8 @@ base_baserc_guard_source() {
     local base_owned_vars
     local var_name
     local snapshot_name
+    local snapshot_set_name
+    local snapshot_value_name
     local before_set
     local before_value
     local baserc_status=0
@@ -98,8 +100,11 @@ base_baserc_guard_source() {
     base_owned_vars="$(base_baserc_guard_owned_vars)"
     for var_name in $base_owned_vars; do
         snapshot_name="base_baserc_guard_before_$var_name"
-        eval "local ${snapshot_name}_set=\"\${$var_name+x}\""
-        eval "local ${snapshot_name}_value=\"\${$var_name-}\""
+        snapshot_set_name="${snapshot_name}_set"
+        snapshot_value_name="${snapshot_name}_value"
+        local "$snapshot_set_name" "$snapshot_value_name"
+        printf -v "$snapshot_set_name" '%s' "${!var_name+x}"
+        printf -v "$snapshot_value_name" '%s' "${!var_name-}"
     done
 
     __base_baserc_sourced__=1
@@ -112,8 +117,10 @@ base_baserc_guard_source() {
 
     for var_name in $base_owned_vars; do
         snapshot_name="base_baserc_guard_before_$var_name"
-        eval "before_set=\"\${${snapshot_name}_set}\""
-        eval "before_value=\"\${${snapshot_name}_value}\""
+        snapshot_set_name="${snapshot_name}_set"
+        snapshot_value_name="${snapshot_name}_value"
+        before_set="${!snapshot_set_name-}"
+        before_value="${!snapshot_value_name-}"
         base_baserc_guard_reject_owned_var "$var_name" "$before_set" "$before_value" || baserc_status=1
     done
 

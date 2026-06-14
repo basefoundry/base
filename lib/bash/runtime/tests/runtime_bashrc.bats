@@ -49,6 +49,13 @@ create_fake_runtime_platform_tools() {
     touch "$platform_tools_home/base_manifest.yaml"
 }
 
+@test "baserc guard avoids eval" {
+    run grep -nE '^[[:space:]]*eval[[:space:]]' "$BASE_REPO_ROOT/lib/shell/baserc_guard.sh"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
 @test "non-interactive bash ignores runtime rcfile" {
     cat > "$TEST_HOME/.bashrc" <<'EOF'
 touch "$HOME/user-bashrc-ran"
@@ -140,6 +147,23 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_SHELL=1"* ]]
     [[ "$output" == *"BASE_DEBUG="* ]]
+    [[ "$output" != *"ERROR:"* ]]
+}
+
+@test "baserc guard allows non-owned user variables" {
+    printf '%s\n' 'export BASE_USER_SETTING=enabled' > "$TEST_HOME/.baserc"
+
+    run env -i \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_USER_SETTING=%s\n" "${BASE_USER_SETTING:-}"; \
+            printf "BASE_SHELL=%s\n" "${BASE_SHELL:-}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_USER_SETTING=enabled"* ]]
+    [[ "$output" == *"BASE_SHELL=1"* ]]
     [[ "$output" != *"ERROR:"* ]]
 }
 
