@@ -46,9 +46,12 @@ basectl repo init base-demo \
 or uses the predictable branch `base/repo-baseline-<name>`, writes any missing
 baseline files, commits only the baseline file set, pushes the branch to
 `origin`, and opens a GitHub pull request against the repository default branch.
-This path is for reviewable file changes only; it does not create the GitHub
-repository or change repository settings and labels. Run `basectl repo
-configure` separately when GitHub-side configuration should be applied.
+When the generated baseline produces file changes, `repo init --pr` stops after
+opening the pull request. After that pull request is merged, rerun the same
+`repo init --pr` command; when there are no baseline file changes left, it
+continues with the same GitHub-side configuration that `repo init` normally
+performs. `repo configure` remains available when only GitHub-side settings need
+to be repaired or resynced.
 
 Check the local baseline:
 
@@ -120,6 +123,7 @@ existing issues during Project configuration.
 - `CHANGELOG.md`
 - `CONTRIBUTING.md`
 - `.github/pull_request_template.md`
+- `.github/base-project.yml`
 - `LICENSE`
 - `.gitignore`
 - `base_manifest.yaml`
@@ -145,6 +149,23 @@ test:
 The generated validation script checks for the required baseline files. It is
 not a replacement for project tests; it is the seed contract that lets
 `basectl test <project>` work immediately.
+
+The generated `.github/base-project.yml` starts with the shared issue defaults
+and empty repo-specific taxonomy lists:
+
+```yaml
+project:
+  areas: []
+  initiatives: []
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+```
+
+Edit `areas` and `initiatives` in the baseline pull request before merging when
+the repository already knows its taxonomy. Leaving them empty is valid; future
+`repo configure` runs still apply the shared Project fields and issue defaults.
 
 ## Optional Agent Guidance
 

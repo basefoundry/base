@@ -10,6 +10,7 @@ BASE_REPO_BASELINE_FILES=(
     CHANGELOG.md
     CONTRIBUTING.md
     .github/pull_request_template.md
+    .github/base-project.yml
     LICENSE
     .gitignore
     base_manifest.yaml
@@ -716,6 +717,7 @@ required_files=(
   CHANGELOG.md
   CONTRIBUTING.md
   .github/pull_request_template.md
+  .github/base-project.yml
   LICENSE
   base_manifest.yaml
   .github/workflows/tests.yml
@@ -753,6 +755,21 @@ jobs:
 EOF
 }
 
+base_repo_write_project_config() {
+    local dry_run="$1"
+    local root="$2"
+
+    base_repo_write_stream "$dry_run" "$root/.github/base-project.yml" <<'EOF'
+project:
+  areas: []
+  initiatives: []
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+EOF
+}
+
 base_repo_write_baseline() {
     local copyright_holder="$4"
     local description="$3"
@@ -770,6 +787,7 @@ base_repo_write_baseline() {
     base_repo_write_changelog "$dry_run" "$name" "$root" || status=1
     base_repo_write_contributing "$dry_run" "$name" "$root" || status=1
     base_repo_write_pull_request_template "$dry_run" "$root" || status=1
+    base_repo_write_project_config "$dry_run" "$root" || status=1
     base_repo_write_license "$dry_run" "$copyright_holder" "$root" || status=1
     base_repo_write_gitignore "$dry_run" "$root" || status=1
     base_repo_write_manifest "$dry_run" "$name" "$root" || status=1
@@ -1285,6 +1303,18 @@ base_repo_finish_pr_baseline() {
     return "$status"
 }
 
+base_repo_pr_baseline_has_changes() {
+    local root="$1"
+
+    base_repo_stage_pr_baseline_files "$root" || return 2
+    if git -C "$root" diff --cached --quiet --; then
+        git -C "$root" reset --quiet || return 2
+        return 1
+    fi
+    git -C "$root" reset --quiet || return 2
+    return 0
+}
+
 base_repo_check_baseline() {
     local missing=0
     local path="$1"
@@ -1338,6 +1368,7 @@ base_repo_check_agent_guidance() {
 
 base_repo_init() {
     local configure=1
+    local baseline_change_status=0
     local copyright_holder=""
     local create_pr=0
     local default_branch=""
@@ -1551,8 +1582,28 @@ base_repo_init() {
     base_repo_write_baseline "$dry_run" "$name" "$description" "$copyright_holder" "$root" || return 1
 
     if ((create_pr)); then
-        base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch"
-        return $?
+        if [[ "$dry_run" == "1" ]]; then
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch"
+            return $?
+        fi
+        if base_repo_pr_baseline_has_changes "$root"; then
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch"
+            return $?
+        else
+            baseline_change_status=$?
+            case "$baseline_change_status" in
+                1)
+                    if ((configure)); then
+                        log_info "No repository baseline changes to commit; continuing with GitHub repository configuration."
+                    else
+                        log_info "No repository baseline changes to commit; GitHub repository configuration skipped by --no-configure."
+                    fi
+                    ;;
+                *)
+                    return 1
+                    ;;
+            esac
+        fi
     fi
 
     if ((configure)); then

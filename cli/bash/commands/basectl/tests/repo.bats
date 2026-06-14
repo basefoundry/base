@@ -171,6 +171,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/base-project.yml'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/tests/validate.sh'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create private GitHub repository 'codeforester/base-demo' if it does not already exist."* ]]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
@@ -228,6 +229,7 @@ load ./basectl_helpers.bash
     [ -f "$repo_dir/CHANGELOG.md" ]
     [ -f "$repo_dir/CONTRIBUTING.md" ]
     [ -f "$repo_dir/.github/pull_request_template.md" ]
+    [ -f "$repo_dir/.github/base-project.yml" ]
     [ -f "$repo_dir/LICENSE" ]
     [ -f "$repo_dir/.gitignore" ]
     [ -f "$repo_dir/base_manifest.yaml" ]
@@ -236,6 +238,10 @@ load ./basectl_helpers.bash
     grep -Fqx "0.1.0" "$repo_dir/VERSION"
     grep -Fq "name: base-demo" "$repo_dir/base_manifest.yaml"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
+    grep -Fq "issue_defaults:" "$repo_dir/.github/base-project.yml"
+    grep -Fq "status: Backlog" "$repo_dir/.github/base-project.yml"
+    grep -Fq "priority: P2" "$repo_dir/.github/base-project.yml"
+    grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
     grep -Fq "<category>/<issue>-<YYYYMMDD>-<slug>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/<default-branch>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq 'Update `CHANGELOG.md` only for notable user-visible or release-worthy' "$repo_dir/CONTRIBUTING.md"
@@ -780,7 +786,7 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml" ]
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
 }
 
@@ -832,12 +838,64 @@ EOF
     git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/repo-baseline-base-demo
     commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
     [[ "$commit_files" == *"VERSION"* ]]
+    [[ "$commit_files" == *".github/base-project.yml"* ]]
     [[ "$commit_files" == *"base_manifest.yaml"* ]]
     [[ "$commit_files" != *"src/app.txt"* ]]
     grep -Fq "pr create --repo codeforester/base-demo --base master --head base/repo-baseline-base-demo --title Add Base repository baseline --body-file" "$TEST_STATE_DIR/gh-args"
     ! grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "Add Base-managed repository baseline files." "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
+}
+
+@test "basectl repo init --pr configures GitHub when baseline has no changes" {
+    local remote_dir="$TEST_TMPDIR/origin.git"
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    init_git_repo "$repo_dir"
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+    commit_all "$repo_dir" "Add Base baseline"
+    git init --bare "$remote_dir" >/dev/null 2>&1
+    git -C "$repo_dir" remote add origin "$remote_dir"
+    git -C "$repo_dir" push -u origin master >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
+    printf 'master\n'
+    exit 0
+fi
+if [[ "$1" == "api" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo \
+            --path "$repo_dir" \
+            --repo codeforester/base-demo \
+            --pr \
+            --copy-project-fields-from "Base Roadmap"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"No repository baseline changes to commit; continuing with GitHub repository configuration."* ]]
+    grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 
 @test "basectl repo init --pr requires a clean target worktree" {
