@@ -373,6 +373,21 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(config["log_level"], "debug")
 
+    def test_app_rejects_duplicate_command_registration(self) -> None:
+        app = base_cli.App(name="demo")
+
+        @app.command()
+        def first(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "App 'demo' already has a registered command.*subcommands",
+        ):
+            @app.command()
+            def second(ctx: base_cli.Context) -> None:
+                del ctx
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_runs_with_context_and_cleans_temp_dir(self) -> None:
         app = base_cli.App(name="demo", version="0.1.0")

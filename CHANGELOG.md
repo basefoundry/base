@@ -14,6 +14,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made `lib_std.sh` color initialization check stderr when deciding whether
   log colors can be rendered, so redirected stdout does not disable colored
   logs while stderr is still a terminal.
+- Made `base_cli.App` reject duplicate command registrations instead of
+  silently overwriting the first command.
 
 ## [1.0.0] - 2026-06-14
 
