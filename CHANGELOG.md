@@ -22,6 +22,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `ctx.dry_run` and `base_cli.option(..., dry_run=True)` so commands can
   explicitly connect nonstandard preview flags to Base's no-durable-write mode.
 
+### Changed
+
+- Made `base_cli` log source paths prefer the active project root before
+  falling back to the process working directory.
+
 ### Fixed
 
 - Made `lib_std.sh` yes/no prompts read from the controlling terminal so
