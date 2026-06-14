@@ -32,6 +32,11 @@ class App:
 
     def command(self, *command_args: Any, **command_kwargs: Any):
         def decorator(func: Callable[..., Any]):
+            if self._command_func is not None:
+                raise RuntimeError(
+                    f"App '{self.name}' already has a registered command. "
+                    "Use subcommands for multiple entry points."
+                )
             self._command_func = func
             self._command_args = command_args
             self._command_kwargs = command_kwargs
