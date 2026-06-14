@@ -99,6 +99,32 @@ def main(ctx: base_cli.Context) -> None:
 In Base itself, prefer an explicit `App` so command names and versions are
 obvious at the top of the module.
 
+Use `@app.subcommand()` when one CLI needs multiple verbs while keeping Base's
+standard context, logging, redaction, and cleanup lifecycle for each invocation:
+
+```python
+app = base_cli.App(name="workspace-tools", version="0.1.0")
+
+
+@app.subcommand()
+@base_cli.argument("project")
+def status(ctx: base_cli.Context, project: str) -> None:
+    ctx.log.info("checking %s", project)
+
+
+@app.subcommand("sync")
+@base_cli.option("--dry-run", is_flag=True)
+def sync_project(ctx: base_cli.Context, dry_run: bool) -> None:
+    if ctx.dry_run:
+        ctx.log.info("previewing sync")
+```
+
+Subcommands use the same `base_cli.option()` and `base_cli.argument()` metadata
+as single commands. Standard Base options belong to the subcommand invocation,
+for example `workspace-tools status --debug demo`. Use either `@app.command()`
+for a single-command CLI or `@app.subcommand()` for a command group; do not mix
+the two registration styles on one `App`.
+
 ## Options And Arguments
 
 `base_cli.option` and `base_cli.argument` mirror Click's decorators:

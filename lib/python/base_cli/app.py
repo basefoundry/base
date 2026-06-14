@@ -39,9 +39,15 @@ class App:
         self._command_func: Callable[..., Any] | None = None
         self._command_args: tuple[Any, ...] = ()
         self._command_kwargs: dict[str, Any] = {}
+        self._subcommands: list[tuple[Callable[..., Any], tuple[Any, ...], dict[str, Any]]] = []
 
     def command(self, *command_args: Any, **command_kwargs: Any):
         def decorator(func: Callable[..., Any]):
+            if self._subcommands:
+                raise RuntimeError(
+                    f"App '{self.name}' already has registered subcommands. "
+                    "Use @app.subcommand() for additional entry points."
+                )
             if self._command_func is not None:
                 raise RuntimeError(
                     f"App '{self.name}' already has a registered command. "
@@ -50,6 +56,18 @@ class App:
             self._command_func = func
             self._command_args = command_args
             self._command_kwargs = command_kwargs
+            return func
+
+        return decorator
+
+    def subcommand(self, *command_args: Any, **command_kwargs: Any):
+        def decorator(func: Callable[..., Any]):
+            if self._command_func is not None:
+                raise RuntimeError(
+                    f"App '{self.name}' already has a registered command. "
+                    "Use either @app.command() or @app.subcommand(), not both."
+                )
+            self._subcommands.append((func, command_args, command_kwargs))
             return func
 
         return decorator
@@ -64,11 +82,24 @@ class App:
         return self._click_command
 
     def _build_click_command(self) -> Any:
-        if self._command_func is None:
+        if self._command_func is None and not self._subcommands:
             raise RuntimeError("No command has been registered on this base_cli.App.")
 
         click = _require_click()
-        func = self._command_func
+        if self._command_func is not None:
+            wrapper = self._build_command_wrapper(click, self._command_func, include_version=True)
+            return click.command(*self._command_args, **self._command_kwargs)(wrapper)
+
+        group_wrapper = _build_group_wrapper()
+        if self.version is not None:
+            group_wrapper = click.version_option(self.version)(group_wrapper)
+        group = click.group(name=self.name)(group_wrapper)
+        for func, command_args, command_kwargs in self._subcommands:
+            wrapper = self._build_command_wrapper(click, func, include_version=False)
+            group.add_command(click.command(*command_args, **command_kwargs)(wrapper))
+        return group
+
+    def _build_command_wrapper(self, click: Any, func: Callable[..., Any], include_version: bool) -> Callable[..., Any]:
         sensitive_options = set(getattr(func, "__base_cli_sensitive_options__", set()))
         dry_run_parameter = getattr(func, "__base_cli_dry_run_parameter__", "dry_run")
 
@@ -93,8 +124,8 @@ class App:
                 wrapper = click.option(*param_decls, **attrs)(wrapper)
             elif kind == "argument":
                 wrapper = click.argument(*param_decls, **attrs)(wrapper)
-        wrapper = _decorate_standard_options(click, wrapper, self.version)
-        return click.command(*self._command_args, **self._command_kwargs)(wrapper)
+        wrapper = _decorate_standard_options(click, wrapper, self.version if include_version else None)
+        return wrapper
 
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options
@@ -197,6 +228,13 @@ def _pop_standard_options(kwargs: dict[str, Any]) -> dict[str, Any]:
     for key in ("debug", "environment", "config", "keep_temp", "log_file"):
         standard[key] = kwargs.pop(key, None)
     return standard
+
+
+def _build_group_wrapper() -> Callable[[], None]:
+    def group_wrapper() -> None:
+        return None
+
+    return group_wrapper
 
 
 def _prune_log_files(
