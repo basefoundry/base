@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made Bash `lib_std.sh` logging honor `LOG_UTC=1` so wrapper-driven Bash and
+  Python logs use the same timestamp zone.
 - Made `lib_std.sh` color initialization check stderr when deciding whether
   log colors can be rendered, so redirected stdout does not disable colored
   logs while stderr is still a terminal.
