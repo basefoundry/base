@@ -19,6 +19,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   when `home` is supplied, with explicit environment overrides still honored.
 - Added `run --quiet` to suppress expected `--no-exit` failure warnings in
   probe-style Bash checks.
+- Added `ctx.dry_run` and `base_cli.option(..., dry_run=True)` so commands can
+  explicitly connect nonstandard preview flags to Base's no-durable-write mode.
 
 ### Fixed
 

@@ -122,6 +122,19 @@ def main(ctx: base_cli.Context, token: str) -> None:
 
 Both `--token secret` and `--token=secret` are redacted in debug logs.
 
+Use `dry_run=True` when a nonstandard option should drive `ctx.dry_run` and
+Base's default durable-write suppression:
+
+```python
+@base_cli.option("--preview", is_flag=True, dry_run=True)
+def main(ctx: base_cli.Context, preview: bool) -> None:
+    if ctx.dry_run:
+        ctx.log.info("previewing changes")
+```
+
+The conventional `dry_run` parameter is recognized automatically, so commands
+using `@base_cli.option("--dry-run", is_flag=True)` do not need the marker.
+
 ## Standard Options
 
 Every `base_cli.App` command gets these options:
@@ -177,6 +190,7 @@ Important fields include:
 - `ctx.config`: merged configuration dictionary.
 - `ctx.environment`: active environment, defaulting to `dev`.
 - `ctx.debug`: whether debug logging is enabled for the stderr stream.
+- `ctx.dry_run`: whether the command is running in a no-durable-write mode.
 - `ctx.keep_temp`: whether `ctx.temp_dir` should survive cleanup.
 - `ctx.log`: standard Python logger configured by Base.
 
@@ -206,6 +220,10 @@ to keep the standard context and `--debug` behavior without creating default
 `logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this mode so
 `basectl logs` does not appear in its own output. An explicit `--log-file <path>`
 still enables file logging for that invocation.
+
+Commands running with `ctx.dry_run` also skip default `logs/`, `cache/`, and
+`tmp/<run-id>/` creation. Passing `--log-file <path>` still writes to that
+explicit file so tests and diagnostics can inspect dry-run logs when needed.
 
 Logs use the same general shape as Base Bash logs:
 
