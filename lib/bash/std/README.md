@@ -165,6 +165,10 @@ DRY_RUN=true
 run brew install jq
 ```
 
+`DRY_RUN` and `dry_run` both accept `true`, `1`, `yes`, and `on`. Use
+`is_dry_run` when a script needs to branch on the same normalized dry-run state
+without executing a command through `run`.
+
 Handle a failing command yourself with `--no-exit`:
 
 ```bash

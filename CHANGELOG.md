@@ -25,6 +25,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   during `basectl repo configure` migrations, preserving existing target values.
 - Made `assert_not_null` reject invalid variable-name arguments without logging
   the raw value, and clarified that callers must pass variable names.
+- Made `lib_std.sh` dry-run handling treat `DRY_RUN` and `dry_run` values of
+  `true`, `1`, `yes`, and `on` consistently, avoiding accidental live execution.
 - Fixed documentation drift for `basectl logs` syntax, project virtual
   environment location, and README coverage of the `basectl ci` command.
 - Made `basectl activate` prefer a uv project's repo-local `.venv` when

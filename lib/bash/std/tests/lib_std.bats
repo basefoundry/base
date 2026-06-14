@@ -522,6 +522,31 @@ EOF
     [ ! -e "$target" ]
 }
 
+@test "run treats common truthy dry-run values as dry-run mode" {
+    local case_name target value var_name
+
+    for case_name in \
+        "DRY_RUN=1" \
+        "DRY_RUN=yes" \
+        "DRY_RUN=on" \
+        "dry_run=true" \
+        "dry_run=1" \
+        "dry_run=yes" \
+        "dry_run=on"; do
+        unset DRY_RUN dry_run
+        var_name="${case_name%%=*}"
+        value="${case_name#*=}"
+        printf -v "$var_name" '%s' "$value"
+        export "$var_name"
+        target="$TEST_TMPDIR/dry-run-${var_name}-${value}.txt"
+
+        run touch "$target"
+
+        [ "$?" -eq 0 ]
+        [ ! -e "$target" ]
+    done
+}
+
 @test "run --no-exit returns the underlying failure status" {
     local stderr_file="$TEST_TMPDIR/run-no-exit.err"
     local rc
