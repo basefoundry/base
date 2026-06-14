@@ -146,6 +146,41 @@ def test_read_project_config_rejects_non_string_options(tmp_path: Path) -> None:
     assert str(excinfo.value) == f"{config_path}: project.areas[1] must be a non-empty string."
 
 
+def test_issue_field_values_use_config_defaults_and_explicit_overrides(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(
+        "project:\n"
+        "  areas: []\n"
+        "  initiatives: []\n"
+        "  issue_defaults:\n"
+        "    status: Backlog\n"
+        "    priority: P2\n"
+        "    size: S\n"
+        "    area: CLI\n",
+        encoding="utf-8",
+    )
+
+    values = engine.issue_field_values_for_args(
+        engine.ProjectArguments(
+            area="project",
+            command="issue-set-fields",
+            project_title="base-demo",
+            owner="codeforester",
+            repo="codeforester/base-demo",
+            config_path=str(config_path),
+            issue_number=604,
+            field_values={"priority": "P1"},
+        )
+    )
+
+    assert values == {
+        "status": "Backlog",
+        "priority": "P1",
+        "size": "S",
+        "area": "CLI",
+    }
+
+
 def test_schema_for_args_adds_repo_project_config_options(tmp_path: Path) -> None:
     config_path = tmp_path / "base-project.yml"
     config_path.write_text(

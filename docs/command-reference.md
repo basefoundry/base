@@ -62,7 +62,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files. | `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--dry-run` |
 | `basectl repo installer-template [path]` | Print the maintained project installer starter script, or write it to a path. | `--dry-run` |
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |
-| `basectl gh issue create` | Create an issue with Base category conventions. | `--category <bug\|enhancement\|documentation\|ci\|security>`, `--title <title>`, `--body <body>` |
+| `basectl gh issue create` | Create an issue with Base category conventions, assign it, and add repo Project metadata when the repo is known. | `--category <bug\|enhancement\|documentation\|ci\|security>`, `--title <title>`, `--body <body>`, `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--no-project` |
 | `basectl gh issue start <number>` | Start issue-backed branch naming workflow. | `--category <category>`, `--title <title>` |
 | `basectl gh pr create/status/checks/ready/merge` | Create and manage pull requests through Base's workflow wrapper. | passes through `gh` options |
 | `basectl gh branch stale` | Report stale local branches. | `--days <days>` |
@@ -70,7 +70,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl gh worktree prune` | Prune stale merged worktrees. | `--dry-run`, `--yes` |
 | `basectl gh project doctor` | Inspect GitHub Project metadata against the Base roadmap schema. | `--project <title>`, `--owner <login>`, `--schema base-roadmap` |
 | `basectl gh project configure` | Create or repair Base-managed Project metadata. | `--project <title>`, `--owner <login>`, `--repo <owner/name>`, `--config <path>`, `--copy-fields-from <title>`, `--dry-run` |
-| `basectl gh project issue set-fields <number>` | Add an issue to the Project if needed and update metadata fields. | `--project <title>`, `--repo <owner/name>`, field options |
+| `basectl gh project issue set-fields <number>` | Add an issue to the Project if needed and update metadata fields. | `--project <title>`, `--repo <owner/name>`, `--config <path>`, field options |
 | `basectl gh todo import` | Preview migration of `TODO.md` items into GitHub Issues. | `--dry-run`, `--file <path>` |
 
 ## Release And Context

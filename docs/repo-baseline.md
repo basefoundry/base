@@ -111,8 +111,9 @@ project:
 ```
 
 `areas` and `initiatives` are applied by `repo configure`. `issue_defaults` is
-validated and reserved for issue intake automation; it does not set fields on
-existing issues during Project configuration.
+validated by Project tooling and used by `basectl gh issue create` when it adds
+new issues to the repo Project. It does not set fields on existing issues during
+Project configuration.
 
 ## Local Baseline
 

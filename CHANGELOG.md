@@ -14,9 +14,14 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `.github/base-project.yml` to the standard `basectl repo init`
   baseline so repo Project taxonomy and issue defaults can move through the
   same review path as other repository files.
+- Added repo Project metadata handoff to `basectl gh issue create` so new
+  issues are added to the repo Project with defaults from
+  `.github/base-project.yml` when the repository is known.
 
 ### Changed
 
+- Changed `basectl repo` help to show command-specific options for each
+  subcommand instead of one shared option list.
 - Changed `basectl repo init --pr` to continue into GitHub-side configuration
   when the generated baseline is already present, while still stopping after
   opening a pull request when file changes are needed.

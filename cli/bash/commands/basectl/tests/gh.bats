@@ -35,11 +35,71 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning"
+            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --no-project
         '
 
     [ "$status" -eq 0 ]
-    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester" ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester --repo codeforester/base" ]
+}
+
+@test "basectl gh issue create updates repo project metadata when repo is known" {
+    local repo
+    local repo_root
+
+    repo="$TEST_TMPDIR/bankbuddy"
+    init_git_repo "$repo"
+    repo_root="$(cd "$repo" && pwd -P)"
+    git -C "$repo" remote add origin git@github.com:codeforester/bankbuddy.git
+    mkdir -p "$repo/.github"
+    cat > "$repo/.github/base-project.yml" <<'EOF'
+project:
+  areas:
+    - CLI
+  initiatives:
+    - MVP
+  issue_defaults:
+    status: Backlog
+    priority: P1
+    size: M
+    area: CLI
+    initiative: MVP
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "issue" && "$2" == "create" ]]; then
+    printf 'https://github.com/codeforester/bankbuddy/issues/51\n'
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+printf 'project metadata updated\n'
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category enhancement --title "Add transaction filter"
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/51"* ]]
+    [[ "$output" == *"project metadata updated"* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Add transaction filter --label enhancement --assignee codeforester --repo codeforester/bankbuddy" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 51 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml" ]
 }
 
 @test "basectl gh issue create help does not require authentication" {

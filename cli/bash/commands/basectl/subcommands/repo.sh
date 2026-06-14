@@ -33,16 +33,28 @@ Usage:
   basectl repo agent-guidance [path] [options]
   basectl repo installer-template [path] [options]
 
+Commands:
+  init                 Create baseline files and optionally configure GitHub.
+  check                Verify the local repository baseline.
+  configure            Apply GitHub settings, labels, branch protection, and Project metadata.
+  agent-guidance       Seed optional repo-local agent guidance files.
+  installer-template   Print or write the maintained project installer template.
+
+Run 'basectl repo <command> --help' for command-specific options.
+EOF
+}
+
+base_repo_init_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo init <name> [options]
+
 Options:
   --path <path>                 Target path for repo init. Defaults to workspace root plus <name>.
   --repo <owner/name>           GitHub repository to configure.
   --pr                          Commit the generated baseline on a branch and open a pull request.
   --description <text>          Repository description for generated README.
   --copyright-holder <name>     Copyright holder for generated LICENSE. Defaults to git config user.name.
-  --repo-name <name>            Repository name for generated agent guidance. Defaults to the target path basename.
-  --default-branch <name>       Default branch for generated agent guidance. Defaults to main.
-  --validation-command <cmd>    Validation command for generated agent guidance. Defaults to ./tests/validate.sh.
-  --agent-guidance              Include optional agent guidance files in repo check.
   --private                     Create a private GitHub repository when needed. This is the default.
   --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
@@ -58,14 +70,98 @@ Options:
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
-Create, check, and configure a standard Base-managed repository baseline, or
-write a reusable project installer template. When .github/base-project.yml
-exists, repo configure uses it for repo-specific GitHub Project taxonomy.
+Examples:
+  basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
+  basectl repo init base-demo --repo codeforester/base-demo --public
+
+Creates the standard Base-managed repository baseline, including
+.github/base-project.yml. With --pr, the first run opens a baseline PR when
+files change; rerun the same command after merge to continue GitHub-side
+configuration.
+EOF
+}
+
+base_repo_check_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo check [path] [options]
+
+Options:
+  --agent-guidance              Include optional agent guidance files in repo check.
+  -v                            Enable DEBUG logging for this subcommand.
+  -h, --help                    Show this help text.
+
+Verifies the standard Base-managed repository baseline at path, or the current
+directory when path is omitted.
+EOF
+}
+
+base_repo_configure_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo configure [path] [options]
+
+Options:
+  --repo <owner/name>           GitHub repository to configure.
+  --no-protect-default-branch   Skip Base-managed default branch protection.
+  --project <title>             GitHub Project title to configure. Defaults to the repository name.
+  --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
+  --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
+  --initiative-option <name>    Initiative option to seed. May be repeated.
+  --copy-project-fields-from <title>
+                                Copy missing Project item field values from another Project.
+  --no-project                  Skip GitHub Project metadata configuration.
+  --dry-run                     Print planned changes without applying them.
+  -v                            Enable DEBUG logging for this subcommand.
+  -h, --help                    Show this help text.
+
+Applies GitHub-side repository settings, labels, branch protection, and
+repo Project metadata. When .github/base-project.yml exists, repo configure
+uses it for repo-specific GitHub Project taxonomy and issue defaults.
+EOF
+}
+
+base_repo_installer_template_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo installer-template [path] [options]
+
+Options:
+  --dry-run                     Print planned changes without applying them.
+  -v                            Enable DEBUG logging for this subcommand.
+  -h, --help                    Show this help text.
+
+Prints the maintained project installer template, or writes it to path when a
+path is provided.
 EOF
 }
 
 base_repo_usage_error() {
     base_repo_subcommand_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
+base_repo_init_usage_error() {
+    base_repo_init_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
+base_repo_check_usage_error() {
+    base_repo_check_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
+base_repo_configure_usage_error() {
+    base_repo_configure_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
+base_repo_installer_template_usage_error() {
+    base_repo_installer_template_usage >&2
     printf 'ERROR: %s\n' "$*" >&2
     return 2
 }
@@ -1393,12 +1489,12 @@ base_repo_init() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_repo_subcommand_usage
+                base_repo_init_usage
                 return 0
                 ;;
             --path)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--path' requires an argument."
+                    base_repo_init_usage_error "Option '--path' requires an argument."
                     return $?
                 }
                 path="$2"
@@ -1410,7 +1506,7 @@ base_repo_init() {
                 ;;
             --repo)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--repo' requires an argument."
+                    base_repo_init_usage_error "Option '--repo' requires an argument."
                     return $?
                 }
                 github_repo="$2"
@@ -1426,7 +1522,7 @@ base_repo_init() {
                 ;;
             --description)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--description' requires an argument."
+                    base_repo_init_usage_error "Option '--description' requires an argument."
                     return $?
                 }
                 description="$2"
@@ -1434,7 +1530,7 @@ base_repo_init() {
                 ;;
             --copyright-holder)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--copyright-holder' requires an argument."
+                    base_repo_init_usage_error "Option '--copyright-holder' requires an argument."
                     return $?
                 }
                 copyright_holder="$2"
@@ -1443,7 +1539,7 @@ base_repo_init() {
             --private|--public)
                 requested_visibility="${1#--}"
                 if ((github_visibility_explicit)) && [[ "$github_visibility" != "$requested_visibility" ]]; then
-                    base_repo_usage_error "Options '--private' and '--public' cannot be used together."
+                    base_repo_init_usage_error "Options '--private' and '--public' cannot be used together."
                     return $?
                 fi
                 github_visibility="$requested_visibility"
@@ -1460,7 +1556,7 @@ base_repo_init() {
                 ;;
             --project)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project' requires an argument."
+                    base_repo_init_usage_error "Option '--project' requires an argument."
                     return $?
                 }
                 project_title="$2"
@@ -1472,7 +1568,7 @@ base_repo_init() {
                 ;;
             --project-owner)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project-owner' requires an argument."
+                    base_repo_init_usage_error "Option '--project-owner' requires an argument."
                     return $?
                 }
                 project_owner="$2"
@@ -1484,7 +1580,7 @@ base_repo_init() {
                 ;;
             --project-schema)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project-schema' requires an argument."
+                    base_repo_init_usage_error "Option '--project-schema' requires an argument."
                     return $?
                 }
                 project_schema="$2"
@@ -1496,7 +1592,7 @@ base_repo_init() {
                 ;;
             --initiative-option)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--initiative-option' requires an argument."
+                    base_repo_init_usage_error "Option '--initiative-option' requires an argument."
                     return $?
                 }
                 initiative_options+=("$2")
@@ -1508,7 +1604,7 @@ base_repo_init() {
                 ;;
             --copy-project-fields-from)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--copy-project-fields-from' requires an argument."
+                    base_repo_init_usage_error "Option '--copy-project-fields-from' requires an argument."
                     return $?
                 }
                 copy_project_fields_from="$2"
@@ -1532,12 +1628,12 @@ base_repo_init() {
                 shift
                 ;;
             -*)
-                base_repo_usage_error "Unknown repo init option '$1'."
+                base_repo_init_usage_error "Unknown repo init option '$1'."
                 return $?
                 ;;
             *)
                 if [[ -n "$name" ]]; then
-                    base_repo_usage_error "The 'repo init' command accepts exactly one repository name."
+                    base_repo_init_usage_error "The 'repo init' command accepts exactly one repository name."
                     return $?
                 fi
                 name="$1"
@@ -1547,7 +1643,7 @@ base_repo_init() {
     done
 
     [[ -n "$name" ]] || {
-        base_repo_usage_error "Repository name is required."
+        base_repo_init_usage_error "Repository name is required."
         return $?
     }
     base_repo_validate_name "$name" || return 2
@@ -1561,11 +1657,11 @@ base_repo_init() {
             github_repo="$(base_repo_infer_github_repo "$root" || true)"
         fi
         [[ -n "$github_repo" ]] || {
-            base_repo_usage_error "Option '--pr' requires --repo <owner/name> or an inferable GitHub origin remote."
+            base_repo_init_usage_error "Option '--pr' requires --repo <owner/name> or an inferable GitHub origin remote."
             return $?
         }
         if ((github_visibility_explicit)); then
-            base_repo_usage_error "Options '--private' and '--public' cannot be used with '--pr'."
+            base_repo_init_usage_error "Options '--private' and '--public' cannot be used with '--pr'."
             return $?
         fi
 
@@ -1644,7 +1740,7 @@ base_repo_check() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_repo_subcommand_usage
+                base_repo_check_usage
                 return 0
                 ;;
             --agent-guidance)
@@ -1657,12 +1753,12 @@ base_repo_check() {
                 shift
                 ;;
             -*)
-                base_repo_usage_error "Unknown repo check option '$1'."
+                base_repo_check_usage_error "Unknown repo check option '$1'."
                 return $?
                 ;;
             *)
                 if [[ "$path" != "." ]]; then
-                    base_repo_usage_error "The 'repo check' command accepts at most one path."
+                    base_repo_check_usage_error "The 'repo check' command accepts at most one path."
                     return $?
                 fi
                 path="$1"
@@ -1786,12 +1882,12 @@ base_repo_configure() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_repo_subcommand_usage
+                base_repo_configure_usage
                 return 0
                 ;;
             --repo)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--repo' requires an argument."
+                    base_repo_configure_usage_error "Option '--repo' requires an argument."
                     return $?
                 }
                 github_repo="$2"
@@ -1811,7 +1907,7 @@ base_repo_configure() {
                 ;;
             --project)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project' requires an argument."
+                    base_repo_configure_usage_error "Option '--project' requires an argument."
                     return $?
                 }
                 project_title="$2"
@@ -1823,7 +1919,7 @@ base_repo_configure() {
                 ;;
             --project-owner)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project-owner' requires an argument."
+                    base_repo_configure_usage_error "Option '--project-owner' requires an argument."
                     return $?
                 }
                 project_owner="$2"
@@ -1835,7 +1931,7 @@ base_repo_configure() {
                 ;;
             --project-schema)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--project-schema' requires an argument."
+                    base_repo_configure_usage_error "Option '--project-schema' requires an argument."
                     return $?
                 }
                 project_schema="$2"
@@ -1847,7 +1943,7 @@ base_repo_configure() {
                 ;;
             --initiative-option)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--initiative-option' requires an argument."
+                    base_repo_configure_usage_error "Option '--initiative-option' requires an argument."
                     return $?
                 }
                 initiative_options+=("$2")
@@ -1859,7 +1955,7 @@ base_repo_configure() {
                 ;;
             --copy-project-fields-from)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_usage_error "Option '--copy-project-fields-from' requires an argument."
+                    base_repo_configure_usage_error "Option '--copy-project-fields-from' requires an argument."
                     return $?
                 }
                 copy_project_fields_from="$2"
@@ -1879,12 +1975,12 @@ base_repo_configure() {
                 shift
                 ;;
             -*)
-                base_repo_usage_error "Unknown repo configure option '$1'."
+                base_repo_configure_usage_error "Unknown repo configure option '$1'."
                 return $?
                 ;;
             *)
                 if [[ "$path" != "." ]]; then
-                    base_repo_usage_error "The 'repo configure' command accepts at most one path."
+                    base_repo_configure_usage_error "The 'repo configure' command accepts at most one path."
                     return $?
                 fi
                 path="$1"
@@ -1926,7 +2022,7 @@ base_repo_installer_template() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_repo_subcommand_usage
+                base_repo_installer_template_usage
                 return 0
                 ;;
             --dry-run)
@@ -1939,12 +2035,12 @@ base_repo_installer_template() {
                 shift
                 ;;
             -*)
-                base_repo_usage_error "Unknown repo installer-template option '$1'."
+                base_repo_installer_template_usage_error "Unknown repo installer-template option '$1'."
                 return $?
                 ;;
             *)
                 if [[ -n "$path" ]]; then
-                    base_repo_usage_error "The 'repo installer-template' command accepts at most one path."
+                    base_repo_installer_template_usage_error "The 'repo installer-template' command accepts at most one path."
                     return $?
                 fi
                 path="$1"
