@@ -63,6 +63,32 @@ lib/python/base_cli/
   testing.py
 ```
 
+## Command Shape
+
+`App.command()` remains the simple path for a CLI with one entry point. A CLI
+that needs multiple verbs should use `App.subcommand()`:
+
+```python
+app = base_cli.App(name="workspace-tools")
+
+
+@app.subcommand()
+def status(ctx: base_cli.Context) -> None:
+    ...
+
+
+@app.subcommand("sync")
+@base_cli.option("--dry-run", is_flag=True)
+def sync_project(ctx: base_cli.Context, dry_run: bool) -> None:
+    ...
+```
+
+Each subcommand receives its own fresh `Context`, run ID, log file, temp/cache
+paths, cleanup hooks, project discovery, standard options, and sensitive-option
+redaction. `App.command()` and `App.subcommand()` are mutually exclusive on one
+`App` so command authors do not accidentally mix single-command and group-style
+registration.
+
 ## Context
 
 `Context` is the center of the API:
