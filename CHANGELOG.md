@@ -11,9 +11,15 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added a one-page command quick reference for the current `basectl` command
   surface.
+- Added `.github/base-project.yml` to the standard `basectl repo init`
+  baseline so repo Project taxonomy and issue defaults can move through the
+  same review path as other repository files.
 
 ### Changed
 
+- Changed `basectl repo init --pr` to continue into GitHub-side configuration
+  when the generated baseline is already present, while still stopping after
+  opening a pull request when file changes are needed.
 - Updated the Homebrew release process to require bottle publishing for
   supported macOS installs before accepting the 1.0 upgrade rehearsal.
 - Removed the stale `CLAUDE.md` agent guide in favor of the canonical
