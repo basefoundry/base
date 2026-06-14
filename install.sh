@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# Base shell standards require explicit error handling instead of shell strict mode.
 
 install_usage() {
     cat <<'EOF'
@@ -101,6 +101,7 @@ install_find_brew() {
 }
 
 install_homebrew() {
+    local installer
     local installer_url="${BASE_INSTALL_HOMEBREW_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
 
     install_log "Installing Homebrew."
@@ -108,14 +109,16 @@ install_homebrew() {
         install_log "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
         return 0
     fi
-    /bin/bash -c "$(curl -fsSL "$installer_url")"
+    command -v curl >/dev/null 2>&1 || install_die "curl is required to install Homebrew."
+    installer="$(curl -fsSL "$installer_url")" || install_die "Failed to download the Homebrew installer."
+    /bin/bash -c "$installer" || install_die "Homebrew installer failed."
 }
 
 install_ensure_homebrew() {
     if install_find_brew >/dev/null 2>&1; then
         return 0
     fi
-    install_homebrew
+    install_homebrew || install_die "Homebrew installation failed."
 }
 
 install_ensure_supported_bash() {
@@ -126,13 +129,13 @@ install_ensure_supported_bash() {
     fi
 
     install_log "A supported Bash was not found; bootstrapping Homebrew Bash before running basectl."
-    install_ensure_homebrew
+    install_ensure_homebrew || install_die "Homebrew installation failed."
     brew_bin="$(install_find_brew || true)"
     if [[ -z "$brew_bin" && "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
         brew_bin=brew
     fi
     [[ -n "$brew_bin" ]] || install_die "Homebrew was installed, but 'brew' was not found."
-    install_run "$brew_bin" install bash
+    install_run "$brew_bin" install bash || install_die "Failed to install Bash through Homebrew."
 
     if [[ "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
         return 0
@@ -150,7 +153,7 @@ install_run_basectl() {
         bash_bin="${BASE_INSTALL_DRY_RUN_BASH:-/opt/homebrew/bin/bash}"
     fi
     [[ -n "$bash_bin" ]] || install_die "A supported Bash was not found."
-    install_run "$bash_bin" "$install_dir/bin/basectl" "$@"
+    install_run "$bash_bin" "$install_dir/bin/basectl" "$@" || install_die "basectl $* failed."
 }
 
 install_clone_or_update() {
@@ -164,7 +167,7 @@ install_clone_or_update() {
 
     if [[ -d "$install_dir/.git" ]]; then
         install_log "Updating existing Base checkout at '$install_dir'."
-        install_run git -C "$install_dir" pull --ff-only
+        install_run git -C "$install_dir" pull --ff-only || install_die "Failed to update existing Base checkout."
         return 0
     fi
 
@@ -173,11 +176,11 @@ install_clone_or_update() {
     fi
 
     install_log "Cloning Base into '$install_dir'."
-    install_run mkdir -p "$(dirname "$install_dir")"
+    install_run mkdir -p "$(dirname "$install_dir")" || install_die "Failed to create install parent directory."
     if [[ -n "$branch" ]]; then
-        install_run git clone --branch "$branch" "$repo_url" "$install_dir"
+        install_run git clone --branch "$branch" "$repo_url" "$install_dir" || install_die "Failed to clone Base repository."
     else
-        install_run git clone "$repo_url" "$install_dir"
+        install_run git clone "$repo_url" "$install_dir" || install_die "Failed to clone Base repository."
     fi
 }
 
