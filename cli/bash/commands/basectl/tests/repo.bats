@@ -13,8 +13,73 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl repo configure [path]"* ]]
     [[ "$output" == *"basectl repo agent-guidance [path]"* ]]
     [[ "$output" == *"basectl repo installer-template [path]"* ]]
+    [[ "$output" == *"Run 'basectl repo <command> --help' for command-specific options."* ]]
+    [[ "$output" != *"--no-protect-default-branch"* ]]
+    [[ "$output" != *"--copy-project-fields-from"* ]]
+    [[ "$output" != *"--repo-name <name>"* ]]
+}
+
+@test "basectl repo init prints command-specific help" {
+    run_basectl repo init --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo init <name> [options]"* ]]
+    [[ "$output" == *"--path <path>"* ]]
+    [[ "$output" == *"--pr"* ]]
+    [[ "$output" == *"--copy-project-fields-from <title>"* ]]
+    [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
+    [[ "$output" != *"basectl repo agent-guidance"* ]]
+    [[ "$output" != *"--repo-name <name>"* ]]
+    [[ "$output" != *"--agent-guidance"* ]]
+}
+
+@test "basectl repo configure prints command-specific help" {
+    run_basectl repo configure --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo configure [path] [options]"* ]]
+    [[ "$output" == *"--repo <owner/name>"* ]]
     [[ "$output" == *"--no-protect-default-branch"* ]]
-    [[ "$output" == *"--copy-project-fields-from"* ]]
+    [[ "$output" == *"--copy-project-fields-from <title>"* ]]
+    [[ "$output" != *"--pr                          "* ]]
+    [[ "$output" != *"--private"* ]]
+    [[ "$output" != *"--public"* ]]
+    [[ "$output" != *"--description <text>"* ]]
+}
+
+@test "basectl repo check prints command-specific help" {
+    run_basectl repo check --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo check [path] [options]"* ]]
+    [[ "$output" == *"--agent-guidance"* ]]
+    [[ "$output" != *"--repo <owner/name>"* ]]
+    [[ "$output" != *"--pr"* ]]
+}
+
+@test "basectl repo installer-template prints command-specific help" {
+    run_basectl repo installer-template --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo installer-template [path] [options]"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--repo <owner/name>"* ]]
+    [[ "$output" != *"--project <title>"* ]]
+}
+
+@test "basectl repo init missing name shows focused usage and example" {
+    run_basectl repo init --repo codeforester/bankbuddy --pr
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"basectl repo init <name> [options]"* ]]
+    [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
+    [[ "$output" == *"ERROR: Repository name is required."* ]]
+    [[ "$output" != *"basectl repo agent-guidance"* ]]
+    [[ "$output" != *"--repo-name <name>"* ]]
 }
 
 @test "basectl repo installer-template prints the maintained template" {

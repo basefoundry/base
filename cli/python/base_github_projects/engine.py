@@ -72,7 +72,7 @@ def print_usage(file=sys.stdout) -> None:
                 "[--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--config <path>] "
                 "[--copy-fields-from <title>] [--initiative-option <name>] [--dry-run]",
                 "  base_github_projects project issue set-fields <number> "
-                "--repo <owner/name> --project <title> [field options...]",
+                "--repo <owner/name> --project <title> [--config <path>] [field options...]",
             )
         ),
         file=file,
@@ -255,6 +255,13 @@ def project_config_for_args(args: ProjectArguments) -> ProjectConfig:
     if not args.config_path:
         return ProjectConfig()
     return read_project_config(Path(args.config_path))
+
+
+def issue_field_values_for_args(args: ProjectArguments) -> dict[str, str]:
+    config = project_config_for_args(args)
+    values = dict(config.issue_defaults)
+    values.update(args.field_values or {})
+    return values
 
 
 def read_project_config(path: Path) -> ProjectConfig:
@@ -505,7 +512,11 @@ def issue_set_fields_command(args: ProjectArguments) -> int:
         raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'.")
     project = owner_info.project
     fields = fetch_project_fields(project.project_id)
-    updates = resolve_issue_field_updates(fields, args.field_values or {}, project_title=args.project_title or "")
+    updates = resolve_issue_field_updates(
+        fields,
+        issue_field_values_for_args(args),
+        project_title=args.project_title or "",
+    )
     if not updates:
         raise ProjectUsageError("At least one field option must be provided.")
     repo_owner, repo_name = split_repo(repo)

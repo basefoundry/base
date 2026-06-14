@@ -8,7 +8,7 @@ base_gh_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>]
+  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>] [--repo <owner/name>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
   basectl gh pr create [gh options...]
   basectl gh pr status [gh options...]
@@ -30,9 +30,17 @@ Purpose:
 Branch naming:
   <category>/<issue>-<YYYYMMDD>-<slug>
 
+Issue create project options:
+  --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
+  --project <title>             Project to update. Defaults to the repository name.
+  --project-owner <login>       Project owner. Defaults to the repository owner.
+  --no-project                  Skip Project metadata updates.
+
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
   - Issues created through this command are assigned to codeforester.
+  - When the GitHub repo is known, issue create also adds the issue to the
+    repo-named Project and applies defaults from .github/base-project.yml.
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
   - TODO import is currently a dry-run planning command.
@@ -148,6 +156,74 @@ base_gh_issue_title() {
     gh issue view "$issue" --json title --jq '.title'
 }
 
+base_gh_infer_github_repo() {
+    local remote_url
+
+    remote_url="$(git remote get-url origin 2>/dev/null || true)"
+    [[ -n "$remote_url" ]] || return 1
+
+    case "$remote_url" in
+        git@github.com:*.git)
+            remote_url="${remote_url#git@github.com:}"
+            remote_url="${remote_url%.git}"
+            ;;
+        https://github.com/*.git)
+            remote_url="${remote_url#https://github.com/}"
+            remote_url="${remote_url%.git}"
+            ;;
+        https://github.com/*)
+            remote_url="${remote_url#https://github.com/}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    [[ "$remote_url" == */* ]] || return 1
+    printf '%s\n' "$remote_url"
+}
+
+base_gh_default_project_title() {
+    local repo="$1"
+
+    printf '%s\n' "${repo#*/}"
+}
+
+base_gh_project_owner_from_repo() {
+    local repo="$1"
+
+    printf '%s\n' "${repo%%/*}"
+}
+
+base_gh_project_config_path() {
+    local root path
+
+    root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$root" ]] || return 1
+    path="$root/.github/base-project.yml"
+    [[ -f "$path" ]] || return 1
+    printf '%s\n' "$path"
+}
+
+base_gh_issue_number_from_output() {
+    local output="$1"
+    local issue_number
+
+    issue_number="$(printf '%s\n' "$output" | sed -nE 's#.*github.com/[^/]+/[^/]+/issues/([0-9]+).*#\1#p' | tail -n 1)"
+    [[ -n "$issue_number" ]] || return 1
+    printf '%s\n' "$issue_number"
+}
+
+base_gh_project_issue_set_fields() {
+    local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
+
+    [[ -x "$wrapper" ]] || {
+        base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+    "$wrapper" --project base base_github_projects project issue set-fields "$@"
+}
+
 base_gh_current_issue_from_branch() {
     local branch
 
@@ -187,12 +263,25 @@ base_gh_do_issue() {
 }
 
 base_gh_issue_create() {
-    local category="" title="" body=""
+    local body=""
+    local category=""
+    local configure_project=1
+    local config_path=""
+    local github_repo=""
+    local issue_number=""
+    local issue_output=""
+    local project_owner=""
+    local project_title=""
+    local title=""
 
     while (($#)); do
         case "$1" in
             --category)
                 category="${2:-}"
+                shift
+                ;;
+            --repo)
+                github_repo="${2:-}"
                 shift
                 ;;
             --title)
@@ -202,6 +291,17 @@ base_gh_issue_create() {
             --body)
                 body="${2:-}"
                 shift
+                ;;
+            --project)
+                project_title="${2:-}"
+                shift
+                ;;
+            --project-owner)
+                project_owner="${2:-}"
+                shift
+                ;;
+            --no-project)
+                configure_project=0
                 ;;
             -h|--help)
                 base_gh_usage
@@ -223,10 +323,45 @@ base_gh_issue_create() {
     base_gh_validate_category "$category" || return 1
     base_gh_require_auth || return 1
 
+    [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
     if [[ -n "$body" ]]; then
-        gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester
+        if [[ -n "$github_repo" ]]; then
+            issue_output="$(gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
+        else
+            issue_output="$(gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester)" || return $?
+        fi
     else
-        gh issue create --title "$title" --label "$category" --assignee codeforester
+        if [[ -n "$github_repo" ]]; then
+            issue_output="$(gh issue create --title "$title" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
+        else
+            issue_output="$(gh issue create --title "$title" --label "$category" --assignee codeforester)" || return $?
+        fi
+    fi
+    printf '%s\n' "$issue_output"
+
+    if ((configure_project)) && [[ -n "$github_repo" ]]; then
+        issue_number="$(base_gh_issue_number_from_output "$issue_output")" || {
+            base_gh_error "Unable to determine created issue number from gh output."
+            return 1
+        }
+        [[ -n "$project_title" ]] || project_title="$(base_gh_default_project_title "$github_repo")"
+        [[ -n "$project_owner" ]] || project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
+        config_path="$(base_gh_project_config_path || true)"
+        if [[ -n "$config_path" ]]; then
+            base_gh_project_issue_set_fields "$issue_number" \
+                --project "$project_title" \
+                --owner "$project_owner" \
+                --repo "$github_repo" \
+                --config "$config_path"
+        else
+            base_gh_project_issue_set_fields "$issue_number" \
+                --project "$project_title" \
+                --owner "$project_owner" \
+                --repo "$github_repo" \
+                --status Backlog \
+                --priority P2 \
+                --size S
+        fi
     fi
 }
 
