@@ -105,6 +105,16 @@ assert_base_init_loads() {
     [[ "$output" == *"Restart your shell with: exec \"\$SHELL\" -l"* ]]
 }
 
+@test "installer uses scoped colon splitting for candidate lists" {
+    run grep -n 'old_ifs' "$BASE_REPO_ROOT/install.sh"
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+
+    run grep -c 'IFS=: read -ra' "$BASE_REPO_ROOT/install.sh"
+    [ "$status" -eq 0 ]
+    [ "$output" -eq 2 ]
+}
+
 @test "installer bootstraps Homebrew Bash before setup when system Bash is too old" {
     run env \
         HOME="$TEST_HOME" \
