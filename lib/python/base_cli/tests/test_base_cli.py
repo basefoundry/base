@@ -546,6 +546,91 @@ class BaseCliTests(unittest.TestCase):
         self.assertIn("stderr text", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_uses_supplied_cwd_for_manifest_discovery(self) -> None:
+        app = base_cli.App(name="project-aware", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["cwd"] = Path.cwd()
+            seen["manifest_path"] = ctx.manifest_path
+            seen["project_root"] = ctx.project_root
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project = root / "project"
+            nested = project / "nested"
+            home.mkdir()
+            nested.mkdir(parents=True)
+            manifest_path = project / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\n", encoding="utf-8")
+            original_cwd = Path.cwd()
+
+            from base_cli.testing import invoke
+
+            result = invoke(app, [], home=home, cwd=nested)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["cwd"], nested.resolve())
+        self.assertEqual(seen["manifest_path"], manifest_path.resolve())
+        self.assertEqual(seen["project_root"], project.resolve())
+        self.assertEqual(Path.cwd(), original_cwd)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_uses_supplied_cwd_without_manifest(self) -> None:
+        app = base_cli.App(name="no-project", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["cwd"] = Path.cwd()
+            seen["manifest_path"] = ctx.manifest_path
+            seen["project_root"] = ctx.project_root
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            isolated = root / "isolated"
+            home.mkdir()
+            isolated.mkdir()
+            original_cwd = Path.cwd()
+
+            from base_cli.testing import invoke
+
+            result = invoke(app, [], home=home, cwd=isolated)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["cwd"], isolated.resolve())
+        self.assertIsNone(seen["manifest_path"])
+        self.assertIsNone(seen["project_root"])
+        self.assertEqual(Path.cwd(), original_cwd)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_testing_invoke_restores_cwd_after_failure_result(self) -> None:
+        app = base_cli.App(name="failing", log_to_file=False)
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            del ctx
+            raise RuntimeError("boom")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            cwd = root / "cwd"
+            home.mkdir()
+            cwd.mkdir()
+            original_cwd = Path.cwd()
+
+            from base_cli.testing import invoke
+
+            result = invoke(app, [], home=home, cwd=cwd)
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertEqual(Path.cwd(), original_cwd)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_standard_options_manifest_context_and_sensitive_redaction(self) -> None:
         app = base_cli.App(name="secret-tool", version="0.1.0")
         seen = {}
