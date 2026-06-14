@@ -105,6 +105,24 @@ assert_base_init_loads() {
     [[ "$output" == *"Restart your shell with: exec \"\$SHELL\" -l"* ]]
 }
 
+@test "installer avoids shell strict mode" {
+    run grep -nE '^[[:space:]]*set[[:space:]].*(-e|-u|pipefail)' "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
+@test "installer command failures use explicit handling" {
+    run awk '
+        /^[[:space:]]*install_run[[:space:]]/ && $0 !~ /\|\|/ {
+            print NR ":" $0
+        }
+    ' "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "" ]
+}
+
 @test "installer uses scoped colon splitting for candidate lists" {
     run grep -n 'old_ifs' "$BASE_REPO_ROOT/install.sh"
     [ "$status" -eq 1 ]

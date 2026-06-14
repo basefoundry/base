@@ -37,6 +37,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Replaced `install.sh` shell strict mode with explicit installer command
+  failure handling.
 - Corrected the `git_get_current_branch` usage message to name the current
   helper.
 - Avoided subshell timestamp formatting in Bash `LOG_UTC` logging.
