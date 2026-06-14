@@ -29,6 +29,9 @@ Base exists to provide that missing common layer.
 For a concise evaluator view of where Base fits, what it gives a multi-repo
 workspace, and how it compares with adjacent tools, see
 [Why Base](docs/why-base.md).
+For a candid maintained assessment of Base's originality, usefulness, adoption
+potential, and engineering evidence, see
+[Product Assessment](docs/product-assessment.md).
 
 Common first-run and product questions are answered in [FAQ.md](FAQ.md).
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Release notes

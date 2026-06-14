@@ -27,6 +27,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   re-parsing `~/.base.d/config.yaml`.
 - Added `base_cli.App.subcommand()` so one Python CLI can expose multiple
   Base-managed entry points.
+- Added `docs/product-assessment.md` as a maintained review of Base's
+  originality, usefulness, adoption potential, and engineering-skill evidence.
 
 ### Changed
 
