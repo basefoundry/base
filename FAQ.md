@@ -47,13 +47,14 @@ exec "$SHELL" -l
 ```
 
 Use a source checkout when you are contributing to Base or want to inspect and
-run the repository directly. This is the preferred mode for a Base development
-machine:
+run the repository directly. This is also the preferred active install for a
+Base development machine:
 
 ```bash
 git clone https://github.com/codeforester/base.git ~/work/base
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
 ```
 
 Use `install.sh` when you specifically want the source-install path to clone or

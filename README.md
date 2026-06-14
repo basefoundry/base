@@ -36,20 +36,30 @@ are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Start Here
 
-### Already Have Homebrew And Bash?
+### Choose An Install Path
 
-If your Mac already has Homebrew and a supported Bash, install just Base through
-Homebrew:
+If your Mac already has Homebrew, Git, and a supported Bash, choose one of the
+normal Base install paths:
+
+- Use Homebrew when you want Base managed like an ordinary installed tool.
+- Use a source checkout when you want to inspect, contribute to, or dogfood Base
+  from the repository.
 
 ```bash
+# Homebrew-managed install
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
 ```
 
-This is the shortest path when the first-mile macOS prerequisites are already
-in place.
+```bash
+# Source checkout install
+git clone https://github.com/codeforester/base.git ~/work/base
+~/work/base/bin/basectl setup
+~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
+```
 
 ### New Or Uncertain macOS Machine?
 
@@ -76,8 +86,9 @@ For mode selection, dry-run behavior, and contributor setup details, see
 [First-Mile Bootstrap](docs/bootstrap.md).
 
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
-your project workspace. On first setup, Base creates `~/.base.d/config.yaml`
-with the default workspace root:
+your project workspace. For source checkout installs, Base lives at the clone
+path you choose, usually `~/work/base`. In both modes, first setup creates
+`~/.base.d/config.yaml` with the default workspace root:
 
 ```yaml
 workspace:
