@@ -31,6 +31,9 @@ reference. The filename should answer "what is this about?"
 
 ## Core Documents
 
+- [Why Base](why-base.md) is the concise evaluator page for why Base exists,
+  what it gives a multi-repo workspace, and how it compares with adjacent
+  developer-environment tools.
 - [Command Quick Reference](command-reference.md) is the one-page lookup table
   for the current `basectl` command surface and important flags.
 - [Technical Overview](technical-overview.md) is the scannable product and

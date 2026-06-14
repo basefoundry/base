@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added `docs/why-base.md` as a concise evaluator page comparing Base with
+  adjacent developer-environment tools.
 - Added a one-page command quick reference for the current `basectl` command
   surface.
 - Added `.github/base-project.yml` to the standard `basectl repo init`
