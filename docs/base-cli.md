@@ -195,6 +195,27 @@ nonstandard parameter name:
 @base_cli.option("--preview", is_flag=True, dry_run=True)
 ```
 
+Apps that need multiple verbs can use subcommands:
+
+```python
+app = base_cli.App(name="workspace")
+
+
+@app.subcommand("status")
+def status(ctx: base_cli.Context) -> None:
+    ctx.log.info("checking workspace")
+
+
+@app.subcommand("sync")
+def sync(ctx: base_cli.Context) -> None:
+    ctx.log.info("syncing workspace")
+```
+
+Each subcommand gets the same Base lifecycle as a single-command app: a fresh
+context, standard options, logging, redaction, cleanup, and project discovery.
+An `App` should use either one `@app.command()` or one or more
+`@app.subcommand()` registrations, not both.
+
 For v1, sensitive values are redacted from automatic invocation logging. More
 advanced redaction of arbitrary log messages can follow after the basic CLI
 shape is stable.
@@ -321,13 +342,13 @@ override.
 - sensitive option redaction for invocation logging
 - manifest/project discovery
 - testing helper
+- subcommand groups
 
 ### V2
 
 - richer YAML config merging
 - project manifest loading helpers
 - version discovery conventions
-- subcommand groups
 - better error formatting and exit code conventions
 
 ### V3

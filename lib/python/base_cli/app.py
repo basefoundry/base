@@ -21,6 +21,10 @@ def _require_click():
     return click
 
 
+def _empty_group() -> None:
+    return None
+
+
 class App:
     def __init__(
         self,
@@ -39,9 +43,15 @@ class App:
         self._command_func: Callable[..., Any] | None = None
         self._command_args: tuple[Any, ...] = ()
         self._command_kwargs: dict[str, Any] = {}
+        self._subcommands: list[tuple[tuple[Any, ...], dict[str, Any], Callable[..., Any]]] = []
 
     def command(self, *command_args: Any, **command_kwargs: Any):
         def decorator(func: Callable[..., Any]):
+            if self._subcommands:
+                raise RuntimeError(
+                    f"App '{self.name}' already has registered subcommands. "
+                    "Use @app.subcommand() for additional entry points."
+                )
             if self._command_func is not None:
                 raise RuntimeError(
                     f"App '{self.name}' already has a registered command. "
@@ -50,6 +60,18 @@ class App:
             self._command_func = func
             self._command_args = command_args
             self._command_kwargs = command_kwargs
+            return func
+
+        return decorator
+
+    def subcommand(self, *command_args: Any, **command_kwargs: Any):
+        def decorator(func: Callable[..., Any]):
+            if self._command_func is not None:
+                raise RuntimeError(
+                    f"App '{self.name}' already has a registered command. "
+                    "Use @app.subcommand() only when building a command group."
+                )
+            self._subcommands.append((command_args, command_kwargs, func))
             return func
 
         return decorator
@@ -64,11 +86,44 @@ class App:
         return self._click_command
 
     def _build_click_command(self) -> Any:
-        if self._command_func is None:
+        if self._command_func is None and not self._subcommands:
             raise RuntimeError("No command has been registered on this base_cli.App.")
 
         click = _require_click()
-        func = self._command_func
+        if self._command_func is not None:
+            return self._build_lifecycle_command(
+                click,
+                self._command_func,
+                self._command_args,
+                self._command_kwargs,
+                include_version=True,
+            )
+
+        group_func = _empty_group
+        if self.version is not None:
+            group_func = click.version_option(self.version)(group_func)
+        group = click.group(name=self.name)(group_func)
+        for command_args, command_kwargs, func in self._subcommands:
+            command = self._build_lifecycle_command(
+                click,
+                func,
+                command_args,
+                command_kwargs,
+                include_version=False,
+            )
+            if command.name in group.commands:
+                raise RuntimeError(f"App '{self.name}' already has a subcommand named '{command.name}'.")
+            group.add_command(command)
+        return group
+
+    def _build_lifecycle_command(
+        self,
+        click: Any,
+        func: Callable[..., Any],
+        command_args: tuple[Any, ...],
+        command_kwargs: dict[str, Any],
+        include_version: bool,
+    ) -> Any:
         sensitive_options = set(getattr(func, "__base_cli_sensitive_options__", set()))
         dry_run_parameter = getattr(func, "__base_cli_dry_run_parameter__", "dry_run")
 
@@ -93,8 +148,8 @@ class App:
                 wrapper = click.option(*param_decls, **attrs)(wrapper)
             elif kind == "argument":
                 wrapper = click.argument(*param_decls, **attrs)(wrapper)
-        wrapper = _decorate_standard_options(click, wrapper, self.version)
-        return click.command(*self._command_args, **self._command_kwargs)(wrapper)
+        wrapper = _decorate_standard_options(click, wrapper, self.version if include_version else None)
+        return click.command(*command_args, **command_kwargs)(wrapper)
 
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options

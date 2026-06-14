@@ -25,6 +25,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   default log files during startup.
 - Added `ctx.user_config` so Python commands can read typed user config without
   re-parsing `~/.base.d/config.yaml`.
+- Added `base_cli.App.subcommand()` so one Python CLI can expose multiple verbs
+  while preserving Base context, logging, cleanup, and redaction.
 
 ### Changed
 

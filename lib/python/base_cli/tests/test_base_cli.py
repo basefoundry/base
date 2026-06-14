@@ -530,6 +530,101 @@ class BaseCliTests(unittest.TestCase):
             def second(ctx: base_cli.Context) -> None:
                 del ctx
 
+    def test_app_rejects_mixed_command_and_subcommand_registration(self) -> None:
+        subcommand_app = base_cli.App(name="subcommand-demo")
+
+        @subcommand_app.subcommand("status")
+        def status(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with self.assertRaisesRegex(RuntimeError, "already has registered subcommands"):
+            @subcommand_app.command()
+            def main(ctx: base_cli.Context) -> None:
+                del ctx
+
+        command_app = base_cli.App(name="command-demo")
+
+        @command_app.command()
+        def main(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with self.assertRaisesRegex(RuntimeError, "already has a registered command"):
+            @command_app.subcommand("status")
+            def later_status(ctx: base_cli.Context) -> None:
+                del ctx
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_runs_subcommands_with_context_and_cleanup(self) -> None:
+        app = base_cli.App(name="multi-demo")
+        events = []
+
+        @app.subcommand("status")
+        @base_cli.option("--name", required=True)
+        def status(ctx: base_cli.Context, name: str) -> None:
+            events.append(("status", name, ctx.run_id, ctx.temp_dir, ctx.cache_dir, ctx.debug))
+            print(f"status {name}")
+
+        @app.subcommand("sync")
+        def sync(ctx: base_cli.Context) -> None:
+            events.append(("sync", None, ctx.run_id, ctx.temp_dir, ctx.cache_dir, ctx.debug))
+            print("sync")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            from base_cli.testing import invoke
+
+            status_result = invoke(app, ["status", "--name", "Ada"], home=home)
+            sync_result = invoke(app, ["sync", "--debug"], home=home)
+
+            self.assertFalse(events[0][3].exists())
+            self.assertFalse(events[1][3].exists())
+            self.assertTrue(events[0][4].is_dir())
+            self.assertTrue(events[1][4].is_dir())
+
+        self.assertEqual(status_result.exit_code, 0, status_result.output)
+        self.assertEqual(sync_result.exit_code, 0, sync_result.output)
+        self.assertIn("status Ada", status_result.stdout)
+        self.assertIn("sync", sync_result.stdout)
+        self.assertEqual(events[0][0:2], ("status", "Ada"))
+        self.assertEqual(events[1][0:2], ("sync", None))
+        self.assertNotEqual(events[0][2], events[1][2])
+        self.assertFalse(events[0][5])
+        self.assertTrue(events[1][5])
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_subcommand_redacts_sensitive_options(self) -> None:
+        app = base_cli.App(name="secret-subcommands")
+
+        @app.subcommand("login")
+        @base_cli.option("--token", sensitive=True, required=True)
+        def login(ctx: base_cli.Context, token: str) -> None:
+            del token
+            ctx.log.info("logged in")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            log_file = home / "login.log"
+
+            with mock.patch.object(
+                os.sys,
+                "argv",
+                ["secret-subcommands", "login", "--debug", "--token", "super-secret"],
+            ):
+                from base_cli.testing import invoke
+
+                result = invoke(
+                    app,
+                    ["login", "--debug", "--log-file", str(log_file), "--token", "super-secret"],
+                    home=home,
+                )
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            log_text = log_file.read_text(encoding="utf-8")
+            self.assertIn("login", log_text)
+            self.assertIn("--token", log_text)
+            self.assertIn("[REDACTED]", log_text)
+            self.assertNotIn("super-secret", log_text)
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_runs_with_context_and_cleans_temp_dir(self) -> None:
         app = base_cli.App(name="demo", version="0.1.0")
