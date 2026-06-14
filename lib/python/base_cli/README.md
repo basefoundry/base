@@ -188,6 +188,7 @@ Important fields include:
 - `ctx.log_file`: persistent log file for this run, or `None` when persistent
   logging is disabled.
 - `ctx.config`: merged configuration dictionary.
+- `ctx.user_config`: typed user configuration from `~/.base.d/config.yaml`.
 - `ctx.environment`: active environment, defaulting to `dev`.
 - `ctx.debug`: whether debug logging is enabled for the stderr stream.
 - `ctx.dry_run`: whether the command is running in a no-durable-write mode.
@@ -277,6 +278,12 @@ Environment variables currently recognized by the config layer:
 
 Command-line standard options are applied after config is loaded. For example,
 `--environment prod` overrides `environment: dev` from config.
+
+`ctx.config` exposes the merged raw configuration after user, project,
+explicit, and environment layers are applied. `ctx.user_config` exposes only the
+typed machine-local user config, including `workspace.root` and IDE
+preferences, so command code does not need to re-read `~/.base.d/config.yaml`
+for those structured values.
 
 The user config file is machine-local by default. Base owns the semantics of
 `~/.base.d/config.yaml`, while users own backup and sync choices such as iCloud,
