@@ -125,9 +125,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   stable file headings and use `INDEX.md` ordering when available. Zip exports
   contain only files from `.ai-context`.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
-- `basectl update` updates source checkouts through Git, updates Homebrew
-  installs with `brew upgrade codeforester/base/base`, and then runs
-  `basectl setup`.
+- `basectl update [project]` updates the selected project checkout through Git
+  and then runs `basectl setup <project>`. Omitting the project selects `base`;
+  Homebrew-managed Base installs still hand off only the Base package to
+  `brew upgrade codeforester/base/base`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths.

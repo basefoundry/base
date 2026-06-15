@@ -375,7 +375,12 @@ _base_basectl_completion() {
             ;;
         update)
             _arguments '--dry-run[Log without pulling or running setup]' '-v[Enable DEBUG logging]' \
-                '(-h --help)'{-h,--help}'[Show help text]'
+                '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
     esac
 }

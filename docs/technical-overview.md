@@ -146,7 +146,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 |---|---|
 | `basectl setup [project] [--profile dev\|sre\|ai]` | Install / reconcile prerequisites |
 | `basectl update-profile [--defaults]` | Wire shell startup files |
-| `basectl update [--dry-run]` | Upgrade Base (git pull or brew upgrade) |
+| `basectl update [project] [--dry-run]` | Upgrade Base or a Base-managed project checkout |
 | `basectl onboard` | Guided first-run checklist |
 
 ### Daily Loop

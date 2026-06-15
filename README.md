@@ -880,8 +880,8 @@ exec "$SHELL" -l
 
 Homebrew installs the Base files. `basectl setup` still prepares the local Base
 runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
-your shell startup path. When installed through Homebrew, `basectl update`
-hands off to Homebrew and runs setup afterward. This is equivalent to:
+your shell startup path. When installed through Homebrew, `basectl update` for
+Base hands off to Homebrew and runs setup afterward. This is equivalent to:
 
 ```bash
 brew upgrade codeforester/base/base
@@ -1037,23 +1037,25 @@ run `basectl update-profile --no-defaults` to disable them again. Plain
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
 
-Update Base itself with:
+Update Base or a Base-managed project checkout with:
 
 ```bash
 basectl update
+basectl update bankbuddy
 ```
 
-This command is intentionally conservative. In a source checkout, it only runs
-from the Base repository's default branch, requires tracked Base files to be
-clean, pulls the latest changes through Git, and then runs `basectl setup`.
-Untracked files do not block the update; Git still stops the pull if an
-incoming tracked file would overwrite them.
+Omitting the project is equivalent to `basectl update base`. This command is
+intentionally conservative. In a source checkout, it only runs from the selected
+project repository's default branch, requires tracked project files to be clean,
+pulls the latest changes through Git, and then runs `basectl setup <project>`.
+Untracked files do not block the update; Git still stops the pull if an incoming
+tracked file would overwrite them.
 
-In a Homebrew-managed install, `basectl update` runs only the Base package
-upgrade, `brew upgrade codeforester/base/base`, and then runs `basectl setup`
-with inherited Base environment variables cleared. `basectl update --dry-run`
-prints the Git or Homebrew handoff it would perform without changing files or
-packages.
+In a Homebrew-managed install, the Base update path remains Base-only:
+`basectl update` runs the Base package upgrade,
+`brew upgrade codeforester/base/base`, and then runs `basectl setup base` with
+inherited Base environment variables cleared. `basectl update --dry-run` prints
+the Git or Homebrew handoff it would perform without changing files or packages.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
