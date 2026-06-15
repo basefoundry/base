@@ -11,6 +11,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `basectl repo clone` for workspace-aware cloning of one GitHub
   repository into the configured Base workspace.
+- Added `--pr` support to `basectl repo agent-guidance` and
+  `basectl repo installer-template` so optional generated helper files can be
+  committed on predictable branches and opened as draft pull requests.
 - Added `basectl workspace clone --manifest <path>` for manifest-driven
   workspace checkout, with dry-run support and optional repositories gated by
   `--include-optional`.

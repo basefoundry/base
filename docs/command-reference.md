@@ -61,8 +61,8 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl repo clone <name-or-owner/name>` | Clone one GitHub repository into the configured Base workspace, treating matching existing checkouts as already satisfied. | `--owner <owner>`, `--path <path>`, `--dry-run` |
 | `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance` |
 | `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and repo Project metadata. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--copy-project-fields-from <title>`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
-| `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files. | `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--dry-run` |
-| `basectl repo installer-template [path]` | Print the maintained project installer starter script, or write it to a path. | `--dry-run` |
+| `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files, optionally through a draft PR. | `--repo <owner/name>`, `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--pr`, `--dry-run` |
+| `basectl repo installer-template [path]` | Print the maintained project installer starter script, or write it to a path, optionally through a draft PR. | `--repo <owner/name>`, `--pr`, `--dry-run` |
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |
 | `basectl gh issue create` | Create an issue with Base category conventions, assign it, and add repo Project metadata when the repo is known. | `--category <bug\|enhancement\|documentation\|ci\|security>`, `--title <title>`, `--body <body>`, `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--no-project` |
 | `basectl gh issue start <number>` | Start issue-backed branch naming workflow. | `--category <category>`, `--title <title>` |

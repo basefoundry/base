@@ -90,6 +90,7 @@ Seed optional repo-local agent guidance:
 
 ```bash
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-run
 ```
 
 Reapply GitHub-side repository settings and labels:
@@ -236,10 +237,17 @@ Defaults are inferred from the target path, `main`, and `./tests/validate.sh`.
 Existing files are left unchanged. This keeps the guidance layer safe for repos
 that already have their own instructions or pull request template.
 
+Use `--pr` to commit generated guidance files on a predictable branch and open a
+draft pull request. The target path must be the root of a clean Git worktree.
+Base infers the GitHub repository from the target `origin` remote, or you can
+pass `--repo <owner/name>` explicitly. Only the generated guidance files are
+staged for the helper commit.
+
 Preview the files without writing them:
 
 ```bash
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --dry-run
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-run
 ```
 
 Include the optional guidance files in local baseline checks only when the repo

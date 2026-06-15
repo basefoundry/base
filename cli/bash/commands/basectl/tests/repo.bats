@@ -215,8 +215,9 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo installer-template [path] [options]"* ]]
+    [[ "$output" == *"--repo <owner/name>"* ]]
+    [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--dry-run"* ]]
-    [[ "$output" != *"--repo <owner/name>"* ]]
     [[ "$output" != *"--project <title>"* ]]
 }
 
@@ -285,6 +286,94 @@ EOF
     [ ! -e "$repo_dir/install.sh" ]
 }
 
+@test "basectl repo installer-template --pr dry-run reports branch and pull request plan" {
+    local repo_dir="$TEST_TMPDIR/installer-pr-demo"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
+
+    run_basectl repo installer-template "$repo_dir/install.sh" --pr --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/installer-template-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/install.sh'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would commit generated installer template file with message 'Add Base installer template'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would push branch 'base/installer-template-base-demo' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/installer-template-base-demo' to '<default branch>' with title 'Add Base installer template'."* ]]
+    [ ! -e "$repo_dir/install.sh" ]
+}
+
+@test "basectl repo installer-template --pr opens a draft pull request" {
+    local commit_files
+    local remote_dir="$TEST_TMPDIR/origin.git"
+    local repo_dir="$TEST_TMPDIR/installer-pr-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Existing project\n' > "$repo_dir/README.md"
+    mkdir -p "$repo_dir/src"
+    printf 'app\n' > "$repo_dir/src/app.txt"
+    commit_all "$repo_dir" "Initial commit"
+    git init --bare "$remote_dir" >/dev/null 2>&1
+    git -C "$repo_dir" remote add origin "$remote_dir"
+    git -C "$repo_dir" push -u origin master >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
+    printf 'master\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_REPO_TEST_STATE_DIR:?}/pr-body"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo installer-template "$repo_dir/install.sh" \
+            --repo codeforester/base-demo \
+            --pr
+
+    [ "$status" -eq 0 ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "base/installer-template-base-demo" ]
+    [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base installer template" ]
+    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/installer-template-base-demo
+    commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
+    [[ "$commit_files" == *"install.sh"* ]]
+    [[ "$commit_files" != *"src/app.txt"* ]]
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/installer-template-base-demo --title Add Base installer template --draft --body-file" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "Add the maintained Base project installer template." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "basectl repo installer-template" "$TEST_STATE_DIR/pr-body"
+}
+
+@test "basectl repo installer-template --pr requires a clean target worktree" {
+    local repo_dir="$TEST_TMPDIR/dirty-installer-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Dirty demo\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    printf 'draft\n' > "$repo_dir/notes.txt"
+
+    run_basectl repo installer-template "$repo_dir/install.sh" --repo codeforester/dirty-installer-demo --pr
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"repo installer-template --pr requires a clean Git worktree"* ]]
+    [ ! -f "$repo_dir/install.sh" ]
+}
+
 @test "basectl repo agent-guidance dry-run reports guidance files" {
     local repo_dir="$TEST_TMPDIR/agent-demo"
 
@@ -315,13 +404,109 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo agent-guidance [path] [options]"* ]]
+    [[ "$output" == *"--repo <owner/name>"* ]]
     [[ "$output" == *"--repo-name <name>"* ]]
     [[ "$output" == *"--default-branch <name>"* ]]
     [[ "$output" == *"--validation-command <cmd>"* ]]
+    [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--dry-run"* ]]
-    [[ "$output" != *"--repo <owner/name>"* ]]
     [[ "$output" != *"--private"* ]]
     [[ "$output" != *"--public"* ]]
+}
+
+@test "basectl repo agent-guidance --pr dry-run reports branch and pull request plan" {
+    local repo_dir="$TEST_TMPDIR/agent-pr-demo"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo --pr --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/agent-guidance-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/AGENTS.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/skills.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would commit generated agent guidance files with message 'Add Base agent guidance'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would push branch 'base/agent-guidance-base-demo' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/agent-guidance-base-demo' to '<default branch>' with title 'Add Base agent guidance'."* ]]
+    [ ! -e "$repo_dir/AGENTS.md" ]
+}
+
+@test "basectl repo agent-guidance --pr opens a draft pull request" {
+    local commit_files
+    local remote_dir="$TEST_TMPDIR/origin.git"
+    local repo_dir="$TEST_TMPDIR/agent-pr-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Existing project\n' > "$repo_dir/README.md"
+    mkdir -p "$repo_dir/src"
+    printf 'app\n' > "$repo_dir/src/app.txt"
+    commit_all "$repo_dir" "Initial commit"
+    git init --bare "$remote_dir" >/dev/null 2>&1
+    git -C "$repo_dir" remote add origin "$remote_dir"
+    git -C "$repo_dir" push -u origin master >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
+    printf 'master\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_REPO_TEST_STATE_DIR:?}/pr-body"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo agent-guidance "$repo_dir" \
+            --repo-name base-demo \
+            --default-branch master \
+            --validation-command "./tests/validate.sh" \
+            --repo codeforester/base-demo \
+            --pr
+
+    [ "$status" -eq 0 ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "base/agent-guidance-base-demo" ]
+    [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base agent guidance" ]
+    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/agent-guidance-base-demo
+    commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
+    [[ "$commit_files" == *"AGENTS.md"* ]]
+    [[ "$commit_files" == *"skills.md"* ]]
+    [[ "$commit_files" == *".github/pull_request_template.md"* ]]
+    [[ "$commit_files" != *"src/app.txt"* ]]
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/agent-guidance-base-demo --title Add Base agent guidance --draft --body-file" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "Add Base repo-local agent guidance files." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "basectl repo agent-guidance" "$TEST_STATE_DIR/pr-body"
+}
+
+@test "basectl repo agent-guidance --pr requires a clean target worktree" {
+    local repo_dir="$TEST_TMPDIR/dirty-agent-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Dirty demo\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    printf 'draft\n' > "$repo_dir/notes.txt"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name dirty-agent-demo --repo codeforester/dirty-agent-demo --pr
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"repo agent-guidance --pr requires a clean Git worktree"* ]]
+    [ ! -f "$repo_dir/AGENTS.md" ]
 }
 
 @test "basectl repo agent-guidance defaults to current directory name" {
