@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines,too-many-public-methods
 
 import tempfile
 import unittest
