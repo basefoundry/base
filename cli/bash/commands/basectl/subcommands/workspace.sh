@@ -6,16 +6,18 @@ readonly _base_workspace_subcommand_sourced
 base_workspace_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor> [options]
+  basectl workspace <status|check|doctor|clone> [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
   --format <format>   Output format for the workspace command: text or json.
+  --include-optional  Include optional workspace manifest repositories when cloning.
+  --dry-run           Show planned workspace clone work without cloning repositories.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Show read-only status, check, or doctor output for repositories in the workspace.
+Show status, check, doctor, or clone output for repositories in the workspace.
 EOF
 }
 
@@ -29,7 +31,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor)
+        status|check|doctor|clone)
             shift
             ;;
         *)

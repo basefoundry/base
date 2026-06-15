@@ -11,6 +11,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `basectl repo clone` for workspace-aware cloning of one GitHub
   repository into the configured Base workspace.
+- Added `basectl workspace clone --manifest <path>` for manifest-driven
+  workspace checkout, with dry-run support and optional repositories gated by
+  `--include-optional`.
 - Added a generated Project intake workflow so Base-managed repos can
   idempotently add externally-created issues to their repo Project and apply
   default Project fields.
