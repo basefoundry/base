@@ -313,6 +313,7 @@ load ./basectl_helpers.bash
     grep -Fq "## Checklist" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "CHANGELOG is updated for notable user-visible or release-worthy changes." "$repo_dir/.github/pull_request_template.md"
     ! grep -Fq "Demo Impact" "$repo_dir/.github/pull_request_template.md"
+    grep -Fq "GNU Affero General Public License" "$repo_dir/LICENSE"
 
     run bash -c 'cd "$1" && ./tests/validate.sh' _ "$repo_dir"
     [ "$status" -eq 0 ]
@@ -338,7 +339,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" repo init git-owner --path "$repo_dir" --no-configure
 
     [ "$status" -eq 0 ]
-    grep -Fq "Copyright (c) $(date +%Y) Ada Lovelace" "$repo_dir/LICENSE"
+    grep -Fq "Copyright (C) $(date +%Y) Ada Lovelace" "$repo_dir/LICENSE"
+    grep -Fq "GNU Affero General Public License as published by" "$repo_dir/LICENSE"
 }
 
 @test "basectl repo init falls back to system username for copyright holder" {
@@ -358,7 +360,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" repo init system-owner --path "$repo_dir" --no-configure
 
     [ "$status" -eq 0 ]
-    grep -Fq "Copyright (c) $(date +%Y) $username" "$repo_dir/LICENSE"
+    grep -Fq "Copyright (C) $(date +%Y) $username" "$repo_dir/LICENSE"
+    grep -Fq "GNU Affero General Public License as published by" "$repo_dir/LICENSE"
 }
 
 @test "basectl repo init leaves existing files unchanged" {
