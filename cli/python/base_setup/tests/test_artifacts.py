@@ -596,6 +596,36 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("[REDACTED]", message)
         self.assertIn("[REDACTED]", debug_text)
 
+    def test_redact_command_output_redacts_compound_secret_assignments(self) -> None:
+        output = "\n".join(
+            [
+                "token=ghp_short",
+                "--github-token=ghp_flag",
+                "GITHUB_TOKEN=ghp_compound",
+                "DB_PASSWORD=db-secret",
+                "SOME_SECRET=value-secret",
+                "API_KEY=api-secret",
+                "AWS_SECRET_ACCESS_KEY=aws-secret",
+            ]
+        )
+
+        redacted = process.redact_command_output(output)
+
+        self.assertNotIn("ghp_short", redacted)
+        self.assertNotIn("ghp_flag", redacted)
+        self.assertNotIn("ghp_compound", redacted)
+        self.assertNotIn("db-secret", redacted)
+        self.assertNotIn("value-secret", redacted)
+        self.assertNotIn("api-secret", redacted)
+        self.assertNotIn("aws-secret", redacted)
+        self.assertIn("token=[REDACTED]", redacted)
+        self.assertIn("--github-token=[REDACTED]", redacted)
+        self.assertIn("GITHUB_TOKEN=[REDACTED]", redacted)
+        self.assertIn("DB_PASSWORD=[REDACTED]", redacted)
+        self.assertIn("SOME_SECRET=[REDACTED]", redacted)
+        self.assertIn("API_KEY=[REDACTED]", redacted)
+        self.assertIn("AWS_SECRET_ACCESS_KEY=[REDACTED]", redacted)
+
     def test_run_command_failure_truncates_large_single_chunk_tail(self) -> None:
         ctx = fake_context()
         stdout = io.StringIO()

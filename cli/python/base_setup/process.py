@@ -18,7 +18,9 @@ from .errors import ArtifactError
 
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
-SECRET_VALUE_RE = re.compile(r"(?i)\b(token|password|secret|api[-_]?key)=\S+")
+SECRET_VALUE_RE = re.compile(
+    r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key)[A-Za-z0-9_.:-]*)=\S+"
+)
 URL_CREDENTIALS_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^@\s/]+@")
 HOMEBREW_LINK_FAILURE = "The `brew link` step did not complete successfully"
 HOMEBREW_LINK_DRY_RUN_RE = re.compile(r"(?m)^\s*(brew link --overwrite [^\r\n]+ --dry-run)\s*$")
@@ -128,7 +130,7 @@ def format_command(command: list[str]) -> str:
 
 def redact_command_output(text: str) -> str:
     text = URL_CREDENTIALS_RE.sub(r"\1[REDACTED]@", text)
-    return SECRET_VALUE_RE.sub(lambda match: f"{match.group(1)}=[REDACTED]", text)
+    return SECRET_VALUE_RE.sub(lambda match: f"{match.group('name')}=[REDACTED]", text)
 
 
 def command_failure_guidance(stdout_tail: str, stderr_tail: str) -> str:
