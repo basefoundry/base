@@ -384,6 +384,7 @@ basectl workspace status --format json
 basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
+basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
 ```
 
 By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
@@ -401,6 +402,12 @@ Use `--manifest <path>` with `basectl workspace status`, `check`, or `doctor`
 to include expected repositories from a local workspace manifest. Missing
 required repositories are errors, missing optional repositories are warnings,
 and Base-managed projects outside the manifest stay visible as warnings.
+
+Use `basectl workspace clone --manifest <path>` to materialize the missing
+required repositories from that manifest. The command keeps existing
+repositories visible, delegates each repository operation to `basectl repo clone`,
+and supports `--dry-run` for a no-write preview. Optional repositories
+are reported but skipped unless `--include-optional` is supplied.
 
 Start a new Base-managed repository with:
 

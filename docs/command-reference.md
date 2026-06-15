@@ -51,6 +51,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl workspace status` | Show read-only workspace project status. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace check` | Run read-only checks across workspace projects. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace doctor` | Run read-only diagnostics across workspace projects. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 
 ## Repository And GitHub Workflow
 

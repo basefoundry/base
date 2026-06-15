@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import shlex
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import base_cli
 from base_cli.config import read_user_config
@@ -16,6 +19,8 @@ from base_cli.paths import base_cache_root
 from base_cli.paths import discover_manifest
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
+from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_reports import ManifestEntry
 from base_projects.workspace_reports import ProjectDiscoveryError
@@ -46,6 +51,15 @@ class Project:
     manifest_path: Path
 
 
+@dataclass(frozen=True)
+class WorkspaceCommandOptions:
+    workspace: str | None
+    output_format: str
+    workspace_manifest: str | None = None
+    include_optional: bool = False
+    dry_run: bool = False
+
+
 def main(argv: list[str] | None = None) -> int:
     result = app.click_command.main(args=argv, standalone_mode=False)
     return int(result or 0)
@@ -59,15 +73,34 @@ def main(argv: list[str] | None = None) -> int:
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
 @base_cli.option("--manifest", "workspace_manifest", help="Local workspace manifest to read.")
+@base_cli.option(
+    "--include-optional",
+    is_flag=True,
+    help="Include optional workspace manifest repositories when cloning.",
+)
+@base_cli.option("--dry-run", is_flag=True, dry_run=True, help="Show planned clone work without cloning.")
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
     workspace: str | None,
     output_format: str,
     workspace_manifest: str | None,
+    include_optional: bool,
+    dry_run: bool,
 ) -> int:
     try:
-        return dispatch_projects_command(ctx, arguments, workspace, output_format, workspace_manifest)
+        return dispatch_projects_command(
+            ctx,
+            arguments,
+            WorkspaceCommandOptions(
+                workspace=workspace,
+                output_format=output_format,
+                workspace_manifest=workspace_manifest,
+                include_optional=include_optional,
+                dry_run=dry_run,
+            ),
+        )
     except ProjectUsageError as exc:
         ctx.log.error(str(exc))
         return 2
@@ -76,42 +109,53 @@ def run(
 def dispatch_projects_command(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
-    workspace: str | None,
-    output_format: str,
-    workspace_manifest: str | None = None,
+    options: WorkspaceCommandOptions,
 ) -> int:
     command = arguments[0] if arguments else "list"
     command_arguments = arguments[1:] if arguments else ()
     resolver = resolve_named_project
     handlers = {
-        "list": lambda: list_projects_from_args(ctx, command_arguments, workspace, output_format),
+        "list": lambda: list_projects_from_args(ctx, command_arguments, options.workspace, options.output_format),
         "status": lambda: workspace_status_from_args(
             ctx,
             command_arguments,
-            workspace,
-            output_format,
-            workspace_manifest,
+            options,
         ),
         "check": lambda: require_no_args_and_run(
             "check",
             command_arguments,
-            lambda: workspace_check_command(ctx, workspace, output_format, workspace_manifest),
+            lambda: workspace_check_command(
+                ctx,
+                options.workspace,
+                options.output_format,
+                options.workspace_manifest,
+            ),
         ),
         "doctor": lambda: require_no_args_and_run(
             "doctor",
             command_arguments,
-            lambda: workspace_doctor_command(ctx, workspace, output_format, workspace_manifest),
+            lambda: workspace_doctor_command(
+                ctx,
+                options.workspace,
+                options.output_format,
+                options.workspace_manifest,
+            ),
+        ),
+        "clone": lambda: require_no_args_and_run(
+            "clone",
+            command_arguments,
+            lambda: workspace_clone_command(ctx, options),
         ),
         "current": lambda: current_project_from_args(ctx, command_arguments),
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
-        "resolve": lambda: resolve_project_from_args(ctx, command_arguments, workspace),
-        "test-command": lambda: test_command_project_from_args(ctx, command_arguments, workspace),
-        "demo-script": lambda: demo_script_project_from_args(ctx, command_arguments, workspace),
-        "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, workspace),
-        "run-command": lambda: run_command_project_from_args(ctx, command_arguments, workspace),
-        "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, workspace),
-        "build-targets": lambda: build_targets_project_from_args(ctx, command_arguments, workspace, resolver),
-        "build-target-list": lambda: list_build_targets_from_args(ctx, command_arguments, workspace, resolver),
+        "resolve": lambda: resolve_project_from_args(ctx, command_arguments, options.workspace),
+        "test-command": lambda: test_command_project_from_args(ctx, command_arguments, options.workspace),
+        "demo-script": lambda: demo_script_project_from_args(ctx, command_arguments, options.workspace),
+        "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, options.workspace),
+        "run-command": lambda: run_command_project_from_args(ctx, command_arguments, options.workspace),
+        "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, options.workspace),
+        "build-targets": lambda: build_targets_project_from_args(ctx, command_arguments, options.workspace, resolver),
+        "build-target-list": lambda: list_build_targets_from_args(ctx, command_arguments, options.workspace, resolver),
     }
     handler = handlers.get(command)
     if handler is not None:
@@ -119,7 +163,7 @@ def dispatch_projects_command(
 
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "status, check, doctor, test-command, demo-script, activation-sources, run-command, run-commands, "
+        "status, check, doctor, clone, test-command, demo-script, activation-sources, run-command, run-commands, "
         "build-targets, build-target-list.",
         command,
     )
@@ -160,12 +204,10 @@ def list_projects_from_args(
 def workspace_status_from_args(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
-    workspace: str | None,
-    output_format: str,
-    workspace_manifest: str | None,
+    options: WorkspaceCommandOptions,
 ) -> int:
     require_argument_count("status", arguments, 0, 0)
-    return workspace_status_command(ctx, workspace, output_format, workspace_manifest)
+    return workspace_status_command(ctx, options.workspace, options.output_format, options.workspace_manifest)
 
 
 def current_project_from_args(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
@@ -314,6 +356,130 @@ def workspace_doctor_command(
         print_workspace_doctor(workspace_root, results, manifest)
 
     return min(workspace_error_count(results), 125)
+
+
+def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOptions) -> int:
+    if options.output_format != "text":
+        raise ProjectUsageError(f"Unsupported output format '{options.output_format}'. Expected: text.")
+
+    try:
+        workspace_root = resolve_workspace_root(ctx, options.workspace)
+        manifest = require_workspace_clone_manifest(options.workspace_manifest)
+    except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    if ctx.base_home is None:
+        ctx.log.error("BASE_HOME is required to clone workspace repositories.")
+        return 1
+
+    basectl = ctx.base_home / "bin" / "basectl"
+    print(f"Workspace clone: {workspace_root} ({len(manifest.repos)} repositories)")
+    print(f"Workspace manifest: {manifest.path} ({manifest.name})")
+
+    errors = 0
+    for repo in manifest.repos:
+        target = (workspace_root / repo.name).resolve()
+        required_label = "required" if repo.required else "optional"
+        if should_skip_optional_clone(repo, target, options.include_optional):
+            print_optional_clone_skip(repo, target)
+            continue
+
+        verb = "CHECK" if target.exists() else "CLONE"
+        preposition = "at" if target.exists() else "into"
+        print(f"{verb} {required_label} repository '{repo.name}' {preposition} '{target}'.")
+        errors += clone_workspace_repo(ctx, basectl, repo, target, dry_run=options.dry_run)
+
+    if errors:
+        print(f"Workspace clone completed with {errors} error(s).")
+        return 1
+
+    print("Workspace clone completed.")
+    return 0
+
+
+def require_workspace_clone_manifest(workspace_manifest: str | None) -> WorkspaceManifest:
+    if workspace_manifest is None:
+        raise ProjectUsageError("workspace clone requires --manifest <path>.")
+    manifest = resolve_workspace_manifest(workspace_manifest)
+    if manifest is None:
+        raise ProjectUsageError("workspace clone requires --manifest <path>.")
+    return manifest
+
+
+def should_skip_optional_clone(repo: WorkspaceManifestRepo, target: Path, include_optional: bool) -> bool:
+    return not repo.required and not include_optional and not target.exists()
+
+
+def print_optional_clone_skip(repo: WorkspaceManifestRepo, target: Path) -> None:
+    print(
+        f"SKIP optional repository '{repo.name}' is missing at '{target}'. "
+        "Pass --include-optional to clone it."
+    )
+
+
+def clone_workspace_repo(
+    ctx: base_cli.Context,
+    basectl: Path,
+    repo: WorkspaceManifestRepo,
+    target: Path,
+    *,
+    dry_run: bool,
+) -> int:
+    repo_spec = workspace_clone_repo_spec(repo)
+    if repo_spec is None:
+        ctx.log.error(
+            "Repository '%s' has unsupported clone URL '%s'. Only github.com repository URLs are supported.",
+            repo.name,
+            repo.url,
+        )
+        return 1
+
+    command = [str(basectl), "repo", "clone", repo_spec, "--path", str(target)]
+    if dry_run:
+        command.append("--dry-run")
+
+    try:
+        result = subprocess.run(command, check=False, capture_output=True, text=True)
+    except OSError as exc:
+        ctx.log.error("Could not run basectl repo clone for repository '%s': %s", repo.name, exc)
+        return 1
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    if result.returncode == 0:
+        return 0
+
+    ctx.log.error("Clone failed for repository '%s'.", repo.name)
+    return 1
+
+
+def workspace_clone_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
+    if repo.url is None:
+        return repo.name
+
+    url = repo.url
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.hostname == "github.com":
+        return github_repo_spec_from_path(parsed.path)
+
+    git_ssh_prefix = "git@github.com:"
+    if url.startswith(git_ssh_prefix):
+        return github_repo_spec_from_path(url[len(git_ssh_prefix) :])
+
+    return None
+
+
+def github_repo_spec_from_path(path: str) -> str | None:
+    normalized = path.strip().lstrip("/")
+    if normalized.endswith(".git"):
+        normalized = normalized[:-4]
+    parts = normalized.split("/")
+    if len(parts) != 2 or not all(parts):
+        return None
+    return f"{parts[0]}/{parts[1]}"
 
 
 def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:

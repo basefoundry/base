@@ -4,9 +4,10 @@ Base uses "workspace" in a precise way: a workspace is a local directory that
 contains sibling repositories. A workspace manifest is an optional local file
 that describes which repositories are expected to belong to that workspace.
 
-Read-only workspace commands can use a manifest when the user supplies
-`--manifest <path>`. Without that flag, workspace commands keep their
-discovered-project behavior.
+Workspace status, check, and doctor commands can use a manifest when the user
+supplies `--manifest <path>`. Without that flag, those commands keep their
+discovered-project behavior. `basectl workspace clone` requires an explicit
+manifest because it uses the manifest as the checkout plan.
 
 ## Vocabulary
 
@@ -51,6 +52,13 @@ With `--manifest <path>`, the same commands also report expected repositories,
 missing required and optional repositories, and discovered Base-managed
 projects outside the manifest.
 
+`basectl workspace clone --manifest <path>` uses the expected repository list
+as an explicit clone plan. It clones missing required repositories by default,
+reports missing optional repositories without cloning them, and includes
+optional repositories only with `--include-optional`. Existing repositories are
+checked through `basectl repo clone` so matching checkouts are treated as
+already satisfied and conflicts stay visible.
+
 ## Design Goal
 
 The workspace manifest should make team onboarding inspectable and repeatable
@@ -64,7 +72,8 @@ It should let Base answer:
 - which expected repositories are missing
 - which discovered repositories are outside the expected set
 - which repositories are required versus optional
-- what clone URL and default branch should be shown or used later
+- what clone URL and default branch should be shown or used by explicit clone
+  commands
 
 Each repository still owns its own `base_manifest.yaml`. The workspace manifest
 must not duplicate project setup, test, run, activation, demo, or health
@@ -104,9 +113,10 @@ guidance.
 `repos[].name` is the local directory name under the workspace root and the
 stable identifier used in reports.
 
-`repos[].url` is optional v1 report metadata for a Git clone URL. Base may pass
-it to Git when clone support exists later; Base should not parse credentials or
-manage authentication.
+`repos[].url` is optional v1 metadata for a Git clone URL. The
+`basectl workspace clone` command supports common `github.com` SSH and HTTPS
+repository URLs and otherwise falls back to `repos[].name` when no URL is
+provided. Base does not parse credentials or manage authentication.
 
 `repos[].default_branch` is advisory metadata for reports and future clone
 validation. It should default to the remote's default branch when omitted, but
@@ -145,12 +155,14 @@ belong in explicit check or doctor behavior, not in passive parsing.
 ## Existing Repositories
 
 When a repository already exists at the expected local path, Base should leave
-it alone by default.
+its files alone by default.
 
-Future mutating commands may offer explicit actions such as clone or update,
-but they need their own dry-run output and confirmation rules. A workspace
-manifest must not imply that Base can overwrite, pull, reset, or otherwise
-mutate existing checkouts.
+`basectl workspace clone` delegates existing repositories to `basectl repo clone`,
+which treats matching checkouts as already satisfied and reports
+conflicting origins as errors. Future mutating commands such as update need
+their own dry-run output and confirmation rules. A workspace manifest must not
+imply that Base can overwrite, pull, reset, or otherwise mutate existing
+checkouts.
 
 ## Partial Failure
 
@@ -180,8 +192,7 @@ basectl workspace check
 basectl workspace doctor
 ```
 
-Once manifest support is implemented, the manifest should add expected-repo
-awareness:
+With `--manifest`, those commands add expected-repo awareness:
 
 ```bash
 basectl workspace status --manifest ~/work/workspace.yaml
@@ -194,15 +205,27 @@ Without `--manifest`, commands report discovered local projects only.
 With `--manifest`, commands report both expected repositories and discovered
 projects, including missing expected repositories and extra discovered projects.
 
+The explicit clone path requires a manifest:
+
+```bash
+basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
+basectl workspace clone --manifest ~/work/workspace.yaml
+basectl workspace clone --manifest ~/work/workspace.yaml --include-optional
+```
+
+By default it clones missing required repositories and skips missing optional
+repositories. `--dry-run` forwards to each delegated `basectl repo clone`
+operation so the resolved repository specs, destinations, and conflicts can be
+reviewed before the filesystem changes.
+
 ## Relationship To Onboarding
 
 `basectl onboard` currently guides first-run Base setup. It should not become a
 project-specific installer.
 
-A future workspace onboarding command can build on this manifest only after the
-read-only manifest reporting model is stable. That future command would need
-explicit confirmation and dry-run behavior for cloning missing repositories and
-setting up project artifacts.
+A future workspace onboarding command can build on this manifest and the
+explicit clone path. It should still keep project artifact setup separate from
+repository checkout and retain explicit confirmation and dry-run behavior.
 
 ## Non-Goals
 
@@ -230,6 +253,12 @@ for present Base-managed projects. They also emit stable workspace findings for
 repository presence, outside-manifest discovered projects, and present
 repositories without a Base project manifest.
 
-The read-only v1 implementation is intentionally the foundation for future
-clone/onboard behavior. Explicit clone or update commands should be designed
-only after this reporting model proves useful.
+`basectl workspace clone --manifest <path>` clones or validates expected
+repositories through `basectl repo clone`. It clones missing required
+repositories by default, skips missing optional repositories unless
+`--include-optional` is supplied, and exits nonzero when any delegated clone or
+checkout validation fails.
+
+The v1 implementation is intentionally still conservative. Clone is explicit;
+update, pull, reset, project setup, and authentication management remain outside
+the workspace manifest contract.

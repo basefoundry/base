@@ -38,6 +38,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `update-profile`
 - `update`
 - `projects list`
+- `workspace status/check/doctor/clone`
 - `version`
 - `help`
 
@@ -137,6 +138,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   project checks and diagnostics across discovered projects. With
   `--manifest <path>`, they also report missing expected repositories and
   discovered Base-managed projects outside the manifest.
+- `basectl workspace clone --manifest <path>` materializes missing required
+  repositories from a workspace manifest by delegating to `basectl repo clone`.
+  Optional repositories are reported but skipped unless `--include-optional` is
+  supplied, and `--dry-run` previews the delegated clone work.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.
