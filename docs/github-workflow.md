@@ -77,12 +77,14 @@ created issues to the repo Project.
 Base-managed repositories also carry `.github/workflows/project-intake.yml`.
 That workflow is a repo-visible fallback for issues created through GitHub UI,
 plain `gh issue create`, or external connectors that can bypass
-`basectl gh issue create` and GitHub's hidden Project auto-add filters. Set a
-`BASE_PROJECT_TOKEN` Actions secret with Project write access so the workflow
-can idempotently add the issue to the repo-named Project and set `Status`,
-`Priority`, `Size`, `Area`, and `Initiative` from the generated defaults on
-issue open, reopen, and close events. Use `basectl gh project` directly for
-lower-level Project inspection, schema repair, or issue field updates.
+`basectl gh issue create` and GitHub's hidden Project auto-add filters.
+`basectl repo configure` creates this workflow when it is missing from older
+Base-managed repositories. Set a `BASE_PROJECT_TOKEN` Actions secret with
+Project write access so the workflow can idempotently add the issue to the
+repo-named Project and set `Status`, `Priority`, `Size`, `Area`, and
+`Initiative` from the generated defaults on issue open, reopen, and close
+events. Use `basectl gh project` directly for lower-level Project inspection,
+schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,
 `Area`, `Initiative`, and `Size` issue item values into the repo Project without

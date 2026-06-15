@@ -19,6 +19,11 @@ status through `In Progress`, `In Review`, and `Done` as the work advances.
 Base roadmap Project metadata uses five fields: `Status`, `Priority`, `Area`,
 `Size`, and `Initiative`.
 
+Base-managed repositories should carry `.github/workflows/project-intake.yml`
+as the fallback for issues created outside `basectl gh issue create`.
+`basectl repo init` seeds it for new repositories, and `basectl repo configure`
+creates it when missing from older repositories.
+
 ## Branch And Worktree Flow
 
 Use a dedicated worktree for PR work. Branch names follow:

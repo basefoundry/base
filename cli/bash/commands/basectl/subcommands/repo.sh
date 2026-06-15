@@ -1029,6 +1029,17 @@ project:
 EOF
 }
 
+base_repo_write_project_support_files() {
+    local dry_run="$1"
+    local root="$2"
+    local status=0
+
+    base_repo_write_project_config "$dry_run" "$root" || status=1
+    base_repo_write_project_intake_workflow "$dry_run" "$root" || status=1
+
+    return "$status"
+}
+
 base_repo_write_baseline() {
     local copyright_holder="$4"
     local description="$3"
@@ -2163,6 +2174,10 @@ base_repo_configure() {
         log_error "Pass --repo <owner/name> to configure a GitHub repository explicitly."
         return 1
     }
+
+    if ((configure_project)); then
+        base_repo_write_project_support_files "$dry_run" "$path" || return 1
+    fi
 
     base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
     if ((configure_project)); then

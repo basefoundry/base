@@ -58,6 +58,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `basectl repo configure` create missing Project intake support files for
+  older Base-managed repositories.
 - Made `basectl repo init` generate repo-specific AGPL license files without
   copying Base's own application notice into new repositories.
 - Made `basectl repo configure` apply `.github/base-project.yml`

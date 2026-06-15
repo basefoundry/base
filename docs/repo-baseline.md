@@ -118,6 +118,11 @@ project:
 validated by Project tooling, used by `basectl gh issue create` when it adds new
 issues to the repo Project, and applied by `repo configure` to existing Project
 issue items that are missing those field values.
+When Project metadata is enabled, `repo configure` also creates missing
+repo-owned Project support files such as `.github/base-project.yml` and
+`.github/workflows/project-intake.yml` without overwriting existing files. This
+lets older Base-managed repositories pick up the external-issue intake fallback
+without rerunning a full repository initialization.
 
 ## Local Baseline
 
@@ -163,6 +168,10 @@ issue to the repo-named Project and sets `Status`, `Priority`, `Size`, `Area`,
 and `Initiative` from the generated defaults. Set a `BASE_PROJECT_TOKEN`
 Actions secret with Project write access when `GITHUB_TOKEN` cannot update the
 user or organization Project.
+
+For older repositories that predate this workflow, rerun
+`basectl repo configure <path> --repo <owner/name>` to create the missing
+workflow while leaving existing files unchanged.
 
 The generated `.github/base-project.yml` starts with the shared issue defaults
 and empty repo-specific taxonomy lists:
