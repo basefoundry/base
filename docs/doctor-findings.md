@@ -75,7 +75,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | ID | Finding |
 | --- | --- |
 | `BASE-D001` | Homebrew availability and PATH refresh |
-| `BASE-D002` | Xcode Command Line Tools availability |
+| `BASE-D002` | Xcode Command Line Tools availability and Homebrew freshness |
 | `BASE-D003` | Homebrew Python formula availability |
 | `BASE-D004` | Base virtual environment integrity |
 | `BASE-D005` | Base `PyYAML` package availability |
