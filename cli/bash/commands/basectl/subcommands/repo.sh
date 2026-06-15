@@ -864,6 +864,8 @@ project:
   issue_defaults:
     status: Backlog
     priority: P2
+    area: Product
+    initiative: Adoption Polish
     size: S
 EOF
 }
@@ -1119,6 +1121,7 @@ base_repo_configure_project_metadata() {
         printf "[DRY-RUN] Would backfill issues from '%s' into GitHub Project '%s'.\n" "$repo" "$project_title"
         if [[ -n "$config_path" ]]; then
             printf "[DRY-RUN] Would read GitHub Project config from '%s'.\n" "$config_path"
+            printf "[DRY-RUN] Would apply issue defaults from '%s' to missing Project item fields.\n" "$config_path"
         fi
         if [[ -n "$copy_fields_from_project" ]]; then
             printf "[DRY-RUN] Would copy missing Project item field values from '%s' into '%s'.\n" \

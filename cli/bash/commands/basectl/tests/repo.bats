@@ -306,6 +306,8 @@ load ./basectl_helpers.bash
     grep -Fq "issue_defaults:" "$repo_dir/.github/base-project.yml"
     grep -Fq "status: Backlog" "$repo_dir/.github/base-project.yml"
     grep -Fq "priority: P2" "$repo_dir/.github/base-project.yml"
+    grep -Fq "area: Product" "$repo_dir/.github/base-project.yml"
+    grep -Fq "initiative: Adoption Polish" "$repo_dir/.github/base-project.yml"
     grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
     grep -Fq "<category>/<issue>-<YYYYMMDD>-<slug>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/<default-branch>" "$repo_dir/CONTRIBUTING.md"
@@ -527,6 +529,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Would read GitHub Project config from '$repo_dir/.github/base-project.yml'."* ]]
+    [[ "$output" == *"Would apply issue defaults from '$repo_dir/.github/base-project.yml' to missing Project item fields."* ]]
     [[ "$output" == *"--config $repo_dir/.github/base-project.yml"* ]]
 }
 

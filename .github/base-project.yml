@@ -1,0 +1,27 @@
+project:
+  areas:
+    - CLI
+    - Setup
+    - Workspace
+    - Manifest
+    - Runtime
+    - Shell
+    - Python
+    - Docs
+    - CI
+    - Packaging
+    - Security
+    - Product
+  initiatives:
+    - BanyanLabs Dogfood
+    - BanyanLabs Dogfooding
+    - Workspace Handling
+    - pyproject/uv
+    - v1.0 Readiness
+    - Adoption Polish
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    area: Product
+    initiative: Adoption Polish
+    size: S

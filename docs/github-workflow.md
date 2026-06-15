@@ -69,10 +69,11 @@ by default when a GitHub repository is available. Base copies
 `base-project-template` when the repo Project is missing, links the Project to
 the repository, and backfills existing repository issues. When
 `.github/base-project.yml` exists, Base also adds missing repo-specific `Area`
-and `Initiative` options from that file. `basectl gh issue create` uses the
-same file's `issue_defaults` when it adds newly created issues to the repo
-Project. Use `basectl gh project` directly for lower-level Project inspection,
-schema repair, or issue field updates.
+and `Initiative` options from that file and applies the same file's
+`issue_defaults` to Project issue items that are missing those values.
+`basectl gh issue create` uses the defaults immediately when it adds newly
+created issues to the repo Project. Use `basectl gh project` directly for
+lower-level Project inspection, schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,
 `Area`, `Initiative`, and `Size` issue item values into the repo Project without

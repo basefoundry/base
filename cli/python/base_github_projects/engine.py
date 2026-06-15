@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import graphql_queries as queries
 from .project_item_fields import FieldCopySummary
+from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
 from .project_item_fields import copy_missing_project_item_fields as _copy_missing_project_item_fields
 from .project_model import BASE_ROADMAP_SCHEMA, DEFAULT_TEMPLATE_PROJECT, FIELD_OPTION_TO_PROJECT_FIELD
 from .project_model import STANDARD_TEMPLATE_VIEWS, ConfigureAction, FieldUpdate, Finding, OwnerInfo
@@ -264,6 +265,15 @@ def issue_field_values_for_args(args: ProjectArguments) -> dict[str, str]:
     return values
 
 
+def project_field_defaults_for_config(config: ProjectConfig) -> dict[str, str]:
+    defaults: dict[str, str] = {}
+    for value_key, field_name in FIELD_OPTION_TO_PROJECT_FIELD.items():
+        option_name = config.issue_defaults.get(value_key)
+        if option_name:
+            defaults[field_name] = option_name
+    return defaults
+
+
 def read_project_config(path: Path) -> ProjectConfig:
     try:
         return _read_project_config(path)
@@ -447,11 +457,13 @@ def configure_command(args: ProjectArguments) -> int:
             create_single_select_field(project.project_id, spec)
         elif missing_option_names(field, spec):
             update_single_select_field(field, spec)
+    fields = fetch_project_fields(project.project_id)
     if args.repo:
         link_project_to_repository(project.project_id, args.repo)
         count = backfill_repository_issues(project.project_id, args.repo)
         print(f"✓ Backfilled {count} issue(s) from {args.repo}")
     copy_project_fields_from_source(owner, project.project_id, args.copy_fields_from_project)
+    apply_project_config_defaults(project.project_id, fields, project_config)
     print(f"✓ Configured GitHub Project {args.project_title}")
     return 0
 
@@ -464,6 +476,23 @@ def copy_project_fields_from_source(owner: str, target_project_id: str, source_p
         raise ProjectError(f"Source Project '{source_project_title}' was not found for owner '{owner}'.")
     summary = copy_missing_project_item_fields(source.project_id, target_project_id)
     print(f"✓ Copied {summary.applied_count} Project item field value(s) from {source_project_title}")
+    for skipped in summary.skipped:
+        print(
+            f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
+            file=sys.stderr,
+        )
+
+
+def apply_project_config_defaults(
+    target_project_id: str,
+    target_fields: tuple[ProjectField, ...],
+    project_config: ProjectConfig,
+) -> None:
+    defaults = project_field_defaults_for_config(project_config)
+    if not defaults:
+        return
+    summary = apply_missing_project_item_defaults(target_project_id, target_fields, defaults)
+    print(f"✓ Applied {summary.applied_count} default Project item field value(s)")
     for skipped in summary.skipped:
         print(
             f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
@@ -496,6 +525,13 @@ def render_dry_run_configure(
         print(f"[DRY-RUN] Would ensure Area option {option}.")
     for option in config.initiatives:
         print(f"[DRY-RUN] Would ensure Initiative option {option}.")
+    if config.issue_defaults:
+        rendered = ", ".join(
+            f"{FIELD_OPTION_TO_PROJECT_FIELD[key]}={value}"
+            for key, value in config.issue_defaults.items()
+            if key in FIELD_OPTION_TO_PROJECT_FIELD
+        )
+        print(f"[DRY-RUN] Would apply issue defaults to missing Project item fields: {rendered}.")
     print("[DRY-RUN] Fields: Status, Priority, Area, Size, Initiative")
     if args.initiative_options:
         for option in args.initiative_options:
@@ -871,4 +907,17 @@ def copy_missing_project_item_fields(source_project_id: str, target_project_id: 
         source_project_id=source_project_id,
         target_project_id=target_project_id,
         target_fields=fetch_project_fields(target_project_id),
+    )
+
+
+def apply_missing_project_item_defaults(
+    target_project_id: str,
+    target_fields: tuple[ProjectField, ...],
+    field_defaults: dict[str, str],
+) -> FieldCopySummary:
+    return _apply_missing_project_item_defaults(
+        run_graphql=run_graphql,
+        target_project_id=target_project_id,
+        target_fields=target_fields,
+        field_defaults=field_defaults,
     )

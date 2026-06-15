@@ -88,11 +88,13 @@ such command directories exist. Optional utility CLIs such as `caff` and
   Project title matches the repository name; missing Projects are copied from
   `base-project-template`, linked to the repository, and backfilled with
   repository issues. When `.github/base-project.yml` exists, repo-specific
-  `Area` and `Initiative` options are added from that file. Use `--no-project`
-  to skip Project setup, `--project <title>` to override the Project title, or
+  `Area` and `Initiative` options are added from that file and `issue_defaults`
+  are applied to missing Project item field values. Use `--no-project` to skip
+  Project setup, `--project <title>` to override the Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
   Use `--copy-project-fields-from <title>` during migration to copy missing
-  issue item field values from an existing Project into the repo Project.
+  issue item field values from an existing Project before config defaults fill
+  remaining blanks in the repo Project.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
   layer for repos that opt in.
