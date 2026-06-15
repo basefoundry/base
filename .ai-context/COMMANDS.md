@@ -5,8 +5,8 @@ the canonical current command list.
 
 ## Current Public Commands
 
-- `basectl activate <project>` - start an interactive Base runtime subshell for
-  a project.
+- `basectl activate <project>` - start an interactive Base Bash runtime shell
+  for a project.
 - `basectl setup [project]` - install and bootstrap the local Base CLI
   environment and optional project artifacts.
 - `basectl check [project]` - verify local Base and optional project artifacts

@@ -572,12 +572,18 @@ Once a project is discoverable, activate it with:
 basectl activate example
 ```
 
-Activation spawns a project-specific subshell, changes to the project root, sets
-`BASE_PROJECT` and related project variables, adds project-owned commands from
-`$PROJECT_ROOT/bin` when that directory exists, and activates the project
-virtual environment at `~/.base.d/<project>/.venv`. If the manifest declares
-`activate.source`, Base then sources each declared script in order. Exit that
-shell to return to the original environment.
+Activation spawns a project-specific Bash runtime shell, changes to the project
+root, sets `BASE_PROJECT` and related project variables, adds project-owned
+commands from `$PROJECT_ROOT/bin` when that directory exists, and activates the
+project virtual environment at `~/.base.d/<project>/.venv`. If the manifest
+declares `activate.source`, Base then sources each declared script in order.
+Exit that shell to return to the original environment.
+
+The activated runtime shell is always Bash, even when the user's login shell is
+Zsh. `BASE_ACTIVATE_SHELL` may point to another Bash executable, but it must not
+point to Zsh or another non-Bash shell. Zsh-specific aliases, options,
+completions, and prompt customizations are not loaded inside the activated Base
+runtime shell.
 
 Use `basectl activate example --no-cd` to keep the caller's current directory
 while still loading the selected project's Base runtime environment.

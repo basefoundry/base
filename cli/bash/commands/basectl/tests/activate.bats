@@ -258,6 +258,48 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl activate <project> [options]"* ]]
     [[ "$output" == *"--no-cd"* ]]
+    [[ "$output" == *"interactive Base Bash runtime shell"* ]]
+}
+
+@test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before exec" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
+    local workspace="$TEST_TMPDIR/workspace"
+    local fake_zsh="$TEST_TMPDIR/zsh"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_zsh" <<'EOF'
+#!/usr/bin/env bash
+printf 'non-bash shell invoked\n'
+exit 99
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    chmod +x "$base_python" "$project_python" "$fake_zsh"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_zsh" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"BASE_ACTIVATE_SHELL"* ]]
+    [[ "$output" == *"requires Bash"* ]]
+    [[ "$output" != *"non-bash shell invoked"* ]]
 }
 
 @test "basectl activate reports missing project as a usage error" {

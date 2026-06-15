@@ -133,13 +133,13 @@ activating a Python virtual environment. The naive approach of activate/deactiva
 (like Python venv) does not scale to the full richness of a shell environment. Tracking
 and restoring arbitrary shell state on deactivation is complex and error-prone.
 
-The solution: **spawn a subshell** when activating a project. The project environment
-lives inside the subshell. The user works in that subshell. When done, they `exit` (or
-Ctrl-D) and return to their base shell. No deactivation logic required. No state
-restoration complexity.
+The solution: **spawn a Bash runtime shell** when activating a project. The
+project environment lives inside that shell. The user works in that shell. When
+done, they `exit` (or Ctrl-D) and return to their base shell. No deactivation
+logic required. No state restoration complexity.
 
 This does not require a distinct shell function. A normal `basectl activate <project>`
-command can validate the target and launch the configured subshell.
+command can validate the target and launch the Bash runtime shell.
 
 ### Activation Flow
 
@@ -149,12 +149,12 @@ basectl activate myproject
 1. Look up BASE_HOME, resolve the workspace root, and scan known projects
 2. Validate myproject exists and has a valid manifest
 3. Set BASE_PROJECT=myproject
-4. Spawn a new subshell
-5. In the subshell: load the Base runtime and user Bash startup with guardrails
-6. In the subshell: activate the project's Python virtual environment
-7. In the subshell: source manifest-declared activate.source scripts
+4. Spawn a new Bash runtime shell
+5. In that shell: load the Base runtime and user Bash startup with guardrails
+6. In that shell: activate the project's Python virtual environment
+7. In that shell: source manifest-declared activate.source scripts
 8. Update the prompt to reflect the active project
-9. User works in subshell
+9. User works in the Bash runtime shell
 10. User exits → returns to base shell, prompt resets
 ```
 

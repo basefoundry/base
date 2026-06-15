@@ -75,10 +75,10 @@ convention-based library imports.
 
 **Layer 3 — Project environment** (`basectl activate <project>`)
 
-Spawns a subshell, sets `BASE_PROJECT`, activates the project venv at
+Spawns a Bash runtime shell, sets `BASE_PROJECT`, activates the project venv at
 `~/.base.d/<project>/.venv`, runs `activate.source` scripts declared in the
-manifest, and updates the prompt to `[project: branch] ~/path $`. Exit the
-subshell to return to the original environment — no deactivation logic needed.
+manifest, and updates the prompt to `[project: branch] ~/path $`. Exit that
+shell to return to the original environment - no deactivation logic needed.
 
 **Design choice — no `cd`-triggered activation:** switching directories does not
 change environment. Users explicitly activate projects with `basectl activate`.

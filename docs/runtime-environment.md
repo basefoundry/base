@@ -174,3 +174,21 @@ readonly by Base.
 Additional setup and bootstrap `BASE_SETUP_*`, `BASE_BOOTSTRAP_*`, and
 `BASE_INSTALL_*` variables exist for tests, CI, and narrow command overrides.
 Those are command-specific inputs, not shell runtime contract variables.
+
+### Activated Shell Contract
+
+`basectl activate <project>` starts an interactive Base Bash runtime shell with
+Base's runtime rcfile. The caller's login shell can be Bash, Zsh, or another
+shell, but activation itself is Bash so Base can load the Bash standard library,
+project virtual environment, manifest-declared `activate.source` scripts, and
+runtime prompt consistently.
+
+`BASE_ACTIVATE_SHELL` may point to a different Bash executable, such as a
+Homebrew-managed Bash. It must not point to Zsh or another non-Bash shell. Base
+rejects non-Bash values before exec so users see a direct configuration error
+instead of a Bash-rcfile failure from the target shell.
+
+Zsh-specific aliases, options, completions, and prompt customizations are not
+loaded in the activated Base runtime shell. Put shell-neutral shared settings in
+`~/.baserc` or project activation scripts when they need to apply to Base
+runtime activation.

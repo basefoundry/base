@@ -53,10 +53,12 @@ Base separates shell startup from runtime activation:
 
 ## Activation Model
 
-Project activation uses subshells. `basectl activate <project>` validates the
-project, sets project runtime variables, starts a new shell, and applies the
-project environment inside that shell. Exiting the subshell returns to the
-previous environment, so Base does not need fragile deactivate logic.
+Project activation uses a Bash runtime shell. `basectl activate <project>`
+validates the project, sets project runtime variables, starts Bash with Base's
+runtime rcfile, and applies the project environment inside that shell. Exiting
+the shell returns to the previous environment, so Base does not need fragile
+deactivate logic. `BASE_ACTIVATE_SHELL` may point to another Bash executable,
+but not Zsh or another non-Bash shell.
 
 ## Tool Boundary Model
 

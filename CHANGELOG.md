@@ -34,6 +34,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Aligned bootstrap and installer candidate-list splitting with the scoped
   `IFS=: read -ra` Bash pattern.
+- Clarified that `basectl activate` starts a Bash runtime shell and that
+  `BASE_ACTIVATE_SHELL` must point to Bash.
 - Normalized Base's built-in default, developer, and SRE profile manifest
   names to the same safe project-name syntax enforced for project manifests.
 - Made `base_cli` log source paths prefer the active project root before
@@ -41,6 +43,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Reported a clear error when `BASE_ACTIVATE_SHELL` points to a non-Bash shell.
 - Redacted compound secret-like command-output assignments such as
   `GITHUB_TOKEN=...`, `DB_PASSWORD=...`, and
   `AWS_SECRET_ACCESS_KEY=...` from setup failure summaries and debug logs.
