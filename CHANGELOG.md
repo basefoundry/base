@@ -32,6 +32,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Relicensed Base prospectively from MIT to AGPL-3.0-or-later.
 - Aligned bootstrap and installer candidate-list splitting with the scoped
   `IFS=: read -ra` Bash pattern.
 - Clarified that `basectl activate` starts a Bash runtime shell and that
