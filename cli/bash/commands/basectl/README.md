@@ -104,9 +104,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   remaining blanks in the repo Project.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
-  layer for repos that opt in.
+  layer for repos that opt in. Use `--pr` when generated guidance should land
+  through a draft pull request instead of direct file generation.
   `basectl repo installer-template [path]` prints or writes the maintained
-  project installer starter script.
+  project installer starter script. Use `--pr` with a path to open the
+  generated installer template as a draft pull request.
 - `basectl test [project]` runs the project's manifest `test.command` or
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments

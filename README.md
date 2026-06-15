@@ -179,6 +179,7 @@ Current implemented commands include:
 - `basectl repo check [path]`
 - `basectl repo configure [path]`
 - `basectl repo agent-guidance [path]`
+- `basectl repo installer-template [path]`
 - `basectl gh <area> <command>`
 - `basectl release check --version <version>`
 - `basectl release plan --version <version>`
@@ -452,8 +453,14 @@ Seed optional repo-local agent guidance with:
 
 ```bash
 basectl repo agent-guidance ~/work/example --repo-name example
+basectl repo agent-guidance ~/work/example --repo-name example --pr --dry-run
 basectl repo check ~/work/example --agent-guidance
 ```
+
+Use `--pr` on `repo agent-guidance` or `repo installer-template` when the
+generated helper files should go through review first. The target must be a
+clean Git worktree, the GitHub repository is inferred from `origin` unless
+`--repo <owner/name>` is provided, and the opened pull request is a draft.
 
 `repo configure` is intentionally idempotent. It enables Issues and Projects,
 standardizes merge settings, deletes branches after merge, applies the

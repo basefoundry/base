@@ -154,12 +154,14 @@ Usage:
   basectl repo installer-template [path] [options]
 
 Options:
+  --repo <owner/name>           GitHub repository for --pr. Defaults to the target origin remote.
+  --pr                          Commit the generated installer template on a branch and open a draft pull request.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
 Prints the maintained project installer template, or writes it to path when a
-path is provided.
+path is provided. With --pr, path is required.
 EOF
 }
 
@@ -205,9 +207,11 @@ Usage:
   basectl repo agent-guidance [path] [options]
 
 Options:
+  --repo <owner/name>           GitHub repository for --pr. Defaults to the target origin remote.
   --repo-name <name>            Repository name for generated agent guidance. Defaults to the target path basename.
   --default-branch <name>       Default branch for generated agent guidance. Defaults to main.
   --validation-command <cmd>    Validation command for generated agent guidance. Defaults to ./tests/validate.sh.
+  --pr                          Commit generated guidance files on a branch and open a draft pull request.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
@@ -311,11 +315,11 @@ base_repo_expand_path() {
     local path="$1"
 
     case "$path" in
-        "~")
+        \~)
             printf '%s\n' "$HOME"
             ;;
-        "~/"*)
-            printf '%s/%s\n' "$HOME" "${path#"~/"}"
+        \~/*)
+            printf '%s/%s\n' "$HOME" "${path#\~/}"
             ;;
         *)
             printf '%s\n' "$path"
@@ -1543,29 +1547,41 @@ base_repo_pr_branch_name() {
     printf 'base/repo-baseline-%s\n' "$name"
 }
 
+base_repo_helper_pr_branch_name() {
+    local kind="$1"
+    local name="$2"
+
+    printf 'base/%s-%s\n' "$kind" "$name"
+}
+
 base_repo_require_pr_worktree() {
+    local command_label="${2:-repo init --pr}"
     local git_root
     local root="$1"
 
     [[ -d "$root" ]] || {
-        log_error "repo init --pr requires '$root' to be an existing Git worktree."
+        log_error "$command_label requires '$root' to be an existing Git worktree."
         return 1
     }
 
     git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || {
-        log_error "repo init --pr requires '$root' to be an existing Git worktree."
+        log_error "$command_label requires '$root' to be an existing Git worktree."
         return 1
     }
     git_root="$(cd -- "$git_root" && pwd -P)" || return 1
     root="$(cd -- "$root" && pwd -P)" || return 1
 
     [[ "$git_root" == "$root" ]] || {
-        log_error "repo init --pr expects --path to point at the repository root."
+        if [[ "$command_label" == "repo init --pr" ]]; then
+            log_error "repo init --pr expects --path to point at the repository root."
+        else
+            log_error "$command_label expects the target path to point at the repository root."
+        fi
         return 1
     }
 
     [[ -z "$(git -C "$root" status --porcelain)" ]] || {
-        log_error "repo init --pr requires a clean Git worktree at '$root'."
+        log_error "$command_label requires a clean Git worktree at '$root'."
         return 1
     }
 }
@@ -1589,6 +1605,7 @@ base_repo_default_branch_for_pr() {
 
 base_repo_prepare_pr_branch() {
     local branch="$3"
+    local command_label="${5:-repo init --pr}"
     local default_branch="$4"
     local dry_run="$1"
     local root="$2"
@@ -1621,29 +1638,103 @@ base_repo_prepare_pr_branch() {
     fi
 
     [[ -z "$(git -C "$root" status --porcelain)" ]] || {
-        log_error "repo init --pr requires branch '$branch' to have a clean Git worktree."
+        log_error "$command_label requires branch '$branch' to have a clean Git worktree."
+        return 1
+    }
+}
+
+base_repo_stage_pr_files() {
+    local description="$2"
+    local files=()
+    local rel
+    local root="$1"
+    shift 2
+
+    for rel in "$@"; do
+        [[ -e "$root/$rel" ]] && files+=("$rel")
+    done
+
+    ((${#files[@]})) || {
+        log_error "No $description exist to stage."
+        return 1
+    }
+
+    git -C "$root" add -- "${files[@]}" || {
+        log_error "Failed to stage $description."
         return 1
     }
 }
 
 base_repo_stage_pr_baseline_files() {
-    local files=()
-    local rel
     local root="$1"
 
-    for rel in "${BASE_REPO_BASELINE_FILES[@]}"; do
-        [[ -e "$root/$rel" ]] && files+=("$rel")
-    done
+    base_repo_stage_pr_files "$root" "repository baseline files" "${BASE_REPO_BASELINE_FILES[@]}"
+}
 
-    ((${#files[@]})) || {
-        log_error "No repository baseline files exist to stage."
+base_repo_relative_path_under_root() {
+    local path="$2"
+    local path_dir
+    local path_real
+    local root="$1"
+    local root_real
+
+    root_real="$(cd -- "$root" && pwd -P)" || return 1
+    path_dir="$(dirname -- "$path")"
+    [[ -d "$path_dir" ]] || return 1
+    path_real="$(cd -- "$path_dir" && pwd -P)/$(basename -- "$path")" || return 1
+
+    case "$path_real" in
+        "$root_real"/*)
+            printf '%s\n' "${path_real#"$root_real"/}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+base_repo_finish_generated_pr() {
+    local body_file="$9"
+    local branch="$4"
+    local commit_message="$6"
+    local default_branch="$5"
+    local dry_run="$1"
+    local file_description="$7"
+    local pr_title="$8"
+    local repo="$3"
+    local root="$2"
+    shift 9
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would commit generated %s with message '%s'.\n" "$file_description" "$commit_message"
+        printf "[DRY-RUN] Would push branch '%s' to origin.\n" "$branch"
+        printf "[DRY-RUN] Would open a draft pull request in '%s' from '%s' to '%s' with title '%s'.\n" \
+            "$repo" "$branch" "$default_branch" "$pr_title"
+        return 0
+    fi
+
+    base_repo_stage_pr_files "$root" "$file_description" "$@" || return 1
+    if git -C "$root" diff --cached --quiet --; then
+        log_info "No $file_description changes to commit; skipping pull request creation."
+        return 0
+    fi
+
+    git -C "$root" commit -m "$commit_message" || {
+        log_error "Failed to commit $file_description."
+        return 1
+    }
+    git -C "$root" push -u origin "$branch" || {
+        log_error "Failed to push branch '$branch' to origin."
         return 1
     }
 
-    git -C "$root" add -- "${files[@]}" || {
-        log_error "Failed to stage repository baseline files."
-        return 1
-    }
+    gh pr create \
+        --repo "$repo" \
+        --base "$default_branch" \
+        --head "$branch" \
+        --title "$pr_title" \
+        --draft \
+        --body-file "$body_file"
 }
 
 base_repo_create_baseline_pr_body() {
@@ -1664,6 +1755,51 @@ Generated by:
 
 \`\`\`bash
 basectl repo init $name --path $root --repo $repo --pr
+\`\`\`
+EOF
+}
+
+base_repo_create_agent_guidance_pr_body() {
+    local default_branch="$3"
+    local repo="$5"
+    local repo_name="$1"
+    local root="$2"
+    local validation_command="$4"
+
+    cat <<EOF
+## Summary
+
+- Add Base repo-local agent guidance files.
+
+## Validation
+
+- $validation_command
+
+Generated by:
+
+\`\`\`bash
+basectl repo agent-guidance $(base_repo_pretty_arg "$root") --repo-name $(base_repo_pretty_arg "$repo_name") --default-branch $(base_repo_pretty_arg "$default_branch") --validation-command $(base_repo_pretty_arg "$validation_command") --repo $repo --pr
+\`\`\`
+EOF
+}
+
+base_repo_create_installer_template_pr_body() {
+    local path="$1"
+    local repo="$2"
+
+    cat <<EOF
+## Summary
+
+- Add the maintained Base project installer template.
+
+## Validation
+
+- Not run. Generated installer-template change only.
+
+Generated by:
+
+\`\`\`bash
+basectl repo installer-template $(base_repo_pretty_arg "$path") --repo $repo --pr
 \`\`\`
 EOF
 }
@@ -1711,6 +1847,100 @@ base_repo_finish_pr_baseline() {
         --head "$branch" \
         --title "Add Base repository baseline" \
         --body-file "$body_file"
+    status=$?
+    rm -f "$body_file"
+    return "$status"
+}
+
+base_repo_finish_agent_guidance_pr() {
+    local body_file
+    local branch="$5"
+    local default_branch="$6"
+    local dry_run="$1"
+    local repo="$4"
+    local repo_name="$2"
+    local root="$3"
+    local status
+    local validation_command="$7"
+
+    if [[ "$dry_run" == "1" ]]; then
+        base_repo_finish_generated_pr \
+            "$dry_run" \
+            "$root" \
+            "$repo" \
+            "$branch" \
+            "$default_branch" \
+            "Add Base agent guidance" \
+            "agent guidance files" \
+            "Add Base agent guidance" \
+            "" \
+            "${BASE_REPO_AGENT_GUIDANCE_FILES[@]}"
+        return $?
+    fi
+
+    body_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-agent-guidance-pr.XXXXXX")" || {
+        log_error "Failed to create a temporary pull request body file."
+        return 1
+    }
+    base_repo_create_agent_guidance_pr_body "$repo_name" "$root" "$default_branch" "$validation_command" "$repo" > "$body_file"
+    base_repo_finish_generated_pr \
+        "$dry_run" \
+        "$root" \
+        "$repo" \
+        "$branch" \
+        "$default_branch" \
+        "Add Base agent guidance" \
+        "agent guidance files" \
+        "Add Base agent guidance" \
+        "$body_file" \
+        "${BASE_REPO_AGENT_GUIDANCE_FILES[@]}"
+    status=$?
+    rm -f "$body_file"
+    return "$status"
+}
+
+base_repo_finish_installer_template_pr() {
+    local body_file
+    local branch="$5"
+    local default_branch="$6"
+    local dry_run="$1"
+    local rel_path="$7"
+    local repo="$4"
+    local root="$3"
+    local status
+    local target_path="$2"
+
+    if [[ "$dry_run" == "1" ]]; then
+        base_repo_finish_generated_pr \
+            "$dry_run" \
+            "$root" \
+            "$repo" \
+            "$branch" \
+            "$default_branch" \
+            "Add Base installer template" \
+            "installer template file" \
+            "Add Base installer template" \
+            "" \
+            "$rel_path"
+        return $?
+    fi
+
+    body_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-installer-template-pr.XXXXXX")" || {
+        log_error "Failed to create a temporary pull request body file."
+        return 1
+    }
+    base_repo_create_installer_template_pr_body "$target_path" "$repo" > "$body_file"
+    base_repo_finish_generated_pr \
+        "$dry_run" \
+        "$root" \
+        "$repo" \
+        "$branch" \
+        "$default_branch" \
+        "Add Base installer template" \
+        "installer template file" \
+        "Add Base installer template" \
+        "$body_file" \
+        "$rel_path"
     status=$?
     rm -f "$body_file"
     return "$status"
@@ -2285,9 +2515,13 @@ base_repo_check() {
 }
 
 base_repo_agent_guidance() {
+    local create_pr=0
     local default_branch="main"
     local dry_run=0
+    local github_repo=""
     local path="."
+    local pr_branch=""
+    local pr_default_branch=""
     local repo_name=""
     local root
     local validation_command="./tests/validate.sh"
@@ -2297,6 +2531,18 @@ base_repo_agent_guidance() {
             -h|--help|help)
                 base_repo_agent_guidance_usage
                 return 0
+                ;;
+            --repo)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_agent_guidance_usage_error "Option '--repo' requires an argument."
+                    return $?
+                }
+                github_repo="$2"
+                shift 2
+                ;;
+            --repo=*)
+                github_repo="${1#--repo=}"
+                shift
                 ;;
             --repo-name)
                 [[ -n "${2:-}" ]] || {
@@ -2332,6 +2578,10 @@ base_repo_agent_guidance() {
                 ;;
             --validation-command=*)
                 validation_command="${1#--validation-command=}"
+                shift
+                ;;
+            --pr)
+                create_pr=1
                 shift
                 ;;
             --dry-run)
@@ -2370,7 +2620,37 @@ base_repo_agent_guidance() {
     }
     base_repo_validate_name "$repo_name" || return 2
 
+    if ((create_pr)); then
+        if [[ -z "$github_repo" ]]; then
+            github_repo="$(base_repo_infer_github_repo "$root" || true)"
+        fi
+        [[ -n "$github_repo" ]] || {
+            base_repo_agent_guidance_usage_error "Option '--pr' requires --repo <owner/name> or an inferable GitHub origin remote."
+            return $?
+        }
+
+        pr_branch="$(base_repo_helper_pr_branch_name "agent-guidance" "$repo_name")"
+        if [[ "$dry_run" == "1" ]]; then
+            pr_default_branch="<default branch>"
+        else
+            base_repo_require_pr_worktree "$root" "repo agent-guidance --pr" || return 1
+            pr_default_branch="$(base_repo_default_branch_for_pr "$github_repo")" || return 1
+        fi
+        base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$pr_default_branch" "repo agent-guidance --pr" || return 1
+    fi
+
     base_repo_write_agent_guidance "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || return $?
+    if ((create_pr)); then
+        base_repo_finish_agent_guidance_pr \
+            "$dry_run" \
+            "$repo_name" \
+            "$root" \
+            "$github_repo" \
+            "$pr_branch" \
+            "$pr_default_branch" \
+            "$validation_command"
+        return $?
+    fi
     if [[ "$dry_run" != "1" ]]; then
         base_repo_print_review_hint "$root"
     fi
@@ -2529,14 +2809,37 @@ base_repo_configure() {
 }
 
 base_repo_installer_template() {
+    local create_pr=0
     local dry_run=0
+    local github_repo=""
     local path=""
+    local pr_branch=""
+    local pr_default_branch=""
+    local rel_path=""
+    local repo_name=""
+    local root=""
 
     while (($#)); do
         case "$1" in
             -h|--help|help)
                 base_repo_installer_template_usage
                 return 0
+                ;;
+            --repo)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_installer_template_usage_error "Option '--repo' requires an argument."
+                    return $?
+                }
+                github_repo="$2"
+                shift 2
+                ;;
+            --repo=*)
+                github_repo="${1#--repo=}"
+                shift
+                ;;
+            --pr)
+                create_pr=1
+                shift
                 ;;
             --dry-run)
                 dry_run=1
@@ -2563,21 +2866,64 @@ base_repo_installer_template() {
     done
 
     if [[ -z "$path" ]]; then
+        if ((create_pr)); then
+            base_repo_installer_template_usage_error "Option '--pr' requires a path."
+            return $?
+        fi
         base_repo_print_installer_template
         return $?
     fi
 
     path="$(base_repo_target_path "$path")"
+    root="$(dirname -- "$path")"
+    repo_name="$(basename -- "$root")"
+
+    if ((create_pr)); then
+        if [[ -z "$github_repo" ]]; then
+            github_repo="$(base_repo_infer_github_repo "$root" || true)"
+        fi
+        [[ -n "$github_repo" ]] || {
+            base_repo_installer_template_usage_error "Option '--pr' requires --repo <owner/name> or an inferable GitHub origin remote."
+            return $?
+        }
+
+        repo_name="${github_repo#*/}"
+        pr_branch="$(base_repo_helper_pr_branch_name "installer-template" "$repo_name")"
+        if [[ "$dry_run" == "1" ]]; then
+            pr_default_branch="<default branch>"
+            rel_path="$(basename -- "$path")"
+        else
+            base_repo_require_pr_worktree "$root" "repo installer-template --pr" || return 1
+            pr_default_branch="$(base_repo_default_branch_for_pr "$github_repo")" || return 1
+            rel_path="$(base_repo_relative_path_under_root "$root" "$path")" || {
+                log_error "repo installer-template --pr expects path to be inside '$root'."
+                return 1
+            }
+        fi
+        base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$pr_default_branch" "repo installer-template --pr" || return 1
+    fi
+
     base_repo_write_installer_template "$dry_run" "$path" || return $?
+    if ((create_pr)); then
+        base_repo_finish_installer_template_pr \
+            "$dry_run" \
+            "$path" \
+            "$root" \
+            "$github_repo" \
+            "$pr_branch" \
+            "$pr_default_branch" \
+            "$rel_path"
+        return $?
+    fi
     if [[ "$dry_run" != "1" ]]; then
         base_repo_print_review_hint "$(dirname -- "$path")"
     fi
 }
 
 base_repo_subcommand_main() {
-    local command="${1:-}"
+    local repo_command="${1:-}"
 
-    case "$command" in
+    case "$repo_command" in
         -h|--help|help|"")
             base_repo_subcommand_usage
             return 0
@@ -2607,7 +2953,7 @@ base_repo_subcommand_main() {
             base_repo_installer_template "$@"
             ;;
         *)
-            base_repo_usage_error "Unknown repo command '$command'."
+            base_repo_usage_error "Unknown repo command '$repo_command'."
             ;;
     esac
 }

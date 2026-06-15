@@ -54,11 +54,17 @@ Start from Base's maintained template, then customize the project-owned copy:
 ```bash
 basectl repo installer-template
 basectl repo installer-template install.sh
+basectl repo installer-template install.sh --pr --dry-run
 ```
 
 With no path, the command prints the template to stdout. With a path, it writes
 an executable script and leaves an existing file unchanged so project
 customizations are not overwritten.
+
+Use `--pr` when the generated installer should be reviewed before landing. The
+target path must be inside a clean Git worktree, the GitHub repository is
+inferred from `origin` unless `--repo <owner/name>` is provided, and Base opens
+a draft pull request after committing only the generated installer file.
 
 For a project such as Banyan Labs, the generated script should change the
 project-owned values at the top:

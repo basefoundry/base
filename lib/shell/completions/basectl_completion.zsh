@@ -189,9 +189,11 @@ _base_basectl_completion() {
                 agent-guidance)
                     _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
+                        '--repo[GitHub repository for pull request]:repo:' \
                         '--repo-name[Repository name for generated guidance]:name:' \
                         '--default-branch[Default branch for generated guidance]:branch:' \
                         '--validation-command[Validation command for generated guidance]:command:' \
+                        '--pr[Commit generated guidance files and open a draft pull request]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
@@ -199,6 +201,8 @@ _base_basectl_completion() {
                 installer-template)
                     _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
                         '2:path:_files' \
+                        '--repo[GitHub repository for pull request]:repo:' \
+                        '--pr[Commit generated installer template and open a draft pull request]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
