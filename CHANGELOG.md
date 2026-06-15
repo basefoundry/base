@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-15
+
 ### Added
 
 - Added Base's own `.github/base-project.yml` so Base issues get repo Project
