@@ -39,6 +39,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Redacted compound secret-like command-output assignments such as
+  `GITHUB_TOKEN=...`, `DB_PASSWORD=...`, and
+  `AWS_SECRET_ACCESS_KEY=...` from setup failure summaries and debug logs.
 - Removed `eval` from Bash `.baserc` guard variable snapshots while preserving
   Bash 4.2 compatibility.
 - Replaced `install.sh` shell strict mode with explicit installer command
