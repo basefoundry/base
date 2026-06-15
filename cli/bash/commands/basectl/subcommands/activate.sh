@@ -14,7 +14,7 @@ Options:
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Start an interactive Base runtime subshell for a project.
+Start an interactive Base Bash runtime shell for a project.
 EOF
 }
 
@@ -53,6 +53,13 @@ base_activate_project_venv_dir() {
     fi
 
     printf '%s\n' "$HOME/.base.d/$project/.venv"
+}
+
+base_activate_shell_is_bash() {
+    local shell_path="$1"
+    local shell_name="${shell_path##*/}"
+
+    [[ "$shell_name" == "bash" || "$shell_name" == bash-* || "$shell_name" == *-bash ]]
 }
 
 base_activate_subcommand_main() {
@@ -139,5 +146,8 @@ base_activate_subcommand_main() {
         cd "$project_root" || fatal_error "Unable to enter project root '$project_root'."
     fi
     activate_shell="${BASE_ACTIVATE_SHELL:-${BASH:-bash}}"
+    if ! base_activate_shell_is_bash "$activate_shell"; then
+        fatal_error "basectl activate requires Bash. BASE_ACTIVATE_SHELL='$activate_shell' is not supported. Unset BASE_ACTIVATE_SHELL to use the default Bash runtime shell."
+    fi
     exec "$activate_shell" --rcfile "$shell_rc"
 }
