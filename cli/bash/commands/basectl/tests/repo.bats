@@ -316,6 +316,8 @@ load ./basectl_helpers.bash
     grep -Fq "CHANGELOG is updated for notable user-visible or release-worthy changes." "$repo_dir/.github/pull_request_template.md"
     ! grep -Fq "Demo Impact" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "GNU Affero General Public License" "$repo_dir/LICENSE"
+    run grep -F "Base - a workspace control plane" "$repo_dir/LICENSE"
+    [ "$status" -eq 1 ]
 
     run bash -c 'cd "$1" && ./tests/validate.sh' _ "$repo_dir"
     [ "$status" -eq 0 ]

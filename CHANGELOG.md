@@ -34,6 +34,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Moved the README license notice out of the opening product summary and made
+  the MIT-to-AGPL version boundary explicit.
 - Made `basectl repo init` generate AGPL-3.0-or-later licenses for new
   repositories.
 - Relicensed Base prospectively from MIT to AGPL-3.0-or-later.
@@ -48,6 +50,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `basectl repo init` generate repo-specific AGPL license files without
+  copying Base's own application notice into new repositories.
 - Made `basectl repo configure` apply `.github/base-project.yml`
   `issue_defaults` to existing repo Project issue items that are missing those
   values.

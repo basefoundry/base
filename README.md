@@ -5,26 +5,6 @@
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 
-## License
-
-Copyright (C) 2019-2026 Ramesh Padmanabhaiah
-
-Base is free software: you can redistribute it and/or modify it under the
-terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version.
-
-Base is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-details.
-
-You should have received a copy of the GNU Affero General Public License along
-with Base. If not, see <https://www.gnu.org/licenses/>.
-
-Versions before this relicensing change remain available under the MIT License
-as originally published. New versions are licensed under AGPL-3.0-or-later.
-
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
 
@@ -1306,3 +1286,10 @@ tracked in GitHub Issues using the workflow in
 Base is the repo you check out once per workspace so that all the other repos
 in that workspace become easier to set up, easier to test, and easier to run in
 a controlled shell environment.
+
+## License
+
+Base is licensed under AGPL-3.0-or-later starting with v1.0.1.
+
+Versions through v1.0.0 remain available under the MIT License as originally
+published. See [LICENSE](LICENSE) for the current license terms.

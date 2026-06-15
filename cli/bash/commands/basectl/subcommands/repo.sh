@@ -736,7 +736,18 @@ base_repo_write_agent_guidance() {
     return "$status"
 }
 
+base_repo_agpl_license_text() {
+    local source_license="$1"
+
+    awk '
+        /^[[:space:]]*GNU AFFERO GENERAL PUBLIC LICENSE$/ { found = 1 }
+        found { print }
+        END { if (!found) exit 1 }
+    ' "$source_license"
+}
+
 base_repo_write_license() {
+    local canonical_license
     local copyright_holder="$2"
     local dry_run="$1"
     local root="$3"
@@ -745,6 +756,11 @@ base_repo_write_license() {
 
     [[ -f "$source_license" ]] || {
         log_error "Base AGPL license text '$source_license' was not found."
+        return 1
+    }
+
+    canonical_license="$(base_repo_agpl_license_text "$source_license")" || {
+        log_error "Base AGPL license text '$source_license' did not contain the canonical AGPL terms."
         return 1
     }
 
@@ -766,7 +782,7 @@ You should have received a copy of the GNU Affero General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>.
 EOF
         printf '\n'
-        cat "$source_license"
+        printf '%s\n' "$canonical_license"
     } | base_repo_write_stream "$dry_run" "$root/LICENSE"
 }
 
