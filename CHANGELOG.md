@@ -73,6 +73,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   logs while stderr is still a terminal.
 - Made `base_cli.App` reject duplicate command registrations instead of
   silently overwriting the first command.
+- Made `basectl doctor` warn when Homebrew reports installed Xcode Command Line
+  Tools are outdated or incomplete.
 
 ## [1.0.0] - 2026-06-14
 

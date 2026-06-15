@@ -21,6 +21,7 @@ _BASE_SETUP_VENV_DIR_CACHE=""
 _BASE_SETUP_PYTHONPATH_CACHE=""
 _BASE_SETUP_CHECK_NAMES=()
 _BASE_SETUP_CHECK_OK=()
+_BASE_SETUP_CHECK_STATUSES=()
 _BASE_SETUP_CHECK_MESSAGES=()
 _BASE_SETUP_CHECK_RECOVERIES=()
 _BASE_SETUP_CHECK_DEBUG_MESSAGES=()
@@ -358,6 +359,10 @@ setup_recovery_xcode_tools() {
     printf "%s\n" "Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."
 }
 
+setup_recovery_xcode_tools_update() {
+    printf "%s\n" "Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'."
+}
+
 setup_recovery_python() {
     printf "Run 'basectl setup' to install Homebrew Python, or run 'brew install %s'.\n" "$(setup_python_formula)"
 }
@@ -449,6 +454,25 @@ setup_refresh_brew_path() {
     brew_bin="$(setup_find_brew_bin)" || return 1
     add_to_path -p "$(dirname "$brew_bin")"
     return 0
+}
+
+setup_homebrew_doctor_output() {
+    local brew_bin
+
+    brew_bin="$(setup_find_brew_bin)" || return 1
+    "$brew_bin" doctor 2>&1 || true
+}
+
+setup_homebrew_reports_xcode_tools_issue() {
+    local doctor_output
+
+    doctor_output="$(setup_homebrew_doctor_output)" || return 1
+    [[ "$doctor_output" == *"Command Line Tools are too outdated"* ||
+        "$doctor_output" == *"Command Line Tools installation may be broken or incomplete"* ]]
+}
+
+setup_xcode_homebrew_diagnostics_enabled() {
+    [[ "${BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS:-false}" == true ]]
 }
 
 setup_install_homebrew() {
@@ -1135,9 +1159,38 @@ setup_run_base_dev_layer() {
 setup_clear_check_results() {
     _BASE_SETUP_CHECK_NAMES=()
     _BASE_SETUP_CHECK_OK=()
+    _BASE_SETUP_CHECK_STATUSES=()
     _BASE_SETUP_CHECK_MESSAGES=()
     _BASE_SETUP_CHECK_RECOVERIES=()
     _BASE_SETUP_CHECK_DEBUG_MESSAGES=()
+}
+
+setup_add_check_result_with_status() {
+    local name="$1"
+    local status="$2"
+    local message="$3"
+    local recovery="${4:-}"
+    local debug_message="${5:-}"
+    local ok=true
+
+    case "$status" in
+        ok|warn)
+            ok=true
+            ;;
+        error)
+            ok=false
+            ;;
+        *)
+            fatal_error "Invalid Base check status '$status'."
+            ;;
+    esac
+
+    _BASE_SETUP_CHECK_NAMES+=("$name")
+    _BASE_SETUP_CHECK_OK+=("$ok")
+    _BASE_SETUP_CHECK_STATUSES+=("$status")
+    _BASE_SETUP_CHECK_MESSAGES+=("$message")
+    _BASE_SETUP_CHECK_RECOVERIES+=("$recovery")
+    _BASE_SETUP_CHECK_DEBUG_MESSAGES+=("$debug_message")
 }
 
 setup_add_check_result() {
@@ -1146,12 +1199,10 @@ setup_add_check_result() {
     local message="$3"
     local recovery="${4:-}"
     local debug_message="${5:-}"
+    local status
 
-    _BASE_SETUP_CHECK_NAMES+=("$name")
-    _BASE_SETUP_CHECK_OK+=("$ok")
-    _BASE_SETUP_CHECK_MESSAGES+=("$message")
-    _BASE_SETUP_CHECK_RECOVERIES+=("$recovery")
-    _BASE_SETUP_CHECK_DEBUG_MESSAGES+=("$debug_message")
+    status="$(setup_diagnostic_status_from_ok "$ok")"
+    setup_add_check_result_with_status "$name" "$status" "$message" "$recovery" "$debug_message"
 }
 
 setup_write_check_result_file() {
@@ -1161,10 +1212,16 @@ setup_write_check_result_file() {
     local ok="$3"
     local path="$1"
     local recovery="${5:-}"
+    local status="${7:-}"
+
+    if [[ -z "$status" ]]; then
+        status="$(setup_diagnostic_status_from_ok "$ok")"
+    fi
 
     {
         printf 'name=%s\n' "$name"
         printf 'ok=%s\n' "$ok"
+        printf 'status=%s\n' "$status"
         printf 'message=%s\n' "$message"
         printf 'recovery=%s\n' "$recovery"
         printf 'debug=%s\n' "$debug_message"
@@ -1178,6 +1235,7 @@ setup_parse_check_result_file() {
 
     _BASE_SETUP_PARSED_CHECK_NAME=""
     _BASE_SETUP_PARSED_CHECK_OK=""
+    _BASE_SETUP_PARSED_CHECK_STATUS=""
     _BASE_SETUP_PARSED_CHECK_MESSAGE=""
     _BASE_SETUP_PARSED_CHECK_RECOVERY=""
     _BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE=""
@@ -1189,6 +1247,9 @@ setup_parse_check_result_file() {
                 ;;
             ok=*)
                 _BASE_SETUP_PARSED_CHECK_OK="${line#ok=}"
+                ;;
+            status=*)
+                _BASE_SETUP_PARSED_CHECK_STATUS="${line#status=}"
                 ;;
             message=*)
                 _BASE_SETUP_PARSED_CHECK_MESSAGE="${line#message=}"
@@ -1210,13 +1271,23 @@ setup_parse_check_result_file() {
             fatal_error "Base check probe result '$path' has invalid ok value '$_BASE_SETUP_PARSED_CHECK_OK'."
             ;;
     esac
+    if [[ -z "$_BASE_SETUP_PARSED_CHECK_STATUS" ]]; then
+        _BASE_SETUP_PARSED_CHECK_STATUS="$(setup_diagnostic_status_from_ok "$_BASE_SETUP_PARSED_CHECK_OK")"
+    fi
+    case "$_BASE_SETUP_PARSED_CHECK_STATUS" in
+        ok|warn|error)
+            ;;
+        *)
+            fatal_error "Base check probe result '$path' has invalid status value '$_BASE_SETUP_PARSED_CHECK_STATUS'."
+            ;;
+    esac
     [[ -n "$_BASE_SETUP_PARSED_CHECK_MESSAGE" ]] || fatal_error "Base check probe result '$path' is missing a message."
 }
 
 setup_add_parsed_check_result() {
-    setup_add_check_result \
+    setup_add_check_result_with_status \
         "$_BASE_SETUP_PARSED_CHECK_NAME" \
-        "$_BASE_SETUP_PARSED_CHECK_OK" \
+        "$_BASE_SETUP_PARSED_CHECK_STATUS" \
         "$_BASE_SETUP_PARSED_CHECK_MESSAGE" \
         "$_BASE_SETUP_PARSED_CHECK_RECOVERY" \
         "$_BASE_SETUP_PARSED_CHECK_DEBUG_MESSAGE"
@@ -1225,7 +1296,7 @@ setup_add_parsed_check_result() {
 setup_read_check_result_file() {
     setup_parse_check_result_file "$1"
     setup_add_parsed_check_result
-    [[ "$_BASE_SETUP_PARSED_CHECK_OK" == true ]]
+    [[ "$_BASE_SETUP_PARSED_CHECK_STATUS" != error ]]
 }
 
 setup_read_homebrew_check_result_file() {
@@ -1282,6 +1353,17 @@ setup_write_xcode_check_probe() {
     local result_file="$1"
 
     if setup_xcode_tools_installed; then
+        if setup_xcode_homebrew_diagnostics_enabled && setup_homebrew_reports_xcode_tools_issue; then
+            setup_write_check_result_file \
+                "$result_file" \
+                "xcode_command_line_tools" \
+                true \
+                "Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete." \
+                "$(setup_recovery_xcode_tools_update)" \
+                "" \
+                "warn"
+            return 0
+        fi
         setup_write_check_result_file \
             "$result_file" \
             "xcode_command_line_tools" \
@@ -1482,22 +1564,53 @@ setup_collect_base_check_results() {
 }
 
 setup_print_check_text_results() {
-    local count i
+    local count i status
 
     count="${#_BASE_SETUP_CHECK_NAMES[@]}"
     for ((i = 0; i < count; i++)); do
-        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
-            log_info "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
-            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
-                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
-            fi
-        else
-            log_warn "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
-            if [[ -n "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" ]]; then
-                log_warn "${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
-            fi
-        fi
+        status="${_BASE_SETUP_CHECK_STATUSES[$i]:-$(setup_diagnostic_status_from_ok "${_BASE_SETUP_CHECK_OK[$i]}")}"
+        case "$status" in
+            ok)
+                log_info "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+                if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
+                    log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
+                fi
+                ;;
+            warn|error)
+                log_warn "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+                if [[ -n "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" ]]; then
+                    log_warn "${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
+                fi
+                ;;
+            *)
+                fatal_error "Invalid Base check status '$status'."
+                ;;
+        esac
     done
+}
+
+setup_check_result_status() {
+    local index="$1"
+    local status
+
+    status="${_BASE_SETUP_CHECK_STATUSES[$index]:-}"
+    if [[ -z "$status" ]]; then
+        status="$(setup_diagnostic_status_from_ok "${_BASE_SETUP_CHECK_OK[$index]}")"
+    fi
+    printf '%s\n' "$status"
+}
+
+setup_check_result_recovery() {
+    local index="$1"
+    local status
+
+    status="$(setup_check_result_status "$index")"
+    if [[ "$status" == ok ]]; then
+        printf '\n'
+        return 0
+    fi
+
+    printf '%s\n' "${_BASE_SETUP_CHECK_RECOVERIES[$index]}"
 }
 
 setup_run_check() {
@@ -1619,7 +1732,7 @@ setup_check_results_status() {
 
     count="${#_BASE_SETUP_CHECK_NAMES[@]}"
     for ((i = 0; i < count; i++)); do
-        status="$(setup_merge_diagnostic_status "$status" "$(setup_diagnostic_status_from_ok "${_BASE_SETUP_CHECK_OK[$i]}")")"
+        status="$(setup_merge_diagnostic_status "$status" "$(setup_check_result_status "$i")")"
     done
 
     printf '%s\n' "$status"
@@ -1677,11 +1790,8 @@ setup_print_check_json_results() {
         if ((i == count - 1)); then
             trailing_comma=""
         fi
-        status="$(setup_diagnostic_status_from_ok "${_BASE_SETUP_CHECK_OK[$i]}")"
-        fix="${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
-        if [[ "$status" == ok ]]; then
-            fix=""
-        fi
+        status="$(setup_check_result_status "$i")"
+        fix="$(setup_check_result_recovery "$i")"
         setup_print_check_json_item \
             "$trailing_comma" \
             "$(setup_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \

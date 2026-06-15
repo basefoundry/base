@@ -139,6 +139,15 @@ base_doctor_check_homebrew() {
 
 base_doctor_check_xcode() {
     if setup_xcode_tools_installed; then
+        if setup_homebrew_reports_xcode_tools_issue; then
+            base_doctor_print_finding \
+                "warn" \
+                "BASE-D002" \
+                "Xcode Command Line Tools" \
+                "Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete." \
+                "$(setup_recovery_xcode_tools_update)"
+            return 0
+        fi
         base_doctor_print_finding \
             "ok" \
             "BASE-D002" \
@@ -211,7 +220,7 @@ base_doctor_run_json() {
     local remote_network="${2:-${BASE_SETUP_REMOTE_NETWORK:-}}"
     local status="ok"
 
-    setup_collect_base_check_results warn || true
+    BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_collect_base_check_results warn || true
     errors="$(base_doctor_count_check_errors)"
     status="$(setup_check_results_status)"
 

@@ -93,6 +93,69 @@ EOF
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
 
+@test "basectl doctor warns when Homebrew reports outdated Xcode Command Line Tools" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+if [[ "${1:-}" == "doctor" ]]; then
+    printf 'Warning: Your Command Line Tools are too outdated.\n'
+    printf 'Update them from Software Update in System Settings.\n'
+    exit 1
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"warn"*"BASE-D002"*"Xcode Command Line Tools"*"Homebrew reports they are outdated or incomplete."* ]]
+    [[ "$output" == *"Fix: Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'."* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
+}
+
 @test "basectl doctor --profile dev reports missing GitHub CLI" {
     local fake_bin="$TEST_TMPDIR/bin"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
@@ -266,6 +329,69 @@ EOF
     [[ "$output" == *'"id":"BASE-D005","status":"error","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"error","name":"click"'* ]]
     [[ "$output" != *"Base doctor"* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl doctor --format json reports outdated Xcode Command Line Tools warning" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+if [[ "${1:-}" == "doctor" ]]; then
+    printf 'Warning: Your Command Line Tools are too outdated.\n'
+    printf 'Update them from Software Update in System Settings.\n'
+    exit 1
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"status": "warn"'* ]]
+    [[ "$output" == *'"id":"BASE-D002","status":"warn","name":"xcode_command_line_tools","message":"Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete.","fix":"Update Xcode Command Line Tools from Software Update, or reinstall them with '\''xcode-select --install'\''."'* ]]
     [ "${stderr:-}" = "" ]
 }
 
