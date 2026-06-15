@@ -542,6 +542,25 @@ EOF
     [[ "$output" == *"--config $repo_dir/.github/base-project.yml"* ]]
 }
 
+@test "basectl repo configure dry-run reports missing project intake workflow" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-project.yml" <<'EOF'
+project:
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+EOF
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/workflows/project-intake.yml'."* ]]
+    [ ! -e "$repo_dir/.github/workflows/project-intake.yml" ]
+}
+
 @test "basectl repo configure can skip project metadata" {
     local repo_dir="$TEST_TMPDIR/repo"
 
@@ -657,6 +676,9 @@ EOF
             --copy-project-fields-from "Base Roadmap"
 
     [ "$status" -eq 0 ]
+    [ -f "$repo_dir/.github/workflows/project-intake.yml" ]
+    grep -Fq "name: Project Intake" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     [[ "$output" == *"Configuring GitHub Project 'base-demo' for 'codeforester/base-demo'."* ]]
     [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from \"Base Roadmap\""* ]]

@@ -25,8 +25,9 @@ the canonical current command list.
   status, checks, or diagnostics.
 - `basectl repo <init|check|configure|agent-guidance|installer-template>` -
   create repository baselines, configure GitHub repository settings and default
-  branch protection, configure standard GitHub Project metadata, seed agent
-  guidance, and write installer templates.
+  branch protection, repair missing Project intake support files, configure
+  standard GitHub Project metadata, seed agent guidance, and write installer
+  templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
   non-interactive CI.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
