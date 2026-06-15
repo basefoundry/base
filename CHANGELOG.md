@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added Base's own `.github/base-project.yml` so Base issues get repo Project
+  defaults through the same reviewed config file as other Base-managed repos.
 - Added `base_cli.ExitCode` constants for Base's standard command return
   values.
 - Added `cwd` support to `base_cli.testing.invoke()` so tests can run commands
@@ -46,6 +48,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `basectl repo configure` apply `.github/base-project.yml`
+  `issue_defaults` to existing repo Project issue items that are missing those
+  values.
 - Reported a clear error when `BASE_ACTIVATE_SHELL` points to a non-Bash shell.
 - Made setup BATS command helpers run with noninteractive stdin so PTY-backed
   test runs exercise recovery guidance consistently.

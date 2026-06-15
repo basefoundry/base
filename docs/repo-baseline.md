@@ -86,7 +86,9 @@ metadata, `--project <title>` to override the Project title, `--project-owner
 schema, and repeat `--initiative-option <name>` to seed repository-specific
 Initiative values. If `.github/base-project.yml` exists, Base reads repo-owned
 `Area` and `Initiative` options from that file and adds missing Project options
-without deleting or renaming existing options.
+without deleting or renaming existing options. Base also applies the file's
+`issue_defaults` to repo Project issue items when those field values are still
+blank.
 During migration from an older shared Project, pass
 `--copy-project-fields-from <title>` to copy missing Project item field values
 by issue, field name, and option name into the repo Project. Existing target
@@ -107,13 +109,15 @@ project:
   issue_defaults:
     status: Backlog
     priority: P2
+    area: Product
+    initiative: Adoption Polish
     size: S
 ```
 
 `areas` and `initiatives` are applied by `repo configure`. `issue_defaults` is
-validated by Project tooling and used by `basectl gh issue create` when it adds
-new issues to the repo Project. It does not set fields on existing issues during
-Project configuration.
+validated by Project tooling, used by `basectl gh issue create` when it adds new
+issues to the repo Project, and applied by `repo configure` to existing Project
+issue items that are missing those field values.
 
 ## Local Baseline
 
@@ -161,12 +165,15 @@ project:
   issue_defaults:
     status: Backlog
     priority: P2
+    area: Product
+    initiative: Adoption Polish
     size: S
 ```
 
-Edit `areas` and `initiatives` in the baseline pull request before merging when
-the repository already knows its taxonomy. Leaving them empty is valid; future
-`repo configure` runs still apply the shared Project fields and issue defaults.
+Edit `areas`, `initiatives`, or the default `area`/`initiative` in the baseline
+pull request before merging when the repository already knows its taxonomy.
+Leaving the option lists empty is valid; future `repo configure` runs still
+apply the shared Project fields and issue defaults.
 
 ## Optional Agent Guidance
 

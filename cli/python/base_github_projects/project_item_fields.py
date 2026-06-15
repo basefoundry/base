@@ -102,6 +102,47 @@ def plan_missing_field_copies(
     return ProjectFieldCopyPlan(tuple(updates), tuple(skipped))
 
 
+def plan_missing_field_defaults(
+    *,
+    target_items: dict[str, ProjectIssueItem],
+    target_fields: dict[str, ProjectSelectField],
+    field_defaults: dict[str, str],
+) -> ProjectFieldCopyPlan:
+    updates: list[ProjectFieldCopy] = []
+    skipped: list[ProjectFieldCopySkip] = []
+    for target in sorted(target_items.values(), key=lambda item: item.issue_number):
+        for field_name, option_name in field_defaults.items():
+            if target.values.get(field_name):
+                continue
+            target_field = target_fields.get(field_name)
+            if target_field is None:
+                skipped.append(
+                    ProjectFieldCopySkip(
+                        target.issue_number, field_name, option_name, "target field is missing"
+                    )
+                )
+                continue
+            option_id = target_field.options.get(option_name)
+            if option_id is None:
+                skipped.append(
+                    ProjectFieldCopySkip(
+                        target.issue_number, field_name, option_name, "target option is missing"
+                    )
+                )
+                continue
+            updates.append(
+                ProjectFieldCopy(
+                    item_id=target.item_id,
+                    issue_number=target.issue_number,
+                    field_name=field_name,
+                    option_name=option_name,
+                    field_id=target_field.field_id,
+                    option_id=option_id,
+                )
+            )
+    return ProjectFieldCopyPlan(tuple(updates), tuple(skipped))
+
+
 def copy_missing_project_item_fields(
     *,
     run_graphql: Callable[[str, dict[str, object]], dict[str, object]],
@@ -113,6 +154,31 @@ def copy_missing_project_item_fields(
         source_items=fetch_project_issue_items(run_graphql, source_project_id),
         target_items=fetch_project_issue_items(run_graphql, target_project_id),
         target_fields=select_fields_by_name(target_fields),
+    )
+    for update in plan.updates:
+        run_graphql(
+            queries.UPDATE_ITEM_FIELD,
+            {
+                "projectId": target_project_id,
+                "itemId": update.item_id,
+                "fieldId": update.field_id,
+                "optionId": update.option_id,
+            },
+        )
+    return FieldCopySummary(len(plan.updates), plan.skipped)
+
+
+def apply_missing_project_item_defaults(
+    *,
+    run_graphql: Callable[[str, dict[str, object]], dict[str, object]],
+    target_project_id: str,
+    target_fields: Iterable[object],
+    field_defaults: dict[str, str],
+) -> FieldCopySummary:
+    plan = plan_missing_field_defaults(
+        target_items=fetch_project_issue_items(run_graphql, target_project_id),
+        target_fields=select_fields_by_name(target_fields),
+        field_defaults=field_defaults,
     )
     for update in plan.updates:
         run_graphql(

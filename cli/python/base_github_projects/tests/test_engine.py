@@ -543,6 +543,105 @@ def test_configure_command_copies_missing_project_fields_when_requested(
     assert copied == [("source-project", "target-project")]
 
 
+def test_configure_command_applies_issue_defaults_from_project_config(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(
+        "project:\n"
+        "  areas:\n"
+        "    - Product\n"
+        "  initiatives:\n"
+        "    - Adoption Polish\n"
+        "  issue_defaults:\n"
+        "    status: Backlog\n"
+        "    priority: P2\n"
+        "    area: Product\n"
+        "    initiative: Adoption Polish\n"
+        "    size: S\n",
+        encoding="utf-8",
+    )
+    fields = (
+        engine.ProjectField(
+            field_id="status-field",
+            name="Status",
+            data_type="SINGLE_SELECT",
+            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Status").options,
+        ),
+        engine.ProjectField(
+            field_id="priority-field",
+            name="Priority",
+            data_type="SINGLE_SELECT",
+            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority").options,
+        ),
+        engine.ProjectField(
+            field_id="area-field",
+            name="Area",
+            data_type="SINGLE_SELECT",
+            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Area").options,
+        ),
+        engine.ProjectField(
+            field_id="initiative-field",
+            name="Initiative",
+            data_type="SINGLE_SELECT",
+            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Initiative").options,
+        ),
+        engine.ProjectField(
+            field_id="size-field",
+            name="Size",
+            data_type="SINGLE_SELECT",
+            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Size").options,
+        ),
+    )
+    applied: list[tuple[str, dict[str, str]]] = []
+
+    def fake_find_owner_and_project(owner: str, title: str) -> engine.OwnerInfo:
+        return engine.OwnerInfo(
+            owner_id="owner-id",
+            login=owner,
+            project=engine.ProjectInfo(project_id="target-project", title=title),
+        )
+
+    monkeypatch.setattr(engine, "find_owner_and_project", fake_find_owner_and_project)
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: fields)
+    monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
+    monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
+    monkeypatch.setattr(engine, "link_project_to_repository", lambda project_id, repo: None)
+    monkeypatch.setattr(engine, "backfill_repository_issues", lambda project_id, repo: 0)
+    monkeypatch.setattr(
+        engine,
+        "apply_missing_project_item_defaults",
+        lambda project_id, target_fields, defaults: applied.append((project_id, defaults))
+        or engine.FieldCopySummary(5, ()),
+    )
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base",
+            owner="codeforester",
+            repo="codeforester/base",
+            config_path=str(config_path),
+        )
+    )
+
+    assert status == 0
+    assert applied == [
+        (
+            "target-project",
+            {
+                "Status": "Backlog",
+                "Priority": "P2",
+                "Area": "Product",
+                "Initiative": "Adoption Polish",
+                "Size": "S",
+            },
+        )
+    ]
+
+
 def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -661,6 +760,57 @@ def test_plan_project_item_field_copies_skips_existing_values_and_missing_option
     assert plan.skipped == (
         project_item_fields.ProjectFieldCopySkip(1, "Size", "M", "target option is missing"),
         project_item_fields.ProjectFieldCopySkip(1, "Area", "CLI", "target field is missing"),
+    )
+
+
+def test_plan_project_item_field_defaults_skips_existing_values_and_missing_options() -> None:
+    from base_github_projects import project_item_fields
+
+    target_items = {
+        "issue-1": project_item_fields.ProjectIssueItem(
+            item_id="target-item-1",
+            issue_id="issue-1",
+            issue_number=1,
+            title="one",
+            values={"Priority": "P1"},
+        ),
+        "issue-2": project_item_fields.ProjectIssueItem(
+            item_id="target-item-2",
+            issue_id="issue-2",
+            issue_number=2,
+            title="two",
+            values={},
+        ),
+    }
+    target_fields = {
+        "Priority": project_item_fields.ProjectSelectField(
+            field_id="priority-field",
+            options={"P2": "priority-p2"},
+        ),
+        "Size": project_item_fields.ProjectSelectField(field_id="size-field", options={}),
+    }
+
+    plan = project_item_fields.plan_missing_field_defaults(
+        target_items=target_items,
+        target_fields=target_fields,
+        field_defaults={"Priority": "P2", "Size": "S", "Area": "CLI"},
+    )
+
+    assert plan.updates == (
+        project_item_fields.ProjectFieldCopy(
+            item_id="target-item-2",
+            issue_number=2,
+            field_name="Priority",
+            option_name="P2",
+            field_id="priority-field",
+            option_id="priority-p2",
+        ),
+    )
+    assert plan.skipped == (
+        project_item_fields.ProjectFieldCopySkip(1, "Size", "S", "target option is missing"),
+        project_item_fields.ProjectFieldCopySkip(1, "Area", "CLI", "target field is missing"),
+        project_item_fields.ProjectFieldCopySkip(2, "Size", "S", "target option is missing"),
+        project_item_fields.ProjectFieldCopySkip(2, "Area", "CLI", "target field is missing"),
     )
 
 
