@@ -39,6 +39,107 @@ EOF
     [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
 }
 
+@test "basectl run routes uv runner commands through uv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/run-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-command" && "${4:-}" == "demo" && "${5:-}" == "audit" ]]; then
+    printf 'demo\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'pytest tests/audit' uv
+    exit 0
+fi
+printf 'unexpected run python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+#!/usr/bin/env bash
+{
+    printf 'pwd=%s\n' "$PWD"
+    printf 'args='
+    printf '<%s>' "$@"
+    printf '\n'
+} > "${BASE_TEST_RUN_STATE:?}"
+EOF
+    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    printf 'project:\n  name: demo\ncommands:\n  audit:\n    command: pytest tests/audit\n    runner: uv\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_RUN_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" run demo audit -- --maxfail=1
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
+    [[ "$(cat "$state_file")" == *"args=<run><--><pytest><tests/audit><--maxfail=1>"* ]]
+}
+
+@test "basectl run uses project .venv for uv-managed projects" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/run-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-command" && "${4:-}" == "demo" && "${5:-}" == "dev" ]]; then
+    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'printf "venv=%s\npath=%s\n" "$BASE_PROJECT_VENV_DIR" "$PATH" > "$BASE_TEST_RUN_STATE"'
+    exit 0
+fi
+printf 'unexpected run python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\npython:\n  manager: uv\ncommands:\n  dev: printf ok\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    printf '#!/usr/bin/env bash\n' > "$workspace/demo/.venv/bin/python"
+    chmod +x "$workspace/demo/.venv/bin/python"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_RUN_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" run demo dev
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$state_file")" == *"venv=$workspace/demo/.venv"* ]]
+    [[ "$(cat "$state_file")" == *"path=$workspace/demo/.venv/bin:"* ]]
+}
+
+@test "basectl run fails clearly when uv runner is missing" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-command" && "${4:-}" == "demo" && "${5:-}" == "audit" ]]; then
+    printf 'demo\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'pytest tests/audit' uv
+    exit 0
+fi
+printf 'unexpected run python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\ncommands:\n  audit:\n    command: pytest tests/audit\n    runner: uv\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" run demo audit
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Command runner 'uv' is not available."* ]]
+}
+
 @test "basectl run dry-run prints resolved command without running it" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

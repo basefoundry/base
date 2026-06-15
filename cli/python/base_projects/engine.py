@@ -38,7 +38,7 @@ from base_projects.workspace_reports import workspace_project_statuses
 from base_projects.workspace_reports import workspace_status_to_json
 from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
-from base_setup.manifest import BaseManifest, ManifestError, TestConfig, read_manifest
+from base_setup.manifest import BaseManifest, CommandConfig, ManifestError, TestConfig, read_manifest
 
 
 app = base_cli.App(name="base_projects")
@@ -516,7 +516,8 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         )
         return 1
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{test_command(manifest.test)}")
+    command_config = test_command(manifest.test)
+    print(_command_output(project.name, project.root, project.manifest_path, command_config))
     return 0
 
 
@@ -539,7 +540,7 @@ def demo_script_project_command(ctx: base_cli.Context, project_name: str | None,
         ctx.log.error(str(exc))
         return 1
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{demo_script}")
+    print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest.demo.runner))
     return 0
 
 
@@ -577,12 +578,12 @@ def run_command_project_command(
     try:
         project = resolve_named_project(ctx, project_name, workspace)
         manifest = read_manifest(project.manifest_path)
-        command_text = project_command(manifest, command_name)
+        command_config = project_command(manifest, command_name)
     except (ProjectDiscoveryError, ManifestError, ProjectCommandError) as exc:
         ctx.log.error(str(exc))
         return 1
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{command_text}")
+    print(_command_output(project.name, project.root, project.manifest_path, command_config))
     return 0
 
 
@@ -602,8 +603,8 @@ def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, w
         ctx.log.error("Project '%s' does not declare runnable commands in '%s'.", project.name, project.manifest_path)
         return 1
 
-    for command_name, command_text in commands.items():
-        print(f"{project.name}\t{project.root}\t{project.manifest_path}\t{command_name}\t{command_text}")
+    for command_name, command_config in commands.items():
+        print(_named_command_output(project.name, project.root, project.manifest_path, command_name, command_config))
     return 0
 
 
@@ -626,11 +627,11 @@ def current_project() -> Project:
     return read_project(manifest_path)
 
 
-def test_command(test_config: TestConfig) -> str:
+def test_command(test_config: TestConfig) -> CommandConfig:
     if test_config.command is not None:
-        return test_config.command
+        return CommandConfig(command=test_config.command, runner=test_config.runner)
     if test_config.mise is not None:
-        return shlex.join(["mise", "run", test_config.mise])
+        return CommandConfig(command=shlex.join(["mise", "run", test_config.mise]), runner=test_config.runner)
     raise ValueError("TestConfig must have command or mise set.")
 
 
@@ -638,15 +639,15 @@ class ProjectCommandError(RuntimeError):
     pass
 
 
-def project_commands(manifest: BaseManifest) -> dict[str, str]:
-    commands: dict[str, str] = {}
+def project_commands(manifest: BaseManifest) -> dict[str, CommandConfig]:
+    commands: dict[str, CommandConfig] = {}
     if manifest.test is not None:
         commands["test"] = test_command(manifest.test)
     commands.update(manifest.commands)
     return commands
 
 
-def project_command(manifest: BaseManifest, command_name: str) -> str:
+def project_command(manifest: BaseManifest, command_name: str) -> CommandConfig:
     commands = project_commands(manifest)
     try:
         return commands[command_name]
@@ -658,6 +659,39 @@ def project_command(manifest: BaseManifest, command_name: str) -> str:
         raise ProjectCommandError(
             f"Project '{manifest.project_name}' does not declare command '{command_name}' in '{manifest.path}'."
         ) from exc
+
+
+def _command_output(project_name: str, project_root: Path, manifest_path: Path, command: CommandConfig) -> str:
+    fields = [project_name, str(project_root), str(manifest_path), command.command]
+    if command.runner is not None:
+        fields.append(command.runner)
+    return "\t".join(fields)
+
+
+def _named_command_output(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    command_name: str,
+    command: CommandConfig,
+) -> str:
+    fields = [project_name, str(project_root), str(manifest_path), command_name, command.command]
+    if command.runner is not None:
+        fields.append(command.runner)
+    return "\t".join(fields)
+
+
+def _demo_output(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    demo_script: Path,
+    runner: str | None,
+) -> str:
+    fields = [project_name, str(project_root), str(manifest_path), str(demo_script)]
+    if runner is not None:
+        fields.append(runner)
+    return "\t".join(fields)
 
 
 def activation_source_paths(project: Project, source_paths: tuple[str, ...]) -> tuple[Path, ...]:

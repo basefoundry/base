@@ -67,6 +67,9 @@ Base orchestrates mature tools instead of replacing them:
 - Homebrew owns ordinary macOS packages and Brewfiles.
 - `mise` owns language/runtime installation when a project declares a mise
   config.
+- uv owns Python dependency resolution, lockfiles, and project-local `.venv`
+  environments when a manifest declares `python.manager: uv`; individual
+  commands can opt into `uv run` with `runner: uv`.
 - IDEs own editor behavior; Base can install apps/extensions/settings
   additively.
 - Docker, `just`, Taskfile, Devbox, Nix, and similar tools can be project-level

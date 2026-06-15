@@ -47,6 +47,9 @@ architecture discussion.
   runners, and similar tools. It should not replace them.
 - Ordinary Homebrew packages should move toward Brewfile delegation unless Base
   needs special handling.
+- uv support is explicit: `python.manager: uv` opts a project into uv-managed
+  setup and `.venv` ownership, while command-level `runner: uv` is independent
+  and may be used in composite projects.
 - Build tool provisioning should be profile-driven or project-declared, not
   hardcoded inside `basectl build`.
 - New tool families such as AI developer tools should stay explicit and

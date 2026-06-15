@@ -39,6 +39,46 @@ EOF
     [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
 }
 
+@test "basectl test routes uv runner commands through uv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/test-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'pytest tests/' uv
+    exit 0
+fi
+printf 'unexpected test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+#!/usr/bin/env bash
+{
+    printf 'pwd=%s\n' "$PWD"
+    printf 'args='
+    printf '<%s>' "$@"
+    printf '\n'
+} > "${BASE_TEST_TEST_STATE:?}"
+EOF
+    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\n  runner: uv\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_TEST_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" test demo -- -k focused
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
+    [[ "$(cat "$state_file")" == *"args=<run><--><pytest><tests/><-k><focused>"* ]]
+}
+
 @test "basectl test dry-run prints resolved command without running it" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

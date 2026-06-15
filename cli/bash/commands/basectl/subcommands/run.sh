@@ -38,7 +38,7 @@ base_run_list_commands() {
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local command_args=(run-commands)
-    local list_output line resolved_name project_root manifest_path command_name command_text
+    local list_output line resolved_name project_root manifest_path command_name command_text command_runner display_text
     local printed_header=0
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
@@ -47,7 +47,7 @@ base_run_list_commands() {
     list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}")" || return $?
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path command_name command_text <<<"$line"
+        IFS=$'\t' read -r resolved_name project_root manifest_path command_name command_text command_runner <<<"$line"
         [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$command_name" ]] || {
             fatal_error "Unable to parse runnable commands for project '$project'."
         }
@@ -55,12 +55,14 @@ base_run_list_commands() {
             printf "Commands for project '%s'\n\n" "$resolved_name"
             printed_header=1
         fi
-        printf '%-20s %s\n' "$command_name" "$command_text"
+        command_runner="${command_runner:-}"
+        display_text="$(base_display_command_with_runner "$command_runner" "$command_text")" || return $?
+        printf '%-20s %s\n' "$command_name" "$display_text"
     done <<<"$list_output"
 }
 
 base_run_subcommand_main() {
-    local project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command venv_dir
+    local project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command command_runner venv_dir
     local command_to_run display_command
     local dry_run=0 list_commands=0 workspace_requested=0
     local args=() extra_args=()
@@ -150,13 +152,13 @@ base_run_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     resolve_output="$("$wrapper" --project base base_projects run-command "$project" "$command_name" "${args[@]}")" || return $?
-    IFS=$'\t' read -r resolved_name project_root manifest_path run_command <<<"$resolve_output"
+    IFS=$'\t' read -r resolved_name project_root manifest_path run_command command_runner <<<"$resolve_output"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$run_command" ]] || {
         fatal_error "Unable to resolve command '$command_name' for project '$project'."
     }
 
-    venv_dir="$(base_project_venv_dir "$resolved_name")"
+    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -169,8 +171,9 @@ base_run_subcommand_main() {
         log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
     fi
 
-    command_to_run="$(base_command_with_extra_args "$run_command" "${extra_args[@]}")"
-    display_command="$(base_display_command "$run_command" "${extra_args[@]}")"
+    command_runner="${command_runner:-}"
+    command_to_run="$(base_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run command %q for project %q in %q: %s\n' \
@@ -179,5 +182,6 @@ base_run_subcommand_main() {
     fi
 
     log_info "Running command '$command_name' for project '$resolved_name': $display_command"
+    base_validate_command_runner "$command_runner"
     (cd "$project_root" && bash -c "$command_to_run" basectl-run "${extra_args[@]}")
 }

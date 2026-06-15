@@ -57,10 +57,39 @@ def write_commands_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_runner_commands_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        "\n".join(
+            [
+                "project:",
+                f"  name: {name}",
+                "test:",
+                "  command: pytest tests/",
+                "  runner: uv",
+                "commands:",
+                "  audit:",
+                "    command: pytest tests/audit",
+                "    runner: uv",
+                "artifacts: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_demo_manifest(project_root: Path, name: str, script: str) -> None:
     project_root.mkdir(parents=True, exist_ok=True)
     (project_root / "base_manifest.yaml").write_text(
         f"project:\n  name: {name}\ndemo:\n  script: {script}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
+def write_runner_demo_manifest(project_root: Path, name: str, script: str) -> None:
+    project_root.mkdir(parents=True, exist_ok=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\ndemo:\n  script: {script}\n  runner: uv\nartifacts: []\n",
         encoding="utf-8",
     )
 
@@ -707,6 +736,42 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
         )
 
+    def test_projects_run_command_prints_runner_when_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_runner_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["run-command", "demo", "audit"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\tpytest tests/audit\tuv\n",
+        )
+
+    def test_projects_test_command_prints_runner_when_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_runner_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["test-command", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\tpytest tests/\tuv\n",
+        )
+
     def test_projects_run_command_reports_unknown_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
@@ -740,6 +805,28 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\t{script.resolve()}\n",
+        )
+
+    def test_projects_demo_script_prints_runner_when_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            script = project_root / "demo" / "demo.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            script.chmod(0o755)
+            write_runner_demo_manifest(project_root, "demo", "./demo/demo.sh")
+
+            status, stdout, stderr = run_engine(["demo-script", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\t{script.resolve()}\tuv\n",
         )
 
     def test_projects_demo_script_defaults_to_current_project(self) -> None:
@@ -815,6 +902,26 @@ class ProjectDiscoveryTests(unittest.TestCase):
             "\tdev\tuvicorn app:app --reload\n"
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             "\tlint\truff check .\n",
+        )
+
+    def test_projects_run_commands_lists_runners_when_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_runner_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["run-commands", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\ttest\tpytest tests/\tuv\n"
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            "\taudit\tpytest tests/audit\tuv\n",
         )
 
     def test_projects_run_commands_defaults_to_current_project(self) -> None:

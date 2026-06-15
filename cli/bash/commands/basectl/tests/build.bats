@@ -64,6 +64,46 @@ EOF
     [[ "$(cat "$state_file")" == *"worker:demo:$workspace/demo/services/worker"* ]]
 }
 
+@test "basectl build routes uv runner targets through uv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/build-state"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    exit 0
+fi
+printf 'unexpected build python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+#!/usr/bin/env bash
+{
+    printf 'pwd=%s\n' "$PWD"
+    printf 'args='
+    printf '<%s>' "$@"
+    printf '\n'
+} > "${BASE_TEST_BUILD_STATE:?}"
+EOF
+    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_BUILD_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" build demo -- --wheel
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$state_file")" == *"pwd=$workspace/demo/services/api"* ]]
+    [[ "$(cat "$state_file")" == *"args=<run><--><python><-m><build><--wheel>"* ]]
+}
+
 @test "basectl build passes explicit targets and extra args" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
@@ -158,6 +198,35 @@ EOF
     [[ "$output" == *"Build targets for project 'demo'"* ]]
     [[ "$output" == *"api"* ]]
     [[ "$output" == *"Build API"* ]]
+}
+
+@test "basectl build --list shows runner without wrapping target descriptions" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-target-list" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    exit 0
+fi
+printf 'unexpected build python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" build demo --list
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Build API [runner: uv]"* ]]
+    [[ "$output" != *"uv run -- Build API"* ]]
 }
 
 @test "basectl build reports resolver errors" {

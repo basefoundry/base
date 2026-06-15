@@ -13,8 +13,10 @@ The current command surface covers:
 - checks and doctor diagnostics
 - project discovery
 - project activation
-- declared project test, build, run, and demo commands
+- declared project test, build, run, and demo commands, including explicit
+  `runner: uv` delegation
 - mise integration
+- explicit uv-managed Python project setup through `python.manager: uv`
 - cleanup and logs
 - local config inspection
 - onboarding
@@ -28,9 +30,10 @@ The current command surface covers:
 ## Active Development Direction
 
 The `v1.0.0` milestone is complete. Post-1.0 work is tracked toward `v1.1.0`,
-with Linux runtime support, uv-managed Python project behavior, Docker/service
-artifacts, and shell stdlib hardening remaining outside the 1.0 release
-contract.
+with Linux runtime support, Docker/service artifacts, and shell stdlib
+hardening remaining outside the 1.0 release contract. uv-managed Python project
+behavior is now implemented after 1.0 through the explicit
+`python.manager: uv` contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -52,6 +55,7 @@ Recent released work includes:
 - stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
 - Base `1.0.1` AGPL license cleanup and release artifacts
+- explicit uv-managed Python setup and command runner support
 
 ## Recent Merged Changes
 
@@ -60,7 +64,7 @@ Recent commits on `master` include:
 - public evaluator documentation through `docs/why-base.md`
 - AGPL license cleanup and generated-license correction for `basectl repo init`
 - Homebrew and source checkout install-path clarification
-- uv ecosystem boundary documentation
+- uv ecosystem boundary documentation and explicit uv-managed project support
 - repo Project metadata handoff and command-specific `basectl repo` help
 - shell stdlib dry-run safety fixes from BankBuddy dogfooding
 - Homebrew bottle and upgrade-path release process hardening

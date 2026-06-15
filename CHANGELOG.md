@@ -20,6 +20,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added a generated Project intake workflow so Base-managed repos can
   idempotently add externally-created issues to their repo Project and apply
   default Project fields.
+- Added explicit uv-managed Python project support with `python.manager: uv`,
+  delegated `uv sync` setup, uv diagnostics, and command-level `runner: uv`
+  support for test, run, demo, and build commands.
 
 ### Changed
 
