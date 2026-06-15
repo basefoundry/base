@@ -16,7 +16,7 @@ class BootstrapManifestTests(unittest.TestCase):
         ctx = fake_context()
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),
-            project_name="__base_defaults__",
+            project_name="base-defaults",
             brewfile=None,
             artifacts=(
                 ArtifactRequest(artifact_type="python-package", name="click", version="8.4.1", bootstrap=True),

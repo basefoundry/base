@@ -227,6 +227,11 @@ def _read_project_name(path: Path, project_data: Any) -> str:
     project_name = project_data.get("name")
     if not isinstance(project_name, str) or not project_name:
         raise ManifestError(f"{path}: project.name is required.")
+    if not COMMAND_NAME_RE.fullmatch(project_name):
+        raise ManifestError(
+            f"{path}: project.name must be a valid name "
+            "(alphanumeric with optional dots, dashes, underscores, or colons)."
+        )
     return project_name
 
 

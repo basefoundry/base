@@ -50,7 +50,7 @@ def write_default_manifest(base_home: Path) -> None:
     default_manifest = base_home / "lib" / "base" / "default_manifest.yaml"
     default_manifest.parent.mkdir(parents=True)
     default_manifest.write_text(
-        "project:\n  name: __base_defaults__\nartifacts: []\n",
+        "project:\n  name: base-defaults\nartifacts: []\n",
         encoding="utf-8",
     )
 

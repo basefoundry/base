@@ -1,7 +1,7 @@
 schema_version: 1
 
 project:
-  name: __base_dev__
+  name: base-dev
 
 artifacts:
   - type: tool

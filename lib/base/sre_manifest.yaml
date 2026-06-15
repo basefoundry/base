@@ -1,7 +1,7 @@
 schema_version: 1
 
 project:
-  name: __base_sre__
+  name: base-sre
 
 artifacts:
   - type: tool

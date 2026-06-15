@@ -34,6 +34,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Aligned bootstrap and installer candidate-list splitting with the scoped
   `IFS=: read -ra` Bash pattern.
+- Normalized Base's built-in default, developer, and SRE profile manifest
+  names to the same safe project-name syntax enforced for project manifests.
 - Made `base_cli` log source paths prefer the active project root before
   falling back to the process working directory.
 
@@ -42,6 +44,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Redacted compound secret-like command-output assignments such as
   `GITHUB_TOKEN=...`, `DB_PASSWORD=...`, and
   `AWS_SECRET_ACCESS_KEY=...` from setup failure summaries and debug logs.
+- Rejected path-unsafe `project.name` values in `base_manifest.yaml` before
+  they can be used in Base-managed state paths.
 - Removed `eval` from Bash `.baserc` guard variable snapshots while preserving
   Bash 4.2 compatibility.
 - Replaced `install.sh` shell strict mode with explicit installer command
