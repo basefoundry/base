@@ -32,6 +32,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made `basectl repo init` generate AGPL-3.0-or-later licenses for new
+  repositories.
 - Relicensed Base prospectively from MIT to AGPL-3.0-or-later.
 - Aligned bootstrap and installer candidate-list splitting with the scoped
   `IFS=: read -ra` Bash pattern.

@@ -54,7 +54,7 @@ Options:
   --repo <owner/name>           GitHub repository to configure.
   --pr                          Commit the generated baseline on a branch and open a pull request.
   --description <text>          Repository description for generated README.
-  --copyright-holder <name>     Copyright holder for generated LICENSE. Defaults to git config user.name.
+  --copyright-holder <name>     Copyright holder for generated AGPL license. Defaults to git config user.name.
   --private                     Create a private GitHub repository when needed. This is the default.
   --public                      Create a public GitHub repository when needed.
   --no-configure                Skip GitHub configuration during repo init.
@@ -740,32 +740,34 @@ base_repo_write_license() {
     local copyright_holder="$2"
     local dry_run="$1"
     local root="$3"
+    local source_license="${BASE_HOME:-}/LICENSE"
     local year
 
+    [[ -f "$source_license" ]] || {
+        log_error "Base AGPL license text '$source_license' was not found."
+        return 1
+    }
+
     year="$(base_repo_baseline_year)"
-    base_repo_write_stream "$dry_run" "$root/LICENSE" <<EOF
-MIT License
+    {
+        cat <<EOF
+Copyright (C) $year $copyright_holder
 
-Copyright (c) $year $copyright_holder
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
 EOF
+        printf '\n'
+        cat "$source_license"
+    } | base_repo_write_stream "$dry_run" "$root/LICENSE"
 }
 
 base_repo_write_gitignore() {

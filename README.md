@@ -428,7 +428,7 @@ basectl repo init example --repo codeforester/example
 ```
 
 This creates the local repository baseline: README, version, changelog,
-contributing guide, MIT license, `.gitignore`, `base_manifest.yaml`, a
+contributing guide, AGPL-3.0-or-later license, `.gitignore`, `base_manifest.yaml`, a
 `tests/validate.sh` contract, and a GitHub Actions workflow that runs it.
 By default, `repo init` creates the repository under `workspace.root` from
 `~/.base.d/config.yaml`; if that is not configured, it falls back to the parent
