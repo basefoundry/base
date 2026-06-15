@@ -26,6 +26,8 @@ COMMAND_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 GITHUB_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 HOMEBREW_PACKAGE_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/[A-Za-z0-9_.+-]+$")
 PORT_HEALTH_STATES = {"free", "listening"}
+SUPPORTED_PYTHON_MANAGERS = {"uv"}
+SUPPORTED_COMMAND_RUNNERS = {"uv"}
 
 
 class ManifestError(ValueError):
@@ -51,12 +53,20 @@ class IdeConfig:
 class TestConfig:
     command: str | None = None
     mise: str | None = None
+    runner: str | None = None
+
+
+@dataclass(frozen=True)
+class CommandConfig:
+    command: str
+    runner: str | None = None
 
 
 @dataclass(frozen=True)
 class DemoConfig:
     script: str
     description: str | None = None
+    runner: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +90,7 @@ class ReleaseConfig:
     tag_prefix: str
     github: ReleaseGithubConfig
     homebrew: ReleaseHomebrewConfig | None = None
+    runner: str | None = None
 
 
 @dataclass(frozen=True)
@@ -87,6 +98,7 @@ class BuildTargetConfig:
     command: str
     working_dir: str = "."
     description: str | None = None
+    runner: str | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +127,11 @@ class ActivateConfig:
 
 
 @dataclass(frozen=True)
+class PythonConfig:
+    manager: str | None = None
+
+
+@dataclass(frozen=True)
 class BaseManifest:
     path: Path
     project_name: str
@@ -125,8 +142,9 @@ class BaseManifest:
     test: TestConfig | None = None
     schema_version: int = CURRENT_MANIFEST_SCHEMA_VERSION
     health: HealthConfig = field(default_factory=HealthConfig)
-    commands: dict[str, str] = field(default_factory=dict)
+    commands: dict[str, CommandConfig] = field(default_factory=dict)
     activate: ActivateConfig = field(default_factory=ActivateConfig)
+    python: PythonConfig = field(default_factory=PythonConfig)
     demo: DemoConfig | None = None
     build: BuildConfig | None = None
     release: ReleaseConfig | None = None
@@ -160,6 +178,7 @@ def read_manifest(path: Path) -> BaseManifest:
         "health",
         "commands",
         "activate",
+        "python",
         "demo",
         "build",
         "release",
@@ -177,6 +196,7 @@ def read_manifest(path: Path) -> BaseManifest:
     health = _read_health(path, data.get("health"))
     commands = _read_commands(path, data.get("commands"))
     activate = _read_activate(path, data.get("activate"))
+    python = _read_python(path, data.get("python"))
     demo = _read_demo(path, data.get("demo"))
     build = _read_build(path, data.get("build"))
     release = _read_release(path, data.get("release"))
@@ -194,6 +214,7 @@ def read_manifest(path: Path) -> BaseManifest:
         health=health,
         commands=commands,
         activate=activate,
+        python=python,
         demo=demo,
         build=build,
         release=release,
@@ -273,7 +294,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     if not isinstance(test_data, dict):
         raise ManifestError(f"{path}: test must be a mapping when provided.")
 
-    allowed_keys = {"command", "mise"}
+    allowed_keys = {"command", "mise", "runner"}
     unknown_keys = sorted(set(test_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: test has unsupported keys: {', '.join(unknown_keys)}.")
@@ -292,6 +313,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     return TestConfig(
         command=command.strip() if command is not None else None,
         mise=mise.strip() if mise is not None else None,
+        runner=_read_optional_runner(path, "test.runner", test_data.get("runner")),
     )
 
 
@@ -301,7 +323,7 @@ def _read_demo(path: Path, demo_data: Any) -> DemoConfig | None:
     if not isinstance(demo_data, dict):
         raise ManifestError(f"{path}: demo must be a mapping when provided.")
 
-    allowed_keys = {"script", "description"}
+    allowed_keys = {"script", "description", "runner"}
     unknown_keys = sorted(set(demo_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: demo has unsupported keys: {', '.join(unknown_keys)}.")
@@ -319,7 +341,9 @@ def _read_demo(path: Path, demo_data: Any) -> DemoConfig | None:
             raise ManifestError(f"{path}: demo.description must be a non-empty string when provided.")
         description = description.strip()
 
-    return DemoConfig(script=script, description=description)
+    runner = _read_optional_runner(path, "demo.runner", demo_data.get("runner"))
+
+    return DemoConfig(script=script, description=description, runner=runner)
 
 
 def _read_build(path: Path, build_data: Any) -> BuildConfig | None:
@@ -344,7 +368,7 @@ def _read_release(path: Path, release_data: Any) -> ReleaseConfig | None:
     if not isinstance(release_data, dict):
         raise ManifestError(f"{path}: release must be a mapping when provided.")
 
-    allowed_keys = {"version_file", "changelog", "tag_prefix", "github", "homebrew"}
+    allowed_keys = {"version_file", "changelog", "tag_prefix", "github", "homebrew", "runner"}
     unknown_keys = sorted(set(release_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: release has unsupported keys: {', '.join(unknown_keys)}.")
@@ -369,6 +393,7 @@ def _read_release(path: Path, release_data: Any) -> ReleaseConfig | None:
         tag_prefix=tag_prefix,
         github=github,
         homebrew=homebrew,
+        runner=_read_optional_runner(path, "release.runner", release_data.get("runner")),
     )
 
 
@@ -539,7 +564,7 @@ def _read_build_target(path: Path, target_name: str, target_data: Any) -> BuildT
     if not isinstance(target_data, dict):
         raise ManifestError(f"{path}: build.targets.{target_name} must be a mapping.")
 
-    allowed_keys = {"command", "working_dir", "description"}
+    allowed_keys = {"command", "working_dir", "description", "runner"}
     unknown_keys = sorted(set(target_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(
@@ -574,7 +599,9 @@ def _read_build_target(path: Path, target_name: str, target_data: Any) -> BuildT
                 f"{path}: build.targets.{target_name}.description must not contain control line breaks."
             )
 
-    return BuildTargetConfig(command=command, working_dir=working_dir, description=description)
+    runner = _read_optional_runner(path, f"build.targets.{target_name}.runner", target_data.get("runner"))
+
+    return BuildTargetConfig(command=command, working_dir=working_dir, description=description, runner=runner)
 
 
 def _read_health(path: Path, health_data: Any) -> HealthConfig:
@@ -594,13 +621,13 @@ def _read_health(path: Path, health_data: Any) -> HealthConfig:
     )
 
 
-def _read_commands(path: Path, commands_data: Any) -> dict[str, str]:
+def _read_commands(path: Path, commands_data: Any) -> dict[str, CommandConfig]:
     if commands_data is None:
         return {}
     if not isinstance(commands_data, dict):
         raise ManifestError(f"{path}: commands must be a mapping when provided.")
 
-    commands: dict[str, str] = {}
+    commands: dict[str, CommandConfig] = {}
     for command_name_data, command_data in commands_data.items():
         if not isinstance(command_name_data, str) or not command_name_data.strip():
             raise ManifestError(f"{path}: commands keys must be non-empty strings.")
@@ -611,10 +638,34 @@ def _read_commands(path: Path, commands_data: Any) -> dict[str, str]:
             raise ManifestError(f"{path}: commands.test is reserved; use top-level test.command or test.mise.")
         if command_name in commands:
             raise ManifestError(f"{path}: commands duplicates '{command_name}'.")
-        if not isinstance(command_data, str) or not command_data.strip():
-            raise ManifestError(f"{path}: commands.{command_name} must be a non-empty string.")
-        commands[command_name] = command_data.strip()
+        commands[command_name] = _read_command_config(path, f"commands.{command_name}", command_data)
     return commands
+
+
+def _read_command_config(path: Path, field_name: str, command_data: Any) -> CommandConfig:
+    if isinstance(command_data, str):
+        if not command_data.strip():
+            raise ManifestError(f"{path}: {field_name} must be a non-empty string.")
+        return CommandConfig(command=command_data.strip())
+
+    if not isinstance(command_data, dict):
+        raise ManifestError(f"{path}: {field_name} must be a non-empty string or command mapping.")
+
+    allowed_keys = {"command", "runner"}
+    unknown_keys = sorted(set(command_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: {field_name} has unsupported keys: {', '.join(unknown_keys)}.")
+
+    command = command_data.get("command")
+    if not isinstance(command, str) or not command.strip():
+        raise ManifestError(f"{path}: {field_name}.command must be a non-empty string.")
+    if _has_control_line_break(command):
+        raise ManifestError(f"{path}: {field_name}.command must not contain control line breaks.")
+
+    return CommandConfig(
+        command=command.strip(),
+        runner=_read_optional_runner(path, f"{field_name}.runner", command_data.get("runner")),
+    )
 
 
 def _read_activate(path: Path, activate_data: Any) -> ActivateConfig:
@@ -629,6 +680,41 @@ def _read_activate(path: Path, activate_data: Any) -> ActivateConfig:
         raise ManifestError(f"{path}: activate has unsupported keys: {', '.join(unknown_keys)}.")
 
     return ActivateConfig(source=_read_activate_sources(path, activate_data.get("source", [])))
+
+
+def _read_python(path: Path, python_data: Any) -> PythonConfig:
+    if python_data is None:
+        return PythonConfig()
+    if not isinstance(python_data, dict):
+        raise ManifestError(f"{path}: python must be a mapping when provided.")
+
+    allowed_keys = {"manager"}
+    unknown_keys = sorted(set(python_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: python has unsupported keys: {', '.join(unknown_keys)}.")
+
+    manager = python_data.get("manager")
+    if manager is None:
+        return PythonConfig()
+    if not isinstance(manager, str) or not manager.strip():
+        raise ManifestError(f"{path}: python.manager must be a non-empty string when provided.")
+    manager = manager.strip()
+    if manager not in SUPPORTED_PYTHON_MANAGERS:
+        supported = ", ".join(sorted(SUPPORTED_PYTHON_MANAGERS))
+        raise ManifestError(f"{path}: python.manager must be one of: {supported}.")
+    return PythonConfig(manager=manager)
+
+
+def _read_optional_runner(path: Path, field_name: str, runner_data: Any) -> str | None:
+    if runner_data is None:
+        return None
+    if not isinstance(runner_data, str) or not runner_data.strip():
+        raise ManifestError(f"{path}: {field_name} must be a non-empty string when provided.")
+    runner = runner_data.strip()
+    if runner not in SUPPORTED_COMMAND_RUNNERS:
+        supported = ", ".join(sorted(SUPPORTED_COMMAND_RUNNERS))
+        raise ManifestError(f"{path}: {field_name} must be one of: {supported}.")
+    return runner
 
 
 def _read_activate_sources(path: Path, source_data: Any) -> tuple[str, ...]:

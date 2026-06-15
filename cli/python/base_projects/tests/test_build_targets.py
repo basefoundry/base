@@ -68,6 +68,30 @@ def write_build_manifest_without_default(project_root: Path, name: str) -> None:
     )
 
 
+def write_build_manifest_with_runner(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "services" / "api").mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        "\n".join(
+            [
+                "project:",
+                f"  name: {name}",
+                "build:",
+                "  default:",
+                "    - package",
+                "  targets:",
+                "    package:",
+                "      working_dir: services/api",
+                "      command: python -m build",
+                "      runner: uv",
+                "      description: Build the Python package.",
+                "artifacts: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -173,6 +197,25 @@ class BuildTargetTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tworker\t{(project_root / 'services' / 'worker').resolve()}\tgo build ./cmd/worker"
             "\tBuild the worker service.\n",
+        )
+
+    def test_projects_build_targets_prints_runner_when_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_build_manifest_with_runner(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["build-targets", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\tpackage\t{(project_root / 'services' / 'api').resolve()}\tpython -m build"
+            "\tBuild the Python package.\tuv\n",
         )
 
     def test_projects_build_target_list_prints_all_targets(self) -> None:

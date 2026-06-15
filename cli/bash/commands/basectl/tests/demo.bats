@@ -62,6 +62,47 @@ EOF
     [[ "$(cat "$state_file")" == *"args=<--non-interactive><name with spaces>"* ]]
 }
 
+@test "basectl demo routes uv runner scripts through uv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/demo-state"
+    local script_path="$workspace/demo/demo/demo.sh"
+
+    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")" "$TEST_HOME/.base.d/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo/demo.sh" uv
+    exit 0
+fi
+printf 'unexpected demo python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+#!/usr/bin/env bash
+{
+    printf 'pwd=%s\n' "$PWD"
+    printf 'args='
+    printf '<%s>' "$@"
+    printf '\n'
+} > "${BASE_TEST_DEMO_STATE:?}"
+EOF
+    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    touch "$script_path"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        BASE_TEST_DEMO_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" demo demo -- --non-interactive
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
+    [[ "$(cat "$state_file")" == *"args=<run><--><$workspace/demo/demo/demo.sh><--non-interactive>"* ]]
+}
+
 @test "basectl demo can resolve the current project when omitted" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

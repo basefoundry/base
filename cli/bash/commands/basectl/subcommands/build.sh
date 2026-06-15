@@ -38,7 +38,8 @@ base_build_list_targets() {
     shift
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local list_output line resolved_name project_root manifest_path target_name working_dir build_command description
+    local list_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
+    local display_text
     local printed_header=0
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
@@ -46,7 +47,7 @@ base_build_list_targets() {
     list_output="$("$wrapper" --project base base_projects build-target-list "$project" "${args[@]}")" || return $?
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description <<<"$line"
+        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description command_runner <<<"$line"
         [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" ]] || {
             fatal_error "Unable to parse build targets for project '$project'."
         }
@@ -54,12 +55,21 @@ base_build_list_targets() {
             printf "Build targets for project '%s'\n\n" "$resolved_name"
             printed_header=1
         fi
-        printf '%-20s %-40s %s\n' "$target_name" "$working_dir" "${description:-$build_command}"
+        command_runner="${command_runner:-}"
+        if [[ -n "$description" ]]; then
+            display_text="$description"
+            if [[ -n "$command_runner" ]]; then
+                display_text+=" [runner: $command_runner]"
+            fi
+        else
+            display_text="$(base_display_command_with_runner "$command_runner" "$build_command")" || return $?
+        fi
+        printf '%-20s %-40s %s\n' "$target_name" "$working_dir" "$display_text"
     done <<<"$list_output"
 }
 
 base_build_subcommand_main() {
-    local project="" wrapper resolve_output line resolved_name project_root manifest_path target_name working_dir build_command description
+    local project="" wrapper resolve_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
     local venv_dir command_to_run display_command
     local dry_run=0 list_targets=0 workspace_requested=0
     local args=() extra_args=() targets=()
@@ -148,13 +158,13 @@ base_build_subcommand_main() {
     venv_dir=""
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description <<<"$line"
+        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description command_runner <<<"$line"
         [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" && -n "$build_command" ]] || {
             fatal_error "Unable to parse build target '$target_name' for project '$project'."
         }
 
         if [[ -z "$venv_dir" ]]; then
-            venv_dir="$(base_project_venv_dir "$resolved_name")"
+            venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
             export BASE_PROJECT="$resolved_name"
             export BASE_PROJECT_ROOT="$project_root"
             export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -168,8 +178,9 @@ base_build_subcommand_main() {
             fi
         fi
 
-        command_to_run="$(base_command_with_extra_args "$build_command" "${extra_args[@]}")"
-        display_command="$(base_display_command "$build_command" "${extra_args[@]}")"
+        command_runner="${command_runner:-}"
+        command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
+        display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
 
         if [[ "$dry_run" == "1" ]]; then
             printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \
@@ -178,6 +189,7 @@ base_build_subcommand_main() {
         fi
 
         log_info "Building target '$target_name' for project '$resolved_name': $display_command"
+        base_validate_command_runner "$command_runner"
         (cd "$working_dir" && bash -c "$command_to_run" basectl-build "${extra_args[@]}") || return $?
     done <<<"$resolve_output"
 }

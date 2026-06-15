@@ -138,22 +138,22 @@ How Base should coexist:
 
 - continue observing same-directory `pyproject.toml` through read-only
   diagnostics
-- preserve the current conservative activation behavior for uv-shaped projects:
-  when `pyproject.toml` and `uv.lock` are both present and the user has not
-  overridden `BASE_PROJECT_VENV_DIR`, `basectl activate` uses the repo-local
-  `.venv`
-- grow future uv support through an explicit `python:` manifest contract rather
-  than ad hoc `pyproject.toml` ownership
+- use the repo-local `.venv` only when a project explicitly declares
+  `python.manager: uv`
+- allow individual commands to declare `runner: uv` without requiring the whole
+  project to use `python.manager: uv`
 - report missing uv, missing `.venv`, or needed `uv sync` steps through
   Base-native check and doctor output when the project has opted into that
   contract
-- invoke uv transparently when delegation is added, so logs and diagnostics show
-  the underlying uv command instead of hiding it behind Base
+- invoke uv transparently, so dry-run output, logs, and diagnostics show the
+  underlying `uv sync` or `uv run -- ...` command instead of hiding it behind
+  Base
 
-Current stance: strong coexistence. Base already has conservative activation and
-read-only pyproject diagnostics for uv-shaped projects; fuller setup, check,
-run, and test delegation should wait for an explicit Python manifest contract.
-See [Python Manifest Section](python-manifest.md) for the current boundary.
+Current stance: strong coexistence. Base supports explicit uv-managed Python
+projects through `python.manager: uv` and command-level uv execution through
+`runner: uv`. Base still does not infer uv ownership from `pyproject.toml` or
+`uv.lock` alone. See [Python Manifest Section](python-manifest.md) for the
+current boundary.
 
 ### `direnv`
 

@@ -3,6 +3,10 @@
 _base_activate_subcommand_sourced=1
 readonly _base_activate_subcommand_sourced
 
+_base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/project_command_helpers.sh"
+# shellcheck source=/dev/null
+source "$_base_project_command_helpers_path"
+
 base_activate_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -32,27 +36,12 @@ base_activate_resolve_project() {
     env -u BASE_PROJECT_VENV_DIR "$wrapper" --project base base_projects resolve "$project" "$@"
 }
 
-base_activate_project_uses_uv() {
-    local project_root="$1"
-
-    [[ -n "$project_root" && -f "$project_root/pyproject.toml" && -f "$project_root/uv.lock" ]]
-}
-
 base_activate_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
+    local manifest_path="${3:-}"
 
-    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
-        printf '%s\n' "$BASE_PROJECT_VENV_DIR"
-        return 0
-    fi
-
-    if base_activate_project_uses_uv "$project_root"; then
-        printf '%s\n' "$project_root/.venv"
-        return 0
-    fi
-
-    printf '%s\n' "$HOME/.base.d/$project/.venv"
+    base_project_venv_dir "$project" "$project_root" "$manifest_path"
 }
 
 base_activate_shell_is_bash() {
@@ -124,9 +113,9 @@ base_activate_subcommand_main() {
         fatal_error "Unable to resolve project '$project'."
     }
 
-    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root")"
+    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
     venv_fix="Run 'basectl setup $resolved_name' first."
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_activate_project_uses_uv "$project_root"; then
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_uses_uv_manager "$manifest_path"; then
         venv_fix="Run 'uv sync' in '$project_root' first."
     fi
     [[ -x "$venv_dir/bin/python" ]] || {

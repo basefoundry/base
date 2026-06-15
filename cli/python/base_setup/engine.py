@@ -38,6 +38,9 @@ from .ide import reconcile_ide_installs
 from .ide import reconcile_ide_settings
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .pyproject import check_pyproject
+from .uv import check_uv
+from .uv import manifest_uses_uv_project_manager
+from .uv import reconcile_uv_project
 
 
 app = base_cli.App(name="base_setup")
@@ -188,7 +191,7 @@ def reconcile_manifest(
     log_ide_preference_warnings(ctx, ide_preference_warning_checks(manifest, user_config))
     effective_manifest = effective_manifest_with_user_config(manifest, user_config)
 
-    artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
+    artifacts = setup_artifacts(default_manifest, effective_manifest)
     definitions = resolve_artifact_definitions(artifacts)
     if not effective_manifest.artifacts:
         if artifacts:
@@ -204,8 +207,10 @@ def reconcile_manifest(
     reconcile_ide_installs(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_extensions(ctx, effective_manifest, dry_run=dry_run)
     reconcile_ide_settings(ctx, effective_manifest, dry_run=dry_run)
+    reconcile_uv_project(ctx, effective_manifest, dry_run=dry_run)
 
-    reconcile_artifacts(ctx, artifacts, definitions, effective_manifest.project_name, dry_run=dry_run)
+    if artifacts:
+        reconcile_artifacts(ctx, artifacts, definitions, effective_manifest.project_name, dry_run=dry_run)
 
     ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
@@ -336,7 +341,7 @@ def manifest_checks(
     checks: list[ArtifactCheck] = []
     user_config = read_user_config()
     effective_manifest = effective_manifest_with_user_config(manifest, user_config)
-    artifacts = merge_artifacts(default_manifest.artifacts, effective_manifest.artifacts)
+    artifacts = setup_artifacts(default_manifest, effective_manifest)
     definitions = resolve_artifact_definitions(artifacts)
 
     pre_venv_checks.extend(pre_venv_manifest_checks(effective_manifest, remote_network=remote_network))
@@ -354,6 +359,7 @@ def manifest_checks(
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
+    checks.extend(check_uv(effective_manifest))
     checks.extend(check_pyproject(effective_manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
@@ -385,6 +391,15 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         health=manifest.health,
         commands=manifest.commands,
         activate=manifest.activate,
+        python=manifest.python,
         demo=manifest.demo,
         build=manifest.build,
+        release=manifest.release,
     )
+
+
+def setup_artifacts(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple:
+    artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
+    if not manifest_uses_uv_project_manager(manifest):
+        return artifacts
+    return tuple(artifact for artifact in artifacts if artifact.artifact_type != "python-package")

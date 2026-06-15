@@ -266,11 +266,11 @@ an integer compatibility marker for the manifest contract, not a Base release
 number. Base rejects manifests with a newer schema version than it understands
 and asks the user to upgrade Base.
 
-The manifest intentionally describes what the project needs, not arbitrary
-commands to execute. Base's direction is delegation-first: use mature tools for
-the domains they already own, and keep Base responsible for workspace
-orchestration, project discovery, the project virtual environment, and
-diagnostics.
+The manifest intentionally describes what the project needs and which
+project-owned commands Base should expose. Base's direction is
+delegation-first: use mature tools for the domains they already own, and keep
+Base responsible for workspace orchestration, project discovery, the project
+virtual environment, and diagnostics.
 
 The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
 to the project root. When present, `basectl setup` runs
@@ -313,6 +313,23 @@ commands:
   dev: mise run dev
   lint: mise run lint
 ```
+
+Commands may declare a generic `runner`. The first supported runner is `uv`:
+
+```yaml
+test:
+  command: pytest
+  runner: uv
+
+commands:
+  taxbuddy:
+    command: taxbuddy
+    runner: uv
+```
+
+`runner: uv` routes that command through `uv run -- ...`. It is independent of
+the project-level Python manager, so composite projects can use uv for one
+Python utility while keeping other commands in Go, Node, shell, or `mise`.
 
 For a polyglot project such as `banyanlabs`, keep Base at the workspace
 orchestration layer and let the language-native tools own their usual files.
@@ -365,10 +382,18 @@ PyPI package names and install into the project virtual environment at
 delegation. Pinned Homebrew versions fail clearly until Base grows explicit
 versioned tool support.
 
-A future structured `python:` manifest section can make project venv and
-requirement-file behavior clearer when `python-package` artifact rows become too
-limited. The current supported contract remains `python-package`; the future
-shape is documented in [Python Manifest Section](docs/python-manifest.md).
+The optional structured `python:` manifest section supports uv-managed Python
+projects:
+
+```yaml
+python:
+  manager: uv
+```
+
+For uv-managed projects, Base delegates setup to `uv sync`, uses the
+project-local `.venv` for activation and project commands, and skips
+Base-managed `python-package` reconciliation. See
+[Python Manifest Section](docs/python-manifest.md).
 
 Artifacts may include `bootstrap: true` when they are part of the minimum Python
 runtime contract needed before Base can reconcile a project's remaining
@@ -564,6 +589,9 @@ The `commands` map is intentionally small and declarative:
 ```yaml
 commands:
   dev: uvicorn app:app --reload
+  audit:
+    command: pytest tests/audit
+    runner: uv
   lint: ruff check .
   format: ruff format .
 ```

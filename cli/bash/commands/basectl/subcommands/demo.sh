@@ -31,7 +31,8 @@ base_demo_usage_error() {
 }
 
 base_demo_subcommand_main() {
-    local project="" wrapper resolve_output resolved_name project_root manifest_path demo_script venv_dir
+    local project="" wrapper resolve_output resolved_name project_root manifest_path demo_script command_runner venv_dir
+    local quoted_demo_script command_to_run display_command
     local dry_run=0 workspace_requested=0
     local args=() extra_args=() project_args=()
 
@@ -94,13 +95,13 @@ base_demo_subcommand_main() {
 
     [[ -n "$project" ]] && project_args+=("$project")
     resolve_output="$("$wrapper" --project base base_projects demo-script "${project_args[@]}" "${args[@]}")" || return $?
-    IFS=$'\t' read -r resolved_name project_root manifest_path demo_script <<<"$resolve_output"
+    IFS=$'\t' read -r resolved_name project_root manifest_path demo_script command_runner <<<"$resolve_output"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$demo_script" ]] || {
         fatal_error "Unable to resolve demo script for project '${project:-current project}'."
     }
 
-    venv_dir="$(base_project_venv_dir "$resolved_name")"
+    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -113,12 +114,22 @@ base_demo_subcommand_main() {
         log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
     fi
 
+    command_runner="${command_runner:-}"
+    printf -v quoted_demo_script '%q' "$demo_script"
+    command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
+
     if [[ "$dry_run" == "1" ]]; then
-        printf '[DRY-RUN] Would run demo for project %q in %q: %q%s\n' \
-            "$resolved_name" "$project_root" "$demo_script" "$(base_format_extra_args "${extra_args[@]}")"
+        printf '[DRY-RUN] Would run demo for project %q in %q: %s\n' \
+            "$resolved_name" "$project_root" "$display_command"
         return 0
     fi
 
-    log_info "Running demo for project '$resolved_name': $demo_script$(base_format_extra_args "${extra_args[@]}")"
-    (cd "$project_root" && "$demo_script" "${extra_args[@]}")
+    log_info "Running demo for project '$resolved_name': $display_command"
+    if [[ -z "$command_runner" ]]; then
+        (cd "$project_root" && "$demo_script" "${extra_args[@]}")
+        return $?
+    fi
+    base_validate_command_runner "$command_runner"
+    (cd "$project_root" && bash -c "$command_to_run" basectl-demo "${extra_args[@]}")
 }

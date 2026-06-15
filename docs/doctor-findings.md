@@ -130,6 +130,10 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P141` | `pyproject.toml` readability |
 | `BASE-P142` | `pyproject.toml` dependency metadata observed but not reconciled |
 | `BASE-P143` | Unsupported `[tool.base]` configuration |
+| `BASE-P150` | uv CLI availability for uv-managed projects or uv command runners |
+| `BASE-P151` | uv-managed project `pyproject.toml` presence |
+| `BASE-P152` | uv-managed project `uv.lock` presence |
+| `BASE-P153` | Stale Base-managed project virtual environment ignored by a uv-managed project |
 
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
@@ -144,6 +148,12 @@ Base only inspects the `pyproject.toml` file beside the active
 configuration source and do not cause Base to install Python dependencies.
 Warnings in this range should guide users toward a valid Python project file
 without failing the Base manifest check by themselves.
+
+`BASE-P150` through `BASE-P153` are uv support diagnostics. They are warnings
+when uv tooling or expected uv project files are missing, because check/doctor
+should explain readiness without performing dependency resolution. Command
+invocation still fails hard when a command declares `runner: uv` and the `uv`
+executable is unavailable.
 
 `BASE-P080` through `BASE-P083` are read-only project Git remote diagnostics.
 They report whether the project directory is inside a Git repository, whether

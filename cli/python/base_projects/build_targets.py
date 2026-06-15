@@ -98,10 +98,18 @@ def print_build_target(
     target_config: BuildTargetConfig,
     working_dir: Path,
 ) -> None:
-    print(
-        f"{project.name}\t{project.root}\t{project.manifest_path}\t{target_name}\t"
-        f"{working_dir}\t{target_config.command}\t{target_config.description or ''}"
-    )
+    fields = [
+        project.name,
+        str(project.root),
+        str(project.manifest_path),
+        target_name,
+        str(working_dir),
+        target_config.command,
+        target_config.description or "",
+    ]
+    if target_config.runner is not None:
+        fields.append(target_config.runner)
+    print("\t".join(fields))
 
 
 def selected_build_targets(

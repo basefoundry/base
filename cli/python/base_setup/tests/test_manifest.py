@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines,too-many-public-methods
 
 import tempfile
 import unittest
@@ -38,6 +38,58 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.artifacts[0].version, "1.8.5")
         self.assertFalse(manifest.artifacts[0].bootstrap)
         self.assertEqual(manifest.activate.source, ())
+        self.assertIsNone(manifest.python.manager)
+
+    def test_reads_manifest_python_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "python:",
+                        "  manager: uv",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.python.manager, "uv")
+
+
+    def test_rejects_invalid_manifest_python_config(self) -> None:
+        invalid_values = {
+            "scalar": "python: uv",
+            "unknown_key": "python:\n  manager: uv\n  version: '3.12'",
+            "empty_manager": "python:\n  manager: ''",
+            "non_string_manager": "python:\n  manager: 7",
+            "unsupported_manager": "python:\n  manager: poetry",
+        }
+        for name, python_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                python_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
+
 
 
 
@@ -250,6 +302,33 @@ class ManifestParsingTests(unittest.TestCase):
         assert manifest.demo is not None
         self.assertEqual(manifest.demo.script, "./demo/demo.sh")
         self.assertEqual(manifest.demo.description, "Interactive project walkthrough")
+        self.assertIsNone(manifest.demo.runner)
+
+
+    def test_reads_manifest_demo_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "demo:",
+                        "  script: ./demo/demo.sh",
+                        "  runner: uv",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.demo)
+        assert manifest.demo is not None
+        self.assertEqual(manifest.demo.runner, "uv")
 
 
     def test_reads_manifest_release_config(self) -> None:
@@ -289,12 +368,73 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.release.tag_prefix, "v")
         self.assertEqual(manifest.release.github.repository, "codeforester/base")
         self.assertEqual(manifest.release.github.release_title, "Base v{version}")
+        self.assertIsNone(manifest.release.runner)
         self.assertIsNotNone(manifest.release.homebrew)
         assert manifest.release.homebrew is not None
         self.assertTrue(manifest.release.homebrew.required)
         self.assertEqual(manifest.release.homebrew.tap_repository, "codeforester/homebrew-base")
         self.assertEqual(manifest.release.homebrew.formula_path, "Formula/base.rb")
         self.assertEqual(manifest.release.homebrew.package, "codeforester/base/base")
+
+    def test_reads_manifest_release_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "release:",
+                        "  runner: uv",
+                        "  github:",
+                        "    repository: codeforester/demo",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.release)
+        assert manifest.release is not None
+        self.assertEqual(manifest.release.runner, "uv")
+
+
+    def test_reads_manifest_build_target_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "build:",
+                        "  default:",
+                        "    - package",
+                        "  targets:",
+                        "    package:",
+                        "      command: python -m build",
+                        "      runner: uv",
+                        "      working_dir: services/api",
+                        "      description: Build the Python package.",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.build)
+        assert manifest.build is not None
+        self.assertEqual(manifest.build.targets["package"].command, "python -m build")
+        self.assertEqual(manifest.build.targets["package"].runner, "uv")
+
 
 
     def test_reads_manifest_release_config_without_homebrew(self) -> None:
@@ -373,6 +513,12 @@ class ManifestParsingTests(unittest.TestCase):
                 "    formula_path: Formula/base.rb\n"
                 "    package: base"
             ),
+            "unsupported_runner": (
+                "release:\n"
+                "  runner: npm\n"
+                "  github:\n"
+                "    repository: codeforester/base"
+            ),
         }
         for name, release_yaml in invalid_values.items():
             with self.subTest(name=name):
@@ -435,6 +581,7 @@ class ManifestParsingTests(unittest.TestCase):
             "newline_script": "demo:\n  script: \"demo\\n/demo.sh\"",
             "empty_description": "demo:\n  script: ./demo/demo.sh\n  description: ''",
             "non_string_description": "demo:\n  script: ./demo/demo.sh\n  description: 7",
+            "unsupported_runner": "demo:\n  script: ./demo/demo.sh\n  runner: npm",
         }
         for name, demo_yaml in invalid_values.items():
             with self.subTest(name=name):
@@ -506,13 +653,36 @@ class ManifestParsingTests(unittest.TestCase):
 
             manifest = read_manifest(manifest_path)
 
-        self.assertEqual(
-            manifest.commands,
-            {
-                "dev": "uvicorn app:app --reload",
-                "lint": "ruff check .",
-            },
-        )
+        self.assertEqual(manifest.commands["dev"].command, "uvicorn app:app --reload")
+        self.assertIsNone(manifest.commands["dev"].runner)
+        self.assertEqual(manifest.commands["lint"].command, "ruff check .")
+        self.assertIsNone(manifest.commands["lint"].runner)
+
+
+    def test_reads_manifest_commands_with_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "commands:",
+                        "  audit:",
+                        "    command: pytest tests/audit",
+                        "    runner: uv",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.commands["audit"].command, "pytest tests/audit")
+        self.assertEqual(manifest.commands["audit"].runner, "uv")
 
 
 
@@ -524,6 +694,10 @@ class ManifestParsingTests(unittest.TestCase):
             "reserved_test": "commands:\n  test: pytest",
             "empty_command": "commands:\n  lint: ''",
             "non_string_command": "commands:\n  lint: 7",
+            "mapping_missing_command": "commands:\n  lint:\n    runner: uv",
+            "mapping_empty_command": "commands:\n  lint:\n    command: ''",
+            "mapping_unknown_key": "commands:\n  lint:\n    command: ruff check .\n    cwd: src",
+            "unsupported_runner": "commands:\n  lint:\n    command: ruff check .\n    runner: npm",
         }
         for name, commands_yaml in invalid_values.items():
             with self.subTest(name=name):
@@ -609,6 +783,32 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertIsNotNone(manifest.test)
         self.assertEqual(manifest.test.command, "pytest tests/")
         self.assertIsNone(manifest.test.mise)
+        self.assertIsNone(manifest.test.runner)
+
+
+    def test_reads_manifest_test_command_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: pytest tests/",
+                        "  runner: uv",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.test)
+        assert manifest.test is not None
+        self.assertEqual(manifest.test.command, "pytest tests/")
+        self.assertEqual(manifest.test.runner, "uv")
 
 
 
@@ -653,6 +853,50 @@ class ManifestParsingTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ManifestError, "test.command must be a non-empty string"):
+                read_manifest(manifest_path)
+
+
+    def test_rejects_invalid_manifest_test_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        "  command: pytest",
+                        "  runner: npm",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "test.runner must be one of: uv"):
+                read_manifest(manifest_path)
+
+
+    def test_rejects_invalid_manifest_build_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "build:",
+                        "  targets:",
+                        "    package:",
+                        "      command: python -m build",
+                        "      runner: npm",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ManifestError, "build.targets.package.runner must be one of: uv"):
                 read_manifest(manifest_path)
 
 
