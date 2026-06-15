@@ -131,6 +131,49 @@ class ManifestParsingTests(unittest.TestCase):
                 read_manifest(manifest_path)
 
 
+    def test_rejects_path_unsafe_project_names(self) -> None:
+        for project_name in ("../../etc", "../base", "demo/name", "demo name", ".hidden", "demo?"):
+            with self.subTest(project_name=project_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                f"  name: {project_name}",
+                                "",
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(ManifestError, "project.name must be a valid name"):
+                        read_manifest(manifest_path)
+
+
+    def test_accepts_valid_project_name_characters(self) -> None:
+        for project_name in ("demo", "demo.1", "demo-1", "demo_1", "demo:local", "2demo"):
+            with self.subTest(project_name=project_name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                f"  name: {project_name}",
+                                "",
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    manifest = read_manifest(manifest_path)
+
+                self.assertEqual(manifest.project_name, project_name)
+
+
 
     def test_reads_manifest_required_environment_variables(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

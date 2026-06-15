@@ -1,7 +1,7 @@
 schema_version: 1
 
 project:
-  name: __base_defaults__
+  name: base-defaults
 
 artifacts:
   - type: python-package
