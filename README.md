@@ -442,6 +442,11 @@ labels documented in [Repository Baseline](docs/repo-baseline.md).
 When `.github/base-project.yml` exists, `repo configure` also adds missing
 repo-specific `Area` and `Initiative` Project options from that file and applies
 its `issue_defaults` to Project issue items that are missing those values.
+`repo init` also seeds `.github/workflows/project-intake.yml`, a visible
+fallback for issues created outside `basectl gh issue create`. Set a
+`BASE_PROJECT_TOKEN` Actions secret with Project write access so that workflow
+can add issue items and apply the repo Project defaults on issue open, reopen,
+and close events.
 Pass `--no-protect-default-branch` when a repository intentionally skips that
 ruleset. Pass `--no-project` when a repository intentionally skips Base-managed
 Project metadata, or `--project`, `--project-owner`, and
