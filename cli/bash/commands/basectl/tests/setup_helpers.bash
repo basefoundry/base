@@ -431,7 +431,8 @@ run_base_command() {
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
         BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
         "${env_args[@]}" \
-        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
+        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}" \
+        </dev/null
 }
 
 run_base_command_separate_stderr() {
@@ -462,7 +463,8 @@ run_base_command_separate_stderr() {
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
         BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS=0 \
         "${env_args[@]}" \
-        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}"
+        "$BASE_REPO_ROOT/bin/basectl" "${command_args[@]}" \
+        </dev/null
 }
 
 create_base_venv_stub() {

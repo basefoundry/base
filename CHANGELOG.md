@@ -44,6 +44,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 ### Fixed
 
 - Reported a clear error when `BASE_ACTIVATE_SHELL` points to a non-Bash shell.
+- Made setup BATS command helpers run with noninteractive stdin so PTY-backed
+  test runs exercise recovery guidance consistently.
 - Redacted compound secret-like command-output assignments such as
   `GITHUB_TOKEN=...`, `DB_PASSWORD=...`, and
   `AWS_SECRET_ACCESS_KEY=...` from setup failure summaries and debug logs.
