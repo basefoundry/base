@@ -106,6 +106,27 @@ edit that value to make commands such as
 create the workspace directory automatically; `basectl config doctor` reports
 whether the configured path exists.
 
+## GitHub Defaults
+
+User-local GitHub defaults reduce repeated flags for workspace repository
+commands:
+
+```yaml
+github:
+  default_owner: codeforester
+  clone_protocol: ssh
+```
+
+`github.default_owner` lets short repository names resolve during
+`basectl repo clone <name>`. Without it, short names require
+`--owner <owner>`.
+
+`github.clone_protocol` controls the clone URL shown in dry-run and planning
+output. Supported values are `ssh` and `https`; when omitted, Base reports SSH
+URLs. The actual clone delegates to `gh repo clone <owner/repo> <path>` so the
+GitHub CLI remains responsible for GitHub authentication and its own transport
+behavior.
+
 ## IDE Preferences
 
 User-local IDE preferences can add machine-specific IDE behavior without

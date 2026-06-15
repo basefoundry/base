@@ -32,7 +32,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `export-context`
 - `gh`
 - `onboard`
-- `repo init/check/configure/agent-guidance/installer-template`
+- `repo init/clone/check/configure/agent-guidance/installer-template`
 - `test`
 - `build`
 - `update-profile`
@@ -82,6 +82,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   provided or an existing `origin` remote can be inferred. Without `--path`, it
   creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
   then falls back to the parent directory of `BASE_HOME`.
+  `basectl repo clone <name-or-owner/name>` clones one existing GitHub
+  repository into the configured workspace, supports `--owner <owner>` for
+  short names, and treats matching existing checkouts as already satisfied.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` reapplies the GitHub settings, labels,
   default branch protection, and standard repo Project setup. By default, the

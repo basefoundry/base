@@ -8,6 +8,33 @@ product-specific setup.
 
 ## Commands
 
+Clone an existing GitHub repository into the configured workspace:
+
+```bash
+basectl repo clone codeforester/base-demo
+basectl repo clone base-demo --owner codeforester
+```
+
+`repo clone` is for repositories that already exist on GitHub. Without
+`--path`, it clones to `<workspace.root>/<repo>` when `workspace.root` is set in
+`~/.base.d/config.yaml`; otherwise it falls back to the parent directory of
+`BASE_HOME`. Short repository names require `--owner <owner>` or a
+`github.default_owner` value in the user config:
+
+```yaml
+github:
+  default_owner: codeforester
+  clone_protocol: ssh
+```
+
+`github.clone_protocol` may be `ssh` or `https`; it controls the clone URL shown
+in planning output while the actual clone delegates to `gh repo clone`.
+`--dry-run` prints the resolved repository, destination, clone tool, clone URL,
+and command without modifying the filesystem. If the destination already exists
+and its `origin` points at the requested GitHub repository, Base treats the clone
+as already satisfied. If the destination exists with another origin, Base fails
+with an actionable conflict.
+
 Create a new repo baseline:
 
 ```bash

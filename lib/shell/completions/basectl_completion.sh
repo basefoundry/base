@@ -122,10 +122,13 @@ _base_basectl_completion() {
         repo)
             case "${COMP_WORDS[2]:-}" in
                 "")
-                    _base_basectl_completion_compgen "init check configure agent-guidance installer-template" "$cur"
+                    _base_basectl_completion_compgen "init clone check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
                     _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run -v -h --help" "$cur"
+                    ;;
+                clone)
+                    _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
                     ;;
                 check)
                     _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"

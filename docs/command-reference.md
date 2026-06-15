@@ -57,6 +57,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | Command | What it does | Important flags |
 |---|---|---|
 | `basectl repo init <name>` | Create a Base-managed repository baseline, including `.github/base-project.yml`, and optionally create/configure the GitHub repo. | `--path <path>`, `--repo <owner/name>`, `--public`, `--private`, `--pr`, `--copy-project-fields-from <title>`, `--no-project`, `--dry-run` |
+| `basectl repo clone <name-or-owner/name>` | Clone one GitHub repository into the configured Base workspace, treating matching existing checkouts as already satisfied. | `--owner <owner>`, `--path <path>`, `--dry-run` |
 | `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance` |
 | `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and repo Project metadata. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--copy-project-fields-from <title>`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files. | `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--dry-run` |

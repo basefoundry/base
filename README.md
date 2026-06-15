@@ -175,6 +175,7 @@ Current implemented commands include:
 - `basectl update`
 - `basectl projects list`
 - `basectl repo init <name>`
+- `basectl repo clone <name-or-owner/name>`
 - `basectl repo check [path]`
 - `basectl repo configure [path]`
 - `basectl repo agent-guidance [path]`
@@ -419,6 +420,19 @@ existing `origin` remote can be inferred. Newly created GitHub repositories are
 private by default; pass `--public` when a public repository is intentional. Use
 `--no-configure` to skip the GitHub step, or rerun it later with
 `basectl repo configure`.
+
+Clone an existing GitHub repository into the configured workspace with:
+
+```bash
+basectl repo clone codeforester/example
+basectl repo clone example --owner codeforester
+```
+
+Short names can use `github.default_owner` from `~/.base.d/config.yaml`.
+Without `--path`, `repo clone` writes to `<workspace.root>/<repo>`, and
+`--dry-run` prints the resolved repository, destination, clone tool, and clone
+URL without touching the filesystem. Existing matching checkouts are treated as
+already satisfied; conflicting destinations fail with guidance.
 
 Check and repair the repo baseline with:
 
