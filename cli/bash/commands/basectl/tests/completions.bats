@@ -119,6 +119,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "repo_init_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl repo clone --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "repo_clone_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl repo check --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -191,8 +195,9 @@ EOF
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
-    [[ "$output" == *"repo_commands=init check configure agent-guidance installer-template"* ]]
+    [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run"* ]]
+    [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]
     [[ "$output" == *"repo_check_options=--agent-guidance"* ]]
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo-name --default-branch --validation-command --dry-run"* ]]

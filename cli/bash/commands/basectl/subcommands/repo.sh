@@ -29,6 +29,7 @@ base_repo_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl repo init <name> [options]
+  basectl repo clone <name-or-owner/name> [options]
   basectl repo check [path] [options]
   basectl repo configure [path] [options]
   basectl repo agent-guidance [path] [options]
@@ -36,6 +37,7 @@ Usage:
 
 Commands:
   init                 Create baseline files and optionally configure GitHub.
+  clone                Clone one GitHub repository into the Base workspace.
   check                Verify the local repository baseline.
   configure            Apply GitHub settings, labels, branch protection, and Project metadata.
   agent-guidance       Seed optional repo-local agent guidance files.
@@ -79,6 +81,30 @@ Creates the standard Base-managed repository baseline, including
 .github/base-project.yml. With --pr, the first run opens a baseline PR when
 files change; rerun the same command after merge to continue GitHub-side
 configuration.
+EOF
+}
+
+base_repo_clone_usage() {
+    cat <<'EOF'
+Usage:
+  basectl repo clone <name-or-owner/name> [options]
+
+Options:
+  --owner <owner>               GitHub owner for short repository names.
+  --path <path>                 Clone destination. Defaults to workspace root plus repository name.
+  --dry-run                     Print planned clone without modifying the filesystem.
+  -v                            Enable DEBUG logging for this subcommand.
+  -h, --help                    Show this help text.
+
+Examples:
+  basectl repo clone base
+  basectl repo clone banyanlabs --owner codeforester
+  basectl repo clone codeforester/bankbuddy
+  basectl repo clone codeforester/base --path ~/work/base
+
+Short repository names require --owner <owner> or github.default_owner in
+~/.base.d/config.yaml. The optional github.clone_protocol value controls the
+reported clone URL; Base delegates the clone itself to gh repo clone.
 EOF
 }
 
@@ -145,6 +171,12 @@ base_repo_usage_error() {
 
 base_repo_init_usage_error() {
     base_repo_init_usage >&2
+    printf 'ERROR: %s\n' "$*" >&2
+    return 2
+}
+
+base_repo_clone_usage_error() {
+    base_repo_clone_usage >&2
     printf 'ERROR: %s\n' "$*" >&2
     return 2
 }
@@ -219,6 +251,15 @@ base_repo_validate_name() {
     }
 }
 
+base_repo_validate_owner() {
+    local owner="$1"
+
+    [[ "$owner" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || {
+        printf 'GitHub owner must start with a letter or digit and contain only letters, digits, and dash.\n' >&2
+        return 1
+    }
+}
+
 base_repo_target_path() {
     local path="$1"
     local parent name
@@ -274,7 +315,7 @@ base_repo_expand_path() {
             printf '%s\n' "$HOME"
             ;;
         "~/"*)
-            printf '%s/%s\n' "$HOME" "${path#~/}"
+            printf '%s/%s\n' "$HOME" "${path#"~/"}"
             ;;
         *)
             printf '%s\n' "$path"
@@ -319,6 +360,40 @@ base_repo_configured_workspace_root() {
     return 1
 }
 
+base_repo_configured_github_value() {
+    local config_path="$HOME/.base.d/config.yaml"
+    local in_github=0
+    local key="$1"
+    local line value
+
+    [[ -f "$config_path" ]] || return 1
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^[[:space:]]*(#.*)?$ ]] && continue
+
+        if [[ "$line" =~ ^github:[[:space:]]*(#.*)?$ ]]; then
+            in_github=1
+            continue
+        fi
+
+        if ((in_github)) && [[ ! "$line" =~ ^[[:space:]] ]]; then
+            return 1
+        fi
+
+        if ((in_github)) && [[ "$line" =~ ^[[:space:]]+${key}:[[:space:]]*(.*)$ ]]; then
+            value="$(base_repo_strip_config_value "${BASH_REMATCH[1]}")"
+            [[ -n "$value" ]] || {
+                log_error "$config_path: github.$key must be a non-empty value."
+                return 2
+            }
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done < "$config_path"
+
+    return 1
+}
+
 base_repo_default_workspace_root() {
     local configured_root status
 
@@ -349,6 +424,69 @@ base_repo_default_target_path() {
 
     workspace_root="$(base_repo_default_workspace_root)" || return $?
     printf '%s/%s\n' "$workspace_root" "$name"
+}
+
+base_repo_default_github_owner() {
+    local owner status
+
+    owner="$(base_repo_configured_github_value default_owner)"
+    status=$?
+    case "$status" in
+        0)
+            printf '%s\n' "$owner"
+            return 0
+            ;;
+        1)
+            return 1
+            ;;
+        *)
+            return "$status"
+            ;;
+    esac
+}
+
+base_repo_clone_protocol() {
+    local protocol status
+
+    protocol="$(base_repo_configured_github_value clone_protocol)"
+    status=$?
+    case "$status" in
+        0)
+            ;;
+        1)
+            protocol="ssh"
+            ;;
+        *)
+            return "$status"
+            ;;
+    esac
+
+    case "$protocol" in
+        ssh|https)
+            printf '%s\n' "$protocol"
+            ;;
+        *)
+            log_error "$HOME/.base.d/config.yaml: github.clone_protocol must be 'ssh' or 'https'."
+            return 2
+            ;;
+    esac
+}
+
+base_repo_clone_url() {
+    local protocol="$1"
+    local repo="$2"
+
+    case "$protocol" in
+        ssh)
+            printf 'git@github.com:%s.git\n' "$repo"
+            ;;
+        https)
+            printf 'https://github.com/%s.git\n' "$repo"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 base_repo_baseline_year() {
@@ -1079,6 +1217,9 @@ base_repo_infer_github_repo() {
         git@github.com:*.git)
             remote_url="${remote_url#git@github.com:}"
             remote_url="${remote_url%.git}"
+            ;;
+        git@github.com:*)
+            remote_url="${remote_url#git@github.com:}"
             ;;
         https://github.com/*.git)
             remote_url="${remote_url#https://github.com/}"
@@ -1908,6 +2049,198 @@ base_repo_init() {
     fi
 }
 
+base_repo_clone_check_destination() {
+    local actual_repo=""
+    local expected_repo="$1"
+    local target="$2"
+
+    [[ -e "$target" ]] || return 0
+
+    if [[ ! -d "$target" ]]; then
+        log_error "Destination '$target' already exists but is not a matching Git checkout."
+        return 1
+    fi
+
+    actual_repo="$(base_repo_infer_github_repo "$target" || true)"
+    if [[ "$actual_repo" == "$expected_repo" ]]; then
+        printf "Repository '%s' already exists at '%s'.\n" "$expected_repo" "$target"
+        return 2
+    fi
+
+    if [[ -n "$actual_repo" ]]; then
+        log_error "Destination '$target' already points at GitHub repository '$actual_repo'."
+        log_error "Expected '$expected_repo'."
+        return 1
+    fi
+
+    log_error "Destination '$target' already exists but is not a matching Git checkout."
+    return 1
+}
+
+base_repo_clone_with_gh() {
+    local clone_url="$4"
+    local dry_run="$1"
+    local parent
+    local repo="$2"
+    local status
+    local target="$3"
+
+    base_repo_clone_check_destination "$repo" "$target"
+    status=$?
+    case "$status" in
+        0)
+            ;;
+        2)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "Repository: %s\n" "$repo"
+        printf "Destination: %s\n" "$target"
+        printf "Tool: gh repo clone\n"
+        printf "Clone URL: %s\n" "$clone_url"
+        printf "[DRY-RUN] Would run: "
+        base_repo_pretty_command gh repo clone "$repo" "$target"
+        printf "\n"
+        return 0
+    fi
+
+    command -v gh >/dev/null 2>&1 || {
+        log_error "GitHub CLI 'gh' is required for repository clone."
+        return 1
+    }
+
+    parent="$(dirname -- "$target")"
+    base_repo_create_directory "$parent" || return 1
+    printf "Cloning GitHub repository '%s' into '%s'.\n" "$repo" "$target"
+    gh repo clone "$repo" "$target" || {
+        log_error "Failed to clone GitHub repository '$repo' into '$target'."
+        return 1
+    }
+    printf "Run basectl repo check '%s' after the clone if the repository has adopted the Base baseline.\n" "$target"
+}
+
+base_repo_clone() {
+    local clone_url
+    local dry_run=0
+    local github_repo
+    local name=""
+    local owner=""
+    local path=""
+    local protocol
+    local spec=""
+    local status
+    local target
+
+    while (($#)); do
+        case "$1" in
+            -h|--help|help)
+                base_repo_clone_usage
+                return 0
+                ;;
+            --owner)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_clone_usage_error "Option '--owner' requires an argument."
+                    return $?
+                }
+                owner="$2"
+                shift 2
+                ;;
+            --owner=*)
+                owner="${1#--owner=}"
+                shift
+                ;;
+            --path)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_clone_usage_error "Option '--path' requires an argument."
+                    return $?
+                }
+                path="$2"
+                shift 2
+                ;;
+            --path=*)
+                path="${1#--path=}"
+                shift
+                ;;
+            --dry-run)
+                dry_run=1
+                shift
+                ;;
+            -v)
+                set_log_level DEBUG
+                export LOG_DEBUG=1
+                shift
+                ;;
+            -*)
+                base_repo_clone_usage_error "Unknown repo clone option '$1'."
+                return $?
+                ;;
+            *)
+                if [[ -n "$spec" ]]; then
+                    base_repo_clone_usage_error "The 'repo clone' command accepts exactly one repository name."
+                    return $?
+                fi
+                spec="$1"
+                shift
+                ;;
+        esac
+    done
+
+    [[ -n "$spec" ]] || {
+        base_repo_clone_usage_error "Repository name is required."
+        return $?
+    }
+
+    if [[ "$spec" == */* ]]; then
+        [[ "$spec" != */*/* ]] || {
+            base_repo_clone_usage_error "Repository must be '<name>' or '<owner>/<name>'."
+            return $?
+        }
+        [[ -z "$owner" ]] || {
+            base_repo_clone_usage_error "Option '--owner' cannot be used with '<owner>/<name>'."
+            return $?
+        }
+        owner="${spec%%/*}"
+        name="${spec#*/}"
+    else
+        name="$spec"
+        if [[ -z "$owner" ]]; then
+            owner="$(base_repo_default_github_owner)"
+            status=$?
+            case "$status" in
+                0)
+                    ;;
+                1)
+                    base_repo_clone_usage_error "Repository owner is required for short repo names. Pass --owner <owner> or set github.default_owner in ~/.base.d/config.yaml."
+                    return $?
+                    ;;
+                *)
+                    return "$status"
+                    ;;
+            esac
+        fi
+    fi
+
+    base_repo_validate_owner "$owner" || return 2
+    base_repo_validate_name "$name" || return 2
+    github_repo="$owner/$name"
+    protocol="$(base_repo_clone_protocol)" || return $?
+    clone_url="$(base_repo_clone_url "$protocol" "$github_repo")" || return 1
+
+    if [[ -z "$path" ]]; then
+        path="$(base_repo_default_target_path "$name")" || return $?
+    else
+        path="$(base_repo_expand_path "$path")"
+    fi
+    target="$(base_repo_target_path "$path")"
+
+    base_repo_clone_with_gh "$dry_run" "$github_repo" "$target" "$clone_url"
+}
+
 base_repo_check() {
     local agent_guidance=0
     local path="."
@@ -2252,6 +2585,10 @@ base_repo_subcommand_main() {
         init)
             shift
             base_repo_init "$@"
+            ;;
+        clone)
+            shift
+            base_repo_clone "$@"
             ;;
         check)
             shift

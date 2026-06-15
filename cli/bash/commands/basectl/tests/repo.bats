@@ -9,6 +9,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo init <name>"* ]]
+    [[ "$output" == *"basectl repo clone <name-or-owner/name>"* ]]
     [[ "$output" == *"basectl repo check [path]"* ]]
     [[ "$output" == *"basectl repo configure [path]"* ]]
     [[ "$output" == *"basectl repo agent-guidance [path]"* ]]
@@ -32,6 +33,154 @@ load ./basectl_helpers.bash
     [[ "$output" != *"basectl repo agent-guidance"* ]]
     [[ "$output" != *"--repo-name <name>"* ]]
     [[ "$output" != *"--agent-guidance"* ]]
+}
+
+@test "basectl repo clone prints command-specific help" {
+    run_basectl repo clone --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo clone <name-or-owner/name> [options]"* ]]
+    [[ "$output" == *"--owner <owner>"* ]]
+    [[ "$output" == *"--path <path>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" == *"basectl repo clone codeforester/base --path ~/work/base"* ]]
+    [[ "$output" != *"--copy-project-fields-from <title>"* ]]
+}
+
+@test "basectl repo clone dry-run resolves short names from user config" {
+    local nested_dir="$TEST_TMPDIR/nested/current"
+    local workspace_root="$TEST_TMPDIR/workspace-root"
+    local repo_dir="$workspace_root/base-demo"
+
+    mkdir -p "$TEST_HOME/.base.d" "$nested_dir" "$workspace_root"
+    cat > "$TEST_HOME/.base.d/config.yaml" <<EOF
+workspace:
+  root: $workspace_root
+github:
+  default_owner: codeforester
+  clone_protocol: ssh
+EOF
+
+    cd "$nested_dir"
+    run_basectl repo clone base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository: codeforester/base-demo"* ]]
+    [[ "$output" == *"Destination: $repo_dir"* ]]
+    [[ "$output" == *"Tool: gh repo clone"* ]]
+    [[ "$output" == *"Clone URL: git@github.com:codeforester/base-demo.git"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir"* ]]
+    [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo clone supports explicit owner and path dry-run" {
+    local repo_dir="$TEST_HOME/work/base-demo"
+
+    run_basectl repo clone base-demo --owner codeforester --path "~/work/base-demo" --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository: codeforester/base-demo"* ]]
+    [[ "$output" == *"Destination: $repo_dir"* ]]
+    [[ "$output" == *"Clone URL: git@github.com:codeforester/base-demo.git"* ]]
+    [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo clone supports explicit owner slash repo and https clone protocol" {
+    local repo_dir="$TEST_TMPDIR/custom/bankbuddy"
+
+    mkdir -p "$TEST_HOME/.base.d"
+    cat > "$TEST_HOME/.base.d/config.yaml" <<'EOF'
+github:
+  default_owner: ignored
+  clone_protocol: https
+EOF
+
+    run_basectl repo clone codeforester/bankbuddy --path "$repo_dir" --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository: codeforester/bankbuddy"* ]]
+    [[ "$output" == *"Destination: $repo_dir"* ]]
+    [[ "$output" == *"Clone URL: https://github.com/codeforester/bankbuddy.git"* ]]
+}
+
+@test "basectl repo clone requires an owner for short names" {
+    run_basectl repo clone base-demo --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"basectl repo clone <name-or-owner/name> [options]"* ]]
+    [[ "$output" == *"ERROR: Repository owner is required for short repo names."* ]]
+    [[ "$output" == *"Pass --owner <owner> or set github.default_owner in ~/.base.d/config.yaml."* ]]
+}
+
+@test "basectl repo clone treats existing matching checkouts as satisfied" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
+
+    run_basectl repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository 'codeforester/base-demo' already exists at '$repo_dir'."* ]]
+    [[ "$output" != *"gh repo clone"* ]]
+
+    git -C "$repo_dir" remote set-url origin git@github.com:codeforester/base-demo
+
+    run_basectl repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository 'codeforester/base-demo' already exists at '$repo_dir'."* ]]
+}
+
+@test "basectl repo clone rejects conflicting existing checkouts" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:other/base-demo.git
+
+    run_basectl repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Destination '$repo_dir' already points at GitHub repository 'other/base-demo'."* ]]
+    [[ "$output" == *"Expected 'codeforester/base-demo'."* ]]
+}
+
+@test "basectl repo clone rejects existing non-git destinations" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Destination '$repo_dir' already exists but is not a matching Git checkout."* ]]
+}
+
+@test "basectl repo clone delegates to gh repo clone" {
+    local repo_dir="$TEST_TMPDIR/workspace/base-demo"
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "repo" && "$2" == "clone" ]]; then
+    mkdir -p "$4/.git"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "repo clone codeforester/base-demo $repo_dir" ]
+    [[ "$output" == *"Cloning GitHub repository 'codeforester/base-demo' into '$repo_dir'."* ]]
+    [[ "$output" == *"Run basectl repo check '$repo_dir' after the clone if the repository has adopted the Base baseline."* ]]
 }
 
 @test "basectl repo configure prints command-specific help" {

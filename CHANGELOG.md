@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added `basectl repo clone` for workspace-aware cloning of one GitHub
+  repository into the configured Base workspace.
 - Added a generated Project intake workflow so Base-managed repos can
   idempotently add externally-created issues to their repo Project and apply
   default Project fields.
