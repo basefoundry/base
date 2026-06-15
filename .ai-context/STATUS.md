@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.0.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.0.1` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -51,13 +51,14 @@ Recent released work includes:
   snippets
 - stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
-- Base `1.0.0` release artifacts and Homebrew tap update
+- Base `1.0.1` AGPL license cleanup and release artifacts
 
 ## Recent Merged Changes
 
 Recent commits on `master` include:
 
 - public evaluator documentation through `docs/why-base.md`
+- AGPL license cleanup and generated-license correction for `basectl repo init`
 - Homebrew and source checkout install-path clarification
 - uv ecosystem boundary documentation
 - repo Project metadata handoff and command-specific `basectl repo` help
