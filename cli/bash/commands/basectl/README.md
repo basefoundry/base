@@ -89,8 +89,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `base-project-template`, linked to the repository, and backfilled with
   repository issues. When `.github/base-project.yml` exists, repo-specific
   `Area` and `Initiative` options are added from that file and `issue_defaults`
-  are applied to missing Project item field values. Use `--no-project` to skip
-  Project setup, `--project <title>` to override the Project title, or
+  are applied to missing Project item field values. `repo init` also seeds a
+  Project intake workflow that can add externally-created issues to the
+  repo-named Project when `BASE_PROJECT_TOKEN` has Project write access. Use
+  `--no-project` to skip Project setup, `--project <title>` to override the
+  Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
   Use `--copy-project-fields-from <title>` during migration to copy missing
   issue item field values from an existing Project before config defaults fill

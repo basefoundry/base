@@ -133,6 +133,7 @@ issue items that are missing those field values.
 - `.gitignore`
 - `base_manifest.yaml`
 - `tests/validate.sh`
+- `.github/workflows/project-intake.yml`
 - `.github/workflows/tests.yml`
 
 Existing files are left unchanged. This makes `repo init` useful both for a
@@ -154,6 +155,14 @@ test:
 The generated validation script checks for the required baseline files. It is
 not a replacement for project tests; it is the seed contract that lets
 `basectl test <project>` work immediately.
+
+The generated `.github/workflows/project-intake.yml` handles issue open,
+reopen, close, and manual dispatch events. It is a visible fallback for issues
+created outside `basectl gh issue create`: the workflow idempotently adds the
+issue to the repo-named Project and sets `Status`, `Priority`, `Size`, `Area`,
+and `Initiative` from the generated defaults. Set a `BASE_PROJECT_TOKEN`
+Actions secret with Project write access when `GITHUB_TOKEN` cannot update the
+user or organization Project.
 
 The generated `.github/base-project.yml` starts with the shared issue defaults
 and empty repo-specific taxonomy lists:

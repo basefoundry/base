@@ -15,6 +15,7 @@ BASE_REPO_BASELINE_FILES=(
     .gitignore
     base_manifest.yaml
     tests/validate.sh
+    .github/workflows/project-intake.yml
     .github/workflows/tests.yml
 )
 
@@ -834,6 +835,7 @@ required_files=(
   .github/base-project.yml
   LICENSE
   base_manifest.yaml
+  .github/workflows/project-intake.yml
   .github/workflows/tests.yml
 )
 
@@ -866,6 +868,147 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate repository baseline
         run: ./tests/validate.sh
+EOF
+}
+
+base_repo_write_project_intake_workflow() {
+    local dry_run="$1"
+    local root="$2"
+
+    base_repo_write_stream "$dry_run" "$root/.github/workflows/project-intake.yml" <<'EOF'
+name: Project Intake
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to reconcile into the repo Project.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  sync:
+    name: Sync issue Project fields
+    runs-on: ubuntu-latest
+    env:
+      BASE_PROJECT_OWNER: ${{ github.repository_owner }}
+      BASE_PROJECT_TITLE: ${{ github.event.repository.name }}
+      BASE_PROJECT_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+      BASE_PROJECT_DEFAULT_OPEN_STATUS: Backlog
+      BASE_PROJECT_DEFAULT_CLOSED_STATUS: Done
+      BASE_PROJECT_DEFAULT_PRIORITY: P2
+      BASE_PROJECT_DEFAULT_SIZE: S
+      BASE_PROJECT_DEFAULT_AREA: Product
+      BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish
+      GH_TOKEN: ${{ secrets.BASE_PROJECT_TOKEN || github.token }}
+    steps:
+      - name: Reconcile Project item
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          issue_number="${BASE_PROJECT_ISSUE_NUMBER:-}"
+          if [[ -z "$issue_number" ]]; then
+            echo "::error::Issue number was not provided by the event or workflow_dispatch input."
+            exit 1
+          fi
+
+          issue_json="$(gh issue view "$issue_number" --repo "$GITHUB_REPOSITORY" --json state,url)"
+          issue_state="$(jq -r '.state' <<<"$issue_json")"
+          issue_url="$(jq -r '.url' <<<"$issue_json")"
+
+          project_number="$(
+            gh project list --owner "$BASE_PROJECT_OWNER" --format json --limit 100 |
+              jq -r --arg title "$BASE_PROJECT_TITLE" \
+                '.projects[] | select(.title == $title) | .number' |
+              head -n 1
+          )"
+          if [[ -z "$project_number" ]]; then
+            echo "::error::GitHub Project '$BASE_PROJECT_TITLE' was not found for owner '$BASE_PROJECT_OWNER'."
+            exit 1
+          fi
+
+          project_id="$(gh project view "$project_number" --owner "$BASE_PROJECT_OWNER" --format json --jq '.id')"
+          item_id="$(gh project item-add "$project_number" --owner "$BASE_PROJECT_OWNER" --url "$issue_url" --format json --jq '.id')"
+          item_json="$(
+            gh project item-list "$project_number" --owner "$BASE_PROJECT_OWNER" --format json --limit 1000 |
+              jq --arg id "$item_id" '.items[] | select(.id == $id)'
+          )"
+          fields_json="$(gh project field-list "$project_number" --owner "$BASE_PROJECT_OWNER" --format json)"
+
+          field_id_for() {
+            local field_name="$1"
+
+            jq -r --arg name "$field_name" \
+              '.fields[] | select(.name == $name) | .id' <<<"$fields_json" |
+              head -n 1
+          }
+
+          option_id_for() {
+            local field_name="$1"
+            local option_name="$2"
+
+            jq -r --arg name "$field_name" --arg option "$option_name" \
+              '.fields[] | select(.name == $name) | .options[]? | select(.name == $option) | .id' \
+              <<<"$fields_json" |
+              head -n 1
+          }
+
+          set_single_select() {
+            local field_name="$1"
+            local option_name="$2"
+            local field_id
+            local option_id
+
+            [[ -n "$option_name" ]] || return 0
+
+            field_id="$(field_id_for "$field_name")"
+            option_id="$(option_id_for "$field_name" "$option_name")"
+            if [[ -z "$field_id" || -z "$option_id" ]]; then
+              echo "::error::Project field '$field_name' option '$option_name' was not found."
+              exit 1
+            fi
+
+            gh project item-edit \
+              --id "$item_id" \
+              --project-id "$project_id" \
+              --field-id "$field_id" \
+              --single-select-option-id "$option_id" \
+              >/dev/null
+          }
+
+          set_single_select_if_missing() {
+            local field_name="$1"
+            local item_key="$2"
+            local option_name="$3"
+            local current_value
+
+            current_value="$(jq -r --arg key "$item_key" '.[$key] // ""' <<<"$item_json")"
+            if [[ -n "$current_value" ]]; then
+              return 0
+            fi
+
+            set_single_select "$field_name" "$option_name"
+          }
+
+          status_value="$BASE_PROJECT_DEFAULT_OPEN_STATUS"
+          if [[ "$issue_state" == "CLOSED" ]]; then
+            status_value="$BASE_PROJECT_DEFAULT_CLOSED_STATUS"
+          fi
+
+          set_single_select Status "$status_value"
+          set_single_select_if_missing Priority priority "$BASE_PROJECT_DEFAULT_PRIORITY"
+          set_single_select_if_missing Size size "$BASE_PROJECT_DEFAULT_SIZE"
+          set_single_select_if_missing Area area "$BASE_PROJECT_DEFAULT_AREA"
+          set_single_select_if_missing Initiative initiative "$BASE_PROJECT_DEFAULT_INITIATIVE"
+
+          printf 'Synced issue #%s into Project %s.\n' "$issue_number" "$BASE_PROJECT_TITLE"
 EOF
 }
 
@@ -908,6 +1051,7 @@ base_repo_write_baseline() {
     base_repo_write_gitignore "$dry_run" "$root" || status=1
     base_repo_write_manifest "$dry_run" "$name" "$root" || status=1
     base_repo_write_validate_script "$dry_run" "$root" || status=1
+    base_repo_write_project_intake_workflow "$dry_run" "$root" || status=1
     base_repo_write_tests_workflow "$dry_run" "$root" || status=1
 
     return "$status"

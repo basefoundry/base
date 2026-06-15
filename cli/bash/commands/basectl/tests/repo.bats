@@ -300,6 +300,7 @@ load ./basectl_helpers.bash
     [ -f "$repo_dir/base_manifest.yaml" ]
     [ -x "$repo_dir/tests/validate.sh" ]
     [ -f "$repo_dir/.github/workflows/tests.yml" ]
+    [ -f "$repo_dir/.github/workflows/project-intake.yml" ]
     grep -Fqx "0.1.0" "$repo_dir/VERSION"
     grep -Fq "name: base-demo" "$repo_dir/base_manifest.yaml"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
@@ -309,6 +310,12 @@ load ./basectl_helpers.bash
     grep -Fq "area: Product" "$repo_dir/.github/base-project.yml"
     grep -Fq "initiative: Adoption Polish" "$repo_dir/.github/base-project.yml"
     grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
+    grep -Fq "name: Project Intake" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "gh project item-add" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "set_single_select_if_missing Priority priority" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "BASE_PROJECT_DEFAULT_AREA: Product" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "<category>/<issue>-<YYYYMMDD>-<slug>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/<default-branch>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq 'Update `CHANGELOG.md` only for notable user-visible or release-worthy' "$repo_dir/CONTRIBUTING.md"

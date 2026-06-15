@@ -72,7 +72,16 @@ the repository, and backfills existing repository issues. When
 and `Initiative` options from that file and applies the same file's
 `issue_defaults` to Project issue items that are missing those values.
 `basectl gh issue create` uses the defaults immediately when it adds newly
-created issues to the repo Project. Use `basectl gh project` directly for
+created issues to the repo Project.
+
+Base-managed repositories also carry `.github/workflows/project-intake.yml`.
+That workflow is a repo-visible fallback for issues created through GitHub UI,
+plain `gh issue create`, or external connectors that can bypass
+`basectl gh issue create` and GitHub's hidden Project auto-add filters. Set a
+`BASE_PROJECT_TOKEN` Actions secret with Project write access so the workflow
+can idempotently add the issue to the repo-named Project and set `Status`,
+`Priority`, `Size`, `Area`, and `Initiative` from the generated defaults on
+issue open, reopen, and close events. Use `basectl gh project` directly for
 lower-level Project inspection, schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,

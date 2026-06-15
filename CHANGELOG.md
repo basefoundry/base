@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added a generated Project intake workflow so Base-managed repos can
+  idempotently add externally-created issues to their repo Project and apply
+  default Project fields.
+
 ## [1.0.1] - 2026-06-15
 
 ### Added
