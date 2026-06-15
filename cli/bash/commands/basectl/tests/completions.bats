@@ -59,10 +59,18 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "export_context_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl update ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "update_projects=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl check --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "check_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl update --); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "update_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl check --profile ""); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -182,7 +190,9 @@ EOF
     [[ "$output" == *"build_projects=base demo"* ]]
     [[ "$output" == *"run_projects=base demo"* ]]
     [[ "$output" == *"export_context_projects=base demo"* ]]
+    [[ "$output" == *"update_projects=base demo"* ]]
     [[ "$output" == *"check_options=--profile --format"* ]]
+    [[ "$output" == *"update_options=--dry-run"* ]]
     [[ "$output" == *"check_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"test_options=--workspace --dry-run"* ]]
     [[ "$output" == *"build_options=--workspace --dry-run --list"* ]]

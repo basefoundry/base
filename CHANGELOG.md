@@ -18,6 +18,13 @@ and Base versions are tracked in the repo-root `VERSION` file.
   idempotently add externally-created issues to their repo Project and apply
   default Project fields.
 
+### Changed
+
+- Changed `basectl update` to accept an optional project name, so
+  `basectl update <project>` updates that project checkout and then runs
+  `basectl setup <project>`, while omitting the project keeps the existing
+  Base update behavior.
+
 ## [1.0.1] - 2026-06-15
 
 ### Added

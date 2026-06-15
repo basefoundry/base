@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_update_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl update [options]
+  basectl update [project] [options]
 
 Options:
   --dry-run   Show what would happen without pulling or running setup.
@@ -19,14 +19,15 @@ Options:
   -h, --help  Show this help text.
 
 Purpose:
-  Update Base from Git for source checkouts, or through Homebrew for Homebrew
-  installs, then run basectl setup.
+  Update a Base-managed project from Git, or update Base through Homebrew for
+  Homebrew installs, then run basectl setup for the selected project.
 
 Notes:
-  - The repository must be on its default branch.
-  - Tracked Base files must be clean; untracked files are left to Git's normal
+  - When project is omitted, Base updates project 'base'.
+  - The selected project repository must be on its default branch.
+  - Tracked project files must be clean; untracked files are left to Git's normal
     pull-time overwrite protection.
-  - Homebrew installs update only the Base formula:
+  - Homebrew installs update only project 'base' through the Base formula:
     brew upgrade codeforester/base/base
 EOF
 }
@@ -148,11 +149,12 @@ base_update_run_homebrew_setup() {
 }
 
 base_update_homebrew_install() {
-    local dry_run="$1"
+    local base_home="$1"
+    local dry_run="$2"
     local package
 
     package="$(base_update_homebrew_package)"
-    log_info "Detected Homebrew-managed Base install at '$BASE_HOME'."
+    log_info "Detected Homebrew-managed Base install at '$base_home'."
 
     if ((dry_run)); then
         log_info "[DRY-RUN] Would run: brew upgrade $package"
@@ -169,7 +171,7 @@ base_update_homebrew_install() {
     base_update_run_homebrew_upgrade "$package" || return $?
 
     log_info "Running basectl setup after Homebrew upgrade."
-    base_update_run_homebrew_setup "$BASE_HOME" "$package" || return $?
+    base_update_run_homebrew_setup "$base_home" "$package" || return $?
 
     log_info "Base update is complete."
 }
@@ -215,7 +217,40 @@ base_update_has_untracked_files() {
 }
 
 base_update_run_setup() {
-    "$BASE_HOME/bin/basectl" setup
+    local base_home="$1"
+    local project="$2"
+
+    "$base_home/bin/basectl" setup "$project"
+}
+
+base_update_resolve_project() {
+    local base_home="$1"
+    local project="$2"
+    local wrapper="$base_home/bin/base-wrapper"
+    local resolve_output resolved_name resolved_root resolved_manifest
+
+    if [[ -z "$project" ]]; then
+        project=base
+    fi
+
+    if [[ "$project" == base ]]; then
+        printf '%s\t%s\t%s\n' base "$base_home" "$base_home/base_manifest.yaml"
+        return 0
+    fi
+
+    [[ -x "$wrapper" ]] || {
+        log_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+
+    resolve_output="$("$wrapper" --project base base_projects resolve "$project")" || return $?
+    IFS=$'\t' read -r resolved_name resolved_root resolved_manifest <<<"$resolve_output"
+    [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || {
+        log_error "Unable to resolve Base project '$project'."
+        return 1
+    }
+
+    printf '%s\t%s\t%s\n' "$resolved_name" "$resolved_root" "$resolved_manifest"
 }
 
 base_update_head_revision() {
@@ -225,8 +260,15 @@ base_update_head_revision() {
 
 base_update_subcommand_main() {
     local after_revision
+    local base_home="${BASE_HOME:?}"
     local before_revision
     local branch
+    local manifest_path
+    local project=base
+    local project_arg=""
+    local repo
+    local resolve_output
+    local resolved_project
     local update_branch
     local dry_run=0
 
@@ -242,68 +284,84 @@ base_update_subcommand_main() {
             -v)
                 setup_enable_debug_logging
                 ;;
-            *)
+            --*)
                 print_error "Unknown option '$1'."
                 base_update_subcommand_usage >&2
                 return 1
+                ;;
+            *)
+                if [[ -n "$project_arg" ]]; then
+                    print_error "The 'update' command accepts at most one project name."
+                    base_update_subcommand_usage >&2
+                    return 1
+                fi
+                project_arg="$1"
+                project="$1"
                 ;;
         esac
         shift
     done
 
-    log_debug "Running 'basectl update'."
-
-    branch="$(base_update_current_branch "$BASE_HOME")" || {
-        if base_update_is_homebrew_install "$BASE_HOME"; then
-            base_update_homebrew_install "$dry_run"
-            return $?
-        fi
-        log_error "Base home '$BASE_HOME' is not a Git repository."
+    resolve_output="$(base_update_resolve_project "$base_home" "$project")" || return $?
+    IFS=$'\t' read -r resolved_project repo manifest_path <<<"$resolve_output"
+    [[ -n "$resolved_project" && -n "$repo" && -n "$manifest_path" ]] || {
+        log_error "Unable to resolve Base project '$project'."
         return 1
     }
-    update_branch="$(base_update_default_branch "$BASE_HOME")" || {
-        log_error "Unable to determine the Base repository default branch."
+
+    log_debug "Running 'basectl update' for project '$resolved_project'."
+
+    branch="$(base_update_current_branch "$repo")" || {
+        if [[ "$resolved_project" == base ]] && base_update_is_homebrew_install "$base_home"; then
+            base_update_homebrew_install "$base_home" "$dry_run"
+            return $?
+        fi
+        log_error "Project '$resolved_project' repository '$repo' is not a Git repository."
+        return 1
+    }
+    update_branch="$(base_update_default_branch "$repo")" || {
+        log_error "Unable to determine the default branch for project '$resolved_project'."
         return 1
     }
     if [[ "$branch" != "$update_branch" ]]; then
-        log_error "Base update only runs on default branch '$update_branch'; current branch is '$branch'."
+        log_error "Project '$resolved_project' update only runs on default branch '$update_branch'; current branch is '$branch'."
         return 1
     fi
 
-    if ! base_update_worktree_clean "$BASE_HOME"; then
-        log_error "Base repository has tracked local changes. Commit, stash, or remove them before running basectl update."
+    if ! base_update_worktree_clean "$repo"; then
+        log_error "Project '$resolved_project' repository has tracked local changes. Commit, stash, or remove them before running basectl update."
         return 1
     fi
-    if base_update_has_untracked_files "$BASE_HOME"; then
-        log_warn "Base repository has untracked files. Continuing because tracked files are clean."
+    if base_update_has_untracked_files "$repo"; then
+        log_warn "Project '$resolved_project' repository has untracked files. Continuing because tracked files are clean."
     fi
 
     if ((dry_run)); then
-        log_info "[DRY-RUN] Would update Base repository at '$BASE_HOME'."
-        log_info "[DRY-RUN] Would run 'basectl setup' after updating."
+        log_info "[DRY-RUN] Would update project '$resolved_project' repository at '$repo'."
+        log_info "[DRY-RUN] Would run 'basectl setup $resolved_project' after updating."
         return 0
     fi
 
     base_update_source_git_library || return 1
-    before_revision="$(base_update_head_revision "$BASE_HOME")" || {
-        log_error "Unable to read current Base repository revision."
+    before_revision="$(base_update_head_revision "$repo")" || {
+        log_error "Unable to read current revision for project '$resolved_project'."
         return 1
     }
 
-    log_info "Updating Base repository at '$BASE_HOME'."
-    git_update_repo "$BASE_HOME" "" "$update_branch" || return 1
-    after_revision="$(base_update_head_revision "$BASE_HOME")" || {
-        log_error "Unable to read updated Base repository revision."
+    log_info "Updating project '$resolved_project' repository at '$repo'."
+    git_update_repo "$repo" "" "$update_branch" || return 1
+    after_revision="$(base_update_head_revision "$repo")" || {
+        log_error "Unable to read updated revision for project '$resolved_project'."
         return 1
     }
 
     if [[ "$before_revision" == "$after_revision" ]]; then
-        log_info "Base repository is already up to date on '$update_branch' at '$after_revision'."
+        log_info "Project '$resolved_project' repository is already up to date on '$update_branch' at '$after_revision'."
     else
-        log_info "Base repository updated from '$before_revision' to '$after_revision' on '$update_branch'."
+        log_info "Project '$resolved_project' repository updated from '$before_revision' to '$after_revision' on '$update_branch'."
     fi
 
-    log_info "Running basectl setup after update."
-    base_update_run_setup || return $?
-    log_info "Base update is complete."
+    log_info "Running basectl setup $resolved_project after update."
+    base_update_run_setup "$base_home" "$resolved_project" || return $?
+    log_info "Project '$resolved_project' update is complete."
 }

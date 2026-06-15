@@ -247,7 +247,7 @@ _base_basectl_completion() {
             _base_basectl_completion_compgen "--defaults --no-defaults --dry-run -v -h --help" "$cur"
             ;;
         update)
-            _base_basectl_completion_compgen "--dry-run -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options "--dry-run -v -h --help" "$cur"
             ;;
     esac
 }
