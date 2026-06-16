@@ -1012,6 +1012,12 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *"Configuring GitHub repository 'codeforester/base-demo'..."* ]]
+    [[ "$output" == *"  Repository settings: applied."* ]]
+    [[ "$output" == *"  Label: bug (created or updated)."* ]]
+    [[ "$output" == *"  Labels: bug, enhancement, documentation, ci, security, needs-demo (6 applied)."* ]]
+    [[ "$output" == *"  Branch protection: created 'Base default branch protection'."* ]]
+    [[ "$output" == *"Configuration complete."* ]]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create bug --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create needs-demo --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
@@ -1059,6 +1065,8 @@ EOF
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     [[ "$output" == *"Configuring GitHub Project 'base-demo' for 'codeforester/base-demo'."* ]]
     [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from \"Base Roadmap\""* ]]
+    [[ "$output" == *"  GitHub Project 'base-demo': Status, Priority, Area, Size, Initiative fields configured."* ]]
+    [[ "$output" == *"Configuration complete."* ]]
     [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 

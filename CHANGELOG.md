@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made live `basectl repo configure` runs print a structured action summary for
+  repository settings, labels, branch protection, and Project metadata.
 - Made `basectl repo check` print visible success/failure summaries with counts
   and repair commands when files are missing.
 - Made `basectl repo init --pr` print next steps after opening a baseline pull

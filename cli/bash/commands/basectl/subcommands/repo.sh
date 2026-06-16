@@ -1305,6 +1305,20 @@ base_repo_pretty_command() {
     done
 }
 
+base_repo_join_csv() {
+    local first=1
+    local item
+
+    for item in "$@"; do
+        if ((first)); then
+            first=0
+        else
+            printf ', '
+        fi
+        printf '%s' "$item"
+    done
+}
+
 base_repo_configure_label() {
     local color="$3"
     local description="$4"
@@ -1320,7 +1334,8 @@ base_repo_configure_label() {
         return 0
     fi
 
-    gh label create "$label" --repo "$repo" --color "$color" --description "$description" --force
+    gh label create "$label" --repo "$repo" --color "$color" --description "$description" --force || return 1
+    printf "  Label: %s (created or updated).\n" "$label"
 }
 
 base_repo_ensure_github_repo() {
@@ -1396,11 +1411,13 @@ base_repo_configure_default_branch_protection() {
             log_error "Unable to update Base default branch protection ruleset for '$repo'."
             return 1
         }
+        printf "  Branch protection: updated 'Base default branch protection'.\n"
     else
         printf '%s\n' "$payload" | gh api "repos/$repo/rulesets" --method POST --input - || {
             log_error "Unable to create Base default branch protection ruleset for '$repo'."
             return 1
         }
+        printf "  Branch protection: created 'Base default branch protection'.\n"
     fi
 }
 
@@ -1512,6 +1529,7 @@ base_repo_configure_project_metadata() {
     output="$("${command[@]}" 2>&1)" || status=$?
     if [[ "$status" -eq 0 ]]; then
         [[ -z "$output" ]] || printf '%s\n' "$output"
+        printf "  GitHub Project '%s': Status, Priority, Area, Size, Initiative fields configured.\n" "$project_title"
         return 0
     fi
     if [[ "$status" -eq 3 ]]; then
@@ -1526,7 +1544,9 @@ base_repo_configure_project_metadata() {
 }
 
 base_repo_configure_github() {
+    local applied_labels=()
     local dry_run="$1"
+    local labels=()
     local protect_default_branch="${3:-1}"
     local repo="$2"
     local status=0
@@ -1535,6 +1555,7 @@ base_repo_configure_github() {
         printf "[DRY-RUN] Would run: gh repo edit %s --enable-issues --enable-projects --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge --squash-merge-commit-message pr-title-description\n" "$repo"
     else
         base_repo_require_gh || return 1
+        printf "Configuring GitHub repository '%s'...\n" "$repo"
         gh repo edit "$repo" \
             --enable-issues \
             --enable-projects \
@@ -1543,14 +1564,21 @@ base_repo_configure_github() {
             --enable-rebase-merge=false \
             --delete-branch-on-merge \
             --squash-merge-commit-message pr-title-description || return 1
+        printf "  Repository settings: applied.\n"
     fi
 
-    base_repo_configure_label "$dry_run" bug "d73a4a" "Something is not working" "$repo" || status=1
-    base_repo_configure_label "$dry_run" enhancement "a2eeef" "New feature or product improvement" "$repo" || status=1
-    base_repo_configure_label "$dry_run" documentation "0075ca" "Documentation improvements" "$repo" || status=1
-    base_repo_configure_label "$dry_run" ci "0e8a16" "Continuous integration, tests, automation, or release workflows" "$repo" || status=1
-    base_repo_configure_label "$dry_run" security "ee0701" "Security hardening or vulnerability work" "$repo" || status=1
-    base_repo_configure_label "$dry_run" needs-demo "fbca04" "Change should update a project demo" "$repo" || status=1
+    base_repo_configure_label "$dry_run" bug "d73a4a" "Something is not working" "$repo" && applied_labels+=(bug) || status=1
+    base_repo_configure_label "$dry_run" enhancement "a2eeef" "New feature or product improvement" "$repo" && applied_labels+=(enhancement) || status=1
+    base_repo_configure_label "$dry_run" documentation "0075ca" "Documentation improvements" "$repo" && applied_labels+=(documentation) || status=1
+    base_repo_configure_label "$dry_run" ci "0e8a16" "Continuous integration, tests, automation, or release workflows" "$repo" && applied_labels+=(ci) || status=1
+    base_repo_configure_label "$dry_run" security "ee0701" "Security hardening or vulnerability work" "$repo" && applied_labels+=(security) || status=1
+    base_repo_configure_label "$dry_run" needs-demo "fbca04" "Change should update a project demo" "$repo" && applied_labels+=(needs-demo) || status=1
+    if [[ "$dry_run" != "1" && "${#applied_labels[@]}" -gt 0 ]]; then
+        labels=("${applied_labels[@]}")
+        printf "  Labels: "
+        base_repo_join_csv "${labels[@]}"
+        printf " (%d applied).\n" "${#labels[@]}"
+    fi
     if [[ "$protect_default_branch" == "1" ]]; then
         base_repo_configure_default_branch_protection "$dry_run" "$repo" || status=1
     fi
@@ -2927,7 +2955,11 @@ base_repo_configure() {
             "$project_schema" \
             "$(base_repo_project_config_path "$path")" \
             "$copy_project_fields_from" \
-            "${initiative_options[@]}"
+            "${initiative_options[@]}" || return 1
+    fi
+
+    if [[ "$dry_run" != "1" ]]; then
+        printf "Configuration complete.\n"
     fi
 }
 
