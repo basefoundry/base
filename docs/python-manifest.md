@@ -85,6 +85,13 @@ Base validates runner values when reading the manifest. `basectl check` and
 `basectl doctor` warn if `uv` is unavailable. Actual command invocation fails
 clearly when `runner: uv` is selected and `uv` is not on `PATH`.
 
+Command strings remain trusted project code with or without a runner. Base
+does not parse them into a restricted argument array; shell syntax in
+`test.command`, `commands.*.command`, `build.targets.*.command`, and
+`demo.script` is project-owned behavior. Review manifests from unfamiliar
+repositories before running them, and use `--dry-run` or listing commands first
+when you only need to inspect the resolved invocation.
+
 ## Relationship To `pyproject.toml`
 
 `pyproject.toml` remains the Python project's packaging contract. Base observes

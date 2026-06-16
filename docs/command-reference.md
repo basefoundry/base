@@ -26,6 +26,11 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl build <project> --list` | List build targets declared by a project manifest. | `--workspace <path>` |
 | `basectl demo [project]` | Run a project-owned demo script. | `--workspace <path>`, `--dry-run`, `-- <args>` |
 
+Manifest-declared `test`, `run`, and `build` commands are project-owned shell
+command strings executed from the project root. Review manifests from
+unfamiliar repositories before running them; use `--dry-run` or `--list` to
+inspect the resolved command contract first.
+
 ## Diagnostics And Logs
 
 | Command | What it does | Important flags |
