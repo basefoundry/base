@@ -47,6 +47,107 @@ Notes:
 EOF
 }
 
+base_gh_issue_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue list [gh options...]
+  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>] [--repo <owner/name>] [project options...]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
+
+Purpose:
+  List, create, and start GitHub issues using Base's issue-first workflow.
+
+Branch naming:
+  <category>/<issue>-<YYYYMMDD>-<slug>
+
+Issue create project options:
+  --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
+  --project <title>             Project to update. Defaults to the repository name.
+  --project-owner <login>       Project owner. Defaults to the repository owner.
+  --no-project                  Skip Project metadata updates.
+EOF
+}
+
+base_gh_pr_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh pr create [gh options...]
+  basectl gh pr status [gh options...]
+  basectl gh pr checks [gh options...]
+  basectl gh pr ready [gh options...]
+  basectl gh pr merge [gh options...]
+
+Purpose:
+  Create, inspect, ready, and merge pull requests with Base's issue-linked PR workflow.
+
+Notes:
+  - PR creation links the current issue automatically when the branch follows
+    <category>/<issue>-<YYYYMMDD>-<slug>.
+  - Pull request implementation work should happen in a dedicated worktree.
+EOF
+}
+
+base_gh_project_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-roadmap]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--initiative-option <name>] [--dry-run]
+  basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
+
+Purpose:
+  Diagnose, configure, and update GitHub Project metadata for Base-managed repositories.
+
+Notes:
+  - Project operations delegate to Base's Python Project engine.
+  - Use project issue set-fields to move issue cards through Backlog, In Progress, In Review, and Done.
+EOF
+}
+
+base_gh_branch_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh branch stale [--days <days>]
+  basectl gh branch prune [--dry-run] [--yes] [--remote]
+
+Purpose:
+  Inspect stale branches and prune merged local or GitHub branches.
+
+Options:
+  --days <days>  Minimum age for stale branch reporting. Defaults to 30.
+  --dry-run      Preview branches that would be deleted. This is the default.
+  --yes          Delete merged branches after preview.
+  --remote       Also prune merged GitHub remote branches and stale origin/* refs.
+EOF
+}
+
+base_gh_worktree_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh worktree prune [--dry-run] [--yes]
+
+Purpose:
+  Prune safe, merged Git worktrees and their local branches.
+
+Options:
+  --dry-run      Preview worktrees that would be removed. This is the default.
+  --yes          Remove safe merged worktrees after preview.
+EOF
+}
+
+base_gh_todo_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh todo import [--dry-run] [--file <path>]
+
+Purpose:
+  Preview GitHub issues that would be created from TODO.md.
+
+Options:
+  --dry-run      Preview parsed TODO items. This is the only supported mode today.
+  --file <path>  Read TODO items from a specific file. Defaults to TODO.md.
+EOF
+}
+
 base_gh_error() {
     print_error "$*"
 }
@@ -258,7 +359,7 @@ base_gh_do_issue() {
     case "$command" in
         list)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_issue_usage
                 return 0
             fi
             base_gh_run issue list "$@"
@@ -270,11 +371,11 @@ base_gh_do_issue() {
             base_gh_issue_start "$@"
             ;;
         -h|--help|help|"")
-            base_gh_usage
+            base_gh_issue_usage
             ;;
         *)
             base_gh_error "Unknown gh issue command '$command'."
-            base_gh_usage >&2
+            base_gh_issue_usage >&2
             return 1
             ;;
     esac
@@ -322,7 +423,7 @@ base_gh_issue_create() {
                 configure_project=0
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_issue_usage
                 return 0
                 ;;
             *)
@@ -402,7 +503,7 @@ base_gh_issue_start() {
                 shift
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_issue_usage
                 return 0
                 ;;
             *)
@@ -441,7 +542,7 @@ base_gh_do_pr() {
     case "$command" in
         create)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_pr_usage
                 return 0
             fi
             base_gh_require_git_repo || return 1
@@ -458,38 +559,38 @@ base_gh_do_pr() {
             ;;
         status)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_pr_usage
                 return 0
             fi
             base_gh_run pr status "$@"
             ;;
         checks)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_pr_usage
                 return 0
             fi
             base_gh_run pr checks "$@"
             ;;
         ready)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_pr_usage
                 return 0
             fi
             base_gh_run pr ready "$@"
             ;;
         merge)
             if base_gh_args_request_help "$@"; then
-                base_gh_usage
+                base_gh_pr_usage
                 return 0
             fi
             base_gh_run pr merge "$@"
             ;;
         -h|--help|help|"")
-            base_gh_usage
+            base_gh_pr_usage
             ;;
         *)
             base_gh_error "Unknown gh pr command '$command'."
-            base_gh_usage >&2
+            base_gh_pr_usage >&2
             return 1
             ;;
     esac
@@ -505,7 +606,7 @@ base_gh_branch_stale() {
                 shift
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_branch_usage
                 return 0
                 ;;
             *)
@@ -816,7 +917,7 @@ base_gh_branch_prune() {
                 remote=1
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_branch_usage
                 return 0
                 ;;
             *)
@@ -907,7 +1008,7 @@ base_gh_worktree_prune() {
                 dry_run=0
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_worktree_usage
                 return 0
                 ;;
             *)
@@ -995,10 +1096,10 @@ base_gh_do_branch() {
     case "$command" in
         stale) base_gh_branch_stale "$@" ;;
         prune) base_gh_branch_prune "$@" ;;
-        -h|--help|help|"") base_gh_usage ;;
+        -h|--help|help|"") base_gh_branch_usage ;;
         *)
             base_gh_error "Unknown gh branch command '$command'."
-            base_gh_usage >&2
+            base_gh_branch_usage >&2
             return 1
             ;;
     esac
@@ -1010,10 +1111,10 @@ base_gh_do_worktree() {
 
     case "$command" in
         prune) base_gh_worktree_prune "$@" ;;
-        -h|--help|help|"") base_gh_usage ;;
+        -h|--help|help|"") base_gh_worktree_usage ;;
         *)
             base_gh_error "Unknown gh worktree command '$command'."
-            base_gh_usage >&2
+            base_gh_worktree_usage >&2
             return 1
             ;;
     esac
@@ -1050,7 +1151,7 @@ base_gh_todo_import() {
                 shift
                 ;;
             -h|--help)
-                base_gh_usage
+                base_gh_todo_usage
                 return 0
                 ;;
             *)
@@ -1094,10 +1195,10 @@ base_gh_do_todo() {
 
     case "$command" in
         import) base_gh_todo_import "$@" ;;
-        -h|--help|help|"") base_gh_usage ;;
+        -h|--help|help|"") base_gh_todo_usage ;;
         *)
             base_gh_error "Unknown gh todo command '$command'."
-            base_gh_usage >&2
+            base_gh_todo_usage >&2
             return 1
             ;;
     esac
@@ -1105,6 +1206,11 @@ base_gh_do_todo() {
 
 base_gh_do_project() {
     local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
+
+    if base_gh_args_request_help "$@"; then
+        base_gh_project_usage
+        return 0
+    fi
 
     [[ -x "$wrapper" ]] || {
         base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."

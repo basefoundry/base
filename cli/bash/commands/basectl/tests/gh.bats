@@ -17,6 +17,74 @@ load ./basectl_helpers.bash
     [[ "$output" == *"assigned to codeforester"* ]]
 }
 
+@test "basectl gh issue prints area help" {
+    run_basectl gh issue --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh issue list"* ]]
+    [[ "$output" == *"basectl gh issue create"* ]]
+    [[ "$output" == *"basectl gh issue start <number>"* ]]
+    [[ "$output" == *"Issue create project options:"* ]]
+    [[ "$output" != *"basectl gh pr create"* ]]
+    [[ "$output" != *"basectl gh worktree prune"* ]]
+}
+
+@test "basectl gh pr prints area help" {
+    run_basectl gh pr --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh pr create"* ]]
+    [[ "$output" == *"basectl gh pr checks"* ]]
+    [[ "$output" == *"basectl gh pr merge"* ]]
+    [[ "$output" == *"issue-linked PR workflow"* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+    [[ "$output" != *"basectl gh branch prune"* ]]
+}
+
+@test "basectl gh project prints area help" {
+    run_basectl gh project --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh project doctor --project <title>"* ]]
+    [[ "$output" == *"basectl gh project configure --project <title>"* ]]
+    [[ "$output" == *"basectl gh project issue set-fields <number>"* ]]
+    [[ "$output" == *"Project operations delegate to Base's Python Project engine."* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+    [[ "$output" != *"basectl gh worktree prune"* ]]
+}
+
+@test "basectl gh branch prints area help" {
+    run_basectl gh branch --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh branch stale [--days <days>]"* ]]
+    [[ "$output" == *"basectl gh branch prune [--dry-run] [--yes] [--remote]"* ]]
+    [[ "$output" == *"--dry-run      Preview branches that would be deleted. This is the default."* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+    [[ "$output" != *"basectl gh worktree prune"* ]]
+}
+
+@test "basectl gh worktree prints area help" {
+    run_basectl gh worktree --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh worktree prune [--dry-run] [--yes]"* ]]
+    [[ "$output" == *"Prune safe, merged Git worktrees and their local branches."* ]]
+    [[ "$output" != *"basectl gh branch prune"* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+}
+
+@test "basectl gh todo prints area help" {
+    run_basectl gh todo --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh todo import [--dry-run] [--file <path>]"* ]]
+    [[ "$output" == *"Preview GitHub issues that would be created from TODO.md."* ]]
+    [[ "$output" == *"--dry-run      Preview parsed TODO items. This is the only supported mode today."* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+    [[ "$output" != *"basectl gh branch prune"* ]]
+}
+
 @test "basectl gh issue create applies category label and assignee" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
