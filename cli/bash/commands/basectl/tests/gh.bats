@@ -13,6 +13,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh project configure --project <title>"* ]]
     [[ "$output" == *"basectl gh project issue set-fields <number>"* ]]
     [[ "$output" == *"basectl gh worktree prune"* ]]
+    [[ "$output" == *"basectl gh todo plan [--file <path>]"* ]]
+    [[ "$output" != *"basectl gh todo import"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
     [[ "$output" == *"assigned to codeforester"* ]]
 }
@@ -81,9 +83,11 @@ load ./basectl_helpers.bash
     run_basectl gh todo --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl gh todo import [--dry-run] [--file <path>]"* ]]
+    [[ "$output" == *"basectl gh todo plan [--file <path>]"* ]]
     [[ "$output" == *"Preview GitHub issues that would be created from TODO.md."* ]]
-    [[ "$output" == *"--dry-run      Preview parsed TODO items. This is the only supported mode today."* ]]
+    [[ "$output" == *"TODO issue creation is not enabled yet. Use \`basectl gh todo plan\`"* ]]
+    [[ "$output" != *"--dry-run"* ]]
+    [[ "$output" != *"basectl gh todo import"* ]]
     [[ "$output" != *"basectl gh issue create"* ]]
     [[ "$output" != *"basectl gh branch prune"* ]]
 }
@@ -926,7 +930,7 @@ EOF
     [[ "$output" != *"unexpected gh args"* ]]
 }
 
-@test "basectl gh todo import dry-run classifies TODO items" {
+@test "basectl gh todo plan classifies TODO items" {
     local todo_file
 
     todo_file="$TEST_TMPDIR/TODO.md"
@@ -946,10 +950,26 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main todo import --dry-run --file "$1"
+            base_gh_subcommand_main todo plan --file "$1"
         ' bash "$todo_file"
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *"Issues that would be created from $todo_file:"* ]]
     [[ "$output" == *$'bug\tDetect outdated Xcode Command Line Tools in `basectl doctor`'* ]]
     [[ "$output" == *$'enhancement\tAdd first-class `mise` integration'* ]]
+}
+
+@test "basectl gh todo import reports creation is not enabled" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main todo import
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"TODO import creation is not enabled yet."* ]]
+    [[ "$output" == *"Run 'basectl gh todo plan' to preview TODO.md items."* ]]
 }

@@ -21,7 +21,7 @@ Usage:
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
   basectl gh worktree prune [--dry-run] [--yes]
-  basectl gh todo import [--dry-run] [--file <path>]
+  basectl gh todo plan [--file <path>]
 
 Purpose:
   Manage GitHub issues, pull requests, Project metadata, branch naming, and
@@ -43,7 +43,7 @@ Notes:
     repo-named Project and applies defaults from .github/base-project.yml.
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
-  - TODO import is currently a dry-run planning command.
+  - TODO planning only previews issues; TODO import creation is not enabled yet.
 EOF
 }
 
@@ -143,14 +143,17 @@ EOF
 base_gh_todo_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh todo import [--dry-run] [--file <path>]
+  basectl gh todo plan [--file <path>]
 
 Purpose:
   Preview GitHub issues that would be created from TODO.md.
 
 Options:
-  --dry-run      Preview parsed TODO items. This is the only supported mode today.
   --file <path>  Read TODO items from a specific file. Defaults to TODO.md.
+
+Notes:
+  - TODO issue creation is not enabled yet. Use `basectl gh todo plan` to
+    inspect the migration plan.
 EOF
 }
 
@@ -1150,14 +1153,11 @@ base_gh_todo_infer_category() {
     esac
 }
 
-base_gh_todo_import() {
-    local file="$BASE_HOME/TODO.md" dry_run=1 line section="" title category
+base_gh_todo_plan() {
+    local file="$BASE_HOME/TODO.md" line section="" title category
 
     while (($#)); do
         case "$1" in
-            --dry-run)
-                dry_run=1
-                ;;
             --file)
                 file="${2:-}"
                 shift
@@ -1179,12 +1179,7 @@ base_gh_todo_import() {
         return 1
     }
 
-    if ((dry_run)); then
-        printf '[DRY-RUN] Issues that would be created from %s:\n' "$file"
-    else
-        base_gh_error "TODO import creation is not enabled yet; run with --dry-run."
-        return 1
-    fi
+    printf 'Issues that would be created from %s:\n' "$file"
 
     while IFS= read -r line; do
         case "$line" in
@@ -1206,7 +1201,11 @@ base_gh_do_todo() {
     shift || true
 
     case "$command" in
-        import) base_gh_todo_import "$@" ;;
+        plan) base_gh_todo_plan "$@" ;;
+        import)
+            base_gh_error "TODO import creation is not enabled yet. Run 'basectl gh todo plan' to preview TODO.md items."
+            return 1
+            ;;
         -h|--help|help|"") base_gh_todo_usage ;;
         *)
             base_gh_error "Unknown gh todo command '$command'."
