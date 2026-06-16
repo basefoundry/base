@@ -73,7 +73,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl gh project doctor` | Inspect GitHub Project metadata against the Base roadmap schema. | `--project <title>`, `--owner <login>`, `--schema base-roadmap` |
 | `basectl gh project configure` | Create or repair Base-managed Project metadata. | `--project <title>`, `--owner <login>`, `--repo <owner/name>`, `--config <path>`, `--copy-fields-from <title>`, `--dry-run` |
 | `basectl gh project issue set-fields <number>` | Add an issue to the Project if needed and update metadata fields. | `--project <title>`, `--repo <owner/name>`, `--config <path>`, field options |
-| `basectl gh todo import` | Preview migration of `TODO.md` items into GitHub Issues. | `--dry-run`, `--file <path>` |
+| `basectl gh todo plan` | Preview migration of `TODO.md` items into GitHub Issues. Creation is not enabled yet. | `--file <path>` |
 
 ## Release And Context
 
