@@ -18,6 +18,16 @@ from base_setup.process import format_command
 from base_setup.registry import get_artifact_definition
 from base_setup.tests.helpers import fake_context, run_engine
 
+
+class BaseSetupMainTests(unittest.TestCase):
+    def test_main_reports_unknown_option_without_traceback(self) -> None:
+        status, _stdout, stderr = run_engine(["--bad-option"])
+
+        self.assertEqual(status, 2)
+        self.assertIn("No such option", stderr)
+        self.assertNotIn("Traceback", stderr)
+
+
 class ArtifactMergeTests(unittest.TestCase):
 
     def test_merge_artifacts_keeps_defaults_and_manifest_artifacts(self) -> None:

@@ -56,6 +56,13 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 7)
         main_mock.assert_called_once_with()
 
+    def test_main_reports_missing_action_without_traceback(self) -> None:
+        status, _stdout, stderr = run_engine([])
+
+        self.assertEqual(status, 2)
+        self.assertIn("Missing argument", stderr)
+        self.assertNotIn("Traceback", stderr)
+
     def test_dev_manifest_declares_supported_developer_tools(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         artifacts = {(artifact.artifact_type, artifact.name, artifact.version) for artifact in manifest.artifacts}

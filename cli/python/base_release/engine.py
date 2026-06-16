@@ -63,8 +63,7 @@ class ReleaseFinding:
 
 
 def main(argv: list[str] | None = None) -> int:
-    result = app.click_command.main(args=argv, standalone_mode=False)
-    return int(result or 0)
+    return base_cli.run_app(app, argv)
 
 
 @app.command(

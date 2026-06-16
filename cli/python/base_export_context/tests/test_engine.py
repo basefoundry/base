@@ -32,6 +32,17 @@ def invoke_engine(args: list[str], project_root: Path) -> tuple[int, str, str]:
 
 
 class ExportContextTests(unittest.TestCase):
+    def test_main_reports_unknown_option_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+
+            status, _stdout, stderr = invoke_engine(["--bad-option"], project_root)
+
+        self.assertEqual(status, 2)
+        self.assertIn("No such option", stderr)
+        self.assertNotIn("Traceback", stderr)
+
     def test_markdown_print_uses_index_order_then_remaining_markdown_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir) / "demo"
