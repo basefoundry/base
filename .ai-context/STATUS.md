@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.0.1` is the current release. The repo-root `VERSION` file is updated
+Base `1.0.2` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -56,6 +56,8 @@ Recent released work includes:
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
 - Base `1.0.1` AGPL license cleanup and release artifacts
 - explicit uv-managed Python setup and command runner support
+- workspace-aware repo clone, manifest-driven workspace clone, Project intake
+  workflow generation, and resilient `basectl gh` command execution
 
 ## Recent Merged Changes
 

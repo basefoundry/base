@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-06-16
+
 ### Added
 
 - Added `basectl repo clone` for workspace-aware cloning of one GitHub
