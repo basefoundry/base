@@ -23,6 +23,10 @@ Options:
 
 Purpose:
   Diagnose the local Base CLI environment and, when provided, project artifacts.
+  Use doctor for finding IDs and fix hints; use check for a quick pass/fail result.
+
+See also:
+  basectl check [project] [options]
 EOF
 }
 

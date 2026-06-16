@@ -13,6 +13,9 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--remote-network"* ]]
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
+    [[ "$output" == *"Use doctor for finding IDs and fix hints; use check for a quick pass/fail result."* ]]
+    [[ "$output" == *"See also:"* ]]
+    [[ "$output" == *"basectl check [project] [options]"* ]]
 }
 
 @test "basectl doctor reports ok findings and includes dev checks" {
