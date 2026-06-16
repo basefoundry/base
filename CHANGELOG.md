@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made `basectl repo init --pr` print next steps after opening a baseline pull
+  request, including the command to rerun after merge.
 - Clarified `basectl repo init` and `repo configure` help to distinguish local
   baseline updates, optional GitHub repo creation, and GitHub-side repair.
 

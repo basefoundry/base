@@ -1821,12 +1821,63 @@ basectl repo installer-template $(base_repo_pretty_arg "$path") --repo $repo --p
 EOF
 }
 
+base_repo_print_init_pr_next_steps() {
+    local command_hint="$2"
+    local pr_output="$1"
+    local pr_url=""
+
+    pr_url="$(printf '%s\n' "$pr_output" | awk '/^https?:\/\/github.com\/.+\/pull\/[0-9]+/ { print; exit }')"
+    if [[ -n "$pr_url" ]]; then
+        printf "Baseline PR opened: %s\n" "$pr_url"
+    else
+        [[ -z "$pr_output" ]] || printf '%s\n' "$pr_output"
+        printf "Baseline PR opened.\n"
+    fi
+    printf "\n"
+    printf "Next steps:\n"
+    printf "  1. Review and merge the pull request.\n"
+    printf "  2. Re-run this command after merge to complete GitHub configuration:\n"
+    printf "     %s\n" "$command_hint"
+}
+
+base_repo_init_pr_rerun_command() {
+    local configure="$4"
+    local configure_project="$6"
+    local copy_project_fields_from="${10}"
+    local name="$1"
+    local option
+    local project_owner="$8"
+    local project_schema="$9"
+    local project_title="$7"
+    local protect_default_branch="$5"
+    local repo="$3"
+    local root="$2"
+    local command=(basectl repo init "$name" --path "$root" --repo "$repo" --pr)
+    shift 10
+
+    [[ "$configure" == "1" ]] || command+=(--no-configure)
+    [[ "$protect_default_branch" == "1" ]] || command+=(--no-protect-default-branch)
+    [[ "$configure_project" == "1" ]] || command+=(--no-project)
+    [[ -z "$project_title" ]] || command+=(--project "$project_title")
+    [[ -z "$project_owner" ]] || command+=(--project-owner "$project_owner")
+    [[ "$project_schema" == "base-roadmap" ]] || command+=(--project-schema "$project_schema")
+    [[ -z "$copy_project_fields_from" ]] || command+=(--copy-project-fields-from "$copy_project_fields_from")
+    for option in "$@"; do
+        command+=(--initiative-option "$option")
+    done
+
+    base_repo_pretty_command "${command[@]}"
+}
+
 base_repo_finish_pr_baseline() {
     local body_file
     local branch="$5"
+    local command_hint="${7:-}"
     local default_branch="$6"
     local dry_run="$1"
     local name="$2"
+    local output_file
+    local pr_output=""
     local repo="$4"
     local root="$3"
     local status
@@ -1857,15 +1908,27 @@ base_repo_finish_pr_baseline() {
         log_error "Failed to create a temporary pull request body file."
         return 1
     }
+    output_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-init-pr-output.XXXXXX")" || {
+        rm -f "$body_file"
+        log_error "Failed to create a temporary pull request output file."
+        return 1
+    }
     base_repo_create_baseline_pr_body "$name" "$root" "$repo" > "$body_file"
     gh pr create \
         --repo "$repo" \
         --base "$default_branch" \
         --head "$branch" \
         --title "Add Base repository baseline" \
-        --body-file "$body_file"
+        --body-file "$body_file" > "$output_file" 2>&1
     status=$?
+    pr_output="$(cat "$output_file")"
     rm -f "$body_file"
+    rm -f "$output_file"
+    if [[ "$status" -eq 0 ]]; then
+        base_repo_print_init_pr_next_steps "$pr_output" "${command_hint:-basectl repo init $name --path $root --repo $repo --pr}"
+        return 0
+    fi
+    [[ -z "$pr_output" ]] || printf '%s\n' "$pr_output"
     return "$status"
 }
 
@@ -2045,6 +2108,7 @@ base_repo_init() {
     local copy_project_fields_from=""
     local protect_default_branch=1
     local pr_branch=""
+    local pr_rerun_command=""
     local requested_visibility=""
     local root
     local configure_project=1
@@ -2236,6 +2300,20 @@ base_repo_init() {
             base_repo_require_pr_worktree "$root" || return 1
             default_branch="$(base_repo_default_branch_for_pr "$github_repo")" || return 1
         fi
+        pr_rerun_command="$(
+            base_repo_init_pr_rerun_command \
+                "$name" \
+                "$root" \
+                "$github_repo" \
+                "$configure" \
+                "$protect_default_branch" \
+                "$configure_project" \
+                "$project_title" \
+                "$project_owner" \
+                "$project_schema" \
+                "$copy_project_fields_from" \
+                "${initiative_options[@]}"
+        )"
         base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$default_branch" || return 1
     fi
 
@@ -2243,11 +2321,11 @@ base_repo_init() {
 
     if ((create_pr)); then
         if [[ "$dry_run" == "1" ]]; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch"
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command"
             return $?
         fi
         if base_repo_pr_baseline_has_changes "$root"; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch"
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command"
             return $?
         else
             baseline_change_status=$?
