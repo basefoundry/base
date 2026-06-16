@@ -2535,7 +2535,11 @@ base_repo_clone_with_gh() {
         log_error "Failed to clone GitHub repository '$repo' into '$target'."
         return 1
     }
-    printf "Run basectl repo check '%s' after the clone if the repository has adopted the Base baseline.\n" "$target"
+    printf "Cloned '%s' to '%s'.\n" "$repo" "$target"
+    if [[ -f "$target/base_manifest.yaml" ]]; then
+        printf "Run 'basectl repo check %s' to verify the Base baseline.\n" \
+            "$(base_repo_pretty_arg "$target")"
+    fi
 }
 
 base_repo_clone() {
