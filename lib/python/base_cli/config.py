@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 from typing import Any
 
 from .ide_schema import SUPPORTED_IDES
@@ -31,10 +32,17 @@ class UserWorkspaceConfig:
 
 
 @dataclass(frozen=True)
+class UserGithubConfig:
+    default_owner: str | None
+    clone_protocol: str | None
+
+
+@dataclass(frozen=True)
 class UserConfig:
     raw: dict[str, Any]
     ide: UserIdeConfig
     workspace: UserWorkspaceConfig = UserWorkspaceConfig(root=None)
+    github: UserGithubConfig = UserGithubConfig(default_owner=None, clone_protocol=None)
 
 
 def user_config_path(home: Path | None = None) -> Path:
@@ -71,6 +79,7 @@ def read_user_config(home: Path | None = None) -> UserConfig:
     return UserConfig(
         raw=raw,
         workspace=_read_user_workspace_config(path, raw.get("workspace")),
+        github=_read_user_github_config(path, raw.get("github")),
         ide=_read_user_ide_config(path, raw.get("ide")),
     )
 
@@ -89,16 +98,63 @@ def _read_user_workspace_config(path: Path, workspace_data: Any) -> UserWorkspac
     return UserWorkspaceConfig(root=_optional_path(path, "workspace.root", workspace_data.get("root")))
 
 
+def _read_user_github_config(path: Path, github_data: Any) -> UserGithubConfig:
+    if github_data is None:
+        return UserGithubConfig(default_owner=None, clone_protocol=None)
+    if not isinstance(github_data, dict):
+        raise ValueError(f"{path}: github must be a mapping when provided.")
+
+    allowed_keys = {"default_owner", "clone_protocol"}
+    unknown_keys = sorted(set(github_data) - allowed_keys)
+    if unknown_keys:
+        raise ValueError(f"{path}: github has unsupported keys: {', '.join(unknown_keys)}.")
+
+    return UserGithubConfig(
+        default_owner=_optional_github_owner(path, github_data.get("default_owner")),
+        clone_protocol=_optional_github_clone_protocol(path, github_data.get("clone_protocol")),
+    )
+
+
+def _optional_github_owner(path: Path, value: Any) -> str | None:
+    owner = _optional_non_empty_string(path, "github.default_owner", value)
+    if owner is None:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", owner):
+        raise ValueError(
+            f"{path}: github.default_owner must start with a letter or digit and contain only "
+            "letters, digits, and dash."
+        )
+    return owner
+
+
+def _optional_github_clone_protocol(path: Path, value: Any) -> str | None:
+    protocol = _optional_non_empty_string(path, "github.clone_protocol", value)
+    if protocol is None:
+        return None
+    if protocol not in {"ssh", "https"}:
+        raise ValueError(f"{path}: github.clone_protocol must be 'ssh' or 'https'.")
+    return protocol
+
+
 def _optional_path(path: Path, key: str, value: Any) -> Path | None:
+    if value is None:
+        return None
+    candidate = _optional_non_empty_string(path, key, value)
+    if candidate is None:
+        return None
+
+    candidate_path = Path(candidate).expanduser()
+    if not candidate_path.is_absolute():
+        raise ValueError(f"{path}: {key} must be an absolute path or start with '~'.")
+    return candidate_path.resolve(strict=False)
+
+
+def _optional_non_empty_string(path: Path, key: str, value: Any) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{path}: {key} must be a non-empty string when provided.")
-
-    candidate = Path(value).expanduser()
-    if not candidate.is_absolute():
-        raise ValueError(f"{path}: {key} must be an absolute path or start with '~'.")
-    return candidate.resolve(strict=False)
+    return value.strip()
 
 
 def _read_user_ide_config(path: Path, ide_data: Any) -> UserIdeConfig:

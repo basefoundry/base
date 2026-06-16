@@ -112,6 +112,8 @@ class BaseConfigCommandTests(unittest.TestCase):
         self.assertIn("Config YAML is valid", output)
         self.assertIn("Config contains 1 top-level key", output)
         self.assertIn("workspace.root is not configured", output)
+        self.assertIn("github.default_owner is not configured", output)
+        self.assertIn("github.clone_protocol is not configured", output)
 
     def test_doctor_config_reports_configured_workspace_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -130,6 +132,53 @@ class BaseConfigCommandTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("workspace.root points to", output)
         self.assertIn(str(workspace), output)
+
+    def test_doctor_config_reports_configured_github_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(root)
+                path.parent.mkdir(parents=True)
+                path.write_text(
+                    "github:\n  default_owner: codeforester\n  clone_protocol: https\n",
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_config_command()
+
+        output = stdout.getvalue()
+        self.assertEqual(status, 0)
+        self.assertIn("github.default_owner is 'codeforester'", output)
+        self.assertIn("github.clone_protocol is 'https'", output)
+
+    def test_doctor_config_reports_invalid_github_default_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(root)
+                path.parent.mkdir(parents=True)
+                path.write_text("github:\n  default_owner: bad_owner!\n", encoding="utf-8")
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_config_command()
+
+        self.assertEqual(status, 1)
+        self.assertIn("github.default_owner must start with a letter or digit", stdout.getvalue())
+
+    def test_doctor_config_reports_invalid_github_clone_protocol(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(root)
+                path.parent.mkdir(parents=True)
+                path.write_text("github:\n  clone_protocol: ftp\n", encoding="utf-8")
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.doctor_config_command()
+
+        self.assertEqual(status, 1)
+        self.assertIn("github.clone_protocol must be 'ssh' or 'https'", stdout.getvalue())
 
     def test_doctor_config_reports_invalid_workspace_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

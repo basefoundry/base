@@ -90,6 +90,24 @@ def doctor_config_command() -> int:
         print_finding("ok", "workspace", f"workspace.root points to '{user_config.workspace.root}'.")
     else:
         print_finding("warn", "workspace", f"workspace.root '{user_config.workspace.root}' is not a directory.")
+
+    if user_config.github.default_owner is None:
+        print_finding(
+            "ok",
+            "github_owner",
+            "github.default_owner is not configured; short repo clone names require --owner.",
+        )
+    else:
+        print_finding("ok", "github_owner", f"github.default_owner is '{user_config.github.default_owner}'.")
+
+    if user_config.github.clone_protocol is None:
+        print_finding(
+            "ok",
+            "github_proto",
+            "github.clone_protocol is not configured; repo clone defaults to 'ssh'.",
+        )
+    else:
+        print_finding("ok", "github_proto", f"github.clone_protocol is '{user_config.github.clone_protocol}'.")
     return 0
 
 
