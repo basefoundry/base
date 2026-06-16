@@ -74,11 +74,22 @@ Options:
   -h, --help                    Show this help text.
 
 Examples:
-  basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
-  basectl repo init base-demo --repo codeforester/base-demo --public
+  # Create a new public GitHub repo and open a baseline PR.
+  basectl repo init base-demo --repo codeforester/base-demo --public --pr
 
-Creates the standard Base-managed repository baseline, including
-.github/base-project.yml. With --pr, the first run opens a baseline PR when
+  # Add or refresh the Base baseline in an existing checkout.
+  basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
+
+  # After the baseline PR is merged, apply or repair GitHub settings.
+  basectl repo configure . --repo codeforester/bankbuddy
+
+Ensures the standard local Base-managed repository baseline, including
+.github/base-project.yml. Safe to run against an existing repository: existing
+files are left unchanged and missing baseline files are added.
+
+When --repo names a missing GitHub repo, repo init creates it using --private/--public.
+Unless --no-configure is set, repo init also applies the GitHub-side settings
+handled by repo configure. With --pr, the first run opens a baseline PR when
 files change; rerun the same command after merge to continue GitHub-side
 configuration.
 EOF
@@ -142,9 +153,20 @@ Options:
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
-Applies GitHub-side repository settings, labels, branch protection, and
-repo Project metadata. When .github/base-project.yml exists, repo configure
-uses it for repo-specific GitHub Project taxonomy and issue defaults.
+Examples:
+  basectl repo configure . --repo codeforester/bankbuddy
+  basectl repo configure . --copy-project-fields-from "Base Roadmap"
+
+repo configure applies or repairs GitHub-side repository settings, labels,
+branch protection, Project metadata, and repo-visible Project intake support.
+Use it after a repo init --pr baseline PR is merged, after cloning an older
+Base-managed repo, or whenever GitHub settings drift.
+
+When .github/base-project.yml exists, repo configure uses it for repo-specific
+GitHub Project taxonomy and issue defaults.
+
+It does not create the full local baseline; run repo init first when the
+Base-managed files are missing.
 EOF
 }
 

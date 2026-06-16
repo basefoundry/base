@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Clarified `basectl repo init` and `repo configure` help to distinguish local
+  baseline updates, optional GitHub repo creation, and GitHub-side repair.
+
 ## [1.0.2] - 2026-06-16
 
 ### Added
