@@ -234,7 +234,7 @@ Usage:
 Options:
   --repo <owner/name>           GitHub repository for --pr. Defaults to the target origin remote.
   --repo-name <name>            Repository name for generated agent guidance. Defaults to the target path basename.
-  --default-branch <name>       Default branch for generated agent guidance. Defaults to main.
+  --default-branch <name>       Default branch for generated agent guidance. Defaults to detected branch, then main.
   --validation-command <cmd>    Validation command for generated agent guidance. Defaults to ./tests/validate.sh.
   --pr                          Commit generated guidance files on a branch and open a draft pull request.
   --dry-run                     Print planned changes without applying them.
@@ -1654,6 +1654,31 @@ base_repo_default_branch_for_pr() {
     printf '%s\n' "$default_branch"
 }
 
+base_repo_detect_default_branch() {
+    local default_branch
+    local root="$1"
+
+    if default_branch="$(git -C "$root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+        default_branch="${default_branch#origin/}"
+        if [[ -n "$default_branch" ]]; then
+            printf '%s\n' "$default_branch"
+            return 0
+        fi
+    fi
+
+    if git -C "$root" show-ref --verify --quiet refs/heads/main; then
+        printf '%s\n' main
+        return 0
+    fi
+
+    if git -C "$root" show-ref --verify --quiet refs/heads/master; then
+        printf '%s\n' master
+        return 0
+    fi
+
+    return 1
+}
+
 base_repo_prepare_pr_branch() {
     local branch="$3"
     local command_label="${5:-repo init --pr}"
@@ -2704,7 +2729,8 @@ base_repo_check() {
 
 base_repo_agent_guidance() {
     local create_pr=0
-    local default_branch="main"
+    local default_branch=""
+    local default_branch_explicit=0
     local dry_run=0
     local github_repo=""
     local path="."
@@ -2750,10 +2776,12 @@ base_repo_agent_guidance() {
                     return $?
                 }
                 default_branch="$2"
+                default_branch_explicit=1
                 shift 2
                 ;;
             --default-branch=*)
                 default_branch="${1#--default-branch=}"
+                default_branch_explicit=1
                 shift
                 ;;
             --validation-command)
@@ -2798,6 +2826,13 @@ base_repo_agent_guidance() {
 
     root="$(base_repo_target_path "$path")"
     [[ -n "$repo_name" ]] || repo_name="$(basename -- "$root")"
+    if [[ "$default_branch_explicit" != "1" ]]; then
+        if ! default_branch="$(base_repo_detect_default_branch "$root")"; then
+            default_branch="main"
+            printf "Note: Could not detect default branch from origin; defaulting to 'main'.\n"
+            printf "      Pass --default-branch <name> to set it explicitly.\n"
+        fi
+    fi
     [[ -n "$default_branch" ]] || {
         base_repo_agent_guidance_usage_error "Option '--default-branch' requires a non-empty value."
         return $?
