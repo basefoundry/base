@@ -32,6 +32,8 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
+    [[ "$output" == *"Accepts integer ages with suffix d, h, m, or s"* ]]
+    [[ "$output" == *"Examples: 30d, 12h, 45m, 60s."* ]]
 }
 
 @test "basectl clean reports missing cleanup criterion as a usage error" {

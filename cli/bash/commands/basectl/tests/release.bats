@@ -12,6 +12,12 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl release plan --version <version>"* ]]
     [[ "$output" == *"basectl release notes --version <version>"* ]]
     [[ "$output" == *"basectl release publish --version <version>"* ]]
+    [[ "$output" == *"Subcommands:"* ]]
+    [[ "$output" == *"check    Verify release readiness"* ]]
+    [[ "$output" == *"plan     Show the release plan"* ]]
+    [[ "$output" == *"notes    Print the changelog notes"* ]]
+    [[ "$output" == *"publish  Tag the release and create the GitHub Release"* ]]
+    [[ "$output" == *"Typical order: check -> plan -> notes -> publish."* ]]
 }
 
 @test "basectl release delegates to the Python release layer" {
