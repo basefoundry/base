@@ -54,12 +54,14 @@ Start from Base's maintained template, then customize the project-owned copy:
 ```bash
 basectl repo installer-template
 basectl repo installer-template install.sh
+basectl repo installer-template --print
 basectl repo installer-template install.sh --pr --dry-run
 ```
 
-With no path, the command prints the template to stdout. With a path, it writes
-an executable script and leaves an existing file unchanged so project
-customizations are not overwritten.
+With no path, the command writes an executable `install.sh` in the current
+directory. With a path, it writes the template there. Use `--print` when you want
+to inspect or pipe the maintained template. Existing files are left unchanged so
+project customizations are not overwritten.
 
 Use `--pr` when the generated installer should be reviewed before landing. The
 target path must be inside a clean Git worktree, the GitHub repository is

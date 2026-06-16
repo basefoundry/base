@@ -263,9 +263,12 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo installer-template [path] [options]"* ]]
+    [[ "$output" == *"--print, --stdout"* ]]
     [[ "$output" == *"--repo <owner/name>"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" == *"to ./install.sh"* ]]
+    [[ "$output" == *"when path is omitted"* ]]
     [[ "$output" != *"--project <title>"* ]]
 }
 
@@ -303,7 +306,7 @@ EOF
 }
 
 @test "basectl repo installer-template prints the maintained template" {
-    run_basectl repo installer-template
+    run_basectl repo installer-template --print
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'PROJECT_NAME="${PROJECT_NAME:-example-project}"'* ]]
@@ -312,6 +315,23 @@ EOF
     [[ "$output" == *"Explicit error handling is used instead of set -e"* ]]
     [[ "$output" == *'run git -C "$BASE_DIR" pull --ff-only || die'* ]]
     [[ "$output" != *"set -euo pipefail"* ]]
+}
+
+@test "basectl repo installer-template writes install.sh by default" {
+    local physical_repo_dir
+    local repo_dir="$TEST_TMPDIR/default-installer"
+
+    mkdir -p "$repo_dir"
+    cd "$repo_dir"
+    physical_repo_dir="$(pwd -P)"
+
+    run_basectl repo installer-template
+
+    [ "$status" -eq 0 ]
+    [ -x "$repo_dir/install.sh" ]
+    grep -Fq 'PROJECT_NAME="${PROJECT_NAME:-example-project}"' "$repo_dir/install.sh"
+    [[ "$output" == *"Created executable '$physical_repo_dir/install.sh'."* ]]
+    [[ "$output" == *"Run git -C '$physical_repo_dir' status --short to review changes."* ]]
 }
 
 @test "basectl repo installer-template writes an executable template" {
@@ -369,6 +389,24 @@ EOF
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/install.sh'."* ]]
     [[ "$output" == *"[DRY-RUN] Would commit generated installer template file with message 'Add Base installer template'."* ]]
     [[ "$output" == *"[DRY-RUN] Would push branch 'base/installer-template-base-demo' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/installer-template-base-demo' to '<default branch>' with title 'Add Base installer template'."* ]]
+    [ ! -e "$repo_dir/install.sh" ]
+}
+
+@test "basectl repo installer-template --pr dry-run defaults to install.sh" {
+    local physical_repo_dir
+    local repo_dir="$TEST_TMPDIR/installer-pr-default"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
+
+    cd "$repo_dir"
+    physical_repo_dir="$(pwd -P)"
+    run_basectl repo installer-template --pr --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/installer-template-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create executable '$physical_repo_dir/install.sh'."* ]]
     [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/installer-template-base-demo' to '<default branch>' with title 'Add Base installer template'."* ]]
     [ ! -e "$repo_dir/install.sh" ]
 }

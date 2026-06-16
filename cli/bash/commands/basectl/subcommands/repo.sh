@@ -41,7 +41,7 @@ Commands:
   check                Verify the local repository baseline.
   configure            Apply GitHub settings, labels, branch protection, and Project metadata.
   agent-guidance       Seed optional repo-local agent guidance files.
-  installer-template   Print or write the maintained project installer template.
+  installer-template   Write or print the maintained project installer template.
 
 Run 'basectl repo <command> --help' for command-specific options.
 EOF
@@ -182,14 +182,15 @@ Usage:
   basectl repo installer-template [path] [options]
 
 Options:
+  --print, --stdout             Print the maintained template to stdout instead of writing a file.
   --repo <owner/name>           GitHub repository for --pr. Defaults to the target origin remote.
   --pr                          Commit the generated installer template on a branch and open a draft pull request.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
-Prints the maintained project installer template, or writes it to path when a
-path is provided. With --pr, path is required.
+Writes the maintained project installer template to path, or to ./install.sh
+when path is omitted. Use --print to inspect or pipe the template.
 EOF
 }
 
@@ -3129,6 +3130,7 @@ base_repo_installer_template() {
     local dry_run=0
     local github_repo=""
     local path=""
+    local print_template=0
     local pr_branch=""
     local pr_default_branch=""
     local rel_path=""
@@ -3151,6 +3153,10 @@ base_repo_installer_template() {
                 ;;
             --repo=*)
                 github_repo="${1#--repo=}"
+                shift
+                ;;
+            --print|--stdout)
+                print_template=1
                 shift
                 ;;
             --pr)
@@ -3181,14 +3187,20 @@ base_repo_installer_template() {
         esac
     done
 
-    if [[ -z "$path" ]]; then
+    if ((print_template)); then
         if ((create_pr)); then
-            base_repo_installer_template_usage_error "Option '--pr' requires a path."
+            base_repo_installer_template_usage_error "Option '--print' cannot be used with --pr."
+            return $?
+        fi
+        if [[ -n "$path" ]]; then
+            base_repo_installer_template_usage_error "Option '--print' cannot be used with a path."
             return $?
         fi
         base_repo_print_installer_template
         return $?
     fi
+
+    [[ -n "$path" ]] || path="install.sh"
 
     path="$(base_repo_target_path "$path")"
     root="$(dirname -- "$path")"
