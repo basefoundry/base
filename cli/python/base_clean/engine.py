@@ -24,7 +24,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
-@base_cli.option("--older-than", help="Remove runtime artifacts older than an age such as 30d.")
+@base_cli.option(
+    "--older-than",
+    help="Remove runtime artifacts older than an age such as 30d, 12h, 45m, or 60s.",
+)
 @base_cli.option("--keep-last", help="Keep the newest N log files per CLI log directory.")
 @base_cli.option("--dry-run", is_flag=True, help="Print what would be removed without deleting anything.")
 def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dry_run: bool) -> int:

@@ -21,6 +21,12 @@ Options:
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
+Profiles:
+  Profile lists are comma-separated, for example: --profile dev,sre.
+  dev - Base development tooling for this repository.
+  sre - production/SRE prerequisite tooling.
+  ai  - AI coding assistant tooling.
+
 Purpose:
   Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes.
   Use check for a quick pass/fail result; use doctor for finding IDs and fix hints.

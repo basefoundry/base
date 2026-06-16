@@ -24,6 +24,12 @@ Options:
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
+Profiles:
+  Profile lists are comma-separated, for example: --profile dev,sre.
+  dev - Base development tooling for this repository.
+  sre - production/SRE prerequisite tooling.
+  ai  - AI coding assistant tooling.
+
 Purpose:
   Run Base setup, checks, and diagnostics in a non-interactive CI environment.
   Sets BASE_CI=true so setup and diagnostic paths can choose CI-safe behavior.

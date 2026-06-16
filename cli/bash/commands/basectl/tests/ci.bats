@@ -40,6 +40,11 @@ prepare_ci_runtime() {
     [[ "$output" == *"basectl ci check <project>"* ]]
     [[ "$output" == *"basectl ci doctor <project>"* ]]
     [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--profile <list>"* ]]
+    [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
+    [[ "$output" == *"dev - Base development tooling for this repository."* ]]
+    [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
+    [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
     [[ "$output" == *"BASE_CI=true"* ]]
 }
 

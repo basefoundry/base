@@ -9,7 +9,9 @@ Usage:
   basectl clean [--older-than <age>] [--keep-last <count>] [options]
 
 Options:
-  --older-than <age>  Remove runtime artifacts older than an age such as 30d.
+  --older-than <age>  Remove runtime artifacts older than <age>.
+                      Accepts integer ages with suffix d, h, m, or s.
+                      Examples: 30d, 12h, 45m, 60s.
   --keep-last <count> Keep the newest count log files per CLI log directory.
   --dry-run           Print what would be removed without deleting anything.
   -v                  Enable DEBUG logging for this subcommand.

@@ -11,6 +11,12 @@ Usage:
   basectl release notes --version <version> [options]
   basectl release publish --version <version> [options]
 
+Subcommands:
+  check    Verify release readiness for version, changelog, Git, and GitHub.
+  plan     Show the release plan without creating tags or releases.
+  notes    Print the changelog notes for the target version.
+  publish  Tag the release and create the GitHub Release.
+
 Options:
   --version <version>  Release version to inspect.
   --manifest <path>   Use a specific base_manifest.yaml path.
@@ -19,6 +25,7 @@ Options:
   -h, --help          Show this help text.
 
 Inspect release readiness, plan, changelog notes, and guarded GitHub publishing.
+Typical order: check -> plan -> notes -> publish.
 Homebrew tap updates remain a manual handoff.
 EOF
 }
