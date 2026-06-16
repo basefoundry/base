@@ -112,9 +112,12 @@ Usage:
 Purpose:
   Inspect stale branches and prune merged local or GitHub branches.
 
+Note:
+  Runs in dry-run mode by default. Pass --yes to apply changes.
+
 Options:
   --days <days>  Minimum age for stale branch reporting. Defaults to 30.
-  --dry-run      Preview branches that would be deleted. This is the default.
+  --dry-run      Preview branches that would be deleted (default).
   --yes          Delete merged branches after preview.
   --remote       Also prune merged GitHub remote branches and stale origin/* refs.
 EOF
@@ -128,8 +131,11 @@ Usage:
 Purpose:
   Prune safe, merged Git worktrees and their local branches.
 
+Note:
+  Runs in dry-run mode by default. Pass --yes to apply changes.
+
 Options:
-  --dry-run      Preview worktrees that would be removed. This is the default.
+  --dry-run      Preview worktrees that would be removed (default).
   --yes          Remove safe merged worktrees after preview.
 EOF
 }
@@ -939,6 +945,9 @@ base_gh_branch_prune() {
         base_gh_branch_prune_github_branches "$dry_run" "$default_branch" || status=$?
         base_gh_branch_prune_remote_tracking_refs "$dry_run" || status=$?
     fi
+    if ((dry_run)); then
+        printf 'Run with --yes to apply these changes.\n'
+    fi
     return "$status"
 }
 
@@ -1086,6 +1095,9 @@ base_gh_worktree_prune() {
     printf 'Summary: %s %s, %s skipped current/default, %s skipped dirty, %s skipped unmerged, %s failed.\n' \
         "$removed" "$([[ "$dry_run" -eq 1 ]] && printf 'would remove' || printf 'removed')" \
         "$skipped_current" "$skipped_dirty" "$skipped_unmerged" "$failed"
+    if ((dry_run)); then
+        printf 'Run with --yes to apply these changes.\n'
+    fi
     return "$failed"
 }
 
