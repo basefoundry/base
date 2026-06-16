@@ -2039,53 +2039,81 @@ base_repo_pr_baseline_has_changes() {
 }
 
 base_repo_check_baseline() {
-    local missing=0
+    local missing_files=()
     local path="$1"
     local rel
+    local repo_name
+    local required_count="${#BASE_REPO_BASELINE_FILES[@]}"
+    local not_executable_files=()
+    local command=()
 
     for rel in "${BASE_REPO_BASELINE_FILES[@]}"; do
         if [[ ! -f "$path/$rel" ]]; then
-            log_warn "Missing repository baseline file '$rel'."
-            missing=1
-        else
-            log_info "Repository baseline file '$rel' exists."
+            missing_files+=("$rel")
         fi
     done
 
     if [[ -f "$path/tests/validate.sh" && ! -x "$path/tests/validate.sh" ]]; then
-        log_warn "Repository baseline file 'tests/validate.sh' is not executable."
-        missing=1
+        not_executable_files+=(tests/validate.sh)
     fi
 
-    if ((missing)); then
-        log_warn "Repository baseline check found missing requirements."
+    if ((${#missing_files[@]} || ${#not_executable_files[@]})); then
+        if ((${#missing_files[@]})); then
+            printf "Repository baseline: %d of %d required files missing.\n" \
+                "${#missing_files[@]}" \
+                "$required_count"
+        else
+            printf "Repository baseline: all %d required files present, but some requirements failed.\n" \
+                "$required_count"
+        fi
+        for rel in "${missing_files[@]}"; do
+            printf "  Missing: %s\n" "$rel"
+        done
+        for rel in "${not_executable_files[@]}"; do
+            printf "  Not executable: %s\n" "$rel"
+        done
+        if ((${#missing_files[@]})); then
+            repo_name="$(basename -- "$path")"
+            command=(basectl repo init "$repo_name" --path "$path")
+            printf "Run '"
+            base_repo_pretty_command "${command[@]}"
+            printf "' to create the missing files.\n"
+        fi
         return 1
     fi
 
-    log_info "Repository baseline check passed."
+    printf "Repository baseline: all %d required files present.\n" "$required_count"
     return 0
 }
 
 base_repo_check_agent_guidance() {
-    local missing=0
+    local missing_files=()
     local path="$1"
     local rel
+    local required_count="${#BASE_REPO_AGENT_GUIDANCE_FILES[@]}"
+    local command=()
 
     for rel in "${BASE_REPO_AGENT_GUIDANCE_FILES[@]}"; do
         if [[ ! -f "$path/$rel" ]]; then
-            log_warn "Missing agent guidance file '$rel'."
-            missing=1
-        else
-            log_info "Agent guidance file '$rel' exists."
+            missing_files+=("$rel")
         fi
     done
 
-    if ((missing)); then
-        log_warn "Agent guidance baseline check found missing requirements."
+    if ((${#missing_files[@]})); then
+        printf "Agent guidance: %d of %d files missing.\n" \
+            "${#missing_files[@]}" \
+            "$required_count"
+        for rel in "${missing_files[@]}"; do
+            printf "  Missing: %s\n" "$rel"
+        done
+        command=(basectl repo agent-guidance "$path")
+        printf "Run '"
+        base_repo_pretty_command "${command[@]}"
+        printf "' to create the missing files.\n"
         return 1
     fi
 
-    log_info "Agent guidance baseline check passed."
+    printf "Agent guidance: all %d files present.\n" "$required_count"
     return 0
 }
 

@@ -786,7 +786,7 @@ EOF
     run_basectl repo check "$repo_dir"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository baseline check passed."* ]]
+    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
 }
 
 @test "basectl repo check reports missing baseline files" {
@@ -798,8 +798,10 @@ EOF
     run_basectl repo check "$repo_dir"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Missing repository baseline file 'VERSION'."* ]]
-    [[ "$output" == *"Repository baseline check found missing requirements."* ]]
+    [[ "$output" == *"Repository baseline: 11 of 12 required files missing."* ]]
+    [[ "$output" == *"Missing: VERSION"* ]]
+    [[ "$output" == *"Missing: base_manifest.yaml"* ]]
+    [[ "$output" == *"Run 'basectl repo init incomplete --path $repo_dir' to create the missing files."* ]]
 }
 
 @test "basectl repo check reports missing agent guidance only when opted in" {
@@ -811,9 +813,11 @@ EOF
     run_basectl repo check "$repo_dir" --agent-guidance
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Missing agent guidance file 'AGENTS.md'."* ]]
-    [[ "$output" == *"Missing agent guidance file 'skills.md'."* ]]
-    [[ "$output" == *"Agent guidance baseline check found missing requirements."* ]]
+    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Agent guidance: 2 of 3 files missing."* ]]
+    [[ "$output" == *"Missing: AGENTS.md"* ]]
+    [[ "$output" == *"Missing: skills.md"* ]]
+    [[ "$output" == *"Run 'basectl repo agent-guidance $repo_dir' to create the missing files."* ]]
 }
 
 @test "basectl repo check passes with generated agent guidance when opted in" {
@@ -827,8 +831,8 @@ EOF
     run_basectl repo check "$repo_dir" --agent-guidance
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository baseline check passed."* ]]
-    [[ "$output" == *"Agent guidance baseline check passed."* ]]
+    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Agent guidance: all 3 files present."* ]]
 }
 
 @test "basectl repo configure dry-run prints GitHub settings and labels" {
