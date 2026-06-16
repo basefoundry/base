@@ -1695,8 +1695,63 @@ base_repo_helper_pr_branch_name() {
     printf 'base/%s-%s\n' "$kind" "$name"
 }
 
+base_repo_print_pr_worktree_root_hint() {
+    local command_label="$1"
+    local provided_path="$2"
+    local repository_root="$3"
+
+    if [[ "$command_label" == "repo init --pr" ]]; then
+        log_error "repo init --pr expects --path to point at the repository root."
+    else
+        log_error "$command_label expects the target path to point at the repository root."
+    fi
+    printf "  Provided path: %s\n" "$provided_path" >&2
+    printf "  Repository root: %s\n" "$repository_root" >&2
+    if [[ "$command_label" == "repo init --pr" ]]; then
+        printf "  Fix: pass --path %s\n" "$(base_repo_pretty_arg "$repository_root")" >&2
+    else
+        printf "  Fix: pass %s as the target path.\n" "$(base_repo_pretty_arg "$repository_root")" >&2
+    fi
+}
+
+base_repo_print_pr_worktree_dirty_hint() {
+    local dirty_count=0
+    local dirty_word
+    local line
+    local root="$1"
+    local shown_count=0
+    local status_output="$2"
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -n "$line" ]] || continue
+        dirty_count=$((dirty_count + 1))
+    done <<< "$status_output"
+
+    dirty_word="files"
+    [[ "$dirty_count" == "1" ]] && dirty_word="file"
+
+    printf "  Uncommitted changes detected (%d %s).\n" "$dirty_count" "$dirty_word" >&2
+    printf "  Dirty paths:\n" >&2
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -n "$line" ]] || continue
+        if ((shown_count >= 5)); then
+            break
+        fi
+        printf "    %s\n" "$line" >&2
+        shown_count=$((shown_count + 1))
+    done <<< "$status_output"
+    if ((dirty_count > shown_count)); then
+        printf "    ... (%d more)\n" "$((dirty_count - shown_count))" >&2
+    fi
+    printf "  Fix: commit or stash your changes before running this command.\n" >&2
+    printf "    git -C %s status --short\n" "$(base_repo_pretty_arg "$root")" >&2
+    printf "    git -C %s stash\n" "$(base_repo_pretty_arg "$root")" >&2
+    printf "    git -C %s commit -am \"WIP\"\n" "$(base_repo_pretty_arg "$root")" >&2
+}
+
 base_repo_require_pr_worktree() {
     local command_label="${2:-repo init --pr}"
+    local dirty_status
     local git_root
     local root="$1"
 
@@ -1713,16 +1768,14 @@ base_repo_require_pr_worktree() {
     root="$(cd -- "$root" && pwd -P)" || return 1
 
     [[ "$git_root" == "$root" ]] || {
-        if [[ "$command_label" == "repo init --pr" ]]; then
-            log_error "repo init --pr expects --path to point at the repository root."
-        else
-            log_error "$command_label expects the target path to point at the repository root."
-        fi
+        base_repo_print_pr_worktree_root_hint "$command_label" "$root" "$git_root"
         return 1
     }
 
-    [[ -z "$(git -C "$root" status --porcelain)" ]] || {
+    dirty_status="$(git -C "$root" status --porcelain)"
+    [[ -z "$dirty_status" ]] || {
         log_error "$command_label requires a clean Git worktree at '$root'."
+        base_repo_print_pr_worktree_dirty_hint "$root" "$dirty_status"
         return 1
     }
 }

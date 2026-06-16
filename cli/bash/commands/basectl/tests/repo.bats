@@ -468,17 +468,23 @@ EOF
 }
 
 @test "basectl repo installer-template --pr requires a clean target worktree" {
+    local physical_repo_dir
     local repo_dir="$TEST_TMPDIR/dirty-installer-demo"
 
     init_git_repo "$repo_dir"
     printf '# Dirty demo\n' > "$repo_dir/README.md"
     commit_all "$repo_dir" "Initial commit"
     printf 'draft\n' > "$repo_dir/notes.txt"
+    physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
     run_basectl repo installer-template "$repo_dir/install.sh" --repo codeforester/dirty-installer-demo --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo installer-template --pr requires a clean Git worktree"* ]]
+    [[ "$output" == *"Uncommitted changes detected (1 file)."* ]]
+    [[ "$output" == *"?? notes.txt"* ]]
+    [[ "$output" == *"Fix: commit or stash your changes before running this command."* ]]
+    [[ "$output" == *"git -C $physical_repo_dir status --short"* ]]
     [ ! -f "$repo_dir/install.sh" ]
 }
 
@@ -634,17 +640,23 @@ EOF
 }
 
 @test "basectl repo agent-guidance --pr requires a clean target worktree" {
+    local physical_repo_dir
     local repo_dir="$TEST_TMPDIR/dirty-agent-demo"
 
     init_git_repo "$repo_dir"
     printf '# Dirty demo\n' > "$repo_dir/README.md"
     commit_all "$repo_dir" "Initial commit"
     printf 'draft\n' > "$repo_dir/notes.txt"
+    physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
     run_basectl repo agent-guidance "$repo_dir" --repo-name dirty-agent-demo --repo codeforester/dirty-agent-demo --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo agent-guidance --pr requires a clean Git worktree"* ]]
+    [[ "$output" == *"Uncommitted changes detected (1 file)."* ]]
+    [[ "$output" == *"?? notes.txt"* ]]
+    [[ "$output" == *"Fix: commit or stash your changes before running this command."* ]]
+    [[ "$output" == *"git -C $physical_repo_dir status --short"* ]]
     [ ! -f "$repo_dir/AGENTS.md" ]
 }
 
@@ -1533,18 +1545,47 @@ EOF
 }
 
 @test "basectl repo init --pr requires a clean target worktree" {
+    local physical_repo_dir
     local repo_dir="$TEST_TMPDIR/dirty-demo"
 
     init_git_repo "$repo_dir"
     printf '# Dirty demo\n' > "$repo_dir/README.md"
     commit_all "$repo_dir" "Initial commit"
     printf 'draft\n' > "$repo_dir/notes.txt"
+    physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
     run_basectl repo init dirty-demo --path "$repo_dir" --repo codeforester/dirty-demo --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo init --pr requires a clean Git worktree"* ]]
+    [[ "$output" == *"Uncommitted changes detected (1 file)."* ]]
+    [[ "$output" == *"?? notes.txt"* ]]
+    [[ "$output" == *"Fix: commit or stash your changes before running this command."* ]]
+    [[ "$output" == *"git -C $physical_repo_dir status --short"* ]]
     [ ! -f "$repo_dir/base_manifest.yaml" ]
+}
+
+@test "basectl repo init --pr explains repository root path mismatch" {
+    local physical_repo_dir
+    local physical_subdir
+    local repo_dir="$TEST_TMPDIR/root-demo"
+    local subdir="$repo_dir/subdir"
+
+    init_git_repo "$repo_dir"
+    printf '# Root demo\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    mkdir -p "$subdir"
+    physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
+    physical_subdir="$(cd "$subdir" && pwd -P)"
+
+    run_basectl repo init root-demo --path "$subdir" --repo codeforester/root-demo --pr
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"repo init --pr expects --path to point at the repository root."* ]]
+    [[ "$output" == *"Provided path: $physical_subdir"* ]]
+    [[ "$output" == *"Repository root: $physical_repo_dir"* ]]
+    [[ "$output" == *"Fix: pass --path $physical_repo_dir"* ]]
+    [ ! -f "$subdir/base_manifest.yaml" ]
 }
 
 @test "basectl repo init can create a public GitHub repo when requested" {
