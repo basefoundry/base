@@ -11,6 +11,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Made `basectl repo init` print visible next steps when GitHub setup is skipped
   because no repository was provided or inferred.
+- Made `basectl repo clone` print the Base baseline check hint only when the
+  cloned repository contains `base_manifest.yaml`.
 - Clarified `basectl repo init` and `repo configure` help to say Base-managed
   GitHub settings are safe to re-run and do not remove outside settings.
 - Made live `basectl repo configure` runs print a structured action summary for

@@ -171,7 +171,7 @@ EOF
     [[ "$output" == *"Destination '$repo_dir' already exists but is not a matching Git checkout."* ]]
 }
 
-@test "basectl repo clone delegates to gh repo clone" {
+@test "basectl repo clone delegates to gh repo clone without Base baseline hint" {
     local repo_dir="$TEST_TMPDIR/workspace/base-demo"
 
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
@@ -194,7 +194,36 @@ EOF
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "repo clone codeforester/base-demo $repo_dir" ]
     [[ "$output" == *"Cloning GitHub repository 'codeforester/base-demo' into '$repo_dir'."* ]]
-    [[ "$output" == *"Run basectl repo check '$repo_dir' after the clone if the repository has adopted the Base baseline."* ]]
+    [[ "$output" == *"Cloned 'codeforester/base-demo' to '$repo_dir'."* ]]
+    [[ "$output" != *"Base baseline"* ]]
+    [[ "$output" != *"basectl repo check"* ]]
+}
+
+@test "basectl repo clone prints Base baseline hint for Base-managed repos" {
+    local repo_dir="$TEST_TMPDIR/workspace/base-demo"
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "repo" && "$2" == "clone" ]]; then
+    mkdir -p "$4/.git"
+    touch "$4/base_manifest.yaml"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo clone codeforester/base-demo --path "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "repo clone codeforester/base-demo $repo_dir" ]
+    [[ "$output" == *"Cloned 'codeforester/base-demo' to '$repo_dir'."* ]]
+    [[ "$output" == *"Run 'basectl repo check $repo_dir' to verify the Base baseline."* ]]
 }
 
 @test "basectl repo configure prints command-specific help" {
