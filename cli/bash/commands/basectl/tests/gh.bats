@@ -59,7 +59,8 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl gh branch stale [--days <days>]"* ]]
     [[ "$output" == *"basectl gh branch prune [--dry-run] [--yes] [--remote]"* ]]
-    [[ "$output" == *"--dry-run      Preview branches that would be deleted. This is the default."* ]]
+    [[ "$output" == *"Runs in dry-run mode by default. Pass --yes to apply changes."* ]]
+    [[ "$output" == *"--dry-run      Preview branches that would be deleted (default)."* ]]
     [[ "$output" != *"basectl gh issue create"* ]]
     [[ "$output" != *"basectl gh worktree prune"* ]]
 }
@@ -70,6 +71,8 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl gh worktree prune [--dry-run] [--yes]"* ]]
     [[ "$output" == *"Prune safe, merged Git worktrees and their local branches."* ]]
+    [[ "$output" == *"Runs in dry-run mode by default. Pass --yes to apply changes."* ]]
+    [[ "$output" == *"--dry-run      Preview worktrees that would be removed (default)."* ]]
     [[ "$output" != *"basectl gh branch prune"* ]]
     [[ "$output" != *"basectl gh issue create"* ]]
 }
@@ -374,6 +377,7 @@ EOF
     [[ "$output" == *"Local branches"* ]]
     [[ "$output" == *"[DRY-RUN] DELETE merged-work"* ]]
     [[ "$output" == *"Summary: 1 would delete, 0 skipped worktree, 0 skipped upstream, 0 failed."* ]]
+    [[ "$output" == *"Run with --yes to apply these changes."* ]]
     git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
 }
 
@@ -548,6 +552,7 @@ EOF
     [[ "$output" == *"GitHub branches"* ]]
     [[ "$output" == *"[DRY-RUN] DELETE-REMOTE origin/squash-remote  merged GitHub PR"* ]]
     [[ "$output" == *"Summary: 1 would delete remotely, 0 skipped worktree, 0 skipped unmerged, 0 failed."* ]]
+    [[ "$output" == *"Run with --yes to apply these changes."* ]]
     git -C "$repo" ls-remote --exit-code --heads origin squash-remote >/dev/null
 }
 
@@ -711,6 +716,7 @@ EOF
     [[ "$output" == *"[DRY-RUN] REMOVE "*"/merged-worktree (merged-work) and delete local branch"* ]]
     [[ "$output" == *"SKIP   "*"/repo (master)  current worktree"* ]]
     [[ "$output" == *"Summary: 1 would remove, 1 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 0 failed."* ]]
+    [[ "$output" == *"Run with --yes to apply these changes."* ]]
     [ -d "$worktree" ]
     git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
 }
