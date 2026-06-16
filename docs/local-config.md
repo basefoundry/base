@@ -127,6 +127,10 @@ URLs. The actual clone delegates to `gh repo clone <owner/repo> <path>` so the
 GitHub CLI remains responsible for GitHub authentication and its own transport
 behavior.
 
+`basectl config doctor` validates these GitHub defaults before clone time. It
+reports invalid owner names or unsupported clone protocols as config schema
+errors while treating omitted GitHub defaults as valid.
+
 ## IDE Preferences
 
 User-local IDE preferences can add machine-specific IDE behavior without

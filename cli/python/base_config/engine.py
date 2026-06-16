@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from base_cli.config import load_user_config, read_user_config, user_config_path
+from base_cli.config import UserConfig, load_user_config, read_user_config, user_config_path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,6 +80,12 @@ def doctor_config_command() -> int:
         print_finding("error", "schema", str(exc))
         return 1
 
+    print_workspace_findings(user_config)
+    print_github_findings(user_config)
+    return 0
+
+
+def print_workspace_findings(user_config: UserConfig) -> None:
     if user_config.workspace.root is None:
         print_finding(
             "warn",
@@ -90,7 +96,26 @@ def doctor_config_command() -> int:
         print_finding("ok", "workspace", f"workspace.root points to '{user_config.workspace.root}'.")
     else:
         print_finding("warn", "workspace", f"workspace.root '{user_config.workspace.root}' is not a directory.")
-    return 0
+
+
+def print_github_findings(user_config: UserConfig) -> None:
+    if user_config.github.default_owner is None:
+        print_finding(
+            "ok",
+            "github_owner",
+            "github.default_owner is not configured; short repo clone names require --owner.",
+        )
+    else:
+        print_finding("ok", "github_owner", f"github.default_owner is '{user_config.github.default_owner}'.")
+
+    if user_config.github.clone_protocol is None:
+        print_finding(
+            "ok",
+            "github_proto",
+            "github.clone_protocol is not configured; repo clone defaults to 'ssh'.",
+        )
+    else:
+        print_finding("ok", "github_proto", f"github.clone_protocol is '{user_config.github.clone_protocol}'.")
 
 
 def safe_resolve(path: Path) -> Path:
