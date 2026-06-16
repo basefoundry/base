@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made `basectl repo init` print visible next steps when GitHub setup is skipped
+  because no repository was provided or inferred.
 - Clarified `basectl repo init` and `repo configure` help to say Base-managed
   GitHub settings are safe to re-run and do not remove outside settings.
 - Made live `basectl repo configure` runs print a structured action summary for

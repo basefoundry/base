@@ -706,6 +706,21 @@ EOF
     [[ "$output" == *"Repository baseline is present."* ]]
 }
 
+@test "basectl repo init explains when GitHub configuration is skipped" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    [ -f "$repo_dir/base_manifest.yaml" ]
+    [[ "$output" == *"Baseline files written to '$repo_dir'."* ]]
+    [[ "$output" == *"GitHub repository not configured (no --repo provided and no origin remote found)."* ]]
+    [[ "$output" == *"To complete GitHub setup, run:"* ]]
+    [[ "$output" == *"basectl repo configure $repo_dir --repo <owner/base-demo>"* ]]
+    [[ "$output" == *"Or to create the GitHub repository and configure it now:"* ]]
+    [[ "$output" == *"basectl repo init base-demo --path $repo_dir --repo <owner/base-demo>"* ]]
+}
+
 @test "basectl repo init defaults copyright holder to git user name" {
     local repo_dir="$TEST_TMPDIR/git-owner"
 
