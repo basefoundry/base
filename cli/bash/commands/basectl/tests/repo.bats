@@ -468,6 +468,34 @@ EOF
     [[ "$output" == *"Run git -C '$repo_dir' status --short to review changes."* ]]
 }
 
+@test "basectl repo agent-guidance detects origin default branch" {
+    local repo_dir="$TEST_TMPDIR/agent-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Agent demo\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    git -C "$repo_dir" checkout -B trunk >/dev/null 2>&1
+    git -C "$repo_dir" update-ref refs/remotes/origin/trunk HEAD
+    git -C "$repo_dir" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/trunk
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/trunk" "$repo_dir/AGENTS.md"
+    [[ "$output" != *"Could not detect default branch"* ]]
+}
+
+@test "basectl repo agent-guidance falls back to main when default branch is unknown" {
+    local repo_dir="$TEST_TMPDIR/agent-demo"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo
+
+    [ "$status" -eq 0 ]
+    grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/main" "$repo_dir/AGENTS.md"
+    [[ "$output" == *"Note: Could not detect default branch from origin; defaulting to 'main'."* ]]
+    [[ "$output" == *"Pass --default-branch <name> to set it explicitly."* ]]
+}
+
 @test "basectl repo agent-guidance prints command-specific help" {
     run_basectl repo agent-guidance --help
 
@@ -477,6 +505,7 @@ EOF
     [[ "$output" == *"--repo <owner/name>"* ]]
     [[ "$output" == *"--repo-name <name>"* ]]
     [[ "$output" == *"--default-branch <name>"* ]]
+    [[ "$output" == *"Defaults to detected branch, then main."* ]]
     [[ "$output" == *"--validation-command <cmd>"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--dry-run"* ]]

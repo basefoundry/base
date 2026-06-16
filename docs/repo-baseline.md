@@ -232,7 +232,9 @@ development when they do not already exist:
 
 The command accepts `--repo-name <name>`, `--default-branch <name>`, and
 `--validation-command <command>` so generated examples match the repository.
-Defaults are inferred from the target path, `main`, and `./tests/validate.sh`.
+The default branch is inferred from the target Git checkout when possible and
+falls back to `main` with a note. Other defaults come from the target path and
+`./tests/validate.sh`.
 
 Existing files are left unchanged. This keeps the guidance layer safe for repos
 that already have their own instructions or pull request template.
