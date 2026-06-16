@@ -172,6 +172,11 @@ base_ci_print_setup_json() {
     local command_output="$1"
     local exit_code="$2"
     local status="ok"
+    local output_lines=()
+    local index
+
+    shift 2
+    output_lines=("$@")
 
     if ((exit_code)); then
         status="error"
@@ -182,14 +187,28 @@ base_ci_print_setup_json() {
     printf '  "command": "setup",\n'
     printf '  "status": "%s",\n' "$status"
     printf '  "project": "%s",\n' "$(setup_json_escape "$BASE_CI_PROJECT")"
-    printf '  "output": "%s"\n' "$(setup_json_escape "$command_output")"
+    printf '  "output": "%s"' "$(setup_json_escape "$command_output")"
+    if ((exit_code)) && ((${#output_lines[@]})); then
+        printf ',\n'
+        printf '  "output_lines": [\n'
+        for index in "${!output_lines[@]}"; do
+            printf '    "%s"' "$(setup_json_escape "${output_lines[$index]}")"
+            if ((index < ${#output_lines[@]} - 1)); then
+                printf ','
+            fi
+            printf '\n'
+        done
+        printf '  ]\n'
+    else
+        printf '\n'
+    fi
     printf '}\n'
 }
 
-base_ci_compact_setup_output() {
+base_ci_compact_setup_output_lines() {
     local output_file="$1"
     local line
-    local message=""
+    local message
 
     [[ -f "$output_file" ]] || return 0
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -199,7 +218,18 @@ base_ci_compact_setup_output() {
         else
             message="$line"
         fi
+        printf '%s\n' "$message"
     done < "$output_file"
+}
+
+base_ci_compact_setup_output() {
+    local output_file="$1"
+    local line
+    local message=""
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        message="$line"
+    done < <(base_ci_compact_setup_output_lines "$output_file")
 
     printf '%s\n' "$message"
 }
@@ -210,6 +240,8 @@ base_ci_run_setup_json() {
     local stderr_file
     local command_output
     local exit_code
+    local output_lines=()
+    local output_source_file
 
     stdout_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stdout.XXXXXX")" || return 1
     stderr_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stderr.XXXXXX")" || {
@@ -228,12 +260,17 @@ base_ci_run_setup_json() {
     fi
 
     command_output="$(base_ci_compact_setup_output "$stderr_file")"
+    output_source_file="$stderr_file"
     if [[ -z "$command_output" ]]; then
         command_output="$(base_ci_compact_setup_output "$stdout_file")"
+        output_source_file="$stdout_file"
+    fi
+    if ((exit_code)); then
+        mapfile -t output_lines < <(base_ci_compact_setup_output_lines "$output_source_file")
     fi
 
     rm -f "$stdout_file" "$stderr_file"
-    base_ci_print_setup_json "$command_output" "$exit_code"
+    base_ci_print_setup_json "$command_output" "$exit_code" "${output_lines[@]}"
     return "$exit_code"
 }
 
