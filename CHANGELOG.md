@@ -19,6 +19,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   when existing guidance files are left untouched.
 - Made `basectl repo installer-template` write `./install.sh` by default and
   added `--print`/`--stdout` for the stdout template view.
+- Added dirty-worktree and repository-root fix hints for `basectl repo`
+  subcommands that create pull requests.
 - Clarified `basectl repo init` and `repo configure` help to say Base-managed
   GitHub settings are safe to re-run and do not remove outside settings.
 - Made live `basectl repo configure` runs print a structured action summary for
