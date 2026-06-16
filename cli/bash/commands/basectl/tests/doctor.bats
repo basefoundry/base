@@ -3,6 +3,109 @@
 load ./basectl_helpers.bash
 
 
+normalize_tty_output() {
+    local text="$1"
+    text="${text//$'\r'/}"
+    text="${text//$'\b'/}"
+    printf '%s' "$text"
+}
+
+run_tty_script() {
+    local script_path="$1"
+    local command
+    shift
+
+    command -v script >/dev/null 2>&1 || skip "The 'script' command is required for tty tests."
+
+    if script --version >/dev/null 2>&1; then
+        printf -v command '%q ' "$script_path" "$@"
+        run script -q -e -c "${command% }" /dev/null
+    else
+        run script -q /dev/null "$script_path" "$@"
+    fi
+}
+
+create_doctor_success_stubs() {
+    local fake_bin="$1"
+    local venv_python="$2"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "list" ]]; then
+    case "${2:-}" in
+        python@3.13) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "--prefix" ]]; then
+    printf '/tmp/fake-prefix\n'
+    exit 0
+fi
+if [[ "${1:-}" == "doctor" ]]; then
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcode-select" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-p" ]]; then
+    printf '%s\n' "${BASE_TEST_XCODE_TOOLS_DIR:?}"
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-f" && "${2:-}" == "clang" ]]; then
+    printf '/tmp/fake-clang\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/brew" "$fake_bin/xcode-select" "$fake_bin/xcrun" "$venv_python"
+    mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
+    touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+}
+
+write_doctor_tty_script() {
+    local script_path="$1"
+    local fake_bin="$2"
+    local term_value="$3"
+    local no_color_value="$4"
+    local doctor_args="$5"
+
+    cat > "$script_path" <<EOF
+#!/usr/bin/env bash
+export HOME="$TEST_HOME"
+export OSTYPE="darwin24"
+export TERM="$term_value"
+export PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools"
+export BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools"
+EOF
+    if [[ -n "$no_color_value" ]]; then
+        printf 'export NO_COLOR=%q\n' "$no_color_value" >> "$script_path"
+    else
+        printf 'unset NO_COLOR\n' >> "$script_path"
+    fi
+    printf 'exec %q/bin/basectl doctor %s\n' "$BASE_REPO_ROOT" "$doctor_args" >> "$script_path"
+    chmod +x "$script_path"
+}
+
 @test "basectl doctor prints help" {
     run_basectl doctor --help
 
@@ -11,11 +114,79 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"--remote-network"* ]]
+    [[ "$output" == *"--no-color"* ]]
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
     [[ "$output" == *"Use doctor for finding IDs and fix hints; use check for a quick pass/fail result."* ]]
     [[ "$output" == *"See also:"* ]]
     [[ "$output" == *"basectl check [project] [options]"* ]]
+}
+
+@test "basectl doctor uses visual status indicators on a color-capable tty" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local normalized script="$TEST_TMPDIR/doctor-tty.sh"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_success_stubs "$fake_bin" "$venv_python"
+    write_doctor_tty_script "$script" "$fake_bin" "xterm-256color" "" ""
+
+    run_tty_script "$script"
+
+    [ "$status" -eq 0 ]
+    normalized="$(normalize_tty_output "$output")"
+    [[ "$normalized" == *$'\033[0;32m✓ ok\033[0m'*"BASE-D001"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$normalized" == *$'\033[0;32m✓ ok\033[0m'*"BASE-D004"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
+}
+
+@test "basectl doctor --no-color disables visual status indicators on a tty" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local normalized script="$TEST_TMPDIR/doctor-no-color-tty.sh"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_success_stubs "$fake_bin" "$venv_python"
+    write_doctor_tty_script "$script" "$fake_bin" "xterm-256color" "" "--no-color"
+
+    run_tty_script "$script"
+
+    [ "$status" -eq 0 ]
+    normalized="$(normalize_tty_output "$output")"
+    [[ "$normalized" == *"ok     BASE-D001"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$normalized" != *"✓ ok"* ]]
+    [[ "$normalized" != *$'\033['* ]]
+}
+
+@test "basectl doctor honors NO_COLOR on a tty" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local normalized script="$TEST_TMPDIR/doctor-no-color-env-tty.sh"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_success_stubs "$fake_bin" "$venv_python"
+    write_doctor_tty_script "$script" "$fake_bin" "xterm-256color" "1" ""
+
+    run_tty_script "$script"
+
+    [ "$status" -eq 0 ]
+    normalized="$(normalize_tty_output "$output")"
+    [[ "$normalized" == *"ok     BASE-D001"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$normalized" != *"✓ ok"* ]]
+    [[ "$normalized" != *$'\033['* ]]
+}
+
+@test "basectl doctor keeps plain status indicators for dumb terminals" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local normalized script="$TEST_TMPDIR/doctor-dumb-tty.sh"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_success_stubs "$fake_bin" "$venv_python"
+    write_doctor_tty_script "$script" "$fake_bin" "dumb" "" ""
+
+    run_tty_script "$script"
+
+    [ "$status" -eq 0 ]
+    normalized="$(normalize_tty_output "$output")"
+    [[ "$normalized" == *"ok     BASE-D001"*"Homebrew"*"Homebrew is installed."* ]]
+    [[ "$normalized" != *"✓ ok"* ]]
+    [[ "$normalized" != *$'\033['* ]]
 }
 
 @test "basectl doctor reports ok findings and includes dev checks" {
