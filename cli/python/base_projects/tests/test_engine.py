@@ -150,6 +150,17 @@ def run_engine_with_home(args: list[str], base_home: Path, home: Path) -> tuple[
 
 
 class ProjectDiscoveryTests(unittest.TestCase):
+    def test_main_reports_config_errors_without_traceback(self) -> None:
+        status, _stdout, stderr = run_engine(
+            ["list"],
+            Path(__file__).resolve().parents[4],
+            user_config="workspace: [not-a-mapping]\n",
+        )
+
+        self.assertEqual(status, 1)
+        self.assertIn("workspace must be a mapping", stderr)
+        self.assertNotIn("Traceback", stderr)
+
     def test_discovers_projects_under_workspace_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)

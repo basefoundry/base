@@ -11,7 +11,6 @@ from datetime import datetime
 from pathlib import Path
 
 import base_cli
-import click
 from base_cli.paths import base_cache_root
 
 
@@ -41,12 +40,7 @@ class LogCommandOptions:
 
 
 def main(argv: list[str] | None = None) -> int:
-    try:
-        result = app.click_command.main(args=argv, standalone_mode=False)
-    except click.ClickException as exc:
-        exc.show()
-        return int(exc.exit_code)
-    return int(result or 0)
+    return base_cli.run_app(app, argv)
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})

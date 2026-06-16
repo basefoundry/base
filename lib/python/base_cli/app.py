@@ -106,7 +106,10 @@ class App:
         @functools.wraps(func)
         def wrapper(**kwargs: Any):
             standard = _pop_standard_options(kwargs)
-            context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get(dry_run_parameter)))
+            try:
+                context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get(dry_run_parameter)))
+            except (RuntimeError, ValueError) as exc:
+                raise click.ClickException(str(exc)) from exc
             token = set_current_context(context)
             try:
                 log_invocation(context.log, sys.argv, sensitive_options)
@@ -180,6 +183,21 @@ class App:
             user_config=user_config,
             dry_run=dry_run,
         )
+
+
+def run_app(app: App, argv: list[str] | None = None) -> int:
+    try:
+        click = _require_click()
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        result = app.click_command.main(args=argv, standalone_mode=False)
+    except click.ClickException as exc:
+        exc.show()
+        return int(exc.exit_code)
+    return int(result or 0)
 
 
 def command(*args: Any, **kwargs: Any):
