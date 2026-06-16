@@ -465,6 +465,8 @@ EOF
     [[ "$output" == *"Created '$repo_dir/AGENTS.md'."* ]]
     [[ "$output" == *"Created '$repo_dir/skills.md'."* ]]
     [[ "$output" == *"Created '$repo_dir/.github/pull_request_template.md'."* ]]
+    [[ "$output" == *"Agent guidance: 3 files created."* ]]
+    [[ "$output" == *"Created:   AGENTS.md, skills.md, .github/pull_request_template.md"* ]]
     [[ "$output" == *"Run git -C '$repo_dir' status --short to review changes."* ]]
 }
 
@@ -645,6 +647,24 @@ EOF
     grep -Fq "Closes #" "$repo_dir/.github/pull_request_template.md"
 }
 
+@test "basectl repo agent-guidance summarizes mixed existing files" {
+    local repo_dir="$TEST_TMPDIR/custom-guidance"
+
+    mkdir -p "$repo_dir"
+    printf 'custom agents\n' > "$repo_dir/AGENTS.md"
+    printf 'custom skills\n' > "$repo_dir/skills.md"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name custom-guidance
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$repo_dir/AGENTS.md")" = "custom agents" ]
+    [ "$(cat "$repo_dir/skills.md")" = "custom skills" ]
+    [ -f "$repo_dir/.github/pull_request_template.md" ]
+    [[ "$output" == *"Agent guidance: 1 file created, 2 files already existed and were left unchanged."* ]]
+    [[ "$output" == *"Created:   .github/pull_request_template.md"* ]]
+    [[ "$output" == *"Unchanged: AGENTS.md, skills.md"* ]]
+}
+
 @test "basectl repo agent-guidance leaves existing files unchanged" {
     local repo_dir="$TEST_TMPDIR/custom-guidance"
 
@@ -659,6 +679,8 @@ EOF
     [ "$(cat "$repo_dir/AGENTS.md")" = "custom agents" ]
     [ "$(cat "$repo_dir/skills.md")" = "custom skills" ]
     [ "$(cat "$repo_dir/.github/pull_request_template.md")" = "custom pr" ]
+    [[ "$output" == *"Agent guidance: all 3 files already exist and were left unchanged."* ]]
+    [[ "$output" == *"To overwrite, remove the files first and re-run."* ]]
 }
 
 @test "basectl repo init dry-run prints baseline and configuration plan" {

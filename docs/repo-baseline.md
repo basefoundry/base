@@ -237,7 +237,9 @@ falls back to `main` with a note. Other defaults come from the target path and
 `./tests/validate.sh`.
 
 Existing files are left unchanged. This keeps the guidance layer safe for repos
-that already have their own instructions or pull request template.
+that already have their own instructions or pull request template. After each
+non-dry-run execution, Base prints how many guidance files were created and
+which existing files were left unchanged.
 
 Use `--pr` to commit generated guidance files on a predictable branch and open a
 draft pull request. The target path must be the root of a clean Git worktree.
