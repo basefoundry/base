@@ -42,6 +42,37 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester --repo codeforester/base" ]
 }
 
+@test "basectl gh issue create continues when auth status is transiently unavailable" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    printf 'github.com\n' >&2
+    printf '  X failed to reach api.github.com\n' >&2
+    exit 1
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "issue" && "$2" == "create" ]]; then
+    printf 'https://github.com/codeforester/base/issues/749\n'
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category bug --title "Make auth preflight resilient" --no-project
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/codeforester/base/issues/749"* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Make auth preflight resilient --label bug --assignee codeforester --repo codeforester/base" ]
+}
+
 @test "basectl gh issue create updates repo project metadata when repo is known" {
     local repo
     local repo_root
@@ -150,13 +181,17 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project doctor --project Base Roadmap --owner codeforester" ]
 }
 
-@test "basectl gh issue list reports missing gh authentication clearly" {
+@test "basectl gh issue list reports command failure with auth diagnostics" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
     printf 'github.com\n' >&2
     printf '  X failed to reach api.github.com\n' >&2
     printf '  - check your internet connection or GitHub API access\n' >&2
+    exit 1
+fi
+if [[ "$*" == "issue list" ]]; then
+    printf 'HTTP 401: Bad credentials\n' >&2
     exit 1
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
@@ -175,11 +210,11 @@ EOF
         '
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"GitHub CLI authentication or GitHub API access is not ready."* ]]
+    [[ "$output" == *"HTTP 401: Bad credentials"* ]]
+    [[ "$output" == *"GitHub command failed: gh issue list"* ]]
     [[ "$output" == *"gh auth status: github.com"* ]]
     [[ "$output" == *"gh auth status:   X failed to reach api.github.com"* ]]
     [[ "$output" == *"gh auth status:   - check your internet connection or GitHub API access"* ]]
-    [[ "$output" == *"gh auth login -h github.com"* ]]
     [[ "$output" != *"unexpected gh args"* ]]
 }
 
@@ -363,10 +398,13 @@ EOF
     remote="$TEST_TMPDIR/remote.git"
     create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
     git -C "$repo" update-ref refs/remotes/origin/stale-branch HEAD
-
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    printf 'unexpected auth status preflight\n' >&2
+    exit 99
+fi
+if [[ "$*" == "pr list --head stale-branch --state merged --json number --jq length" ]]; then
     exit 1
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
@@ -388,10 +426,12 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Local branches"* ]]
     [[ "$output" == *"GitHub branches"* ]]
-    [[ "$output" == *"SKIP   GitHub branch cleanup requires authenticated gh."* ]]
+    [[ "$output" == *"No merged GitHub remote branches found."* ]]
     [[ "$output" == *"Remote tracking refs"* ]]
     [[ "$output" == *"PRUNE origin/stale-branch"* ]]
     [[ "$output" == *"Note: remote-tracking ref cleanup prunes stale local origin/* refs after GitHub branch cleanup."* ]]
+    [[ "$output" != *"unexpected auth status preflight"* ]]
+    [[ "$output" != *"GitHub branch cleanup requires authenticated gh"* ]]
     [[ "$output" != *"Pruning origin"* ]]
     [[ "$output" != *"URL:"* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch

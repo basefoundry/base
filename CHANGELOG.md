@@ -31,6 +31,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
   `basectl setup <project>`, while omitting the project keeps the existing
   Base update behavior.
 
+### Fixed
+
+- Fixed `basectl gh` to run the requested GitHub command before using
+  `gh auth status` diagnostics, avoiding false failures when the status probe
+  is transiently unavailable.
+
 ## [1.0.1] - 2026-06-15
 
 ### Added

@@ -60,19 +60,38 @@ base_gh_require_command() {
     }
 }
 
-base_gh_require_auth() {
+base_gh_auth_status_diagnostics() {
     local auth_output line
 
     base_gh_require_command gh || return 1
 
     auth_output="$(gh auth status -h github.com 2>&1)" || {
-        base_gh_error "GitHub CLI authentication or GitHub API access is not ready."
         while IFS= read -r line || [[ -n "$line" ]]; do
             [[ -n "$line" ]] && base_gh_error "gh auth status: $line"
         done <<<"$auth_output"
         base_gh_error "Run 'gh auth login -h github.com' and retry."
         return 1
     }
+}
+
+base_gh_report_command_failure() {
+    local status="$1"
+    shift
+
+    base_gh_error "GitHub command failed: gh $*"
+    base_gh_auth_status_diagnostics || true
+    return "$status"
+}
+
+base_gh_run() {
+    local status
+
+    base_gh_require_command gh || return 1
+    gh "$@"
+    status=$?
+    ((status == 0)) && return 0
+    base_gh_report_command_failure "$status" "$@"
+    return "$status"
 }
 
 base_gh_args_request_help() {
@@ -242,8 +261,7 @@ base_gh_do_issue() {
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
-            gh issue list "$@"
+            base_gh_run issue list "$@"
             ;;
         create)
             base_gh_issue_create "$@"
@@ -321,20 +339,19 @@ base_gh_issue_create() {
     }
     category="${category:-enhancement}"
     base_gh_validate_category "$category" || return 1
-    base_gh_require_auth || return 1
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
     if [[ -n "$body" ]]; then
         if [[ -n "$github_repo" ]]; then
-            issue_output="$(gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
+            issue_output="$(base_gh_run issue create --title "$title" --body "$body" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
         else
-            issue_output="$(gh issue create --title "$title" --body "$body" --label "$category" --assignee codeforester)" || return $?
+            issue_output="$(base_gh_run issue create --title "$title" --body "$body" --label "$category" --assignee codeforester)" || return $?
         fi
     else
         if [[ -n "$github_repo" ]]; then
-            issue_output="$(gh issue create --title "$title" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
+            issue_output="$(base_gh_run issue create --title "$title" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
         else
-            issue_output="$(gh issue create --title "$title" --label "$category" --assignee codeforester)" || return $?
+            issue_output="$(base_gh_run issue create --title "$title" --label "$category" --assignee codeforester)" || return $?
         fi
     fi
     printf '%s\n' "$issue_output"
@@ -398,7 +415,7 @@ base_gh_issue_start() {
 
     base_gh_require_git_repo || return 1
     if [[ -z "$category" || -z "$title" ]]; then
-        base_gh_require_auth || return 1
+        base_gh_require_command gh || return 1
     fi
     if [[ -z "$category" ]]; then
         category="$(base_gh_issue_category_from_labels "$issue")" || return 1
@@ -427,50 +444,45 @@ base_gh_do_pr() {
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
             base_gh_require_git_repo || return 1
             issue="$(base_gh_current_issue_from_branch || true)"
             if [[ -n "$issue" ]]; then
                 body_file="$(mktemp "${TMPDIR:-/tmp}/basectl-gh-pr.XXXXXX")" || return 1
                 printf 'Fixes #%s\n' "$issue" > "$body_file"
-                gh pr create --fill --body-file "$body_file" "$@"
+                base_gh_run pr create --fill --body-file "$body_file" "$@"
                 status=$?
                 rm -f "$body_file"
                 return "$status"
             fi
-            gh pr create --fill "$@"
+            base_gh_run pr create --fill "$@"
             ;;
         status)
             if base_gh_args_request_help "$@"; then
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
-            gh pr status "$@"
+            base_gh_run pr status "$@"
             ;;
         checks)
             if base_gh_args_request_help "$@"; then
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
-            gh pr checks "$@"
+            base_gh_run pr checks "$@"
             ;;
         ready)
             if base_gh_args_request_help "$@"; then
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
-            gh pr ready "$@"
+            base_gh_run pr ready "$@"
             ;;
         merge)
             if base_gh_args_request_help "$@"; then
                 base_gh_usage
                 return 0
             fi
-            base_gh_require_auth || return 1
-            gh pr merge "$@"
+            base_gh_run pr merge "$@"
             ;;
         -h|--help|help|"")
             base_gh_usage
@@ -559,7 +571,7 @@ base_gh_branch_merged_to_ref() {
 
 base_gh_prune_github_ready() {
     if [[ -z "${_base_gh_prune_github_ready+x}" ]]; then
-        if command -v gh >/dev/null 2>&1 && gh auth status -h github.com >/dev/null 2>&1; then
+        if command -v gh >/dev/null 2>&1; then
             _base_gh_prune_github_ready=1
         else
             _base_gh_prune_github_ready=0
@@ -697,7 +709,7 @@ base_gh_branch_prune_github_branches() {
 
     printf 'GitHub branches\n'
     if ! base_gh_prune_github_ready; then
-        printf 'SKIP   GitHub branch cleanup requires authenticated gh. Run `gh auth login -h github.com` and retry.\n'
+        printf 'SKIP   GitHub branch cleanup requires the GitHub CLI `gh` on PATH.\n'
         printf 'Summary: 0 %s, 0 skipped worktree, 0 skipped unmerged, 0 failed.\n' \
             "$([[ "$dry_run" -eq 1 ]] && printf 'would delete remotely' || printf 'deleted remotely')"
         return 0
