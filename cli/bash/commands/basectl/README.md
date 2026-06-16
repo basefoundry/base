@@ -78,17 +78,20 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
-- `basectl repo init <name>` creates the standard local repository baseline and
-  creates and configures the GitHub repository when `--repo <owner/name>` is
-  provided or an existing `origin` remote can be inferred. Without `--path`, it
+- `basectl repo init <name>` ensures the standard local repository baseline.
+  It is safe to run on an existing checkout: existing files are left alone and
+  missing Base-managed files are added. When `--repo <owner/name>` is provided,
+  it creates the GitHub repository only if it is missing, then applies the same
+  GitHub-side configuration handled by `repo configure`. Without `--path`, it
   creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
   then falls back to the parent directory of `BASE_HOME`.
   `basectl repo clone <name-or-owner/name>` clones one existing GitHub
   repository into the configured workspace, supports `--owner <owner>` for
   short names, and treats matching existing checkouts as already satisfied.
   `basectl repo check [path]` verifies the local baseline, and
-  `basectl repo configure [path]` reapplies the GitHub settings, labels,
-  default branch protection, and standard repo Project setup. By default, the
+  `basectl repo configure [path]` applies or repairs the GitHub settings,
+  labels, default branch protection, and standard repo Project setup after the
+  baseline exists. By default, the
   Project title matches the repository name; missing Projects are copied from
   `base-project-template`, linked to the repository, and backfilled with
   repository issues. When `.github/base-project.yml` exists, repo-specific
