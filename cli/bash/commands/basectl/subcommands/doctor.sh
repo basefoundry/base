@@ -18,6 +18,7 @@ Options:
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path for project diagnostics.
   --remote-network      Opt in to bounded project Git origin reachability diagnostics.
+  --no-color            Disable doctor status colors and symbols in text output.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -37,10 +38,7 @@ base_doctor_print_finding() {
     local message="$4"
     local fix="${5:-}"
 
-    printf '%-5s  %-9s  %-26s  %s\n' "$status" "$finding_id" "$name" "$message"
-    if [[ -n "$fix" ]]; then
-        printf '       Fix: %s\n' "$fix"
-    fi
+    setup_print_doctor_finding "$status" "$finding_id" "$name" "$message" "$fix"
 }
 
 base_doctor_count_check_errors() {
@@ -337,6 +335,10 @@ base_doctor_subcommand_main() {
                 ;;
             --remote-network)
                 remote_network=true
+                ;;
+            --no-color)
+                BASE_SETUP_DOCTOR_NO_COLOR=true
+                export BASE_SETUP_DOCTOR_NO_COLOR
                 ;;
             -v)
                 setup_enable_debug_logging
