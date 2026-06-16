@@ -41,7 +41,7 @@ Commands:
     Diagnose the local Base CLI environment and optional project artifacts.
   gh <area> <command> [options]
     Manage GitHub issues, PRs, branches, and repository hygiene.
-  onboard [options]
+  onboard [project] [options]
     Guide a user through the first Base setup checklist.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.

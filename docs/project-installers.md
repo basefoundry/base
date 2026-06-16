@@ -113,15 +113,15 @@ Project installers should not:
 `basectl onboard` is still useful, but it should target a different layer. Its
 command design is captured in [basectl-onboard.md](basectl-onboard.md).
 
-`basectl onboard` should be a guided Base setup experience for
-technically-adjacent users who are installing Base itself. A project installer
-should be a guided product setup experience for users installing a particular
-project.
+`basectl onboard [project]` should be a guided Base setup experience for
+technically-adjacent users who want Base to reconcile its generic machine and
+project primitives. A project installer should be a guided product setup
+experience for users installing a particular project.
 
 In short:
 
 - use `basectl setup` for direct developer setup
-- use `basectl onboard` for guided Base setup
+- use `basectl onboard [project]` for guided Base setup and generic project reconciliation
 - use `<project>/install.sh` for guided project setup
 
 Keeping these layers separate lets Base stay small and reusable while each

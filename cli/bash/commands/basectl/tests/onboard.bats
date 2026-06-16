@@ -8,11 +8,12 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl onboard [options]"* ]]
+    [[ "$output" == *"basectl onboard [project] [options]"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"--no-profile"* ]]
+    [[ "$output" == *"Defaults to 'base'."* ]]
 }
 
 @test "basectl onboard dry-run shows planned commands without prompting" {
@@ -54,6 +55,40 @@ load ./basectl_helpers.bash
     [[ "$output" == *"[DRY-RUN] Would run basectl setup base --profile dev\\,sre\\,ai --dry-run"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev\\,sre\\,ai"* ]]
     [[ "$output" != *"unexpected run"* ]]
+}
+
+@test "basectl onboard dry-run targets an explicit project" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() { printf "unexpected run: %s\n" "$*" >&2; return 99; }
+            base_onboard_subcommand_main bankbuddy --dry-run --profile dev
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base onboard will verify project 'bankbuddy'"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl check bankbuddy --profile dev"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl setup bankbuddy --profile dev --dry-run"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl doctor bankbuddy --profile dev"* ]]
+    [[ "$output" == *"basectl activate bankbuddy"* ]]
+    [[ "$output" != *"unexpected run"* ]]
+}
+
+@test "basectl onboard rejects multiple projects" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_subcommand_main bankbuddy base-demo --dry-run
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"The onboard command accepts at most one project."* ]]
 }
 
 @test "basectl onboard rejects unknown profiles" {
