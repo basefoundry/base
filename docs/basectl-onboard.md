@@ -1,6 +1,7 @@
 # `basectl onboard`
 
-`basectl onboard` is the guided setup experience for Base itself.
+`basectl onboard` is the guided setup experience for Base itself and for
+Base-managed project setup primitives.
 
 It helps technically-adjacent users through the first Base setup without
 turning `basectl setup` into an interactive, hand-holding command. The setup
@@ -12,11 +13,11 @@ slower, friendlier, and more explanatory because that is its purpose.
 `basectl onboard` runs a checklist-style first-run flow around existing Base
 commands:
 
-1. runs `basectl check`
-2. prompts before running `basectl setup`
+1. runs `basectl check [project]`
+2. prompts before running `basectl setup [project]`
 3. prompts before running `basectl update-profile`, unless profile updates are
    disabled
-4. runs `basectl doctor`
+4. runs `basectl doctor [project]`
 5. lists discovered projects with `basectl projects list`
 6. suggests the next interactive shell step
 
@@ -27,7 +28,7 @@ when you want the scriptable reconciler.
 ## Usage
 
 ```bash
-basectl onboard [options]
+basectl onboard [project] [options]
 ```
 
 Options:
@@ -41,27 +42,30 @@ Options:
   -h, --help       Show help text.
 ```
 
-The command defaults to the `base` project. Project-specific guided onboarding
-remains a project installer responsibility.
+The command defaults to the `base` project. Passing a project name threads that
+project through `check`, `setup`, and `doctor`. Product-specific guided
+onboarding remains a project installer responsibility.
 
 ## Scope Boundary
 
-Base should not grow `basectl onboard <project>` as a product-specific guided
-installer. Project onboarding belongs in the project repository, where the
-installer can speak in that product's language, clone or update that product's
-repo, explain product-specific prerequisites, and call Base for the workspace
-mechanics it owns.
+`basectl onboard [project]` is not a product-specific guided installer. It can
+target Base's generic project setup/check/doctor flow, but product onboarding
+belongs in the project repository, where the installer can speak in that
+product's language, clone or update that product's repo, explain
+product-specific prerequisites, and call Base for the workspace mechanics it
+owns.
 
 The stable split is:
 
-- `basectl onboard` guides first-run Base setup.
+- `basectl onboard [project]` guides first-run Base setup and optional
+  Base-managed project reconciliation.
 - `basectl setup <project>` reconciles a Base-managed project from its manifest.
 - `<project>/install.sh` or a packaged project installer guides product-specific
   onboarding and calls Base internally.
 
 Future workspace or team onboarding should start from a workspace manifest
-design, not from project-specific product logic inside Base. A future command
-such as `basectl onboard <workspace>` would need an explicit manifest location,
+design, not from project-specific product logic inside Base. A future
+workspace-level onboarding command would need an explicit manifest location,
 clone policy, trust model, partial-failure model, and dry-run story before it
 becomes part of the product surface. See [Workspace Manifest](workspace-manifest.md).
 
@@ -86,27 +90,27 @@ boundary.
 
 `basectl onboard` orchestrates existing Base primitives:
 
-- `basectl check` for quick environment state
-- `basectl doctor` for human-readable diagnosis and suggested fixes
-- `basectl setup` for actual reconciliation
+- `basectl check [project]` for quick environment state
+- `basectl doctor [project]` for human-readable diagnosis and suggested fixes
+- `basectl setup [project]` for actual reconciliation
 - `basectl setup --profile <list>` when the user opts into Base prerequisite
   profiles
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
-- `basectl activate base` as the final suggested next step
+- `basectl activate <project>` as the final suggested next step
 
 It does not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
 Those responsibilities already belong to the setup/check/profile commands.
 
 ## Command Shape
 
-Initial command shape:
+Command shape:
 
 ```bash
-basectl onboard [options]
+basectl onboard [project] [options]
 ```
 
-Planned options:
+Options:
 
 ```text
   --profile <list> Include named prerequisite profiles.
@@ -117,8 +121,9 @@ Planned options:
   -h, --help       Show help text.
 ```
 
-The command should default to the `base` project. Project-specific guided
-onboarding remains a project installer responsibility.
+The command defaults to the `base` project. Passing a project name targets the
+Base-managed project checks and setup steps without making Base responsible for
+product-specific onboarding.
 
 ## Experience Flow
 

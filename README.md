@@ -746,10 +746,11 @@ basectl check example
 basectl doctor example
 ```
 
-`basectl onboard` provides a guided checklist for technically-adjacent users who
-want a first Base setup flow around check, setup, profile refresh, doctor, and
-project discovery. Product-specific onboarding should still live in project
-installers that call Base internally. See
+`basectl onboard [project]` provides a guided checklist for technically-adjacent
+users who want a first Base setup flow around check, setup, profile refresh,
+doctor, and project discovery. It defaults to `base`, and can target another
+Base-managed project for the check/setup/doctor steps. Product-specific
+onboarding should still live in project installers that call Base internally. See
 [docs/basectl-onboard.md](docs/basectl-onboard.md).
 
 Base can also bootstrap supported IDEs for participating projects through the
@@ -982,9 +983,9 @@ to `PATH`, so `basectl` can be run without spelling out the full path. Use
 `basectl version` or `basectl --version` to report the installed Base version.
 
 Project-specific onboarding should live in project installers that call Base
-internally. Base intentionally does not provide `basectl onboard <project>` for
-product-specific setup; that flow belongs in scripts such as
-`banyanlabs/install.sh`. See [Project Installers](docs/project-installers.md)
+internally. `basectl onboard [project]` can run Base's setup/check/doctor flow
+for a selected project, but product-specific setup still belongs in scripts such
+as `banyanlabs/install.sh`. See [Project Installers](docs/project-installers.md)
 for the recommended boundary.
 
 ## Documentation

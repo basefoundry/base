@@ -107,6 +107,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "onboard_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl onboard ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "onboard_projects=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl onboard --profile ""); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -202,6 +206,7 @@ EOF
     [[ "$output" == *"workspace_commands=status check doctor clone"* ]]
     [[ "$output" == *"workspace_options=--workspace --manifest --format --include-optional --dry-run"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
+    [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]

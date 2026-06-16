@@ -239,7 +239,7 @@ _base_basectl_completion() {
             esac
             ;;
         onboard)
-            _base_basectl_completion_profiles_or_options \
+            _base_basectl_completion_project_profiles_or_options \
                 "$cur" \
                 "--profile --dry-run --yes --no-profile -v -h --help"
             ;;

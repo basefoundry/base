@@ -22,7 +22,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"gh <area> <command> [options]"* ]]
-    [[ "$output" == *"onboard [options]"* ]]
+    [[ "$output" == *"onboard [project] [options]"* ]]
     [[ "$output" == *"update [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
     [[ "$output" == *"workspace <status|check|doctor|clone> [options]"* ]]
@@ -49,7 +49,7 @@ load ./basectl_helpers.bash
     ! grep -Fqx '  shell' <<<"$output"
     grep -Fqx '  version' <<<"$output"
     grep -Fqx '  gh <area> <command> [options]' <<<"$output"
-    grep -Fqx '  onboard [options]' <<<"$output"
+    grep -Fqx '  onboard [project] [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
     grep -Fqx '  export-context [project] [options]' <<<"$output"

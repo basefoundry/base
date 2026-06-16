@@ -10,7 +10,7 @@ Run `basectl --help` or `basectl <command> --help` for full usage.
 | `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv` |
 | `basectl update-profile` | Create or update Base-managed Bash and Zsh startup snippets. | `--defaults`, `--no-defaults`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
-| `basectl onboard` | Guide first-run setup by orchestrating setup, shell profile, doctor, and project discovery checks. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
+| `basectl onboard [project]` | Guide first-run setup by orchestrating check, setup, shell profile, doctor, and project discovery. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
 | `basectl version` | Show the installed Base version. | none |
 
 ## Daily Project Loop

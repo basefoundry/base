@@ -11,7 +11,7 @@ source "$_base_setup_common_path"
 base_onboard_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl onboard [options]
+  basectl onboard [project] [options]
 
 Options:
   --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre, ai.
@@ -24,6 +24,9 @@ Options:
 Purpose:
   Guide a user through the first Base setup by orchestrating check, setup,
   update-profile, doctor, and project discovery commands.
+
+Project:
+  Defaults to 'base'. The selected project is passed to check, setup, and doctor.
 EOF
 }
 
@@ -96,14 +99,16 @@ base_onboard_execute() {
 base_onboard_subcommand_main() {
     local dry_run=0
     local no_profile=0
+    local project="base"
+    local project_explicit=0
     local verbose=0
     local yes=0
     local check_status=0
     local profile_status=0
     local setup_status=0
-    local check_args=(check base)
-    local doctor_args=(doctor base)
-    local setup_args=(setup base)
+    local check_args=()
+    local doctor_args=()
+    local setup_args=()
     local profile_args=(update-profile)
     local projects_args=(projects list)
 
@@ -138,14 +143,27 @@ base_onboard_subcommand_main() {
                 base_onboard_subcommand_usage
                 return 0
                 ;;
-            *)
+            -*)
                 print_error "Unknown option '$1'."
                 base_onboard_subcommand_usage >&2
                 return 1
                 ;;
+            *)
+                if ((project_explicit)); then
+                    print_error "The onboard command accepts at most one project."
+                    base_onboard_subcommand_usage >&2
+                    return 1
+                fi
+                project="$1"
+                project_explicit=1
+                ;;
         esac
         shift
     done
+
+    check_args=(check "$project")
+    setup_args=(setup "$project")
+    doctor_args=(doctor "$project")
 
     if setup_profiles_enabled; then
         check_args+=(--profile "$(setup_profiles_csv)")
@@ -164,7 +182,7 @@ base_onboard_subcommand_main() {
         profile_args+=(--dry-run)
     fi
 
-    printf '%s\n' "Base onboard will verify project 'base' and guide the setup steps it can reconcile."
+    printf '%s\n' "Base onboard will verify project '$project' and guide the setup steps it can reconcile."
 
     base_onboard_print_heading "Check"
     printf '%s\n' "Base will check the current machine state before making changes."
@@ -227,5 +245,5 @@ base_onboard_subcommand_main() {
     fi
 
     base_onboard_print_heading "Next Steps"
-    printf '%s\n' "Run 'basectl' to enter the nearest Base project shell, or 'basectl activate base' to start with Base itself."
+    printf "%s\n" "Run 'basectl' to enter the nearest Base project shell, or 'basectl activate $project' to start with '$project'."
 }

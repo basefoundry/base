@@ -370,7 +370,12 @@ _base_basectl_completion() {
                 '--yes[Accept default answers for setup and shell profile prompts]' \
                 '--no-profile[Skip shell profile updates]' \
                 '-v[Enable DEBUG logging]' \
-                '(-h --help)'{-h,--help}'[Show help text]'
+                '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
+                _describe -t projects 'Base project' project_names
+            fi
             ;;
         update-profile)
             _arguments '--defaults[Enable shell defaults]' '--no-defaults[Disable shell defaults]' \
