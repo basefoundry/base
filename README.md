@@ -272,6 +272,13 @@ delegation-first: use mature tools for the domains they already own, and keep
 Base responsible for workspace orchestration, project discovery, the project
 virtual environment, and diagnostics.
 
+Manifest-declared commands are trusted project code. Base executes
+`test.command`, `build.targets.*.command`, and `commands.*` as shell command
+strings from the project root, so shell metacharacters are honored. Review
+manifests from unfamiliar repositories before running `basectl test`,
+`basectl build`, or `basectl run`; use `--dry-run` and `--list` first when you
+only want to inspect the resolved command contract.
+
 The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
 to the project root. When present, `basectl setup` runs
 `brew bundle --file=<project-root>/<brewfile>` before reconciling artifacts. Use
