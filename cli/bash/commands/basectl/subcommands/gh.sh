@@ -8,9 +8,9 @@ base_gh_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>] [--repo <owner/name>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
-  basectl gh pr create [gh options...]
+  basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
   basectl gh pr checks [gh options...]
   basectl gh pr ready [gh options...]
@@ -32,15 +32,21 @@ Branch naming:
 
 Issue create project options:
   --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
+  --category <category>         Issue label category. Defaults to enhancement.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --no-project                  Skip Project metadata updates.
+
+Issue categories:
+  bug, enhancement, documentation, ci, security
 
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
   - Issues created through this command are assigned to codeforester.
   - When the GitHub repo is known, issue create also adds the issue to the
     repo-named Project and applies defaults from .github/base-project.yml.
+  - PR creation auto-injects Fixes #<issue> when the branch follows the Base
+    naming convention. Pass --no-fixes to suppress that body injection.
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
   - TODO planning only previews issues; TODO import creation is not enabled yet.
@@ -51,7 +57,7 @@ base_gh_issue_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create --category <bug|enhancement|documentation|ci|security> --title <title> [--body <body>] [--repo <owner/name>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
 
 Purpose:
@@ -62,16 +68,20 @@ Branch naming:
 
 Issue create project options:
   --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
+  --category <category>         Issue label category. Defaults to enhancement.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --no-project                  Skip Project metadata updates.
+
+Default category: enhancement.
+Categories: bug, enhancement, documentation, ci, security.
 EOF
 }
 
 base_gh_pr_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh pr create [gh options...]
+  basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
   basectl gh pr checks [gh options...]
   basectl gh pr ready [gh options...]
@@ -83,6 +93,7 @@ Purpose:
 Notes:
   - PR creation links the current issue automatically when the branch follows
     <category>/<issue>-<YYYYMMDD>-<slug>.
+  - --no-fixes disables automatic Fixes #<issue> body injection for create.
   - Pull request implementation work should happen in a dedicated worktree.
 EOF
 }
@@ -447,7 +458,10 @@ base_gh_issue_create() {
         base_gh_error "Missing required --title."
         return 1
     }
-    category="${category:-enhancement}"
+    if [[ -z "$category" ]]; then
+        category="enhancement"
+        printf 'Using default --category: enhancement\n'
+    fi
     base_gh_validate_category "$category" || return 1
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
@@ -490,6 +504,37 @@ base_gh_issue_create() {
                 --size S
         fi
     fi
+}
+
+base_gh_pr_create() {
+    local issue body_file status
+    local no_fixes=0
+    local passthrough=()
+
+    while (($#)); do
+        case "$1" in
+            --no-fixes)
+                no_fixes=1
+                ;;
+            *)
+                passthrough+=("$1")
+                ;;
+        esac
+        shift
+    done
+
+    base_gh_require_git_repo || return 1
+    issue="$(base_gh_current_issue_from_branch || true)"
+    if [[ -n "$issue" && "$no_fixes" -eq 0 ]]; then
+        body_file="$(mktemp "${TMPDIR:-/tmp}/basectl-gh-pr.XXXXXX")" || return 1
+        printf 'Fixes #%s\n' "$issue" > "$body_file"
+        printf 'Auto-linking PR to issue #%s from branch name. Pass --no-fixes to suppress.\n' "$issue"
+        base_gh_run pr create --fill --body-file "$body_file" "${passthrough[@]}"
+        status=$?
+        rm -f "$body_file"
+        return "$status"
+    fi
+    base_gh_run pr create --fill "${passthrough[@]}"
 }
 
 base_gh_issue_start() {
@@ -545,7 +590,6 @@ base_gh_issue_start() {
 
 base_gh_do_pr() {
     local command="${1:-}"
-    local issue body_file status
     shift || true
 
     case "$command" in
@@ -554,17 +598,7 @@ base_gh_do_pr() {
                 base_gh_pr_usage
                 return 0
             fi
-            base_gh_require_git_repo || return 1
-            issue="$(base_gh_current_issue_from_branch || true)"
-            if [[ -n "$issue" ]]; then
-                body_file="$(mktemp "${TMPDIR:-/tmp}/basectl-gh-pr.XXXXXX")" || return 1
-                printf 'Fixes #%s\n' "$issue" > "$body_file"
-                base_gh_run pr create --fill --body-file "$body_file" "$@"
-                status=$?
-                rm -f "$body_file"
-                return "$status"
-            fi
-            base_gh_run pr create --fill "$@"
+            base_gh_pr_create "$@"
             ;;
         status)
             if base_gh_args_request_help "$@"; then
