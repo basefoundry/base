@@ -27,6 +27,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh issue create"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"Issue create project options:"* ]]
+    [[ "$output" == *"Default category: enhancement."* ]]
+    [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
     [[ "$output" != *"basectl gh pr create"* ]]
     [[ "$output" != *"basectl gh worktree prune"* ]]
 }
@@ -38,6 +40,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh pr create"* ]]
     [[ "$output" == *"basectl gh pr checks"* ]]
     [[ "$output" == *"basectl gh pr merge"* ]]
+    [[ "$output" == *"basectl gh pr create [--no-fixes] [gh options...]"* ]]
+    [[ "$output" == *"--no-fixes"* ]]
     [[ "$output" == *"issue-linked PR workflow"* ]]
     [[ "$output" != *"basectl gh issue create"* ]]
     [[ "$output" != *"basectl gh branch prune"* ]]
@@ -114,7 +118,34 @@ EOF
         '
 
     [ "$status" -eq 0 ]
+    [[ "$output" != *"Using default --category"* ]]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester --repo codeforester/base" ]
+}
+
+@test "basectl gh issue create announces default category" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --title "Default category issue" --no-project
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using default --category: enhancement"* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Default category issue --label enhancement --assignee codeforester --repo codeforester/base" ]
 }
 
 @test "basectl gh issue create continues when auth status is transiently unavailable" {
@@ -885,6 +916,7 @@ while (($#)); do
     shift
 done
 [[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
+exit 0
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
 
@@ -901,8 +933,55 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
+    [[ "$output" == *"Auto-linking PR to issue #117 from branch name. Pass --no-fixes to suppress."* ]]
     [[ "$(cat "$TEST_STATE_DIR/gh-args")" == pr\ create\ --fill\ --body-file* ]]
     [ "$(cat "$TEST_STATE_DIR/body")" = "Fixes #117" ]
+}
+
+@test "basectl gh pr create supports no-fixes opt out" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main pr create --no-fixes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Auto-linking PR"* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "pr create --fill" ]
+    [ ! -e "$TEST_STATE_DIR/body" ]
 }
 
 @test "basectl gh pr create help does not require authentication" {

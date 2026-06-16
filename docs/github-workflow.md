@@ -108,6 +108,12 @@ and repository hygiene tasks. For example, prefer `basectl gh issue create`,
 over hand-written `gh` commands when those commands are available and local
 tooling is authenticated.
 
+`basectl gh issue create` defaults to the `enhancement` category when
+`--category` is omitted and prints that choice. `basectl gh pr create`
+auto-injects `Fixes #<issue>` when the current branch follows the Base
+`<category>/<issue>-<YYYYMMDD>-<slug>` convention; pass `--no-fixes` when the
+PR should not close the issue automatically.
+
 Fallbacks are allowed when `basectl gh` does not support the needed operation,
 when local GitHub CLI authentication is unavailable, or when the GitHub
 connector provides a safer structured API for the task. In those cases, use the
