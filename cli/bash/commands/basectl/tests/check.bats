@@ -13,6 +13,9 @@ load ./setup_helpers.bash
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"--remote-network"* ]]
     [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
+    [[ "$output" == *"Use check for a quick pass/fail result; use doctor for finding IDs and fix hints."* ]]
+    [[ "$output" == *"See also:"* ]]
+    [[ "$output" == *"basectl doctor [project] [options]"* ]]
 }
 
 @test "basectl check passes when all required components are present" {

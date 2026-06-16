@@ -23,6 +23,10 @@ Options:
 
 Purpose:
   Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes.
+  Use check for a quick pass/fail result; use doctor for finding IDs and fix hints.
+
+See also:
+  basectl doctor [project] [options]
 
 Check does:
   1. Verify Homebrew is installed.
