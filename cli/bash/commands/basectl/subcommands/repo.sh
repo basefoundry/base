@@ -887,17 +887,106 @@ Closes #
 EOF
 }
 
+base_repo_print_agent_guidance_summary() {
+    local created=()
+    local created_count
+    local created_word
+    local total=3
+    local unchanged=()
+    local unchanged_count
+    local unchanged_word
+
+    while (($#)); do
+        case "$1" in
+            --created)
+                created+=("$2")
+                shift 2
+                ;;
+            --unchanged)
+                unchanged+=("$2")
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    created_count="${#created[@]}"
+    unchanged_count="${#unchanged[@]}"
+
+    if ((unchanged_count == total)); then
+        printf "Agent guidance: all %d files already exist and were left unchanged.\n" "$total"
+        printf "To overwrite, remove the files first and re-run.\n"
+        return 0
+    fi
+
+    created_word="files"
+    unchanged_word="files"
+    [[ "$created_count" == "1" ]] && created_word="file"
+    [[ "$unchanged_count" == "1" ]] && unchanged_word="file"
+
+    if ((created_count > 0 && unchanged_count > 0)); then
+        printf "Agent guidance: %d %s created, %d %s already existed and were left unchanged.\n" \
+            "$created_count" "$created_word" "$unchanged_count" "$unchanged_word"
+    elif ((created_count > 0)); then
+        printf "Agent guidance: %d %s created.\n" "$created_count" "$created_word"
+    else
+        printf "Agent guidance: no files changed.\n"
+    fi
+
+    if ((created_count > 0)); then
+        printf "  Created:   "
+        base_repo_join_csv "${created[@]}"
+        printf "\n"
+    fi
+    if ((unchanged_count > 0)); then
+        printf "  Unchanged: "
+        base_repo_join_csv "${unchanged[@]}"
+        printf "\n"
+    fi
+}
+
 base_repo_write_agent_guidance() {
+    local agents_existed=0
     local default_branch="$3"
     local dry_run="$1"
+    local pr_template_existed=0
     local repo_name="$2"
     local root="$5"
+    local summary_args=()
+    local skills_existed=0
     local status=0
     local validation_command="$4"
+
+    if [[ "$dry_run" != "1" ]]; then
+        [[ -e "$root/AGENTS.md" ]] && agents_existed=1
+        [[ -e "$root/skills.md" ]] && skills_existed=1
+        [[ -e "$root/.github/pull_request_template.md" ]] && pr_template_existed=1
+    fi
 
     base_repo_write_agent_instructions "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || status=1
     base_repo_write_agent_skills "$dry_run" "$repo_name" "$root" || status=1
     base_repo_write_agent_pull_request_template "$dry_run" "$root" || status=1
+
+    if [[ "$dry_run" != "1" && "$status" -eq 0 ]]; then
+        if ((agents_existed)); then
+            summary_args+=(--unchanged "AGENTS.md")
+        else
+            summary_args+=(--created "AGENTS.md")
+        fi
+        if ((skills_existed)); then
+            summary_args+=(--unchanged "skills.md")
+        else
+            summary_args+=(--created "skills.md")
+        fi
+        if ((pr_template_existed)); then
+            summary_args+=(--unchanged ".github/pull_request_template.md")
+        else
+            summary_args+=(--created ".github/pull_request_template.md")
+        fi
+        base_repo_print_agent_guidance_summary "${summary_args[@]}"
+    fi
 
     return "$status"
 }
