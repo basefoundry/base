@@ -1874,6 +1874,37 @@ base_repo_print_init_pr_next_steps() {
     printf "     %s\n" "$command_hint"
 }
 
+base_repo_print_init_github_skip_notice() {
+    local dry_run="$1"
+    local name="$2"
+    local root="$3"
+    local pretty_root
+
+    pretty_root="$(base_repo_pretty_arg "$root")"
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred. Pass --repo <owner/name> to include GitHub repository creation and configuration.\n"
+        printf "[DRY-RUN] To include GitHub setup, run:\n"
+        printf "  basectl repo init %s --path %s --repo <owner/%s>\n" \
+            "$(base_repo_pretty_arg "$name")" \
+            "$pretty_root" \
+            "$name"
+        return 0
+    fi
+
+    printf "Baseline files written to '%s'.\n" "$root"
+    printf "\n"
+    printf "GitHub repository not configured (no --repo provided and no origin remote found).\n"
+    printf "To complete GitHub setup, run:\n"
+    printf "  basectl repo configure %s --repo <owner/%s>\n" "$pretty_root" "$name"
+    printf "\n"
+    printf "Or to create the GitHub repository and configure it now:\n"
+    printf "  basectl repo init %s --path %s --repo <owner/%s>\n" \
+        "$(base_repo_pretty_arg "$name")" \
+        "$pretty_root" \
+        "$name"
+}
+
 base_repo_init_pr_rerun_command() {
     local configure="$4"
     local configure_project="$6"
@@ -2427,11 +2458,7 @@ base_repo_init() {
                     "${initiative_options[@]}" || return 1
             fi
         else
-            if [[ "$dry_run" == "1" ]]; then
-                printf "[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred. Pass --repo <owner/name> to include GitHub repository creation and configuration.\n"
-            else
-                log_info "Skipping GitHub repository creation and configuration because no GitHub repo was provided or inferred."
-            fi
+            base_repo_print_init_github_skip_notice "$dry_run" "$name" "$root"
         fi
     fi
 }
