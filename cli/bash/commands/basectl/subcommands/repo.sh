@@ -165,40 +165,37 @@ path is provided. With --pr, path is required.
 EOF
 }
 
-base_repo_usage_error() {
-    base_repo_subcommand_usage >&2
+base_repo_print_usage_error() {
+    local help_command="$1"
+    shift
+
     printf 'ERROR: %s\n' "$*" >&2
+    printf "Run '%s --help' for usage.\n" "$help_command" >&2
     return 2
+}
+
+base_repo_usage_error() {
+    base_repo_print_usage_error "basectl repo" "$@"
 }
 
 base_repo_init_usage_error() {
-    base_repo_init_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo init" "$@"
 }
 
 base_repo_clone_usage_error() {
-    base_repo_clone_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo clone" "$@"
 }
 
 base_repo_check_usage_error() {
-    base_repo_check_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo check" "$@"
 }
 
 base_repo_configure_usage_error() {
-    base_repo_configure_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo configure" "$@"
 }
 
 base_repo_installer_template_usage_error() {
-    base_repo_installer_template_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo installer-template" "$@"
 }
 
 base_repo_agent_guidance_usage() {
@@ -221,9 +218,7 @@ EOF
 }
 
 base_repo_agent_guidance_usage_error() {
-    base_repo_agent_guidance_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
-    return 2
+    base_repo_print_usage_error "basectl repo agent-guidance" "$@"
 }
 
 base_repo_default_description() {

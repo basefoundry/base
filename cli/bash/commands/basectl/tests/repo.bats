@@ -2,6 +2,13 @@
 
 load ./basectl_helpers.bash
 
+line_at() {
+    local text="$1"
+    local line_number="$2"
+
+    printf '%s\n' "$text" | sed -n "${line_number}p"
+}
+
 
 @test "basectl repo prints help" {
     run_basectl repo --help
@@ -108,9 +115,10 @@ EOF
     run_basectl repo clone base-demo --dry-run
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"basectl repo clone <name-or-owner/name> [options]"* ]]
-    [[ "$output" == *"ERROR: Repository owner is required for short repo names."* ]]
-    [[ "$output" == *"Pass --owner <owner> or set github.default_owner in ~/.base.d/config.yaml."* ]]
+    [ "$(line_at "$output" 1)" = "ERROR: Repository owner is required for short repo names. Pass --owner <owner> or set github.default_owner in ~/.base.d/config.yaml." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo clone --help' for usage." ]
+    [[ "$output" != *"Usage:"* ]]
+    [[ "$output" != *"basectl repo clone <name-or-owner/name> [options]"* ]]
 }
 
 @test "basectl repo clone treats existing matching checkouts as satisfied" {
@@ -225,11 +233,33 @@ EOF
     run_basectl repo init --repo codeforester/bankbuddy --pr
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"basectl repo init <name> [options]"* ]]
-    [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
-    [[ "$output" == *"ERROR: Repository name is required."* ]]
+    [ "$(line_at "$output" 1)" = "ERROR: Repository name is required." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo init --help' for usage." ]
+    [[ "$output" != *"Usage:"* ]]
+    [[ "$output" != *"basectl repo init <name> [options]"* ]]
+    [[ "$output" != *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
     [[ "$output" != *"basectl repo agent-guidance"* ]]
     [[ "$output" != *"--repo-name <name>"* ]]
+}
+
+@test "basectl repo unknown command reports error before help hint" {
+    run_basectl repo mystery
+
+    [ "$status" -eq 2 ]
+    [ "$(line_at "$output" 1)" = "ERROR: Unknown repo command 'mystery'." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo --help' for usage." ]
+    [[ "$output" != *"Usage:"* ]]
+    [[ "$output" != *"basectl repo init <name> [options]"* ]]
+}
+
+@test "basectl repo agent-guidance missing option argument reports error before help hint" {
+    run_basectl repo agent-guidance --repo
+
+    [ "$status" -eq 2 ]
+    [ "$(line_at "$output" 1)" = "ERROR: Option '--repo' requires an argument." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo agent-guidance --help' for usage." ]
+    [[ "$output" != *"Usage:"* ]]
+    [[ "$output" != *"basectl repo agent-guidance [path] [options]"* ]]
 }
 
 @test "basectl repo installer-template prints the maintained template" {
