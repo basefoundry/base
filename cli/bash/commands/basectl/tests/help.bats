@@ -14,7 +14,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"export-context [project] [options]"* ]]
     [[ "$output" == *"run <project> <command> [options]"* ]]
-    [[ "$output" == *"repo <init|check|configure|agent-guidance|installer-template> [options]"* ]]
+    [[ "$output" == *"repo <init|clone|check|configure|agent-guidance|installer-template> [options]"* ]]
     [[ "$output" == *"ci <setup|check|doctor> <project> [options]"* ]]
     [[ "$output" == *"release <check|plan|notes|publish> --version <version> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
@@ -53,7 +53,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
     grep -Fqx '  export-context [project] [options]' <<<"$output"
-    grep -Fqx '  repo <init|check|configure|agent-guidance|installer-template> [options]' <<<"$output"
+    grep -Fqx '  repo <init|clone|check|configure|agent-guidance|installer-template> [options]' <<<"$output"
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
     grep -Fqx '  release <check|plan|notes|publish> --version <version> [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
@@ -61,6 +61,14 @@ load ./basectl_helpers.bash
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
+}
+
+@test "AI command context includes current clone and update surfaces" {
+    local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
+
+    grep -Fqx -- "- \`basectl workspace <status|check|doctor|clone>\` - show read-only workspace project" "$commands_file"
+    grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
+    grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
 }
 
 @test "basectl config prints help" {

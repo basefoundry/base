@@ -25,8 +25,8 @@ Commands:
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
-  repo <init|check|configure|agent-guidance|installer-template> [options]
-    Create repository baselines, agent guidance, and project installer templates.
+  repo <init|clone|check|configure|agent-guidance|installer-template> [options]
+    Create, clone, check, and configure repository baselines and guidance.
   ci <setup|check|doctor> <project> [options]
     Run Base setup, checks, and diagnostics in non-interactive CI.
   release <check|plan|notes|publish> --version <version> [options]
@@ -50,7 +50,7 @@ Commands:
   projects list [options]
     List Base-managed projects discovered in the workspace.
   workspace <status|check|doctor|clone> [options]
-    Show read-only workspace project status, checks, or diagnostics.
+    Show workspace status, run checks/diagnostics, or clone manifest repos.
   version
     Show the installed Base version.
   help

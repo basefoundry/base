@@ -21,13 +21,13 @@ the canonical current command list.
   Zip bundle for manual upload or copy/paste into AI tools.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor>` - show read-only workspace project
-  status, checks, or diagnostics.
-- `basectl repo <init|check|configure|agent-guidance|installer-template>` -
-  create repository baselines, configure GitHub repository settings and default
-  branch protection, repair missing Project intake support files, configure
-  standard GitHub Project metadata, seed agent guidance, and write installer
-  templates.
+- `basectl workspace <status|check|doctor|clone>` - show read-only workspace project
+  status, checks, diagnostics, or clone expected repositories from a manifest.
+- `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
+  create repository baselines, clone GitHub repositories into the configured
+  workspace, configure GitHub repository settings and default branch protection,
+  repair missing Project intake support files, configure standard GitHub Project
+  metadata, seed agent guidance, and write installer templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
   non-interactive CI.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
@@ -47,7 +47,9 @@ the canonical current command list.
 - `basectl onboard` - guide a user through the first Base setup checklist.
 - `basectl update-profile` - create or update Base-managed Bash/Zsh startup
   snippets.
-- `basectl update` - update Base from Git and run setup.
+- `basectl update [project]` - update Base or a named project using the
+  configured Git checkout or Homebrew-managed Base handoff, then run setup for
+  the selected project.
 - `basectl version` - show the installed Base version.
 - `basectl help` - show command help.
 
