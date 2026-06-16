@@ -1290,6 +1290,10 @@ if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .de
 fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
 body_file=""
+is_pr_create=0
+if [[ "$1" == "pr" && "$2" == "create" ]]; then
+    is_pr_create=1
+fi
 while (($#)); do
     if [[ "$1" == "--body-file" ]]; then
         body_file="$2"
@@ -1298,6 +1302,9 @@ while (($#)); do
     shift
 done
 [[ -n "$body_file" ]] && cat "$body_file" > "${BASE_REPO_TEST_STATE_DIR:?}/pr-body"
+if [[ "$is_pr_create" == "1" ]]; then
+    printf 'https://github.com/codeforester/base-demo/pull/1\n'
+fi
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
 
@@ -1320,6 +1327,11 @@ EOF
     ! grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "Add Base-managed repository baseline files." "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
+    [[ "$output" == *"Baseline PR opened: https://github.com/codeforester/base-demo/pull/1"* ]]
+    [[ "$output" == *"Next steps:"* ]]
+    [[ "$output" == *"Review and merge the pull request."* ]]
+    [[ "$output" == *"basectl repo init base-demo --path"* ]]
+    [[ "$output" == *"--repo codeforester/base-demo --pr"* ]]
 }
 
 @test "basectl repo init --pr configures GitHub when baseline has no changes" {
