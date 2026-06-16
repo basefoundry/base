@@ -87,6 +87,9 @@ Ensures the standard local Base-managed repository baseline, including
 .github/base-project.yml. Safe to run against an existing repository: existing
 files are left unchanged and missing baseline files are added.
 
+Safe to re-run: Base-managed settings are created or updated to the Base
+standard. Settings added outside Base are not removed.
+
 When --repo names a missing GitHub repo, repo init creates it using --private/--public.
 Unless --no-configure is set, repo init also applies the GitHub-side settings
 handled by repo configure. With --pr, the first run opens a baseline PR when
@@ -164,6 +167,9 @@ Base-managed repo, or whenever GitHub settings drift.
 
 When .github/base-project.yml exists, repo configure uses it for repo-specific
 GitHub Project taxonomy and issue defaults.
+
+Safe to re-run: Base-managed settings are created or updated to the Base
+standard. Settings added outside Base are not removed.
 
 It does not create the full local baseline; run repo init first when the
 Base-managed files are missing.
