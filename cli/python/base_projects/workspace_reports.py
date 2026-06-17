@@ -35,6 +35,12 @@ class ManifestEntry:
 
 
 @dataclass(frozen=True)
+class ProjectLastCheck:
+    checked_at: str
+    status: str
+
+
+@dataclass(frozen=True)
 class WorkspaceProjectStatus:
     name: str
     root: Path
@@ -43,6 +49,7 @@ class WorkspaceProjectStatus:
     venv: str
     manifest: str
     issues: tuple[str, ...]
+    last_check: ProjectLastCheck | None = None
     expected: bool = False
     required: bool = False
     repo: str = "present"
@@ -111,6 +118,7 @@ def workspace_expected_repo_status(
     if entry is not None:
         status = workspace_project_status(entry)
         return attach_status_repo_metadata(status, repo)
+    last_check = project_last_check(repo.name)
     if root.exists():
         return WorkspaceProjectStatus(
             name=repo.name,
@@ -120,6 +128,7 @@ def workspace_expected_repo_status(
             venv="not_applicable",
             manifest="missing",
             issues=(),
+            last_check=last_check,
             expected=True,
             required=repo.required,
             repo="present",
@@ -136,6 +145,7 @@ def workspace_expected_repo_status(
         venv="unknown",
         manifest="unknown",
         issues=(missing_repo_message(repo, root),),
+        last_check=last_check,
         expected=True,
         required=repo.required,
         repo="missing",
@@ -186,8 +196,10 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
             venv="unknown",
             manifest="invalid",
             issues=(str(exc),),
+            last_check=project_last_check(root.name),
         )
 
+    last_check = project_last_check(manifest.project_name)
     venv_dir = project_venv_dir(manifest.project_name)
     if project_venv_ready(venv_dir):
         return WorkspaceProjectStatus(
@@ -198,6 +210,7 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
             venv="ready",
             manifest="valid",
             issues=(),
+            last_check=last_check,
         )
 
     return WorkspaceProjectStatus(
@@ -208,6 +221,7 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
         venv="missing",
         manifest="valid",
         issues=(f"project virtual environment missing at {venv_dir}",),
+        last_check=last_check,
     )
 
 
@@ -217,6 +231,25 @@ def project_venv_dir(project_name: str) -> Path:
 
 def project_venv_ready(venv_dir: Path) -> bool:
     return (venv_dir / "bin" / "python").is_file()
+
+
+def project_last_check(project_name: str) -> ProjectLastCheck | None:
+    record_path = base_state_root() / project_name / "checks" / "last.json"
+    try:
+        payload = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    if payload.get("schema_version") != 1:
+        return None
+    if payload.get("project") != project_name:
+        return None
+
+    checked_at = payload.get("checked_at")
+    status = payload.get("status")
+    if not isinstance(checked_at, str) or not isinstance(status, str):
+        return None
+    return ProjectLastCheck(checked_at=checked_at, status=status)
 
 
 def workspace_project_check_results(
@@ -524,6 +557,7 @@ def workspace_status_item_to_json(
         "manifest_path": str(status.manifest_path) if status.manifest_path is not None else None,
         "venv": status.venv,
         "manifest": status.manifest,
+        "last_check": last_check_to_json(status.last_check),
         "issues": list(status.issues),
     }
     if workspace_manifest is not None:
@@ -624,6 +658,23 @@ def workspace_check_item_to_json(check: ArtifactCheck) -> dict[str, Any]:
     return check_to_json(check)
 
 
+def last_check_to_json(last_check: ProjectLastCheck | None) -> dict[str, str] | None:
+    if last_check is None:
+        return None
+    return {
+        "checked_at": last_check.checked_at,
+        "status": last_check.status,
+    }
+
+
+def last_check_display(last_check: ProjectLastCheck | None) -> str:
+    if last_check is None:
+        return "-"
+    if len(last_check.checked_at) >= 10:
+        return last_check.checked_at[:10]
+    return last_check.checked_at
+
+
 def print_workspace_status(
     workspace_root: Path,
     statuses: tuple[WorkspaceProjectStatus, ...],
@@ -646,7 +697,7 @@ def print_workspace_status(
             f"{status.status:<6} "
             f"{status.venv:<8} "
             f"{status.manifest:<8} "
-            f"{'-':<10} "
+            f"{last_check_display(status.last_check):<10} "
             f"{status.root}"
         )
 
@@ -669,7 +720,10 @@ def print_manifest_workspace_status(
         print("No repositories reported by the workspace manifest.")
         return
 
-    print(f"{'REPOSITORY':<20} {'STATUS':<6} {'REQUIRED':<8} {'REPO':<8} {'VENV':<14} {'MANIFEST':<8} PATH")
+    print(
+        f"{'REPOSITORY':<20} {'STATUS':<6} {'REQUIRED':<8} {'REPO':<8} "
+        f"{'VENV':<14} {'MANIFEST':<8} {'LAST CHECK':<10} PATH"
+    )
     for status in statuses:
         print(
             f"{status.repository or status.root.name:<20} "
@@ -678,6 +732,7 @@ def print_manifest_workspace_status(
             f"{status.repo:<8} "
             f"{status.venv:<14} "
             f"{status.manifest:<8} "
+            f"{last_check_display(status.last_check):<10} "
             f"{status.root}"
         )
 

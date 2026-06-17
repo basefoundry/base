@@ -20,6 +20,23 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_last_check(home: Path, project: str, checked_at: str, status: str = "ok") -> None:
+    record_path = home / ".base.d" / project / "checks" / "last.json"
+    record_path.parent.mkdir(parents=True)
+    record_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "project": project,
+                "command": "basectl check",
+                "status": status,
+                "checked_at": checked_at,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_workspace_manifest(path: Path) -> None:
     path.write_text(
         "\n".join(
@@ -84,6 +101,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
             python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
             python_bin.parent.mkdir(parents=True)
             python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_last_check(home, "base", "2026-06-17T14:30:00Z")
 
             status, stdout, stderr = invoke_engine(
                 ["status", "--workspace", str(workspace), "--manifest", str(manifest_path)],
@@ -95,7 +113,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace: {workspace.resolve()} (5 repositories)", stdout)
         self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
-        self.assertIn("base                 ok", stdout)
+        self.assertIn("base                 ok     yes      present  ready          valid    2026-06-17", stdout)
         self.assertIn("docs                 ok", stdout)
         self.assertIn("api                  error", stdout)
         self.assertIn("optional-tool        warn", stdout)
@@ -117,6 +135,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
             python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
             python_bin.parent.mkdir(parents=True)
             python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_last_check(home, "base", "2026-06-17T14:30:00Z")
 
             status, stdout, stderr = invoke_engine(
                 [
@@ -146,6 +165,13 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(projects_by_repo["base"]["required"], True)
         self.assertEqual(projects_by_repo["base"]["repo"], "present")
         self.assertEqual(projects_by_repo["base"]["url"], "git@github.com:codeforester/base.git")
+        self.assertEqual(
+            projects_by_repo["base"]["last_check"],
+            {
+                "checked_at": "2026-06-17T14:30:00Z",
+                "status": "ok",
+            },
+        )
         self.assertEqual(projects_by_repo["docs"]["manifest"], "missing")
         self.assertEqual(projects_by_repo["docs"]["venv"], "not_applicable")
         self.assertEqual(projects_by_repo["api"]["status"], "error")

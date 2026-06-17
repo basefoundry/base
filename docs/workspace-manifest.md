@@ -51,6 +51,12 @@ basectl workspace check
 basectl workspace doctor
 ```
 
+`basectl workspace status` reads the latest project check record from
+`~/.base.d/<project>/checks/last.json` when it exists. Text output shows the
+check date in the `LAST CHECK` column, while JSON output includes the full
+timestamp and check status. Projects without a recorded check show `-` in text
+output and `null` in JSON output.
+
 With `--manifest <path>`, the same commands also report expected repositories,
 missing required and optional repositories, and discovered Base-managed
 projects outside the manifest.

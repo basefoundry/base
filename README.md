@@ -441,7 +441,10 @@ Use `--workspace <path>` to inspect a different workspace root for one command.
 Project list output is tab-separated as `<project-name><TAB><path>`. Use
 `--format json` for machine-readable output. Workspace status, check, and
 doctor are read-only. Status reports each discovered project's manifest
-validity and whether the Base-managed project virtual environment is present.
+validity, whether the Base-managed project virtual environment is present, and
+the latest recorded `basectl check <project>` date when one exists. Check
+records live under `~/.base.d/<project>/checks/last.json`; status JSON includes
+the full timestamp and recorded check status.
 Check and doctor run project diagnostics across discovered projects and keep
 invalid project manifests visible as per-project findings.
 

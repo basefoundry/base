@@ -229,6 +229,59 @@ load ./setup_helpers.bash
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format text demo)" ]
 }
 
+@test "basectl check project records last check status" {
+    local record_path="$TEST_HOME/.base.d/demo/checks/last.json"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
+
+    [ "$status" -eq 0 ]
+    [ -f "$record_path" ]
+    grep -Fq '"schema_version": 1' "$record_path"
+    grep -Fq '"project": "demo"' "$record_path"
+    grep -Fq '"command": "basectl check"' "$record_path"
+    grep -Fq '"status": "ok"' "$record_path"
+    grep -Eq '"checked_at": "20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"' "$record_path"
+}
+
+@test "basectl check project records failed checks with error status" {
+    local record_path="$TEST_HOME/.base.d/demo/checks/last.json"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
+
+    [ "$status" -eq 1 ]
+    [ -f "$record_path" ]
+    grep -Fq '"project": "demo"' "$record_path"
+    grep -Fq '"command": "basectl check"' "$record_path"
+    grep -Fq '"status": "error"' "$record_path"
+    ! grep -Fq '"status": "ok"' "$record_path"
+    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/demo/.venv'."* ]]
+}
+
 @test "basectl check project passes opt-in remote network diagnostics flag" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"

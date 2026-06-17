@@ -139,7 +139,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   project names and paths.
 - `basectl workspace status` reports a read-only workspace summary across
   discovered projects, or across expected repositories when
-  `workspace.manifest` is configured or `--manifest <path>` is supplied.
+  `workspace.manifest` is configured or `--manifest <path>` is supplied. When
+  `basectl check <project>` has run, status reports the latest recorded project
+  check date from `~/.base.d/<project>/checks/last.json`.
 - `basectl workspace check` and `basectl workspace doctor` run read-only
   project checks and diagnostics across discovered projects. With a configured
   workspace manifest or `--manifest <path>`, they also report missing expected

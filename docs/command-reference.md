@@ -35,7 +35,7 @@ inspect the resolved command contract first.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl check [project]` | Verify Base and optional project readiness without making changes. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
+| `basectl check [project]` | Verify Base and optional project readiness without making changes. Project checks record the latest result under `~/.base.d/<project>/checks/last.json`. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
 | `basectl ci setup <project>` | Run setup in non-interactive CI mode. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
 | `basectl ci check <project>` | Run readiness checks in non-interactive CI mode. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
@@ -53,7 +53,7 @@ inspect the resolved command contract first.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl workspace status` | Show read-only workspace project status. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
