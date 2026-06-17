@@ -98,7 +98,17 @@ workspace:
   root: ~/work
 ```
 
-Edit that value if your repositories live under a different shared directory.
+Edit `workspace.root` if your repositories live under a different shared
+directory. You may also add an optional workspace manifest:
+
+```yaml
+workspace:
+  root: ~/work
+  manifest: ~/work/base-workspace/workspace.yaml
+```
+
+When `workspace.manifest` is set, workspace commands use it unless
+`--manifest <path>` is supplied for a single command.
 
 After Base is installed, the common development loop is:
 
@@ -431,16 +441,19 @@ validity and whether the Base-managed project virtual environment is present.
 Check and doctor run project diagnostics across discovered projects and keep
 invalid project manifests visible as per-project findings.
 
-Use `--manifest <path>` with `basectl workspace status`, `check`, or `doctor`
-to include expected repositories from a local workspace manifest. Missing
-required repositories are errors, missing optional repositories are warnings,
-and Base-managed projects outside the manifest stay visible as warnings.
+Set `workspace.manifest` in `~/.base.d/config.yaml`, or use `--manifest <path>`
+with `basectl workspace status`, `check`, or `doctor`, to include expected
+repositories from a local workspace manifest. The command-line `--manifest`
+value takes precedence over the configured manifest. Missing required
+repositories are errors, missing optional repositories are warnings, and
+Base-managed projects outside the manifest stay visible as warnings.
 
-Use `basectl workspace clone --manifest <path>` to materialize the missing
-required repositories from that manifest. The command keeps existing
-repositories visible, delegates each repository operation to `basectl repo clone`,
-and supports `--dry-run` for a no-write preview. Optional repositories
-are reported but skipped unless `--include-optional` is supplied.
+Use `basectl workspace clone --manifest <path>`, or configure
+`workspace.manifest`, to materialize the missing required repositories from that
+manifest. The command keeps existing repositories visible, delegates each
+repository operation to `basectl repo clone`, and supports `--dry-run` for a
+no-write preview. Optional repositories are reported but skipped unless
+`--include-optional` is supplied.
 
 Start a new Base-managed repository with:
 

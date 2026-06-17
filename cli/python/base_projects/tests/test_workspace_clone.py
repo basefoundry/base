@@ -54,9 +54,18 @@ printf 'fake basectl %s\\n' "$repo"
     basectl.chmod(0o755)
 
 
-def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
+def invoke_engine(
+    args: list[str],
+    base_home: Path,
+    home: Path,
+    user_config: str | None = None,
+) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
+    if user_config is not None:
+        config_path = home / ".base.d" / "config.yaml"
+        config_path.parent.mkdir(parents=True)
+        config_path.write_text(user_config, encoding="utf-8")
     env = {
         "HOME": str(home),
         "BASE_HOME": str(base_home),
@@ -193,6 +202,45 @@ repos:
             )
             self.assertTrue((workspace / "api" / "base_manifest.yaml").is_file())
             self.assertTrue((workspace / "optional-tool" / "base_manifest.yaml").is_file())
+
+    def test_workspace_clone_uses_configured_manifest_when_flag_is_omitted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            state_file = root / "basectl-calls"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_fake_basectl(base_home, state_file)
+            write_workspace_manifest(
+                manifest_path,
+                """
+schema_version: 1
+workspace:
+  name: demo-suite
+repos:
+  - name: api
+    url: https://github.com/codeforester/api.git
+""",
+            )
+
+            status, stdout, stderr = invoke_engine(
+                ["clone", "--workspace", str(workspace), "--dry-run"],
+                base_home,
+                home,
+                user_config=f"workspace:\n  manifest: {manifest_path}\n",
+            )
+
+            self.assertEqual(status, 0)
+            self.assertEqual(stderr, "")
+            self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
+            self.assertEqual(
+                state_file.read_text(encoding="utf-8").splitlines(),
+                [f"repo clone codeforester/api --path {(workspace / 'api').resolve()} --dry-run"],
+            )
 
     def test_workspace_clone_requires_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -43,9 +43,18 @@ def write_workspace_manifest(path: Path) -> None:
     )
 
 
-def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
+def invoke_engine(
+    args: list[str],
+    base_home: Path,
+    home: Path,
+    user_config: str | None = None,
+) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
+    if user_config is not None:
+        config_path = home / ".base.d" / "config.yaml"
+        config_path.parent.mkdir(parents=True)
+        config_path.write_text(user_config, encoding="utf-8")
     env = {
         "HOME": str(home),
         "BASE_HOME": str(base_home),
@@ -143,3 +152,72 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(projects_by_repo["api"]["repo"], "missing")
         self.assertEqual(projects_by_repo["optional-tool"]["status"], "warn")
         self.assertEqual(projects_by_repo["optional-tool"]["required"], False)
+
+    def test_workspace_status_uses_configured_manifest_when_flag_is_omitted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_workspace_manifest(manifest_path)
+
+            status, stdout, stderr = invoke_engine(
+                ["status", "--workspace", str(workspace)],
+                base_home,
+                home,
+                user_config=f"workspace:\n  manifest: {manifest_path}\n",
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
+        self.assertIn("api                  error", stdout)
+
+    def test_workspace_status_manifest_flag_overrides_configured_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            configured_manifest = root / "configured.yaml"
+            cli_manifest = root / "cli.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_workspace_manifest(configured_manifest)
+            cli_manifest.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 1",
+                        "workspace:",
+                        "  name: cli-suite",
+                        "repos:",
+                        "  - name: cli-only",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "status",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(cli_manifest),
+                ],
+                base_home,
+                home,
+                user_config=f"workspace:\n  manifest: {configured_manifest}\n",
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn(f"Workspace manifest: {cli_manifest.resolve()} (cli-suite)", stdout)
+        self.assertIn("cli-only             error", stdout)
+        self.assertNotIn("demo-suite", stdout)

@@ -53,10 +53,10 @@ inspect the resolved command contract first.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl workspace status` | Show read-only workspace project status. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace check` | Run read-only checks across workspace projects. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace doctor` | Run read-only diagnostics across workspace projects. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
+| `basectl workspace status` | Show read-only workspace project status. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 
 ## Repository And GitHub Workflow
 

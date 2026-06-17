@@ -291,7 +291,7 @@ def workspace_status_command(
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        manifest = resolve_workspace_manifest(workspace_manifest)
+        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
         statuses = workspace_project_statuses(workspace_root, manifest)
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
@@ -317,7 +317,7 @@ def workspace_check_command(
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        manifest = resolve_workspace_manifest(workspace_manifest)
+        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
         results = workspace_project_check_results(ctx, workspace_root, manifest)
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
@@ -343,7 +343,7 @@ def workspace_doctor_command(
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        manifest = resolve_workspace_manifest(workspace_manifest)
+        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
         results = workspace_project_check_results(ctx, workspace_root, manifest)
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
@@ -363,7 +363,7 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
 
     try:
         workspace_root = resolve_workspace_root(ctx, options.workspace)
-        manifest = require_workspace_clone_manifest(options.workspace_manifest)
+        manifest = require_workspace_clone_manifest(ctx, options.workspace_manifest)
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
@@ -397,10 +397,20 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
     return 0
 
 
-def require_workspace_clone_manifest(workspace_manifest: str | None) -> WorkspaceManifest:
-    if workspace_manifest is None:
+def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
+    if workspace_manifest is not None:
+        return workspace_manifest
+    configured_manifest = ctx.user_config.workspace.manifest
+    if configured_manifest is None:
+        return None
+    return str(configured_manifest)
+
+
+def require_workspace_clone_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> WorkspaceManifest:
+    effective_manifest = effective_workspace_manifest(ctx, workspace_manifest)
+    if effective_manifest is None:
         raise ProjectUsageError("workspace clone requires --manifest <path>.")
-    manifest = resolve_workspace_manifest(workspace_manifest)
+    manifest = resolve_workspace_manifest(effective_manifest)
     if manifest is None:
         raise ProjectUsageError("workspace clone requires --manifest <path>.")
     return manifest

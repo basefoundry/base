@@ -225,7 +225,7 @@ exec "$SHELL" -l
 
 | Path | Purpose |
 |---|---|
-| `~/.base.d/config.yaml` | Machine-local config (workspace root, log level) |
+| `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, log level) |
 | `~/.base.d/<project>/.venv` | Per-project Python virtual environment |
 | `~/Library/Caches/base/` | Runtime logs, temp files, project discovery cache |
 | `~/.baserc` | User preferences (e.g., `BASE_DEBUG=1`) |

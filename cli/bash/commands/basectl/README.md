@@ -138,16 +138,17 @@ such command directories exist. Optional utility CLIs such as `caff` and
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths.
 - `basectl workspace status` reports a read-only workspace summary across
-  discovered projects, or across expected repositories when `--manifest <path>`
-  is supplied.
+  discovered projects, or across expected repositories when
+  `workspace.manifest` is configured or `--manifest <path>` is supplied.
 - `basectl workspace check` and `basectl workspace doctor` run read-only
-  project checks and diagnostics across discovered projects. With
-  `--manifest <path>`, they also report missing expected repositories and
-  discovered Base-managed projects outside the manifest.
-- `basectl workspace clone --manifest <path>` materializes missing required
-  repositories from a workspace manifest by delegating to `basectl repo clone`.
+  project checks and diagnostics across discovered projects. With a configured
+  workspace manifest or `--manifest <path>`, they also report missing expected
+  repositories and discovered Base-managed projects outside the manifest.
+- `basectl workspace clone` materializes missing required repositories from a
+  configured or explicit workspace manifest by delegating to `basectl repo clone`.
   Optional repositories are reported but skipped unless `--include-optional` is
-  supplied, and `--dry-run` previews the delegated clone work.
+  supplied, `--dry-run` previews the delegated clone work, and explicit
+  `--manifest <path>` takes precedence over `workspace.manifest`.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

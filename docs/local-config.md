@@ -84,6 +84,7 @@ needs a workspace scan:
 ```yaml
 workspace:
   root: ~/work
+  manifest: ~/work/base-workspace/workspace.yaml
 ```
 
 Project discovery uses this order:
@@ -102,9 +103,13 @@ edit that value to make commands such as
 `basectl projects list`, `basectl activate <project>`, and
 `basectl test <project>` independent of how Base itself was installed.
 
-`workspace.root` must be an absolute path or start with `~`. Base does not
-create the workspace directory automatically; `basectl config doctor` reports
-whether the configured path exists.
+`workspace.manifest` is optional. When set, `basectl workspace status`,
+`check`, `doctor`, and `clone` use that manifest unless the command supplies
+`--manifest <path>`. The command-line flag always takes precedence.
+
+`workspace.root` and `workspace.manifest` must be absolute paths or start with
+`~`. Base does not create the workspace directory automatically; `basectl config
+doctor` reports whether the configured path exists.
 
 ## GitHub Defaults
 
