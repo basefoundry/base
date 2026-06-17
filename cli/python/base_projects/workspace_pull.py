@@ -64,8 +64,8 @@ def fetch_workspace_manifest_source(source: str) -> bytes:
     parsed = urlparse(source)
     if parsed.scheme in {"http", "https"}:
         try:
-            # nosec B310 - this command fetches an explicit user-configured manifest source.
-            with urlopen(source, timeout=30) as response:
+            # This command fetches an explicit user-configured manifest source.
+            with urlopen(source, timeout=30) as response:  # nosec B310
                 return enforce_workspace_manifest_source_size(
                     source,
                     response.read(MAX_WORKSPACE_MANIFEST_SOURCE_BYTES + 1),
