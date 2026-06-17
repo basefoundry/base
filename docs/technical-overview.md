@@ -227,6 +227,7 @@ exec "$SHELL" -l
 |---|---|
 | `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, log level) |
 | `~/.base.d/<project>/.venv` | Per-project Python virtual environment |
+| `~/.base.d/<project>/checks/last.json` | Latest recorded `basectl check <project>` result used by workspace status |
 | `~/Library/Caches/base/` | Runtime logs, temp files, project discovery cache |
 | `~/.baserc` | User preferences (e.g., `BASE_DEBUG=1`) |
 | `~/.base.d/profile.conf` | Shell defaults opt-in state |

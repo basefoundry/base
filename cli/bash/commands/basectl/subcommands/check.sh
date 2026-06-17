@@ -41,6 +41,7 @@ Check does:
   4. Verify ~/.base.d/base/.venv is healthy.
   5. Verify prerequisite profiles when --profile is passed.
   6. Verify project manifest artifacts when a project name is passed.
+  7. Record the latest project check result under ~/.base.d/<project>/checks/last.json.
 EOF
 }
 

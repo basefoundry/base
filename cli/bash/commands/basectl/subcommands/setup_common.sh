@@ -783,6 +783,47 @@ setup_project_venv_dir() {
     printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
+setup_project_check_record_path() {
+    local project="$1"
+
+    printf '%s\n' "$HOME/.base.d/$project/checks/last.json"
+}
+
+setup_record_project_check_result() {
+    local checked_at path project="$1" status="$2" temp_file
+
+    [[ -n "$project" ]] || return 0
+    case "$status" in
+        ok|warn|error)
+            ;;
+        *)
+            status=error
+            ;;
+    esac
+
+    path="$(setup_project_check_record_path "$project")"
+    safe_mkdir -p "$(dirname "$path")" || return 0
+    temp_file="$path.$$"
+    checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 0
+
+    {
+        printf '{\n'
+        printf '  "schema_version": 1,\n'
+        printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
+        printf '  "command": "basectl check",\n'
+        printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
+        printf '  "checked_at": "%s"\n' "$(setup_json_escape "$checked_at")"
+        printf '}\n'
+    } >"$temp_file" || {
+        rm -f -- "$temp_file"
+        return 0
+    }
+    mv -- "$temp_file" "$path" || {
+        rm -f -- "$temp_file"
+        return 0
+    }
+}
+
 setup_user_config_path() {
     printf '%s\n' "$HOME/.base.d/config.yaml"
 }
@@ -1708,6 +1749,7 @@ setup_run_check() {
     fi
 
     if ((missing == 0)); then
+        setup_record_project_check_result "$project" ok
         if [[ -n "$project" ]]; then
             log_info "Base CLI environment and project '$project' check passed."
         else
@@ -1716,6 +1758,7 @@ setup_run_check() {
         return 0
     fi
 
+    setup_record_project_check_result "$project" error
     if [[ -n "$project" ]]; then
         log_warn "Base CLI environment or project '$project' check found missing requirements."
         log_warn "Run 'basectl setup $project' to reconcile the missing requirements."
@@ -1925,6 +1968,8 @@ setup_run_check_json() {
         project_status="$(setup_json_payload_status "$project_json")"
         status="$(setup_merge_diagnostic_status "$status" "$project_status")"
     fi
+
+    setup_record_project_check_result "$project" "$status"
 
     printf '{\n'
     printf '  "schema_version": 1,\n'

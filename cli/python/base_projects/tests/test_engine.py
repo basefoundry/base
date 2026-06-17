@@ -22,6 +22,23 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_last_check(home: Path, project: str, checked_at: str, status: str = "ok") -> None:
+    record_path = home / ".base.d" / project / "checks" / "last.json"
+    record_path.parent.mkdir(parents=True)
+    record_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "project": project,
+                "command": "basectl check",
+                "status": status,
+                "checked_at": checked_at,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_test_manifest(project_root: Path, name: str, command: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "base_manifest.yaml").write_text(
@@ -266,14 +283,15 @@ class ProjectDiscoveryTests(unittest.TestCase):
             python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
             python_bin.parent.mkdir(parents=True)
             python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_last_check(home, "base", "2026-06-17T14:30:00Z")
 
             status, stdout, stderr = invoke_engine(["status", "--workspace", str(workspace)], base_home, home)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace: {workspace.resolve()} (2 projects)", stdout)
-        self.assertIn("base                 ok     ready    valid", stdout)
-        self.assertIn("demo                 warn   missing  valid", stdout)
+        self.assertIn("base                 ok     ready    valid    2026-06-17", stdout)
+        self.assertIn("demo                 warn   missing  valid    -", stdout)
         self.assertIn("1 project(s) need attention", stdout)
 
     def test_workspace_status_supports_json_format(self) -> None:
@@ -285,6 +303,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
             home.mkdir()
             base_home.mkdir()
             write_manifest(workspace / "demo", "demo")
+            write_last_check(home, "demo", "2026-06-17T14:30:00Z", status="error")
 
             status, stdout, stderr = invoke_engine(
                 ["status", "--workspace", str(workspace), "--format", "json"],
@@ -303,6 +322,13 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(payload["projects"][0]["status"], "warn")
         self.assertEqual(payload["projects"][0]["venv"], "missing")
         self.assertEqual(payload["projects"][0]["manifest"], "valid")
+        self.assertEqual(
+            payload["projects"][0]["last_check"],
+            {
+                "checked_at": "2026-06-17T14:30:00Z",
+                "status": "error",
+            },
+        )
         self.assertIn("project virtual environment missing", payload["projects"][0]["issues"][0])
 
     def test_workspace_status_reports_invalid_manifest_without_stopping_scan(self) -> None:
