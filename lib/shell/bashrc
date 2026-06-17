@@ -58,20 +58,25 @@ base_bashrc_print_stale_base_home_recovery() {
     printf '    "$SHELL" -l\n' >&2
 }
 
+base_bashrc_print_active_runtime_skip() {
+    printf "INFO: This shell is already running Base from '%s'; skipping Base profile snippet for '%s'.\n" "$BASE_HOME" "$1" >&2
+    printf 'INFO: Exit this Base runtime shell before switching to another Base install.\n' >&2
+}
+
 base_bashrc_source_baserc_guard || return $?
 base_baserc_guard_source base_bashrc_debug || return $?
 
 if [[ $- != *i* ]]; then
     base_bashrc_debug "non-interactive shell; skipping"
     unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
-    unset -f base_bashrc_print_stale_base_home_recovery
+    unset -f base_bashrc_print_stale_base_home_recovery base_bashrc_print_active_runtime_skip
     return 0
 fi
 
 if [[ -n "${__base_bashrc_sourced__:-}" ]]; then
     base_bashrc_debug "already sourced; skipping"
     unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
-    unset -f base_bashrc_print_stale_base_home_recovery
+    unset -f base_bashrc_print_stale_base_home_recovery base_bashrc_print_active_runtime_skip
     return 0
 fi
 readonly __base_bashrc_sourced__=1
@@ -92,6 +97,10 @@ base_bashrc_set_base_home() {
             return 0
         fi
         if base_bashrc_var_is_readonly BASE_HOME; then
+            if [[ -n "${BASE_SHELL:-}" ]]; then
+                base_bashrc_print_active_runtime_skip "$base_home"
+                return 2
+            fi
             printf "ERROR: BASE_HOME is readonly and points at '%s', not '%s'.\n" "$BASE_HOME" "$base_home" >&2
             base_bashrc_print_stale_base_home_recovery
             return 1
@@ -190,19 +199,34 @@ base_bashrc_source_completions() {
     source "$completion_file"
 }
 
-base_bashrc_set_base_home || {
+base_bashrc_set_base_home
+base_bashrc_status=$?
+if ((base_bashrc_status == 2)); then
+    unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
+    unset -f base_bashrc_print_stale_base_home_recovery base_bashrc_print_active_runtime_skip
+    unset -f base_bashrc_source_platform_tools_helper base_bashrc_configure_path base_bashrc_source_defaults
+    unset -f base_bashrc_source_completions
+    unset -f base_bashrc_set_base_home
+    unset base_bashrc_status
+    return 0
+elif ((base_bashrc_status)); then
     printf 'ERROR: Unable to determine BASE_HOME from Base bashrc snippet. Run basectl update-profile.\n' >&2
     unset -f base_bashrc_debug base_bashrc_snippet_dir base_bashrc_source_baserc_guard base_bashrc_var_is_readonly
-    unset -f base_bashrc_print_stale_base_home_recovery
+    unset -f base_bashrc_print_stale_base_home_recovery base_bashrc_print_active_runtime_skip
+    unset -f base_bashrc_source_platform_tools_helper base_bashrc_configure_path base_bashrc_source_defaults
+    unset -f base_bashrc_source_completions
+    unset -f base_bashrc_set_base_home
+    unset base_bashrc_status
     return 1
-}
+fi
+unset base_bashrc_status
 base_bashrc_configure_path || return $?
 base_bashrc_source_defaults || return 1
 base_bashrc_source_completions || return 1
 base_bashrc_debug "complete"
 
 unset -f base_bashrc_snippet_dir base_bashrc_var_is_readonly base_bashrc_set_base_home
-unset -f base_bashrc_print_stale_base_home_recovery
+unset -f base_bashrc_print_stale_base_home_recovery base_bashrc_print_active_runtime_skip
 unset -f base_bashrc_source_platform_tools_helper base_bashrc_configure_path base_bashrc_source_defaults
 unset -f base_bashrc_source_completions
 unset -f base_bashrc_source_baserc_guard base_bashrc_debug

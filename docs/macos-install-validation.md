@@ -56,7 +56,8 @@ Before starting either install path:
 1. Use a supported macOS account that can install developer tools and Homebrew
    packages.
 2. Open a fresh terminal without inherited Base variables such as `BASE_HOME`,
-   `BASE_PROJECT`, `BASE_PROJECT_ROOT`, or `PYTHONPATH`.
+   `BASE_PROJECT`, `BASE_PROJECT_ROOT`, `BASE_PROJECT_MANIFEST`,
+   `BASE_PROJECT_VENV_DIR`, or `PYTHONPATH`.
 3. Confirm network access to GitHub and Homebrew.
 4. Decide whether this is a clean install, upgrade, or reinstall. For a clean
    install, remove or avoid previous Base shell startup sections and managed
@@ -104,6 +105,31 @@ basectl setup
 basectl update-profile
 exec "$SHELL" -l
 ```
+
+When validating Homebrew Base from a shell that may already be inside a source
+checkout or Base runtime shell, use the Homebrew-managed `basectl` path and
+clear the Base runtime contract. For example, on Intel Homebrew:
+
+```bash
+brew_home=/tmp/base-brew-home
+mkdir -p "$brew_home"
+
+HOME="$brew_home" env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  /usr/local/bin/basectl setup
+
+HOME="$brew_home" env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  /usr/local/bin/basectl test base
+```
+
+Use `/opt/homebrew/bin/basectl` for Apple Silicon Homebrew.
 
 Accept the install when:
 

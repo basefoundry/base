@@ -119,6 +119,33 @@ type -a basectl
 When testing a specific install route, use the absolute `basectl` path for that
 route instead of relying on `PATH`.
 
+### How do I validate Homebrew Base from a source-managed shell?
+
+Use an isolated `HOME` and clear the Base runtime contract before invoking the
+Homebrew-managed executable. This keeps an active source checkout, runtime
+shell, or project activation from leaking into the consumer install test:
+
+```bash
+brew_home=/tmp/base-brew-home
+mkdir -p "$brew_home"
+
+HOME="$brew_home" env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  /usr/local/bin/basectl setup
+
+HOME="$brew_home" env -u BASE_HOME \
+  -u BASE_PROJECT \
+  -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  /usr/local/bin/basectl test base
+```
+
+Use `/opt/homebrew/bin/basectl` on Apple Silicon Homebrew installs.
+
 ### If I have both installs, which one should bootstrap prefer?
 
 Bootstrap should not silently take over an existing setup. If no mode is

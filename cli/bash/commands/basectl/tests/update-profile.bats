@@ -186,6 +186,30 @@ EOF
     [[ "$output" != *"ERROR:   exec env"* ]]
 }
 
+@test "Base-managed Bash startup skips mismatched snippet inside active Base runtime" {
+    local runtime_base="$TEST_TMPDIR/homebrew/Cellar/base/1.0.2/libexec"
+    local source_base="$TEST_TMPDIR/work/base"
+
+    create_fake_shell_base "$runtime_base"
+    create_fake_shell_base "$source_base"
+
+    run env -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '\
+            readonly BASE_HOME="$1"; \
+            export BASE_SHELL=1; \
+            source "$2"; \
+            printf "BASE_HOME=%s\n" "$BASE_HOME"' \
+        bash "$runtime_base" "$source_base/lib/shell/bashrc"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"INFO: This shell is already running Base from '$runtime_base'; skipping Base profile snippet for '$source_base'."* ]]
+    [[ "$output" == *"BASE_HOME=$runtime_base"* ]]
+    [[ "$output" != *"Run basectl update-profile"* ]]
+    [[ "$output" != *"Start a fresh shell without stale Base runtime variables"* ]]
+}
+
 @test "Base-managed Bash startup detects sibling Base Platform Tools without profile rewrite" {
     local workspace="$TEST_TMPDIR/fake-workspace"
     local fake_base="$workspace/base"
