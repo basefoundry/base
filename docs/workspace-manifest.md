@@ -4,10 +4,12 @@ Base uses "workspace" in a precise way: a workspace is a local directory that
 contains sibling repositories. A workspace manifest is an optional local file
 that describes which repositories are expected to belong to that workspace.
 
-Workspace status, check, and doctor commands can use a manifest when the user
-supplies `--manifest <path>`. Without that flag, those commands keep their
-discovered-project behavior. `basectl workspace clone` requires an explicit
-manifest because it uses the manifest as the checkout plan.
+Workspace status, check, doctor, and clone commands can use a manifest when the
+user configures `workspace.manifest` in `~/.base.d/config.yaml` or supplies
+`--manifest <path>`. The command-line flag takes precedence over the configured
+manifest. Without either source, status, check, and doctor keep their
+discovered-project behavior, while `basectl workspace clone` reports that a
+manifest is required.
 
 ## Vocabulary
 
@@ -17,6 +19,7 @@ Base where to scan for repositories:
 ```yaml
 workspace:
   root: ~/work
+  manifest: ~/work/base-workspace/workspace.yaml
 ```
 
 A discovered repository is a direct child of the workspace root. Base scans
@@ -192,7 +195,9 @@ basectl workspace check
 basectl workspace doctor
 ```
 
-With `--manifest`, those commands add expected-repo awareness:
+With `workspace.manifest` configured, those commands add expected-repo
+awareness. `--manifest <path>` does the same for a single command and overrides
+the configured manifest:
 
 ```bash
 basectl workspace status --manifest ~/work/workspace.yaml
@@ -200,17 +205,20 @@ basectl workspace check --manifest ~/work/workspace.yaml
 basectl workspace doctor --manifest ~/work/workspace.yaml
 ```
 
-Without `--manifest`, commands report discovered local projects only.
+Without a configured manifest or `--manifest`, commands report discovered local
+projects only.
 
-With `--manifest`, commands report both expected repositories and discovered
-projects, including missing expected repositories and extra discovered projects.
+With a configured or explicit manifest, commands report both expected
+repositories and discovered projects, including missing expected repositories
+and extra discovered projects.
 
-The explicit clone path requires a manifest:
+The clone path requires a manifest from either config or the command line:
 
 ```bash
 basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
 basectl workspace clone --manifest ~/work/workspace.yaml
 basectl workspace clone --manifest ~/work/workspace.yaml --include-optional
+basectl workspace clone --dry-run
 ```
 
 By default it clones missing required repositories and skips missing optional

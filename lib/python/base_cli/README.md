@@ -307,7 +307,8 @@ Command-line standard options are applied after config is loaded. For example,
 
 `ctx.config` exposes the merged raw configuration after user, project,
 explicit, and environment layers are applied. `ctx.user_config` exposes only the
-typed machine-local user config, including `workspace.root` and IDE
+typed machine-local user config, including `workspace.root`,
+`workspace.manifest`, and IDE
 preferences, so command code does not need to re-read `~/.base.d/config.yaml`
 for those structured values.
 

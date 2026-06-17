@@ -287,6 +287,29 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(config.workspace.root, workspace.resolve(strict=False))
 
+    def test_read_user_config_parses_workspace_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            workspace = home / "work"
+            manifest = workspace / "base-workspace" / "workspace.yaml"
+            path = user_config_path(home)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "\n".join(
+                    [
+                        "workspace:",
+                        f"  root: {workspace}",
+                        f"  manifest: {manifest}",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            config = read_user_config(home)
+
+        self.assertEqual(config.workspace.root, workspace.resolve(strict=False))
+        self.assertEqual(config.workspace.manifest, manifest.resolve(strict=False))
+
     def test_read_user_config_rejects_non_mapping_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
@@ -462,6 +485,7 @@ class BaseCliTests(unittest.TestCase):
         @app.command()
         def main(ctx: base_cli.Context) -> None:
             seen["config"] = ctx.config
+            seen["user_config"] = ctx.user_config
             seen["workspace_root"] = ctx.user_config.workspace.root
             seen["ide_enabled"] = ctx.user_config.ide.enabled
             seen["vscode"] = ctx.user_config.ide.preferences["vscode"]
@@ -494,6 +518,7 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertEqual(seen["workspace_root"], workspace.resolve())
+        self.assertIsNone(seen["user_config"].workspace.manifest)
         self.assertTrue(seen["ide_enabled"])
         self.assertFalse(seen["vscode"].install)
         self.assertEqual(seen["vscode"].extra_extensions, ("github.copilot",))

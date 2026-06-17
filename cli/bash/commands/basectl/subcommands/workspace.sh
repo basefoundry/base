@@ -11,6 +11,7 @@ Usage:
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
   --format <format>   Output format for the workspace command: text or json.
   --include-optional  Include optional workspace manifest repositories when cloning.
   --dry-run           Show planned workspace clone work without cloning repositories.

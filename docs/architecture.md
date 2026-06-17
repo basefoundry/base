@@ -542,9 +542,11 @@ each project's `base_manifest.yaml`: the workspace manifest says which
 repositories should belong together, while project manifests say how each
 repository participates in Base.
 
-Workspace commands operate on discovered local projects by default. Supplying
-`--manifest <path>` adds expected-repository awareness without changing the
-default discovered-project behavior. See [Workspace Manifest](workspace-manifest.md).
+Workspace commands operate on discovered local projects by default. Configuring
+`workspace.manifest` or supplying `--manifest <path>` adds expected-repository
+awareness without changing the default discovered-project behavior. The
+command-line manifest takes precedence over user config. See
+[Workspace Manifest](workspace-manifest.md).
 
 ### Caching project definitions
 
@@ -583,9 +585,10 @@ basectl workspace doctor
 Workspace commands are intentionally read-only. `basectl workspace status`
 reports project manifest state, virtual environment state, and Git state across
 discovered projects, including invalid manifests without stopping the whole
-scan. With `--manifest <path>`, workspace commands also report missing required
-repositories, missing optional repositories, and discovered Base-managed
-projects outside the expected repo set. `basectl workspace check` and
+scan. With `workspace.manifest` or `--manifest <path>`, workspace commands also
+report missing required repositories, missing optional repositories, and
+discovered Base-managed projects outside the expected repo set. `basectl
+workspace check` and
 `basectl workspace doctor` run project checks and diagnostics across discovered
 projects. JSON output is part of the contract so automation and future CI smoke
 checks can use the same data.
