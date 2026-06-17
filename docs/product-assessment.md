@@ -1,7 +1,7 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-06-14
+Last reviewed: 2026-06-17
 Base era reviewed: 1.0.x
 
 This document records a candid assessment of Base as a product and engineering
@@ -152,6 +152,44 @@ inside Base." The larger possibility is to become the trusted local control
 plane that makes a developer's workstation, repo set, diagnostics, and common
 workflow coherent.
 
+### 2026-06-17 Product Review Delta
+
+A later external product review reinforced the core thesis: Base is strongest as
+the integration layer for multi-repo workspaces, not as another replacement for
+`mise`, `direnv`, `just`, Homebrew, Nix, Dev Containers, or dotfile managers.
+The review also sharpened the near-term adoption risks.
+
+Immediate action items:
+
+- Linux remains the largest addressable-market unlock. Keep the first supported
+  Linux runtime target tracked through #562, with a narrow support contract
+  before making broader platform claims.
+- Team onboarding is the strongest moat. Local workspace manifests already
+  exist; the next adoption step is explicit canonical manifest sync, tracked in
+  #815, so teams can refresh the expected repo-set contract without manual file
+  handoff.
+- Base needs an extension path that does not turn the core product into a
+  catch-all tool registry. Design a constrained artifact adapter registry before
+  implementation; this is tracked in #816.
+- Manifest command strings should remain trusted project code, but Base can add
+  advisory lint diagnostics for obvious missing executables, missing scripts, or
+  inconsistent runner contracts. This is tracked in #817.
+
+Watchlist ideas:
+
+- A local dashboard could help leads and less CLI-fluent users, but it should
+  follow structured local observability data instead of preceding it.
+- AI-assisted doctor output should wait behind deterministic finding docs,
+  local explanation surfaces, and clear privacy boundaries.
+- Generic setup hooks still require a constrained contract. Until then,
+  project-owned installers and typed Base delegation points remain the safer
+  boundary.
+
+The review called out one older friction point that is already partly resolved:
+modern uv-managed Python projects can opt into `python.manager: uv`, which lets
+uv own the repo-local `.venv` while Base keeps discovery, activation, setup,
+check, doctor, and command orchestration.
+
 ## 4. Creator And Engineering Skill Assessment
 
 Assessment: at least Staff-level; plausibly upper Staff or early Senior
@@ -223,4 +261,7 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-06-17: Added latest product-review delta and linked follow-up issues for
+  Linux runtime support, workspace manifest sync, artifact adapter design, and
+  manifest command linting.
 - 2026-06-14: Initial maintained assessment added during the Base 1.0.x era.
