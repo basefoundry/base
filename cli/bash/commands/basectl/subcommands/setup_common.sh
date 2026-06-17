@@ -776,7 +776,7 @@ setup_resolve_project_manifest() {
 setup_project_venv_dir() {
     local project="$1"
 
-    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+    if [[ "$project" != base && -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
@@ -1014,6 +1014,7 @@ setup_run_project_bootstrap_layer() {
     local output_format="$3"
     local python_bin venv_dir
     local args=()
+    local project_env_args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
         log_info "[DRY-RUN] Would bootstrap project Python runtime after PyYAML is installed."
@@ -1034,7 +1035,15 @@ setup_run_project_bootstrap_layer() {
     fi
 
     setup_ensure_cached_paths
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
+    if [[ "$project" == base ]]; then
+        project_env_args=(
+            -u BASE_PROJECT
+            -u BASE_PROJECT_ROOT
+            -u BASE_PROJECT_MANIFEST
+            -u BASE_PROJECT_VENV_DIR
+        )
+    fi
+    env "${project_env_args[@]}" BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
 }
 
 setup_run_project_artifact_layer() {
@@ -1042,6 +1051,7 @@ setup_run_project_artifact_layer() {
     local output_format="$2"
     local exit_code manifest_path precheck_json project project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output venv_dir
     local args=()
+    local project_env_args=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
@@ -1072,6 +1082,14 @@ setup_run_project_artifact_layer() {
             project=base
         fi
         manifest_path="$resolve_output"
+    fi
+    if [[ "$project" == base ]]; then
+        project_env_args=(
+            -u BASE_PROJECT
+            -u BASE_PROJECT_ROOT
+            -u BASE_PROJECT_MANIFEST
+            -u BASE_PROJECT_VENV_DIR
+        )
     fi
 
     if setup_is_dry_run; then
@@ -1151,7 +1169,7 @@ setup_run_project_artifact_layer() {
         return 1
     fi
 
-    "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
+    env "${project_env_args[@]}" "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
     exit_code=$?
 
     if ((exit_code)) && [[ "$action" == setup ]]; then

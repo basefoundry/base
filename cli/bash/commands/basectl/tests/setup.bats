@@ -98,6 +98,28 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
+@test "basectl setup base ignores inherited project virtualenv" {
+    local inherited_venv="$TEST_TMPDIR/inherited-base-venv"
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$venv_dir"
+    create_project_setup_venv_stub "$inherited_venv"
+
+    run_base_command BASE_PROJECT_VENV_DIR="$inherited_venv" setup
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/project-setup-python" ]
+    [[ "$(cat "$TEST_STATE_DIR/project-setup-python")" == *"$venv_dir/bin/python"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/project-setup-python")" != *"$inherited_venv/bin/python"* ]]
+}
+
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {
     local installer
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
