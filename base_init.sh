@@ -17,7 +17,7 @@
 #     - derive or validate BASE_HOME
 #     - export the BASE_* paths that downstream scripts may rely on
 #     - export BASE_OS and BASE_HOST runtime metadata
-#     - source Base's Bash standard library
+#     - resolve and source the reusable Bash standard library
 #     - add BASE_BIN_DIR to PATH
 #     - provide import_base_lib for convention-based Base Bash library imports
 #
@@ -26,8 +26,11 @@
 #
 #     import_base_lib file/lib_file.sh
 #
-# import_base_lib reports missing or invalid libraries through Base stdlib error
-# handling and fails immediately, so callers do not need duplicate checks.
+# import_base_lib prefers reusable libraries from base-bash-libs when available
+# and falls back to Base's bundled lib/bash tree for compatibility and
+# Base-specific runtime/version helpers. It reports missing or invalid libraries
+# through Base stdlib error handling and fails immediately, so callers do not
+# need duplicate checks.
 #
 
 [[ -n "${__base_init_sourced__:-}" ]] && return 0
@@ -91,6 +94,56 @@ base_init_resolve_home() {
     printf '%s\n' "$source_dir"
 }
 
+base_init_homebrew_prefix() {
+    case "$BASE_HOME" in
+        */opt/base/libexec)
+            printf '%s\n' "${BASE_HOME%/opt/base/libexec}"
+            ;;
+        */Cellar/base/*/libexec)
+            printf '%s\n' "${BASE_HOME%%/Cellar/base/*}"
+            ;;
+    esac
+}
+
+base_init_bash_libs_dir_is_usable() {
+    local candidate="${1:-}"
+
+    [[ -n "$candidate" ]] || return 1
+    [[ -f "$candidate/std/lib_std.sh" ]]
+}
+
+base_init_resolve_bash_libs_dir() {
+    local candidate
+    local homebrew_prefix
+    local explicit_dir="${BASE_BASH_LIBS_DIR:-}"
+
+    if [[ -n "$explicit_dir" ]]; then
+        base_init_bash_libs_dir_is_usable "$explicit_dir" || {
+            base_init_error "BASE_BASH_LIBS_DIR '$explicit_dir' does not contain std/lib_std.sh."
+            return 1
+        }
+        (cd -L -- "$explicit_dir" && pwd -L)
+        return $?
+    fi
+
+    candidate="$BASE_HOME/../base-bash-libs/lib/bash"
+    if base_init_bash_libs_dir_is_usable "$candidate"; then
+        (cd -L -- "$candidate" && pwd -L)
+        return $?
+    fi
+
+    homebrew_prefix="$(base_init_homebrew_prefix || true)"
+    if [[ -n "$homebrew_prefix" ]]; then
+        candidate="$homebrew_prefix/opt/base-bash-libs/libexec/lib/bash"
+        if base_init_bash_libs_dir_is_usable "$candidate"; then
+            (cd -L -- "$candidate" && pwd -L)
+            return $?
+        fi
+    fi
+
+    printf '%s\n' "$BASE_BASH_LIB_DIR"
+}
+
 base_init_export_contract() {
     local base_home base_os base_host uname_os
 
@@ -130,18 +183,19 @@ base_init_export_contract() {
     BASE_BASH_COMMANDS_DIR="$BASE_BASH_DIR/commands"
     BASE_LIB_DIR="$BASE_HOME/lib"
     BASE_BASH_LIB_DIR="$BASE_LIB_DIR/bash"
+    BASE_BASH_LIBS_DIR="$(base_init_resolve_bash_libs_dir)" || return 1
     BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
     BASE_OS="$base_os"
     BASE_HOST="$base_host"
     BASE_SHELL="${BASE_SHELL:-bash}"
     export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
     readonly BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
 }
 
 base_init_source_stdlib() {
-    local stdlib_path="$BASE_BASH_LIB_DIR/std/lib_std.sh"
+    local stdlib_path="$BASE_BASH_LIBS_DIR/std/lib_std.sh"
 
     [[ -f "$stdlib_path" ]] || {
         base_init_error "Base Bash stdlib '$stdlib_path' was not found."
@@ -157,7 +211,7 @@ import_base_lib() {
     local lib_path
 
     [[ -n "$relative_path" ]] || fatal_error "import_base_lib: no library path provided."
-    [[ "$relative_path" != /* ]] || fatal_error "import_base_lib: expected a path relative to '$BASE_BASH_LIB_DIR', got '$relative_path'."
+    [[ "$relative_path" != /* ]] || fatal_error "import_base_lib: expected a path relative to '$BASE_BASH_LIBS_DIR', got '$relative_path'."
 
     case "$relative_path" in
         ..|../*|*/..|*/../*)
@@ -165,8 +219,11 @@ import_base_lib() {
             ;;
     esac
 
-    lib_path="$BASE_BASH_LIB_DIR/$relative_path"
-    [[ -f "$lib_path" ]] || fatal_error "Base library '$relative_path' was not found at '$lib_path'."
+    lib_path="$BASE_BASH_LIBS_DIR/$relative_path"
+    if [[ ! -f "$lib_path" && "$BASE_BASH_LIBS_DIR" != "$BASE_BASH_LIB_DIR" ]]; then
+        lib_path="$BASE_BASH_LIB_DIR/$relative_path"
+    fi
+    [[ -f "$lib_path" ]] || fatal_error "Base library '$relative_path' was not found at '$BASE_BASH_LIBS_DIR/$relative_path' or '$BASE_BASH_LIB_DIR/$relative_path'."
 
     # shellcheck source=/dev/null
     source "$lib_path" || fatal_error "Failed to import Base library '$lib_path'."

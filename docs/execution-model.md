@@ -223,11 +223,13 @@ has decided what should run.
 `base_init.sh` establishes the Base runtime contract, including:
 
 - exported Base environment variables such as `BASE_HOME`, `BASE_BIN_DIR`,
-  `BASE_BASH_COMMANDS_DIR`, and `BASE_BASH_LIB_DIR`
+  `BASE_BASH_COMMANDS_DIR`, `BASE_BASH_LIB_DIR`, and `BASE_BASH_LIBS_DIR`
 - OS and host metadata such as `BASE_OS` and `BASE_HOST`
-- Base's Bash standard library
+- the reusable Bash standard library, resolved from `base-bash-libs` when
+  available and from Base's bundled fallback otherwise
 - `import_base_lib`, the convention-based helper for sourcing Base Bash
-  libraries
+  libraries from the resolved reusable root with Base's bundled root as a
+  fallback
 - PATH additions needed by Base runtime execution
 
 The full variable list, ownership rules, readonly policy, and `~/.baserc`
@@ -239,8 +241,10 @@ Downstream Bash scripts should import Base Bash libraries with:
 import_base_lib file/lib_file.sh
 ```
 
-`import_base_lib` fails through Base standard error handling when the requested
-library cannot be found, so callers do not need to duplicate that check.
+`import_base_lib` checks the resolved reusable library root first, then Base's
+bundled `lib/bash` root. It fails through Base standard error handling when the
+requested library cannot be found, so callers do not need to duplicate that
+check.
 
 ## Runtime Shell
 

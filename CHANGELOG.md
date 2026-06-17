@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Made Base resolve reusable Bash libraries from an external `base-bash-libs`
+  checkout or Homebrew package when available, while keeping the bundled
+  `lib/bash` tree as a fallback.
+
 ## [1.0.3] - 2026-06-17
 
 ### Changed
