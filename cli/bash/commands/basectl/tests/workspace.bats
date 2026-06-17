@@ -114,14 +114,42 @@ EOF
     [ "$output" = "ARGS=--workspace $workspace --manifest $manifest --include-optional --dry-run" ]
 }
 
+@test "basectl workspace pull delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local source="$TEST_TMPDIR/canonical-workspace.yaml"
+    local manifest="$TEST_TMPDIR/workspace.yaml"
+
+    mkdir -p "$(dirname "$python_bin")"
+    touch "$source"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "pull" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace pull python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace pull --source "$source" --manifest "$manifest" --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=--source $source --manifest $manifest --dry-run" ]
+}
+
 @test "basectl workspace commands print help without requiring the Base Python venv" {
     run_basectl workspace status --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--source <url-or-path>"* ]]
     [[ "$output" == *"--format <format>"* ]]
     [[ "$output" == *"--include-optional"* ]]
     [[ "$output" == *"--dry-run"* ]]
@@ -129,17 +157,22 @@ EOF
     run_basectl workspace check --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
 
     run_basectl workspace doctor --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
 
     run_basectl workspace clone --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+
+    run_basectl workspace pull --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
 }
 
 @test "basectl workspace rejects unknown subcommands" {

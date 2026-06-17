@@ -6,19 +6,22 @@ readonly _base_workspace_subcommand_sourced
 base_workspace_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|clone> [options]
+  basectl workspace <status|check|doctor|clone|pull> [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --source <url-or-path>
+                      Canonical workspace manifest source for workspace pull.
+                      Overrides workspace.manifest_source from ~/.base.d/config.yaml.
   --format <format>   Output format for the workspace command: text or json.
   --include-optional  Include optional workspace manifest repositories when cloning.
-  --dry-run           Show planned workspace clone work without cloning repositories.
+  --dry-run           Show planned workspace clone or pull work without writing.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Show status, check, doctor, or clone output for repositories in the workspace.
+Show status, check, doctor, clone, or pull output for repositories in the workspace.
 EOF
 }
 
@@ -38,7 +41,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|clone)
+        status|check|doctor|clone|pull)
             shift
             ;;
         *)

@@ -11,6 +11,11 @@ manifest. Without either source, status, check, and doctor keep their
 discovered-project behavior, while `basectl workspace clone` reports that a
 manifest is required.
 
+Teams can also configure `workspace.manifest_source` and refresh the local
+manifest explicitly with `basectl workspace pull`. Pull supports local paths,
+`file://` URLs, and raw `http://` or `https://` file URLs. It validates fetched
+content before writing and does not mutate project repositories.
+
 ## Vocabulary
 
 `workspace.root` is a machine-local setting in `~/.base.d/config.yaml`. It tells
@@ -20,6 +25,7 @@ Base where to scan for repositories:
 workspace:
   root: ~/work
   manifest: ~/work/base-workspace/workspace.yaml
+  manifest_source: https://raw.githubusercontent.com/example/platform/main/workspace.yaml
 ```
 
 A discovered repository is a direct child of the workspace root. Base scans
@@ -213,6 +219,22 @@ basectl workspace doctor --manifest ~/work/workspace.yaml
 
 Without a configured manifest or `--manifest`, commands report discovered local
 projects only.
+
+To refresh a configured local manifest from a canonical source:
+
+```bash
+basectl workspace pull --dry-run
+basectl workspace pull
+```
+
+For a one-off source or destination override:
+
+```bash
+basectl workspace pull \
+  --source https://raw.githubusercontent.com/example/platform/main/workspace.yaml \
+  --manifest ~/work/base-workspace/workspace.yaml \
+  --dry-run
+```
 
 With a configured or explicit manifest, commands report both expected
 repositories and discovered projects, including missing expected repositories

@@ -105,10 +105,13 @@ directory. You may also add an optional workspace manifest:
 workspace:
   root: ~/work
   manifest: ~/work/base-workspace/workspace.yaml
+  manifest_source: https://raw.githubusercontent.com/<org>/<repo>/main/workspace.yaml
 ```
 
 When `workspace.manifest` is set, workspace commands use it unless
-`--manifest <path>` is supplied for a single command.
+`--manifest <path>` is supplied for a single command. When
+`workspace.manifest_source` is set, `basectl workspace pull` can explicitly
+refresh the local manifest from that canonical source.
 
 After Base is installed, the common development loop is:
 
@@ -461,6 +464,13 @@ manifest. The command keeps existing repositories visible, delegates each
 repository operation to `basectl repo clone`, and supports `--dry-run` for a
 no-write preview. Optional repositories are reported but skipped unless
 `--include-optional` is supplied.
+
+Use `basectl workspace pull`, or `basectl workspace pull --dry-run`, when
+`workspace.manifest_source` and `workspace.manifest` are configured to refresh a
+local workspace manifest explicitly. `--source <url-or-path>` and
+`--manifest <path>` override those configured values for one command. Pull
+validates the fetched manifest before writing and never mutates project
+repositories.
 
 Start a new Base-managed repository with:
 

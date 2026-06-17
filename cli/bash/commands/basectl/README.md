@@ -38,7 +38,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `update-profile`
 - `update`
 - `projects list`
-- `workspace status/check/doctor/clone`
+- `workspace status/check/doctor/clone/pull`
 - `version`
 - `help`
 

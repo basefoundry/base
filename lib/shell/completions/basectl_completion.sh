@@ -91,9 +91,9 @@ _base_basectl_completion() {
             ;;
         workspace)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "status check doctor clone" "$cur"
+                _base_basectl_completion_compgen "status check doctor clone pull" "$cur"
             else
-                _base_basectl_completion_compgen "--workspace --manifest --format --include-optional --dry-run -v -h --help" "$cur"
+                _base_basectl_completion_compgen "--workspace --manifest --source --format --include-optional --dry-run -v -h --help" "$cur"
             fi
             ;;
         setup)
