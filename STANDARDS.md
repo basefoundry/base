@@ -434,7 +434,7 @@ cli/bash/commands/basectl/
     setup.sh
     check.sh
   tests/
-    basectl.bats
+    help.bats
     setup.bats
 ```
 
