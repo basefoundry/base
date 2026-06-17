@@ -30,6 +30,7 @@ class UserIdeConfig:
 class UserWorkspaceConfig:
     root: Path | None
     manifest: Path | None = None
+    manifest_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -91,7 +92,7 @@ def _read_user_workspace_config(path: Path, workspace_data: Any) -> UserWorkspac
     if not isinstance(workspace_data, dict):
         raise ValueError(f"{path}: workspace must be a mapping when provided.")
 
-    allowed_keys = {"root", "manifest"}
+    allowed_keys = {"root", "manifest", "manifest_source"}
     unknown_keys = sorted(set(workspace_data) - allowed_keys)
     if unknown_keys:
         raise ValueError(f"{path}: workspace has unsupported keys: {', '.join(unknown_keys)}.")
@@ -99,6 +100,11 @@ def _read_user_workspace_config(path: Path, workspace_data: Any) -> UserWorkspac
     return UserWorkspaceConfig(
         root=_optional_path(path, "workspace.root", workspace_data.get("root")),
         manifest=_optional_path(path, "workspace.manifest", workspace_data.get("manifest")),
+        manifest_source=_optional_non_empty_string(
+            path,
+            "workspace.manifest_source",
+            workspace_data.get("manifest_source"),
+        ),
     )
 
 

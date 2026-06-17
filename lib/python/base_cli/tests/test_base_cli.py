@@ -292,6 +292,7 @@ class BaseCliTests(unittest.TestCase):
             home = Path(tmpdir)
             workspace = home / "work"
             manifest = workspace / "base-workspace" / "workspace.yaml"
+            manifest_source = workspace / "base-workspace" / "canonical.yaml"
             path = user_config_path(home)
             path.parent.mkdir(parents=True)
             path.write_text(
@@ -300,6 +301,7 @@ class BaseCliTests(unittest.TestCase):
                         "workspace:",
                         f"  root: {workspace}",
                         f"  manifest: {manifest}",
+                        f"  manifest_source: {manifest_source}",
                     ]
                 ),
                 encoding="utf-8",
@@ -309,6 +311,7 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertEqual(config.workspace.root, workspace.resolve(strict=False))
         self.assertEqual(config.workspace.manifest, manifest.resolve(strict=False))
+        self.assertEqual(config.workspace.manifest_source, str(manifest_source))
 
     def test_read_user_config_rejects_non_mapping_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

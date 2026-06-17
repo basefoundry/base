@@ -175,7 +175,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl workspace status [--manifest]` | Cross-project manifest and venv state |
+| `basectl workspace status/check/doctor/clone/pull [--manifest]` | Cross-project manifest, venv state, cloning, and explicit manifest sync |
 | `basectl workspace check [--manifest]` | Cross-project readiness check |
 | `basectl workspace doctor [--manifest]` | Cross-project diagnostic findings |
 
@@ -225,7 +225,7 @@ exec "$SHELL" -l
 
 | Path | Purpose |
 |---|---|
-| `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, log level) |
+| `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, canonical manifest source, log level) |
 | `~/.base.d/<project>/.venv` | Per-project Python virtual environment |
 | `~/.base.d/<project>/checks/last.json` | Latest recorded `basectl check <project>` result used by workspace status |
 | `~/Library/Caches/base/` | Runtime logs, temp files, project discovery cache |

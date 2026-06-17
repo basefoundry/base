@@ -63,10 +63,13 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         workspace)
-            _arguments '1:workspace command:(status check doctor)' \
+            _arguments '1:workspace command:(status check doctor clone pull)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
                 '--manifest[Local workspace manifest]:path:_files' \
+                '--source[Canonical workspace manifest source]:url-or-path:' \
                 '--format[Output format]:format:(text json)' \
+                '--include-optional[Include optional manifest repositories when cloning]' \
+                '--dry-run[Show planned clone or pull work without changing files]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         setup)

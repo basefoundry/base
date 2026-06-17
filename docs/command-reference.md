@@ -57,6 +57,7 @@ inspect the resolved command contract first.
 | `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
+| `basectl workspace pull` | Explicitly fetch and validate a canonical workspace manifest source before updating the local workspace manifest. Uses `workspace.manifest_source` and `workspace.manifest` from user config unless flags are supplied. | `--source <url-or-path>`, `--manifest <path>`, `--dry-run` |
 
 ## Repository And GitHub Workflow
 

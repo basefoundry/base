@@ -107,8 +107,15 @@ edit that value to make commands such as
 `check`, `doctor`, and `clone` use that manifest unless the command supplies
 `--manifest <path>`. The command-line flag always takes precedence.
 
+`workspace.manifest_source` is optional. When set, `basectl workspace pull`
+uses it as the canonical manifest source unless the command supplies
+`--source <url-or-path>`. Supported sources are local paths, `file://` URLs, and
+`http://` or `https://` raw file URLs. Pull validates fetched content as a
+workspace manifest before updating `workspace.manifest`.
+
 `workspace.root` and `workspace.manifest` must be absolute paths or start with
-`~`. Base does not create the workspace directory automatically; `basectl config
+`~`. `workspace.manifest_source` must be a non-empty string when provided.
+Base does not create the workspace directory automatically; `basectl config
 doctor` reports whether the configured path exists.
 
 ## GitHub Defaults

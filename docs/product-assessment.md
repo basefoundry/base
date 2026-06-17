@@ -164,10 +164,9 @@ Immediate action items:
 - Linux remains the largest addressable-market unlock. Keep the first supported
   Linux runtime target tracked through #562, with a narrow support contract
   before making broader platform claims.
-- Team onboarding is the strongest moat. Local workspace manifests already
-  exist; the next adoption step is explicit canonical manifest sync, tracked in
-  #815, so teams can refresh the expected repo-set contract without manual file
-  handoff.
+- Team onboarding is the strongest moat. Local workspace manifests and explicit
+  canonical manifest sync now let teams refresh the expected repo-set contract
+  without manual file handoff.
 - Base needs an extension path that does not turn the core product into a
   catch-all tool registry. Design a constrained artifact adapter registry before
   implementation; this is tracked in #816.

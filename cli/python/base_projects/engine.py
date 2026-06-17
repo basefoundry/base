@@ -22,6 +22,7 @@ from base_projects.build_targets import list_build_targets_from_args
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_pull import pull_workspace_manifest
 from base_projects.workspace_reports import ManifestEntry
 from base_projects.workspace_reports import ProjectDiscoveryError
 from base_projects.workspace_reports import dumps_json
@@ -56,6 +57,7 @@ class WorkspaceCommandOptions:
     workspace: str | None
     output_format: str
     workspace_manifest: str | None = None
+    workspace_manifest_source: str | None = None
     include_optional: bool = False
     dry_run: bool = False
 
@@ -72,12 +74,13 @@ def main(argv: list[str] | None = None) -> int:
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
 @base_cli.option("--manifest", "workspace_manifest", help="Local workspace manifest to read.")
+@base_cli.option("--source", "workspace_manifest_source", help="Canonical workspace manifest source URL or path.")
 @base_cli.option(
     "--include-optional",
     is_flag=True,
     help="Include optional workspace manifest repositories when cloning.",
 )
-@base_cli.option("--dry-run", is_flag=True, dry_run=True, help="Show planned clone work without cloning.")
+@base_cli.option("--dry-run", is_flag=True, dry_run=True, help="Show planned clone or pull work without writing.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -85,6 +88,7 @@ def run(
     workspace: str | None,
     output_format: str,
     workspace_manifest: str | None,
+    workspace_manifest_source: str | None,
     include_optional: bool,
     dry_run: bool,
 ) -> int:
@@ -96,6 +100,7 @@ def run(
                 workspace=workspace,
                 output_format=output_format,
                 workspace_manifest=workspace_manifest,
+                workspace_manifest_source=workspace_manifest_source,
                 include_optional=include_optional,
                 dry_run=dry_run,
             ),
@@ -145,6 +150,11 @@ def dispatch_projects_command(
             command_arguments,
             lambda: workspace_clone_command(ctx, options),
         ),
+        "pull": lambda: require_no_args_and_run(
+            "pull",
+            command_arguments,
+            lambda: workspace_pull_command(ctx, options),
+        ),
         "current": lambda: current_project_from_args(ctx, command_arguments),
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
         "resolve": lambda: resolve_project_from_args(ctx, command_arguments, options.workspace),
@@ -163,7 +173,7 @@ def dispatch_projects_command(
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
         "status, check, doctor, clone, test-command, demo-script, activation-sources, run-command, run-commands, "
-        "build-targets, build-target-list.",
+        "build-targets, build-target-list, pull.",
         command,
     )
     return 2
@@ -397,6 +407,42 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
     return 0
 
 
+def workspace_pull_command(ctx: base_cli.Context, options: WorkspaceCommandOptions) -> int:
+    if options.output_format != "text":
+        raise ProjectUsageError(f"Unsupported output format '{options.output_format}'. Expected: text.")
+
+    source = effective_workspace_manifest_source(ctx, options.workspace_manifest_source)
+    if source is None:
+        raise ProjectUsageError("workspace pull requires --source <url-or-path> or workspace.manifest_source.")
+
+    target = effective_workspace_manifest_path(ctx, options.workspace_manifest)
+    if target is None:
+        raise ProjectUsageError("workspace pull requires --manifest <path> or workspace.manifest.")
+
+    try:
+        result = pull_workspace_manifest(source, target, dry_run=options.dry_run)
+    except WorkspaceManifestError as exc:
+        ctx.log.error(str(exc))
+        return 1
+
+    print("Workspace manifest pull")
+    print(f"Source: {result.source}")
+    print(f"Target: {result.target}")
+    print(f"Manifest: {result.manifest.name} ({len(result.manifest.repos)} repositories)")
+    print(f"Status: {result.status}")
+
+    if options.dry_run:
+        print("[DRY-RUN] No files changed.")
+        return 0
+
+    if not result.changed:
+        print("Workspace manifest already up to date.")
+        return 0
+
+    print(f"Updated workspace manifest: {result.target}")
+    return 0
+
+
 def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
     if workspace_manifest is not None:
         return workspace_manifest
@@ -404,6 +450,21 @@ def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str 
     if configured_manifest is None:
         return None
     return str(configured_manifest)
+
+
+def effective_workspace_manifest_path(ctx: base_cli.Context, workspace_manifest: str | None) -> Path | None:
+    if workspace_manifest is not None:
+        return Path(workspace_manifest).expanduser().resolve(strict=False)
+    configured_manifest = ctx.user_config.workspace.manifest
+    if configured_manifest is None:
+        return None
+    return configured_manifest
+
+
+def effective_workspace_manifest_source(ctx: base_cli.Context, workspace_manifest_source: str | None) -> str | None:
+    if workspace_manifest_source is not None:
+        return workspace_manifest_source
+    return ctx.user_config.workspace.manifest_source
 
 
 def require_workspace_clone_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> WorkspaceManifest:
