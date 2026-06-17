@@ -20,6 +20,16 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Typical order: check -> plan -> notes -> publish."* ]]
 }
 
+@test "basectl release reports unknown command as a usage error" {
+    run_basectl release unknown
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Unknown release command 'unknown'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+}
+
 @test "basectl release delegates to the Python release layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local manifest="$TEST_TMPDIR/base_manifest.yaml"

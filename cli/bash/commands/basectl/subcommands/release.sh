@@ -30,6 +30,12 @@ Homebrew tap updates remain a manual handoff.
 EOF
 }
 
+base_release_usage_error() {
+    base_release_subcommand_usage >&2
+    print_error "$*"
+    return 2
+}
+
 base_release_subcommand_main() {
     local release_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
@@ -42,8 +48,8 @@ base_release_subcommand_main() {
         check|plan|notes|publish)
             ;;
         *)
-            base_release_subcommand_usage >&2
-            fatal_error "Unknown release command '$release_command'."
+            base_release_usage_error "Unknown release command '$release_command'."
+            return $?
             ;;
     esac
 

@@ -145,7 +145,9 @@ EOF
 @test "basectl workspace rejects unknown subcommands" {
     run_basectl workspace repair
 
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"Unknown workspace command 'repair'"* ]]
-    [[ "$output" != *"Traceback"* ]]
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Unknown workspace command 'repair'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
 }

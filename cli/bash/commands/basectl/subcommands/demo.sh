@@ -26,7 +26,7 @@ EOF
 
 base_demo_usage_error() {
     base_demo_subcommand_usage >&2
-    printf 'ERROR: %s\n' "$*" >&2
+    print_error "$*"
     return 2
 }
 

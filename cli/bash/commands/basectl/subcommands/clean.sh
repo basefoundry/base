@@ -48,7 +48,7 @@ base_clean_subcommand_main() {
                     fi
                     [[ -n "${2:-}" ]] || {
                         base_clean_subcommand_usage >&2
-                        printf 'ERROR: Option '\''%s'\'' requires an argument.\n' "$1" >&2
+                        print_error "Option '$1' requires an argument."
                         return 2
                     }
                     args+=("$2")
@@ -76,7 +76,7 @@ base_clean_subcommand_main() {
 
     if (( ! has_older_than && ! has_keep_last )); then
         base_clean_subcommand_usage >&2
-        printf 'ERROR: One of '\''--older-than'\'' or '\''--keep-last'\'' is required.\n' >&2
+        print_error "One of '--older-than' or '--keep-last' is required."
         return 2
     fi
 
