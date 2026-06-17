@@ -118,9 +118,11 @@ Use this workflow when adding or changing a `basectl <command>` feature.
 - Validate focused command behavior with:
 
 ```bash
-bats cli/bash/commands/basectl/tests/basectl.bats
+bats cli/bash/commands/basectl/tests/help.bats
 bats cli/bash/commands/basectl/tests/setup.bats
 ```
+
+Swap `setup.bats` for the focused subcommand test file you changed.
 
 ## Add a Bash command
 
