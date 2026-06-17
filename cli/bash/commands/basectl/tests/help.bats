@@ -87,3 +87,13 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [ "$output" = "$TEST_HOME/.base.d/config.yaml" ]
 }
+
+@test "basectl config reports unknown command as a usage error" {
+    run_basectl config unknown
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Unknown config command 'unknown'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+}

@@ -39,7 +39,7 @@ base_logs_subcommand_main() {
             --command|--limit|--lines)
                 [[ -n "${2:-}" ]] || {
                     base_logs_subcommand_usage >&2
-                    printf 'ERROR: Option '\''%s'\'' requires an argument.\n' "$1" >&2
+                    print_error "Option '$1' requires an argument."
                     return 2
                 }
                 args+=("$1" "$2")

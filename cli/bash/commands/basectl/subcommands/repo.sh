@@ -198,7 +198,7 @@ base_repo_print_usage_error() {
     local help_command="$1"
     shift
 
-    printf 'ERROR: %s\n' "$*" >&2
+    print_error "$*"
     printf "Run '%s --help' for usage.\n" "$help_command" >&2
     return 2
 }

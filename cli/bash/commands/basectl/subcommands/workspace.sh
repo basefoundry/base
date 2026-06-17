@@ -21,6 +21,12 @@ Show status, check, doctor, or clone output for repositories in the workspace.
 EOF
 }
 
+base_workspace_usage_error() {
+    base_workspace_subcommand_usage >&2
+    print_error "$*"
+    return 2
+}
+
 base_workspace_subcommand_main() {
     local workspace_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
@@ -35,8 +41,8 @@ base_workspace_subcommand_main() {
             shift
             ;;
         *)
-            base_workspace_subcommand_usage >&2
-            fatal_error "Unknown workspace command '$workspace_command'."
+            base_workspace_usage_error "Unknown workspace command '$workspace_command'."
+            return $?
             ;;
     esac
 

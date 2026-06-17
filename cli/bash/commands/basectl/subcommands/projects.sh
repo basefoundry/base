@@ -18,6 +18,12 @@ List Base-managed projects discovered through base_manifest.yaml files.
 EOF
 }
 
+base_projects_usage_error() {
+    base_projects_subcommand_usage >&2
+    print_error "$*"
+    return 2
+}
+
 base_projects_subcommand_main() {
     local project_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
@@ -32,8 +38,8 @@ base_projects_subcommand_main() {
             shift
             ;;
         *)
-            base_projects_subcommand_usage >&2
-            fatal_error "Unknown projects command '$project_command'."
+            base_projects_usage_error "Unknown projects command '$project_command'."
+            return $?
             ;;
     esac
 

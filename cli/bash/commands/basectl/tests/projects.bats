@@ -76,6 +76,16 @@ EOF
     [[ "$output" == *"--format <format>"* ]]
 }
 
+@test "basectl projects reports unknown command as a usage error" {
+    run_basectl projects unknown
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"ERROR: Unknown projects command 'unknown'."* ]]
+    [[ "$output" != *"FATAL"* ]]
+    [[ "$output" != *"Encountered a fatal error"* ]]
+}
+
 @test "basectl projects list reports invalid format as a usage error" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
 

@@ -26,6 +26,12 @@ base_config_path() {
     printf '%s\n' "$HOME/.base.d/config.yaml"
 }
 
+base_config_usage_error() {
+    base_config_subcommand_usage >&2
+    print_error "$*"
+    return 2
+}
+
 base_config_subcommand_main() {
     local config_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
@@ -38,23 +44,23 @@ base_config_subcommand_main() {
         path)
             shift
             if (($#)); then
-                base_config_subcommand_usage >&2
-                fatal_error "config path does not accept arguments."
+                base_config_usage_error "config path does not accept arguments."
+                return $?
             fi
             base_config_path
             ;;
         show|doctor)
             shift
             if (($#)); then
-                base_config_subcommand_usage >&2
-                fatal_error "config $config_command does not accept arguments."
+                base_config_usage_error "config $config_command does not accept arguments."
+                return $?
             fi
             [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
             "$wrapper" --project base base_config "$config_command"
             ;;
         *)
-            base_config_subcommand_usage >&2
-            fatal_error "Unknown config command '$config_command'."
+            base_config_usage_error "Unknown config command '$config_command'."
+            return $?
             ;;
     esac
 }
