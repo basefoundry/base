@@ -29,7 +29,8 @@ the canonical current command list.
   repair missing Project intake support files, configure standard GitHub Project
   metadata, seed agent guidance, and write installer templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
-  non-interactive CI.
+  non-interactive CI. `ci setup --format json` uses `output` for the compact
+  final status and adds `output_lines` on failures for intermediate context.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
   print plans/notes, and publish guarded GitHub-side release artifacts.
 - `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, repo

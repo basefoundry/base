@@ -38,6 +38,12 @@ without prompting, `basectl ci` fails with a clear fix message.
 - run project artifact setup through the same manifest path as `basectl setup`
 - emit a small JSON wrapper when `--format json` is requested
 
+For `basectl ci setup <project> --format json`, stdout is reserved for the JSON
+wrapper. The `output` field contains a compact final status line. On failures,
+`output_lines` also includes compacted non-empty setup output lines so CI logs
+retain intermediate context without embedding timestamped Base log prefixes in
+the JSON payload. The raw setup stream is still mirrored to stderr.
+
 `BASE_CI=true` is the Base-specific CI marker. Setup and diagnostic code use it
 to select non-interactive, CI-safe behavior, including the runtime-only Linux
 path that can allow system Python when Homebrew bootstrap is not available.

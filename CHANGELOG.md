@@ -31,6 +31,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   request, including the command to rerun after merge.
 - Clarified `basectl repo init` and `repo configure` help to distinguish local
   baseline updates, optional GitHub repo creation, and GitHub-side repair.
+- Made `basectl ci setup --format json` include compact `output_lines` on
+  setup failures so CI consumers keep intermediate diagnostic context.
 - Standardized Bash CLI usage errors on `print_error` and changed unknown
   config, projects, release, and workspace commands to return usage status
   without fatal stack traces.
