@@ -134,6 +134,8 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P151` | uv-managed project `pyproject.toml` presence |
 | `BASE-P152` | uv-managed project `uv.lock` presence |
 | `BASE-P153` | Stale Base-managed project virtual environment ignored by a uv-managed project |
+| `BASE-P160` | Manifest command executable availability |
+| `BASE-P161` | Manifest command project script path readiness |
 
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
@@ -154,6 +156,13 @@ when uv tooling or expected uv project files are missing, because check/doctor
 should explain readiness without performing dependency resolution. Command
 invocation still fails hard when a command declares `runner: uv` and the `uv`
 executable is unavailable.
+
+`BASE-P160` and `BASE-P161` are advisory manifest command-lint diagnostics for
+`test.command`, `commands.*.command`, and `build.targets.*.command`. They look
+for obvious missing executables or missing/non-executable project script paths
+without executing command strings or treating the manifest as safe. They should
+not reject complex shell syntax or replace human review of unfamiliar
+repositories.
 
 `BASE-P080` through `BASE-P083` are read-only project Git remote diagnostics.
 They report whether the project directory is inside a Git repository, whether

@@ -134,9 +134,15 @@ uv support adds these project diagnostics:
 - `BASE-P152`: uv-managed project `uv.lock` presence
 - `BASE-P153`: stale Base-managed project virtual environment ignored by a
   uv-managed project
+- `BASE-P160`: manifest command starts with an executable that is not available
+  on PATH or in the project virtual environment
+- `BASE-P161`: manifest command references a project script path that is
+  missing, outside the project root, not a file, or not executable
 
 These diagnostics are warning-oriented in `check` and `doctor`; they explain
-readiness without performing dependency resolution.
+readiness without performing dependency resolution or executing project command
+strings. Command linting is advisory and does not replace reviewing manifests
+from unfamiliar repositories before running their declared commands.
 
 ## Non-Goals
 

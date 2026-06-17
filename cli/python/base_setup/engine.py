@@ -18,6 +18,7 @@ from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import doctor_status
 from .checks import print_doctor_finding
+from .command_lint import check_manifest_commands
 from .demo import check_demo
 from .delegates import check_brewfile
 from .delegates import check_mise
@@ -355,6 +356,7 @@ def manifest_checks(
     checks.extend(check_required_ports(effective_manifest))
     checks.extend(check_build(effective_manifest))
     checks.extend(check_demo(effective_manifest))
+    checks.extend(check_manifest_commands(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
     checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
