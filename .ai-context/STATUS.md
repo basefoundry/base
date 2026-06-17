@@ -15,6 +15,8 @@ The current command surface covers:
 - project activation
 - declared project test, build, run, and demo commands, including explicit
   `runner: uv` delegation
+- advisory check/doctor lint warnings for missing manifest command executables
+  and project script paths
 - mise integration
 - explicit uv-managed Python project setup through `python.manager: uv`
 - cleanup and logs

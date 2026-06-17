@@ -287,7 +287,10 @@ Manifest-declared commands are trusted project code. Base executes
 strings from the project root, so shell metacharacters are honored. Review
 manifests from unfamiliar repositories before running `basectl test`,
 `basectl build`, or `basectl run`; use `--dry-run` and `--list` first when you
-only want to inspect the resolved command contract.
+only want to inspect the resolved command contract. `basectl check <project>`
+and `basectl doctor <project>` include advisory command-lint warnings for
+obvious missing executables or project scripts; those warnings do not make an
+untrusted manifest safe to run.
 
 The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
 to the project root. When present, `basectl setup` runs
