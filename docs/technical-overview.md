@@ -247,7 +247,7 @@ Run everything locally with `basectl test base` or `bin/base-test`.
 
 ## Current Status
 
-Base **1.0.2** (June 2026) covers: setup, check, doctor, project discovery,
+Base **1.0.3** (June 2026) covers: setup, check, doctor, project discovery,
 workspace status, project activation (subshell), test execution, build targets,
 named commands, demo scripts, repository baseline creation, guarded GitHub release
 publishing, AI context export, `basectl ci` for non-interactive CI, IDE

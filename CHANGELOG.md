@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-17
+
 ### Changed
 
 - Made `basectl repo init` print visible next steps when GitHub setup is skipped
