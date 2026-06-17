@@ -400,7 +400,8 @@ PyPI package names and install into the project virtual environment at
 `~/.base.d/<project>/.venv`. Homebrew-managed `tool` artifacts currently support
 `version: latest`, but ordinary Homebrew tools should move toward Brewfile
 delegation. Pinned Homebrew versions fail clearly until Base grows explicit
-versioned tool support.
+versioned tool support. The next registry shape is captured in
+[Artifact Adapter Registry](docs/artifact-adapter-registry.md).
 
 The optional structured `python:` manifest section supports uv-managed Python
 projects:
