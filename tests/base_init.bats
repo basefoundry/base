@@ -26,6 +26,19 @@ create_minimal_base_home() {
     cp "$BASE_REPO_ROOT/lib/bash/file/lib_file.sh" "$base_home/lib/bash/file/lib_file.sh"
 }
 
+create_external_bash_libs() {
+    local target_dir="$1"
+
+    mkdir -p \
+        "$target_dir/file" \
+        "$target_dir/git" \
+        "$target_dir/std"
+
+    cp "$BASE_REPO_ROOT/lib/bash/std/lib_std.sh" "$target_dir/std/lib_std.sh"
+    cp "$BASE_REPO_ROOT/lib/bash/file/lib_file.sh" "$target_dir/file/lib_file.sh"
+    cp "$BASE_REPO_ROOT/lib/bash/git/lib_git.sh" "$target_dir/git/lib_git.sh"
+}
+
 run_base_init_script() {
     local script="$1"
 
@@ -37,6 +50,7 @@ run_base_init_script() {
         -u BASE_BASH_COMMANDS_DIR \
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_DIR \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -55,6 +69,7 @@ run_base_init_script() {
         printf "BASE_BASH_COMMANDS_DIR=%s\n" "$BASE_BASH_COMMANDS_DIR"
         printf "BASE_LIB_DIR=%s\n" "$BASE_LIB_DIR"
         printf "BASE_BASH_LIB_DIR=%s\n" "$BASE_BASH_LIB_DIR"
+        printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
         printf "BASE_SHELL_DIR=%s\n" "$BASE_SHELL_DIR"
     '
 
@@ -66,6 +81,7 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BASH_COMMANDS_DIR=$TEST_BASE_HOME/cli/bash/commands"* ]]
     [[ "$output" == *"BASE_LIB_DIR=$TEST_BASE_HOME/lib"* ]]
     [[ "$output" == *"BASE_BASH_LIB_DIR=$TEST_BASE_HOME/lib/bash"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$TEST_BASE_HOME/lib/bash"* ]]
     [[ "$output" == *"BASE_SHELL_DIR=$TEST_BASE_HOME/lib/shell"* ]]
 }
 
@@ -85,6 +101,7 @@ run_base_init_script() {
         -u BASE_BASH_COMMANDS_DIR \
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_DIR \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -130,6 +147,7 @@ run_base_init_script() {
             BASE_BASH_COMMANDS_DIR \
             BASE_LIB_DIR \
             BASE_BASH_LIB_DIR \
+            BASE_BASH_LIBS_DIR \
             BASE_SHELL_DIR \
             BASE_OS \
             BASE_HOST \
@@ -147,6 +165,7 @@ run_base_init_script() {
         BASE_BASH_COMMANDS_DIR \
         BASE_LIB_DIR \
         BASE_BASH_LIB_DIR \
+        BASE_BASH_LIBS_DIR \
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_HOST \
@@ -181,6 +200,7 @@ run_base_init_script() {
         BASE_BASH_COMMANDS_DIR \
         BASE_LIB_DIR \
         BASE_BASH_LIB_DIR \
+        BASE_BASH_LIBS_DIR \
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_HOST \
@@ -201,7 +221,7 @@ run_base_init_script() {
     [ "$output" = "1" ]
 }
 
-@test "base_init import_base_lib resolves libraries relative to BASE_HOME" {
+@test "base_init import_base_lib resolves libraries relative to bundled Base fallback" {
     run_base_init_script '
         base_home="$1"
         source "$base_home/base_init.sh"
@@ -210,4 +230,100 @@ run_base_init_script() {
     '
 
     [ "$status" -eq 0 ]
+}
+
+@test "base_init can resolve reusable Bash libraries from explicit external dir" {
+    local external_dir="$TEST_TMPDIR/base-bash-libs/lib/bash"
+
+    create_external_bash_libs "$external_dir"
+    printf '\nexternal_file_marker() { :; }\n' >>"$external_dir/file/lib_file.sh"
+
+    run env \
+        -u BASE_HOME \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        BASE_BASH_LIBS_DIR="$external_dir" \
+        bash -c '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            import_base_lib file/lib_file.sh
+            declare -F external_file_marker >/dev/null
+        ' bash "$TEST_BASE_HOME"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$external_dir"* ]]
+}
+
+@test "base_init import_base_lib falls back to bundled Base libraries" {
+    local external_dir="$TEST_TMPDIR/partial-base-bash-libs/lib/bash"
+
+    mkdir -p "$external_dir/std"
+    cp "$BASE_REPO_ROOT/lib/bash/std/lib_std.sh" "$external_dir/std/lib_std.sh"
+
+    run env \
+        -u BASE_HOME \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        BASE_BASH_LIBS_DIR="$external_dir" \
+        bash -c '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            import_base_lib file/lib_file.sh
+            declare -F update_file_section >/dev/null
+        ' bash "$TEST_BASE_HOME"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "base_init resolves Homebrew base-bash-libs next to Homebrew Base" {
+    local cellar_base="$TEST_TMPDIR/homebrew/Cellar/base/1.0.3/libexec"
+    local opt_dir="$TEST_TMPDIR/homebrew/opt"
+    local opt_base="$opt_dir/base/libexec"
+    local external_dir="$opt_dir/base-bash-libs/libexec/lib/bash"
+
+    mkdir -p "$opt_dir"
+    create_minimal_base_home "$cellar_base"
+    create_external_bash_libs "$external_dir"
+    printf '\nhomebrew_file_marker() { :; }\n' >>"$external_dir/file/lib_file.sh"
+    ln -s "../Cellar/base/1.0.3" "$opt_dir/base"
+
+    run env \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_DIR \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        BASE_HOME="$opt_base" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            import_base_lib file/lib_file.sh
+            declare -F homebrew_file_marker >/dev/null
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$external_dir"* ]]
 }

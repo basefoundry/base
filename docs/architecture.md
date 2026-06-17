@@ -197,10 +197,13 @@ starts the Base project runtime while preserving the caller's current
 directory.
 
 Contains:
-- exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`, and `BASE_BASH_LIB_DIR`
+- exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`,
+  `BASE_BASH_LIB_DIR`, and `BASE_BASH_LIBS_DIR`
 - OS and host metadata such as `BASE_OS` and `BASE_HOST`
 - Base's Bash standard library
-- `import_base_lib` for convention-based Base Bash library imports
+- `import_base_lib` for convention-based Base Bash library imports, preferring
+  the resolved reusable Bash library root and falling back to Base's bundled
+  library root
 - PATH additions for Base's own executable entrypoints
 - optional PATH additions for the local Base Platform Tools companion repo
 

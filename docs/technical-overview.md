@@ -69,9 +69,10 @@ Markers look like:
 
 **Layer 2 — Base runtime** (`base_init.sh`, sourced on every `basectl` invocation)
 
-Exports `BASE_HOME`, `BASE_BIN_DIR`, `BASE_BASH_LIB_DIR`, `BASE_OS`, `BASE_HOST`,
-and `BASE_SHELL`. Loads the Bash standard library. Sets up `import_base_lib` for
-convention-based library imports.
+Exports `BASE_HOME`, `BASE_BIN_DIR`, `BASE_BASH_LIB_DIR`,
+`BASE_BASH_LIBS_DIR`, `BASE_OS`, `BASE_HOST`, and `BASE_SHELL`. Loads the Bash
+standard library from the resolved reusable library root. Sets up
+`import_base_lib` for convention-based library imports with a bundled fallback.
 
 **Layer 3 — Project environment** (`basectl activate <project>`)
 

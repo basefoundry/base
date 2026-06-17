@@ -68,7 +68,8 @@ explicit Bash script, or starts a Base runtime Bash shell.
 | `BASE_BASH_DIR` | Base | `$BASE_HOME/cli/bash`. Root for Bash command implementations. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_BASH_COMMANDS_DIR` | Base | `$BASE_BASH_DIR/commands`. Directory used by command dispatch. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_LIB_DIR` | Base | `$BASE_HOME/lib`. Root for shared Base libraries. | Do not set. Readonly after `base_init.sh`. |
-| `BASE_BASH_LIB_DIR` | Base | `$BASE_HOME/lib/bash`. Root used by `import_base_lib`. | Do not set. Readonly after `base_init.sh`. |
+| `BASE_BASH_LIB_DIR` | Base | `$BASE_HOME/lib/bash`. Base's bundled Bash library root, including Base-specific runtime and version helpers. | Do not set. Readonly after `base_init.sh`. |
+| `BASE_BASH_LIBS_DIR` | Base | Resolved reusable Bash library root used for stdlib loading and preferred by `import_base_lib`. It can point at an explicit `BASE_BASH_LIBS_DIR`, a sibling `base-bash-libs` checkout, a Homebrew `base-bash-libs` package next to Homebrew Base, or the bundled `$BASE_BASH_LIB_DIR` fallback. | May be provided only before runtime bootstrap to force a compatible reusable library root. Readonly after `base_init.sh`. |
 | `BASE_SHELL_DIR` | Base | `$BASE_HOME/lib/shell`. Root for managed shell startup snippets and completions. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_OS` | Base | Normalized host OS metadata such as `macos` or `linux`. Used by runtime decisions and diagnostics. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_HOST` | Base | Short host name from `hostname -s`. Used by runtime metadata and prompts. | Do not set. Readonly after `base_init.sh`. |

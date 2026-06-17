@@ -12,6 +12,7 @@ base_test_unset_env=(
     -u BASE_BASH_COMMANDS_DIR
     -u BASE_LIB_DIR
     -u BASE_BASH_LIB_DIR
+    -u BASE_BASH_LIBS_DIR
     -u BASE_SHELL_DIR
     -u BASE_OS
     -u BASE_HOST
