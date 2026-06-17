@@ -80,6 +80,8 @@ reference. The filename should answer "what is this about?"
   sync guidance, and the user/project boundary.
 - [Project Installers](project-installers.md) defines how project-owned
   installers should use Base without moving product-specific logic into Base.
+- [Artifact Adapter Registry](artifact-adapter-registry.md) designs the
+  declarative registry and adapter boundary for Base-managed artifacts.
 - [Python Manifest Section](python-manifest.md) records the future structured
   Python manifest shape and its relationship to current `python-package`
   artifacts.
