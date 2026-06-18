@@ -49,8 +49,8 @@ boundary.
 
 `~/.baserc` may set user knobs such as `BASE_DEBUG`. It must not set Base-owned
 runtime or profile variables such as `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`,
-`BASE_OS`, `BASE_HOST`, `BASE_SHELL`, `BASE_PLATFORM_TOOLS_HOME`,
-`BASE_PLATFORM_TOOLS_BIN_DIR`, `BASE_PROFILE_VERSION`,
+`BASE_OS`, `BASE_HOST`, `BASE_SHELL`, `BASE_BASH_LIBS_DIR`,
+`BASE_PLATFORM_TOOLS_HOME`, `BASE_PLATFORM_TOOLS_BIN_DIR`, `BASE_PROFILE_VERSION`,
 `BASE_ENABLE_BASH_DEFAULTS`, or `BASE_ENABLE_ZSH_DEFAULTS`. It must also not
 set command or project metadata such as `BASE_BASH_COMMAND_SCRIPT`,
 `BASE_PROJECT`, `BASE_PROJECT_ROOT`, or `BASE_PROJECT_VENV_DIR`.
@@ -74,6 +74,10 @@ explicit Bash script, or starts a Base runtime Bash shell.
 | `BASE_OS` | Base | Normalized host OS metadata such as `macos` or `linux`. Used by runtime decisions and diagnostics. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_HOST` | Base | Short host name from `hostname -s`. Used by runtime metadata and prompts. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_SHELL` | Base | Legacy runtime marker. Plain `base_init.sh` defaults it to `bash`; Base runtime shells seed it as `1` before `base_init.sh`. New code should avoid adding new meanings to it. | Do not set in user config. Readonly after `base_init.sh`. |
+
+`BASE_BASH_LIBS_DIR` is part of the Bash library extraction bridge. For the full
+resolution order, standalone install path, fallback behavior, and bundled
+library removal gate, see [Base Bash Libraries](base-bash-libs.md).
 
 ## CI Runtime Variables
 

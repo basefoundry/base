@@ -115,12 +115,14 @@ This makes Base stdlib helpers such as `log_info`, `print_error`,
 `fatal_error`, `run`, `assert_command_exists`, and `import_base_lib` available
 without the script sourcing `lib_std.sh` directly.
 
-Standalone Bash scripts that are not intended to run through Base can still
-source the standard library directly:
+Standalone Bash scripts that are not intended to run through Base should use the
+standalone `base-bash-libs` package instead of depending on Base's bundled
+fallback:
 
 ```bash
 #!/usr/bin/env bash
-source "/path/to/base/lib/bash/std/lib_std.sh"
+base_bash_libs_prefix="$(brew --prefix codeforester/base/base-bash-libs)"
+source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 
 main() {
     run echo "hello"
@@ -245,6 +247,9 @@ import_base_lib file/lib_file.sh
 bundled `lib/bash` root. It fails through Base standard error handling when the
 requested library cannot be found, so callers do not need to duplicate that
 check.
+
+The standalone install path, Base resolution order, and bundled-library removal
+gate are documented in [Base Bash Libraries](base-bash-libs.md).
 
 ## Runtime Shell
 

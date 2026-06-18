@@ -54,6 +54,9 @@ reference. The filename should answer "what is this about?"
   support plan and bootstrap boundaries.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
+- [Base Bash Libraries](base-bash-libs.md) documents the standalone
+  `base-bash-libs` package, Base's external-first consumption path, fallback
+  behavior, and bundled-library removal gate.
 - [Local Observability](observability.md) defines the future local command
   history, last-error explanation, and report model beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,

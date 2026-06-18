@@ -209,7 +209,9 @@ Contains:
 
 This layer is established by `base_init.sh`, which is sourced only through the
 `basectl` command path. The canonical variable reference and mutability policy
-live in [Runtime Environment](runtime-environment.md).
+live in [Runtime Environment](runtime-environment.md). The standalone
+`base-bash-libs` install path and migration contract live in
+[Base Bash Libraries](base-bash-libs.md).
 
 ### Layer 3 — Project-Specific Environment
 
