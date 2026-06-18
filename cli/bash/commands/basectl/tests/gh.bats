@@ -13,8 +13,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh project configure --project <title>"* ]]
     [[ "$output" == *"basectl gh project issue set-fields <number>"* ]]
     [[ "$output" == *"basectl gh worktree prune"* ]]
-    [[ "$output" == *"basectl gh todo plan [--file <path>]"* ]]
-    [[ "$output" != *"basectl gh todo import"* ]]
+    [[ "$output" != *"basectl gh todo"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
     [[ "$output" == *"assigned to codeforester"* ]]
 }
@@ -83,17 +82,13 @@ load ./basectl_helpers.bash
     [[ "$output" != *"basectl gh issue create"* ]]
 }
 
-@test "basectl gh todo prints area help" {
+@test "basectl gh rejects retired todo area" {
     run_basectl gh todo --help
 
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl gh todo plan [--file <path>]"* ]]
-    [[ "$output" == *"Preview GitHub issues that would be created from TODO.md."* ]]
-    [[ "$output" == *"TODO issue creation is not enabled yet. Use \`basectl gh todo plan\`"* ]]
-    [[ "$output" != *"--dry-run"* ]]
-    [[ "$output" != *"basectl gh todo import"* ]]
-    [[ "$output" != *"basectl gh issue create"* ]]
-    [[ "$output" != *"basectl gh branch prune"* ]]
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unknown gh area 'todo'."* ]]
+    [[ "$output" != *"TODO.md"* ]]
+    [[ "$output" != *"basectl gh todo plan"* ]]
 }
 
 @test "basectl gh issue create applies category label and assignee" {
@@ -1007,48 +1002,4 @@ EOF
     [[ "$output" == *"basectl gh pr create"* ]]
     [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
     [[ "$output" != *"unexpected gh args"* ]]
-}
-
-@test "basectl gh todo plan classifies TODO items" {
-    local todo_file
-
-    todo_file="$TEST_TMPDIR/TODO.md"
-    cat > "$todo_file" <<'EOF'
-## P0 — Security And Correctness
-
-- [ ] Detect outdated Xcode Command Line Tools in `basectl doctor`.
-
-## P1 — Product Core And Composability
-
-- [ ] Add first-class `mise` integration.
-EOF
-
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        bash -c '
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main todo plan --file "$1"
-        ' bash "$todo_file"
-
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Issues that would be created from $todo_file:"* ]]
-    [[ "$output" == *$'bug\tDetect outdated Xcode Command Line Tools in `basectl doctor`'* ]]
-    [[ "$output" == *$'enhancement\tAdd first-class `mise` integration'* ]]
-}
-
-@test "basectl gh todo import reports creation is not enabled" {
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        bash -c '
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main todo import
-        '
-
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"TODO import creation is not enabled yet."* ]]
-    [[ "$output" == *"Run 'basectl gh todo plan' to preview TODO.md items."* ]]
 }

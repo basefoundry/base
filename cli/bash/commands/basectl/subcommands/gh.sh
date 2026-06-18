@@ -21,7 +21,6 @@ Usage:
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
   basectl gh worktree prune [--dry-run] [--yes]
-  basectl gh todo plan [--file <path>]
 
 Purpose:
   Manage GitHub issues, pull requests, Project metadata, branch naming, and
@@ -49,7 +48,6 @@ Notes:
     naming convention. Pass --no-fixes to suppress that body injection.
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
-  - TODO planning only previews issues; TODO import creation is not enabled yet.
 EOF
 }
 
@@ -148,23 +146,6 @@ Note:
 Options:
   --dry-run      Preview worktrees that would be removed (default).
   --yes          Remove safe merged worktrees after preview.
-EOF
-}
-
-base_gh_todo_usage() {
-    cat <<'EOF'
-Usage:
-  basectl gh todo plan [--file <path>]
-
-Purpose:
-  Preview GitHub issues that would be created from TODO.md.
-
-Options:
-  --file <path>  Read TODO items from a specific file. Defaults to TODO.md.
-
-Notes:
-  - TODO issue creation is not enabled yet. Use `basectl gh todo plan` to
-    inspect the migration plan.
 EOF
 }
 
@@ -1169,86 +1150,6 @@ base_gh_do_worktree() {
     esac
 }
 
-base_gh_todo_infer_category() {
-    local section="$1"
-    local title="${2:-}"
-
-    case "$title" in
-        Harden*) printf '%s\n' security; return 0 ;;
-        Fix*|Repair*) printf '%s\n' bug; return 0 ;;
-    esac
-
-    case "$section" in
-        *Correctness*) printf '%s\n' bug ;;
-        *Security*) printf '%s\n' security ;;
-        *CI*|*Test*|*Release*) printf '%s\n' ci ;;
-        *Documentation*|*Docs*) printf '%s\n' documentation ;;
-        *) printf '%s\n' enhancement ;;
-    esac
-}
-
-base_gh_todo_plan() {
-    local file="$BASE_HOME/TODO.md" line section="" title category
-
-    while (($#)); do
-        case "$1" in
-            --file)
-                file="${2:-}"
-                shift
-                ;;
-            -h|--help)
-                base_gh_todo_usage
-                return 0
-                ;;
-            *)
-                base_gh_error "Unknown option '$1'."
-                return 1
-                ;;
-        esac
-        shift
-    done
-
-    [[ -f "$file" ]] || {
-        base_gh_error "TODO file '$file' was not found."
-        return 1
-    }
-
-    printf 'Issues that would be created from %s:\n' "$file"
-
-    while IFS= read -r line; do
-        case "$line" in
-            "## "*)
-                section="${line#'## '}"
-                ;;
-            "- [ ] "*)
-                title="${line#'- [ ] '}"
-                title="${title%.}"
-                category="$(base_gh_todo_infer_category "$section" "$title")"
-                printf '%s\t%s\n' "$category" "$title"
-                ;;
-        esac
-    done < "$file"
-}
-
-base_gh_do_todo() {
-    local command="${1:-}"
-    shift || true
-
-    case "$command" in
-        plan) base_gh_todo_plan "$@" ;;
-        import)
-            base_gh_error "TODO import creation is not enabled yet. Run 'basectl gh todo plan' to preview TODO.md items."
-            return 1
-            ;;
-        -h|--help|help|"") base_gh_todo_usage ;;
-        *)
-            base_gh_error "Unknown gh todo command '$command'."
-            base_gh_todo_usage >&2
-            return 1
-            ;;
-    esac
-}
-
 base_gh_do_project() {
     local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
 
@@ -1274,7 +1175,6 @@ base_gh_subcommand_main() {
         project) base_gh_do_project "$@" ;;
         branch) base_gh_do_branch "$@" ;;
         worktree) base_gh_do_worktree "$@" ;;
-        todo) base_gh_do_todo "$@" ;;
         -h|--help|help|"") base_gh_usage ;;
         *)
             base_gh_error "Unknown gh area '$area'."
