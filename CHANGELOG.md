@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Made Homebrew-managed `basectl update` preflight tap trust before upgrading
+  Base when Homebrew requires trust for the tap-owned `base-bash-libs`
+  dependency.
+
 ## [1.0.5] - 2026-06-18
 
 ### Added

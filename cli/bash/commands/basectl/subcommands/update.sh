@@ -29,6 +29,8 @@ Notes:
     pull-time overwrite protection.
   - Homebrew installs update only project 'base' through the Base formula:
     brew upgrade codeforester/base/base
+  - If Homebrew requires tap trust, trust codeforester/base before upgrading:
+    brew trust codeforester/base
 EOF
 }
 
@@ -38,6 +40,14 @@ base_update_source_git_library() {
 
 base_update_homebrew_package() {
     printf '%s\n' "codeforester/base/base"
+}
+
+base_update_homebrew_tap() {
+    printf '%s\n' "codeforester/base"
+}
+
+base_update_homebrew_bash_libs_package() {
+    printf '%s\n' "codeforester/base/base-bash-libs"
 }
 
 base_update_is_homebrew_install() {
@@ -117,6 +127,52 @@ base_update_run_homebrew_upgrade() {
     brew upgrade "$package"
 }
 
+base_update_homebrew_requires_tap_trust() {
+    local config_output
+
+    [[ -n "${HOMEBREW_NO_REQUIRE_TAP_TRUST:-}" ]] && return 1
+    [[ -n "${HOMEBREW_REQUIRE_TAP_TRUST:-}" ]] && return 0
+
+    config_output="$(brew config 2>/dev/null)" || return 1
+    [[ "$config_output" == *"HOMEBREW_REQUIRE_TAP_TRUST: set"* ]]
+}
+
+base_update_homebrew_trust_contains() {
+    local trust_json="$1"
+    local target="$2"
+
+    [[ "$trust_json" == *"\"$target\""* ]]
+}
+
+base_update_homebrew_trust_satisfied() {
+    local bash_libs_package
+    local tap
+    local trust_json
+
+    base_update_homebrew_requires_tap_trust || return 0
+
+    trust_json="$(brew trust --json v1 2>/dev/null)" || return 0
+    tap="$(base_update_homebrew_tap)"
+    bash_libs_package="$(base_update_homebrew_bash_libs_package)"
+
+    base_update_homebrew_trust_contains "$trust_json" "$tap" && return 0
+    base_update_homebrew_trust_contains "$trust_json" "$bash_libs_package" && return 0
+
+    return 1
+}
+
+base_update_report_homebrew_trust_required() {
+    local bash_libs_package
+    local tap
+
+    tap="$(base_update_homebrew_tap)"
+    bash_libs_package="$(base_update_homebrew_bash_libs_package)"
+
+    log_error "Homebrew requires trust for '$tap' before upgrading Base's tap-owned Bash library dependency."
+    log_error "Run 'brew trust $tap', then rerun 'basectl update'."
+    log_error "To trust only the dependency formula instead, run 'brew trust --formula $bash_libs_package'."
+}
+
 base_update_run_homebrew_setup() {
     local base_home="$1"
     local package="$2"
@@ -151,6 +207,7 @@ base_update_run_homebrew_setup() {
 base_update_homebrew_install() {
     local base_home="$1"
     local dry_run="$2"
+    local exit_code
     local package
 
     package="$(base_update_homebrew_package)"
@@ -167,8 +224,18 @@ base_update_homebrew_install() {
         return 1
     fi
 
+    if ! base_update_homebrew_trust_satisfied; then
+        base_update_report_homebrew_trust_required
+        return 1
+    fi
+
     log_info "Running Homebrew upgrade for $package."
-    base_update_run_homebrew_upgrade "$package" || return $?
+    base_update_run_homebrew_upgrade "$package"
+    exit_code=$?
+    if ((exit_code != 0)); then
+        log_error "Homebrew upgrade failed. If Homebrew refused to load '$package' or '$(base_update_homebrew_bash_libs_package)' from an untrusted tap, run 'brew trust $(base_update_homebrew_tap)' and retry."
+        return "$exit_code"
+    fi
 
     log_info "Running basectl setup after Homebrew upgrade."
     base_update_run_homebrew_setup "$base_home" "$package" || return $?
