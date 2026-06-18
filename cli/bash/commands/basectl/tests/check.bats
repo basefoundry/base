@@ -332,11 +332,9 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "warn"'* ]]
+    assert_base_check_json_status_for_readiness "$output"
     [[ "$output" == *'"id":"BASE-D001","status":"ok","name":"homebrew"'* ]]
-    [[ "$output" == *'"id":"BASE-D007","status":"warn","name":"base_bash_libraries"'* ]]
-    [[ "$output" == *"Base is using bundled reusable Bash libraries"* ]]
-    [[ "$output" == *"Clone codeforester/base-bash-libs next to Base"* ]]
+    assert_base_bash_libraries_json_finding "$output"
     [[ "$output" != *'"name":"bats"'* ]]
     [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
@@ -378,9 +376,9 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "warn"'* ]]
+    assert_base_check_json_status_for_readiness "$output"
     homebrew_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D001","status":"ok","name":"homebrew"' | cut -d: -f1)"
-    bash_libs_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D007","status":"warn","name":"base_bash_libraries"' | cut -d: -f1)"
+    bash_libs_line="$(base_bash_libraries_json_line "$output")"
     xcode_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D002","status":"ok","name":"xcode_command_line_tools"' | cut -d: -f1)"
     python_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D003","status":"ok","name":"python"' | cut -d: -f1)"
     venv_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D004","status":"ok","name":"base_virtualenv"' | cut -d: -f1)"
@@ -493,7 +491,7 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "warn"'* ]]
+    assert_base_check_json_status_for_readiness "$output"
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [[ "$output" == *'"schema_version":1,"status":"ok","project":"demo","checks"'* ]]

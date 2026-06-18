@@ -67,8 +67,8 @@ prepare_ci_runtime() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "warn"'* ]]
-    [[ "$output" == *'"id":"BASE-D007","status":"warn","name":"base_bash_libraries"'* ]]
+    assert_base_check_json_status_for_readiness "$output"
+    assert_base_bash_libraries_json_finding "$output"
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format json demo)" ]
