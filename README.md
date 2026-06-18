@@ -972,7 +972,14 @@ exec "$SHELL" -l
 
 The trust step is required on Homebrew versions that block formulae from
 non-official taps until the tap is trusted. It is safe to run again on machines
-that already trust `codeforester/base`.
+that already trust `codeforester/base`. Existing installs that predate this
+trust step can fail during upgrade while Homebrew loads Base's tap-owned
+`base-bash-libs` dependency. If that happens, run:
+
+```bash
+brew trust codeforester/base
+brew upgrade --no-ask codeforester/base/base
+```
 
 Homebrew installs the Base files. `basectl setup` still prepares the local Base
 runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
@@ -1154,7 +1161,9 @@ inherited Base environment variables cleared. `basectl update --dry-run` prints
 the Git or Homebrew handoff it would perform without changing files or packages.
 For manual Homebrew upgrades outside `basectl update`, prefer
 `brew upgrade --no-ask codeforester/base/base` so Homebrew skips the preview
-prompt path on already-current installs.
+prompt path on already-current installs. If Homebrew refuses to load
+`codeforester/base/base-bash-libs` from an untrusted tap, run
+`brew trust codeforester/base` once and retry the upgrade.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,

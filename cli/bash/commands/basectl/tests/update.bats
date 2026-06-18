@@ -104,6 +104,55 @@ load ./basectl_helpers.bash
     [[ "$output" != *"setup should not run"* ]]
 }
 
+@test "basectl update reports Homebrew tap trust recovery before upgrade" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
+    local brew_log="$TEST_TMPDIR/brew.log"
+
+    mkdir -p "$fake_bin" "$fake_base/bin"
+    cat > "$fake_bin/brew" <<EOF
+#!/usr/bin/env bash
+case "\$1" in
+    config)
+        printf '%s\n' 'HOMEBREW_REQUIRE_TAP_TRUST: set'
+        exit 0
+        ;;
+    trust)
+        if [[ "\$2" == "--json" && "\$3" == "v1" ]]; then
+            printf '%s\n' '{"taps":[],"formulae":["codeforester/base/base"],"casks":[],"commands":[]}'
+            exit 0
+        fi
+        ;;
+esac
+printf '%s\n' "\$*" >> "$brew_log"
+exit 0
+EOF
+    chmod +x "$fake_bin/brew"
+    touch "$fake_base/bin/basectl"
+    chmod +x "$fake_base/bin/basectl"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Homebrew requires trust for 'codeforester/base' before upgrading Base's tap-owned Bash library dependency."* ]]
+    [[ "$output" == *"Run 'brew trust codeforester/base', then rerun 'basectl update'."* ]]
+    [[ "$output" == *"brew trust --formula codeforester/base/base-bash-libs"* ]]
+    [[ ! -e "$brew_log" ]]
+}
+
 @test "basectl update runs exact Homebrew package upgrade and clears Base env for setup" {
     local fake_bin="$TEST_TMPDIR/bin"
     local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
@@ -113,6 +162,9 @@ load ./basectl_helpers.bash
     mkdir -p "$fake_bin" "$fake_base/bin"
     cat > "$fake_bin/brew" <<EOF
 #!/usr/bin/env bash
+if [[ "\$1" == "config" ]]; then
+    exit 0
+fi
 printf '%s\n' "\$*" >> "$brew_log"
 exit 0
 EOF
