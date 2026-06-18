@@ -818,6 +818,7 @@ EOF
     grep -Fq "name: Project Intake" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "gh project item-add" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "If this Project exists, set BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "set_single_select_if_missing Priority priority" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_DEFAULT_AREA: Product" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish" "$repo_dir/.github/workflows/project-intake.yml"
@@ -1042,6 +1043,7 @@ EOF
     [[ "$output" == *"Would copy GitHub Project 'base-project-template' to 'base-demo' if missing."* ]]
     [[ "$output" == *"Would link GitHub Project 'base-demo' to repository 'codeforester/base-demo'."* ]]
     [[ "$output" == *"Would backfill issues from 'codeforester/base-demo' into GitHub Project 'base-demo'."* ]]
+    [[ "$output" == *"Would verify GitHub Actions secret 'BASE_PROJECT_TOKEN' exists for 'codeforester/base-demo'."* ]]
     [[ "$output" == *"--schema base-roadmap"* ]]
     [[ "$output" == *"Status, Priority, Area, Size, Initiative"* ]]
 }
@@ -1249,6 +1251,81 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"GitHub Project metadata skipped for 'codeforester/base-demo'."* ]]
     [[ "$output" == *"gh auth refresh -h github.com -s project"* ]]
+}
+
+@test "basectl repo configure warns when project intake token secret is missing" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+if [[ "$1" == "secret" && "$2" == "list" ]]; then
+    printf 'OTHER_TOKEN\t2026-06-18T00:00:00Z\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Project Intake secret 'BASE_PROJECT_TOKEN' is not configured for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"GitHub Actions default token cannot access user-level Projects."* ]]
+    [[ "$output" == *"gh auth token | gh secret set BASE_PROJECT_TOKEN --repo codeforester/base-demo"* ]]
+}
+
+@test "basectl repo configure accepts existing project intake token secret" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+if [[ "$1" == "secret" && "$2" == "list" ]]; then
+    printf 'BASE_PROJECT_TOKEN\t2026-06-18T00:00:00Z\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Project Intake secret 'BASE_PROJECT_TOKEN' is not configured"* ]]
+    [[ "$output" == *"Configuration complete."* ]]
 }
 
 @test "basectl repo configure updates an existing Base ruleset" {

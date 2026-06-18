@@ -1186,6 +1186,9 @@ jobs:
           )"
           if [[ -z "$project_number" ]]; then
             echo "::error::GitHub Project '$BASE_PROJECT_TITLE' was not found for owner '$BASE_PROJECT_OWNER'."
+            echo "::error::If this Project exists, set BASE_PROJECT_TOKEN with user Project read/write access."
+            echo "::error::The default GitHub Actions token cannot access user-level Projects."
+            echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY"
             exit 1
           fi
 
@@ -1546,6 +1549,47 @@ base_repo_project_config_path() {
     fi
 }
 
+base_repo_project_intake_secret_fix_command() {
+    local repo="$1"
+
+    printf 'gh auth token | gh secret set BASE_PROJECT_TOKEN --repo %s\n' "$repo"
+}
+
+base_repo_secret_list_has_project_token() {
+    awk '
+        $1 == "BASE_PROJECT_TOKEN" { found = 1 }
+        END { exit found ? 0 : 1 }
+    '
+}
+
+base_repo_check_project_intake_secret() {
+    local dry_run="$1"
+    local output=""
+    local repo="$2"
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would verify GitHub Actions secret 'BASE_PROJECT_TOKEN' exists for '%s'.\n" "$repo"
+        return 0
+    fi
+
+    base_repo_require_gh || return 1
+    output="$(gh secret list --repo "$repo" 2>&1)" || {
+        log_warn "Unable to inspect GitHub Actions secrets for '$repo'."
+        [[ -z "$output" ]] || log_warn "$output"
+        log_warn "Project Intake may fail unless BASE_PROJECT_TOKEN is configured with user Project access."
+        log_warn "Fix: $(base_repo_project_intake_secret_fix_command "$repo")"
+        return 0
+    }
+
+    if printf '%s\n' "$output" | base_repo_secret_list_has_project_token; then
+        return 0
+    fi
+
+    log_warn "Project Intake secret 'BASE_PROJECT_TOKEN' is not configured for '$repo'."
+    log_warn "GitHub Actions default token cannot access user-level Projects."
+    log_warn "Fix: $(base_repo_project_intake_secret_fix_command "$repo")"
+}
+
 base_repo_configure_project_metadata() {
     local dry_run="$1"
     local config_path="$6"
@@ -1574,6 +1618,7 @@ base_repo_configure_project_metadata() {
                 "$copy_fields_from_project" \
                 "$project_title"
         fi
+        base_repo_check_project_intake_secret "$dry_run" "$repo"
         printf "[DRY-RUN] Would run: %s --project base base_github_projects project configure --project %s --owner %s --repo %s --schema %s" \
             "$wrapper" \
             "$(base_repo_pretty_arg "$project_title")" \
@@ -1598,6 +1643,7 @@ base_repo_configure_project_metadata() {
         log_error "Base Python wrapper '$wrapper' is missing or is not executable."
         return 1
     }
+    base_repo_check_project_intake_secret "$dry_run" "$repo" || return 1
 
     local command=(
         "$wrapper"

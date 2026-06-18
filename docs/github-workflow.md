@@ -83,7 +83,10 @@ Base-managed repositories. Set a `BASE_PROJECT_TOKEN` Actions secret with
 Project write access so the workflow can idempotently add the issue to the
 repo-named Project and set `Status`, `Priority`, `Size`, `Area`, and
 `Initiative` from the generated defaults on issue open, reopen, and close
-events. Use `basectl gh project` directly for lower-level Project inspection,
+events. `basectl repo configure` verifies that the secret exists when Project
+support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
+the workflow would otherwise fall back to the default Actions token.
+Use `basectl gh project` directly for lower-level Project inspection,
 schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,

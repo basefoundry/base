@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made `basectl repo configure` report missing `BASE_PROJECT_TOKEN` Project
+  intake secrets and improved generated workflow diagnostics when the Actions
+  token cannot see repo Projects.
 - Made Homebrew-managed `basectl update` preflight tap trust before upgrading
   Base when Homebrew requires trust for the tap-owned `base-bash-libs`
   dependency.

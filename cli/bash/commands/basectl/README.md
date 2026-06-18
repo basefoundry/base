@@ -98,8 +98,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `Area` and `Initiative` options are added from that file and `issue_defaults`
   are applied to missing Project item field values. `repo init` also seeds a
   Project intake workflow that can add externally-created issues to the
-  repo-named Project when `BASE_PROJECT_TOKEN` has Project write access. Use
-  `--no-project` to skip Project setup, `--project <title>` to override the
+  repo-named Project when `BASE_PROJECT_TOKEN` has Project write access.
+  `repo configure` reports when that secret is missing so the workflow does not
+  silently fall back to the default Actions token. Use `--no-project` to skip
+  Project setup, `--project <title>` to override the
   Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
   Use `--copy-project-fields-from <title>` during migration to copy missing
