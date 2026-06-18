@@ -309,6 +309,52 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
 }
 
+@test "base_init runs from external reusable libraries when bundled reusable dirs are absent" {
+    local external_dir="$TEST_TMPDIR/base-bash-libs/lib/bash"
+    local expected_dir
+
+    create_external_bash_libs "$external_dir"
+    printf '\nexternal_only_file_marker() { :; }\n' >>"$external_dir/file/lib_file.sh"
+    printf '\nexternal_only_git_marker() { :; }\n' >>"$external_dir/git/lib_git.sh"
+    rm -rf \
+        "$TEST_BASE_HOME/lib/bash/file" \
+        "$TEST_BASE_HOME/lib/bash/git" \
+        "$TEST_BASE_HOME/lib/bash/std"
+    expected_dir="$(cd "$external_dir" && pwd -P)"
+
+    run env \
+        -u BASE_HOME \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        bash -c '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
+            import_base_lib file/lib_file.sh
+            import_base_lib git/lib_git.sh
+            declare -F external_only_file_marker >/dev/null
+            declare -F external_only_git_marker >/dev/null
+            [[ ! -d "$BASE_BASH_LIB_DIR/std" ]]
+            [[ ! -d "$BASE_BASH_LIB_DIR/file" ]]
+            [[ ! -d "$BASE_BASH_LIB_DIR/git" ]]
+        ' bash "$TEST_BASE_HOME"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$expected_dir"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
+}
+
 @test "base_init import_base_lib falls back to bundled Base libraries" {
     local external_dir="$TEST_TMPDIR/partial-base-bash-libs/lib/bash"
 
