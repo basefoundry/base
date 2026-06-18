@@ -1,6 +1,7 @@
 # Shared helpers for basectl setup/check/profile BATS suites.
 
 load ../../../../../lib/bash/tests/test_helper.sh
+load ./bash_lib_readiness_helpers.bash
 bats_require_minimum_version 1.5.0
 
 setup() {

@@ -21,6 +21,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
   installs, and updated direct Base upgrade examples to use
   `brew upgrade --no-ask codeforester/base/base`.
 
+### Fixed
+
+- Fixed Bash library readiness BATS assertions so they pass both with a sibling
+  `base-bash-libs` checkout and with bundled fallback.
+
 ## [1.0.4] - 2026-06-17
 
 ### Changed
