@@ -21,6 +21,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
   Base when Homebrew requires trust for the tap-owned `base-bash-libs`
   dependency.
 
+### Fixed
+
+- Made Homebrew artifact dry-run tests independent of the developer machine's
+  installed or outdated Homebrew formulae.
+
 ## [1.0.5] - 2026-06-18
 
 ### Added

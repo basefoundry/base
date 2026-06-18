@@ -227,10 +227,15 @@ class ArtifactReconcileTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+            with (
+                mock.patch("base_setup.process.command_exists", return_value=False),
+                mock.patch("base_setup.process.run_check") as run_check,
+            ):
+                status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
+        run_check.assert_not_called()
 
 
 
@@ -256,11 +261,16 @@ class ArtifactReconcileTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+            with (
+                mock.patch("base_setup.process.command_exists", return_value=False),
+                mock.patch("base_setup.process.run_check") as run_check,
+            ):
+                status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install docker", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install colima", stderr)
+        run_check.assert_not_called()
 
 
 
