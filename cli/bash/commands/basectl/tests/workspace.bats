@@ -146,33 +146,41 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
-    [[ "$output" == *"--source <url-or-path>"* ]]
     [[ "$output" == *"--format <format>"* ]]
-    [[ "$output" == *"--include-optional"* ]]
-    [[ "$output" == *"--dry-run"* ]]
 
     run_basectl workspace check --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
+    [[ "$output" == *"--format <format>"* ]]
 
     run_basectl workspace doctor --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
+    [[ "$output" == *"--format <format>"* ]]
 
     run_basectl workspace clone --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+    [[ "$output" == *"basectl workspace clone [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--include-optional"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--format <format>"* ]]
 
     run_basectl workspace pull --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull> [options]"* ]]
+    [[ "$output" == *"basectl workspace pull [options]"* ]]
+    [[ "$output" == *"--source <url-or-path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--format <format>"* ]]
 }
 
 @test "basectl workspace rejects unknown subcommands" {

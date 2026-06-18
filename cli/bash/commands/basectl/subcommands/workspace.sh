@@ -3,26 +3,87 @@
 _base_workspace_subcommand_sourced=1
 readonly _base_workspace_subcommand_sourced
 
-base_workspace_subcommand_usage() {
+base_workspace_report_usage() {
     cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|clone|pull> [options]
+  basectl workspace <status|check|doctor> [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
-  --source <url-or-path>
-                      Canonical workspace manifest source for workspace pull.
-                      Overrides workspace.manifest_source from ~/.base.d/config.yaml.
   --format <format>   Output format for the workspace command: text or json.
-  --include-optional  Include optional workspace manifest repositories when cloning.
-  --dry-run           Show planned workspace clone or pull work without writing.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Show status, check, doctor, clone, or pull output for repositories in the workspace.
+Show status, check, or doctor output for repositories in the workspace.
 EOF
+}
+
+base_workspace_clone_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace clone [options]
+
+Options:
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --include-optional  Include optional workspace manifest repositories when cloning.
+  --dry-run           Show planned workspace clone work without writing.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Clone or validate expected repositories from a workspace manifest.
+EOF
+}
+
+base_workspace_pull_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace pull [options]
+
+Options:
+  --source <url-or-path>
+                      Canonical workspace manifest source for workspace pull.
+                      Overrides workspace.manifest_source from ~/.base.d/config.yaml.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --dry-run           Show planned workspace pull work without writing.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Fetch and validate a canonical workspace manifest before updating the local manifest.
+EOF
+}
+
+base_workspace_subcommand_usage() {
+    case "${1:-}" in
+        status|check|doctor)
+            base_workspace_report_usage
+            ;;
+        clone)
+            base_workspace_clone_usage
+            ;;
+        pull)
+            base_workspace_pull_usage
+            ;;
+        *)
+            cat <<'EOF'
+Usage:
+  basectl workspace <status|check|doctor|clone|pull> [options]
+
+Commands:
+  status   Show workspace status. Supports --format text|json.
+  check    Run workspace checks. Supports --format text|json.
+  doctor   Run workspace diagnostics. Supports --format text|json.
+  clone    Clone or validate expected repositories from a workspace manifest.
+  pull     Fetch and validate a canonical workspace manifest source.
+
+Run `basectl workspace <command> --help` for command-specific options.
+EOF
+            ;;
+    esac
 }
 
 base_workspace_usage_error() {
@@ -57,7 +118,7 @@ base_workspace_subcommand_main() {
                 shift
                 ;;
             -h|--help)
-                base_workspace_subcommand_usage
+                base_workspace_subcommand_usage "$workspace_command"
                 return 0
                 ;;
             *)
