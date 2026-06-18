@@ -84,7 +84,7 @@ class ProjectArguments:
     project_title: str | None = None
     owner: str | None = None
     repo: str | None = None
-    schema: str = "base-roadmap"
+    schema: str = "base-project"
     config_path: str | None = None
     copy_fields_from_project: str | None = None
     initiative_options: tuple[str, ...] = ()
@@ -93,7 +93,7 @@ class ProjectArguments:
     field_values: dict[str, str] | None = None
 
 
-BASE_ROADMAP_SCHEMA = ProjectSchema(
+BASE_PROJECT_SCHEMA = ProjectSchema(
     fields=(
         SelectFieldSpec(
             "Status",

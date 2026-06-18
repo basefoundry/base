@@ -161,7 +161,7 @@ _base_basectl_completion() {
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
                         '--project[GitHub Project title]:title:' \
                         '--project-owner[GitHub Project owner]:owner:' \
-                        '--project-schema[Project metadata schema]:schema:(base-roadmap)' \
+                        '--project-schema[Project metadata schema]:schema:(base-project)' \
                         '--initiative-option[Initiative option to seed]:name:' \
                         '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
@@ -182,7 +182,7 @@ _base_basectl_completion() {
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
                         '--project[GitHub Project title]:title:' \
                         '--project-owner[GitHub Project owner]:owner:' \
-                        '--project-schema[Project metadata schema]:schema:(base-roadmap)' \
+                        '--project-schema[Project metadata schema]:schema:(base-project)' \
                         '--initiative-option[Initiative option to seed]:name:' \
                         '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
@@ -326,7 +326,7 @@ _base_basectl_completion() {
                                 '2:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
-                                '--schema[Project metadata schema]:schema:(base-roadmap)' \
+                                '--schema[Project metadata schema]:schema:(base-project)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         configure)
@@ -334,7 +334,7 @@ _base_basectl_completion() {
                                 '2:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
-                                '--schema[Project metadata schema]:schema:(base-roadmap)' \
+                                '--schema[Project metadata schema]:schema:(base-project)' \
                                 '--initiative-option[Initiative option to seed]:name:' \
                                 '--repo[GitHub repository]:repo:' \
                                 '--dry-run[Print planned changes]' \

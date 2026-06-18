@@ -19,7 +19,7 @@ def test_parse_project_configure_arguments() -> None:
             "--repo",
             "codeforester/bankbuddy",
             "--schema",
-            "base-roadmap",
+            "base-project",
             "--initiative-option",
             "MVP",
             "--initiative-option",
@@ -33,7 +33,7 @@ def test_parse_project_configure_arguments() -> None:
     assert args.project_title == "BankBuddy Roadmap"
     assert args.owner == "codeforester"
     assert args.repo == "codeforester/bankbuddy"
-    assert args.schema == "base-roadmap"
+    assert args.schema == "base-project"
     assert args.initiative_options == ("MVP", "Imports")
     assert args.dry_run is True
 
@@ -220,7 +220,7 @@ def test_compare_schema_reports_missing_fields_wrong_types_and_missing_options()
         ),
     )
 
-    findings = engine.compare_schema(fields, engine.BASE_ROADMAP_SCHEMA)
+    findings = engine.compare_schema(fields, engine.BASE_PROJECT_SCHEMA)
 
     assert engine.Finding("error", "Status", "Status exists with type TEXT; expected SINGLE_SELECT.") in findings
     assert engine.Finding("missing", "Area", "Area field is missing.") in findings
@@ -241,13 +241,13 @@ def test_configuration_plan_preserves_extra_options_and_adds_required_options() 
     actions = engine.configuration_plan(
         project_exists=True,
         fields=(field,),
-        schema=engine.ProjectSchema(fields=(engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority"),)),
+        schema=engine.ProjectSchema(fields=(engine.BASE_PROJECT_SCHEMA.field_by_name("Priority"),)),
     )
 
     assert actions == (
         engine.ConfigureAction("update-field", "Priority", "Add missing options: P0, P2, P3."),
     )
-    updated = engine.merged_options(field, engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority"))
+    updated = engine.merged_options(field, engine.BASE_PROJECT_SCHEMA.field_by_name("Priority"))
     assert [option.name for option in updated] == ["P1", "Later", "P0", "P2", "P3"]
     assert updated[0].option_id == "priority-p1"
     assert updated[1].option_id == "manual-later"
@@ -409,31 +409,31 @@ def test_configure_command_copies_template_for_repo_project_and_backfills_issues
         field_id="status-field",
         name="Status",
         data_type="SINGLE_SELECT",
-        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Status").options,
+        options=engine.BASE_PROJECT_SCHEMA.field_by_name("Status").options,
     )
     priority_field = engine.ProjectField(
         field_id="priority-field",
         name="Priority",
         data_type="SINGLE_SELECT",
-        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority").options,
+        options=engine.BASE_PROJECT_SCHEMA.field_by_name("Priority").options,
     )
     area_field = engine.ProjectField(
         field_id="area-field",
         name="Area",
         data_type="SINGLE_SELECT",
-        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Area").options,
+        options=engine.BASE_PROJECT_SCHEMA.field_by_name("Area").options,
     )
     size_field = engine.ProjectField(
         field_id="size-field",
         name="Size",
         data_type="SINGLE_SELECT",
-        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Size").options,
+        options=engine.BASE_PROJECT_SCHEMA.field_by_name("Size").options,
     )
     initiative_field = engine.ProjectField(
         field_id="initiative-field",
         name="Initiative",
         data_type="SINGLE_SELECT",
-        options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Initiative").options,
+        options=engine.BASE_PROJECT_SCHEMA.field_by_name("Initiative").options,
     )
     calls: list[tuple[str, str]] = []
     linked: list[tuple[str, str]] = []
@@ -567,31 +567,31 @@ def test_configure_command_applies_issue_defaults_from_project_config(
             field_id="status-field",
             name="Status",
             data_type="SINGLE_SELECT",
-            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Status").options,
+            options=engine.BASE_PROJECT_SCHEMA.field_by_name("Status").options,
         ),
         engine.ProjectField(
             field_id="priority-field",
             name="Priority",
             data_type="SINGLE_SELECT",
-            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Priority").options,
+            options=engine.BASE_PROJECT_SCHEMA.field_by_name("Priority").options,
         ),
         engine.ProjectField(
             field_id="area-field",
             name="Area",
             data_type="SINGLE_SELECT",
-            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Area").options,
+            options=engine.BASE_PROJECT_SCHEMA.field_by_name("Area").options,
         ),
         engine.ProjectField(
             field_id="initiative-field",
             name="Initiative",
             data_type="SINGLE_SELECT",
-            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Initiative").options,
+            options=engine.BASE_PROJECT_SCHEMA.field_by_name("Initiative").options,
         ),
         engine.ProjectField(
             field_id="size-field",
             name="Size",
             data_type="SINGLE_SELECT",
-            options=engine.BASE_ROADMAP_SCHEMA.field_by_name("Size").options,
+            options=engine.BASE_PROJECT_SCHEMA.field_by_name("Size").options,
         ),
     )
     applied: list[tuple[str, dict[str, str]]] = []

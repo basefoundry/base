@@ -12,6 +12,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made Homebrew-managed `version: latest` profile and project artifacts report
   outdated installed packages during `check`/`doctor` and upgrade them during
   `setup`.
+- Renamed the Base-managed GitHub Project metadata schema from `base-roadmap`
+  to `base-project`.
 - Made `basectl repo configure` report missing `BASE_PROJECT_TOKEN` Project
   intake secrets and improved generated workflow diagnostics when the Actions
   token cannot see repo Projects.

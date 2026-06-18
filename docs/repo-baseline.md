@@ -110,7 +110,7 @@ default when a GitHub repository is known. If the Project is missing, Base copie
 `base-project-template`, links the new Project to the repository, and backfills
 the repository's existing issues into it. Pass `--no-project` to skip Project V2
 metadata, `--project <title>` to override the Project title, `--project-owner
-<login>` to override the owner, `--project-schema base-roadmap` to select the
+<login>` to override the owner, `--project-schema base-project` to select the
 schema, and repeat `--initiative-option <name>` to seed repository-specific
 Initiative values. If `.github/base-project.yml` exists, Base reads repo-owned
 `Area` and `Initiative` options from that file and adds missing Project options

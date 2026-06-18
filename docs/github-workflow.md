@@ -95,7 +95,7 @@ overwriting values already set there.
 
 ```bash
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
-basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap
+basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-project
 basectl repo configure ~/work/base --repo codeforester/base --copy-project-fields-from "Base Roadmap"
 basectl gh project issue set-fields 604 --repo codeforester/base --project "Base Roadmap" --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
 ```

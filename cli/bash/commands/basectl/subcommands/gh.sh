@@ -15,8 +15,8 @@ Usage:
   basectl gh pr checks [gh options...]
   basectl gh pr ready [gh options...]
   basectl gh pr merge [gh options...]
-  basectl gh project doctor --project <title> [--owner <login>] [--schema base-roadmap]
-  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--initiative-option <name>] [--dry-run]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
@@ -101,8 +101,8 @@ EOF
 base_gh_project_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh project doctor --project <title> [--owner <login>] [--schema base-roadmap]
-  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--initiative-option <name>] [--dry-run]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
 
 Purpose:
