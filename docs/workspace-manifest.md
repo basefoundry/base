@@ -142,7 +142,7 @@ them.
 `repos[].required` defaults to `true`. Optional repositories should appear in
 status reports without failing the whole workspace when they are absent.
 
-## Location
+## Location And Sources
 
 The v1 implementation supports an explicit local file:
 
@@ -154,15 +154,24 @@ The manifest should live outside individual project repositories unless a team
 intentionally keeps it in a dedicated workspace-config repository. A local file
 keeps the trust model simple: Base reads only a path the user named.
 
-URL support should be deferred. Fetching remote manifests creates questions
-about caching, trust, authentication, redirects, and offline behavior. A
-project-owned or team-owned installer can fetch a manifest and then hand Base a
-local path when that workflow is needed.
+Teams can also configure a canonical manifest source in
+`workspace.manifest_source` and refresh the local manifest with the explicit
+`basectl workspace pull` command. Pull supports local paths, `file://` URLs,
+and raw `https://` file URLs; cleartext `http://` sources are rejected by
+default. Remote source fetching is therefore an explicit manifest-file update,
+not passive workspace discovery, and it does not clone, pull, reset, or rewrite
+project repositories.
 
 ## Trust And Authentication
 
 Base should delegate repository authentication to Git, SSH, and the GitHub CLI.
 It should not store, read, print, or manage credentials.
+
+Remote workspace manifest sources should use HTTPS. Cleartext HTTP is rejected
+by default because a workspace manifest controls expected repositories and
+clone plans. If a future internal workflow proves that insecure transport is
+needed, it should use an explicit opt-in rather than making HTTP ordinary
+configuration.
 
 Workspace manifest validation may check that clone URLs are syntactically
 present. Network reachability, SSH key readiness, and GitHub authentication
