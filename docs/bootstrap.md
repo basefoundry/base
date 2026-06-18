@@ -108,6 +108,7 @@ Use Homebrew directly when Homebrew is already installed and Base should be
 managed like a normal formula:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base
 basectl setup
 basectl update-profile

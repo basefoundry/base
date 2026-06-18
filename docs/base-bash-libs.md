@@ -34,8 +34,13 @@ Users who want only the Bash libraries can install them from the existing
 Homebrew tap:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base-bash-libs
 ```
+
+The trust step is required on Homebrew versions that block formulae from
+non-official taps until the tap is trusted. It is safe to run again on machines
+that already trust `codeforester/base`.
 
 Standalone scripts can then source the stdlib from the installed prefix:
 

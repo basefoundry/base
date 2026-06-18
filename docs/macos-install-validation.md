@@ -85,6 +85,7 @@ Use this path when validating the consumer install experience.
 For a machine that already has Homebrew:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
