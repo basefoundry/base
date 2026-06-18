@@ -46,6 +46,7 @@ printf 'workspace:\n  root: %s/work\n' "$TEST_ROOT" > "$TEST_ROOT/home/.base.d/c
 Install the current released formula and prepare local state:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base
 env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
   HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -70,7 +71,7 @@ Upgrade through the tap path:
 
 ```bash
 brew update
-brew upgrade codeforester/base/base
+brew upgrade --no-ask codeforester/base/base
 ```
 
 For a pre-1.0.0 release candidate, use the candidate formula or tap branch that
@@ -108,7 +109,7 @@ shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 
 Accept the rehearsal only when:
 
-- `brew upgrade codeforester/base/base` exits zero.
+- `brew upgrade --no-ask codeforester/base/base` exits zero.
 - The upgrade uses a Homebrew bottle on supported macOS hosts, not a normal
   source build. If Homebrew falls back to source, record why before accepting
   the rehearsal.

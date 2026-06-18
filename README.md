@@ -50,6 +50,7 @@ normal Base install paths:
 
 ```bash
 # Homebrew-managed install
+brew trust codeforester/base
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
@@ -171,6 +172,7 @@ scripts that want Base's Bash helper conventions without adopting the Base
 workspace control plane:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base-bash-libs
 ```
 
@@ -961,11 +963,16 @@ See [First-Mile Bootstrap](docs/bootstrap.md) for the full bootstrap contract.
 Base can be installed through its Homebrew tap:
 
 ```bash
+brew trust codeforester/base
 brew install codeforester/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
 ```
+
+The trust step is required on Homebrew versions that block formulae from
+non-official taps until the tap is trusted. It is safe to run again on machines
+that already trust `codeforester/base`.
 
 Homebrew installs the Base files. `basectl setup` still prepares the local Base
 runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
@@ -973,7 +980,7 @@ your shell startup path. When installed through Homebrew, `basectl update` for
 Base hands off to Homebrew and runs setup afterward. This is equivalent to:
 
 ```bash
-brew upgrade codeforester/base/base
+brew upgrade --no-ask codeforester/base/base
 ```
 
 For a Base development machine, prefer the source checkout as the active
@@ -1145,6 +1152,9 @@ In a Homebrew-managed install, the Base update path remains Base-only:
 `brew upgrade codeforester/base/base`, and then runs `basectl setup base` with
 inherited Base environment variables cleared. `basectl update --dry-run` prints
 the Git or Homebrew handoff it would perform without changing files or packages.
+For manual Homebrew upgrades outside `basectl update`, prefer
+`brew upgrade --no-ask codeforester/base/base` so Homebrew skips the preview
+prompt path on already-current installs.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,

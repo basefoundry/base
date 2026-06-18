@@ -147,9 +147,10 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
 
    ```bash
    brew update
+   brew trust codeforester/base
    brew install --force-bottle codeforester/base/base
    brew test codeforester/base
-   brew upgrade codeforester/base/base
+   brew upgrade --no-ask codeforester/base/base
    ```
 
    Use `brew reinstall --force-bottle codeforester/base/base` when Base is
@@ -158,8 +159,9 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
    [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) against a
    release candidate or equivalent test formula. Record the exact commands,
    host facts, pre-upgrade state, post-upgrade checks, and any follow-up issues.
-   Do not close the rehearsal issue until `brew upgrade codeforester/base/base`
-   and the post-upgrade Base project checks pass on a qualified host.
+   Do not close the rehearsal issue until
+   `brew upgrade --no-ask codeforester/base/base` and the post-upgrade Base
+   project checks pass on a qualified host.
 
 ## Cleanup
 

@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Documented Homebrew tap trust for Base and standalone `base-bash-libs`
+  installs, and updated direct Base upgrade examples to use
+  `brew upgrade --no-ask codeforester/base/base`.
+
 ## [1.0.4] - 2026-06-17
 
 ### Changed
