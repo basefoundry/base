@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.0.4` is the current release. The repo-root `VERSION` file is updated
+Base `1.0.5` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
