@@ -68,7 +68,9 @@ source "$HOME/work/base-bash-libs/lib/bash/std/lib_std.sh"
 ## How Base Resolves Libraries
 
 When `basectl` loads `base_init.sh`, Base resolves `BASE_BASH_LIBS_DIR` before
-it sources the Bash stdlib. The resolution order is:
+it sources the Bash stdlib. Base also exports `BASE_BASH_LIBS_SOURCE` so
+diagnostics can report which path won: `explicit`, `sibling`, `homebrew`, or
+`bundled`. The resolution order is:
 
 1. An explicit `BASE_BASH_LIBS_DIR` provided before runtime bootstrap.
 2. A sibling source checkout at `$BASE_HOME/../base-bash-libs/lib/bash`.
@@ -105,6 +107,9 @@ The current Base contract is external-first, bundled-fallback:
 - Base can consume `base-bash-libs` from Homebrew when the formula is installed.
 - Base still works without the external package because the bundled reusable
   libraries remain in `codeforester/base`.
+- `basectl check` and `basectl doctor` emit `BASE-D007` as a warning when Base
+  is still using the bundled fallback, and as ok when the external source is
+  explicit, sibling, or Homebrew.
 
 The bundled reusable libraries should not be removed from Base until the
 external path is normal, validated, and diagnosable for both Homebrew users and
@@ -116,7 +121,8 @@ source checkout contributors. The practical removal gate is:
 3. Source checkout setup documents or installs the sibling `base-bash-libs`
    checkout clearly enough that raw `git clone` development is not fragile.
 4. Base setup, check, or doctor paths report missing external Bash libraries
-   clearly where that state can affect users.
+   clearly where that state can affect users. `BASE-D007` now covers the
+   check and doctor side of this gate.
 5. CI validates Base without relying on the bundled reusable directories.
 6. A Base release cycle has passed with the external package as the normal path
    and without needing the fallback for ordinary installs.

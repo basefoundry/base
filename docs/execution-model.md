@@ -225,7 +225,8 @@ has decided what should run.
 `base_init.sh` establishes the Base runtime contract, including:
 
 - exported Base environment variables such as `BASE_HOME`, `BASE_BIN_DIR`,
-  `BASE_BASH_COMMANDS_DIR`, `BASE_BASH_LIB_DIR`, and `BASE_BASH_LIBS_DIR`
+  `BASE_BASH_COMMANDS_DIR`, `BASE_BASH_LIB_DIR`, `BASE_BASH_LIBS_DIR`, and
+  `BASE_BASH_LIBS_SOURCE`
 - OS and host metadata such as `BASE_OS` and `BASE_HOST`
 - the reusable Bash standard library, resolved from `base-bash-libs` when
   available and from Base's bundled fallback otherwise

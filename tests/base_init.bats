@@ -51,6 +51,7 @@ run_base_init_script() {
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
         -u BASE_BASH_LIBS_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -70,6 +71,7 @@ run_base_init_script() {
         printf "BASE_LIB_DIR=%s\n" "$BASE_LIB_DIR"
         printf "BASE_BASH_LIB_DIR=%s\n" "$BASE_BASH_LIB_DIR"
         printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+        printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
         printf "BASE_SHELL_DIR=%s\n" "$BASE_SHELL_DIR"
     '
 
@@ -82,6 +84,7 @@ run_base_init_script() {
     [[ "$output" == *"BASE_LIB_DIR=$TEST_BASE_HOME/lib"* ]]
     [[ "$output" == *"BASE_BASH_LIB_DIR=$TEST_BASE_HOME/lib/bash"* ]]
     [[ "$output" == *"BASE_BASH_LIBS_DIR=$TEST_BASE_HOME/lib/bash"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=bundled"* ]]
     [[ "$output" == *"BASE_SHELL_DIR=$TEST_BASE_HOME/lib/shell"* ]]
 }
 
@@ -102,6 +105,7 @@ run_base_init_script() {
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
         -u BASE_BASH_LIBS_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -148,6 +152,7 @@ run_base_init_script() {
             BASE_LIB_DIR \
             BASE_BASH_LIB_DIR \
             BASE_BASH_LIBS_DIR \
+            BASE_BASH_LIBS_SOURCE \
             BASE_SHELL_DIR \
             BASE_OS \
             BASE_HOST \
@@ -166,6 +171,7 @@ run_base_init_script() {
         BASE_LIB_DIR \
         BASE_BASH_LIB_DIR \
         BASE_BASH_LIBS_DIR \
+        BASE_BASH_LIBS_SOURCE \
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_HOST \
@@ -201,6 +207,7 @@ run_base_init_script() {
         BASE_LIB_DIR \
         BASE_BASH_LIB_DIR \
         BASE_BASH_LIBS_DIR \
+        BASE_BASH_LIBS_SOURCE \
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_HOST \
@@ -246,6 +253,7 @@ run_base_init_script() {
         -u BASE_BASH_COMMANDS_DIR \
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -255,12 +263,50 @@ run_base_init_script() {
             base_home="$1"
             source "$base_home/base_init.sh"
             printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
             import_base_lib file/lib_file.sh
             declare -F external_file_marker >/dev/null
         ' bash "$TEST_BASE_HOME"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_BASH_LIBS_DIR=$external_dir"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=explicit"* ]]
+}
+
+@test "base_init resolves sibling base-bash-libs checkout before bundled fallback" {
+    local external_dir="$TEST_TMPDIR/base-bash-libs/lib/bash"
+    local expected_dir
+
+    create_external_bash_libs "$external_dir"
+    printf '\nsibling_file_marker() { :; }\n' >>"$external_dir/file/lib_file.sh"
+    expected_dir="$(cd "$external_dir" && pwd -P)"
+
+    run env \
+        -u BASE_HOME \
+        -u BASE_BIN_DIR \
+        -u BASE_CLI_DIR \
+        -u BASE_BASH_DIR \
+        -u BASE_BASH_COMMANDS_DIR \
+        -u BASE_LIB_DIR \
+        -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
+        -u BASE_SHELL_DIR \
+        -u BASE_OS \
+        -u BASE_HOST \
+        -u BASE_SHELL \
+        bash -c '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
+            import_base_lib file/lib_file.sh
+            declare -F sibling_file_marker >/dev/null
+        ' bash "$TEST_BASE_HOME"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$expected_dir"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
 }
 
 @test "base_init import_base_lib falls back to bundled Base libraries" {
@@ -277,6 +323,7 @@ run_base_init_script() {
         -u BASE_BASH_COMMANDS_DIR \
         -u BASE_LIB_DIR \
         -u BASE_BASH_LIB_DIR \
+        -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_HOST \
@@ -320,10 +367,12 @@ run_base_init_script() {
         bash -c '
             source "$BASE_HOME/base_init.sh"
             printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
+            printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
             import_base_lib file/lib_file.sh
             declare -F homebrew_file_marker >/dev/null
         '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_BASH_LIBS_DIR=$external_dir"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=homebrew"* ]]
 }

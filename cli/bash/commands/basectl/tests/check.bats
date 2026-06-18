@@ -332,8 +332,11 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "ok"'* ]]
+    [[ "$output" == *'"status": "warn"'* ]]
     [[ "$output" == *'"id":"BASE-D001","status":"ok","name":"homebrew"'* ]]
+    [[ "$output" == *'"id":"BASE-D007","status":"warn","name":"base_bash_libraries"'* ]]
+    [[ "$output" == *"Base is using bundled reusable Bash libraries"* ]]
+    [[ "$output" == *"Clone codeforester/base-bash-libs next to Base"* ]]
     [[ "$output" != *'"name":"bats"'* ]]
     [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
@@ -348,7 +351,7 @@ load ./setup_helpers.bash
 }
 
 @test "basectl check --format json preserves finding order while base probes overlap" {
-    local click_line homebrew_line python_line pyyaml_line venv_line xcode_line
+    local bash_libs_line click_line homebrew_line python_line pyyaml_line venv_line xcode_line
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_brew_stub
@@ -375,14 +378,16 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "ok"'* ]]
+    [[ "$output" == *'"status": "warn"'* ]]
     homebrew_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D001","status":"ok","name":"homebrew"' | cut -d: -f1)"
+    bash_libs_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D007","status":"warn","name":"base_bash_libraries"' | cut -d: -f1)"
     xcode_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D002","status":"ok","name":"xcode_command_line_tools"' | cut -d: -f1)"
     python_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D003","status":"ok","name":"python"' | cut -d: -f1)"
     venv_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D004","status":"ok","name":"base_virtualenv"' | cut -d: -f1)"
     pyyaml_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D005","status":"ok","name":"pyyaml"' | cut -d: -f1)"
     click_line="$(printf '%s\n' "$output" | grep -n '"id":"BASE-D006","status":"ok","name":"click"' | cut -d: -f1)"
-    [ "$homebrew_line" -lt "$xcode_line" ]
+    [ "$homebrew_line" -lt "$bash_libs_line" ]
+    [ "$bash_libs_line" -lt "$xcode_line" ]
     [ "$xcode_line" -lt "$python_line" ]
     [ "$python_line" -lt "$venv_line" ]
     [ "$venv_line" -lt "$pyyaml_line" ]
@@ -488,7 +493,7 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *'"schema_version": 1'* ]]
-    [[ "$output" == *'"status": "ok"'* ]]
+    [[ "$output" == *'"status": "warn"'* ]]
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [[ "$output" == *'"schema_version":1,"status":"ok","project":"demo","checks"'* ]]

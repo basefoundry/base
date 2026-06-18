@@ -65,20 +65,18 @@ base_doctor_print_collected_check_results() {
 
     count="${#_BASE_SETUP_CHECK_NAMES[@]}"
     for ((i = 0; i < count; i++)); do
-        fix="${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
-        if [[ "${_BASE_SETUP_CHECK_OK[$i]}" == true ]]; then
-            status="ok"
+        status="$(setup_check_result_status "$i")"
+        fix="$(setup_check_result_recovery "$i")"
+        if [[ "$status" == ok && -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
+            log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
+        fi
+        if [[ "$status" == ok ]]; then
             fix=""
-            if [[ -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
-                log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
-            fi
-        else
-            status="error"
         fi
 
         base_doctor_print_finding \
             "$status" \
-            "$(base_doctor_base_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
+            "$(setup_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
             "${_BASE_SETUP_CHECK_NAMES[$i]}" \
             "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
             "$fix"
@@ -168,6 +166,24 @@ base_doctor_check_xcode() {
         "Xcode Command Line Tools are not installed." \
         "basectl setup"
     return 1
+}
+
+base_doctor_check_base_bash_libraries() {
+    local fix=""
+    local status
+
+    status="$(setup_base_bash_libraries_status)"
+    if [[ "$status" != ok ]]; then
+        fix="$(setup_recovery_base_bash_libraries)"
+    fi
+
+    base_doctor_print_finding \
+        "$status" \
+        "BASE-D007" \
+        "Base Bash libraries" \
+        "$(setup_base_bash_libraries_check_message)" \
+        "$fix"
+    return 0
 }
 
 base_doctor_check_python() {
@@ -394,6 +410,7 @@ base_doctor_subcommand_main() {
     fi
 
     base_doctor_check_homebrew || errors=$((errors + 1))
+    base_doctor_check_base_bash_libraries
     base_doctor_check_xcode || errors=$((errors + 1))
     base_doctor_check_python || errors=$((errors + 1))
     base_doctor_check_virtualenv || errors=$((errors + 1))

@@ -1164,8 +1164,8 @@ a second `.bashrc` with arbitrary setup logic. See
 contract and mutability policy.
 
 `~/.baserc` must not set Base-owned runtime or profile variables such as
-`BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_BASH_LIBS_DIR`, `BASE_OS`,
-`BASE_SHELL`,
+`BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_BASH_LIBS_DIR`,
+`BASE_BASH_LIBS_SOURCE`, `BASE_OS`, `BASE_SHELL`,
 `BASE_PLATFORM_TOOLS_HOME`, `BASE_PLATFORM_TOOLS_BIN_DIR`,
 `BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
 `BASE_ENABLE_ZSH_DEFAULTS`. Base startup snippets reject and restore those

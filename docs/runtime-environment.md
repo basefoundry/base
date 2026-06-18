@@ -50,6 +50,7 @@ boundary.
 `~/.baserc` may set user knobs such as `BASE_DEBUG`. It must not set Base-owned
 runtime or profile variables such as `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`,
 `BASE_OS`, `BASE_HOST`, `BASE_SHELL`, `BASE_BASH_LIBS_DIR`,
+`BASE_BASH_LIBS_SOURCE`,
 `BASE_PLATFORM_TOOLS_HOME`, `BASE_PLATFORM_TOOLS_BIN_DIR`, `BASE_PROFILE_VERSION`,
 `BASE_ENABLE_BASH_DEFAULTS`, or `BASE_ENABLE_ZSH_DEFAULTS`. It must also not
 set command or project metadata such as `BASE_BASH_COMMAND_SCRIPT`,
@@ -70,14 +71,16 @@ explicit Bash script, or starts a Base runtime Bash shell.
 | `BASE_LIB_DIR` | Base | `$BASE_HOME/lib`. Root for shared Base libraries. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_BASH_LIB_DIR` | Base | `$BASE_HOME/lib/bash`. Base's bundled Bash library root, including Base-specific runtime and version helpers. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_BASH_LIBS_DIR` | Base | Resolved reusable Bash library root used for stdlib loading and preferred by `import_base_lib`. It can point at an explicit `BASE_BASH_LIBS_DIR`, a sibling `base-bash-libs` checkout, a Homebrew `base-bash-libs` package next to Homebrew Base, or the bundled `$BASE_BASH_LIB_DIR` fallback. | May be provided only before runtime bootstrap to force a compatible reusable library root. Readonly after `base_init.sh`. |
+| `BASE_BASH_LIBS_SOURCE` | Base | Source category for `BASE_BASH_LIBS_DIR`: `explicit`, `sibling`, `homebrew`, or `bundled`. `basectl check` and `basectl doctor` use this to report whether Base is consuming external reusable Bash libraries or the bundled fallback. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_SHELL_DIR` | Base | `$BASE_HOME/lib/shell`. Root for managed shell startup snippets and completions. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_OS` | Base | Normalized host OS metadata such as `macos` or `linux`. Used by runtime decisions and diagnostics. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_HOST` | Base | Short host name from `hostname -s`. Used by runtime metadata and prompts. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_SHELL` | Base | Legacy runtime marker. Plain `base_init.sh` defaults it to `bash`; Base runtime shells seed it as `1` before `base_init.sh`. New code should avoid adding new meanings to it. | Do not set in user config. Readonly after `base_init.sh`. |
 
-`BASE_BASH_LIBS_DIR` is part of the Bash library extraction bridge. For the full
-resolution order, standalone install path, fallback behavior, and bundled
-library removal gate, see [Base Bash Libraries](base-bash-libs.md).
+`BASE_BASH_LIBS_DIR` and `BASE_BASH_LIBS_SOURCE` are part of the Bash library
+extraction bridge. For the full resolution order, standalone install path,
+fallback behavior, and bundled library removal gate, see
+[Base Bash Libraries](base-bash-libs.md).
 
 ## CI Runtime Variables
 
