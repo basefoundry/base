@@ -112,7 +112,7 @@ base_init_bash_libs_dir_is_usable() {
     [[ -f "$candidate/std/lib_std.sh" ]]
 }
 
-base_init_resolve_bash_libs_dir() {
+base_init_set_bash_libs_contract() {
     local candidate
     local homebrew_prefix
     local explicit_dir="${BASE_BASH_LIBS_DIR:-}"
@@ -122,13 +122,15 @@ base_init_resolve_bash_libs_dir() {
             base_init_error "BASE_BASH_LIBS_DIR '$explicit_dir' does not contain std/lib_std.sh."
             return 1
         }
-        (cd -L -- "$explicit_dir" && pwd -L)
+        BASE_BASH_LIBS_DIR="$(cd -L -- "$explicit_dir" && pwd -L)" || return 1
+        BASE_BASH_LIBS_SOURCE=explicit
         return $?
     fi
 
     candidate="$BASE_HOME/../base-bash-libs/lib/bash"
     if base_init_bash_libs_dir_is_usable "$candidate"; then
-        (cd -L -- "$candidate" && pwd -L)
+        BASE_BASH_LIBS_DIR="$(cd -L -- "$candidate" && pwd -L)" || return 1
+        BASE_BASH_LIBS_SOURCE=sibling
         return $?
     fi
 
@@ -136,12 +138,14 @@ base_init_resolve_bash_libs_dir() {
     if [[ -n "$homebrew_prefix" ]]; then
         candidate="$homebrew_prefix/opt/base-bash-libs/libexec/lib/bash"
         if base_init_bash_libs_dir_is_usable "$candidate"; then
-            (cd -L -- "$candidate" && pwd -L)
+            BASE_BASH_LIBS_DIR="$(cd -L -- "$candidate" && pwd -L)" || return 1
+            BASE_BASH_LIBS_SOURCE=homebrew
             return $?
         fi
     fi
 
-    printf '%s\n' "$BASE_BASH_LIB_DIR"
+    BASE_BASH_LIBS_DIR="$BASE_BASH_LIB_DIR"
+    BASE_BASH_LIBS_SOURCE=bundled
 }
 
 base_init_export_contract() {
@@ -183,15 +187,15 @@ base_init_export_contract() {
     BASE_BASH_COMMANDS_DIR="$BASE_BASH_DIR/commands"
     BASE_LIB_DIR="$BASE_HOME/lib"
     BASE_BASH_LIB_DIR="$BASE_LIB_DIR/bash"
-    BASE_BASH_LIBS_DIR="$(base_init_resolve_bash_libs_dir)" || return 1
+    base_init_set_bash_libs_contract || return 1
     BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
     BASE_OS="$base_os"
     BASE_HOST="$base_host"
     BASE_SHELL="${BASE_SHELL:-bash}"
     export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
     readonly BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
 }
 
 base_init_source_stdlib() {

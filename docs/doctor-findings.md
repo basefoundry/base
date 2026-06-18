@@ -80,6 +80,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-D004` | Base virtual environment integrity |
 | `BASE-D005` | Base `PyYAML` package availability |
 | `BASE-D006` | Base `click` package availability |
+| `BASE-D007` | Base reusable Bash library source readiness |
 | `BASE-D101` | Unsupported prerequisite profile manager |
 | `BASE-D102` | Unsupported prerequisite profile version |
 | `BASE-D103` | Homebrew unavailable for prerequisite profile checks |

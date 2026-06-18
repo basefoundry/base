@@ -375,6 +375,10 @@ setup_recovery_base_python_package() {
     printf "%s\n" "Run 'basectl setup' to install Base Python bootstrap packages."
 }
 
+setup_recovery_base_bash_libraries() {
+    printf "%s\n" "Clone codeforester/base-bash-libs next to Base, or install it with 'brew install codeforester/base/base-bash-libs'."
+}
+
 setup_recovery_ci_python() {
     printf "%s\n" "Install Python 3.13 or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl ci'."
 }
@@ -729,6 +733,53 @@ setup_base_python_package_check_message() {
     else
         printf "Python package '%s' is not installed in the Base virtual environment.\n" "$package"
     fi
+}
+
+setup_base_bash_libraries_status() {
+    case "${BASE_BASH_LIBS_SOURCE:-unknown}" in
+        explicit|sibling|homebrew)
+            printf '%s\n' "ok"
+            ;;
+        bundled|unknown|*)
+            printf '%s\n' "warn"
+            ;;
+    esac
+}
+
+setup_base_bash_libraries_check_message() {
+    case "${BASE_BASH_LIBS_SOURCE:-unknown}" in
+        explicit)
+            printf "Base is using reusable Bash libraries from explicit BASE_BASH_LIBS_DIR '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
+            ;;
+        sibling)
+            printf "Base is using reusable Bash libraries from sibling base-bash-libs checkout '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
+            ;;
+        homebrew)
+            printf "Base is using reusable Bash libraries from Homebrew package '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
+            ;;
+        bundled)
+            printf "Base is using bundled reusable Bash libraries from '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
+            ;;
+        *)
+            printf "Base Bash library source could not be determined.\n"
+            ;;
+    esac
+}
+
+setup_add_base_bash_libraries_check_result() {
+    local recovery=""
+    local status
+
+    status="$(setup_base_bash_libraries_status)"
+    if [[ "$status" != ok ]]; then
+        recovery="$(setup_recovery_base_bash_libraries)"
+    fi
+
+    setup_add_check_result_with_status \
+        "base_bash_libraries" \
+        "$status" \
+        "$(setup_base_bash_libraries_check_message)" \
+        "$recovery"
 }
 
 setup_pythonpath() {
@@ -1600,6 +1651,7 @@ setup_collect_macos_base_check_results() {
         fatal_error "One or more Base check probes failed before writing results."
 
     setup_read_homebrew_check_result_file "$tmpdir/homebrew" "$refresh_brew_failure_mode" || missing=1
+    setup_add_base_bash_libraries_check_result
     setup_read_check_result_file "$tmpdir/xcode" || missing=1
     setup_read_check_result_file "$tmpdir/python" || missing=1
     setup_read_check_result_file "$tmpdir/base_virtualenv" || missing=1
@@ -1879,6 +1931,9 @@ setup_base_check_finding_id() {
             ;;
         click)
             printf '%s\n' "BASE-D006"
+            ;;
+        base_bash_libraries)
+            printf '%s\n' "BASE-D007"
             ;;
         *)
             printf '%s\n' "BASE-D000"
