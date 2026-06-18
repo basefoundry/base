@@ -184,7 +184,8 @@ The initial adapter set is the current behavior:
 
 - `pip` installs into `target: project-venv`;
 - `homebrew` installs `target: system` artifacts with `version_policy:
-  latest-only`.
+  latest-only`, reports installed-but-outdated packages during check/doctor, and
+  upgrades outdated packages during setup.
 
 Adding a new manager should require a Python adapter and tests. Registry data
 alone should not be enough to execute new behavior.

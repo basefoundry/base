@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made Homebrew-managed `version: latest` profile and project artifacts report
+  outdated installed packages during `check`/`doctor` and upgrade them during
+  `setup`.
 - Made `basectl repo configure` report missing `BASE_PROJECT_TOKEN` Project
   intake secrets and improved generated workflow diagnostics when the Actions
   token cannot see repo Projects.

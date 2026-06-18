@@ -419,10 +419,11 @@ The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
 It should stay small and Base-aware. `python-package` artifacts are pass-through
 PyPI package names and install into the project virtual environment at
 `~/.base.d/<project>/.venv`. Homebrew-managed `tool` artifacts currently support
-`version: latest`, but ordinary Homebrew tools should move toward Brewfile
-delegation. Pinned Homebrew versions fail clearly until Base grows explicit
-versioned tool support. The next registry shape is captured in
-[Artifact Adapter Registry](docs/artifact-adapter-registry.md).
+`version: latest`; `basectl check` and `basectl doctor` treat an installed but
+outdated Homebrew package as unhealthy, and `basectl setup` upgrades it. Ordinary
+Homebrew tools should move toward Brewfile delegation. Pinned Homebrew versions
+fail clearly until Base grows explicit versioned tool support. The next registry
+shape is captured in [Artifact Adapter Registry](docs/artifact-adapter-registry.md).
 
 The optional structured `python:` manifest section supports uv-managed Python
 projects:
