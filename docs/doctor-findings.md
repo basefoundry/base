@@ -84,7 +84,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-D101` | Unsupported prerequisite profile manager |
 | `BASE-D102` | Unsupported prerequisite profile version |
 | `BASE-D103` | Homebrew unavailable for prerequisite profile checks |
-| `BASE-D104` | Prerequisite profile Homebrew package status |
+| `BASE-D104` | Prerequisite profile Homebrew package presence and freshness |
 | `BASE-D105` | GitHub CLI availability |
 | `BASE-D106` | GitHub CLI authentication status |
 | `BASE-D107` | AI developer tool availability and version status |
@@ -104,7 +104,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P030` | Unsupported artifact manager |
 | `BASE-P031` | Unsupported Homebrew artifact version |
 | `BASE-P032` | Homebrew unavailable for artifact checks |
-| `BASE-P033` | Homebrew artifact package status |
+| `BASE-P033` | Homebrew artifact package presence and freshness |
 | `BASE-P040` | Python package artifact status in the project virtual environment |
 | `BASE-P050` | Project virtual environment readiness |
 | `BASE-P060` | Project demo declaration |

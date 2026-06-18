@@ -8,7 +8,7 @@ from pathlib import Path
 
 import base_cli
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
-from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
+from base_setup.artifacts import homebrew_package_outdated, reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
 from base_setup.process import command_exists, dry_run_command, run_check, run_command
@@ -543,12 +543,22 @@ def check_homebrew_artifact(
             finding_id="BASE-D103",
         )
 
-    ok = run_check(["brew", "list", definition.package])
-    if ok:
+    if run_check(["brew", "list", definition.package]):
+        if homebrew_package_outdated(definition.package):
+            return DevCheck(
+                name=artifact.name,
+                ok=False,
+                message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
+                fix=profile_setup_fix(profile),
+                finding_id="BASE-D104",
+            )
         return DevCheck(
             name=artifact.name,
             ok=True,
-            message=f"Artifact '{artifact.name}' is installed via Homebrew package '{definition.package}'.",
+            message=(
+                f"Artifact '{artifact.name}' is installed via Homebrew package "
+                f"'{definition.package}' and is current."
+            ),
             fix="",
             finding_id="BASE-D104",
         )

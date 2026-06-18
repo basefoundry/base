@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import importlib.util
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -285,6 +286,70 @@ class ArtifactReconcileTests(unittest.TestCase):
 
         run_command.assert_called_once_with(ctx, ["brew", "install", "terraform"])
 
+
+    def test_homebrew_artifact_latest_dry_run_upgrades_outdated_package(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+        outdated = subprocess.CompletedProcess(
+            ["brew", "outdated", "terraform"],
+            0,
+            stdout="terraform\n",
+            stderr="",
+        )
+
+        with (
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch("base_setup.process.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", return_value=outdated),
+        ):
+            artifacts.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=True)
+
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn("[DRY-RUN] Would run: brew upgrade terraform", info_messages)
+
+    def test_homebrew_artifact_latest_upgrades_outdated_package(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+        outdated = subprocess.CompletedProcess(
+            ["brew", "outdated", "terraform"],
+            0,
+            stdout="terraform\n",
+            stderr="",
+        )
+
+        with (
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch("base_setup.process.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", return_value=outdated),
+            mock.patch("base_setup.process.run_command") as run_command,
+        ):
+            artifacts.reconcile_homebrew_artifact(ctx, definition, "latest", dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["brew", "upgrade", "terraform"])
+
+    def test_homebrew_package_outdated_disables_homebrew_auto_update(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["brew", "outdated", "terraform"],
+            0,
+            stdout="terraform\n",
+            stderr="",
+        )
+
+        with (
+            mock.patch.dict(os.environ, {"HOMEBREW_NO_AUTO_UPDATE": "0"}),
+            mock.patch("base_setup.process.run_capture", return_value=completed) as run_capture,
+        ):
+            self.assertTrue(artifacts.homebrew_package_outdated("terraform"))
+            self.assertEqual(os.environ["HOMEBREW_NO_AUTO_UPDATE"], "0")
+
+        run_capture.assert_called_once()
+        self.assertEqual(
+            run_capture.call_args.args[0],
+            ["brew", "outdated", "terraform"],
+        )
+        self.assertEqual(run_capture.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
 
 
     def test_python_artifact_honors_project_venv_dir_override(self) -> None:

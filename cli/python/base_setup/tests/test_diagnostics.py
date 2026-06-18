@@ -5,6 +5,7 @@ import io
 import json
 import os
 import socket
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -73,6 +74,29 @@ class ProjectCheckTests(unittest.TestCase):
 
         self.assertFalse(check.ok)
         self.assertIn("not installed via Homebrew package 'terraform'", check.message)
+        self.assertEqual(check.fix, "basectl setup demo")
+
+    def test_check_homebrew_artifact_reports_outdated_package(self) -> None:
+        artifact = ArtifactRequest(artifact_type="tool", name="terraform", version="latest")
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+
+        outdated = subprocess.CompletedProcess(
+            ["brew", "outdated", "terraform"],
+            0,
+            stdout="terraform\n",
+            stderr="",
+        )
+        with (
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch("base_setup.process.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", return_value=outdated),
+        ):
+            check = artifacts.check_homebrew_artifact("demo", artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.finding_id, "BASE-P033")
+        self.assertIn("outdated via Homebrew package 'terraform'", check.message)
         self.assertEqual(check.fix, "basectl setup demo")
 
 

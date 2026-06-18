@@ -47,7 +47,9 @@ artifacts:
   #   ~/.base.d/<project>/.venv
   #
   # tool artifacts are currently managed through Homebrew. For Homebrew-managed
-  # artifacts, Base currently supports version: latest only.
+  # artifacts, Base currently supports version: latest only. Base reports
+  # installed-but-outdated Homebrew packages during check/doctor and upgrades
+  # them during setup.
   #
   # Example:
   #   - type: tool

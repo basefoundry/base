@@ -60,10 +60,15 @@ def run_check(command: list[str]) -> bool:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
-def run_capture(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def run_capture(
+    command: list[str],
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,

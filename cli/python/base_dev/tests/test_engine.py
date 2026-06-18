@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import runpy
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -116,7 +117,8 @@ class DevManifestTests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_profile_sre_uses_sre_manifest(self) -> None:
-        status, _stdout, stderr = run_engine(["setup", "--profile", "sre", "--dry-run"])
+        with mock.patch("base_setup.process.command_exists", return_value=False):
+            status, _stdout, stderr = run_engine(["setup", "--profile", "sre", "--dry-run"])
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install kubernetes-cli", stderr)
@@ -172,7 +174,8 @@ class DevManifestTests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_default_dry_run_does_not_include_ai_remote_installers(self) -> None:
-        status, _stdout, stderr = run_engine(["setup", "--dry-run"])
+        with mock.patch("base_setup.process.command_exists", return_value=False):
+            status, _stdout, stderr = run_engine(["setup", "--dry-run"])
 
         self.assertEqual(status, 0)
         self.assertNotIn("chatgpt.com/codex/install.sh", stderr)
@@ -378,6 +381,13 @@ class DevManifestTests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_invalid_github_auth_when_gh_is_installed(self) -> None:
+        current = subprocess.CompletedProcess(
+            ["brew", "outdated", "gh"],
+            0,
+            stdout="",
+            stderr="",
+        )
+
         def fake_run_check(command: list[str]) -> bool:
             if command == ["brew", "list", "bats-core"]:
                 return True
@@ -392,6 +402,7 @@ class DevManifestTests(unittest.TestCase):
         with (
             mock.patch("base_dev.engine.command_exists", return_value=True),
             mock.patch("base_dev.engine.run_check", side_effect=fake_run_check),
+            mock.patch("base_setup.process.run_capture", return_value=current),
         ):
             status, stdout, stderr = run_engine(["check", "--format", "json"])
 
@@ -411,21 +422,70 @@ class DevManifestTests(unittest.TestCase):
         )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_json_reports_outdated_homebrew_artifact(self) -> None:
+        def fake_run_capture(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            output = "gh\n" if command == ["brew", "outdated", "gh"] else ""
+            return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", side_effect=fake_run_capture),
+        ):
+            status, stdout, stderr = run_engine(["check", "--format", "json"])
+
+        payload = json.loads(stdout)
+        findings = payload["checks"]
+        gh_finding = next(finding for finding in findings if finding["name"] == "gh")
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(gh_finding["id"], "BASE-D104")
+        self.assertEqual(gh_finding["status"], "error")
+        self.assertIn("outdated via Homebrew package 'gh'", gh_finding["message"])
+        self.assertEqual(gh_finding["fix"], "basectl setup --profile dev")
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_dry_run_uses_homebrew_registry_definitions(self) -> None:
-        status, _stdout, stderr = run_engine(["setup", "--dry-run"])
+        with mock.patch("base_setup.process.command_exists", return_value=False):
+            status, _stdout, stderr = run_engine(["setup", "--dry-run"])
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: brew install bats-core", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install gh", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install shellcheck", stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_dry_run_upgrades_outdated_homebrew_artifact(self) -> None:
+        def fake_run_capture(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            output = "gh\n" if command == ["brew", "outdated", "gh"] else ""
+            return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+
+        with (
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch("base_setup.process.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", side_effect=fake_run_capture),
+        ):
+            status, _stdout, stderr = run_engine(["setup", "--dry-run"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: brew upgrade gh", stderr)
+        self.assertNotIn("[DRY-RUN] Would run: brew install gh", stderr)
+
     def test_check_homebrew_artifact_reports_installed_formula(self) -> None:
         artifact = engine.ArtifactRequest("tool", "gh", "latest")
         definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+        current = subprocess.CompletedProcess(
+            ["brew", "outdated", "gh"],
+            0,
+            stdout="",
+            stderr="",
+        )
 
         with (
             mock.patch("base_dev.engine.command_exists", return_value=True),
             mock.patch("base_dev.engine.run_check", return_value=True) as run_check,
+            mock.patch("base_setup.process.run_capture", return_value=current),
         ):
             check = engine.check_homebrew_artifact(artifact, definition)
 
@@ -434,6 +494,29 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(check.fix, "")
         self.assertIn("is installed via Homebrew package 'gh'", check.message)
         run_check.assert_called_once_with(["brew", "list", "gh"])
+
+    def test_check_homebrew_artifact_reports_outdated_formula(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+        outdated = subprocess.CompletedProcess(
+            ["brew", "outdated", "gh"],
+            0,
+            stdout="gh\n",
+            stderr="",
+        )
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch("base_dev.engine.run_check", return_value=True),
+            mock.patch("base_setup.process.run_capture", return_value=outdated),
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.name, "gh")
+        self.assertEqual(check.finding_id, "BASE-D104")
+        self.assertEqual(check.fix, "basectl setup --profile dev")
+        self.assertIn("outdated via Homebrew package 'gh'", check.message)
 
     def test_check_homebrew_artifact_reports_missing_formula(self) -> None:
         artifact = engine.ArtifactRequest("tool", "bats-core", "latest")
@@ -578,6 +661,12 @@ class DevManifestTests(unittest.TestCase):
     def test_doctor_reports_invalid_github_auth(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         definitions = engine.resolve_artifact_definitions(manifest.artifacts)
+        current = subprocess.CompletedProcess(
+            ["brew", "outdated", "gh"],
+            0,
+            stdout="",
+            stderr="",
+        )
 
         def fake_run_check(command: list[str]) -> bool:
             if command == ["brew", "list", "bats-core"]:
@@ -593,6 +682,7 @@ class DevManifestTests(unittest.TestCase):
         with (
             mock.patch("base_dev.engine.command_exists", return_value=True),
             mock.patch("base_dev.engine.run_check", side_effect=fake_run_check),
+            mock.patch("base_setup.process.run_capture", return_value=current),
         ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):

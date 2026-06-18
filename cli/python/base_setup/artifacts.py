@@ -14,6 +14,28 @@ from .manifest import ArtifactRequest
 from .registry import ArtifactDefinition, get_artifact_definition
 
 
+def homebrew_no_auto_update_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+    return env
+
+
+def homebrew_package_outdated(package: str) -> bool:
+    completed = process.run_capture(
+        ["brew", "outdated", package],
+        env=homebrew_no_auto_update_env(),
+    )
+    return homebrew_outdated_output_contains_package(completed.stdout, package)
+
+
+def homebrew_outdated_output_contains_package(output: str, package: str) -> bool:
+    for line in output.splitlines():
+        fields = line.split()
+        if fields and fields[0] == package:
+            return True
+    return False
+
+
 def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tuple[ArtifactDefinition, ...]:
     definitions: list[ArtifactDefinition] = []
     for artifact in artifacts:
@@ -100,12 +122,22 @@ def check_homebrew_artifact(
             fix="basectl setup",
             finding_id="BASE-P032",
         )
-    ok = process.run_check(["brew", "list", definition.package])
-    if ok:
+    if process.run_check(["brew", "list", definition.package]):
+        if homebrew_package_outdated(definition.package):
+            return ArtifactCheck(
+                name=artifact.name,
+                ok=False,
+                message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
+                fix=f"basectl setup {project}",
+                finding_id="BASE-P033",
+            )
         return ArtifactCheck(
             name=artifact.name,
             ok=True,
-            message=f"Artifact '{artifact.name}' is installed via Homebrew package '{definition.package}'.",
+            message=(
+                f"Artifact '{artifact.name}' is installed via Homebrew package "
+                f"'{definition.package}' and is current."
+            ),
             fix="",
             finding_id="BASE-P033",
         )
@@ -196,17 +228,36 @@ def reconcile_homebrew_artifact(
             "Homebrew artifact version 'latest' right now."
         )
 
-    command = ["brew", "install", definition.package]
+    install_command = ["brew", "install", definition.package]
+    upgrade_command = ["brew", "upgrade", definition.package]
     if dry_run:
-        process.dry_run_command(ctx, command)
+        if process.command_exists("brew") and process.run_check(["brew", "list", definition.package]):
+            if homebrew_package_outdated(definition.package):
+                process.dry_run_command(ctx, upgrade_command)
+                return
+            ctx.log.info(
+                "Artifact '%s' is already installed via Homebrew package '%s' and is current.",
+                definition.name,
+                definition.package,
+            )
+            return
+        process.dry_run_command(ctx, install_command)
         return
 
     if not process.command_exists("brew"):
         raise ArtifactError(f"Homebrew is required to install artifact '{definition.name}'.")
 
     if process.run_check(["brew", "list", definition.package]):
+        if homebrew_package_outdated(definition.package):
+            ctx.log.info(
+                "Upgrading outdated artifact '%s' via Homebrew package '%s'.",
+                definition.name,
+                definition.package,
+            )
+            process.run_command(ctx, upgrade_command)
+            return
         ctx.log.info(
-            "Artifact '%s' is already installed via Homebrew package '%s'.",
+            "Artifact '%s' is already installed via Homebrew package '%s' and is current.",
             definition.name,
             definition.package,
         )
@@ -218,7 +269,7 @@ def reconcile_homebrew_artifact(
         definition.package,
         version,
     )
-    process.run_command(ctx, command)
+    process.run_command(ctx, install_command)
 
 
 def reconcile_python_artifact(

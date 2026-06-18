@@ -471,9 +471,11 @@ design target and migration boundary.
 
 Homebrew-managed `tool` artifacts currently support `version: latest`. If a
 project requests a pinned Homebrew version, setup fails clearly instead of
-silently installing a different version. New ordinary Homebrew tools should
-prefer Brewfile delegation over registry growth. Richer version conflict
-handling across projects is a later iteration, not part of the initial build.
+silently installing a different version. For `version: latest`, check and doctor
+report installed-but-outdated Homebrew packages, and setup upgrades them. New
+ordinary Homebrew tools should prefer Brewfile delegation over registry growth.
+Richer version conflict handling across projects is a later iteration, not part
+of the initial build.
 
 Default artifacts can be marked with `bootstrap: true` when they are required to
 run Base's Python CLI layer inside a project virtual environment before the rest
