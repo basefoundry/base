@@ -60,7 +60,7 @@ Zsh syntax checks, and Markdown docs.
 
 ## Canonical Schema
 
-Use this schema for `--schema base-roadmap`. Project-specific `Initiative`
+Use this schema for `--schema base-project`. Project-specific `Initiative`
 options are allowed, but the field itself is always required.
 
 ```text
@@ -111,8 +111,8 @@ basectl repo configure ~/work/bankbuddy --repo codeforester/bankbuddy
 basectl repo configure ~/work/bankbuddy --repo codeforester/bankbuddy --project "BankBuddy Roadmap" --initiative-option MVP --initiative-option Imports
 basectl repo configure ~/work/bankbuddy --repo codeforester/bankbuddy --no-project
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
-basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap
-basectl gh project configure --project "BankBuddy Roadmap" --owner codeforester --schema base-roadmap --initiative-option MVP --initiative-option Imports
+basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-project
+basectl gh project configure --project "BankBuddy Roadmap" --owner codeforester --schema base-project --initiative-option MVP --initiative-option Imports
 basectl gh project issue set-fields 600 --repo codeforester/base --project "Base Roadmap" --owner codeforester --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
 ```
 
@@ -125,7 +125,7 @@ Rules:
   `<RepositoryName> Roadmap`, except the Base repository uses `Base Roadmap`.
 - `--project-owner <login>` overrides the GitHub Project owner. The default is
   the owner from `--repo <owner/name>` or the inferred `origin` repository.
-- `--project-schema base-roadmap` is the only schema in the first release.
+- `--project-schema base-project` is the only schema in the first release.
 - `--initiative-option <name>` can be passed more than once and seeds
   project-specific Initiative options.
 - If Project V2 access is missing during `repo init` or `repo configure`, log a
@@ -200,7 +200,7 @@ Expected: exit 0.
 - [ ] Add an apply-mode test that mocks `bin/base-wrapper` and expects:
 
 ```text
---project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --schema base-roadmap --repo codeforester/base-demo
+--project base base_github_projects project configure --project Base Demo Roadmap --owner codeforester --schema base-project --repo codeforester/base-demo
 ```
 
 - [ ] Add a Project-scope failure test where the Project engine returns exit 3
@@ -281,8 +281,8 @@ Expected: failure because `gh project` dispatch and completions do not exist.
 - [ ] Update `base_gh_usage()` with:
 
 ```text
-  basectl gh project doctor --project <title> [--owner <login>] [--schema base-roadmap]
-  basectl gh project configure --project <title> [--owner <login>] [--schema base-roadmap] [--initiative-option <name>] [--dry-run]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
+  basectl gh project configure --project <title> [--owner <login>] [--schema base-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
 ```
 
@@ -326,7 +326,7 @@ exist until Task 4.
 - [ ] Create the package files with a minimal `main()` that returns 0 for help.
 - [ ] Add tests for `parse_args()`:
   - `project doctor --project "Base Roadmap" --owner codeforester`
-  - `project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap --dry-run`
+  - `project configure --project "Base Roadmap" --owner codeforester --schema base-project --dry-run`
   - `project issue set-fields 600 --repo codeforester/base --project "Base Roadmap" --owner codeforester --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M`
 - [ ] Add tests for `compare_schema(project, schema)`:
   - missing fields produce missing-field findings
@@ -384,7 +384,7 @@ class ProjectField:
     options: tuple[SelectOption, ...] = ()
 ```
 
-- [ ] Encode the canonical schema from this plan as `BASE_ROADMAP_SCHEMA`.
+- [ ] Encode the canonical schema from this plan as `BASE_PROJECT_SCHEMA`.
 - [ ] Add `run_gh_graphql(query: str, variables: dict[str, str]) -> dict`.
   It should run:
 
@@ -567,7 +567,7 @@ Expected: pass.
 ```text
   --project <title>             GitHub Project title to configure. Defaults to <repo-name> Roadmap.
   --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
-  --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
+  --project-schema <schema>     Project metadata schema. Defaults to base-project.
   --initiative-option <name>    Initiative option to seed; may be repeated.
   --no-project                  Skip GitHub Project metadata configuration.
 ```
@@ -615,7 +615,7 @@ Expected: pass.
 
 ```bash
 basectl gh project doctor --project "Base Roadmap" --owner codeforester
-basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-roadmap
+basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-project
 basectl gh project issue set-fields 600 --repo codeforester/base --project "Base Roadmap" --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
 ```
 

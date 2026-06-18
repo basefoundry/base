@@ -1044,7 +1044,7 @@ EOF
     [[ "$output" == *"Would link GitHub Project 'base-demo' to repository 'codeforester/base-demo'."* ]]
     [[ "$output" == *"Would backfill issues from 'codeforester/base-demo' into GitHub Project 'base-demo'."* ]]
     [[ "$output" == *"Would verify GitHub Actions secret 'BASE_PROJECT_TOKEN' exists for 'codeforester/base-demo'."* ]]
-    [[ "$output" == *"--schema base-roadmap"* ]]
+    [[ "$output" == *"--schema base-project"* ]]
     [[ "$output" == *"Status, Priority, Area, Size, Initiative"* ]]
 }
 
@@ -1213,10 +1213,10 @@ EOF
     grep -Fq "BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     [[ "$output" == *"Configuring GitHub Project 'base-demo' for 'codeforester/base-demo'."* ]]
-    [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from \"Base Roadmap\""* ]]
+    [[ "$output" == *"Running: $TEST_MOCKBIN/project-wrapper --project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-project --config $repo_dir/.github/base-project.yml --copy-fields-from \"Base Roadmap\""* ]]
     [[ "$output" == *"  GitHub Project 'base-demo': Status, Priority, Area, Size, Initiative fields configured."* ]]
     [[ "$output" == *"Configuration complete."* ]]
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-project --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 
 @test "basectl repo configure warns when project metadata needs GitHub project scope" {
@@ -1497,7 +1497,7 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     grep -Fq "repo create codeforester/base-demo --private --description Base-managed project base-demo." "$TEST_STATE_DIR/gh-args"
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-project --config $repo_dir/.github/base-project.yml" ]
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
 }
 
@@ -1618,7 +1618,7 @@ EOF
     [[ "$output" == *"No repository baseline changes to commit; continuing with GitHub repository configuration."* ]]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
-    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-roadmap --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
+    [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-project --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 
 @test "basectl repo init --pr requires a clean target worktree" {

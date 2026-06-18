@@ -44,7 +44,7 @@ the canonical current command list.
   - `basectl gh pr create` auto-injects `Fixes #<issue>` from Base branch
     names; pass `--no-fixes` to suppress that body injection.
   - `basectl gh project doctor --project <title>` - inspect Project metadata
-    fields against the Base roadmap schema.
+    fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the
     standard Project metadata schema.
   - `basectl gh project issue set-fields <number>` - add an issue to the

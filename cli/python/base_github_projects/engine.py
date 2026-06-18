@@ -10,7 +10,7 @@ from . import graphql_queries as queries
 from .project_item_fields import FieldCopySummary
 from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
 from .project_item_fields import copy_missing_project_item_fields as _copy_missing_project_item_fields
-from .project_model import BASE_ROADMAP_SCHEMA, DEFAULT_TEMPLATE_PROJECT, FIELD_OPTION_TO_PROJECT_FIELD
+from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT, FIELD_OPTION_TO_PROJECT_FIELD
 from .project_model import STANDARD_TEMPLATE_VIEWS, ConfigureAction, FieldUpdate, Finding, OwnerInfo
 from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
@@ -68,9 +68,9 @@ def print_usage(file=sys.stdout) -> None:
             (
                 "Usage:",
                 "  base_github_projects project doctor --project <title> "
-                "[--owner <login>] [--schema base-roadmap]",
+                "[--owner <login>] [--schema base-project]",
                 "  base_github_projects project configure --project <title> "
-                "[--owner <login>] [--repo <owner/name>] [--schema base-roadmap] [--config <path>] "
+                "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
                 "[--copy-fields-from <title>] [--initiative-option <name>] [--dry-run]",
                 "  base_github_projects project issue set-fields <number> "
                 "--repo <owner/name> --project <title> [--config <path>] [field options...]",
@@ -121,7 +121,7 @@ class OptionState:
     project_title: str | None = None
     owner: str | None = None
     repo: str | None = None
-    schema: str = "base-roadmap"
+    schema: str = "base-project"
     config_path: str | None = None
     copy_fields_from_project: str | None = None
     initiative_options: list[str] | None = None
@@ -151,8 +151,8 @@ def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_iss
         if allow_issue:
             raise ProjectUsageError(f"Unknown issue field option '{arg}'.")
         raise ProjectUsageError(f"Unknown option '{arg}'.")
-    if state.schema != "base-roadmap":
-        raise ProjectUsageError("Only project schema 'base-roadmap' is supported.")
+    if state.schema != "base-project":
+        raise ProjectUsageError("Only project schema 'base-project' is supported.")
     if not state.owner and state.repo:
         state.owner = state.repo.split("/", 1)[0]
     if not state.owner:
@@ -241,15 +241,15 @@ def run_command(args: ProjectArguments) -> int:
 
 
 def schema_for_args(args: ProjectArguments) -> ProjectSchema:
-    if args.schema != "base-roadmap":
-        raise ProjectUsageError("Only project schema 'base-roadmap' is supported.")
+    if args.schema != "base-project":
+        raise ProjectUsageError("Only project schema 'base-project' is supported.")
     config = project_config_for_args(args)
     if args.initiative_options:
         return schema_with_project_config(
-            schema_with_initiatives(BASE_ROADMAP_SCHEMA, args.initiative_options),
+            schema_with_initiatives(BASE_PROJECT_SCHEMA, args.initiative_options),
             config,
         )
-    return schema_with_project_config(BASE_ROADMAP_SCHEMA, config)
+    return schema_with_project_config(BASE_PROJECT_SCHEMA, config)
 
 
 def project_config_for_args(args: ProjectArguments) -> ProjectConfig:

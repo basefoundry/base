@@ -64,7 +64,7 @@ Options:
   --no-protect-default-branch   Skip Base-managed default branch protection during repo configure.
   --project <title>             GitHub Project title to configure. Defaults to the repository name.
   --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
-  --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
+  --project-schema <schema>     Project metadata schema. Defaults to base-project.
   --initiative-option <name>    Initiative option to seed. May be repeated.
   --copy-project-fields-from <title>
                                 Copy missing Project item field values from another Project.
@@ -147,7 +147,7 @@ Options:
   --no-protect-default-branch   Skip Base-managed default branch protection.
   --project <title>             GitHub Project title to configure. Defaults to the repository name.
   --project-owner <login>       GitHub Project owner. Defaults to the repository owner.
-  --project-schema <schema>     Project metadata schema. Defaults to base-roadmap.
+  --project-schema <schema>     Project metadata schema. Defaults to base-project.
   --initiative-option <name>    Initiative option to seed. May be repeated.
   --copy-project-fields-from <title>
                                 Copy missing Project item field values from another Project.
@@ -2139,7 +2139,7 @@ base_repo_init_pr_rerun_command() {
     [[ "$configure_project" == "1" ]] || command+=(--no-project)
     [[ -z "$project_title" ]] || command+=(--project "$project_title")
     [[ -z "$project_owner" ]] || command+=(--project-owner "$project_owner")
-    [[ "$project_schema" == "base-roadmap" ]] || command+=(--project-schema "$project_schema")
+    [[ "$project_schema" == "base-project" ]] || command+=(--project-schema "$project_schema")
     [[ -z "$copy_project_fields_from" ]] || command+=(--copy-project-fields-from "$copy_project_fields_from")
     for option in "$@"; do
         command+=(--initiative-option "$option")
@@ -2410,7 +2410,7 @@ base_repo_init() {
     local name=""
     local path=""
     local project_owner=""
-    local project_schema="base-roadmap"
+    local project_schema="base-project"
     local project_title=""
     local copy_project_fields_from=""
     local protect_default_branch=1
@@ -3076,7 +3076,7 @@ base_repo_configure() {
     local initiative_options=()
     local path="."
     local project_owner=""
-    local project_schema="base-roadmap"
+    local project_schema="base-project"
     local project_title=""
     local protect_default_branch=1
 
