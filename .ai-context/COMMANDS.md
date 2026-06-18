@@ -25,6 +25,8 @@ the canonical current command list.
   workspace project status, checks, diagnostics, clone expected repositories
   from a manifest, or explicitly sync a local manifest from a configured
   canonical source.
+  - `workspace status`, `workspace check`, and `workspace doctor` support
+    `--format json`; `workspace clone` and `workspace pull` use text output.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
   workspace, configure GitHub repository settings and default branch protection,

@@ -460,9 +460,11 @@ By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
 value is configured. If it is not configured, Base falls back to the parent
 directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
-Project list output is tab-separated as `<project-name><TAB><path>`. Use
-`--format json` for machine-readable output. Workspace status, check, and
-doctor are read-only. Status reports each discovered project's manifest
+Project list output is tab-separated as `<project-name><TAB><path>`.
+`basectl projects list` and the read-only workspace status, check, and doctor
+commands support `--format json` for machine-readable output. Workspace clone
+and pull use text output only. Workspace status, check, and doctor are
+read-only. Status reports each discovered project's manifest
 validity, whether the Base-managed project virtual environment is present, and
 the latest recorded `basectl check <project>` date when one exists. Check
 records live under `~/.base.d/<project>/checks/last.json`; status JSON includes
