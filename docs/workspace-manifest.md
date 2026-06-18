@@ -13,8 +13,9 @@ manifest is required.
 
 Teams can also configure `workspace.manifest_source` and refresh the local
 manifest explicitly with `basectl workspace pull`. Pull supports local paths,
-`file://` URLs, and raw `http://` or `https://` file URLs. It validates fetched
-content before writing and does not mutate project repositories.
+`file://` URLs, and raw `https://` file URLs. It rejects cleartext `http://`
+sources by default, validates fetched content before writing, and does not
+mutate project repositories.
 
 ## Vocabulary
 
