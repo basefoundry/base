@@ -173,6 +173,55 @@ class WorkspacePullTests(unittest.TestCase):
         self.assertIn(f"Source: {source.as_uri()}", stdout)
         self.assertIn("Status: created", stdout)
 
+    def test_workspace_pull_rejects_cleartext_http_source_before_fetching(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            target = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+
+            with mock.patch("base_projects.workspace_pull.urlopen") as urlopen:
+                status, stdout, stderr = invoke_engine(
+                    ["pull", "--source", "http://example.test/workspace.yaml", "--manifest", str(target)],
+                    base_home,
+                    home,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertFalse(target.exists())
+        urlopen.assert_not_called()
+        self.assertIn("Insecure workspace manifest source", stderr)
+        self.assertIn("Use https://, file://, or a local path", stderr)
+
+    def test_workspace_pull_accepts_https_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            target = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+
+            response = mock.MagicMock()
+            response.read.return_value = WORKSPACE_MANIFEST.encode("utf-8")
+            response.__enter__.return_value = response
+            with mock.patch("base_projects.workspace_pull.urlopen", return_value=response) as urlopen:
+                status, stdout, stderr = invoke_engine(
+                    ["pull", "--source", "https://example.test/workspace.yaml", "--manifest", str(target)],
+                    base_home,
+                    home,
+                )
+            target_content = target.read_text(encoding="utf-8") if target.exists() else ""
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(target_content, WORKSPACE_MANIFEST)
+        urlopen.assert_called_once_with("https://example.test/workspace.yaml", timeout=30)
+        self.assertIn("Status: created", stdout)
+
     def test_workspace_pull_rejects_invalid_manifest_without_overwriting_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

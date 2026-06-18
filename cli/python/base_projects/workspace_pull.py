@@ -62,7 +62,12 @@ def workspace_manifest_change_status(existing_content: bytes | None, content: by
 
 def fetch_workspace_manifest_source(source: str) -> bytes:
     parsed = urlparse(source)
-    if parsed.scheme in {"http", "https"}:
+    if parsed.scheme == "http":
+        raise WorkspaceManifestError(
+            f"Insecure workspace manifest source '{source}'. Use https://, file://, or a local path."
+        )
+
+    if parsed.scheme == "https":
         try:
             # This command fetches an explicit user-configured manifest source.
             with urlopen(source, timeout=30) as response:  # nosec B310
@@ -79,7 +84,7 @@ def fetch_workspace_manifest_source(source: str) -> bytes:
 
     if parsed.scheme and parsed.scheme not in {"", "file"}:
         raise WorkspaceManifestError(
-            f"Unsupported workspace manifest source '{source}'. Expected a local path, file:// URL, or http(s) URL."
+            f"Unsupported workspace manifest source '{source}'. Expected a local path, file:// URL, or https:// URL."
         )
 
     return read_workspace_manifest_source_file(source, Path(source).expanduser())
