@@ -12,6 +12,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `BASE_BASH_LIBS_SOURCE` and `BASE-D007` diagnostics so `basectl check`
   and `basectl doctor` report whether Base is using external reusable Bash
   libraries or the bundled fallback.
+- Added BATS coverage proving Base can bootstrap from external
+  `base-bash-libs` when bundled reusable Bash library directories are absent.
 
 ### Changed
 

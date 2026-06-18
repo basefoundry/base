@@ -123,7 +123,10 @@ source checkout contributors. The practical removal gate is:
 4. Base setup, check, or doctor paths report missing external Bash libraries
    clearly where that state can affect users. `BASE-D007` now covers the
    check and doctor side of this gate.
-5. CI validates Base without relying on the bundled reusable directories.
+5. CI validates Base without relying on the bundled reusable directories. The
+   `base_init` BATS suite now includes a temporary Base home with bundled
+   reusable `std`, `file`, and `git` directories removed and external
+   `base-bash-libs` provided through the sibling checkout path.
 6. A Base release cycle has passed with the external package as the normal path
    and without needing the fallback for ordinary installs.
 
