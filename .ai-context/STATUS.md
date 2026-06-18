@@ -44,7 +44,8 @@ source builds treated as fallback validation rather than the normal user path.
 Recent released work includes:
 
 - local observability model for future command history and report surfaces
-- read-only workspace manifest support
+- workspace manifest status/check/doctor reporting plus explicit clone and pull
+  support
 - guarded `basectl release publish`
 - release check, plan, and notes commands
 - local `.ai-context/` export bundles through `basectl export-context`

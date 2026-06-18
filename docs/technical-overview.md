@@ -179,7 +179,9 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl workspace status/check/doctor/clone/pull [--manifest]` | Cross-project manifest, venv state, cloning, and explicit manifest sync |
+| `basectl workspace status/check/doctor [--manifest] [--format json]` | Read-only cross-project manifest, venv, Git, check, and diagnostic state |
+| `basectl workspace clone [--manifest] [--dry-run]` | Explicitly clone or validate expected repositories from a workspace manifest |
+| `basectl workspace pull [--source] [--manifest] [--dry-run]` | Explicitly refresh the local workspace manifest from a validated source |
 | `basectl workspace check [--manifest]` | Cross-project readiness check |
 | `basectl workspace doctor [--manifest]` | Cross-project diagnostic findings |
 

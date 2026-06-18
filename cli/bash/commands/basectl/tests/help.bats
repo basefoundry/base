@@ -66,7 +66,8 @@ load ./basectl_helpers.bash
 @test "AI command context includes current clone and update surfaces" {
     local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
 
-    grep -Fqx -- "- \`basectl workspace <status|check|doctor|clone|pull>\` - show read-only" "$commands_file"
+    grep -Fqx -- "- \`basectl workspace <status|check|doctor|clone|pull>\` - inspect workspace" "$commands_file"
+    grep -Fqx -- "  - \`workspace clone\` mutates repository checkouts only when invoked directly;" "$commands_file"
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
 }

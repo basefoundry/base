@@ -21,12 +21,15 @@ the canonical current command list.
   Zip bundle for manual upload or copy/paste into AI tools.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor|clone|pull>` - show read-only
-  workspace project status, checks, diagnostics, clone expected repositories
-  from a manifest, or explicitly sync a local manifest from a configured
-  canonical source.
+- `basectl workspace <status|check|doctor|clone|pull>` - inspect workspace
+  status, checks, and diagnostics; explicitly clone expected repositories from
+  a manifest; or explicitly sync a local manifest from a configured canonical
+  source.
   - `workspace status`, `workspace check`, and `workspace doctor` support
     `--format json`; `workspace clone` and `workspace pull` use text output.
+  - `workspace clone` mutates repository checkouts only when invoked directly;
+    `workspace pull` mutates only the local workspace manifest after validating
+    the source.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
   workspace, configure GitHub repository settings and default branch protection,
