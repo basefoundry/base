@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-06-18
+
 ### Added
 
 - Added `BASE_BASH_LIBS_SOURCE` and `BASE-D007` diagnostics so `basectl check`
