@@ -250,11 +250,12 @@ Run everything locally with `basectl test base` or `bin/base-test`.
 
 ## Current Status
 
-Base **1.0.3** (June 2026) covers: setup, check, doctor, project discovery,
+Base **1.0.4** (June 2026) covers: setup, check, doctor, project discovery,
 workspace status, project activation (subshell), test execution, build targets,
 named commands, demo scripts, repository baseline creation, guarded GitHub release
 publishing, AI context export, `basectl ci` for non-interactive CI, IDE
-bootstrapping (VS Code/Cursor), and release readiness inspection.
+bootstrapping (VS Code/Cursor), release readiness inspection, and external
+reusable Bash library consumption.
 
 Linux support is a design target but not yet an implemented or tested contract.
 Windows is out of scope.
