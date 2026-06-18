@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.0.3` is the current release. The repo-root `VERSION` file is updated
+Base `1.0.4` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -60,6 +60,8 @@ Recent released work includes:
 - explicit uv-managed Python setup and command runner support
 - workspace-aware repo clone, manifest-driven workspace clone, Project intake
   workflow generation, and resilient `basectl gh` command execution
+- external `base-bash-libs` consumption when available, with bundled reusable
+  Bash libraries retained as a compatibility fallback
 
 ## Recent Merged Changes
 
@@ -72,6 +74,8 @@ Recent commits on `master` include:
 - repo Project metadata handoff and command-specific `basectl repo` help
 - shell stdlib dry-run safety fixes from BankBuddy dogfooding
 - Homebrew bottle and upgrade-path release process hardening
+- external reusable Bash library resolution from `base-bash-libs`
+- documented `base-bash-libs` consumption and migration contract
 
 ## Useful Orientation Links
 

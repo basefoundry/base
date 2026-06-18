@@ -3,7 +3,7 @@
 ![Tests](https://github.com/codeforester/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/codeforester/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Version](https://img.shields.io/badge/version-1.0.3-blue)
+![Version](https://img.shields.io/badge/version-1.0.4-blue)
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
@@ -757,11 +757,11 @@ that file, but users own how it is edited, backed up, or synced. See
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.0.3
-basectl release plan --version 1.0.3
-basectl release notes --version 1.0.3
-basectl release publish --version 1.0.3 --dry-run
-basectl release publish --version 1.0.3 --yes
+basectl release check --version 1.0.4
+basectl release plan --version 1.0.4
+basectl release notes --version 1.0.4
+basectl release publish --version 1.0.4 --dry-run
+basectl release publish --version 1.0.4 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
@@ -1380,13 +1380,14 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `1.0.3` is the current release. The implemented command surface covers
+Base `1.0.4` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
 guarded GitHub release publishing, GitHub workflow helpers, workspace
-status/check/doctor reports, local AI context exports, and explicit prerequisite
-profiles for developer, SRE, and AI tooling.
+status/check/doctor reports, local AI context exports, external reusable Bash
+library consumption, and explicit prerequisite profiles for developer, SRE, and
+AI tooling.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For the architecture and product direction,

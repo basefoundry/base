@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-06-17
+
 ### Changed
 
 - Made Base resolve reusable Bash libraries from an external `base-bash-libs`
