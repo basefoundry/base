@@ -58,6 +58,15 @@ _base_bash_defaults_git_prompt() {
 
 export PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '
 
+_base_bash_defaults_bind_set() {
+    bind "set $1" 2>/dev/null || true
+}
+
+_base_bash_defaults_bind_set "completion-ignore-case on"
+_base_bash_defaults_bind_set "show-all-if-ambiguous on"
+_base_bash_defaults_bind_set "mark-symlinked-directories on"
+unset -f _base_bash_defaults_bind_set
+
 export HISTCONTROL="${HISTCONTROL:-ignoreboth:erasedups}"
 if [[ "${HISTSIZE:-500}" == 500 ]]; then
     export HISTSIZE=10000

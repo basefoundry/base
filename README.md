@@ -1310,6 +1310,7 @@ Those defaults are intended to stay conservative:
 
 - aliases like `rm -i`, `cp -i`, `mv -i`
 - vi-style command editing
+- completion ergonomics
 - editor defaults
 - pager defaults
 - prompt defaults
