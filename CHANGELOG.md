@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Added conservative pager and terminal usability behavior to opt-in shell
+  defaults.
 - Enriched opt-in shell history defaults for `basectl update-profile --defaults`.
 - Made Homebrew-managed `version: latest` profile and project artifacts report
   outdated installed packages during `check`/`doctor` and upgrade them during
