@@ -75,7 +75,7 @@ Options:
 
 Examples:
   # Create a new public GitHub repo and open a baseline PR.
-  basectl repo init base-demo --repo codeforester/base-demo --public --pr
+  basectl repo init base-demo --repo basefoundry/base-demo --public --pr
 
   # Add or refresh the Base baseline in an existing checkout.
   basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
@@ -112,9 +112,9 @@ Options:
 
 Examples:
   basectl repo clone base
-  basectl repo clone banyanlabs --owner codeforester
+  basectl repo clone banyanlabs --owner basefoundry
   basectl repo clone codeforester/bankbuddy
-  basectl repo clone codeforester/base --path ~/work/base
+  basectl repo clone basefoundry/base --path ~/work/base
 
 Short repository names require --owner <owner> or github.default_owner in
 ~/.base.d/config.yaml. The optional github.clone_protocol value controls the
@@ -640,7 +640,7 @@ $description
 
 ## Base
 
-This repository is managed by [Base](https://github.com/codeforester/base).
+This repository is managed by [Base](https://github.com/basefoundry/base).
 
 Common commands:
 

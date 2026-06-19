@@ -169,8 +169,8 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Install mode: brew"* ]]
-    [[ "$output" == *"Formula: codeforester/base/base"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run: brew install codeforester/base/base"* ]]
+    [[ "$output" == *"Formula: basefoundry/base/base"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: brew install basefoundry/base/base"* ]]
     [[ "$output" == *"  basectl setup"* ]]
     [[ "$output" == *"  basectl update-profile"* ]]
 }
@@ -204,12 +204,12 @@ EOF
     [[ "$output" == *"Git is available."* ]]
     [[ "$output" == *"Bash 4.2+ is available for Base."* ]]
     [[ "$output" == *"Install mode: brew"* ]]
-    [[ "$output" == *"Base Homebrew formula 'codeforester/base/base' is already installed."* ]]
+    [[ "$output" == *"Base Homebrew formula 'basefoundry/base/base' is already installed."* ]]
     [[ "$output" == *"Homebrew basectl: $brew_prefix/bin/basectl"* ]]
     [[ "$output" == *"active basectl: $TEST_MOCKBIN/basectl"* ]]
     [[ "$output" == *"$brew_prefix/bin/basectl setup"* ]]
     [[ "$output" == *"$brew_prefix/bin/basectl update-profile"* ]]
-    ! grep -Fqx "brew install codeforester/base/base" "$TEST_COMMAND_LOG"
+    ! grep -Fqx "brew install basefoundry/base/base" "$TEST_COMMAND_LOG"
 }
 
 @test "bootstrap command-line mode overrides BASE_BOOTSTRAP_MODE" {
@@ -227,7 +227,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Install mode: source"* ]]
-    [[ "$output" != *"Formula: codeforester/base/base"* ]]
+    [[ "$output" != *"Formula: basefoundry/base/base"* ]]
 }
 
 @test "bootstrap can refuse to install missing Homebrew" {

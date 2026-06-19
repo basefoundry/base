@@ -15,7 +15,7 @@ for CI.
 There are two demo layers:
 
 - Base's self-demo lives in this repository and demonstrates Base itself.
-- `codeforester/base-demo` is a separate peer repository that demonstrates how a
+- `basefoundry/base-demo` is a separate peer repository that demonstrates how a
   normal Base-managed project participates in the workflow.
 
 Those layers should stay separate. `basectl demo base` must not depend on the
@@ -130,7 +130,7 @@ external reference repository.
 ## Reference Project
 
 The public reference repository is
-[`codeforester/base-demo`](https://github.com/codeforester/base-demo).
+[`basefoundry/base-demo`](https://github.com/basefoundry/base-demo).
 
 `base-demo` serves two roles:
 
@@ -145,8 +145,8 @@ executable, but its product role is onboarding and inspection.
 Clone it next to Base:
 
 ```bash
-git clone https://github.com/codeforester/base.git
-git clone https://github.com/codeforester/base-demo.git
+git clone https://github.com/basefoundry/base.git
+git clone https://github.com/basefoundry/base-demo.git
 ```
 
 Then run:

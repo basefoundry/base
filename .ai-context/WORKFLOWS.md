@@ -92,7 +92,7 @@ Release-prep PRs update `VERSION`, README release text, and `CHANGELOG.md`.
 The `basectl release check|plan|notes` commands are read-only inspection
 commands. `basectl release publish` is guarded and creates the annotated tag and
 GitHub Release after checks pass. The Homebrew tap update happens in
-`codeforester/homebrew-base` after the Base tag and GitHub Release exist.
+`basefoundry/homebrew-base` after the Base tag and GitHub Release exist.
 Supported macOS tap releases should publish Homebrew bottles before the tap PR
 is merged: run the tap's `Build Base Bottles` workflow from the tap release
 branch, let it upload bottle assets to the tap release `base-vX.Y.Z`, and commit

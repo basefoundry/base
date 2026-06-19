@@ -40,7 +40,7 @@ edits.
 
 ## `base-demo` Repository
 
-`codeforester/base-demo` should use the same `needs-demo` label with the same
+`basefoundry/base-demo` should use the same `needs-demo` label with the same
 color and description as this repository:
 
 - color: `fbca04`

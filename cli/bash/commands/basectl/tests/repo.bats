@@ -37,7 +37,7 @@ line_at() {
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"Create a new public GitHub repo and open a baseline PR."* ]]
-    [[ "$output" == *"basectl repo init base-demo --repo codeforester/base-demo --public --pr"* ]]
+    [[ "$output" == *"basectl repo init base-demo --repo basefoundry/base-demo --public --pr"* ]]
     [[ "$output" == *"Add or refresh the Base baseline in an existing checkout."* ]]
     [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
     [[ "$output" == *"Safe to run against an existing repository"* ]]
@@ -57,7 +57,7 @@ line_at() {
     [[ "$output" == *"--owner <owner>"* ]]
     [[ "$output" == *"--path <path>"* ]]
     [[ "$output" == *"--dry-run"* ]]
-    [[ "$output" == *"basectl repo clone codeforester/base --path ~/work/base"* ]]
+    [[ "$output" == *"basectl repo clone basefoundry/base --path ~/work/base"* ]]
     [[ "$output" != *"--copy-project-fields-from <title>"* ]]
 }
 

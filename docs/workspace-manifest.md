@@ -105,7 +105,7 @@ workspace:
 
 repos:
   - name: base
-    url: git@github.com:codeforester/base.git
+    url: git@github.com:basefoundry/base.git
     default_branch: master
     required: true
 
@@ -115,7 +115,7 @@ repos:
     required: false
 
   - name: banyanlabs
-    url: git@github.com:codeforester/banyanlabs.git
+    url: git@github.com:basefoundry/banyanlabs.git
     default_branch: main
     required: true
 ```

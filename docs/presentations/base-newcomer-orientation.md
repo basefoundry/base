@@ -84,7 +84,7 @@ Base starts before the developer has a working Base environment.
 On macOS, `bootstrap.sh` handles the first mile:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
 ```
 
 It installs or checks the prerequisites needed to hand off to `basectl setup`.
@@ -211,12 +211,12 @@ Read more: [Project Demo Workflow](../project-demo-workflow.md)
 There are two demo layers:
 
 - `basectl demo base -- --non-interactive` demonstrates Base itself
-- `codeforester/base-demo` demonstrates a normal Base-managed project
+- `basefoundry/base-demo` demonstrates a normal Base-managed project
 
 Clone `base-demo` beside Base to inspect a small reference project:
 
 ```bash
-git clone https://github.com/codeforester/base-demo.git
+git clone https://github.com/basefoundry/base-demo.git
 basectl setup base-demo
 basectl demo base-demo
 ```

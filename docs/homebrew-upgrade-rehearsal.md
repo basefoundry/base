@@ -22,10 +22,10 @@ upgrade without losing local Base state.
   ```bash
   brew update
   brew doctor
-  brew info codeforester/base/base
+  brew info basefoundry/base/base
   ```
 - Confirm the target formula has bottles for the host or that
-  `brew install --force-bottle codeforester/base/base` succeeds on an equivalent
+  `brew install --force-bottle basefoundry/base/base` succeeds on an equivalent
   clean install. The release checklist owns bottle creation; this rehearsal
   should prove an existing user can upgrade through that bottled formula path.
 
@@ -39,15 +39,15 @@ Create an isolated test account shape:
 ```bash
 TEST_ROOT="$(mktemp -d /private/tmp/base-homebrew-upgrade.XXXXXX)"
 mkdir -p "$TEST_ROOT/home/.base.d" "$TEST_ROOT/work"
-git clone https://github.com/codeforester/base-demo.git "$TEST_ROOT/work/base-demo"
+git clone https://github.com/basefoundry/base-demo.git "$TEST_ROOT/work/base-demo"
 printf 'workspace:\n  root: %s/work\n' "$TEST_ROOT" > "$TEST_ROOT/home/.base.d/config.yaml"
 ```
 
 Install the current released formula and prepare local state:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base
+brew trust basefoundry/base
+brew install basefoundry/base/base
 env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
   HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl setup
@@ -71,7 +71,7 @@ Upgrade through the tap path:
 
 ```bash
 brew update
-brew upgrade --no-ask codeforester/base/base
+brew upgrade --no-ask basefoundry/base/base
 ```
 
 For a pre-1.0.0 release candidate, use the candidate formula or tap branch that
@@ -109,7 +109,7 @@ shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 
 Accept the rehearsal only when:
 
-- `brew upgrade --no-ask codeforester/base/base` exits zero.
+- `brew upgrade --no-ask basefoundry/base/base` exits zero.
 - The upgrade uses a Homebrew bottle on supported macOS hosts, not a normal
   source build. If Homebrew falls back to source, record why before accepting
   the rehearsal.
@@ -139,7 +139,7 @@ Host facts:
 - Xcode: 26.5
 - CLT reported by Homebrew: 11.3.1
 - Existing `basectl` on `PATH`: source checkout at `<workspace>/base/bin/basectl`
-- Homebrew formula state before rehearsal: `codeforester/base/base` stable
+- Homebrew formula state before rehearsal: `basefoundry/base/base` stable
   `0.3.0`, not installed
 
 Commands attempted:
@@ -151,16 +151,16 @@ TEST_ROOT="$(mktemp -d /private/tmp/base-526-homebrew-upgrade.XXXXXX)"
 mkdir -p "$TEST_ROOT/work" "$TEST_ROOT/home/.base.d"
 printf 'workspace:\n  root: %s/work\n' "$TEST_ROOT" > "$TEST_ROOT/home/.base.d/config.yaml"
 git clone <local-base-demo-checkout> "$TEST_ROOT/work/base-demo"
-brew install codeforester/base/base
-brew install --ignore-dependencies codeforester/base/base
+brew install basefoundry/base/base
+brew install --ignore-dependencies basefoundry/base/base
 brew config
 brew doctor
 ```
 
 Observed result:
 
-- `brew install codeforester/base/base` exited 1 before installing Base.
-- `brew install --ignore-dependencies codeforester/base/base` also exited 1
+- `brew install basefoundry/base/base` exited 1 before installing Base.
+- `brew install --ignore-dependencies basefoundry/base/base` also exited 1
   with the same host prerequisite failure.
 - Homebrew reported: `Your Command Line Tools are too outdated` and instructed
   the operator to install Command Line Tools for Xcode 26.3.
@@ -170,7 +170,7 @@ Commands not reached:
 
 - `basectl setup`
 - `basectl update-profile`
-- `brew upgrade codeforester/base/base`
+- `brew upgrade basefoundry/base/base`
 - post-upgrade Base and `base-demo` checks
 
 Next action:
@@ -188,7 +188,7 @@ Result: upgrade succeeded, but shell startup exposed a stale Cellar path problem
 
 Observed result:
 
-- `brew upgrade codeforester/base/base` exited zero and upgraded Base from
+- `brew upgrade basefoundry/base/base` exited zero and upgraded Base from
   `0.3.0` to `0.4.0`.
 - Homebrew cleanup removed `/usr/local/Cellar/base/0.3.0`.
 - The active shell still attempted to run the removed
@@ -235,7 +235,7 @@ sandbox.
 
 Observed result:
 
-- `brew upgrade codeforester/base/base` attempted to upgrade Base from `0.4.3`
+- `brew upgrade basefoundry/base/base` attempted to upgrade Base from `0.4.3`
   to `0.4.4`.
 - Homebrew fetched and verified the `0.4.4` formula archive.
 - Homebrew then failed in `Sandbox#path_filter` while denying reads under the

@@ -68,7 +68,7 @@ On a fresh macOS machine, use `bootstrap.sh` in source mode so the repository is
 available for local edits:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l

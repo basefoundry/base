@@ -7,7 +7,7 @@
 Use `bootstrap.sh`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
 ```
 
 The bootstrapper verifies macOS, ensures Homebrew is available, installs Git and
@@ -40,7 +40,7 @@ Use Homebrew when you already have Homebrew and Bash and want Base managed like
 an ordinary installed tool:
 
 ```bash
-brew install codeforester/base/base
+brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
@@ -51,7 +51,7 @@ run the repository directly. This is also the preferred active install for a
 Base development machine:
 
 ```bash
-git clone https://github.com/codeforester/base.git ~/work/base
+git clone https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
@@ -65,8 +65,8 @@ update Base and then run setup/profile commands as one script.
 Pass an explicit mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
 Without an explicit mode, bootstrap preserves an existing Homebrew Base install,
@@ -393,7 +393,7 @@ intended to run through `basectl`. Use the standalone `base-bash-libs` package:
 
 ```bash
 #!/usr/bin/env bash
-base_bash_libs_prefix="$(brew --prefix codeforester/base/base-bash-libs)"
+base_bash_libs_prefix="$(brew --prefix basefoundry/base/base-bash-libs)"
 source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 
 main() {

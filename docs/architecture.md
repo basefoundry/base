@@ -665,12 +665,12 @@ through managed workstation provisioning before invoking `basectl setup`.
 
 ## GitHub and Repository Conventions
 
-- Base uses a public GitHub repository at `codeforester/base`.
+- Base uses a public GitHub repository at `basefoundry/base`.
 - GitHub Issues are the official product backlog for bugs, feature requests,
   release work, maintenance, and documentation follow-up.
 - `basectl release` manages annotated tags and GitHub Releases for Base using
   the manifest-owned release metadata in `base_manifest.yaml`.
-- The Homebrew tap at `codeforester/homebrew-base` owns the formula that installs
+- The Homebrew tap at `basefoundry/homebrew-base` owns the formula that installs
   published Base releases.
 - Homebrew tap updates happen after each GitHub Release and remain a manual
   handoff. `basectl release` prints the required tap follow-up when the project

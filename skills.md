@@ -197,9 +197,9 @@ behavior.
 
 - Standalone installer: `install.sh`
 - User-facing install test coverage: `tests/install.bats`
-- Homebrew tap repository: `https://github.com/codeforester/homebrew-base`
-- User-facing Homebrew install command: `brew install codeforester/base/base`
-- Keep Homebrew users on `brew upgrade codeforester/base/base` rather than
+- Homebrew tap repository: `https://github.com/basefoundry/homebrew-base`
+- User-facing Homebrew install command: `brew install basefoundry/base/base`
+- Keep Homebrew users on `brew upgrade basefoundry/base/base` rather than
   `basectl update`.
 - Validate with:
 

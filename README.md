@@ -1,7 +1,7 @@
 # Base
 
-![Tests](https://github.com/codeforester/base/actions/workflows/tests.yml/badge.svg)
-![Lint](https://github.com/codeforester/base/actions/workflows/pylint.yml/badge.svg)
+![Tests](https://github.com/basefoundry/base/actions/workflows/tests.yml/badge.svg)
+![Lint](https://github.com/basefoundry/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![Version](https://img.shields.io/badge/version-1.0.5-blue)
 
@@ -50,8 +50,8 @@ normal Base install paths:
 
 ```bash
 # Homebrew-managed install
-brew trust codeforester/base
-brew install codeforester/base/base
+brew trust basefoundry/base
+brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
@@ -59,7 +59,7 @@ exec "$SHELL" -l
 
 ```bash
 # Source checkout install
-git clone https://github.com/codeforester/base.git ~/work/base
+git clone https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
@@ -71,7 +71,7 @@ On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
 may be missing, start with the first-mile bootstrap script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
 ```
 
 The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
@@ -82,8 +82,8 @@ source checkout at `~/work/base`, and prints the exact `basectl setup` and
 Choose an install mode explicitly when needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
 For mode selection, dry-run behavior, and contributor setup details, see
@@ -136,11 +136,11 @@ basectl test base
 ```
 
 To inspect a small, real Base-managed project, clone
-[`codeforester/base-demo`](https://github.com/codeforester/base-demo) next to
+[`basefoundry/base-demo`](https://github.com/basefoundry/base-demo) next to
 Base and run its walkthrough:
 
 ```bash
-git clone https://github.com/codeforester/base-demo.git
+git clone https://github.com/basefoundry/base-demo.git
 basectl setup base-demo
 basectl demo base-demo
 ```
@@ -172,8 +172,8 @@ scripts that want Base's Bash helper conventions without adopting the Base
 workspace control plane:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base-bash-libs
+brew trust basefoundry/base
+brew install basefoundry/base/base-bash-libs
 ```
 
 Base consumes reusable Bash libraries from an external `base-bash-libs` checkout
@@ -514,8 +514,8 @@ private by default; pass `--public` when a public repository is intentional. Use
 Clone an existing GitHub repository into the configured workspace with:
 
 ```bash
-basectl repo clone codeforester/example
-basectl repo clone example --owner codeforester
+basectl repo clone basefoundry/example
+basectl repo clone example --owner basefoundry
 ```
 
 Short names can use `github.default_owner` from `~/.base.d/config.yaml`.
@@ -528,7 +528,7 @@ Check and repair the repo baseline with:
 
 ```bash
 basectl repo check ~/work/example
-basectl repo configure ~/work/example --repo codeforester/example
+basectl repo configure ~/work/example --repo basefoundry/example
 ```
 
 Seed optional repo-local agent guidance with:
@@ -879,7 +879,7 @@ should be treated as implementation details unless a project-owned launcher
 exposes them from `bin/`.
 
 Optional utility commands live in
-[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools).
+[`basefoundry/base-platform-tools`](https://github.com/basefoundry/base-platform-tools).
 When that repository is checked out next to Base as `base-platform-tools`, Base
 adds its `bin/` directory to `PATH` in new Bash/Zsh shells and Base runtime
 shells. This is detected dynamically by the sourced shell snippets; users do not
@@ -945,7 +945,7 @@ is requested on macOS, Base warns if `osascript` is not available.
 For a blank macOS machine, use `bootstrap.sh`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
 ```
 
 The bootstrapper is intentionally small. It verifies macOS, installs Homebrew
@@ -967,8 +967,8 @@ See [First-Mile Bootstrap](docs/bootstrap.md) for the full bootstrap contract.
 Base can be installed through its Homebrew tap:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base
+brew trust basefoundry/base
+brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
@@ -976,13 +976,13 @@ exec "$SHELL" -l
 
 The trust step is required on Homebrew versions that block formulae from
 non-official taps until the tap is trusted. It is safe to run again on machines
-that already trust `codeforester/base`. Existing installs that predate this
+that already trust `basefoundry/base`. Existing installs that predate this
 trust step can fail during upgrade while Homebrew loads Base's tap-owned
 `base-bash-libs` dependency. If that happens, run:
 
 ```bash
-brew trust codeforester/base
-brew upgrade --no-ask codeforester/base/base
+brew trust basefoundry/base
+brew upgrade --no-ask basefoundry/base/base
 ```
 
 Homebrew installs the Base files. `basectl setup` still prepares the local Base
@@ -991,7 +991,7 @@ your shell startup path. When installed through Homebrew, `basectl update` for
 Base hands off to Homebrew and runs setup afterward. This is equivalent to:
 
 ```bash
-brew upgrade --no-ask codeforester/base/base
+brew upgrade --no-ask basefoundry/base/base
 ```
 
 For a Base development machine, prefer the source checkout as the active
@@ -1016,7 +1016,7 @@ workspace:
 The standalone installer is also available:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh | bash
 exec "$SHELL" -l
 ```
 
@@ -1024,7 +1024,7 @@ This runs a shell script from GitHub, so review the script first if you do not
 already trust this repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh
 ```
 
 By default, the installer clones or updates Base at `~/work/base`, runs
@@ -1034,7 +1034,7 @@ By default, the installer clones or updates Base at `~/work/base`, runs
 installer options with `bash -s --`, for example:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/install.sh | bash -s -- --dir ~/work/base --no-profile
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh | bash -s -- --dir ~/work/base --no-profile
 ```
 
 Use `--no-profile` to skip shell startup integration and `--dry-run` to print
@@ -1043,7 +1043,7 @@ planned actions.
 The explicit manual bootstrap path is:
 
 ```bash
-git clone https://github.com/codeforester/base.git ~/work/base
+git clone https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
@@ -1160,14 +1160,14 @@ tracked file would overwrite them.
 
 In a Homebrew-managed install, the Base update path remains Base-only:
 `basectl update` runs the Base package upgrade,
-`brew upgrade codeforester/base/base`, and then runs `basectl setup base` with
+`brew upgrade basefoundry/base/base`, and then runs `basectl setup base` with
 inherited Base environment variables cleared. `basectl update --dry-run` prints
 the Git or Homebrew handoff it would perform without changing files or packages.
 For manual Homebrew upgrades outside `basectl update`, prefer
-`brew upgrade --no-ask codeforester/base/base` so Homebrew skips the preview
+`brew upgrade --no-ask basefoundry/base/base` so Homebrew skips the preview
 prompt path on already-current installs. If Homebrew refuses to load
-`codeforester/base/base-bash-libs` from an untrusted tap, run
-`brew trust codeforester/base` once and retry the upgrade.
+`basefoundry/base/base-bash-libs` from an untrusted tap, run
+`brew trust basefoundry/base` once and retry the upgrade.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
@@ -1337,13 +1337,13 @@ in normal shell dotfiles, and keep simple Base preferences in `~/.baserc`.
 
 Base no longer owns general-purpose utility CLIs such as `caff` and
 `sort-in-place`. Those tools live in
-[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools),
+[`basefoundry/base-platform-tools`](https://github.com/basefoundry/base-platform-tools),
 which is the optional platform/SRE utility layer for Base-managed workspaces.
 Check it out next to Base to make its launchers available automatically in new
 shells:
 
 ```bash
-git clone https://github.com/codeforester/base-platform-tools.git ~/work/base-platform-tools
+git clone https://github.com/basefoundry/base-platform-tools.git ~/work/base-platform-tools
 exec "$SHELL" -l
 ```
 

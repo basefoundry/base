@@ -11,8 +11,8 @@ product-specific setup.
 Clone an existing GitHub repository into the configured workspace:
 
 ```bash
-basectl repo clone codeforester/base-demo
-basectl repo clone base-demo --owner codeforester
+basectl repo clone basefoundry/base-demo
+basectl repo clone base-demo --owner basefoundry
 ```
 
 `repo clone` is for repositories that already exist on GitHub. Without
@@ -23,7 +23,7 @@ basectl repo clone base-demo --owner codeforester
 
 ```yaml
 github:
-  default_owner: codeforester
+  default_owner: basefoundry
   clone_protocol: ssh
 ```
 
@@ -38,7 +38,7 @@ with an actionable conflict.
 Create a new repo baseline:
 
 ```bash
-basectl repo init base-demo --repo codeforester/base-demo
+basectl repo init base-demo --repo basefoundry/base-demo
 ```
 
 `repo init` creates the local files, creates the GitHub repository if it does
@@ -65,7 +65,7 @@ already exists:
 ```bash
 basectl repo init base-demo \
   --path ~/work/base-demo \
-  --repo codeforester/base-demo \
+  --repo basefoundry/base-demo \
   --pr
 ```
 
@@ -96,7 +96,7 @@ basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-ru
 Reapply GitHub-side repository settings and labels:
 
 ```bash
-basectl repo configure ~/work/base-demo --repo codeforester/base-demo
+basectl repo configure ~/work/base-demo --repo basefoundry/base-demo
 ```
 
 `repo configure` is idempotent and safe to rerun when repository settings drift.
