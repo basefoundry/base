@@ -201,16 +201,15 @@ Contains:
   `BASE_BASH_LIB_DIR`, `BASE_BASH_LIBS_DIR`, and `BASE_BASH_LIBS_SOURCE`
 - OS and host metadata such as `BASE_OS` and `BASE_HOST`
 - Base's Bash standard library
-- `import_base_lib` for convention-based Base Bash library imports, preferring
-  the resolved reusable Bash library root and falling back to Base's bundled
-  library root
+- `import_base_lib` for convention-based Base Bash library imports from the
+  resolved reusable Bash library root
 - PATH additions for Base's own executable entrypoints
 - optional PATH additions for the local Base Platform Tools companion repo
 
 This layer is established by `base_init.sh`, which is sourced only through the
 `basectl` command path. The canonical variable reference and mutability policy
 live in [Runtime Environment](runtime-environment.md). The standalone
-`base-bash-libs` install path and migration contract live in
+`base-bash-libs` install path and post-migration contract live in
 [Base Bash Libraries](base-bash-libs.md).
 
 ### Layer 3 — Project-Specific Environment

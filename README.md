@@ -176,10 +176,9 @@ brew trust codeforester/base
 brew install codeforester/base/base-bash-libs
 ```
 
-Base currently prefers an external `base-bash-libs` checkout or Homebrew package
-when available and keeps its bundled reusable libraries as a compatibility
-fallback during the migration window. The resolution order, standalone usage
-path, and bundled-library removal gate are documented in
+Base consumes reusable Bash libraries from an external `base-bash-libs` checkout
+or Homebrew package. The resolution order, standalone usage path, and
+post-migration boundary are documented in
 [Base Bash Libraries](docs/base-bash-libs.md).
 
 ## Top Goals

@@ -389,11 +389,12 @@ That gives the script helpers such as `log_info`, `print_error`, `fatal_error`,
 ### When should I source lib_std.sh directly instead?
 
 Source `lib_std.sh` directly only for standalone Bash scripts that are not
-intended to run through `basectl`:
+intended to run through `basectl`. Use the standalone `base-bash-libs` package:
 
 ```bash
 #!/usr/bin/env bash
-source "/path/to/base/lib/bash/std/lib_std.sh"
+base_bash_libs_prefix="$(brew --prefix codeforester/base/base-bash-libs)"
+source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 
 main() {
     run echo "hello"
@@ -406,7 +407,8 @@ Base-native scripts should prefer the `#!/usr/bin/env basectl` pattern because
 it uses the same runtime bootstrap path as Base command implementations.
 
 For deeper details, see [Execution Model](docs/execution-model.md), [Base
-Standards](STANDARDS.md), and [`lib_std.sh`](lib/bash/std/README.md).
+Standards](STANDARDS.md), and
+[Base Bash Libraries](docs/base-bash-libs.md).
 
 ## More Information
 

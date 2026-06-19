@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../tests/test_helper.sh
+load ../../../../tests/test_helper.sh
 
 setup() {
     setup_test_tmpdir

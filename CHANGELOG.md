@@ -20,6 +20,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made Homebrew-managed `basectl update` preflight tap trust before upgrading
   Base when Homebrew requires trust for the tap-owned `base-bash-libs`
   dependency.
+- Removed Base's bundled reusable Bash `std`, `file`, and `git` libraries;
+  Base now requires external `base-bash-libs` through an explicit override,
+  sibling checkout, or Homebrew package.
 
 ### Fixed
 

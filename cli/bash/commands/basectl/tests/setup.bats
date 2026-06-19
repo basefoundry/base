@@ -353,14 +353,17 @@ EOF
 }
 
 @test "basectl setup --notify warns when osascript is unavailable on macOS" {
+    local no_osascript_path="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/bin:/usr/sbin:/sbin"
+
     run env \
         HOME="$TEST_HOME" \
-        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE=darwin24 \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_SETUP_TEST_NO_OSASCRIPT_PATH="$no_osascript_path" \
         BASE_SETUP_NOTIFY=true \
         BASE_SETUP_NOTIFY_FORCE=true \
-        bash -c 'source "$BASE_HOME/lib/bash/std/lib_std.sh"; source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"; setup_notify_completion 0'
+        bash -c 'source "$BASE_HOME/base_init.sh"; source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"; PATH="$BASE_SETUP_TEST_NO_OSASCRIPT_PATH"; setup_notify_completion 0'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Setup notification was requested, but 'osascript' is not available on this Mac."* ]]

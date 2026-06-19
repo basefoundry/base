@@ -1,10 +1,11 @@
 #!/usr/bin/env bats
 
-load ../../tests/test_helper.sh
+load ../../../../tests/test_helper.sh
 
 setup() {
     setup_test_tmpdir
     TEST_HOME="$TEST_TMPDIR/home"
+    TEST_BASE_BASH_LIBS_DIR="$(base_bash_libs_fixture_dir)"
     mkdir -p "$TEST_HOME"
 }
 
@@ -139,6 +140,7 @@ EOF
     run env -i \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$TEST_BASE_BASH_LIBS_DIR" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             printf "BASE_SHELL=%s\n" "${BASE_SHELL:-}"; \
@@ -156,6 +158,7 @@ EOF
     run env -i \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$TEST_BASE_BASH_LIBS_DIR" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             printf "BASE_USER_SETTING=%s\n" "${BASE_USER_SETTING:-}"; \
@@ -173,6 +176,7 @@ EOF
     run env -i \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$TEST_BASE_BASH_LIBS_DIR" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "ok\n"'
 
@@ -197,6 +201,7 @@ EOF
     run env -i \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$TEST_BASE_BASH_LIBS_DIR" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             source "$BASE_HOME/lib/bash/runtime/bashrc"; \

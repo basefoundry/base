@@ -30,8 +30,8 @@ assert_base_bash_libraries_json_finding() {
             [[ "$payload" == *"Base is using reusable Bash libraries from"* ]]
             ;;
         warn)
-            [[ "$payload" == *"Base is using bundled reusable Bash libraries"* ]]
-            [[ "$payload" == *"Clone codeforester/base-bash-libs next to Base"* ]]
+            [[ "$payload" == *"Base Bash library source could not be determined"* ]]
+            [[ "$payload" == *"BASE_BASH_LIBS_DIR"* ]]
             ;;
         *)
             printf 'Unexpected BASE-D007 status: %s\n' "$status" >&2

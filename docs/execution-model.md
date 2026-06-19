@@ -116,8 +116,7 @@ This makes Base stdlib helpers such as `log_info`, `print_error`,
 without the script sourcing `lib_std.sh` directly.
 
 Standalone Bash scripts that are not intended to run through Base should use the
-standalone `base-bash-libs` package instead of depending on Base's bundled
-fallback:
+standalone `base-bash-libs` package:
 
 ```bash
 #!/usr/bin/env bash
@@ -228,11 +227,9 @@ has decided what should run.
   `BASE_BASH_COMMANDS_DIR`, `BASE_BASH_LIB_DIR`, `BASE_BASH_LIBS_DIR`, and
   `BASE_BASH_LIBS_SOURCE`
 - OS and host metadata such as `BASE_OS` and `BASE_HOST`
-- the reusable Bash standard library, resolved from `base-bash-libs` when
-  available and from Base's bundled fallback otherwise
+- the reusable Bash standard library, resolved from `base-bash-libs`
 - `import_base_lib`, the convention-based helper for sourcing Base Bash
-  libraries from the resolved reusable root with Base's bundled root as a
-  fallback
+  libraries from the resolved reusable root
 - PATH additions needed by Base runtime execution
 
 The full variable list, ownership rules, readonly policy, and `~/.baserc`
@@ -244,13 +241,12 @@ Downstream Bash scripts should import Base Bash libraries with:
 import_base_lib file/lib_file.sh
 ```
 
-`import_base_lib` checks the resolved reusable library root first, then Base's
-bundled `lib/bash` root. It fails through Base standard error handling when the
-requested library cannot be found, so callers do not need to duplicate that
-check.
+`import_base_lib` checks the resolved reusable library root. It fails through
+Base standard error handling when the requested library cannot be found, so
+callers do not need to duplicate that check.
 
-The standalone install path, Base resolution order, and bundled-library removal
-gate are documented in [Base Bash Libraries](base-bash-libs.md).
+The standalone install path, Base resolution order, and post-migration boundary
+are documented in [Base Bash Libraries](base-bash-libs.md).
 
 ## Runtime Shell
 
