@@ -345,13 +345,13 @@ class ManifestParsingTests(unittest.TestCase):
                         "  changelog: CHANGELOG.md",
                         "  tag_prefix: v",
                         "  github:",
-                        "    repository: codeforester/base",
+                        "    repository: basefoundry/base",
                         "    release_title: \"Base v{version}\"",
                         "  homebrew:",
                         "    required: true",
-                        "    tap_repository: codeforester/homebrew-base",
+                        "    tap_repository: basefoundry/homebrew-base",
                         "    formula_path: Formula/base.rb",
-                        "    package: codeforester/base/base",
+                        "    package: basefoundry/base/base",
                         "",
                         "artifacts: []",
                     ]
@@ -366,15 +366,15 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.release.version_file, "VERSION")
         self.assertEqual(manifest.release.changelog, "CHANGELOG.md")
         self.assertEqual(manifest.release.tag_prefix, "v")
-        self.assertEqual(manifest.release.github.repository, "codeforester/base")
+        self.assertEqual(manifest.release.github.repository, "basefoundry/base")
         self.assertEqual(manifest.release.github.release_title, "Base v{version}")
         self.assertIsNone(manifest.release.runner)
         self.assertIsNotNone(manifest.release.homebrew)
         assert manifest.release.homebrew is not None
         self.assertTrue(manifest.release.homebrew.required)
-        self.assertEqual(manifest.release.homebrew.tap_repository, "codeforester/homebrew-base")
+        self.assertEqual(manifest.release.homebrew.tap_repository, "basefoundry/homebrew-base")
         self.assertEqual(manifest.release.homebrew.formula_path, "Formula/base.rb")
-        self.assertEqual(manifest.release.homebrew.package, "codeforester/base/base")
+        self.assertEqual(manifest.release.homebrew.package, "basefoundry/base/base")
 
     def test_reads_manifest_release_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -471,45 +471,45 @@ class ManifestParsingTests(unittest.TestCase):
     def test_rejects_invalid_manifest_release_config(self) -> None:
         invalid_values = {
             "scalar": "release: true",
-            "unknown_key": "release:\n  github:\n    repository: codeforester/base\n  package: base",
+            "unknown_key": "release:\n  github:\n    repository: basefoundry/base\n  package: base",
             "missing_github": "release:\n  version_file: VERSION",
-            "github_scalar": "release:\n  github: codeforester/base",
+            "github_scalar": "release:\n  github: basefoundry/base",
             "missing_repository": "release:\n  github:\n    release_title: Base",
             "invalid_repository": "release:\n  github:\n    repository: codeforester",
             "absolute_version_file": (
-                "release:\n  version_file: /tmp/VERSION\n  github:\n    repository: codeforester/base"
+                "release:\n  version_file: /tmp/VERSION\n  github:\n    repository: basefoundry/base"
             ),
             "absolute_changelog": (
-                "release:\n  changelog: /tmp/CHANGELOG.md\n  github:\n    repository: codeforester/base"
+                "release:\n  changelog: /tmp/CHANGELOG.md\n  github:\n    repository: basefoundry/base"
             ),
-            "empty_tag_prefix": "release:\n  tag_prefix: ''\n  github:\n    repository: codeforester/base",
-            "homebrew_scalar": "release:\n  github:\n    repository: codeforester/base\n  homebrew: true",
+            "empty_tag_prefix": "release:\n  tag_prefix: ''\n  github:\n    repository: basefoundry/base",
+            "homebrew_scalar": "release:\n  github:\n    repository: basefoundry/base\n  homebrew: true",
             "homebrew_required_missing_tap": (
                 "release:\n"
                 "  github:\n"
-                "    repository: codeforester/base\n"
+                "    repository: basefoundry/base\n"
                 "  homebrew:\n"
                 "    required: true\n"
                 "    formula_path: Formula/base.rb\n"
-                "    package: codeforester/base/base"
+                "    package: basefoundry/base/base"
             ),
             "homebrew_absolute_formula": (
                 "release:\n"
                 "  github:\n"
-                "    repository: codeforester/base\n"
+                "    repository: basefoundry/base\n"
                 "  homebrew:\n"
                 "    required: true\n"
-                "    tap_repository: codeforester/homebrew-base\n"
+                "    tap_repository: basefoundry/homebrew-base\n"
                 "    formula_path: /tmp/base.rb\n"
-                "    package: codeforester/base/base"
+                "    package: basefoundry/base/base"
             ),
             "homebrew_invalid_package": (
                 "release:\n"
                 "  github:\n"
-                "    repository: codeforester/base\n"
+                "    repository: basefoundry/base\n"
                 "  homebrew:\n"
                 "    required: true\n"
-                "    tap_repository: codeforester/homebrew-base\n"
+                "    tap_repository: basefoundry/homebrew-base\n"
                 "    formula_path: Formula/base.rb\n"
                 "    package: base"
             ),
@@ -517,7 +517,7 @@ class ManifestParsingTests(unittest.TestCase):
                 "release:\n"
                 "  runner: npm\n"
                 "  github:\n"
-                "    repository: codeforester/base"
+                "    repository: basefoundry/base"
             ),
         }
         for name, release_yaml in invalid_values.items():

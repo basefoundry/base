@@ -12,7 +12,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Update a Base-managed project from Git, or update Base through Homebrew"* ]]
     [[ "$output" == *"When project is omitted, Base updates project 'base'."* ]]
     [[ "$output" == *"Tracked project files must be clean"* ]]
-    [[ "$output" == *"brew upgrade codeforester/base/base"* ]]
+    [[ "$output" == *"brew upgrade basefoundry/base/base"* ]]
 }
 
 @test "basectl update dry-run reports planned update and setup" {
@@ -98,7 +98,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would run: brew upgrade codeforester/base/base"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: brew upgrade basefoundry/base/base"* ]]
     [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade with inherited Base environment cleared."* ]]
     [[ "$output" != *"brew should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
@@ -119,7 +119,7 @@ case "\$1" in
         ;;
     trust)
         if [[ "\$2" == "--json" && "\$3" == "v1" ]]; then
-            printf '%s\n' '{"taps":[],"formulae":["codeforester/base/base"],"casks":[],"commands":[]}'
+            printf '%s\n' '{"taps":[],"formulae":["basefoundry/base/base"],"casks":[],"commands":[]}'
             exit 0
         fi
         ;;
@@ -147,9 +147,9 @@ EOF
         '
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Homebrew requires trust for 'codeforester/base' before upgrading Base's tap-owned Bash library dependency."* ]]
-    [[ "$output" == *"Run 'brew trust codeforester/base', then rerun 'basectl update'."* ]]
-    [[ "$output" == *"brew trust --formula codeforester/base/base-bash-libs"* ]]
+    [[ "$output" == *"Homebrew requires trust for 'basefoundry/base' before upgrading Base's tap-owned Bash library dependency."* ]]
+    [[ "$output" == *"Run 'brew trust basefoundry/base', then rerun 'basectl update'."* ]]
+    [[ "$output" == *"brew trust --formula basefoundry/base/base-bash-libs"* ]]
     [[ ! -e "$brew_log" ]]
 }
 
@@ -194,12 +194,12 @@ EOF
         '
 
     [ "$status" -eq 0 ]
-    [ "$(cat "$brew_log")" = "upgrade codeforester/base/base" ]
+    [ "$(cat "$brew_log")" = "upgrade basefoundry/base/base" ]
     [[ "$(cat "$setup_log")" == *"args=setup"* ]]
     [[ "$(cat "$setup_log")" == *"BASE_HOME=unset"* ]]
     [[ "$(cat "$setup_log")" == *"BASE_PROJECT=unset"* ]]
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
-    [[ "$output" == *"Running Homebrew upgrade for codeforester/base/base."* ]]
+    [[ "$output" == *"Running Homebrew upgrade for basefoundry/base/base."* ]]
     [[ "$output" == *"Running basectl setup after Homebrew upgrade."* ]]
     [[ "$output" == *"Base update is complete."* ]]
 }
@@ -284,6 +284,7 @@ EOF
     cp "$BASE_REPO_ROOT/base_init.sh" "$repo/base_init.sh"
     cp -R "$BASE_REPO_ROOT/cli" "$repo/cli"
     cp -R "$BASE_REPO_ROOT/lib" "$repo/lib"
+    copy_base_bash_libs_fixture "$TEST_TMPDIR/base-bash-libs/lib/bash"
     mkdir -p "$repo/bin"
     printf 'notes\n' > "$repo/local-notes.md"
 

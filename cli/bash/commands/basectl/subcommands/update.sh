@@ -28,9 +28,9 @@ Notes:
   - Tracked project files must be clean; untracked files are left to Git's normal
     pull-time overwrite protection.
   - Homebrew installs update only project 'base' through the Base formula:
-    brew upgrade codeforester/base/base
-  - If Homebrew requires tap trust, trust codeforester/base before upgrading:
-    brew trust codeforester/base
+    brew upgrade basefoundry/base/base
+  - If Homebrew requires tap trust, trust basefoundry/base before upgrading:
+    brew trust basefoundry/base
 EOF
 }
 
@@ -39,15 +39,15 @@ base_update_source_git_library() {
 }
 
 base_update_homebrew_package() {
-    printf '%s\n' "codeforester/base/base"
+    printf '%s\n' "basefoundry/base/base"
 }
 
 base_update_homebrew_tap() {
-    printf '%s\n' "codeforester/base"
+    printf '%s\n' "basefoundry/base"
 }
 
 base_update_homebrew_bash_libs_package() {
-    printf '%s\n' "codeforester/base/base-bash-libs"
+    printf '%s\n' "basefoundry/base/base-bash-libs"
 }
 
 base_update_is_homebrew_install() {

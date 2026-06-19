@@ -125,7 +125,7 @@ base_init_report_missing_bash_libs() {
         base_init_error "Tried Homebrew base-bash-libs package at '$candidate'."
     fi
 
-    base_init_error "Clone codeforester/base-bash-libs next to Base, install it with 'brew install codeforester/base/base-bash-libs', or set BASE_BASH_LIBS_DIR to a compatible lib/bash directory."
+    base_init_error "Clone basefoundry/base-bash-libs next to Base, install it with 'brew install basefoundry/base/base-bash-libs', or set BASE_BASH_LIBS_DIR to a compatible lib/bash directory."
 }
 
 base_init_set_bash_libs_contract() {

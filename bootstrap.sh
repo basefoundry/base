@@ -399,10 +399,10 @@ bootstrap_print_next_steps() {
 bootstrap_main() {
     local allow_homebrew_install="${BASE_BOOTSTRAP_HOMEBREW_INSTALL:-true}"
     local branch="${BASE_BOOTSTRAP_BRANCH:-}"
-    local formula="${BASE_BOOTSTRAP_BREW_FORMULA:-codeforester/base/base}"
+    local formula="${BASE_BOOTSTRAP_BREW_FORMULA:-basefoundry/base/base}"
     local install_dir="${BASE_BOOTSTRAP_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local mode="${BASE_BOOTSTRAP_MODE:-}"
-    local repo_url="${BASE_BOOTSTRAP_REPO_URL:-https://github.com/codeforester/base.git}"
+    local repo_url="${BASE_BOOTSTRAP_REPO_URL:-https://github.com/basefoundry/base.git}"
 
     BASE_BOOTSTRAP_DRY_RUN="${BASE_BOOTSTRAP_DRY_RUN:-false}"
 

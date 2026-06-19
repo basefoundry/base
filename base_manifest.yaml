@@ -17,13 +17,13 @@ release:
   changelog: CHANGELOG.md
   tag_prefix: v
   github:
-    repository: codeforester/base
+    repository: basefoundry/base
     release_title: "Base v{version}"
   homebrew:
     required: true
-    tap_repository: codeforester/homebrew-base
+    tap_repository: basefoundry/homebrew-base
     formula_path: Formula/base.rb
-    package: codeforester/base/base
+    package: basefoundry/base/base
 
 # Optional relative path to a Homebrew Brewfile for ordinary macOS tools.
 # Base runs `brew bundle --file=<path>` during setup when this is set.

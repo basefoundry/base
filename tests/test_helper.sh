@@ -67,7 +67,7 @@ base_bash_libs_fixture_dir() {
         fi
     done
 
-    printf 'ERROR: Base Bash library fixtures were not found. Clone codeforester/base-bash-libs next to Base or set BASE_BASH_LIBS_DIR.\n' >&2
+    printf 'ERROR: Base Bash library fixtures were not found. Clone basefoundry/base-bash-libs next to Base or set BASE_BASH_LIBS_DIR.\n' >&2
     return 1
 }
 

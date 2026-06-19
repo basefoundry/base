@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: codeforester/base-bash-libs
+          repository: basefoundry/base-bash-libs
           path: .dependencies/base-bash-libs
 
       - name: Install BATS
@@ -68,7 +68,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: codeforester/base-bash-libs
+          repository: basefoundry/base-bash-libs
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
@@ -118,7 +118,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: codeforester/base-bash-libs
+          repository: basefoundry/base-bash-libs
           path: .dependencies/base-bash-libs
 
       - name: Set up Python

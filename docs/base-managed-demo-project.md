@@ -7,7 +7,7 @@ Base repo.
 
 ## Current Reference Project
 
-Use [`codeforester/base-demo`](https://github.com/codeforester/base-demo) as
+Use [`basefoundry/base-demo`](https://github.com/basefoundry/base-demo) as
 the public reference project.
 
 `base-demo` should be small, inspectable, and safe to run on a fresh supported

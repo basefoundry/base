@@ -73,7 +73,7 @@ project-owned values at the top:
 
 ```bash
 PROJECT_NAME="${PROJECT_NAME:-banyanlabs}"
-PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/codeforester/banyanlabs.git}"
+PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/basefoundry/banyanlabs.git}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/work}"
 BASE_DIR="${BASE_DIR:-$WORKSPACE_DIR/base}"
 PROJECT_DIR="${PROJECT_DIR:-$WORKSPACE_DIR/$PROJECT_NAME}"

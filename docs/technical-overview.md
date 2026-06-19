@@ -214,7 +214,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | Method | Best for |
 |---|---|
 | `curl … bootstrap.sh \| bash` | Blank macOS machine; installs Homebrew, Git, Bash, then Base |
-| `brew install codeforester/base/base` | Users wanting Base installed as a managed tool |
+| `brew install basefoundry/base/base` | Users wanting Base installed as a managed tool |
 | `git clone` + `basectl setup` | Contributors / Base developers |
 | `curl … install.sh \| bash` | Source-install shortcut |
 

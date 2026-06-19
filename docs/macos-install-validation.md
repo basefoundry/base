@@ -85,8 +85,8 @@ Use this path when validating the consumer install experience.
 For a machine that already has Homebrew:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base
+brew trust basefoundry/base
+brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
@@ -95,7 +95,7 @@ exec "$SHELL" -l
 For a first-mile bootstrap run that should choose the Homebrew route:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
 Then run the handoff commands printed by `bootstrap.sh`. They should include
@@ -172,7 +172,7 @@ install:
 
 ```bash
 cd <scratch-workspace>
-git clone https://github.com/codeforester/base-demo.git
+git clone https://github.com/basefoundry/base-demo.git
 basectl projects list
 basectl setup base-demo
 basectl check base-demo
@@ -205,7 +205,7 @@ Use this path when validating the contributor and dogfood experience.
 For bootstrap source mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
 ```
 
 Then run the handoff commands printed by `bootstrap.sh`. They should point at
@@ -220,7 +220,7 @@ exec "$SHELL" -l
 For a manual source clone:
 
 ```bash
-git clone https://github.com/codeforester/base.git <source-checkout>
+git clone https://github.com/basefoundry/base.git <source-checkout>
 <source-checkout>/bin/basectl setup --profile dev
 <source-checkout>/bin/basectl update-profile
 exec "$SHELL" -l

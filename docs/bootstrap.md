@@ -10,7 +10,7 @@ installation of Base.
 Run the bootstrapper from GitHub:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
 ```
 
 The bootstrapper verifies macOS, installs missing first-mile prerequisites, and
@@ -32,8 +32,8 @@ see what was installed before Base changes future interactive shells.
 Choose a mode explicitly when the default should not infer one:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
 ```
 
 Without an explicit mode, bootstrap uses this order:
@@ -53,7 +53,7 @@ is whichever executable the shell finds first on `PATH`.
 bootstrap.sh --source
 bootstrap.sh --brew
 bootstrap.sh --install-dir ~/work/base
-bootstrap.sh --repo-url https://github.com/codeforester/base.git
+bootstrap.sh --repo-url https://github.com/basefoundry/base.git
 bootstrap.sh --branch <name>
 bootstrap.sh --no-homebrew-install
 bootstrap.sh --dry-run
@@ -67,7 +67,7 @@ route without changing the machine.
 Contributors should prefer source mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeforester/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
@@ -108,8 +108,8 @@ Use Homebrew directly when Homebrew is already installed and Base should be
 managed like a normal formula:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base
+brew trust basefoundry/base
+brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l

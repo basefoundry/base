@@ -18,7 +18,7 @@ for command implementations, then sources this command implementation and calls
 
 `basectl` also dispatches direct Base-owned command names by convention when
 such command directories exist. Optional utility CLIs such as `caff` and
-`sort-in-place` live in `codeforester/base-platform-tools` instead of Base core.
+`sort-in-place` live in `basefoundry/base-platform-tools` instead of Base core.
 
 ## Current subcommands
 
@@ -135,7 +135,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl update [project]` updates the selected project checkout through Git
   and then runs `basectl setup <project>`. Omitting the project selects `base`;
   Homebrew-managed Base installs still hand off only the Base package to
-  `brew upgrade codeforester/base/base`.
+  `brew upgrade basefoundry/base/base`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths.

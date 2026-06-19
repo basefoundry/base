@@ -120,7 +120,7 @@ standalone `base-bash-libs` package:
 
 ```bash
 #!/usr/bin/env bash
-base_bash_libs_prefix="$(brew --prefix codeforester/base/base-bash-libs)"
+base_bash_libs_prefix="$(brew --prefix basefoundry/base/base-bash-libs)"
 source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 
 main() {
@@ -208,7 +208,7 @@ The implementation still lives under `cli/bash/commands/<command>/` with its
 local README and tests.
 
 Optional utility CLIs such as `caff` and `sort-in-place` live in
-[`codeforester/base-platform-tools`](https://github.com/codeforester/base-platform-tools)
+[`basefoundry/base-platform-tools`](https://github.com/basefoundry/base-platform-tools)
 instead of Base core.
 
 When `base-platform-tools` is checked out next to Base and contains both

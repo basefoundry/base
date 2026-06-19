@@ -1,7 +1,7 @@
 # Base Bash Libraries
 
 Base's reusable Bash libraries live in the standalone
-[`codeforester/base-bash-libs`](https://github.com/codeforester/base-bash-libs)
+[`basefoundry/base-bash-libs`](https://github.com/basefoundry/base-bash-libs)
 repository. That repository lets scripts use Base's Bash logging, command
 execution, filesystem, and Git helper conventions without adopting the full
 Base workspace control plane.
@@ -34,18 +34,18 @@ Users who want only the Bash libraries can install them from the existing
 Homebrew tap:
 
 ```bash
-brew trust codeforester/base
-brew install codeforester/base/base-bash-libs
+brew trust basefoundry/base
+brew install basefoundry/base/base-bash-libs
 ```
 
 The trust step is required on Homebrew versions that block formulae from
 non-official taps until the tap is trusted. It is safe to run again on machines
-that already trust `codeforester/base`.
+that already trust `basefoundry/base`.
 
 Standalone scripts can then source the stdlib from the installed prefix:
 
 ```bash
-base_bash_libs_prefix="$(brew --prefix codeforester/base/base-bash-libs)"
+base_bash_libs_prefix="$(brew --prefix basefoundry/base/base-bash-libs)"
 source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 ```
 
@@ -61,7 +61,7 @@ For source checkout development, clone the repository next to Base or source it
 directly from the checkout path:
 
 ```bash
-git clone https://github.com/codeforester/base-bash-libs.git ~/work/base-bash-libs
+git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-libs
 source "$HOME/work/base-bash-libs/lib/bash/std/lib_std.sh"
 ```
 
@@ -95,7 +95,7 @@ import_base_lib git/lib_git.sh
 ```
 
 `import_base_lib` checks only the resolved reusable library root. Base-specific
-runtime and version helpers remain in `codeforester/base` under `lib/bash`, but
+runtime and version helpers remain in `basefoundry/base` under `lib/bash`, but
 the reusable libraries come from `base-bash-libs`.
 
 ## Post-Migration Contract

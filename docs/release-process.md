@@ -10,9 +10,9 @@ Use this checklist when preparing and publishing a new Base release such as
 
 The release spans two repositories:
 
-- `codeforester/base` owns Base source, release notes, `VERSION`, Git tags, and
+- `basefoundry/base` owns Base source, release notes, `VERSION`, Git tags, and
   GitHub Releases.
-- `codeforester/homebrew-base` owns the Homebrew formula that installs published
+- `basefoundry/homebrew-base` owns the Homebrew formula that installs published
   Base releases, plus the Homebrew bottle artifacts for supported macOS hosts.
 
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
@@ -71,7 +71,7 @@ handoff checklist when `release.homebrew` is declared.
 
 ## Base Release Checklist
 
-Complete these steps in `codeforester/base`:
+Complete these steps in `basefoundry/base`:
 
 1. Choose the release version and create or use a GitHub issue for the release
    artifact work.
@@ -110,7 +110,7 @@ Complete these steps in `codeforester/base`:
 
 ## Homebrew Tap And Bottle Checklist
 
-Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
+Complete these steps in `basefoundry/homebrew-base` after the Base tag exists:
 
 1. Create a Homebrew tap update issue or PR for the new Base version.
 2. Create a tap release branch. Do not run the bottle workflow from `master`;
@@ -122,7 +122,7 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
 4. Compute the archive checksum from the published tag:
 
    ```bash
-   curl -fsSL https://github.com/codeforester/base/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256
+   curl -fsSL https://github.com/basefoundry/base/archive/refs/tags/vX.Y.Z.tar.gz | shasum -a 256
    ```
 
 5. Validate the formula source-build path from the tap repository when the host
@@ -130,7 +130,7 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
 
    ```bash
    brew install --build-from-source Formula/base.rb
-   brew test codeforester/base
+   brew test basefoundry/base/base
    brew audit --new --formula Formula/base.rb
    ```
 
@@ -147,20 +147,20 @@ Complete these steps in `codeforester/homebrew-base` after the Base tag exists:
 
    ```bash
    brew update
-   brew trust codeforester/base
-   brew install --force-bottle codeforester/base/base
-   brew test codeforester/base
-   brew upgrade --no-ask codeforester/base/base
+   brew trust basefoundry/base
+   brew install --force-bottle basefoundry/base/base
+   brew test basefoundry/base/base
+   brew upgrade --no-ask basefoundry/base/base
    ```
 
-   Use `brew reinstall --force-bottle codeforester/base/base` when Base is
+   Use `brew reinstall --force-bottle basefoundry/base/base` when Base is
    already installed on the validation host.
 10. Before 1.0.0, complete the
    [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) against a
    release candidate or equivalent test formula. Record the exact commands,
    host facts, pre-upgrade state, post-upgrade checks, and any follow-up issues.
    Do not close the rehearsal issue until
-   `brew upgrade --no-ask codeforester/base/base` and the post-upgrade Base
+   `brew upgrade --no-ask basefoundry/base/base` and the post-upgrade Base
    project checks pass on a qualified host.
 
 ## Cleanup

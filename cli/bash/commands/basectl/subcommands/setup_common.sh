@@ -376,7 +376,7 @@ setup_recovery_base_python_package() {
 }
 
 setup_recovery_base_bash_libraries() {
-    printf "%s\n" "Clone codeforester/base-bash-libs next to Base, install it with 'brew install codeforester/base/base-bash-libs', or set BASE_BASH_LIBS_DIR."
+    printf "%s\n" "Clone basefoundry/base-bash-libs next to Base, install it with 'brew install basefoundry/base/base-bash-libs', or set BASE_BASH_LIBS_DIR."
 }
 
 setup_recovery_ci_python() {

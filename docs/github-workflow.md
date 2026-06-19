@@ -94,10 +94,10 @@ When migrating from an existing shared Project, pass
 overwriting values already set there.
 
 ```bash
-basectl gh project doctor --project "Base Roadmap" --owner codeforester
-basectl gh project configure --project "Base Roadmap" --owner codeforester --schema base-project
-basectl repo configure ~/work/base --repo codeforester/base --copy-project-fields-from "Base Roadmap"
-basectl gh project issue set-fields 604 --repo codeforester/base --project "Base Roadmap" --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
+basectl gh project doctor --project base --owner basefoundry
+basectl gh project configure --project base --owner basefoundry --schema base-project
+basectl repo configure ~/work/base --repo basefoundry/base --copy-project-fields-from "Base Roadmap"
+basectl gh project issue set-fields 604 --repo basefoundry/base --project base --owner basefoundry --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
 ```
 
 ## Preferred GitHub Interface
@@ -402,7 +402,7 @@ Every issue does not need a milestone. Use milestones when the issue contributes
 to a concrete release goal.
 
 For the release checklist itself, including `VERSION`, changelog, tags, GitHub
-Releases, and the follow-up `codeforester/homebrew-base` tap update, see
+Releases, and the follow-up `basefoundry/homebrew-base` tap update, see
 [Release Process](release-process.md).
 
 ## Projects

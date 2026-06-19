@@ -394,7 +394,7 @@ run_base_init_script() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"Base reusable Bash libraries were not found."* ]]
     [[ "$output" == *"Tried sibling base-bash-libs checkout at '$TEST_BASE_HOME/../base-bash-libs/lib/bash'."* ]]
-    [[ "$output" == *"Clone codeforester/base-bash-libs next to Base"* ]]
+    [[ "$output" == *"Clone basefoundry/base-bash-libs next to Base"* ]]
 }
 
 @test "base_init resolves Homebrew base-bash-libs next to Homebrew Base" {

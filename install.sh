@@ -9,7 +9,7 @@ Usage:
 
 Options:
   --dir <path>       Install or update Base at this path. Defaults to ~/work/base.
-  --repo-url <url>   Git repository URL to clone. Defaults to https://github.com/codeforester/base.git.
+  --repo-url <url>   Git repository URL to clone. Defaults to https://github.com/basefoundry/base.git.
   --branch <name>    Clone a specific branch when installing into a new directory.
   --no-profile       Skip basectl update-profile after setup.
   --dry-run          Print planned actions without making changes.
@@ -200,7 +200,7 @@ install_run_update_profile() {
 }
 
 install_main() {
-    local repo_url="${BASE_INSTALL_REPO_URL:-https://github.com/codeforester/base.git}"
+    local repo_url="${BASE_INSTALL_REPO_URL:-https://github.com/basefoundry/base.git}"
     local install_dir="${BASE_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local branch="${BASE_INSTALL_BRANCH:-}"
     local update_profile="${BASE_INSTALL_UPDATE_PROFILE:-true}"

@@ -126,7 +126,7 @@ as read-only contract values even when the operating shell cannot enforce that.
 ## Optional Companion Repository Variables
 
 Base can integrate with the optional
-[`base-platform-tools`](https://github.com/codeforester/base-platform-tools)
+[`base-platform-tools`](https://github.com/basefoundry/base-platform-tools)
 repository when it is checked out next to Base. Detection is intentionally local
 and conservative: the sibling directory must be named `base-platform-tools` and
 must contain both `base_manifest.yaml` and `bin/`.
