@@ -1318,6 +1318,21 @@ Those defaults are intended to stay conservative:
 - history behavior, including duplicate suppression, timestamped history, and
   multi-line command preservation
 
+The defaults should not become a personal dotfile bundle. The following remain
+outside `basectl update-profile --defaults` unless Base adds a separate,
+explicit opt-in:
+
+- color or listing aliases for tools such as `ls`, `grep`, or `diff`
+- navigation shortcuts, `CDPATH`, auto-directory changes, or spelling
+  correction
+- signing and agent helpers such as `GPG_TTY`
+- strict shell modes such as global `errexit`, `nounset`, or `pipefail`
+- prompt features that run expensive checks, such as dirty Git status
+
+Those settings are platform-sensitive, workflow-specific, or more likely to
+change command behavior in surprising ways. Keep personal aliases and functions
+in normal shell dotfiles, and keep simple Base preferences in `~/.baserc`.
+
 ## Optional Utility Tools
 
 Base no longer owns general-purpose utility CLIs such as `caff` and

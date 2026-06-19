@@ -564,6 +564,13 @@ Base-managed shell startup files follow this separation of concerns:
 Startup files should stay thin and predictable. They must not source
 `base_init.sh`; Base runtime setup belongs to the `basectl` command path.
 
+Optional shell defaults must stay conservative. Platform-sensitive or highly
+personal behavior, such as color/listing aliases, navigation shortcuts, shell
+spelling correction, signing-agent setup, strict shell modes, or prompt features
+that run expensive checks, should remain in user dotfiles or move behind a
+separate explicit opt-in instead of being added to
+`basectl update-profile --defaults`.
+
 `~/.baserc` is user-managed input for simple Base preferences such as
 `BASE_DEBUG=1`. It must not set Base-owned runtime or profile state such as
 `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_SHELL`,

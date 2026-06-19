@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Documented the boundary for optional personal shell defaults such as color
+  aliases, navigation shortcuts, signing helpers, and strict shell modes.
 - Improved opt-in Bash and Zsh completion ergonomics for interactive shell
   defaults.
 - Added conservative pager and terminal usability behavior to opt-in shell
