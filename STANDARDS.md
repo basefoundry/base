@@ -440,19 +440,23 @@ cli/bash/commands/basectl/
 
 ### 6.2 Bash Libraries
 
-Bash libraries should live in per-library directories:
+Reusable Bash libraries live in the standalone `base-bash-libs` repository.
+Base keeps only Base-specific Bash runtime and version helpers under `lib/bash`:
 
 ```text
 lib/bash/
-  std/
-    lib_std.sh
+  runtime/
     README.md
     tests/
-  git/
-    lib_git.sh
+  version/
+    lib_version.sh
     README.md
     tests/
 ```
+
+Base Bash command code should use `import_base_lib` for reusable libraries such
+as `file/lib_file.sh` or `git/lib_git.sh`; `base_init.sh` resolves those imports
+from `base-bash-libs`.
 
 ### 6.3 Python Packages
 

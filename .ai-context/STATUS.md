@@ -61,8 +61,8 @@ Recent released work includes:
 - explicit uv-managed Python setup and command runner support
 - workspace-aware repo clone, manifest-driven workspace clone, Project intake
   workflow generation, and resilient `basectl gh` command execution
-- external `base-bash-libs` consumption when available, with bundled reusable
-  Bash libraries retained as a compatibility fallback
+- external `base-bash-libs` consumption for reusable Bash libraries, with Base
+  retaining only Bash runtime and version helpers
 
 ## Recent Merged Changes
 
@@ -76,7 +76,7 @@ Recent commits on `master` include:
 - shell stdlib dry-run safety fixes from BankBuddy dogfooding
 - Homebrew bottle and upgrade-path release process hardening
 - external reusable Bash library resolution from `base-bash-libs`
-- documented `base-bash-libs` consumption and migration contract
+- documented `base-bash-libs` consumption and post-migration contract
 
 ## Useful Orientation Links
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../lib/bash/tests/test_helper.sh
+load ./test_helper.sh
 bats_require_minimum_version 1.5.0
 
 setup() {

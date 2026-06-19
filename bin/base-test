@@ -12,7 +12,7 @@ base_test_unset_env=(
     -u BASE_BASH_COMMANDS_DIR
     -u BASE_LIB_DIR
     -u BASE_BASH_LIB_DIR
-    -u BASE_BASH_LIBS_DIR
+    -u BASE_BASH_LIBS_SOURCE
     -u BASE_SHELL_DIR
     -u BASE_OS
     -u BASE_HOST
@@ -62,10 +62,7 @@ fi
 env "${base_test_unset_env[@]}" \
     bats \
     cli/bash/commands/basectl/tests/*.bats \
-    lib/bash/file/tests/lib_file.bats \
-    lib/bash/git/tests/lib_git.bats \
     lib/bash/runtime/tests/runtime_bashrc.bats \
-    lib/bash/std/tests/lib_std.bats \
     lib/bash/version/tests/lib_version.bats \
     lib/shell/completions/tests/completions.bats \
     tests/base_test.bats \

@@ -65,17 +65,24 @@ Run them with:
 PYTHONPATH=lib/python:cli/python python -m pytest
 ```
 
-## Bash Command And Library Tests
+## Bash Command And Runtime Tests
 
-BATS tests next to Bash commands and libraries cover shell parsing, dispatch,
-small command contracts, and failure messages. Keep these focused on one command
-or library at a time.
+BATS tests next to Bash commands and Base runtime helpers cover shell parsing,
+dispatch, small command contracts, and failure messages. Keep these focused on
+one command or helper at a time. Reusable Bash library tests live in the
+standalone `base-bash-libs` repository.
 
 From a source checkout, run the full command/library suite through:
 
 ```bash
 env -u BASE_HOME ./bin/base-test
 ```
+
+The full suite expects Base to resolve external reusable Bash libraries. A
+normal `~/work/base` checkout uses sibling `~/work/base-bash-libs`
+automatically. For a nonstandard worktree, set
+`BASE_BASH_LIBS_DIR=/path/to/base-bash-libs/lib/bash` before running
+`bin/base-test`.
 
 `basectl test base` delegates to the same runner when the `base` project
 resolves to a source checkout. In a packaged install such as Homebrew,

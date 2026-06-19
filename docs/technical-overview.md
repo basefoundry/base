@@ -73,9 +73,9 @@ Exports `BASE_HOME`, `BASE_BIN_DIR`, `BASE_BASH_LIB_DIR`,
 `BASE_BASH_LIBS_DIR`, `BASE_BASH_LIBS_SOURCE`, `BASE_OS`, `BASE_HOST`, and
 `BASE_SHELL`. Loads the Bash standard library from the resolved reusable
 library root. Sets up
-`import_base_lib` for convention-based library imports with a bundled fallback.
-The standalone install path and migration contract for those reusable libraries
-are documented in [Base Bash Libraries](base-bash-libs.md).
+`import_base_lib` for convention-based library imports from that reusable root.
+The standalone install path and post-migration contract for those reusable
+libraries are documented in [Base Bash Libraries](base-bash-libs.md).
 
 **Layer 3 — Project environment** (`basectl activate <project>`)
 

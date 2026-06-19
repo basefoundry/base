@@ -109,7 +109,7 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --no-project
+            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --repo codeforester/base --no-project
         '
 
     [ "$status" -eq 0 ]
@@ -135,7 +135,7 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --title "Default category issue" --no-project
+            base_gh_subcommand_main issue create --title "Default category issue" --repo codeforester/base --no-project
         '
 
     [ "$status" -eq 0 ]
@@ -166,7 +166,7 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Make auth preflight resilient" --no-project
+            base_gh_subcommand_main issue create --category bug --title "Make auth preflight resilient" --repo codeforester/base --no-project
         '
 
     [ "$status" -eq 0 ]

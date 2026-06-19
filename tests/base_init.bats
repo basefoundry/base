@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../lib/bash/tests/test_helper.sh
+load ./test_helper.sh
 bats_require_minimum_version 1.5.0
 
 setup() {
@@ -9,6 +9,7 @@ setup() {
     mkdir -p "$TEST_BASE_HOME"
     TEST_BASE_HOME="$(cd "$TEST_BASE_HOME" && pwd -P)"
     create_minimal_base_home "$TEST_BASE_HOME"
+    copy_base_bash_libs_fixture "$TEST_TMPDIR/base-bash-libs/lib/bash"
 }
 
 create_minimal_base_home() {
@@ -17,26 +18,16 @@ create_minimal_base_home() {
     mkdir -p \
         "$base_home/bin" \
         "$base_home/cli/bash/commands" \
-        "$base_home/lib/bash/file" \
-        "$base_home/lib/bash/std" \
+        "$base_home/lib/bash" \
         "$base_home/lib/shell"
 
     cp "$BASE_REPO_ROOT/base_init.sh" "$base_home/base_init.sh"
-    cp "$BASE_REPO_ROOT/lib/bash/std/lib_std.sh" "$base_home/lib/bash/std/lib_std.sh"
-    cp "$BASE_REPO_ROOT/lib/bash/file/lib_file.sh" "$base_home/lib/bash/file/lib_file.sh"
 }
 
 create_external_bash_libs() {
     local target_dir="$1"
 
-    mkdir -p \
-        "$target_dir/file" \
-        "$target_dir/git" \
-        "$target_dir/std"
-
-    cp "$BASE_REPO_ROOT/lib/bash/std/lib_std.sh" "$target_dir/std/lib_std.sh"
-    cp "$BASE_REPO_ROOT/lib/bash/file/lib_file.sh" "$target_dir/file/lib_file.sh"
-    cp "$BASE_REPO_ROOT/lib/bash/git/lib_git.sh" "$target_dir/git/lib_git.sh"
+    copy_base_bash_libs_fixture "$target_dir"
 }
 
 run_base_init_script() {
@@ -60,6 +51,10 @@ run_base_init_script() {
 }
 
 @test "base_init exports the Base runtime path contract" {
+    local expected_bash_libs_dir
+
+    expected_bash_libs_dir="$(cd "$TEST_TMPDIR/base-bash-libs/lib/bash" && pwd -P)"
+
     run_base_init_script '
         base_home="$1"
         source "$base_home/base_init.sh"
@@ -83,8 +78,8 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BASH_COMMANDS_DIR=$TEST_BASE_HOME/cli/bash/commands"* ]]
     [[ "$output" == *"BASE_LIB_DIR=$TEST_BASE_HOME/lib"* ]]
     [[ "$output" == *"BASE_BASH_LIB_DIR=$TEST_BASE_HOME/lib/bash"* ]]
-    [[ "$output" == *"BASE_BASH_LIBS_DIR=$TEST_BASE_HOME/lib/bash"* ]]
-    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=bundled"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_DIR=$expected_bash_libs_dir"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
     [[ "$output" == *"BASE_SHELL_DIR=$TEST_BASE_HOME/lib/shell"* ]]
 }
 
@@ -228,7 +223,7 @@ run_base_init_script() {
     [ "$output" = "1" ]
 }
 
-@test "base_init import_base_lib resolves libraries relative to bundled Base fallback" {
+@test "base_init import_base_lib resolves libraries relative to external reusable root" {
     run_base_init_script '
         base_home="$1"
         source "$base_home/base_init.sh"
@@ -273,7 +268,7 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BASH_LIBS_SOURCE=explicit"* ]]
 }
 
-@test "base_init resolves sibling base-bash-libs checkout before bundled fallback" {
+@test "base_init resolves sibling base-bash-libs checkout before Homebrew" {
     local external_dir="$TEST_TMPDIR/base-bash-libs/lib/bash"
     local expected_dir
 
@@ -316,10 +311,6 @@ run_base_init_script() {
     create_external_bash_libs "$external_dir"
     printf '\nexternal_only_file_marker() { :; }\n' >>"$external_dir/file/lib_file.sh"
     printf '\nexternal_only_git_marker() { :; }\n' >>"$external_dir/git/lib_git.sh"
-    rm -rf \
-        "$TEST_BASE_HOME/lib/bash/file" \
-        "$TEST_BASE_HOME/lib/bash/git" \
-        "$TEST_BASE_HOME/lib/bash/std"
     expected_dir="$(cd "$external_dir" && pwd -P)"
 
     run env \
@@ -355,11 +346,18 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
 }
 
-@test "base_init import_base_lib falls back to bundled Base libraries" {
+@test "base_init import_base_lib fails when the external reusable library is missing" {
     local external_dir="$TEST_TMPDIR/partial-base-bash-libs/lib/bash"
+    local source_dir
+    local source_root
+    local target_root
 
+    source_dir="$(base_bash_libs_fixture_dir)"
+    source_root="$(cd "$source_dir/../.." && pwd -P)"
     mkdir -p "$external_dir/std"
-    cp "$BASE_REPO_ROOT/lib/bash/std/lib_std.sh" "$external_dir/std/lib_std.sh"
+    target_root="$(cd "$external_dir/../.." && pwd -P)"
+    cp "$source_dir/std/lib_std.sh" "$external_dir/std/lib_std.sh"
+    cp "$source_root/VERSION" "$target_root/VERSION"
 
     run env \
         -u BASE_HOME \
@@ -379,10 +377,24 @@ run_base_init_script() {
             base_home="$1"
             source "$base_home/base_init.sh"
             import_base_lib file/lib_file.sh
-            declare -F update_file_section >/dev/null
         ' bash "$TEST_BASE_HOME"
 
-    [ "$status" -eq 0 ]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Base reusable library 'file/lib_file.sh' was not found at '$external_dir/file/lib_file.sh'"* ]]
+}
+
+@test "base_init fails clearly when external reusable Bash libraries are unavailable" {
+    rm -rf "$TEST_TMPDIR/base-bash-libs"
+
+    run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+    '
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Base reusable Bash libraries were not found."* ]]
+    [[ "$output" == *"Tried sibling base-bash-libs checkout at '$TEST_BASE_HOME/../base-bash-libs/lib/bash'."* ]]
+    [[ "$output" == *"Clone codeforester/base-bash-libs next to Base"* ]]
 }
 
 @test "base_init resolves Homebrew base-bash-libs next to Homebrew Base" {

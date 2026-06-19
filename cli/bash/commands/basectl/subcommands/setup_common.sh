@@ -376,7 +376,7 @@ setup_recovery_base_python_package() {
 }
 
 setup_recovery_base_bash_libraries() {
-    printf "%s\n" "Clone codeforester/base-bash-libs next to Base, or install it with 'brew install codeforester/base/base-bash-libs'."
+    printf "%s\n" "Clone codeforester/base-bash-libs next to Base, install it with 'brew install codeforester/base/base-bash-libs', or set BASE_BASH_LIBS_DIR."
 }
 
 setup_recovery_ci_python() {
@@ -740,7 +740,7 @@ setup_base_bash_libraries_status() {
         explicit|sibling|homebrew)
             printf '%s\n' "ok"
             ;;
-        bundled|unknown|*)
+        unknown|*)
             printf '%s\n' "warn"
             ;;
     esac
@@ -756,9 +756,6 @@ setup_base_bash_libraries_check_message() {
             ;;
         homebrew)
             printf "Base is using reusable Bash libraries from Homebrew package '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
-            ;;
-        bundled)
-            printf "Base is using bundled reusable Bash libraries from '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"
             ;;
         *)
             printf "Base Bash library source could not be determined.\n"

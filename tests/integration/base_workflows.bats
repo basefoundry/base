@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load ../../lib/bash/tests/test_helper.sh
+load ../test_helper.sh
 bats_require_minimum_version 1.5.0
 
 setup() {
@@ -36,6 +36,7 @@ setup() {
 
 create_base_runtime() {
     local base_home="$1"
+    local homebrew_prefix
 
     mkdir -p "$base_home"
     cp -R "$BASE_REPO_ROOT/bin" "$base_home/bin"
@@ -44,6 +45,15 @@ create_base_runtime() {
     cp "$BASE_REPO_ROOT/base_init.sh" "$base_home/base_init.sh"
     cp "$BASE_REPO_ROOT/base_manifest.yaml" "$base_home/base_manifest.yaml"
     cp "$BASE_REPO_ROOT/VERSION" "$base_home/VERSION"
+
+    copy_base_bash_libs_fixture "$base_home/../base-bash-libs/lib/bash"
+
+    case "$base_home" in
+        */opt/base/libexec)
+            homebrew_prefix="${base_home%/opt/base/libexec}"
+            copy_base_bash_libs_fixture "$homebrew_prefix/opt/base-bash-libs/libexec/lib/bash"
+            ;;
+    esac
 }
 
 create_fake_platform_tools() {

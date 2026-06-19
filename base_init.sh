@@ -26,11 +26,9 @@
 #
 #     import_base_lib file/lib_file.sh
 #
-# import_base_lib prefers reusable libraries from base-bash-libs when available
-# and falls back to Base's bundled lib/bash tree for compatibility and
-# Base-specific runtime/version helpers. It reports missing or invalid libraries
-# through Base stdlib error handling and fails immediately, so callers do not
-# need duplicate checks.
+# import_base_lib loads reusable libraries from base-bash-libs. It reports
+# missing or invalid libraries through Base stdlib error handling and fails
+# immediately, so callers do not need duplicate checks.
 #
 
 [[ -n "${__base_init_sourced__:-}" ]] && return 0
@@ -112,6 +110,24 @@ base_init_bash_libs_dir_is_usable() {
     [[ -f "$candidate/std/lib_std.sh" ]]
 }
 
+base_init_report_missing_bash_libs() {
+    local candidate
+    local homebrew_prefix
+
+    base_init_error "Base reusable Bash libraries were not found."
+
+    candidate="$BASE_HOME/../base-bash-libs/lib/bash"
+    base_init_error "Tried sibling base-bash-libs checkout at '$candidate'."
+
+    homebrew_prefix="$(base_init_homebrew_prefix || true)"
+    if [[ -n "$homebrew_prefix" ]]; then
+        candidate="$homebrew_prefix/opt/base-bash-libs/libexec/lib/bash"
+        base_init_error "Tried Homebrew base-bash-libs package at '$candidate'."
+    fi
+
+    base_init_error "Clone codeforester/base-bash-libs next to Base, install it with 'brew install codeforester/base/base-bash-libs', or set BASE_BASH_LIBS_DIR to a compatible lib/bash directory."
+}
+
 base_init_set_bash_libs_contract() {
     local candidate
     local homebrew_prefix
@@ -144,8 +160,8 @@ base_init_set_bash_libs_contract() {
         fi
     fi
 
-    BASE_BASH_LIBS_DIR="$BASE_BASH_LIB_DIR"
-    BASE_BASH_LIBS_SOURCE=bundled
+    base_init_report_missing_bash_libs
+    return 1
 }
 
 base_init_export_contract() {
@@ -224,10 +240,7 @@ import_base_lib() {
     esac
 
     lib_path="$BASE_BASH_LIBS_DIR/$relative_path"
-    if [[ ! -f "$lib_path" && "$BASE_BASH_LIBS_DIR" != "$BASE_BASH_LIB_DIR" ]]; then
-        lib_path="$BASE_BASH_LIB_DIR/$relative_path"
-    fi
-    [[ -f "$lib_path" ]] || fatal_error "Base library '$relative_path' was not found at '$BASE_BASH_LIBS_DIR/$relative_path' or '$BASE_BASH_LIB_DIR/$relative_path'."
+    [[ -f "$lib_path" ]] || fatal_error "Base reusable library '$relative_path' was not found at '$lib_path'."
 
     # shellcheck source=/dev/null
     source "$lib_path" || fatal_error "Failed to import Base library '$lib_path'."

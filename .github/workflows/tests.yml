@@ -31,9 +31,16 @@ jobs:
   bats:
     name: BATS tests
     runs-on: ubuntu-latest
+    env:
+      BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: codeforester/base-bash-libs
+          path: .dependencies/base-bash-libs
 
       - name: Install BATS
         run: |
@@ -44,10 +51,7 @@ jobs:
         run: |
           bats \
             cli/bash/commands/basectl/tests/*.bats \
-            lib/bash/file/tests/lib_file.bats \
-            lib/bash/git/tests/lib_git.bats \
             lib/bash/runtime/tests/runtime_bashrc.bats \
-            lib/bash/std/tests/lib_std.bats \
             lib/bash/version/tests/lib_version.bats \
             lib/shell/completions/tests/completions.bats \
             tests/base_init.bats \
@@ -56,9 +60,16 @@ jobs:
   macos:
     name: macOS smoke tests
     runs-on: macos-14
+    env:
+      BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: codeforester/base-bash-libs
+          path: .dependencies/base-bash-libs
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -99,9 +110,16 @@ jobs:
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
+    env:
+      BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: codeforester/base-bash-libs
+          path: .dependencies/base-bash-libs
 
       - name: Set up Python
         uses: actions/setup-python@v5
