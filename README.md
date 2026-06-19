@@ -1312,7 +1312,8 @@ Those defaults are intended to stay conservative:
 - vi-style command editing
 - editor defaults
 - prompt defaults
-- history behavior
+- history behavior, including duplicate suppression, timestamped history, and
+  multi-line command preservation
 
 ## Optional Utility Tools
 
