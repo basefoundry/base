@@ -56,11 +56,27 @@ _base_zsh_defaults_git_prompt() {
     printf '(%s) ' "$branch"
 }
 
-export HISTSIZE="${HISTSIZE:-5000}"
-export SAVEHIST="${SAVEHIST:-5000}"
+export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
+if [[ "${HISTSIZE:-30}" == 30 ]]; then
+    export HISTSIZE=10000
+else
+    export HISTSIZE
+fi
+if [[ "${SAVEHIST:-0}" == 0 ]]; then
+    export SAVEHIST=10000
+else
+    export SAVEHIST
+fi
 setopt appendhistory
+setopt extended_history
+setopt hist_expire_dups_first
+setopt hist_find_no_dups
 setopt hist_ignore_dups
 setopt hist_ignore_all_dups
+setopt hist_ignore_space
+setopt hist_reduce_blanks
+setopt hist_save_no_dups
+setopt hist_verify
 setopt prompt_subst
 setopt share_history
 

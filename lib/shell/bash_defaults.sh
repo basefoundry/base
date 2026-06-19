@@ -58,6 +58,18 @@ _base_bash_defaults_git_prompt() {
 
 export PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '
 
-export HISTCONTROL=ignoredups:erasedups
+export HISTCONTROL="${HISTCONTROL:-ignoreboth:erasedups}"
+if [[ "${HISTSIZE:-500}" == 500 ]]; then
+    export HISTSIZE=10000
+else
+    export HISTSIZE
+fi
+if [[ "${HISTFILESIZE:-500}" == 500 ]]; then
+    export HISTFILESIZE=20000
+else
+    export HISTFILESIZE
+fi
 export HISTTIMEFORMAT="[%F %T] "
 shopt -s histappend
+shopt -s cmdhist
+shopt -s lithist
