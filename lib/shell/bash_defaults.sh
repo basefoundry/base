@@ -70,6 +70,7 @@ else
     export HISTFILESIZE
 fi
 export HISTTIMEFORMAT="[%F %T] "
+shopt -s checkwinsize
 shopt -s histappend
 shopt -s cmdhist
 shopt -s lithist

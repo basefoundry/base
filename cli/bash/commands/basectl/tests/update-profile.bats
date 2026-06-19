@@ -498,18 +498,24 @@ EOF
 
     run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u EDITOR -u VISUAL -u EXINIT \
         -u HISTCONTROL -u HISTSIZE -u HISTFILESIZE \
+        -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "HISTCONTROL=%s\n" "$HISTCONTROL"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "HISTFILESIZE=%s\n" "$HISTFILESIZE"; shopt -q cmdhist && printf "cmdhist=enabled\n"; shopt -q lithist && printf "lithist=enabled\n"; printf "BASE_HOME=%s\n" "$BASE_HOME"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_bash_defaults_git_prompt)"; printf "PS1=%s\n" "$PS1"'
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; printf "HISTCONTROL=%s\n" "$HISTCONTROL"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "HISTFILESIZE=%s\n" "$HISTFILESIZE"; shopt -q checkwinsize && printf "checkwinsize=enabled\n"; shopt -q cmdhist && printf "cmdhist=enabled\n"; shopt -q lithist && printf "lithist=enabled\n"; printf "BASE_HOME=%s\n" "$BASE_HOME"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_bash_defaults_git_prompt)"; printf "PS1=%s\n" "$PS1"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias cp='cp -i'"* ]]
     [[ "$output" == *"EDITOR=vi"* ]]
     [[ "$output" == *"VISUAL=vi"* ]]
     [[ "$output" == *"EXINIT=set ts=4 sw=4 ai nows nosm expandtab"* ]]
+    [[ "$output" == *"PAGER=less"* ]]
+    [[ "$output" == *"LESS=-FRX"* ]]
+    [[ "$output" == *"MANPAGER=less -R"* ]]
+    [[ "$output" == *"GIT_PAGER=less -FRX"* ]]
     [[ "$output" == *"HISTCONTROL=ignoreboth:erasedups"* ]]
     [[ "$output" == *"HISTSIZE=10000"* ]]
     [[ "$output" == *"HISTFILESIZE=20000"* ]]
+    [[ "$output" == *"checkwinsize=enabled"* ]]
     [[ "$output" == *"cmdhist=enabled"* ]]
     [[ "$output" == *"lithist=enabled"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
@@ -519,11 +525,16 @@ EOF
     if command -v zsh >/dev/null 2>&1; then
         run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u EDITOR -u VISUAL -u EXINIT \
             -u HISTFILE -u HISTSIZE -u SAVEHIST \
+            -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
             HOME="$TEST_HOME" \
             PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-            zsh -f -i -c 'source "$HOME/.zshrc"; printf "HISTFILE=%s\n" "$HISTFILE"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "SAVEHIST=%s\n" "$SAVEHIST"; setopt | grep -q "^extendedhistory$" && printf "extended_history=enabled\n"; setopt | grep -q "^histignorespace$" && printf "hist_ignore_space=enabled\n"; setopt | grep -q "^histreduceblanks$" && printf "hist_reduce_blanks=enabled\n"; setopt | grep -q "^histexpiredupsfirst$" && printf "hist_expire_dups_first=enabled\n"; setopt | grep -q "^histsavenodups$" && printf "hist_save_no_dups=enabled\n"; setopt | grep -q "^histfindnodups$" && printf "hist_find_no_dups=enabled\n"; setopt | grep -q "^histverify$" && printf "hist_verify=enabled\n"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_zsh_defaults_git_prompt)"; printf "PROMPT=%s\n" "$PROMPT"; setopt | grep -q "^promptsubst$"; printf "prompt_subst=enabled\n"'
+            zsh -f -i -c 'source "$HOME/.zshrc"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; printf "HISTFILE=%s\n" "$HISTFILE"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "SAVEHIST=%s\n" "$SAVEHIST"; setopt | grep -q "^extendedhistory$" && printf "extended_history=enabled\n"; setopt | grep -q "^histignorespace$" && printf "hist_ignore_space=enabled\n"; setopt | grep -q "^histreduceblanks$" && printf "hist_reduce_blanks=enabled\n"; setopt | grep -q "^histexpiredupsfirst$" && printf "hist_expire_dups_first=enabled\n"; setopt | grep -q "^histsavenodups$" && printf "hist_save_no_dups=enabled\n"; setopt | grep -q "^histfindnodups$" && printf "hist_find_no_dups=enabled\n"; setopt | grep -q "^histverify$" && printf "hist_verify=enabled\n"; setopt | grep -q "^interactivecomments$" && printf "interactive_comments=enabled\n"; setopt | grep -q "^nobeep$" && printf "no_beep=enabled\n"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_zsh_defaults_git_prompt)"; printf "PROMPT=%s\n" "$PROMPT"; setopt | grep -q "^promptsubst$"; printf "prompt_subst=enabled\n"'
 
         [ "$status" -eq 0 ]
+        [[ "$output" == *"PAGER=less"* ]]
+        [[ "$output" == *"LESS=-FRX"* ]]
+        [[ "$output" == *"MANPAGER=less -R"* ]]
+        [[ "$output" == *"GIT_PAGER=less -FRX"* ]]
         [[ "$output" == *"HISTFILE=$TEST_HOME/.zsh_history"* ]]
         [[ "$output" == *"HISTSIZE=10000"* ]]
         [[ "$output" == *"SAVEHIST=10000"* ]]
@@ -534,6 +545,8 @@ EOF
         [[ "$output" == *"hist_save_no_dups=enabled"* ]]
         [[ "$output" == *"hist_find_no_dups=enabled"* ]]
         [[ "$output" == *"hist_verify=enabled"* ]]
+        [[ "$output" == *"interactive_comments=enabled"* ]]
+        [[ "$output" == *"no_beep=enabled"* ]]
         [[ "$output" == *"git=("* ]]
         [[ "$output" == *'PROMPT=%* %m $(_base_zsh_defaults_git_prompt)%1~: '* ]]
         [[ "$output" == *"prompt_subst=enabled"* ]]

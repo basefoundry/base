@@ -35,3 +35,8 @@ alias mv='mv -i'
 export EDITOR="${EDITOR:-vi}"
 export VISUAL="${VISUAL:-$EDITOR}"
 export EXINIT="${EXINIT:-set ts=4 sw=4 ai nows nosm expandtab}"
+
+export PAGER="${PAGER:-less}"
+export LESS="${LESS:--FRX}"
+export MANPAGER="${MANPAGER:-less -R}"
+export GIT_PAGER="${GIT_PAGER:-less -FRX}"

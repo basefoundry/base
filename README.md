@@ -1311,7 +1311,9 @@ Those defaults are intended to stay conservative:
 - aliases like `rm -i`, `cp -i`, `mv -i`
 - vi-style command editing
 - editor defaults
+- pager defaults
 - prompt defaults
+- terminal usability behavior
 - history behavior, including duplicate suppression, timestamped history, and
   multi-line command preservation
 
