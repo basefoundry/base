@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Improved opt-in Bash and Zsh completion ergonomics for interactive shell
+  defaults.
 - Added conservative pager and terminal usability behavior to opt-in shell
   defaults.
 - Enriched opt-in shell history defaults for `basectl update-profile --defaults`.

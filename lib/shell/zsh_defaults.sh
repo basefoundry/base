@@ -42,6 +42,8 @@ source "$base_zsh_defaults_file" || {
 unset base_zsh_defaults_file
 
 bindkey -v
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' menu select
 
 _base_zsh_defaults_git_prompt() {
     local branch
