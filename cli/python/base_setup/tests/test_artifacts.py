@@ -691,6 +691,8 @@ class ProcessTests(unittest.TestCase):
                 "SOME_SECRET=value-secret",
                 "API_KEY=api-secret",
                 "AWS_SECRET_ACCESS_KEY=aws-secret",
+                "authorization=auth-secret",
+                "AUTHORIZATION=auth-token",
             ]
         )
 
@@ -703,6 +705,8 @@ class ProcessTests(unittest.TestCase):
         self.assertNotIn("value-secret", redacted)
         self.assertNotIn("api-secret", redacted)
         self.assertNotIn("aws-secret", redacted)
+        self.assertNotIn("auth-secret", redacted)
+        self.assertNotIn("auth-token", redacted)
         self.assertIn("token=[REDACTED]", redacted)
         self.assertIn("--github-token=[REDACTED]", redacted)
         self.assertIn("GITHUB_TOKEN=[REDACTED]", redacted)
@@ -710,6 +714,8 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("SOME_SECRET=[REDACTED]", redacted)
         self.assertIn("API_KEY=[REDACTED]", redacted)
         self.assertIn("AWS_SECRET_ACCESS_KEY=[REDACTED]", redacted)
+        self.assertIn("authorization=[REDACTED]", redacted)
+        self.assertIn("AUTHORIZATION=[REDACTED]", redacted)
 
     def test_run_command_failure_truncates_large_single_chunk_tail(self) -> None:
         ctx = fake_context()
