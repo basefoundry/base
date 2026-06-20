@@ -151,6 +151,7 @@ Options:
   --initiative-option <name>    Initiative option to seed. May be repeated.
   --copy-project-fields-from <title>
                                 Copy missing Project item field values from another Project.
+  --replace-project             Replace a nonstandard existing Project from base-project-template.
   --no-project                  Skip GitHub Project metadata configuration.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
@@ -1594,6 +1595,7 @@ base_repo_configure_project_metadata() {
     local dry_run="$1"
     local config_path="$6"
     local copy_fields_from_project="$7"
+    local replace_project="$8"
     local option
     local owner="$4"
     local output=""
@@ -1602,11 +1604,15 @@ base_repo_configure_project_metadata() {
     local schema="$5"
     local status=0
     local wrapper="${BASE_REPO_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
-    shift 7
+    shift 8
 
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would configure GitHub Project '%s' for '%s'.\n" "$project_title" "$repo"
-        printf "[DRY-RUN] Would copy GitHub Project 'base-project-template' to '%s' if missing.\n" "$project_title"
+        if [[ "$replace_project" == "1" ]]; then
+            printf "[DRY-RUN] Would replace nonstandard existing GitHub Project '%s' from 'base-project-template'.\n" "$project_title"
+        else
+            printf "[DRY-RUN] Would copy GitHub Project 'base-project-template' to '%s' if missing.\n" "$project_title"
+        fi
         printf "[DRY-RUN] Would link GitHub Project '%s' to repository '%s'.\n" "$project_title" "$repo"
         printf "[DRY-RUN] Would backfill issues from '%s' into GitHub Project '%s'.\n" "$repo" "$project_title"
         if [[ -n "$config_path" ]]; then
@@ -1630,6 +1636,9 @@ base_repo_configure_project_metadata() {
         fi
         if [[ -n "$copy_fields_from_project" ]]; then
             printf " --copy-fields-from %s" "$(base_repo_pretty_arg "$copy_fields_from_project")"
+        fi
+        if [[ "$replace_project" == "1" ]]; then
+            printf " --replace-project"
         fi
         for option in "$@"; do
             printf " --initiative-option %s" "$(base_repo_pretty_arg "$option")"
@@ -1661,6 +1670,9 @@ base_repo_configure_project_metadata() {
     fi
     if [[ -n "$copy_fields_from_project" ]]; then
         command+=(--copy-fields-from "$copy_fields_from_project")
+    fi
+    if [[ "$replace_project" == "1" ]]; then
+        command+=(--replace-project)
     fi
     for option in "$@"; do
         command+=(--initiative-option "$option")
@@ -2669,6 +2681,7 @@ base_repo_init() {
                     "$project_schema" \
                     "$(base_repo_project_config_path "$root")" \
                     "$copy_project_fields_from" \
+                    0 \
                     "${initiative_options[@]}" || return 1
             fi
         else
@@ -3076,6 +3089,7 @@ base_repo_configure() {
     local initiative_options=()
     local path="."
     local project_owner=""
+    local replace_project=0
     local project_schema="base-project"
     local project_title=""
     local protect_default_branch=1
@@ -3166,6 +3180,10 @@ base_repo_configure() {
                 copy_project_fields_from="${1#--copy-project-fields-from=}"
                 shift
                 ;;
+            --replace-project)
+                replace_project=1
+                shift
+                ;;
             --no-project)
                 configure_project=0
                 shift
@@ -3216,6 +3234,7 @@ base_repo_configure() {
             "$project_schema" \
             "$(base_repo_project_config_path "$path")" \
             "$copy_project_fields_from" \
+            "$replace_project" \
             "${initiative_options[@]}" || return 1
     fi
 

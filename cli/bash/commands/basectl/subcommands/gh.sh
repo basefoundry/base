@@ -16,7 +16,7 @@ Usage:
   basectl gh pr ready [gh options...]
   basectl gh pr merge [gh options...]
   basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
-  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--initiative-option <name>] [--dry-run]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--replace-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
   basectl gh branch stale [--days <days>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
@@ -100,7 +100,7 @@ base_gh_project_usage() {
     cat <<'EOF'
 Usage:
   basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
-  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--initiative-option <name>] [--dry-run]
+  basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--replace-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
 
 Purpose:
@@ -109,6 +109,7 @@ Purpose:
 Notes:
   - Project operations delegate to Base's Python Project engine.
   - Use project issue set-fields to move issue cards through Backlog, In Progress, In Review, and Done.
+  - Use --replace-project to replace a nonstandard repo Project from base-project-template.
 EOF
 }
 

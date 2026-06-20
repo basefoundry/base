@@ -23,6 +23,9 @@ Base-managed repositories should carry `.github/workflows/project-intake.yml`
 as the fallback for issues created outside `basectl gh issue create`.
 `basectl repo init` seeds it for new repositories, and `basectl repo configure`
 creates it when missing from older repositories.
+If a repo Project has GitHub's default `View 1` instead of the standard Base
+views, use `basectl repo configure --replace-project` with `--repo`; Base
+archives the old Project and recreates it from `base-project-template`.
 
 ## Branch And Worktree Flow
 

@@ -235,6 +235,7 @@ EOF
     [[ "$output" == *"--repo <owner/name>"* ]]
     [[ "$output" == *"--no-protect-default-branch"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
+    [[ "$output" == *"--replace-project"* ]]
     [[ "$output" == *"basectl repo configure . --repo codeforester/bankbuddy"* ]]
     [[ "$output" == *"applies or repairs GitHub-side repository settings"* ]]
     [[ "$output" == *"Safe to re-run: Base-managed settings are created or updated"* ]]
@@ -1136,6 +1137,21 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Would copy missing Project item field values from 'Base Roadmap' into 'base'."* ]]
     [[ "$output" == *'--copy-fields-from "Base Roadmap"'* ]]
+}
+
+@test "basectl repo configure can replace a nonstandard project" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --replace-project \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would replace nonstandard existing GitHub Project 'base-demo' from 'base-project-template'."* ]]
+    [[ "$output" == *"--replace-project"* ]]
 }
 
 @test "basectl repo configure applies GitHub settings through gh" {

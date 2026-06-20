@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import graphql_queries as queries
+from .project_configure import ConfigureDryRunPlan, ProjectReplacement
+from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
 from .project_item_fields import FieldCopySummary
 from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
 from .project_item_fields import copy_missing_project_item_fields as _copy_missing_project_item_fields
 from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT, FIELD_OPTION_TO_PROJECT_FIELD
-from .project_model import STANDARD_TEMPLATE_VIEWS, ConfigureAction, FieldUpdate, Finding, OwnerInfo
+from .project_model import ConfigureAction, FieldUpdate, Finding, OwnerInfo
 from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
 from .project_config import ProjectConfig, ProjectConfigError
@@ -71,7 +73,7 @@ def print_usage(file=sys.stdout) -> None:
                 "[--owner <login>] [--schema base-project]",
                 "  base_github_projects project configure --project <title> "
                 "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
-                "[--copy-fields-from <title>] [--initiative-option <name>] [--dry-run]",
+                "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",
                 "  base_github_projects project issue set-fields <number> "
                 "--repo <owner/name> --project <title> [--config <path>] [field options...]",
             )
@@ -125,6 +127,7 @@ class OptionState:
     config_path: str | None = None
     copy_fields_from_project: str | None = None
     initiative_options: list[str] | None = None
+    replace_project: bool = False
     dry_run: bool = False
     field_values: dict[str, str] | None = None
 
@@ -142,6 +145,10 @@ def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_iss
             continue
         if arg == "--dry-run":
             state.dry_run = True
+            index += 1
+            continue
+        if arg == "--replace-project":
+            state.replace_project = True
             index += 1
             continue
         consumed = apply_spaced_option(state, remaining, index, allow_fields=allow_fields)
@@ -224,6 +231,7 @@ def state_to_args(command: str, state: OptionState, issue_number: int | None = N
         config_path=state.config_path,
         copy_fields_from_project=state.copy_fields_from_project,
         initiative_options=tuple(state.initiative_options or ()),
+        replace_project=state.replace_project,
         dry_run=state.dry_run,
         issue_number=issue_number,
         field_values=dict(state.field_values or {}),
@@ -417,19 +425,16 @@ def doctor_command(args: ProjectArguments) -> int:
 
 def configure_command(args: ProjectArguments) -> int:
     owner = require_owner(args)
+    if args.replace_project and not args.repo:
+        raise ProjectUsageError("--replace-project requires --repo.")
     project_config = project_config_for_args(args)
     schema = schema_for_args(args)
     owner_info = find_owner_and_project(owner, args.project_title or "")
     project = owner_info.project
+    replacement = replacement_plan_for_args(args, owner, project)
     should_copy_template = args.repo is not None and project is None
-    fields: tuple[ProjectField, ...] = ()
-    if project is not None:
-        fields = fetch_project_fields(project.project_id)
-    actions = (
-        ()
-        if should_copy_template
-        else configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
-    )
+    fields = fetch_existing_configure_fields(project, replacement)
+    actions = plan_configure_actions(project, fields, schema, should_copy_template, replacement)
     errors = [action for action in actions if action.action == "error"]
     if errors:
         for action in errors:
@@ -438,34 +443,126 @@ def configure_command(args: ProjectArguments) -> int:
     if args.dry_run:
         render_dry_run_configure(
             args,
-            actions,
-            would_copy_template=should_copy_template,
-            project_config=project_config,
+            ConfigureDryRunPlan(
+                actions=actions,
+                would_copy_template=should_copy_template,
+                replacement=replacement,
+                project_config=project_config,
+            ),
         )
         return 0
+    project = prepare_configure_project(owner, owner_info, args, project, replacement)
+    fields = fetch_project_fields(project.project_id)
+    ensure_schema_fields(project.project_id, fields, schema)
+    fields = fetch_project_fields(project.project_id)
+    link_and_backfill_project(project.project_id, args.repo)
+    copy_replacement_project_fields(project.project_id, replacement)
+    copy_project_fields_from_source(owner, project.project_id, args.copy_fields_from_project)
+    apply_project_config_defaults(project.project_id, fields, project_config)
+    close_replacement_project(replacement)
+    print(f"✓ Configured GitHub Project {args.project_title}")
+    return 0
+
+
+def replacement_plan_for_args(
+    args: ProjectArguments,
+    owner: str,
+    project: ProjectInfo | None,
+) -> ProjectReplacement | None:
+    if not args.replace_project:
+        return None
+    if not args.repo:
+        raise ProjectUsageError("--replace-project requires --repo.")
     if project is None:
-        if args.repo:
-            project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
-            verify_standard_template_views(fetch_project_views(project.project_id))
-        else:
-            project = create_project(owner_info.owner_id, args.project_title or "")
-        fields = fetch_project_fields(project.project_id)
+        raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'; cannot replace it.")
+    view_errors = standard_template_view_errors(fetch_project_views(project.project_id))
+    if not view_errors:
+        raise ProjectError(f"Project '{args.project_title}' already has standard Base views; refusing to replace it.")
+    return ProjectReplacement(
+        legacy_project=project,
+        legacy_title=legacy_project_title(args.project_title or ""),
+        view_errors=view_errors,
+    )
+
+
+def fetch_existing_configure_fields(
+    project: ProjectInfo | None,
+    replacement: ProjectReplacement | None,
+) -> tuple[ProjectField, ...]:
+    if project is None or replacement is not None:
+        return ()
+    return fetch_project_fields(project.project_id)
+
+
+def plan_configure_actions(
+    project: ProjectInfo | None,
+    fields: tuple[ProjectField, ...],
+    schema: ProjectSchema,
+    should_copy_template: bool,
+    replacement: ProjectReplacement | None,
+) -> tuple[ConfigureAction, ...]:
+    if should_copy_template or replacement is not None:
+        return ()
+    return configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
+
+
+def prepare_configure_project(
+    owner: str,
+    owner_info: OwnerInfo,
+    args: ProjectArguments,
+    project: ProjectInfo | None,
+    replacement: ProjectReplacement | None,
+) -> ProjectInfo:
+    if replacement is not None:
+        update_project(replacement.legacy_project.project_id, title=replacement.legacy_title)
+        new_project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
+        verify_standard_template_views(fetch_project_views(new_project.project_id))
+        print(f"✓ Renamed existing Project {args.project_title} to {replacement.legacy_title}")
+        return new_project
+    if project is not None:
+        return project
+    if args.repo:
+        new_project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
+        verify_standard_template_views(fetch_project_views(new_project.project_id))
+        return new_project
+    return create_project(owner_info.owner_id, args.project_title or "")
+
+
+def ensure_schema_fields(project_id: str, fields: tuple[ProjectField, ...], schema: ProjectSchema) -> None:
     by_name = {field.name: field for field in fields}
     for spec in schema.fields:
         field = by_name.get(spec.name)
         if field is None:
-            create_single_select_field(project.project_id, spec)
+            create_single_select_field(project_id, spec)
         elif missing_option_names(field, spec):
             update_single_select_field(field, spec)
-    fields = fetch_project_fields(project.project_id)
-    if args.repo:
-        link_project_to_repository(project.project_id, args.repo)
-        count = backfill_repository_issues(project.project_id, args.repo)
-        print(f"✓ Backfilled {count} issue(s) from {args.repo}")
-    copy_project_fields_from_source(owner, project.project_id, args.copy_fields_from_project)
-    apply_project_config_defaults(project.project_id, fields, project_config)
-    print(f"✓ Configured GitHub Project {args.project_title}")
-    return 0
+
+
+def link_and_backfill_project(project_id: str, repo: str | None) -> None:
+    if not repo:
+        return
+    link_project_to_repository(project_id, repo)
+    count = backfill_repository_issues(project_id, repo)
+    print(f"✓ Backfilled {count} issue(s) from {repo}")
+
+
+def copy_replacement_project_fields(project_id: str, replacement: ProjectReplacement | None) -> None:
+    if replacement is None:
+        return
+    summary = copy_missing_project_item_fields(replacement.legacy_project.project_id, project_id)
+    print(f"✓ Copied {summary.applied_count} Project item field value(s) from {replacement.legacy_title}")
+    for skipped in summary.skipped:
+        print(
+            f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
+            file=sys.stderr,
+        )
+
+
+def close_replacement_project(replacement: ProjectReplacement | None) -> None:
+    if replacement is None:
+        return
+    update_project(replacement.legacy_project.project_id, closed=True)
+    print(f"✓ Closed legacy GitHub Project {replacement.legacy_title}")
 
 
 def copy_project_fields_from_source(owner: str, target_project_id: str, source_project_title: str | None) -> None:
@@ -498,46 +595,6 @@ def apply_project_config_defaults(
             f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
             file=sys.stderr,
         )
-
-
-def render_dry_run_configure(
-    args: ProjectArguments,
-    actions: tuple[ConfigureAction, ...],
-    *,
-    would_copy_template: bool = False,
-    project_config: ProjectConfig | None = None,
-) -> None:
-    print(
-        f"[DRY-RUN] Would configure GitHub Project '{args.project_title}' "
-        f"for '{args.repo or args.owner or ''}' with --schema {args.schema}."
-    )
-    if would_copy_template:
-        print(f"[DRY-RUN] Would copy GitHub Project '{DEFAULT_TEMPLATE_PROJECT}' to '{args.project_title}'.")
-    if args.repo:
-        print(f"[DRY-RUN] Would link GitHub Project '{args.project_title}' to repository '{args.repo}'.")
-        print(f"[DRY-RUN] Would backfill issues from '{args.repo}' into GitHub Project '{args.project_title}'.")
-    if args.copy_fields_from_project:
-        print(f"[DRY-RUN] Would copy missing item field values from GitHub Project '{args.copy_fields_from_project}'.")
-    if args.config_path:
-        print(f"[DRY-RUN] Would read GitHub Project config from '{args.config_path}'.")
-    config = project_config or ProjectConfig()
-    for option in config.areas:
-        print(f"[DRY-RUN] Would ensure Area option {option}.")
-    for option in config.initiatives:
-        print(f"[DRY-RUN] Would ensure Initiative option {option}.")
-    if config.issue_defaults:
-        rendered = ", ".join(
-            f"{FIELD_OPTION_TO_PROJECT_FIELD[key]}={value}"
-            for key, value in config.issue_defaults.items()
-            if key in FIELD_OPTION_TO_PROJECT_FIELD
-        )
-        print(f"[DRY-RUN] Would apply issue defaults to missing Project item fields: {rendered}.")
-    print("[DRY-RUN] Fields: Status, Priority, Area, Size, Initiative")
-    if args.initiative_options:
-        for option in args.initiative_options:
-            print(f"[DRY-RUN] Would ensure Initiative option {option}.")
-    for action in actions:
-        print(f"[DRY-RUN] Would {action.message}")
 
 
 def issue_set_fields_command(args: ProjectArguments) -> int:
@@ -735,14 +792,7 @@ def fetch_project_views(project_id: str) -> tuple[ProjectView, ...]:
 
 
 def verify_standard_template_views(views: tuple[ProjectView, ...]) -> None:
-    by_name = {view.name: view for view in views}
-    errors: list[str] = []
-    for expected in STANDARD_TEMPLATE_VIEWS:
-        actual = by_name.get(expected.name)
-        if actual is None:
-            errors.append(f"{expected.name} view is missing")
-        elif actual.layout != expected.layout:
-            errors.append(f"{expected.name} view has layout {actual.layout}; expected {expected.layout}")
+    errors = standard_template_view_errors(views)
     if errors:
         raise ProjectError("Copied Project does not match template views: " + "; ".join(errors))
 
@@ -760,6 +810,31 @@ def copy_project(template_project_id: str, owner_id: str, title: str) -> Project
     )
     project = payload["data"]["copyProjectV2"]["projectV2"]
     return ProjectInfo(project_id=project["id"], title=project["title"])
+
+
+def update_project(project_id: str, *, title: str | None = None, closed: bool | None = None) -> None:
+    variable_defs = ["$projectId: ID!"]
+    input_fields = ["projectId: $projectId"]
+    variables: dict[str, object] = {"projectId": project_id}
+    if title is not None:
+        variable_defs.append("$title: String!")
+        input_fields.append("title: $title")
+        variables["title"] = title
+    if closed is not None:
+        variable_defs.append("$closed: Boolean!")
+        input_fields.append("closed: $closed")
+        variables["closed"] = closed
+    if len(variables) == 1:
+        raise ValueError("update_project requires title or closed.")
+
+    query = f"""
+mutation({', '.join(variable_defs)}) {{
+  updateProjectV2(input: {{{', '.join(input_fields)}}}) {{
+    projectV2 {{ id title closed }}
+  }}
+}}
+"""
+    run_graphql(query, variables)
 
 
 def fetch_repository_id(repo: str) -> str:

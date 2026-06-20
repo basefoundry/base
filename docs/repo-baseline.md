@@ -121,6 +121,13 @@ During migration from an older shared Project, pass
 `--copy-project-fields-from <title>` to copy missing Project item field values
 by issue, field name, and option name into the repo Project. Existing target
 values are preserved.
+If a repo Project already exists but its views do not match the Base standard,
+pass `--replace-project` during `repo configure`. Base renames and closes the
+old Project, copies `base-project-template` into a new Project with the original
+title, links the new Project to the repository, backfills repository issues,
+copies missing issue field values from the legacy Project, and then applies repo
+defaults. Replacement changes the Project number and URL, so keep the closed
+legacy Project as the audit trail.
 `basectl gh project` is the lower-level direct surface for Project inspection,
 schema repair, and issue field updates.
 
