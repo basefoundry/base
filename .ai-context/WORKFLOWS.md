@@ -42,7 +42,7 @@ The standard worktree location is:
 ~/work/base-worktrees/<slug>
 ```
 
-Start from current `origin/master`, keep the worktree while the PR is open, and
+Start from current `origin/main`, keep the worktree while the PR is open, and
 clean it up after merge.
 
 ## Pull Requests

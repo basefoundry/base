@@ -383,6 +383,26 @@ EOF
     [[ "$output" == "enhancement/117-"*"-prune-merged-branches" ]]
 }
 
+@test "basectl gh branch prune falls back to main when default branch is unknown" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    git init "$repo" >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Branch prune preview for default branch main."* ]]
+}
+
 @test "basectl gh branch prune defaults to dry-run" {
     local repo
 

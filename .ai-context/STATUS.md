@@ -66,7 +66,7 @@ Recent released work includes:
 
 ## Recent Merged Changes
 
-Recent commits on `master` include:
+Recent commits on `main` include:
 
 - public evaluator documentation through `docs/why-base.md`
 - AGPL license cleanup and generated-license correction for `basectl repo init`

@@ -106,7 +106,7 @@ workspace:
 repos:
   - name: base
     url: git@github.com:basefoundry/base.git
-    default_branch: master
+    default_branch: main
     required: true
 
   - name: bankbuddy

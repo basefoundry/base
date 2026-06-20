@@ -33,14 +33,14 @@ them.
   operations.
 - Fall back to the GitHub connector, raw `gh`, or `git` when `basectl gh` does
   not support the needed operation or local tooling is unavailable.
-- Branch from `origin/master` with
+- Branch from `origin/main` with
   `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - Use a dedicated worktree under `~/work/base-worktrees/<slug>` for PR work.
 - Before creating a worktree, check whether the current checkout is already a
   linked worktree for the intended issue.
 - Link PRs with `Fixes #<issue>` or `Closes #<issue>` when merge should close
   the issue.
-- After merge, sync `master`, remove the worktree, and delete local and remote
+- After merge, sync `main`, remove the worktree, and delete local and remote
   branches.
 
 See `docs/github-workflow.md` for the full policy, including PR body sections,

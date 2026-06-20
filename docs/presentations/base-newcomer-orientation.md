@@ -84,7 +84,7 @@ Base starts before the developer has a working Base environment.
 On macOS, `bootstrap.sh` handles the first mile:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
 It installs or checks the prerequisites needed to hand off to `basectl setup`.
@@ -261,7 +261,7 @@ Read more: [Release Process](../release-process.md)
 Base work normally follows an issue-backed PR train:
 
 1. pick or create the GitHub issue
-2. create a branch/worktree from `origin/master`
+2. create a branch/worktree from `origin/main`
 3. make the narrow change
 4. run the relevant validation
 5. open the PR with issue closure text and validation evidence

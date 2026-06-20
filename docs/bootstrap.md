@@ -10,7 +10,7 @@ installation of Base.
 Run the bootstrapper from GitHub:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
 The bootstrapper verifies macOS, installs missing first-mile prerequisites, and
@@ -32,8 +32,8 @@ see what was installed before Base changes future interactive shells.
 Choose a mode explicitly when the default should not infer one:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
 ```
 
 Without an explicit mode, bootstrap uses this order:
@@ -67,7 +67,7 @@ route without changing the machine.
 Contributors should prefer source mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
