@@ -159,6 +159,8 @@ def read_manifest(path: Path) -> BaseManifest:
 
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ManifestError(f"{path}: unable to read manifest: {exc}") from exc
     except yaml.YAMLError as exc:
         raise ManifestError(f"{path}: invalid YAML: {exc}") from exc
 

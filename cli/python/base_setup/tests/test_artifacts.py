@@ -28,6 +28,17 @@ class BaseSetupMainTests(unittest.TestCase):
         self.assertIn("No such option", stderr)
         self.assertNotIn("Traceback", stderr)
 
+    def test_main_reports_missing_manifest_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+
+            status, stdout, stderr = run_engine(["--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("unable to read manifest", stderr)
+        self.assertNotIn("Traceback", stderr)
+
 
 class ArtifactMergeTests(unittest.TestCase):
 
