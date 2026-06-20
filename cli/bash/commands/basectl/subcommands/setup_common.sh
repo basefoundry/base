@@ -823,12 +823,37 @@ setup_resolve_project_manifest() {
 
 setup_project_venv_dir() {
     local project="$1"
+    local project_root="${2:-}"
+    local manifest_path="${3:-}"
 
     if [[ "$project" != base && -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
+    if [[ "$project" != base && -n "$project_root" ]] && setup_project_uses_uv_manager "$manifest_path"; then
+        printf '%s\n' "$project_root/.venv"
+        return 0
+    fi
     printf '%s\n' "$HOME/.base.d/$project/.venv"
+}
+
+setup_project_root_from_manifest() {
+    local manifest_path="$1"
+
+    (cd -- "$(dirname -- "$manifest_path")" && pwd -P)
+}
+
+setup_project_uses_uv_manager() {
+    local manifest_path="$1"
+
+    [[ -n "$manifest_path" && -f "$manifest_path" ]] || return 1
+    awk '
+        /^[[:space:]]*#/ { next }
+        /^[^[:space:]][^:]*:/ { in_python = 0 }
+        /^[[:space:]]*python:[[:space:]]*$/ { in_python = 1; next }
+        in_python && /^[[:space:]]+manager:[[:space:]]*['\''"]?uv['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
+        END { exit found ? 0 : 1 }
+    ' "$manifest_path"
 }
 
 setup_project_check_record_path() {
@@ -1171,6 +1196,7 @@ setup_run_project_artifact_layer() {
             project=base
         fi
         manifest_path="$resolve_output"
+        resolved_root="$(setup_project_root_from_manifest "$manifest_path")" || return 1
     fi
     if [[ "$project" == base ]]; then
         project_env_args=(
@@ -1204,7 +1230,7 @@ setup_run_project_artifact_layer() {
         fi
     fi
 
-    if [[ "$action" == setup ]]; then
+    if [[ "$action" == setup ]] && ! setup_project_uses_uv_manager "$manifest_path"; then
         setup_run_project_bootstrap_layer "$manifest_path" "$project" "$output_format"
         exit_code=$?
         if ((exit_code)); then
@@ -1214,8 +1240,8 @@ setup_run_project_artifact_layer() {
         fi
     fi
 
-    project_venv_dir="$(setup_project_venv_dir "$project")"
-    if ! setup_virtualenv_healthy_path "$project_venv_dir"; then
+    project_venv_dir="$(setup_project_venv_dir "$project" "$resolved_root" "$manifest_path")"
+    if ! setup_project_uses_uv_manager "$manifest_path" && ! setup_virtualenv_healthy_path "$project_venv_dir"; then
         if setup_is_dry_run && [[ "$action" == setup ]]; then
             log_info "[DRY-RUN] Would run Python project setup layer through base-wrapper for project '$project'."
             return 0
@@ -1258,7 +1284,18 @@ setup_run_project_artifact_layer() {
         return 1
     fi
 
-    env "${project_env_args[@]}" "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
+    if setup_project_uses_uv_manager "$manifest_path"; then
+        env "${project_env_args[@]}" \
+            BASE_HOME="$BASE_HOME" \
+            BASE_PROJECT="$project" \
+            BASE_PROJECT_ROOT="$resolved_root" \
+            BASE_PROJECT_MANIFEST="$manifest_path" \
+            BASE_PROJECT_VENV_DIR="$project_venv_dir" \
+            PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$python_bin" -m base_setup "${args[@]}"
+    else
+        env "${project_env_args[@]}" "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
+    fi
     exit_code=$?
 
     if ((exit_code)) && [[ "$action" == setup ]]; then

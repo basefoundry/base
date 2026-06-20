@@ -135,6 +135,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P151` | uv-managed project `pyproject.toml` presence |
 | `BASE-P152` | uv-managed project `uv.lock` presence |
 | `BASE-P153` | Stale Base-managed project virtual environment ignored by a uv-managed project |
+| `BASE-P154` | uv-managed project virtual environment readiness |
 | `BASE-P160` | Manifest command executable availability |
 | `BASE-P161` | Manifest command project script path readiness |
 
@@ -152,7 +153,7 @@ configuration source and do not cause Base to install Python dependencies.
 Warnings in this range should guide users toward a valid Python project file
 without failing the Base manifest check by themselves.
 
-`BASE-P150` through `BASE-P153` are uv support diagnostics. They are warnings
+`BASE-P150` through `BASE-P154` are uv support diagnostics. They are warnings
 when uv tooling or expected uv project files are missing, because check/doctor
 should explain readiness without performing dependency resolution. Command
 invocation still fails hard when a command declares `runner: uv` and the `uv`

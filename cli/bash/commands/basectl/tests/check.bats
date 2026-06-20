@@ -282,6 +282,30 @@ load ./setup_helpers.bash
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/demo/.venv'."* ]]
 }
 
+@test "basectl check uv-managed project does not require historical Base project venv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/demo"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$project_root"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\npython:\n  manager: uv\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command check demo --manifest "$manifest_path" --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"BASE-P050"* ]]
+    [[ "$output" != *"$TEST_HOME/.base.d/demo/.venv"* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$manifest_path" --action check --format json demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+}
+
 @test "basectl check project passes opt-in remote network diagnostics flag" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"
