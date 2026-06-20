@@ -19,7 +19,7 @@ from .errors import ArtifactError
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
 SECRET_VALUE_RE = re.compile(
-    r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key)[A-Za-z0-9_.:-]*)=\S+"
+    r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key|authorization)[A-Za-z0-9_.:-]*)=\S+"
 )
 URL_CREDENTIALS_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^@\s/]+@")
 HOMEBREW_LINK_FAILURE = "The `brew link` step did not complete successfully"
