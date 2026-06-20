@@ -57,9 +57,7 @@ architecture discussion.
 
 ## Repository Workflow
 
-- GitHub Issues are the durable product backlog.
-- `TODO.md`, when present, is scratch/private planning and not the public
-  backlog.
+- GitHub Issues are the durable product backlog and activity tracker.
 - Work should use issue-backed branches and dedicated worktrees.
 - Branch names include category, issue number, date, and slug.
 - Base dogfoods `basectl gh` when it supports the needed workflow.

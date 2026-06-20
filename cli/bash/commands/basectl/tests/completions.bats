@@ -102,7 +102,15 @@ EOF
             COMP_WORDS=(basectl workspace status --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
-            printf "workspace_options=%s\n" "${COMPREPLY[*]}"; \
+            printf "workspace_status_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace clone --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_clone_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace pull --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_pull_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl onboard --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -204,7 +212,9 @@ EOF
     [[ "$output" == *"export_context_options=--workspace --format --output --print --list-files"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"workspace_commands=status check doctor clone pull"* ]]
-    [[ "$output" == *"workspace_options=--workspace --manifest --source --format --include-optional --dry-run"* ]]
+    [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
+    [[ "$output" == *"workspace_clone_options=--workspace --manifest --include-optional --dry-run"* ]]
+    [[ "$output" == *"workspace_pull_options=--source --manifest --dry-run"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
@@ -219,7 +229,7 @@ EOF
     [[ "$output" == *"repo_installer_template_options=--repo --pr --dry-run"* ]]
     [[ "$output" == *"ci_commands=setup check doctor"* ]]
     [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
-    [[ "$output" == *"gh_areas=issue pr branch worktree todo project"* ]]
+    [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
     [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
     [[ "$output" == *"gh_project_configure_options=--project --owner --schema --initiative-option --repo --replace-project --dry-run"* ]]
     [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --status --priority --area --initiative --size --dry-run"* ]]
