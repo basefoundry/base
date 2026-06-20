@@ -73,7 +73,13 @@ def test_configure_command_replace_project_requires_repo() -> None:
     assert str(excinfo.value) == "--replace-project requires --repo."
 
 
-def test_configure_command_replace_project_refuses_standard_views(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_configure_command_replace_project_skips_replacement_for_standard_views(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    linked: list[tuple[str, str]] = []
+    backfilled: list[tuple[str, str]] = []
+
     monkeypatch.setattr(
         engine,
         "find_owner_and_project",
@@ -88,20 +94,47 @@ def test_configure_command_replace_project_refuses_standard_views(monkeypatch: p
         "fetch_project_views",
         lambda project_id: project_model.STANDARD_TEMPLATE_VIEWS,
     )
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: complete_project_fields())
+    monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
+    monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
+    monkeypatch.setattr(
+        engine,
+        "link_project_to_repository",
+        lambda project_id, repo: linked.append((project_id, repo)),
+    )
+    monkeypatch.setattr(
+        engine,
+        "backfill_repository_issues",
+        lambda project_id, repo: backfilled.append((project_id, repo)) or 3,
+    )
+    monkeypatch.setattr(
+        engine,
+        "update_project",
+        lambda project_id, title=None, closed=None: pytest.fail("standard project must not be renamed or closed"),
+    )
+    monkeypatch.setattr(
+        engine,
+        "copy_project",
+        lambda template_project_id, owner_id, title: pytest.fail("standard project must not be replaced"),
+    )
 
-    with pytest.raises(engine.ProjectError) as excinfo:
-        engine.configure_command(
-            engine.ProjectArguments(
-                area="project",
-                command="configure",
-                project_title="base-demo",
-                owner="codeforester",
-                repo="codeforester/base-demo",
-                replace_project=True,
-            )
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base-demo",
+            owner="codeforester",
+            repo="codeforester/base-demo",
+            replace_project=True,
         )
+    )
 
-    assert str(excinfo.value) == "Project 'base-demo' already has standard Base views; refusing to replace it."
+    assert status == 0
+    assert linked == [("project-id", "codeforester/base-demo")]
+    assert backfilled == [("project-id", "codeforester/base-demo")]
+    output = capsys.readouterr().out
+    assert "INFO: Project 'base-demo' already has standard Base views; skipping replacement." in output
+    assert "Configured GitHub Project base-demo" in output
 
 
 def test_configure_command_replace_project_dry_run_reports_cutover_plan(

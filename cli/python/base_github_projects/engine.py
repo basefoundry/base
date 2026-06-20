@@ -477,7 +477,8 @@ def replacement_plan_for_args(
         raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'; cannot replace it.")
     view_errors = standard_template_view_errors(fetch_project_views(project.project_id))
     if not view_errors:
-        raise ProjectError(f"Project '{args.project_title}' already has standard Base views; refusing to replace it.")
+        print(f"INFO: Project '{args.project_title}' already has standard Base views; skipping replacement.")
+        return None
     return ProjectReplacement(
         legacy_project=project,
         legacy_title=legacy_project_title(args.project_title or ""),

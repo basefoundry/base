@@ -51,7 +51,8 @@ the canonical current command list.
     fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the
     standard Project metadata schema; pass `--replace-project` with `--repo`
-    to archive and recreate a repo Project whose views are nonstandard.
+    to archive and recreate a repo Project whose views are nonstandard; Projects
+    that already have standard Base views are left intact.
   - `basectl gh project issue set-fields <number>` - add an issue to the
     Project if needed and update its metadata fields.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.

@@ -26,6 +26,7 @@ creates it when missing from older repositories.
 If a repo Project has GitHub's default `View 1` instead of the standard Base
 views, use `basectl repo configure --replace-project` with `--repo`; Base
 archives the old Project and recreates it from `base-project-template`.
+Already-standard Projects are left intact and continue through metadata repair.
 
 ## Branch And Worktree Flow
 
