@@ -40,11 +40,16 @@ Use Homebrew when you already have Homebrew and Bash and want Base managed like
 an ordinary installed tool:
 
 ```bash
+brew trust basefoundry/base
 brew install basefoundry/base/base
 basectl setup
 basectl update-profile
 exec "$SHELL" -l
 ```
+
+Trusting the tap lets Homebrew load both the `base` formula and Base's
+tap-owned `base-bash-libs` dependency. The command is safe to rerun on machines
+that already trust `basefoundry/base`.
 
 Use a source checkout when you are contributing to Base or want to inspect and
 run the repository directly. This is also the preferred active install for a
