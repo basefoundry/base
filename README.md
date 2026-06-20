@@ -567,7 +567,13 @@ Project metadata, or `--project`, `--project-owner`, and
 to vary by repository. During Project migration, pass
 `--copy-project-fields-from <title>` to copy missing issue item field values
 from an existing Project into the repo Project without overwriting values that
-are already set.
+are already set. When an existing repo Project has the right fields and issue
+items but the wrong GitHub view layout, pass `--replace-project` to replace it
+from `base-project-template`. Base renames and closes the old Project as a
+legacy archive, creates a fresh Project with the original title, links it to the
+repo, backfills repo issues, and copies missing issue item fields from the
+legacy Project before applying repo defaults. The repaired Project gets a new
+Project number and URL.
 
 Run a discovered project's declared test command with:
 

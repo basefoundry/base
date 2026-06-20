@@ -34,7 +34,8 @@ the canonical current command list.
   create repository baselines, clone GitHub repositories into the configured
   workspace, configure GitHub repository settings and default branch protection,
   repair missing Project intake support files, configure standard GitHub Project
-  metadata, seed agent guidance, and write installer templates.
+  metadata, replace nonstandard Project layouts from `base-project-template`,
+  seed agent guidance, and write installer templates.
 - `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
   non-interactive CI. `ci setup --format json` uses `output` for the compact
   final status and adds `output_lines` on failures for intermediate context.
@@ -49,7 +50,8 @@ the canonical current command list.
   - `basectl gh project doctor --project <title>` - inspect Project metadata
     fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the
-    standard Project metadata schema.
+    standard Project metadata schema; pass `--replace-project` with `--repo`
+    to archive and recreate a repo Project whose views are nonstandard.
   - `basectl gh project issue set-fields <number>` - add an issue to the
     Project if needed and update its metadata fields.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.

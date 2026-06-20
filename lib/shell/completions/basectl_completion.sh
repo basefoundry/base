@@ -134,7 +134,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"
                     ;;
                 configure)
-                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --replace-project --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 agent-guidance)
                     _base_basectl_completion_compgen "--repo --repo-name --default-branch --validation-command --pr --dry-run -v -h --help" "$cur"
@@ -225,7 +225,7 @@ _base_basectl_completion() {
                             _base_basectl_completion_compgen "--project --owner --schema -h --help" "$cur"
                             ;;
                         configure)
-                            _base_basectl_completion_compgen "--project --owner --schema --initiative-option --repo --dry-run -h --help" "$cur"
+                            _base_basectl_completion_compgen "--project --owner --schema --initiative-option --repo --replace-project --dry-run -h --help" "$cur"
                             ;;
                         issue)
                             if ((COMP_CWORD == 4)); then

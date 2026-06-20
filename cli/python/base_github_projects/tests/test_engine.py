@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from base_github_projects import engine
+from base_github_projects import engine, project_model
 
 
 def test_parse_project_configure_arguments() -> None:
@@ -464,7 +464,7 @@ def test_configure_command_copies_template_for_repo_project_and_backfills_issues
     )
     monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
     monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
-    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: engine.STANDARD_TEMPLATE_VIEWS)
+    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: project_model.STANDARD_TEMPLATE_VIEWS)
     monkeypatch.setattr(
         engine,
         "link_project_to_repository",
@@ -519,7 +519,7 @@ def test_configure_command_copies_missing_project_fields_when_requested(
     monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: ())
     monkeypatch.setattr(engine, "create_single_select_field", lambda project_id, spec: None)
     monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
-    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: engine.STANDARD_TEMPLATE_VIEWS)
+    monkeypatch.setattr(engine, "fetch_project_views", lambda project_id: project_model.STANDARD_TEMPLATE_VIEWS)
     monkeypatch.setattr(engine, "link_project_to_repository", lambda project_id, repo: None)
     monkeypatch.setattr(engine, "backfill_repository_issues", lambda project_id, repo: 0)
     monkeypatch.setattr(
