@@ -214,9 +214,13 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | Method | Best for |
 |---|---|
 | `curl … bootstrap.sh \| bash` | Blank macOS machine; installs Homebrew, Git, Bash, then Base |
-| `brew install basefoundry/base/base` | Users wanting Base installed as a managed tool |
+| `brew trust basefoundry/base` + `brew install basefoundry/base/base` | Users wanting Base installed as a managed tool |
 | `git clone` + `basectl setup` | Contributors / Base developers |
 | `curl … install.sh \| bash` | Source-install shortcut |
+
+Homebrew installs should trust the `basefoundry/base` tap before installing
+Base. The tap owns both `base` and the `base-bash-libs` dependency, and the
+trust command is safe to rerun on machines that already trust the tap.
 
 All paths converge on the same daily command surface. After any install, finish
 with:
