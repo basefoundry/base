@@ -143,7 +143,8 @@ class App:
         debug = bool(standard.get("debug") or str(config.get("log_level", "")).lower() == "debug")
         keep_temp = bool(standard.get("keep_temp") or config.get("keep_temp"))
 
-        state_dir = base_cache_root() / "cli" / self.name
+        cache_root = base_cache_root()
+        state_dir = cache_root / "cli" / self.name
         log_dir = state_dir / "logs"
         cache_dir = state_dir / "cache"
         temp_dir = state_dir / "tmp" / run_id
@@ -152,13 +153,13 @@ class App:
         uses_default_log_file = log_file is None
         if dry_run or not self.log_to_file:
             if log_file is not None:
-                log_file.parent.mkdir(parents=True, exist_ok=True)
+                _create_runtime_directory(log_file.parent, cache_root)
         else:
             for directory in (log_dir, cache_dir, temp_dir):
-                directory.mkdir(parents=True, exist_ok=True)
+                _create_runtime_directory(directory, cache_root)
             if log_file is None:
                 log_file = log_dir / f"{run_id}.log"
-            log_file.parent.mkdir(parents=True, exist_ok=True)
+            _create_runtime_directory(log_file.parent, cache_root)
         logger = configure_logger(self.name, log_file, debug)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
         if self.max_log_files is not None and uses_default_log_file and log_file is not None:
@@ -183,6 +184,21 @@ class App:
             user_config=user_config,
             dry_run=dry_run,
         )
+
+
+def _create_runtime_directory(path: Path, cache_root: Path) -> None:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(_runtime_directory_error(path, cache_root, exc)) from exc
+
+
+def _runtime_directory_error(path: Path, cache_root: Path, exc: OSError) -> str:
+    return (
+        f"Unable to create Base runtime directory '{path}': {exc}. "
+        f"Check permissions on that directory. If the Base cache root '{cache_root}' is unusable, "
+        "set BASE_CACHE_DIR to a writable directory."
+    )
 
 
 def run_app(app: App, argv: list[str] | None = None) -> int:
