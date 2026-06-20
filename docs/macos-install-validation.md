@@ -95,7 +95,7 @@ exec "$SHELL" -l
 For a first-mile bootstrap run that should choose the Homebrew route:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
 ```
 
 Then run the handoff commands printed by `bootstrap.sh`. They should include
@@ -205,7 +205,7 @@ Use this path when validating the contributor and dogfood experience.
 For bootstrap source mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
 ```
 
 Then run the handoff commands printed by `bootstrap.sh`. They should point at

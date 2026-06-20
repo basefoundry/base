@@ -41,19 +41,19 @@ for issue-backed work, validation, and design-only sessions.
 5. Use an isolated Git worktree for each pull request:
 
    ```bash
-   git fetch origin master
-   git worktree add -b <branch> ~/work/base-worktrees/<slug> origin/master
+   git fetch origin main
+   git worktree add -b <branch> ~/work/base-worktrees/<slug> origin/main
    ```
 
 6. Keep the PR scoped to the issue. Avoid unrelated refactors.
 7. Link the PR back to the issue with `Fixes #<issue>` or `Closes #<issue>`.
 8. Use the standard PR body and fill in Summary, Issue, Validation, Demo
    Impact, and Notes.
-9. After merge, sync `master`, remove the worktree, and delete the local and
+9. After merge, sync `main`, remove the worktree, and delete the local and
    remote branches:
 
    ```bash
-   git -C ~/work/base pull --ff-only origin master
+   git -C ~/work/base pull --ff-only origin main
    git -C ~/work/base worktree remove ~/work/base-worktrees/<slug>
    git -C ~/work/base branch -d <branch>
    git -C ~/work/base push origin --delete <branch>
@@ -68,7 +68,7 @@ On a fresh macOS machine, use `bootstrap.sh` in source mode so the repository is
 available for local edits:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l

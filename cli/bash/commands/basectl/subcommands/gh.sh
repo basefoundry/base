@@ -238,7 +238,7 @@ base_gh_default_branch() {
         return 0
     fi
 
-    printf '%s\n' master
+    printf '%s\n' main
 }
 
 base_gh_validate_category() {

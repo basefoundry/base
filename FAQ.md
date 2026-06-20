@@ -7,7 +7,7 @@
 Use `bootstrap.sh`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
 The bootstrapper verifies macOS, ensures Homebrew is available, installs Git and
@@ -70,8 +70,8 @@ update Base and then run setup/profile commands as one script.
 Pass an explicit mode:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
 ```
 
 Without an explicit mode, bootstrap preserves an existing Homebrew Base install,

@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Made live workflow docs and installer examples main-ready, using default-branch
+  URLs for raw GitHub install scripts and `main` for contributor branch
+  examples.
 - Documented the boundary for optional personal shell defaults such as color
   aliases, navigation shortcuts, signing helpers, and strict shell modes.
 - Improved opt-in Bash and Zsh completion ergonomics for interactive shell

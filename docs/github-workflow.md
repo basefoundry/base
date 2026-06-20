@@ -177,14 +177,14 @@ non-empty `--show-superproject-working-tree` result means the checkout is a
 submodule and should be treated as a normal repository for worktree detection.
 Continue in an existing issue worktree instead of creating a nested or
 duplicate worktree. If the checkout is a normal repository, create the issue
-worktree from current `origin/master`.
+worktree from current `origin/main`.
 
-Create a worktree from current `origin/master`:
+Create a worktree from current `origin/main`:
 
 ```bash
-git fetch origin master
+git fetch origin main
 git worktree add -b documentation/241-20260529-document-github-workflow \
-  ~/work/base-worktrees/documentation-241-github-workflow origin/master
+  ~/work/base-worktrees/documentation-241-github-workflow origin/main
 ```
 
 Keep the worktree while the pull request is open so review feedback can be
@@ -194,7 +194,7 @@ discard decision.
 After a pull request is merged:
 
 ```bash
-git -C ~/work/base pull --ff-only origin master
+git -C ~/work/base pull --ff-only origin main
 git -C ~/work/base worktree remove ~/work/base-worktrees/<slug>
 git -C ~/work/base branch -d <branch>
 git -C ~/work/base push origin --delete <branch>

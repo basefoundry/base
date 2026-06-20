@@ -75,7 +75,7 @@ Complete these steps in `basefoundry/base`:
 
 1. Choose the release version and create or use a GitHub issue for the release
    artifact work.
-2. Create a release-prep branch and worktree from `origin/master`.
+2. Create a release-prep branch and worktree from `origin/main`.
 3. Update release metadata:
    - `VERSION`
    - README version badge
@@ -90,8 +90,8 @@ Complete these steps in `basefoundry/base`:
    bin/base-test
    ```
 
-5. Merge the release-prep PR into `master`.
-6. Sync local `master`.
+5. Merge the release-prep PR into `main`.
+6. Sync local `main`.
 7. Dry-run the guarded publish command:
 
    ```bash
@@ -113,7 +113,7 @@ Complete these steps in `basefoundry/base`:
 Complete these steps in `basefoundry/homebrew-base` after the Base tag exists:
 
 1. Create a Homebrew tap update issue or PR for the new Base version.
-2. Create a tap release branch. Do not run the bottle workflow from `master`;
+2. Create a tap release branch. Do not run the bottle workflow from `main`;
    it pushes the generated bottle stanza back to the branch that triggered it.
 3. Update `Formula/base.rb`:
    - `url` to the new Base tag archive

@@ -71,7 +71,7 @@ On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
 may be missing, start with the first-mile bootstrap script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
 The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
@@ -82,8 +82,8 @@ source checkout at `~/work/base`, and prints the exact `basectl setup` and
 Choose an install mode explicitly when needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash -s -- --brew
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
 ```
 
 For mode selection, dry-run behavior, and contributor setup details, see
@@ -953,7 +953,7 @@ is requested on macOS, Base warns if `osascript` is not available.
 For a blank macOS machine, use `bootstrap.sh`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
 The bootstrapper is intentionally small. It verifies macOS, installs Homebrew
@@ -1024,7 +1024,7 @@ workspace:
 The standalone installer is also available:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/install.sh | bash
 exec "$SHELL" -l
 ```
 
@@ -1032,7 +1032,7 @@ This runs a shell script from GitHub, so review the script first if you do not
 already trust this repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/install.sh
 ```
 
 By default, the installer clones or updates Base at `~/work/base`, runs
@@ -1042,7 +1042,7 @@ By default, the installer clones or updates Base at `~/work/base`, runs
 installer options with `bash -s --`, for example:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/master/install.sh | bash -s -- --dir ~/work/base --no-profile
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/install.sh | bash -s -- --dir ~/work/base --no-profile
 ```
 
 Use `--no-profile` to skip shell startup integration and `--dry-run` to print

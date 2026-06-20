@@ -28,7 +28,7 @@ requests for Base.
 - Before creating a worktree, check whether the current checkout is already a
   linked worktree for the issue. Do not create nested or duplicate worktrees.
 - Keep the PR worktree available while review feedback is pending. After merge,
-  sync `master`, remove the worktree, and delete local and remote branches.
+  sync `main`, remove the worktree, and delete local and remote branches.
 - Link PRs to issues with `Fixes #<issue>` or `Closes #<issue>`.
 - See `docs/github-workflow.md` for the full policy, including milestones and
   GitHub Projects.
@@ -93,7 +93,7 @@ guidance such as this `skills.md` file, `AGENTS.md`, or workflow documentation.
   should make it clear when the workflow applies.
 - Keep entries concise and Base-specific. Link to focused docs for longer
   policy instead of duplicating it.
-- Align examples with Base conventions: `basectl gh`, `origin/master`,
+- Align examples with Base conventions: `basectl gh`, `origin/main`,
   `<category>/<issue>-<YYYYMMDD>-<slug>`, and
   `~/work/base-worktrees/<slug>`.
 - Review the workflow against likely pressure cases: time pressure, ambiguous
