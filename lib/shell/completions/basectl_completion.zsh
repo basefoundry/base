@@ -63,14 +63,33 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         workspace)
-            _arguments '1:workspace command:(status check doctor clone pull)' \
-                '--workspace[Workspace directory to scan]:path:_files' \
-                '--manifest[Local workspace manifest]:path:_files' \
-                '--source[Canonical workspace manifest source]:url-or-path:' \
-                '--format[Output format]:format:(text json)' \
-                '--include-optional[Include optional manifest repositories when cloning]' \
-                '--dry-run[Show planned clone or pull work without changing files]' \
-                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            case "${words[3]:-}" in
+                status|check|doctor)
+                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '--manifest[Local workspace manifest]:path:_files' \
+                        '--format[Output format]:format:(text json)' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                clone)
+                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '--manifest[Local workspace manifest]:path:_files' \
+                        '--include-optional[Include optional manifest repositories when cloning]' \
+                        '--dry-run[Show planned workspace clone work without writing]' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                pull)
+                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                        '--source[Canonical workspace manifest source]:url-or-path:' \
+                        '--manifest[Local workspace manifest]:path:_files' \
+                        '--dry-run[Show planned workspace pull work without writing]' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '1:workspace command:(status check doctor clone pull)'
+                    ;;
+            esac
             ;;
         setup)
             _arguments '--profile[Install prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
@@ -285,7 +304,7 @@ _base_basectl_completion() {
         gh)
             case "${words[3]:-}" in
                 issue)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                    _arguments '1:gh area:(issue pr branch worktree project)' \
                         '2:issue command:(list create start)' \
                         '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
@@ -293,11 +312,11 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pr)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                    _arguments '1:gh area:(issue pr branch worktree project)' \
                         '2:pr command:(create status checks ready merge)'
                     ;;
                 branch)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                    _arguments '1:gh area:(issue pr branch worktree project)' \
                         '2:branch command:(stale prune)' \
                         '--days[Stale threshold in days]:days:' \
                         '--dry-run[Show planned deletions]' \
@@ -306,23 +325,16 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 worktree)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                    _arguments '1:gh area:(issue pr branch worktree project)' \
                         '2:worktree command:(prune)' \
                         '--dry-run[Show planned removals]' \
                         '--yes[Apply worktree pruning]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
-                todo)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)' \
-                        '2:todo command:(import)' \
-                        '--dry-run[Show planned issues]' \
-                        '--file[TODO file]:path:_files' \
-                        '(-h --help)'{-h,--help}'[Show help text]'
-                    ;;
                 project)
                     case "${words[4]:-}" in
                         doctor)
-                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
                                 '2:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
@@ -330,7 +342,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         configure)
-                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
                                 '2:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
@@ -341,7 +353,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         issue)
-                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
                                 '2:project command:(doctor configure issue)' \
                                 '3:issue command:(set-fields)' \
                                 '4:issue number:' \
@@ -357,13 +369,13 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
-                            _arguments '1:gh area:(issue pr branch worktree todo project)' \
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
                                 '2:project command:(doctor configure issue)'
                             ;;
                     esac
                     ;;
                 *)
-                    _arguments '1:gh area:(issue pr branch worktree todo project)'
+                    _arguments '1:gh area:(issue pr branch worktree project)'
                     ;;
             esac
             ;;

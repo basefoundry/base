@@ -93,7 +93,17 @@ _base_basectl_completion() {
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "status check doctor clone pull" "$cur"
             else
-                _base_basectl_completion_compgen "--workspace --manifest --source --format --include-optional --dry-run -v -h --help" "$cur"
+                case "${COMP_WORDS[2]:-}" in
+                    status|check|doctor)
+                        _base_basectl_completion_compgen "--workspace --manifest --format -v -h --help" "$cur"
+                        ;;
+                    clone)
+                        _base_basectl_completion_compgen "--workspace --manifest --include-optional --dry-run -v -h --help" "$cur"
+                        ;;
+                    pull)
+                        _base_basectl_completion_compgen "--source --manifest --dry-run -v -h --help" "$cur"
+                        ;;
+                esac
             fi
             ;;
         setup)
@@ -181,7 +191,7 @@ _base_basectl_completion() {
         gh)
             case "${COMP_WORDS[2]:-}" in
                 "")
-                    _base_basectl_completion_compgen "issue pr branch worktree todo project" "$cur"
+                    _base_basectl_completion_compgen "issue pr branch worktree project" "$cur"
                     ;;
                 issue)
                     if ((COMP_CWORD == 3)); then
@@ -207,13 +217,6 @@ _base_basectl_completion() {
                         _base_basectl_completion_compgen "prune" "$cur"
                     else
                         _base_basectl_completion_compgen "--dry-run --yes -h --help" "$cur"
-                    fi
-                    ;;
-                todo)
-                    if ((COMP_CWORD == 3)); then
-                        _base_basectl_completion_compgen "import" "$cur"
-                    else
-                        _base_basectl_completion_compgen "--dry-run --file -h --help" "$cur"
                     fi
                     ;;
                 project)
