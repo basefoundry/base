@@ -157,6 +157,20 @@ readonly _base_example_lib_sourced
 Prefer module-specific guard names to generic names that could collide across
 sourced files.
 
+#### Single-File Library Boundary
+
+Sourceable Bash libraries should stay single-file at their library boundary.
+For example, `lib_std.sh` is the stdlib library, and its implementation should
+remain in one sourceable file instead of being split into internal logging,
+path, string, prompt, or command-runner fragments.
+
+A new shell library file is appropriate when Base is introducing a distinct
+library boundary or ownership surface, not when one existing library grows large
+enough to have multiple internal concerns. Keep large libraries navigable with
+clear section ordering, consistent function prefixes, focused README coverage,
+and targeted tests rather than adding a shell module loader or chained
+source-fragment graph.
+
 ### 3.3 Error Handling
 
 1. Do not use `set -e`, `set -u`, or `set -o pipefail` in Base shell scripts
