@@ -110,6 +110,7 @@ Notes:
   - Project operations delegate to Base's Python Project engine.
   - Use project issue set-fields to move issue cards through Backlog, In Progress, In Review, and Done.
   - Use --replace-project to replace a nonstandard repo Project from base-project-template.
+    Already-standard Projects are left intact.
 EOF
 }
 

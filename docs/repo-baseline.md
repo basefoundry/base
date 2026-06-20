@@ -127,7 +127,8 @@ old Project, copies `base-project-template` into a new Project with the original
 title, links the new Project to the repository, backfills repository issues,
 copies missing issue field values from the legacy Project, and then applies repo
 defaults. Replacement changes the Project number and URL, so keep the closed
-legacy Project as the audit trail.
+legacy Project as the audit trail. Already-standard Projects are left intact
+and continue through normal metadata repair.
 `basectl gh project` is the lower-level direct surface for Project inspection,
 schema repair, and issue field updates.
 

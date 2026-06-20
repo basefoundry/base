@@ -573,7 +573,9 @@ from `base-project-template`. Base renames and closes the old Project as a
 legacy archive, creates a fresh Project with the original title, links it to the
 repo, backfills repo issues, and copies missing issue item fields from the
 legacy Project before applying repo defaults. The repaired Project gets a new
-Project number and URL.
+Project number and URL. If the existing Project already has the standard Base
+views, `--replace-project` leaves it intact and continues normal metadata
+repair.
 
 Run a discovered project's declared test command with:
 

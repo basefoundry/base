@@ -435,7 +435,8 @@ If a repo Project exists with nonstandard views such as GitHub's default
 archives the old Project by renaming and closing it, creates a fresh Project
 from `base-project-template`, backfills repository issues, and copies missing
 issue field values from the legacy Project. The new Project has a different
-Project number and URL.
+Project number and URL. If the Project already has the standard Base views,
+`--replace-project` leaves it intact and continues normal metadata repair.
 
 Repo Projects show workflow and prioritization. Milestones show release
 grouping. Cross-repo portfolio Projects should be curated roll-ups rather than

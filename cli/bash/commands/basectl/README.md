@@ -109,7 +109,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   remaining blanks in the repo Project. Use `--replace-project` when an
   existing repo Project has nonstandard views; Base archives the old Project,
   recreates it from `base-project-template`, backfills repository issues, and
-  preserves missing item field values where possible.
+  preserves missing item field values where possible. Already-standard Projects
+  are left intact.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
   files and `basectl repo check [path] --agent-guidance` verifies that optional
   layer for repos that opt in. Use `--pr` when generated guidance should land
