@@ -139,7 +139,38 @@ class UvProjectTests(unittest.TestCase):
         self.assertEqual(findings["BASE-P151"].status, "")
         self.assertEqual(findings["BASE-P152"].status, "warn")
         self.assertEqual(findings["BASE-P153"].status, "warn")
+        self.assertEqual(findings["BASE-P154"].status, "warn")
         self.assertIn(str(stale_venv), findings["BASE-P153"].message)
+        self.assertIn("uv sync", findings["BASE-P154"].fix)
+
+    def test_check_uv_reports_project_venv_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "project"
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+            (root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+            python_bin = root / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            python_bin.chmod(0o755)
+
+            with mock.patch("base_setup.uv.process.command_exists", return_value=True):
+                checks = check_uv(manifest)
+
+        findings = {check.finding_id: check for check in checks}
+        self.assertEqual(findings["BASE-P154"].status, "")
+        self.assertIn(str(root / ".venv"), findings["BASE-P154"].message)
 
     def test_uv_project_setup_skips_python_package_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

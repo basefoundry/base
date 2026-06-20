@@ -422,6 +422,31 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
 }
 
+@test "basectl setup uv-managed project does not bootstrap historical Base project venv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/demo"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$project_root"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\npython:\n  manager: uv\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command setup --dry-run --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Would create project virtual environment at '$TEST_HOME/.base.d/demo/.venv'"* ]]
+    [[ "$output" != *"Would run Python project setup layer through base-wrapper"* ]]
+    [ ! -e "$TEST_HOME/.base.d/demo/.venv" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+}
+
 @test "project setup resolves named project manifests from the workspace" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"

@@ -134,6 +134,7 @@ uv support adds these project diagnostics:
 - `BASE-P152`: uv-managed project `uv.lock` presence
 - `BASE-P153`: stale Base-managed project virtual environment ignored by a
   uv-managed project
+- `BASE-P154`: uv-managed project virtual environment readiness
 - `BASE-P160`: manifest command starts with an executable that is not available
   on PATH or in the project virtual environment
 - `BASE-P161`: manifest command references a project script path that is

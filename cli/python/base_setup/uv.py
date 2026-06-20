@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import base_cli
@@ -55,6 +56,7 @@ def check_uv(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
     if uses_uv_manager:
         checks.append(pyproject_check(manifest.path.parent / "pyproject.toml"))
         checks.append(uv_lock_check(manifest.path.parent / "uv.lock"))
+        checks.append(uv_project_venv_check(manifest.path.parent / ".venv"))
         stale_check = stale_base_venv_check(manifest)
         if stale_check is not None:
             checks.append(stale_check)
@@ -119,6 +121,26 @@ def uv_lock_check(lock_path: Path) -> ArtifactCheck:
         message=f"uv project manager is declared, but '{lock_path}' does not exist.",
         fix="Run 'uv lock' or 'uv sync' from the project root.",
         finding_id="BASE-P152",
+        status="warn",
+    )
+
+
+def uv_project_venv_check(venv_path: Path) -> ArtifactCheck:
+    python_path = venv_path / "bin" / "python"
+    if python_path.is_file() and os.access(python_path, os.X_OK):
+        return ArtifactCheck(
+            name="uv project virtualenv",
+            ok=True,
+            message=f"uv project virtualenv exists at '{venv_path}'.",
+            fix="",
+            finding_id="BASE-P154",
+        )
+    return ArtifactCheck(
+        name="uv project virtualenv",
+        ok=False,
+        message=f"uv project manager is declared, but '{python_path}' does not exist or is not executable.",
+        fix="Run 'uv sync' from the project root.",
+        finding_id="BASE-P154",
         status="warn",
     )
 
