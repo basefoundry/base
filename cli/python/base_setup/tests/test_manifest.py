@@ -40,6 +40,13 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.activate.source, ())
         self.assertIsNone(manifest.python.manager)
 
+    def test_rejects_missing_manifest_path_with_manifest_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+
+            with self.assertRaisesRegex(ManifestError, "unable to read manifest"):
+                read_manifest(manifest_path)
+
     def test_reads_manifest_python_uv_manager(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
