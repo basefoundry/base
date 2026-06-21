@@ -8,7 +8,7 @@ base_gh_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--size <T|S|M|L>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
@@ -34,6 +34,7 @@ Issue create project options:
   --category <category>         Issue label category. Defaults to enhancement.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
+  --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
   --no-project                  Skip Project metadata updates.
 
 Issue categories:
@@ -55,7 +56,7 @@ base_gh_issue_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--size <T|S|M|L>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
 
 Purpose:
@@ -69,6 +70,7 @@ Issue create project options:
   --category <category>         Issue label category. Defaults to enhancement.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
+  --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
   --no-project                  Skip Project metadata updates.
 
 Default category: enhancement.
@@ -347,6 +349,18 @@ base_gh_project_issue_set_fields() {
     "$wrapper" --project base base_github_projects project issue set-fields "$@"
 }
 
+base_gh_validate_project_size() {
+    local size="$1"
+
+    case "$size" in
+        T|S|M|L)
+            return 0
+            ;;
+    esac
+    base_gh_error "Invalid size '$size'. Expected one of: T, S, M, L."
+    return 1
+}
+
 base_gh_current_issue_from_branch() {
     local branch
 
@@ -393,6 +407,7 @@ base_gh_issue_create() {
     local issue_number=""
     local issue_output=""
     local project_owner=""
+    local project_size=""
     local project_title=""
     local title=""
 
@@ -422,6 +437,10 @@ base_gh_issue_create() {
                 project_owner="${2:-}"
                 shift
                 ;;
+            --size)
+                project_size="${2:-}"
+                shift
+                ;;
             --no-project)
                 configure_project=0
                 ;;
@@ -446,6 +465,9 @@ base_gh_issue_create() {
         printf 'Using default --category: enhancement\n'
     fi
     base_gh_validate_category "$category" || return 1
+    if [[ -n "$project_size" ]]; then
+        base_gh_validate_project_size "$project_size" || return 1
+    fi
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
     if [[ -n "$body" ]]; then
@@ -472,19 +494,26 @@ base_gh_issue_create() {
         [[ -n "$project_owner" ]] || project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
         config_path="$(base_gh_project_config_path || true)"
         if [[ -n "$config_path" ]]; then
-            base_gh_project_issue_set_fields "$issue_number" \
-                --project "$project_title" \
-                --owner "$project_owner" \
-                --repo "$github_repo" \
+            local field_args=(
+                "$issue_number"
+                --project "$project_title"
+                --owner "$project_owner"
+                --repo "$github_repo"
                 --config "$config_path"
+            )
+            if [[ -n "$project_size" ]]; then
+                field_args+=(--size "$project_size")
+            fi
+            base_gh_project_issue_set_fields "${field_args[@]}"
         else
+            [[ -n "$project_size" ]] || project_size="S"
             base_gh_project_issue_set_fields "$issue_number" \
                 --project "$project_title" \
                 --owner "$project_owner" \
                 --repo "$github_repo" \
                 --status Backlog \
                 --priority P2 \
-                --size S
+                --size "$project_size"
         fi
     fi
 }

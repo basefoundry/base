@@ -136,6 +136,7 @@ BASE_PROJECT_SCHEMA = ProjectSchema(
         SelectFieldSpec(
             "Size",
             (
+                SelectOption("T", "BLUE", "Tiny, obvious change with no cross-module behavior."),
                 SelectOption("S", "GREEN", "Small, focused change."),
                 SelectOption("M", "YELLOW", "Medium change with multiple files or interactions."),
                 SelectOption("L", "ORANGE", "Large change that should be split if possible."),

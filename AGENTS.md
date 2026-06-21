@@ -29,6 +29,9 @@ them.
   before implementation starts, move it to `In Review` when the PR opens, and
   verify `Done` after merge/closure. If Project V2 access or item state
   prevents an update, mention that in the work summary.
+- When creating issues, choose Project `Size` from actual scope: `T` for tiny
+  obvious work, `S` for normal small work or unknown scope, `M` for interacting
+  changes, and `L` only for work that should probably be split.
 - Prefer `basectl gh` for supported issue, branch, PR, check, and cleanup
   operations.
 - Fall back to the GitHub connector, raw `gh`, or `git` when `basectl gh` does

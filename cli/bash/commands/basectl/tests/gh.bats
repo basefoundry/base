@@ -26,6 +26,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh issue create"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"Issue create project options:"* ]]
+    [[ "$output" == *"--size <T|S|M|L>"* ]]
     [[ "$output" == *"Default category: enhancement."* ]]
     [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
     [[ "$output" != *"basectl gh pr create"* ]]
@@ -232,6 +233,60 @@ EOF
     [[ "$output" == *"project metadata updated"* ]]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Add transaction filter --label enhancement --assignee codeforester --repo codeforester/bankbuddy" ]
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 51 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml" ]
+}
+
+@test "basectl gh issue create accepts explicit project size override" {
+    local repo
+    local repo_root
+
+    repo="$TEST_TMPDIR/bankbuddy"
+    init_git_repo "$repo"
+    repo_root="$(cd "$repo" && pwd -P)"
+    git -C "$repo" remote add origin git@github.com:codeforester/bankbuddy.git
+    mkdir -p "$repo/.github"
+    cat > "$repo/.github/base-project.yml" <<'EOF'
+project:
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "issue" && "$2" == "create" ]]; then
+    printf 'https://github.com/codeforester/bankbuddy/issues/52\n'
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+printf 'project metadata updated\n'
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --size T
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/52"* ]]
+    [[ "$output" == *"project metadata updated"* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Fix typo --label enhancement --assignee codeforester --repo codeforester/bankbuddy" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 52 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size T" ]
 }
 
 @test "basectl gh issue create help does not require authentication" {

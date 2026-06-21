@@ -18,6 +18,7 @@ from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectS
 from .project_model import SelectFieldSpec, SelectOption
 from .project_config import ProjectConfig, ProjectConfigError
 from .project_config import read_project_config as _read_project_config
+from .project_errors import missing_issue_field_option_message
 
 
 class ProjectUsageError(RuntimeError):
@@ -389,13 +390,7 @@ def resolve_issue_field_updates(
             raise ProjectUsageError(f"{field_name} field was not found in Project '{project_title}'.")
         option = find_option(field, option_name)
         if option is None or option.option_id is None:
-            if field_name == "Initiative":
-                raise ProjectUsageError(
-                    f"Initiative option '{option_name}' was not found in Project '{project_title}'. "
-                    f'Run `basectl gh project configure --project "{project_title}" '
-                    f'--initiative-option "{option_name}"` first.'
-                )
-            raise ProjectUsageError(f"{field_name} option '{option_name}' was not found in Project '{project_title}'.")
+            raise ProjectUsageError(missing_issue_field_option_message(field_name, option_name, project_title))
         updates.append(FieldUpdate(field.field_id, option.option_id, field_name, option_name))
     return tuple(updates)
 
