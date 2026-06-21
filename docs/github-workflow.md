@@ -46,9 +46,21 @@ Base roadmap fields:
 - `Priority`: `P0`, `P1`, `P2`, `P3`
 - `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
   `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
-- `Size`: `S`, `M`, `L`
+- `Size`: `T`, `S`, `M`, `L`
 - `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
   `v1.0 Readiness`, `Adoption Polish`
+
+Use the smallest accurate `Size` when creating or triaging an issue:
+
+- `T`: tiny, obvious change; usually one file or one Project metadata action,
+  with no design decision or cross-module behavior.
+- `S`: small, focused change that may still need tests, docs, or a few files.
+- `M`: medium change with multiple files or interactions.
+- `L`: large change that should be split if possible.
+
+Automation defaults to `S` when no explicit size is supplied. Agents creating
+issues should pass an explicit size when the scope is already clear; use `S`
+when the issue still needs normal triage.
 
 Keep the issue's `Status` field aligned with the implementation train:
 
@@ -416,7 +428,7 @@ Recommended fields:
 - `Status`: Triage, Backlog, Ready, In Progress, In Review, Done
 - `Priority`: P0, P1, P2, P3
 - `Area`: repo-specific options declared in `.github/base-project.yml`
-- `Size`: S, M, L
+- `Size`: T, S, M, L
 - `Initiative`: repo-specific options declared in `.github/base-project.yml`
 
 Keep `Status`, `Priority`, and `Size` standardized across repos. Keep `Area`

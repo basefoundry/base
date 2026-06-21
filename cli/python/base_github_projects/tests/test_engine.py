@@ -207,6 +207,13 @@ def test_schema_for_args_adds_repo_project_config_options(tmp_path: Path) -> Non
     assert "Demo Polish" in {option.name for option in schema.field_by_name("Initiative").options}
 
 
+def test_base_project_schema_includes_tiny_size_before_small() -> None:
+    size_options = engine.BASE_PROJECT_SCHEMA.field_by_name("Size").options
+
+    assert [option.name for option in size_options] == ["T", "S", "M", "L"]
+    assert size_options[0].description == "Tiny, obvious change with no cross-module behavior."
+
+
 def test_compare_schema_reports_missing_fields_wrong_types_and_missing_options() -> None:
     fields = (
         engine.ProjectField(field_id="status", name="Status", data_type="TEXT"),
@@ -251,6 +258,30 @@ def test_configuration_plan_preserves_extra_options_and_adds_required_options() 
     assert [option.name for option in updated] == ["P1", "Later", "P0", "P2", "P3"]
     assert updated[0].option_id == "priority-p1"
     assert updated[1].option_id == "manual-later"
+
+
+def test_configuration_plan_adds_tiny_size_to_existing_standard_size_field() -> None:
+    field = engine.ProjectField(
+        field_id="size",
+        name="Size",
+        data_type="SINGLE_SELECT",
+        options=(
+            engine.SelectOption(name="S", color="GREEN", description="Small", option_id="size-s"),
+            engine.SelectOption(name="M", color="YELLOW", description="Medium", option_id="size-m"),
+            engine.SelectOption(name="L", color="ORANGE", description="Large", option_id="size-l"),
+        ),
+    )
+
+    actions = engine.configuration_plan(
+        project_exists=True,
+        fields=(field,),
+        schema=engine.ProjectSchema(fields=(engine.BASE_PROJECT_SCHEMA.field_by_name("Size"),)),
+    )
+
+    assert actions == (engine.ConfigureAction("update-field", "Size", "Add missing options: T."),)
+    updated = engine.merged_options(field, engine.BASE_PROJECT_SCHEMA.field_by_name("Size"))
+    assert [option.name for option in updated] == ["S", "M", "L", "T"]
+    assert [option.option_id for option in updated[:3]] == ["size-s", "size-m", "size-l"]
 
 
 def test_resolve_issue_field_updates_returns_only_explicit_fields() -> None:
@@ -314,6 +345,33 @@ def test_resolve_issue_field_updates_reports_missing_initiative_option() -> None
         "Initiative option 'New Theme' was not found in Project 'Base Roadmap'. "
         'Run `basectl gh project configure --project "Base Roadmap" '
         '--initiative-option "New Theme"` first.'
+    )
+
+
+def test_resolve_issue_field_updates_reports_missing_size_option() -> None:
+    fields = (
+        engine.ProjectField(
+            field_id="size-field",
+            name="Size",
+            data_type="SINGLE_SELECT",
+            options=(
+                engine.SelectOption(name="S", color="GREEN", description="Small", option_id="size-s"),
+                engine.SelectOption(name="M", color="YELLOW", description="Medium", option_id="size-m"),
+                engine.SelectOption(name="L", color="ORANGE", description="Large", option_id="size-l"),
+            ),
+        ),
+    )
+
+    with pytest.raises(engine.ProjectUsageError) as excinfo:
+        engine.resolve_issue_field_updates(
+            fields,
+            {"size": "T"},
+            project_title="base",
+        )
+
+    assert str(excinfo.value) == (
+        "Size option 'T' was not found in Project 'base'. "
+        'Run `basectl gh project configure --project "base"` first.'
     )
 
 

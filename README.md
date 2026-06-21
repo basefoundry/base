@@ -550,8 +550,9 @@ Base-managed default branch protection ruleset, configures a repo-named GitHub
 Project copied from `base-project-template`, and creates the standard GitHub
 labels documented in [Repository Baseline](docs/repo-baseline.md).
 When `.github/base-project.yml` exists, `repo configure` also adds missing
-repo-specific `Area` and `Initiative` Project options from that file and applies
-its `issue_defaults` to Project issue items that are missing those values.
+shared Project field options, adds repo-specific `Area` and `Initiative`
+Project options from that file, and applies its `issue_defaults` to Project
+issue items that are missing those values.
 `repo init` also seeds `.github/workflows/project-intake.yml`, a visible
 fallback for issues created outside `basectl gh issue create`. `repo configure`
 creates the workflow when it is missing from older Base-managed repositories.

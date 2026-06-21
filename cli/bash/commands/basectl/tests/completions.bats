@@ -266,5 +266,6 @@ EOF
     [[ "$output" == *"--category"* ]]
     [[ "$output" == *"--title"* ]]
     [[ "$output" == *"--body"* ]]
+    [[ "$output" == *"--size"* ]]
     [[ "$output" != *"--type"* ]]
 }

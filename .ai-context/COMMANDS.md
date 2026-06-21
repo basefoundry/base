@@ -44,7 +44,9 @@ the canonical current command list.
 - `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, repo
   hygiene, and Project metadata using Base conventions.
   - `basectl gh issue create` defaults to category `enhancement` when
-    `--category` is omitted and prints that default in command output.
+    `--category` is omitted and prints that default in command output. Pass
+    `--size <T|S|M|L>` when the issue scope is clear; otherwise Project
+    metadata defaults to `Size=S`.
   - `basectl gh pr create` auto-injects `Fixes #<issue>` from Base branch
     names; pass `--no-fixes` to suppress that body injection.
   - `basectl gh project doctor --project <title>` - inspect Project metadata

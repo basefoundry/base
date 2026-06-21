@@ -339,10 +339,16 @@ the repo Project:
 - `Priority`: `P0`, `P1`, `P2`, `P3`
 - `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
   `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
-- `Size`: `S`, `M`, `L`
+- `Size`: `T`, `S`, `M`, `L`
 - `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
   `v1.0 Readiness`, `Adoption Polish`, plus values passed with
   `--initiative-option`
+
+`T` means a tiny, obvious issue with no design decision or cross-module
+behavior. `S` remains the generated and fallback default because new issues are
+not always fully scoped at creation time. `basectl repo configure` and
+`basectl gh project configure` add missing shared Project options
+additively; existing item values are preserved.
 
 `--copy-project-fields-from <title>` copies these single-select fields when the
 source Project item has a value and the target repo Project item does not:
