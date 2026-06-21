@@ -181,7 +181,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("pip install click==8.4.1 PyYAML==6.0.3 rich", stderr)
+        self.assertIn("pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 rich", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_dry_run_ignores_inherited_project_runtime_environment(self) -> None:
@@ -217,7 +217,7 @@ class ArtifactReconcileTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertNotIn(str(inherited_venv_dir), stderr)
-        self.assertIn("pip install click==8.4.1 PyYAML==6.0.3 rich", stderr)
+        self.assertIn("pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 rich", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:
@@ -392,7 +392,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             info_messages,
         )
         self.assertIn(
-            f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install requests",
+            f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install --disable-pip-version-check requests",
             info_messages,
         )
 
@@ -444,7 +444,15 @@ class ArtifactReconcileTests(unittest.TestCase):
 
         run_command.assert_called_once_with(
             ctx,
-            [str(python_bin), "-m", "pip", "install", "click==8.4.1", "requests"],
+            [
+                str(python_bin),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "click==8.4.1",
+                "requests",
+            ],
         )
 
     def test_reconcile_artifacts_retries_python_installs_sequentially_after_batch_failure(self) -> None:
@@ -480,9 +488,40 @@ class ArtifactReconcileTests(unittest.TestCase):
         self.assertEqual(
             run_command.call_args_list,
             [
-                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "click==8.4.1", "requests"]),
-                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "click==8.4.1"]),
-                mock.call(ctx, [str(python_bin), "-m", "pip", "install", "requests"]),
+                mock.call(
+                    ctx,
+                    [
+                        str(python_bin),
+                        "-m",
+                        "pip",
+                        "install",
+                        "--disable-pip-version-check",
+                        "click==8.4.1",
+                        "requests",
+                    ],
+                ),
+                mock.call(
+                    ctx,
+                    [
+                        str(python_bin),
+                        "-m",
+                        "pip",
+                        "install",
+                        "--disable-pip-version-check",
+                        "click==8.4.1",
+                    ],
+                ),
+                mock.call(
+                    ctx,
+                    [
+                        str(python_bin),
+                        "-m",
+                        "pip",
+                        "install",
+                        "--disable-pip-version-check",
+                        "requests",
+                    ],
+                ),
             ],
         )
         ctx.log.warning.assert_called_once_with(

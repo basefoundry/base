@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import venv
+from collections.abc import Iterable
 from pathlib import Path
 
 import base_cli
@@ -12,6 +13,8 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import ArtifactRequest
 from .registry import ArtifactDefinition, get_artifact_definition
+
+PIP_INSTALL_COMMAND_PREFIX = ("-m", "pip", "install", "--disable-pip-version-check")
 
 
 def homebrew_no_auto_update_env() -> dict[str, str]:
@@ -309,7 +312,7 @@ def reconcile_python_artifacts(
     if dry_run:
         if not python_bin.exists():
             ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", venv_dir)
-        process.dry_run_command(ctx, [str(python_bin), "-m", "pip", "install", *requirements])
+        process.dry_run_command(ctx, pip_install_command(python_bin, requirements))
         return
 
     if not python_bin.exists():
@@ -318,7 +321,7 @@ def reconcile_python_artifacts(
 
     names = ", ".join(definition.name for definition, _version, _requirement in missing)
     ctx.log.info("Installing Python artifacts into project virtual environment: %s.", names)
-    command = [str(python_bin), "-m", "pip", "install", *requirements]
+    command = pip_install_command(python_bin, requirements)
     try:
         process.run_command(ctx, command)
     except ArtifactError as exc:
@@ -342,11 +345,15 @@ def reconcile_python_artifacts_sequential(
             )
             continue
         ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
-        process.run_command(ctx, [str(python_bin), "-m", "pip", "install", requirement])
+        process.run_command(ctx, pip_install_command(python_bin, (requirement,)))
 
 
 def python_requirement(definition: ArtifactDefinition, version: str) -> str:
     return f"{definition.package}=={version}" if version != "latest" else definition.package
+
+
+def pip_install_command(python_bin: Path, requirements: Iterable[str]) -> list[str]:
+    return [str(python_bin), *PIP_INSTALL_COMMAND_PREFIX, *requirements]
 
 
 def project_venv_dir(project: str) -> Path:

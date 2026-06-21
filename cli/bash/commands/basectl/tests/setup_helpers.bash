@@ -102,7 +102,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$pyyaml_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
     exit 0
@@ -111,7 +111,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$click_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$click_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed"
     exit 0
@@ -198,7 +198,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$pyyaml_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
     exit 0
@@ -207,7 +207,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$click_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$click_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed"
     exit 0
@@ -346,7 +346,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$pyyaml_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
     exit 0
@@ -355,7 +355,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$click_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$click_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed"
     exit 0
