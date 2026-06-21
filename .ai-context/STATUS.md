@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.0.5` is the current release. The repo-root `VERSION` file is updated
+Base `1.1.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -24,18 +24,17 @@ The current command surface covers:
 - onboarding
 - repository baseline creation and checks
 - GitHub issue, PR, branch, and worktree helpers
-- workspace status/check/doctor reports
+- workspace status/check/doctor/configure flows
 - release readiness inspection and guarded GitHub release publishing
 - local AI context export bundles
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
 
 ## Active Development Direction
 
-The `v1.0.0` milestone is complete. Post-1.0 work is tracked toward `v1.1.0`,
-with Linux runtime support, Docker/service artifacts, and shell stdlib
-hardening remaining outside the 1.0 release contract. uv-managed Python project
-behavior is now implemented after 1.0 through the explicit
-`python.manager: uv` contract.
+The `v1.1.0` milestone is complete. Future work is tracked in GitHub Issues,
+with Linux runtime support, Docker/service artifacts, project-specific PR
+policy, and broader setup/Python version policy work remaining outside the
+1.1 release contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with

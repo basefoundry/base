@@ -4,7 +4,7 @@
 
 - Name: Base
 - Repository: `github.com/basefoundry/base`
-- Current release: `1.0.5`
+- Current release: `1.1.0`
 - Primary platform: macOS
 - Future platform direction: Linux support is a design target; Windows is not
   currently in scope.
