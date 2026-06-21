@@ -157,6 +157,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   Optional repositories are reported but skipped unless `--include-optional` is
   supplied, `--dry-run` previews the delegated clone work, and explicit
   `--manifest <path>` takes precedence over `workspace.manifest`.
+- `basectl workspace configure` applies the existing `basectl repo configure`
+  repair path across discovered Base-managed projects, or across present
+  Base-managed repositories from a configured or explicit workspace manifest.
+  It supports `--dry-run`, skips missing or non-Base-managed repositories, and
+  continues after per-repo failures.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

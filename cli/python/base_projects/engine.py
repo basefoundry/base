@@ -15,13 +15,13 @@ from urllib.parse import urlparse
 
 import base_cli
 from base_cli.config import read_user_config
-from base_cli.paths import base_cache_root
-from base_cli.paths import discover_manifest
+from base_cli.paths import base_cache_root, discover_manifest
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_configure import workspace_configure_from_options
 from base_projects.workspace_pull import pull_workspace_manifest
 from base_projects.workspace_reports import ManifestEntry
 from base_projects.workspace_reports import ProjectDiscoveryError
@@ -155,6 +155,9 @@ def dispatch_projects_command(
             command_arguments,
             lambda: workspace_pull_command(ctx, options),
         ),
+        "configure": lambda: require_no_args_and_run(
+            "configure", command_arguments, lambda: workspace_configure_from_options(ctx, options)
+        ),
         "current": lambda: current_project_from_args(ctx, command_arguments),
         "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
         "resolve": lambda: resolve_project_from_args(ctx, command_arguments, options.workspace),
@@ -172,8 +175,8 @@ def dispatch_projects_command(
 
     ctx.log.error(
         "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "status, check, doctor, clone, test-command, demo-script, activation-sources, run-command, run-commands, "
-        "build-targets, build-target-list, pull.",
+        "status, check, doctor, clone, configure, test-command, demo-script, activation-sources, run-command, "
+        "run-commands, build-targets, build-target-list, pull.",
         command,
     )
     return 2

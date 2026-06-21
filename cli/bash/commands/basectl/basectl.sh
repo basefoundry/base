@@ -49,7 +49,7 @@ Commands:
     Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
-  workspace <status|check|doctor|clone|pull> [options]
+  workspace <status|check|doctor|clone|pull|configure> [options]
     Show workspace status, run checks/diagnostics, clone manifest repos, or sync manifest.
   version
     Show the installed Base version.

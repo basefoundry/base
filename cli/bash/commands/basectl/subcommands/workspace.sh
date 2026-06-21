@@ -57,6 +57,23 @@ Fetch and validate a canonical workspace manifest before updating the local mani
 EOF
 }
 
+base_workspace_configure_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace configure [options]
+
+Options:
+  --workspace <path>  Workspace directory to configure. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --dry-run           Show planned workspace configuration without applying repo changes.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Apply or repair Base-managed GitHub repo configuration across workspace repositories.
+EOF
+}
+
 base_workspace_subcommand_usage() {
     case "${1:-}" in
         status|check|doctor)
@@ -68,17 +85,21 @@ base_workspace_subcommand_usage() {
         pull)
             base_workspace_pull_usage
             ;;
+        configure)
+            base_workspace_configure_usage
+            ;;
         *)
             cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|clone|pull> [options]
+  basectl workspace <status|check|doctor|clone|pull|configure> [options]
 
 Commands:
-  status   Show workspace status. Supports --format text|json.
-  check    Run workspace checks. Supports --format text|json.
-  doctor   Run workspace diagnostics. Supports --format text|json.
-  clone    Clone or validate expected repositories from a workspace manifest.
-  pull     Fetch and validate a canonical workspace manifest source.
+  status     Show workspace status. Supports --format text|json.
+  check      Run workspace checks. Supports --format text|json.
+  doctor     Run workspace diagnostics. Supports --format text|json.
+  clone      Clone or validate expected repositories from a workspace manifest.
+  pull       Fetch and validate a canonical workspace manifest source.
+  configure  Apply repo configure across workspace repositories.
 
 Run `basectl workspace <command> --help` for command-specific options.
 EOF
@@ -102,7 +123,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|clone|pull)
+        status|check|doctor|clone|pull|configure)
             shift
             ;;
         *)

@@ -111,6 +111,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "workspace_pull_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace configure --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_configure_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl onboard --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -215,6 +219,7 @@ EOF
     [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
     [[ "$output" == *"workspace_clone_options=--workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_pull_options=--source --manifest --dry-run"* ]]
+    [[ "$output" == *"workspace_configure_options=--workspace --manifest --dry-run"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
@@ -268,4 +273,23 @@ EOF
     [[ "$output" == *"--body"* ]]
     [[ "$output" == *"--size"* ]]
     [[ "$output" != *"--type"* ]]
+}
+
+@test "Bash completion includes workspace configure options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '\
+            source "$BASE_HOME/lib/shell/completions/basectl_completion.sh"; \
+            COMP_WORDS=(basectl workspace ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace configure ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "options=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"commands=status check doctor clone pull configure"* ]]
+    [[ "$output" == *"options=--workspace --manifest --dry-run"* ]]
 }
