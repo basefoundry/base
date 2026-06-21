@@ -264,6 +264,24 @@ repositories. `--dry-run` forwards to each delegated `basectl repo clone`
 operation so the resolved repository specs, destinations, and conflicts can be
 reviewed before the filesystem changes.
 
+The configure path applies the existing single-repo repair behavior across the
+workspace:
+
+```bash
+basectl workspace configure --dry-run
+basectl workspace configure
+basectl workspace configure --manifest ~/work/workspace.yaml --dry-run
+```
+
+Without a manifest, Base scans discovered local Base-managed projects under the
+workspace root and delegates each supported GitHub checkout to
+`basectl repo configure <path> --repo <owner/name>`. With a manifest, Base walks
+the expected repository set, skips missing or non-Base-managed repositories, and
+uses the manifest URL when it identifies a GitHub repository. The command
+continues after per-repo failures and reports configured, skipped, and failed
+counts. Use this after shared repo or Project schema changes when each local
+repo should receive the same idempotent `repo configure` repair path.
+
 ## Relationship To Onboarding
 
 `basectl onboard` currently guides first-run Base setup. It should not become a
@@ -305,6 +323,11 @@ repositories by default, skips missing optional repositories unless
 `--include-optional` is supplied, and exits nonzero when any delegated clone or
 checkout validation fails.
 
+`basectl workspace configure --manifest <path>` configures present Base-managed
+expected repositories through `basectl repo configure`. It skips missing
+repositories and present repositories without `base_manifest.yaml`, and exits
+nonzero only when a delegated configure command fails.
+
 The v1 implementation is intentionally still conservative. Clone is explicit;
-update, pull, reset, project setup, and authentication management remain outside
-the workspace manifest contract.
+configure is explicit; update, pull, reset, project setup, and authentication
+management remain outside the workspace manifest contract.

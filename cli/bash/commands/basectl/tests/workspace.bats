@@ -141,6 +141,34 @@ EOF
     [ "$output" = "ARGS=--source $source --manifest $manifest --dry-run" ]
 }
 
+@test "basectl workspace configure delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local manifest="$TEST_TMPDIR/workspace.yaml"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base"
+    touch "$manifest"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "configure" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace configure python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace configure --workspace "$workspace" --manifest "$manifest" --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=--workspace $workspace --manifest $manifest --dry-run" ]
+}
+
 @test "basectl workspace commands print help without requiring the Base Python venv" {
     run_basectl workspace status --help
 
@@ -178,6 +206,15 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl workspace pull [options]"* ]]
     [[ "$output" == *"--source <url-or-path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--format <format>"* ]]
+
+    run_basectl workspace configure --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace configure [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" != *"--format <format>"* ]]

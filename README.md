@@ -453,6 +453,7 @@ basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
 basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
+basectl workspace configure --dry-run
 ```
 
 By default this scans `workspace.root` from `~/.base.d/config.yaml` when that
@@ -461,8 +462,8 @@ directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
 Project list output is tab-separated as `<project-name><TAB><path>`.
 `basectl projects list` and the read-only workspace status, check, and doctor
-commands support `--format json` for machine-readable output. Workspace clone
-and pull use text output only. Workspace status, check, and doctor are
+commands support `--format json` for machine-readable output. Workspace clone,
+pull, and configure use text output only. Workspace status, check, and doctor are
 read-only. Status reports each discovered project's manifest
 validity, whether the Base-managed project virtual environment is present, and
 the latest recorded `basectl check <project>` date when one exists. Check
@@ -491,6 +492,16 @@ local workspace manifest explicitly. `--source <url-or-path>` and
 `--manifest <path>` override those configured values for one command. Pull
 validates the fetched manifest before writing and never mutates project
 repositories.
+
+Use `basectl workspace configure --dry-run` to preview applying
+`basectl repo configure` across Base-managed repositories in the workspace, then
+run `basectl workspace configure` to apply the repair path. With
+`--manifest <path>`, Base walks the expected repository set, skips missing or
+non-Base-managed repositories, and continues after per-repo failures. Without a
+manifest, Base scans discovered local Base-managed projects under the workspace
+root. This is the fastest way to roll out shared repo or Project schema repairs
+across a local repo family while keeping each repository's `repo configure`
+behavior idempotent.
 
 Start a new Base-managed repository with:
 

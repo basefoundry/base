@@ -58,6 +58,7 @@ inspect the resolved command contract first.
 | `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace pull` | Explicitly fetch and validate a canonical workspace manifest source before updating the local workspace manifest. Uses `workspace.manifest_source` and `workspace.manifest` from user config unless flags are supplied. | `--source <url-or-path>`, `--manifest <path>`, `--dry-run` |
+| `basectl workspace configure` | Apply the existing `repo configure` repair path across discovered Base-managed workspace repositories or an explicit workspace manifest. Skips missing, non-Base-managed, or non-GitHub repos and continues after per-repo failures. | `--workspace <path>`, `--manifest <path>`, `--dry-run` |
 
 ## Repository And GitHub Workflow
 
