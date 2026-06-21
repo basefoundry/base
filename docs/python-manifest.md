@@ -34,6 +34,55 @@ environment as the project virtual environment:
 <project-root>/.venv
 ```
 
+## Migration Paths
+
+### Base-Managed Project Adopts uv
+
+For a project that already uses Base's historical project virtual environment,
+add the explicit uv contract to `base_manifest.yaml`:
+
+```yaml
+python:
+  manager: uv
+```
+
+Move Python dependencies into `pyproject.toml`, create or refresh `uv.lock` with
+uv, and run `uv sync` or `basectl setup <project>` from the project root. After
+that, `basectl activate`, `basectl run`, `basectl test`, `basectl build`, and
+`basectl demo` use `<project-root>/.venv` as the project environment unless the
+caller explicitly sets `BASE_PROJECT_VENV_DIR`.
+
+If the old Base-managed environment still exists at
+`~/.base.d/<project>/.venv`, Base reports it as stale and ignores it. Base does
+not delete that directory automatically because it may contain local state,
+debugging context, or artifacts a user still wants. Once `basectl check
+<project>` reports the uv project virtual environment as healthy, users may
+remove the stale Base-managed project environment manually if they no longer
+need it.
+
+### Existing uv Project Adopts Base
+
+For an existing uv project, keep `pyproject.toml`, `uv.lock`, and the repo-local
+`.venv` under uv ownership. Add a small Base manifest that opts into uv-managed
+Python:
+
+```yaml
+project:
+  name: example
+
+python:
+  manager: uv
+```
+
+Run `basectl setup <project>` to let Base delegate Python setup to `uv sync`.
+Add `runner: uv` only for manifest commands that should execute through
+`uv run -- ...`; command runner selection is independent from
+`python.manager: uv`.
+
+Base does not infer uv ownership from `pyproject.toml` or `uv.lock` alone. The
+manifest opt-in is what lets Base choose the repo-local `.venv` and report uv
+diagnostics.
+
 ## Command Runners
 
 Command execution is independent from the project-level Python manager. Any
