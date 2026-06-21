@@ -47,6 +47,10 @@ basectl update-profile
 exec "$SHELL" -l
 ```
 
+Use the full formula name `basefoundry/base/base` for installs and upgrades.
+`basefoundry/base` is the tap name, not the formula, and bare `base` can resolve
+to unrelated Homebrew formulae or casks.
+
 Trusting the tap lets Homebrew load both the `base` formula and Base's
 tap-owned `base-bash-libs` dependency. The command is safe to rerun on machines
 that already trust `basefoundry/base`.
@@ -109,6 +113,17 @@ On Intel macOS, it is usually available as:
 ```bash
 /usr/local/bin/basectl version
 ```
+
+### Why does Homebrew install both basectl and base-wrapper?
+
+`basectl` is the command users normally run. Homebrew also installs
+`base-wrapper` because Base's Bash commands and project launchers use it to run
+Python packages through the selected Base project virtual environment.
+
+For example, Homebrew exposes both executables under the Homebrew prefix, but
+`base-wrapper` is primarily an implementation bridge. Users should usually run
+`basectl` or a project-owned launcher instead of invoking `base-wrapper`
+directly.
 
 ### How do I know which basectl is active?
 
@@ -333,6 +348,27 @@ Direct invocation makes users choose a Python interpreter, virtual environment,
 and `PYTHONPATH` by hand. The launcher plus `base-wrapper` keeps those choices
 consistent with `basectl setup`, project activation, and Base-managed project
 virtual environments.
+
+### Does base-wrapper work with uv-managed Python projects?
+
+Yes, as long as Base has resolved the project virtual environment first.
+`base-wrapper` does not call `uv` and does not read `base_manifest.yaml` by
+itself. It runs the Python interpreter from `BASE_PROJECT_VENV_DIR` when that
+variable is set, otherwise it falls back to `~/.base.d/<project>/.venv`.
+
+For projects that declare `python.manager: uv`, Base project commands and
+activated project shells set `BASE_PROJECT_VENV_DIR` to the project-local
+`.venv` that uv owns. A launcher run from that context can still delegate to
+`base-wrapper`:
+
+```bash
+#!/usr/bin/env bash
+exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_cli "$@"
+```
+
+If you invoke `base-wrapper` directly outside a resolved Base project context,
+set `BASE_PROJECT_VENV_DIR` yourself or run through `basectl activate`,
+`basectl run`, or another Base command that resolves the project first.
 
 ### What is the base_cli Python package for?
 
