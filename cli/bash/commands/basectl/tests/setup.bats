@@ -61,7 +61,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$pyyaml_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$pyyaml_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed"
     exit 0
@@ -70,7 +70,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "$click_package" ]]; then
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" && "${4:-}" == "--disable-pip-version-check" && "${5:-}" == "$click_package" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-install-ran"
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed"
     exit 0
@@ -118,6 +118,41 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-python" ]
     [[ "$(cat "$TEST_STATE_DIR/project-setup-python")" == *"$venv_dir/bin/python"* ]]
     [[ "$(cat "$TEST_STATE_DIR/project-setup-python")" != *"$inherited_venv/bin/python"* ]]
+}
+
+@test "setup installs Base Python packages without pip self-version notices" {
+    local bash_libs_dir
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    exit 1
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/pip-install-args"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE=darwin24 \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_SETUP_VENV_DIR="$venv_dir" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        bash -c 'source "$BASE_HOME/base_init.sh"; source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"; setup_install_base_python_package requests'
+
+    [ "$status" -eq 0 ]
+    grep -Fxq -- "--disable-pip-version-check" "$TEST_STATE_DIR/pip-install-args"
 }
 
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {

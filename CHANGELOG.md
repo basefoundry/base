@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Suppressed pip self-upgrade notices during Base-managed pip installs so
+  setup output stays focused on Base actions and real install failures.
 - Made live workflow docs and installer examples main-ready, using default-branch
   URLs for raw GitHub install scripts and `main` for contributor branch
   examples.

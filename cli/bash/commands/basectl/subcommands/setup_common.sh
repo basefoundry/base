@@ -713,7 +713,7 @@ setup_install_base_python_package() {
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
     log_info "Installing Python package '$package' in the Base virtual environment."
-    run "$python_bin" -m pip install "$package"
+    run "$python_bin" -m pip install --disable-pip-version-check "$package"
 }
 
 setup_install_pyyaml() {
