@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-21
+
 ### Changed
 
 - Suppressed pip self-upgrade notices during Base-managed pip installs so
