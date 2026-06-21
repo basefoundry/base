@@ -994,6 +994,10 @@ basectl update-profile
 exec "$SHELL" -l
 ```
 
+Use the full formula name `basefoundry/base/base` for Homebrew installs and
+upgrades. `basefoundry/base` is the tap name, not the formula, and bare `base`
+can resolve to unrelated Homebrew formulae or casks.
+
 The trust step is required on Homebrew versions that block formulae from
 non-official taps until the tap is trusted. It is safe to run again on machines
 that already trust `basefoundry/base`. Existing installs that predate this
