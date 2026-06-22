@@ -203,3 +203,8 @@ manifests do not require every repository to be Base-managed.
 | --- | --- |
 | `BASE-H001` | Required environment variable presence; each variable is keyed by `(id, name)`. |
 | `BASE-H002` | Required TCP port listening/free state |
+
+For `BASE-H001`, `id` is always `BASE-H001` and `name` is the environment
+variable name from `health.required_env`. A suppression targeting a specific
+missing-variable finding would match values such as `id: BASE-H001` and
+`name: DATABASE_URL`.
