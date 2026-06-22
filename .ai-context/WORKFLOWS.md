@@ -118,6 +118,9 @@ Homebrew formula audits should be run by formula name, for example
 `brew audit --new --formula basefoundry/base/base-bash-libs`. Keep
 `base-bash-libs` core-ready as a standalone dependency so a future
 Homebrew/core `basefoundry` formula can declare `depends_on "base-bash-libs"`.
+Setup parallelism should follow `docs/setup-parallelism.md`: model setup as a
+deterministic plan and parallelize only read-only preflight/planning work before
+considering mutating installers.
 
 ## AI Context Maintenance
 
