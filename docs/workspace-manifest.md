@@ -162,6 +162,34 @@ default. Remote source fetching is therefore an explicit manifest-file update,
 not passive workspace discovery, and it does not clone, pull, reset, or rewrite
 project repositories.
 
+### Accepted Source Formats
+
+`workspace.manifest_source` accepts these source shapes:
+
+```yaml
+workspace:
+  manifest_source: file:///Users/alex/work/platform/workspace.yaml
+```
+
+```yaml
+workspace:
+  manifest_source: https://raw.githubusercontent.com/example/platform/main/workspace.yaml
+```
+
+```yaml
+workspace:
+  manifest_source: ~/work/platform/workspace.yaml
+```
+
+```yaml
+workspace:
+  manifest_source: /opt/base/workspaces/platform.yaml
+```
+
+Use Git SSH clone URLs such as `git@github.com:example/service.git` only in
+workspace manifest `repos[].url` entries. They identify repositories to clone;
+they are not workspace manifest source URLs.
+
 ## Trust And Authentication
 
 Base should delegate repository authentication to Git, SSH, and the GitHub CLI.
