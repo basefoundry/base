@@ -386,9 +386,14 @@ from base_cli.testing import invoke
 def test_command(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
-    (project / "base_manifest.yaml").write_text("project:\n  name: demo\n")
 
-    result = invoke(app, ["--name", "Ada"], home=tmp_path, cwd=project)
+    result = invoke(
+        app,
+        ["--name", "Ada"],
+        home=tmp_path,
+        cwd=project,
+        manifest={"project": {"name": "demo"}, "artifacts": []},
+    )
 
     assert result.exit_code == 0
     assert "hello Ada" in result.stdout
@@ -397,7 +402,9 @@ def test_command(tmp_path: Path) -> None:
 The helper wraps Click's `CliRunner`, sets `HOME` when requested, changes to
 `cwd` only for the invocation, and keeps stderr separate on Click versions that
 support it. Use `cwd` for commands whose behavior depends on project discovery,
-including tests that intentionally run outside a Base project.
+including tests that intentionally run outside a Base project. Pass
+`manifest={...}` with `cwd` to write a temporary `base_manifest.yaml` before
+the command runs.
 
 When `home` is supplied, `invoke()` also defaults `BASE_CACHE_DIR` to
 `<home>/.cache/base` so helper-based tests do not inherit a developer's real
