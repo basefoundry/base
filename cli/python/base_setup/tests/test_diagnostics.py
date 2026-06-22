@@ -58,6 +58,12 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(request_checks[0]["status"], "error")
         self.assertNotIn("ok", request_checks[0])
         self.assertEqual(request_checks[0]["fix"], "basectl setup demo")
+        self.assertEqual(request_checks[0]["details"]["artifact_type"], "python-package")
+        self.assertEqual(request_checks[0]["details"]["manager"], "pip")
+        self.assertEqual(request_checks[0]["details"]["package"], "requests")
+        self.assertEqual(request_checks[0]["details"]["target"], "project-venv")
+        self.assertEqual(request_checks[0]["details"]["version_policy"], "requested")
+        self.assertTrue(request_checks[0]["details"]["registry_source"].endswith("lib/base/artifact-registry.yaml"))
 
 
 

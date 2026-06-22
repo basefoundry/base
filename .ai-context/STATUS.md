@@ -18,6 +18,7 @@ The current command surface covers:
 - advisory check/doctor lint warnings for missing manifest command executables
   and project script paths
 - mise integration
+- bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
 - cleanup and logs
 - local config inspection
@@ -58,6 +59,7 @@ Recent released work includes:
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
 - Base `1.0.1` AGPL license cleanup and release artifacts
 - explicit uv-managed Python setup and command runner support
+- bundled `lib/base/artifact-registry.yaml` support for built-in artifacts
 - workspace-aware repo clone, manifest-driven workspace clone, Project intake
   workflow generation, and resilient `basectl gh` command execution
 - external `base-bash-libs` consumption for reusable Bash libraries, with Base

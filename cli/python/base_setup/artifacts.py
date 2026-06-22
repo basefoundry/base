@@ -99,7 +99,21 @@ def check_artifact(
         message=f"Artifact manager '{definition.manager}' is not implemented.",
         fix=f"basectl setup {project}",
         finding_id="BASE-P030",
+        details=artifact_details(definition),
     )
+
+
+def artifact_details(definition: ArtifactDefinition) -> dict[str, str]:
+    return {
+        "artifact_type": definition.artifact_type,
+        "artifact": definition.name,
+        "manager": definition.manager,
+        "package": definition.package,
+        "target": definition.target,
+        "version_policy": definition.version_policy,
+        "check_kind": definition.check_kind,
+        "registry_source": definition.registry_source,
+    }
 
 
 def check_homebrew_artifact(
@@ -117,6 +131,7 @@ def check_homebrew_artifact(
             ),
             fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
             finding_id="BASE-P031",
+            details=artifact_details(definition),
         )
     if not process.command_exists("brew"):
         return ArtifactCheck(
@@ -125,6 +140,7 @@ def check_homebrew_artifact(
             message=f"Homebrew is required to check artifact '{artifact.name}'.",
             fix="basectl setup",
             finding_id="BASE-P032",
+            details=artifact_details(definition),
         )
     if process.run_check(["brew", "list", definition.package]):
         if homebrew_package_outdated(definition.package):
@@ -134,6 +150,7 @@ def check_homebrew_artifact(
                 message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
                 fix=f"basectl setup {project}",
                 finding_id="BASE-P033",
+                details=artifact_details(definition),
             )
         return ArtifactCheck(
             name=artifact.name,
@@ -144,6 +161,7 @@ def check_homebrew_artifact(
             ),
             fix="",
             finding_id="BASE-P033",
+            details=artifact_details(definition),
         )
     return ArtifactCheck(
         name=artifact.name,
@@ -151,6 +169,7 @@ def check_homebrew_artifact(
         message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
         fix=f"basectl setup {project}",
         finding_id="BASE-P033",
+        details=artifact_details(definition),
     )
 
 
@@ -168,6 +187,7 @@ def check_python_artifact(
             message=f"Python artifact '{artifact.name}' is installed in the project virtual environment.",
             fix="",
             finding_id="BASE-P040",
+            details=artifact_details(definition),
         )
     return ArtifactCheck(
         name=artifact.name,
@@ -175,6 +195,7 @@ def check_python_artifact(
         message=f"Python artifact '{artifact.name}' is not installed in the project virtual environment.",
         fix=f"basectl setup {project}",
         finding_id="BASE-P040",
+        details=artifact_details(definition),
     )
 
 

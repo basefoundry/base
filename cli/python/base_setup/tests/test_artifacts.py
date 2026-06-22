@@ -16,7 +16,7 @@ from base_setup.artifacts import merge_artifacts
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, read_manifest
 from base_setup.process import format_command
-from base_setup.registry import get_artifact_definition
+from base_setup.registry import get_artifact_definition, load_artifact_definitions
 from base_setup.tests.helpers import fake_context, run_engine
 
 
@@ -77,6 +77,11 @@ class ArtifactMergeTests(unittest.TestCase):
 
 class ArtifactRegistryTests(unittest.TestCase):
 
+    def write_registry(self, root: Path, body: str) -> Path:
+        path = root / "artifact-registry.yaml"
+        path.write_text(body, encoding="utf-8")
+        return path
+
     def test_base_manifest_declares_python_dev_tools(self) -> None:
         manifest = read_manifest(Path(__file__).resolve().parents[4] / "base_manifest.yaml")
         tools = {(artifact.artifact_type, artifact.name) for artifact in manifest.artifacts}
@@ -128,6 +133,122 @@ class ArtifactRegistryTests(unittest.TestCase):
         self.assertIsNotNone(colima)
         self.assertEqual(colima.package, "colima")
         self.assertEqual(colima.manager, "homebrew")
+
+    def test_builtin_artifact_definition_reports_registry_metadata(self) -> None:
+        definition = get_artifact_definition("tool", "kubectl")
+
+        self.assertIsNotNone(definition)
+        self.assertEqual(definition.package, "kubernetes-cli")
+        self.assertEqual(definition.version_policy, "latest-only")
+        self.assertEqual(definition.check_kind, "homebrew_package")
+        self.assertTrue(definition.registry_source.endswith("lib/base/artifact-registry.yaml"))
+
+    def test_registry_validation_rejects_bad_entries(self) -> None:
+        cases = {
+            "unknown_field": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    unexpected: true\n"
+                "    check:\n"
+                "      kind: homebrew_package\n",
+                "unsupported keys: unexpected",
+            ),
+            "missing_required": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check:\n"
+                "      kind: homebrew_package\n",
+                "missing required keys: package",
+            ),
+            "duplicate": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check:\n"
+                "      kind: homebrew_package\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check:\n"
+                "      kind: homebrew_package\n",
+                "duplicate artifact definition: tool/terraform",
+            ),
+            "unsupported_manager": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: apt\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check:\n"
+                "      kind: homebrew_package\n",
+                "unsupported manager 'apt'",
+            ),
+            "unsupported_check_kind": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check:\n"
+                "      kind: shell_command\n",
+                "unsupported check kind 'shell_command'",
+            ),
+            "malformed_check": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check: []\n",
+                "check must be a mapping",
+            ),
+            "missing_check_kind": (
+                "version: 1\n"
+                "artifacts:\n"
+                "  - type: tool\n"
+                "    name: terraform\n"
+                "    manager: homebrew\n"
+                "    package: terraform\n"
+                "    target: system\n"
+                "    version_policy: latest-only\n"
+                "    check: {}\n",
+                "check is missing required keys: kind",
+            ),
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for name, (body, message) in cases.items():
+                with self.subTest(name=name):
+                    with self.assertRaisesRegex(ArtifactError, message):
+                        load_artifact_definitions(self.write_registry(root, body))
 
 
 

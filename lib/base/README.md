@@ -15,6 +15,10 @@ They are not examples of project-local `base_manifest.yaml` files.
 - `sre_manifest.yaml`
   Defines the optional `sre` prerequisite profile for local operations and
   diagnostics tooling.
+- `artifact-registry.yaml`
+  Defines Base's bundled artifact registry using schema version `1`. The
+  Python setup layer loads and validates this file before resolving built-in
+  artifact definitions for setup, check, and doctor.
 
 ## Ownership
 
@@ -28,5 +32,5 @@ duplicating them here:
 
 - [Project manifest architecture](../../docs/architecture.md#project-manifest)
 - [Python manifest section](../../docs/python-manifest.md)
-- [Artifact adapter registry design](../../docs/artifact-adapter-registry.md)
+- [Artifact adapter registry](../../docs/artifact-adapter-registry.md)
 - [Base README setup notes](../../README.md)

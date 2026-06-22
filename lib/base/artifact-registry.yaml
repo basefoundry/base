@@ -1,0 +1,199 @@
+version: 1
+artifacts:
+  - type: python-package
+    name: click
+    manager: pip
+    package: click
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: python-package
+    name: PyYAML
+    manager: pip
+    package: PyYAML
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: python-package
+    name: pylint
+    manager: pip
+    package: pylint
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: python-package
+    name: pytest
+    manager: pip
+    package: pytest
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: python-package
+    name: requests
+    manager: pip
+    package: requests
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: tool
+    name: terraform
+    manager: homebrew
+    package: terraform
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: bats-core
+    manager: homebrew
+    package: bats-core
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: gh
+    manager: homebrew
+    package: gh
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: shellcheck
+    manager: homebrew
+    package: shellcheck
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: docker
+    manager: homebrew
+    package: docker
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: colima
+    manager: homebrew
+    package: colima
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: kubectl
+    manager: homebrew
+    package: kubernetes-cli
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: helm
+    manager: homebrew
+    package: helm
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: k9s
+    manager: homebrew
+    package: k9s
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: httpie
+    manager: homebrew
+    package: httpie
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: grpcurl
+    manager: homebrew
+    package: grpcurl
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: jq
+    manager: homebrew
+    package: jq
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: yq
+    manager: homebrew
+    package: yq
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: nmap
+    manager: homebrew
+    package: nmap
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: mtr
+    manager: homebrew
+    package: mtr
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: node
+    manager: homebrew
+    package: node
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
+
+  - type: tool
+    name: nodejs
+    manager: homebrew
+    package: node
+    target: system
+    version_policy: latest-only
+    check:
+      kind: homebrew_package
