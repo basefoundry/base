@@ -55,7 +55,9 @@ the canonical current command list.
     issue. Pass `--size <T|S|M|L>` when the issue scope is clear; otherwise
     Project metadata defaults to `Size=S`.
   - `basectl gh pr create` auto-injects `Fixes #<issue>` from Base branch
-    names; pass `--no-fixes` to suppress that body injection.
+    names; pass `--no-fixes` to suppress that body injection. When
+    `base_manifest.yaml` declares `github.pr`, it renders the PR body from
+    that project policy.
   - `basectl gh project doctor --project <title>` - inspect Project metadata
     fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the

@@ -74,7 +74,7 @@ inspect the resolved command contract first.
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |
 | `basectl gh issue create` | Create an issue with Base category conventions, assign it, and add repo Project metadata when the repo is known. Defaults to `--category enhancement` and Project `Size=S` when omitted. | `--category <bug\|enhancement\|documentation\|ci\|security>`, `--title <title>`, `--body <body>`, `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--size <T\|S\|M\|L>`, `--no-project` |
 | `basectl gh issue start <number>` | Start issue-backed branch naming workflow. | `--category <category>`, `--title <title>` |
-| `basectl gh pr create/status/checks/ready/merge` | Create and manage pull requests through Base's workflow wrapper. `pr create` auto-injects `Fixes #<issue>` from Base branch names unless `--no-fixes` is passed. | passes through `gh` options; `pr create` also accepts `--no-fixes` |
+| `basectl gh pr create/status/checks/ready/merge` | Create and manage pull requests through Base's workflow wrapper. `pr create` auto-injects `Fixes #<issue>` from Base branch names unless `--no-fixes` is passed, and uses `github.pr` from `base_manifest.yaml` when present. | passes through `gh` options; `pr create` also accepts `--no-fixes` |
 | `basectl gh branch stale` | Report stale local branches. | `--days <days>` |
 | `basectl gh branch prune` | Prune safe merged branches. | `--dry-run`, `--yes`, `--remote` |
 | `basectl gh worktree prune` | Prune stale merged worktrees. | `--dry-run`, `--yes` |

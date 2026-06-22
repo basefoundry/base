@@ -93,6 +93,99 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.python.requires_python, ">=3.11,<3.14")
 
 
+    def test_reads_manifest_github_pr_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "github:",
+                        "  pr:",
+                        "    template: .github/pull_request_template.md",
+                        "    required_sections:",
+                        "      default:",
+                        "        - Summary",
+                        "        - Issue",
+                        "        - Validation",
+                        "      labels:",
+                        "        needs-demo:",
+                        "          - Demo Impact",
+                        "        security:",
+                        "          - Security Notes",
+                        "      paths:",
+                        "        docs/**:",
+                        "          - Docs Impact",
+                        "        migrations/**:",
+                        "          - Migration Plan",
+                        "          - Rollback Plan",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.github.pr)
+        assert manifest.github.pr is not None
+        self.assertEqual(manifest.github.pr.template, ".github/pull_request_template.md")
+        required = manifest.github.pr.required_sections
+        self.assertEqual(required.default, ("Summary", "Issue", "Validation"))
+        self.assertEqual(required.labels["needs-demo"], ("Demo Impact",))
+        self.assertEqual(required.labels["security"], ("Security Notes",))
+        self.assertEqual(required.paths["docs/**"], ("Docs Impact",))
+        self.assertEqual(required.paths["migrations/**"], ("Migration Plan", "Rollback Plan"))
+
+
+    def test_rejects_invalid_manifest_github_pr_policy(self) -> None:
+        invalid_values = {
+            "scalar_github": "github: true",
+            "unknown_github_key": "github:\n  issues: {}",
+            "scalar_pr": "github:\n  pr: true",
+            "unknown_pr_key": "github:\n  pr:\n    body: {}",
+            "absolute_template": "github:\n  pr:\n    template: /tmp/pull_request_template.md",
+            "parent_template": "github:\n  pr:\n    template: ../pull_request_template.md",
+            "scalar_required_sections": "github:\n  pr:\n    required_sections: Summary",
+            "scalar_default": "github:\n  pr:\n    required_sections:\n      default: Summary",
+            "empty_default_section": "github:\n  pr:\n    required_sections:\n      default:\n        - ''",
+            "duplicate_default_section": (
+                "github:\n  pr:\n    required_sections:\n      default:\n        - Summary\n        - Summary"
+            ),
+            "scalar_labels": "github:\n  pr:\n    required_sections:\n      labels: needs-demo",
+            "empty_label": (
+                "github:\n  pr:\n    required_sections:\n      labels:\n        '':\n          - Demo Impact"
+            ),
+            "scalar_label_sections": (
+                "github:\n  pr:\n    required_sections:\n      labels:\n        needs-demo: Demo Impact"
+            ),
+            "scalar_paths": "github:\n  pr:\n    required_sections:\n      paths: docs/**",
+            "empty_path": "github:\n  pr:\n    required_sections:\n      paths:\n        '':\n          - Docs Impact",
+            "unknown_required_sections_key": "github:\n  pr:\n    required_sections:\n      teams: {}",
+        }
+        for name, github_yaml in invalid_values.items():
+            with self.subTest(name=name):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                github_yaml,
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaises(ManifestError):
+                        read_manifest(manifest_path)
+
+
     def test_rejects_invalid_manifest_python_config(self) -> None:
         invalid_values = {
             "scalar": "python: uv",

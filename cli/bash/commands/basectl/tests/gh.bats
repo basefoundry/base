@@ -1064,6 +1064,101 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/body")" = "Fixes #117" ]
 }
 
+@test "basectl gh pr create renders project PR policy body" {
+    local repo repo_root
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    repo_root="$(cd "$repo" && pwd -P)"
+    mkdir -p "$repo/docs"
+    cat > "$repo/base_manifest.yaml" <<'EOF'
+project:
+  name: demo
+github:
+  pr:
+    required_sections:
+      default:
+        - Summary
+        - Issue
+        - Validation
+      labels:
+        needs-demo:
+          - Demo Impact
+      paths:
+        docs/**:
+          - Docs Impact
+artifacts: []
+EOF
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
+    printf 'docs\n' > "$repo/docs/workflow.md"
+    commit_all "$repo" "Update docs"
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1 $2 $3" == "issue view 117" ]]; then
+    printf 'needs-demo\n'
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+cat <<'BODY'
+## Summary
+
+## Issue
+
+Fixes #117
+
+## Validation
+
+## Demo Impact
+
+## Docs Impact
+BODY
+EOF
+    chmod +x "$TEST_MOCKBIN/base-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_PYTHON_WRAPPER="$TEST_MOCKBIN/base-wrapper" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main pr create
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Auto-linking PR to issue #117 from branch name. Pass --no-fixes to suppress."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == pr\ create\ --fill\ --body-file* ]]
+    [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"base_pr_policy body --manifest $repo_root/base_manifest.yaml --issue 117"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"--label needs-demo"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"--path docs/workflow.md"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/body")" == *"## Demo Impact"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/body")" == *"## Docs Impact"* ]]
+}
+
 @test "basectl gh pr create supports no-fixes opt out" {
     local repo
 

@@ -10,6 +10,9 @@ from base_cli.ide_schema import PROJECT_AUTO_SETTING_KEYS
 from base_cli.ide_schema import SUPPORTED_IDES
 from base_cli.ide_schema import parse_ide_extensions
 from base_cli.ide_schema import parse_ide_settings
+from base_setup.github_manifest import GithubConfig
+from base_setup.github_manifest import GithubManifestError
+from base_setup.github_manifest import read_github_config
 
 try:
     import yaml
@@ -146,6 +149,7 @@ class BaseManifest:
     commands: dict[str, CommandConfig] = field(default_factory=dict)
     activate: ActivateConfig = field(default_factory=ActivateConfig)
     python: PythonConfig = field(default_factory=PythonConfig)
+    github: GithubConfig = field(default_factory=GithubConfig)
     demo: DemoConfig | None = None
     build: BuildConfig | None = None
     release: ReleaseConfig | None = None
@@ -182,6 +186,7 @@ def read_manifest(path: Path) -> BaseManifest:
         "commands",
         "activate",
         "python",
+        "github",
         "demo",
         "build",
         "release",
@@ -200,6 +205,7 @@ def read_manifest(path: Path) -> BaseManifest:
     commands = _read_commands(path, data.get("commands"))
     activate = _read_activate(path, data.get("activate"))
     python = _read_python(path, data.get("python"))
+    github = _read_github(path, data.get("github"))
     demo = _read_demo(path, data.get("demo"))
     build = _read_build(path, data.get("build"))
     release = _read_release(path, data.get("release"))
@@ -218,6 +224,7 @@ def read_manifest(path: Path) -> BaseManifest:
         commands=commands,
         activate=activate,
         python=python,
+        github=github,
         demo=demo,
         build=build,
         release=release,
@@ -712,6 +719,13 @@ def _read_python(path: Path, python_data: Any) -> PythonConfig:
         requires_python = requires_python.strip()
 
     return PythonConfig(manager=manager, requires_python=requires_python)
+
+
+def _read_github(path: Path, github_data: Any) -> GithubConfig:
+    try:
+        return read_github_config(path, github_data)
+    except GithubManifestError as exc:
+        raise ManifestError(str(exc)) from exc
 
 
 def _read_optional_runner(path: Path, field_name: str, runner_data: Any) -> str | None:
