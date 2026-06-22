@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -233,7 +234,20 @@ def project_venv_dir(manifest: BaseManifest) -> Path:
 
 
 def project_venv_ready(venv_dir: Path) -> bool:
-    return (venv_dir / "bin" / "python").is_file()
+    python_bin = venv_dir / "bin" / "python"
+    if not python_bin.is_file():
+        return False
+    try:
+        completed = subprocess.run(
+            [str(python_bin), "-c", "import sys"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0
 
 
 def project_last_check(project_name: str) -> ProjectLastCheck | None:

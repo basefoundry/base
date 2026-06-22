@@ -142,9 +142,9 @@ Doctor commands use the same diagnostic item fields. The top-level
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
 is missing, incomplete, or has a broken Python executable. Workspace-level
-project discovery currently verifies that the expected project venv Python path
-exists. The finding should be treated as the project-venv readiness contract,
-not as a guarantee that every project dependency import succeeds.
+project discovery verifies that the expected project venv Python executable can
+start. The finding should be treated as the project-venv readiness contract, not
+as a guarantee that every project dependency import succeeds.
 
 `BASE-P140` through `BASE-P143` are read-only `pyproject.toml` diagnostics.
 Base only inspects the `pyproject.toml` file beside the active
