@@ -37,6 +37,12 @@ def write_last_check(home: Path, project: str, checked_at: str, status: str = "o
     )
 
 
+def write_ready_python_bin(python_bin: Path) -> None:
+    python_bin.parent.mkdir(parents=True)
+    python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    python_bin.chmod(0o755)
+
+
 def write_workspace_manifest(path: Path) -> None:
     path.write_text(
         "\n".join(
@@ -99,8 +105,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
             (workspace / "docs").mkdir(parents=True)
             write_manifest(workspace / "extra", "extra")
             python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
-            python_bin.parent.mkdir(parents=True)
-            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_ready_python_bin(python_bin)
             write_last_check(home, "base", "2026-06-17T14:30:00Z")
 
             status, stdout, stderr = invoke_engine(
@@ -133,8 +138,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
             write_manifest(workspace / "base", "base")
             (workspace / "docs").mkdir(parents=True)
             python_bin = home / ".base.d" / "base" / ".venv" / "bin" / "python"
-            python_bin.parent.mkdir(parents=True)
-            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_ready_python_bin(python_bin)
             write_last_check(home, "base", "2026-06-17T14:30:00Z")
 
             status, stdout, stderr = invoke_engine(

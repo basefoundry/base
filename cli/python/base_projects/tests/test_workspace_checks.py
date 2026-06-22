@@ -32,8 +32,12 @@ def write_uv_manifest(project_root: Path, name: str) -> None:
     )
     (project_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
     python_bin = project_root / ".venv" / "bin" / "python"
+    write_ready_python_bin(python_bin)
+
+
+def write_ready_python_bin(python_bin: Path) -> None:
     python_bin.parent.mkdir(parents=True)
-    python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+    python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
 
 
@@ -104,8 +108,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_manifest(workspace / "extra", "extra")
             for project_name in ("base", "extra"):
                 python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
-                python_bin.parent.mkdir(parents=True)
-                python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+                write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(
                 ["check", "--workspace", str(workspace), "--manifest", str(manifest_path)],
@@ -143,8 +146,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_manifest(workspace / "extra", "extra")
             for project_name in ("base", "extra"):
                 python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
-                python_bin.parent.mkdir(parents=True)
-                python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+                write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(
                 [
@@ -220,8 +222,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_default_manifest(base_home)
             write_manifest(workspace / "demo", "demo")
             python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
-            python_bin.parent.mkdir(parents=True)
-            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_ready_python_bin(python_bin)
             broken_root = workspace / "broken"
             broken_root.mkdir(parents=True)
             (broken_root / "base_manifest.yaml").write_text("project: [", encoding="utf-8")
@@ -312,6 +313,37 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertEqual(payload["projects"][0]["checks"][0]["status"], "error")
         self.assertNotIn("ok", payload["projects"][0]["checks"][0])
 
+    def test_workspace_check_reports_unrunnable_project_venv_as_p050(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_manifest(workspace / "demo", "demo")
+            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            python_bin.chmod(0o755)
+
+            status, stdout, stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        checks = payload["projects"][0]["checks"]
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["projects"][0]["status"], "error")
+        self.assertEqual(checks[0]["id"], "BASE-P050")
+        self.assertEqual(checks[0]["status"], "error")
+        self.assertIn("basectl setup demo --recreate-venv", checks[0]["fix"])
+        self.assertNotIn("BASE-P040", {check["id"] for check in checks})
+
     def test_workspace_doctor_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -351,8 +383,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_default_manifest(base_home)
             write_manifest(workspace / "demo", "demo")
             python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
-            python_bin.parent.mkdir(parents=True)
-            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(["doctor", "--workspace", str(workspace)], base_home, home)
 
