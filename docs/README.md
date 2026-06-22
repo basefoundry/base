@@ -99,6 +99,9 @@ reference. The filename should answer "what is this about?"
   repo-set contract and `basectl workspace --manifest` reporting behavior.
 - [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
   arbitrary manifest setup hooks yet.
+- [`basectl setup` parallelism](setup-parallelism.md) records why setup stays
+  serial for mutating installers and what planning/preflight work should come
+  first.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
 - [`basectl ci`](basectl-ci.md) defines the non-interactive CI entry point and

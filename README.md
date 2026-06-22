@@ -952,6 +952,10 @@ For the allowed Homebrew, Codex CLI, and Claude Code installer URLs, dry-run
 behavior, non-interactive behavior, and managed-device guidance, see
 [Remote Installer Policy](docs/remote-installer-policy.md).
 
+Setup intentionally stays serial for mutating installers and state writes until
+Base has a setup-plan/preflight layer that can prove safe concurrency boundaries.
+See [`basectl setup` parallelism](docs/setup-parallelism.md).
+
 On macOS, `basectl setup` sends a best-effort notification when setup completes
 or fails after running for at least 30 seconds. Notifications are skipped during
 `--dry-run` and never change the setup exit status. Use `basectl setup --notify`

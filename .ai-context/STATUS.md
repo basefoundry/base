@@ -64,6 +64,8 @@ Recent released work includes:
   retaining only Bash runtime and version helpers
 - documented `base-bash-libs` Homebrew/core readiness as the future standalone
   dependency for a non-conflicting `basefoundry` core formula
+- documented that `basectl setup` should stay serial for mutating installers
+  until a deterministic setup-plan/preflight layer exists
 
 ## Recent Merged Changes
 
@@ -79,6 +81,7 @@ Recent commits on `main` include:
 - external reusable Bash library resolution from `base-bash-libs`
 - documented `base-bash-libs` consumption and post-migration contract
 - formula-name Homebrew audit guidance for Base and `base-bash-libs`
+- setup parallelism evaluation with a conservative setup-plan-first decision
 
 ## Useful Orientation Links
 
