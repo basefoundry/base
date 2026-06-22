@@ -10,6 +10,10 @@ IDE readiness for project work.
 
 ## Scope
 
+IDE bootstrapping is currently macOS-only. Linux IDE setup is not implemented
+yet; see [Linux Support](linux-support.md) for the current Linux runtime-support
+status and boundaries.
+
 Base owns:
 
 - installing supported IDEs through Homebrew casks when a project opts in

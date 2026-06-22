@@ -31,8 +31,10 @@ should use the labels above.
 
 ## Issue Assignment
 
-Issues created by Codex or other automation for the Base repository should be
-assigned to `codeforester`.
+Issues created by automation for the Base repository should be assigned to the
+current primary maintainer. Today that maintainer is `codeforester`, and
+`.github/base-project.yml` carries the same repo-local default for
+`basectl gh issue create`.
 
 If assignment fails, the automation should mention that in its summary instead
 of silently leaving the issue unassigned.
