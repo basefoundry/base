@@ -159,6 +159,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   Optional repositories are reported but skipped unless `--include-optional` is
   supplied, `--dry-run` previews the delegated clone work, and explicit
   `--manifest <path>` takes precedence over `workspace.manifest`.
+- `basectl workspace pull` explicitly fetches and validates a canonical
+  workspace manifest source from `workspace.manifest_source` in
+  `~/.base.d/config.yaml`, or from an explicit `--source <url-or-path>`, and
+  writes the result to `workspace.manifest` or `--manifest <path>` before the
+  next workspace status, check, doctor, or clone operation.
 - `basectl workspace configure` applies the existing `basectl repo configure`
   repair path across discovered Base-managed projects, or across present
   Base-managed repositories from a configured or explicit workspace manifest.

@@ -4,9 +4,14 @@ Top-level library namespace for Base.
 
 ## Layout
 
+- `lib/base/`
+  Base-owned internal manifests such as the default manifest and built-in
+  prerequisite profiles.
 - `lib/bash/`
   Base Bash runtime libraries such as `std`, `git`, `file`, and runtime shell
   startup files.
+- `lib/python/`
+  Python package source for Base-owned Python libraries, including `base_cli`.
 - `lib/shell/`
   Base-managed Bash/Zsh startup files and optional shared interactive defaults.
 
