@@ -124,6 +124,7 @@ def test_read_project_config_loads_repo_taxonomy(tmp_path: Path) -> None:
                 "    status: Backlog",
                 "    priority: P2",
                 "    size: S",
+                "    assignee: codeforester",
             )
         ),
         encoding="utf-8",
@@ -133,7 +134,12 @@ def test_read_project_config_loads_repo_taxonomy(tmp_path: Path) -> None:
 
     assert config.areas == ("Demo App", "Documentation")
     assert config.initiatives == ("Demo Polish", "Portfolio Dashboard")
-    assert config.issue_defaults == {"status": "Backlog", "priority": "P2", "size": "S"}
+    assert config.issue_defaults == {
+        "status": "Backlog",
+        "priority": "P2",
+        "size": "S",
+        "assignee": "codeforester",
+    }
 
 
 def test_read_project_config_rejects_non_string_options(tmp_path: Path) -> None:
@@ -617,7 +623,8 @@ def test_configure_command_applies_issue_defaults_from_project_config(
         "    priority: P2\n"
         "    area: Product\n"
         "    initiative: Adoption Polish\n"
-        "    size: S\n",
+        "    size: S\n"
+        "    assignee: codeforester\n",
         encoding="utf-8",
     )
     fields = (

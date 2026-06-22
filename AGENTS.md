@@ -24,7 +24,9 @@ them.
 - Use one primary category label: `bug`, `enhancement`, `documentation`, `ci`,
   or `security`.
 - Do not create or apply `type:*` issue labels.
-- Assign Codex-created issues to `codeforester` when GitHub allows it.
+- Assign Codex-created Base repository issues to `codeforester` when GitHub
+  allows it; `.github/base-project.yml` carries this repo-local default for
+  `basectl gh issue create`.
 - For issues tracked in Base Roadmap, set Project `Status` to `In Progress`
   before implementation starts, move it to `In Review` when the PR opens, and
   verify `Done` after merge/closure. If Project V2 access or item state

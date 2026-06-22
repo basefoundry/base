@@ -91,9 +91,11 @@ def render_project_config_dry_run(config: ProjectConfig) -> None:
     for option in config.initiatives:
         print(f"[DRY-RUN] Would ensure Initiative option {option}.")
     if config.issue_defaults:
-        rendered = ", ".join(
+        rendered_defaults = [
             f"{FIELD_OPTION_TO_PROJECT_FIELD[key]}={value}"
             for key, value in config.issue_defaults.items()
             if key in FIELD_OPTION_TO_PROJECT_FIELD
-        )
-        print(f"[DRY-RUN] Would apply issue defaults to missing Project item fields: {rendered}.")
+        ]
+        if rendered_defaults:
+            rendered = ", ".join(rendered_defaults)
+            print(f"[DRY-RUN] Would apply issue defaults to missing Project item fields: {rendered}.")

@@ -17,7 +17,7 @@ class ProjectConfig:
 
 
 ALLOWED_PROJECT_KEYS = {"areas", "initiatives", "issue_defaults"}
-ALLOWED_DEFAULT_KEYS = {"status", "priority", "size", "area", "initiative"}
+ALLOWED_DEFAULT_KEYS = {"status", "priority", "size", "area", "initiative", "assignee"}
 
 
 def read_project_config(path: Path) -> ProjectConfig:

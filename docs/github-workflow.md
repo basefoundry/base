@@ -82,9 +82,10 @@ by default when a GitHub repository is available. Base copies
 the repository, and backfills existing repository issues. When
 `.github/base-project.yml` exists, Base also adds missing repo-specific `Area`
 and `Initiative` options from that file and applies the same file's
-`issue_defaults` to Project issue items that are missing those values.
-`basectl gh issue create` uses the defaults immediately when it adds newly
-created issues to the repo Project.
+Project-field `issue_defaults` to Project issue items that are missing those
+values. The same config can set `project.issue_defaults.assignee` as a
+repo-local issue creation default. `basectl gh issue create` uses those
+defaults immediately when it creates an issue and adds it to the repo Project.
 
 Base-managed repositories also carry `.github/workflows/project-intake.yml`.
 That workflow is a repo-visible fallback for issues created through GitHub UI,
@@ -124,10 +125,13 @@ over hand-written `gh` commands when those commands are available and local
 tooling is authenticated.
 
 `basectl gh issue create` defaults to the `enhancement` category when
-`--category` is omitted and prints that choice. `basectl gh pr create`
-auto-injects `Fixes #<issue>` when the current branch follows the Base
-`<category>/<issue>-<YYYYMMDD>-<slug>` convention; pass `--no-fixes` when the
-PR should not close the issue automatically.
+`--category` is omitted and prints that choice. Issues are unassigned unless
+`--assignee <login>` is passed or `.github/base-project.yml` sets
+`project.issue_defaults.assignee`; pass `--no-assignee` to ignore a repo-local
+default for one issue. `basectl gh pr create` auto-injects `Fixes #<issue>`
+when the current branch follows the Base `<category>/<issue>-<YYYYMMDD>-<slug>`
+convention; pass `--no-fixes` when the PR should not close the issue
+automatically.
 
 Fallbacks are allowed when `basectl gh` does not support the needed operation,
 when local GitHub CLI authentication is unavailable, or when the GitHub

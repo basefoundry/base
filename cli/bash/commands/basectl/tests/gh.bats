@@ -15,7 +15,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh worktree prune"* ]]
     [[ "$output" != *"basectl gh todo"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
-    [[ "$output" == *"assigned to codeforester"* ]]
+    [[ "$output" == *"sets project.issue_defaults.assignee"* ]]
 }
 
 @test "basectl gh issue prints area help" {
@@ -26,8 +26,11 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl gh issue create"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"Issue create project options:"* ]]
+    [[ "$output" == *"--assignee <login>"* ]]
+    [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size <T|S|M|L>"* ]]
     [[ "$output" == *"Default category: enhancement."* ]]
+    [[ "$output" == *"Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml."* ]]
     [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
     [[ "$output" != *"basectl gh pr create"* ]]
     [[ "$output" != *"basectl gh worktree prune"* ]]
@@ -92,7 +95,7 @@ load ./basectl_helpers.bash
     [[ "$output" != *"basectl gh todo plan"* ]]
 }
 
-@test "basectl gh issue create applies category label and assignee" {
+@test "basectl gh issue create accepts explicit assignee" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
@@ -110,7 +113,7 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --repo codeforester/base --no-project
+            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --repo codeforester/base --assignee codeforester --no-project
         '
 
     [ "$status" -eq 0 ]
@@ -118,7 +121,7 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester --repo codeforester/base" ]
 }
 
-@test "basectl gh issue create announces default category" {
+@test "basectl gh issue create announces default category without forcing an assignee" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
@@ -134,6 +137,7 @@ EOF
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
+            cd "$HOME"
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
             base_gh_subcommand_main issue create --title "Default category issue" --repo codeforester/base --no-project
@@ -141,7 +145,59 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Using default --category: enhancement"* ]]
-    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Default category issue --label enhancement --assignee codeforester --repo codeforester/base" ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Default category issue --label enhancement --repo codeforester/base" ]
+}
+
+@test "basectl gh issue create uses repo config assignee default" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$BASE_HOME"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category bug --title "Base repo issue" --repo basefoundry/base --no-project
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Base repo issue --label bug --assignee codeforester --repo basefoundry/base" ]
+}
+
+@test "basectl gh issue create --no-assignee ignores repo config assignee default" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$BASE_HOME"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category bug --title "Unassigned Base repo issue" --repo basefoundry/base --no-assignee --no-project
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Unassigned Base repo issue --label bug --repo basefoundry/base" ]
 }
 
 @test "basectl gh issue create continues when auth status is transiently unavailable" {
@@ -167,7 +223,7 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Make auth preflight resilient" --repo codeforester/base --no-project
+            base_gh_subcommand_main issue create --category bug --title "Make auth preflight resilient" --repo codeforester/base --assignee codeforester --no-project
         '
 
     [ "$status" -eq 0 ]
@@ -231,7 +287,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/51"* ]]
     [[ "$output" == *"project metadata updated"* ]]
-    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Add transaction filter --label enhancement --assignee codeforester --repo codeforester/bankbuddy" ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Add transaction filter --label enhancement --repo codeforester/bankbuddy" ]
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 51 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml" ]
 }
 
@@ -285,7 +341,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/52"* ]]
     [[ "$output" == *"project metadata updated"* ]]
-    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Fix typo --label enhancement --assignee codeforester --repo codeforester/bankbuddy" ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Fix typo --label enhancement --repo codeforester/bankbuddy" ]
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 52 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size T" ]
 }
 
