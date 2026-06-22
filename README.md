@@ -414,15 +414,18 @@ explicit, reviewable hook contract for when hooks run, where they run, whether
 they are interactive, and how dry-run/check/doctor report them. See
 [Setup Hooks Boundary](docs/setup-hooks.md).
 
-The curated tool artifact registry lives in `cli/python/base_setup/registry.py`.
-It should stay small and Base-aware. `python-package` artifacts are pass-through
-PyPI package names and install into the project virtual environment at
-`~/.base.d/<project>/.venv`. Homebrew-managed `tool` artifacts currently support
-`version: latest`; `basectl check` and `basectl doctor` treat an installed but
-outdated Homebrew package as unhealthy, and `basectl setup` upgrades it. Ordinary
-Homebrew tools should move toward Brewfile delegation. Pinned Homebrew versions
-fail clearly until Base grows explicit versioned tool support. The next registry
-shape is captured in [Artifact Adapter Registry](docs/artifact-adapter-registry.md).
+The curated built-in artifact registry lives in
+`lib/base/artifact-registry.yaml` using schema version `1`, and
+`cli/python/base_setup/registry.py` loads and validates that data before setup,
+check, or doctor use it. The registry should stay small and Base-aware.
+`python-package` artifacts are pass-through PyPI package names and install into
+the project virtual environment at `~/.base.d/<project>/.venv`.
+Homebrew-managed `tool` artifacts currently support `version: latest`;
+`basectl check` and `basectl doctor` treat an installed but outdated Homebrew
+package as unhealthy, and `basectl setup` upgrades it. Ordinary Homebrew tools
+should move toward Brewfile delegation. Pinned Homebrew versions fail clearly
+until Base grows explicit versioned tool support. The registry boundary is
+captured in [Artifact Adapter Registry](docs/artifact-adapter-registry.md).
 
 The optional structured `python:` manifest section supports uv-managed Python
 projects:

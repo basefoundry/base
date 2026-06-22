@@ -1,15 +1,15 @@
 # Artifact Adapter Registry
 
-> **DESIGN DOC** — As of Base 1.1.0, Base still uses
-> `cli/python/base_setup/registry.py` for built-in artifact mappings. This
-> document describes the planned future declarative registry; implementation is
-> tracked in [#925](https://github.com/basefoundry/base/issues/925).
+> **IMPLEMENTATION STATUS** — Base ships Phase 1 of this design: built-in
+> artifact definitions live in `lib/base/artifact-registry.yaml` with schema
+> version `1`, and `cli/python/base_setup/registry.py` loads and validates that
+> bundled registry. Workspace overlays and repo-local registries remain future
+> work.
 
-This design records how Base should evolve the current built-in artifact
-mapping in `cli/python/base_setup/registry.py` without turning project setup
-into arbitrary plugin execution.
+This document records how Base evolves its built-in artifact mapping without
+turning project setup into arbitrary plugin execution.
 
-Today, Base has two artifact behaviors:
+Today, Base has two artifact behaviors backed by the bundled registry:
 
 - `python-package` artifacts resolve to pip packages installed in the
   Base-managed project virtual environment.
@@ -258,7 +258,7 @@ Unsupported artifact errors should distinguish:
 
 ## First Shippable Slice
 
-The smallest implementation that improves the product is Phase 1:
+The shipped Phase 1 implementation is:
 
 - built-in YAML registry;
 - no overlay support;
