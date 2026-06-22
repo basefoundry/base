@@ -66,6 +66,8 @@ the canonical current command list.
     Project if needed and update its metadata fields.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
 - `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
+- `basectl history` - list recent structured Base command runs from the local
+  history index, with `--format json` for scripts.
 - `basectl config <path|show|doctor>` - inspect Base's machine-local user
   config.
 - `basectl onboard` - guide a user through the first Base setup checklist.

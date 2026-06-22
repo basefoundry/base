@@ -767,7 +767,21 @@ basectl logs -v
 cache root so failed Python-layer runs can be inspected without rerunning with
 debug output enabled. It supports `-v`/`--debug` for its own diagnostics without
 creating a new default log entry for the inspection run.
-The future local command history and diagnostic report model is described in
+
+Show recent structured Base command history with:
+
+```bash
+basectl history
+basectl history --project base
+basectl history --command check --status error
+basectl history --format json
+```
+
+`basectl history` reads the local history index at
+`<base-cache-root>/history/runs.jsonl`. History records are best-effort
+metadata for Python-backed Base commands with persistent logs; they point to raw
+logs instead of replacing them, and malformed history lines are ignored while
+listing recent runs. The broader local diagnostic report model is described in
 [docs/observability.md](docs/observability.md).
 
 Inspect machine-local Base config with:

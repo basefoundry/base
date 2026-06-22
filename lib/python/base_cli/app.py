@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
+from .history import utc_now, write_finished_record
 from .logging import configure_logger, log_invocation
 from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
 from .redaction import parameter_name_from_decls
@@ -122,14 +123,22 @@ class App:
             except (RuntimeError, ValueError) as exc:
                 raise click.ClickException(str(exc)) from exc
             token = set_current_context(context)
+            started_at = utc_now()
+            exit_code = 0
             try:
                 log_invocation(context.log, sys.argv, sensitive_options)
                 if context.project_root is not None:
                     context.log.debug("project_root=%s", context.project_root)
                 if context.manifest_path is not None:
                     context.log.debug("manifest_path=%s", context.manifest_path)
-                return func(context, **kwargs)
+                result = func(context, **kwargs)
+                exit_code = int(result or 0)
+                return result
+            except Exception:
+                exit_code = 1
+                raise
             finally:
+                write_finished_record(context, sys.argv, sensitive_options, started_at, exit_code)
                 reset_current_context(token)
                 context.cleanup()
 

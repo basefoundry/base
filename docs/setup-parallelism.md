@@ -111,8 +111,8 @@ The first slice should:
 2. Preserve current text output and command behavior while allowing tests to
    inspect the plan.
 3. Keep all mutating actions serial.
-4. Add timing around each action in the persistent log or local history once
-   the command-history surface exists.
+4. Add timing around each action in the persistent log or local command-history
+   records when setup needs action-level observability.
 5. Mark only read-only plan/preflight actions as candidates for future
    concurrency.
 

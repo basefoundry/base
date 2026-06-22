@@ -35,6 +35,8 @@ Commands:
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]
     List and open recent Base CLI runtime logs.
+  history [options]
+    List recent Base command history records.
   config <path|show|doctor>
     Inspect Base's machine-local user config.
   doctor [project] [options]
@@ -228,6 +230,11 @@ basectl_do_logs() {
     base_logs_subcommand_main "$@"
 }
 
+basectl_do_history() {
+    basectl_source_subcommand_module history || return 1
+    base_history_subcommand_main "$@"
+}
+
 basectl_do_config() {
     basectl_source_subcommand_module config || return 1
     base_config_subcommand_main "$@"
@@ -376,6 +383,7 @@ basectl_main() {
         release)          basectl_do_release "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         logs)             basectl_do_logs "$@" ;;
+        history)          basectl_do_history "$@" ;;
         config)           basectl_do_config "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;

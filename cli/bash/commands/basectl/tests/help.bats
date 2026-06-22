@@ -19,6 +19,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"release <check|plan|notes|publish> --version <version> [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"logs [options]"* ]]
+    [[ "$output" == *"history [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"gh <area> <command> [options]"* ]]
@@ -57,6 +58,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
     grep -Fqx '  release <check|plan|notes|publish> --version <version> [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
+    grep -Fqx '  history [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor|clone|pull|configure> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]

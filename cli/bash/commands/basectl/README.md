@@ -66,6 +66,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
 - `basectl logs` lists recent Base CLI runtime logs and can print, open, or tail
   the newest matching log file.
+- `basectl history` lists recent structured Base command runs from the local
+  history index and supports JSON output for scripts.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.

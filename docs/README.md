@@ -65,8 +65,9 @@ reference. The filename should answer "what is this about?"
 - [Base Bash Libraries](base-bash-libs.md) documents the standalone
   `base-bash-libs` package, Base's external reusable-library consumption path,
   Homebrew/core readiness path, and the post-migration boundary.
-- [Local Observability](observability.md) defines the future local command
-  history, last-error explanation, and report model beyond raw runtime logs.
+- [Local Observability](observability.md) defines the shipped local command
+  history index plus the future last-error explanation and report model beyond
+  raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
 - [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) defines the
