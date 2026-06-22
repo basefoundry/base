@@ -13,6 +13,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   formula-name audit command and future `basefoundry` dependency plan.
 - Documented the `basectl setup` parallelism evaluation and the decision to
   keep mutating setup serial until a setup-plan/preflight layer exists.
+- Corrected 1.1.0 documentation status, source-checkout `base-bash-libs`
+  prerequisites, future-design banners, and CI bootstrap package guidance.
 
 ## [1.1.0] - 2026-06-21
 

@@ -288,12 +288,14 @@ The full Base runtime is loaded only through the `basectl` command path.
 
 ## Current Non-Goals
 
-The current execution model does not yet define:
+The current execution model intentionally does not define:
 
-- Python command dispatch
-- project discovery
-- project activation
-- release automation around version numbers
-- Linux support beyond the current macOS implementation
+- Windows support.
+- Fish, tcsh, ksh, or other non-Bash/non-Zsh interactive shell support.
+- Automatic directory-triggered activation when a user runs `cd`.
+- Arbitrary project-provided setup hooks outside the manifest contract.
+- Full Linux bootstrap or installer support beyond the current runtime-oriented
+  CI path.
 
-Those features should build on this execution contract rather than bypass it.
+Future work in those areas should build on this execution contract rather than
+bypass it.

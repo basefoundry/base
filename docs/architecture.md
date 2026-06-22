@@ -640,14 +640,16 @@ what happened on their own machine.
 
 ## Mac Bootstrap Sequence
 
-When `basectl setup` runs on a fresh Mac:
+On a fresh Mac, installation and first-run setup use this sequence:
 
 1. Check for Homebrew — install if missing
 2. Check for Xcode CLI tools — install if missing
 3. Install Python (target version) via Homebrew
 4. Create Base's own virtual environment at `~/.base.d/base/.venv`
 5. Install Base's Python bootstrap dependencies into `~/.base.d/base/.venv`
-6. Prepare the managed shell startup model with `basectl update-profile`
+6. After `basectl setup` finishes, explicitly run `basectl update-profile` as a
+   separate one-time shell-profile step; run it again only when updating
+   Base-managed shell dotfiles
 7. Scan the parent directory for peer repos with base manifests
 8. For each project setup target, seed the project venv with `bootstrap: true`
    default artifacts, then run project artifact reconciliation through

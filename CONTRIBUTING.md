@@ -69,6 +69,7 @@ available for local edits:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-libs
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
@@ -78,6 +79,10 @@ exec "$SHELL" -l
 and Bash 4.2+ before handing off to `basectl`. `basectl setup --profile dev`
 installs developer prerequisites such as BATS, the GitHub CLI, and ShellCheck. See
 [First-Mile Bootstrap](docs/bootstrap.md) for install modes and boundaries.
+
+Base source development resolves reusable Bash libraries from the sibling
+`~/work/base-bash-libs` checkout. If that checkout already exists, update it
+instead of cloning a second copy.
 
 ## Running Tests
 
