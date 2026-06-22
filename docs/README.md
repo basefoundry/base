@@ -42,6 +42,9 @@ reference. The filename should answer "what is this about?"
 - [Why Base](why-base.md) is the concise evaluator page for why Base exists,
   what it gives a multi-repo workspace, and how it compares with adjacent
   developer-environment tools.
+- [Product Requirements](product-requirements.md) is the canonical product
+  requirements document for Base's accepted product intent, target users,
+  durable requirements, non-goals, success criteria, and PRD maintenance rules.
 - [Product Assessment](product-assessment.md) records the maintained assessment
   of Base's originality, usefulness, adoption potential, and creator/engineering
   skill evidence.

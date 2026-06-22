@@ -1486,8 +1486,9 @@ library consumption, and explicit prerequisite profiles for developer, SRE, and
 AI tooling.
 
 For the documentation map and naming convention, see
-[docs/README.md](docs/README.md). For the architecture and product direction,
-see
+[docs/README.md](docs/README.md). For accepted product requirements, see
+[docs/product-requirements.md](docs/product-requirements.md). For the
+architecture and product direction, see
 [docs/architecture.md](docs/architecture.md). For the current `basectl` runtime
 and dispatch contract, see [docs/execution-model.md](docs/execution-model.md).
 For ecosystem boundary and integration decisions, see
