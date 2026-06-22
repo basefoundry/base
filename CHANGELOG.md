@@ -25,6 +25,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Allowed standard `base_cli.App` options such as `--debug` and
+  `--environment` before subcommand names.
 - Made `base_cli.option(..., dry_run=True)` reject duplicate dry-run markers on
   the same command function.
 - Made default `base_cli.App(max_log_files=...)` log retention prune by
