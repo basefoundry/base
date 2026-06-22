@@ -13,6 +13,38 @@ from base_cli.testing import invoke
 
 @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
 class AppSubcommandTests(unittest.TestCase):
+    def test_subcommand_group_help_includes_app_help_text(self) -> None:
+        app = base_cli.App(name="multi-help", help="Manage workspace demo tasks.")
+
+        @app.subcommand()
+        def status(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(app, ["--help"], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Manage workspace demo tasks.", result.output)
+        self.assertIn("status", result.output)
+
+    def test_subcommand_group_help_without_app_help_keeps_command_listing(self) -> None:
+        app = base_cli.App(name="multi-help-default")
+
+        @app.subcommand()
+        def status(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(app, ["--help"], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Commands:", result.output)
+        self.assertIn("status", result.output)
+
     def test_runs_multiple_subcommands_with_base_lifecycle(self) -> None:
         app = base_cli.App(name="multi-tool", version="0.1.0")
         seen = {}

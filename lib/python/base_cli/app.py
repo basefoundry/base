@@ -22,10 +22,12 @@ def _require_click():
 
 
 class App:
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         name: str | None = None,
         version: str | None = None,
+        help: str | None = None,  # pylint: disable=redefined-builtin
         log_to_file: bool = True,
         max_log_files: int | None = None,
     ) -> None:
@@ -33,6 +35,7 @@ class App:
             raise ValueError("max_log_files must be greater than 0 when set.")
         self.name = normalize_cli_name(name or sys.argv[0])
         self.version = version
+        self.help = help
         self.log_to_file = log_to_file
         self.max_log_files = max_log_files
         self._click_command = None
@@ -88,12 +91,15 @@ class App:
         click = _require_click()
         if self._command_func is not None:
             wrapper = self._build_command_wrapper(click, self._command_func, include_version=True)
-            return click.command(*self._command_args, **self._command_kwargs)(wrapper)
+            command_kwargs = dict(self._command_kwargs)
+            if self.help is not None:
+                command_kwargs.setdefault("help", self.help)
+            return click.command(*self._command_args, **command_kwargs)(wrapper)
 
         group_wrapper = _build_group_wrapper()
         if self.version is not None:
             group_wrapper = click.version_option(self.version)(group_wrapper)
-        group = click.group(name=self.name)(group_wrapper)
+        group = click.group(name=self.name, help=self.help)(group_wrapper)
         for func, command_args, command_kwargs in self._subcommands:
             wrapper = self._build_command_wrapper(click, func, include_version=False)
             group.add_command(click.command(*command_args, **command_kwargs)(wrapper))
