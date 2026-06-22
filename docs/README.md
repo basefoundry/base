@@ -114,6 +114,9 @@ reference. The filename should answer "what is this about?"
 - [`basectl setup` parallelism](setup-parallelism.md) records why setup stays
   serial for mutating installers and what planning/preflight work should come
   first.
+- [`setup_common.sh` Ownership Reduction](setup-common-ownership.md) maps the
+  setup/check shared helper responsibilities and records the safe extraction
+  path for reducing Bash ownership without adding shell fragments by topic.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
 - [`basectl ci`](basectl-ci.md) defines the non-interactive CI entry point and

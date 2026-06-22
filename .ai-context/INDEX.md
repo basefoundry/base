@@ -24,6 +24,8 @@ below when precise detail matters:
 - `docs/execution-model.md` - `basectl` runtime and dispatch contract.
 - `docs/runtime-environment.md` - Base-managed variables and mutability rules.
 - `docs/tool-boundaries.md` - external tool boundary decisions.
+- `docs/setup-common-ownership.md` - `setup_common.sh` responsibility map and
+  safe extraction path.
 - `docs/github-workflow.md` - issues, labels, milestones, Projects, branches,
   worktrees, PRs, and cleanup.
 - `docs/testing.md` - validation layers and when to broaden tests.
