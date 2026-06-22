@@ -70,6 +70,8 @@ Base orchestrates mature tools instead of replacing them:
 - uv owns Python dependency resolution, lockfiles, and project-local `.venv`
   environments when a manifest declares `python.manager: uv`; individual
   commands can opt into `uv run` with `runner: uv`.
+- Base owns the supported Python runtime window for `python.requires_python`
+  and uses that declaration when creating Base-managed project virtualenvs.
 - IDEs own editor behavior; Base can install apps/extensions/settings
   additively.
 - Docker, `just`, Taskfile, Devbox, Nix, and similar tools can be project-level

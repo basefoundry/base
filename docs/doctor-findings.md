@@ -138,6 +138,8 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P154` | uv-managed project virtual environment readiness |
 | `BASE-P160` | Manifest command executable availability |
 | `BASE-P161` | Manifest command project script path readiness |
+| `BASE-P170` | Project Python version requirement support window |
+| `BASE-P171` | Selected project Python interpreter availability |
 
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
@@ -165,6 +167,14 @@ for obvious missing executables or missing/non-executable project script paths
 without executing command strings or treating the manifest as safe. They should
 not reject complex shell syntax or replace human review of unfamiliar
 repositories.
+
+`BASE-P170` and `BASE-P171` are project Python runtime diagnostics for
+`python.requires_python`. `BASE-P170` validates the request against Base's
+supported Python 3.10 through 3.13 window. `BASE-P171` reports whether the
+selected supported interpreter is available locally. Setup uses the selected
+interpreter when it creates a Base-managed project virtual environment and
+requires `--recreate-venv` before replacing an existing venv with a different
+Python minor.
 
 `BASE-P080` through `BASE-P083` are read-only project Git remote diagnostics.
 They report whether the project directory is inside a Git repository, whether

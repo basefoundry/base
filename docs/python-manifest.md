@@ -18,6 +18,33 @@ That environment defaults to:
 ~/.base.d/<project>/.venv
 ```
 
+Projects can also declare the Python runtime they need:
+
+```yaml
+python:
+  requires_python: "3.12"
+```
+
+`requires_python` accepts an exact Python minor, such as `3.10`, `3.11`,
+`3.12`, or `3.13`, or a simple comma-separated range such as
+`>=3.11,<3.14`. Base's supported project runtime window is Python 3.10 through
+Python 3.13. `basectl check` and `basectl doctor` report requests outside that
+window as errors before project virtualenv checks hide the real cause.
+
+When a Base-managed project venv must be created, `basectl setup` uses the
+selected supported Python minor instead of blindly inheriting Base's own
+interpreter. For a range, Base selects the highest supported minor that matches
+the range. If the selected interpreter is unavailable, setup/check/doctor report
+that separately from an unsupported requirement. Base looks for
+`BASE_PROJECT_PYTHON_BIN`, common Homebrew `python@<major.minor>` locations,
+matching `python<major.minor>` commands on `PATH`, and finally the current
+interpreter when its minor matches.
+
+If an existing Base-managed project virtual environment uses a different Python
+minor than `python.requires_python` selects, setup stops and asks the user to
+rerun with `--recreate-venv`. Base does not rewrite an existing virtual
+environment in place.
+
 The uv-managed shape is explicit:
 
 ```yaml
@@ -176,8 +203,11 @@ If the uv environment does not exist yet, activation asks the user to run
 
 ## Diagnostics
 
-uv support adds these project diagnostics:
+Python manifest support adds these project diagnostics:
 
+- `BASE-P170`: project `python.requires_python` compatibility with Base's
+  supported Python runtime window
+- `BASE-P171`: selected project Python interpreter availability
 - `BASE-P150`: uv CLI availability for uv-managed projects or uv runners
 - `BASE-P151`: uv-managed project `pyproject.toml` presence
 - `BASE-P152`: uv-managed project `uv.lock` presence
@@ -204,6 +234,7 @@ Base should not:
 - infer uv behavior just because `pyproject.toml` or `uv.lock` exists
 - automatically wrap commands in `uv run` unless the command declares
   `runner: uv`
+- install every Python minor a project may request
 - support multiple project virtual environments in one Base manifest
 
 Base owns project discovery, activation, setup/check/doctor orchestration, and

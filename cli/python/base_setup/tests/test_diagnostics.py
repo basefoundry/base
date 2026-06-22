@@ -18,6 +18,7 @@ from base_setup.manifest import BaseManifest
 from base_setup.manifest import HealthConfig
 from base_setup.manifest import IdeConfig
 from base_setup.manifest import PortHealthConfig
+from base_setup.manifest import PythonConfig
 from base_setup.manifest import read_manifest
 from base_setup.registry import get_artifact_definition
 from base_setup.tests.helpers import fake_context, run_engine
@@ -440,6 +441,71 @@ class ProjectCheckTests(unittest.TestCase):
             findings[0]["fix"],
             "Start the service that should listen on 127.0.0.1:5432.",
         )
+
+    def test_check_json_reports_unsupported_python_requirement(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            python=PythonConfig(requires_python="3.9"),
+        )
+
+        with redirect_stdout(io.StringIO()) as stdout:
+            status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(status, 1)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual([check["id"] for check in payload["checks"]], ["BASE-P170"])
+        self.assertEqual(payload["checks"][0]["status"], "error")
+        self.assertIn("older than Base supports", payload["checks"][0]["message"])
+
+    def test_pre_venv_checks_include_python_requirement_policy(self) -> None:
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            python=PythonConfig(requires_python=">=3.14"),
+        )
+
+        checks = engine.pre_venv_manifest_checks(manifest)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P170"])
+        self.assertIn("newer than Base supports", checks[0].message)
+
+    def test_check_json_reports_supported_python_requirement_without_interpreter(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            python=PythonConfig(requires_python="3.12"),
+        )
+
+        with mock.patch("base_setup.python_policy.resolve_python_interpreter", return_value=None), redirect_stdout(
+            io.StringIO()
+        ) as stdout:
+            status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(status, 1)
+        self.assertEqual([check["id"] for check in payload["checks"]], ["BASE-P170", "BASE-P171"])
+        self.assertEqual([check["status"] for check in payload["checks"]], ["ok", "error"])
+        self.assertIn("Python 3.12 is not available", payload["checks"][1]["message"])
 
     def test_manifest_checks_include_same_directory_pyproject(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
