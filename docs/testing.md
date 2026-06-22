@@ -72,6 +72,13 @@ dispatch, small command contracts, and failure messages. Keep these focused on
 one command or helper at a time. Reusable Bash library tests live in the
 standalone `base-bash-libs` repository.
 
+Before running source-checkout BATS tests for the first time, clone the reusable
+Bash library checkout next to Base:
+
+```bash
+git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-libs
+```
+
 From a source checkout, run the full command/library suite through:
 
 ```bash
@@ -80,7 +87,7 @@ env -u BASE_HOME ./bin/base-test
 
 The full suite expects Base to resolve external reusable Bash libraries. A
 normal `~/work/base` checkout uses sibling `~/work/base-bash-libs`
-automatically. For a nonstandard worktree, set
+automatically. For a nonstandard worktree layout, set
 `BASE_BASH_LIBS_DIR=/path/to/base-bash-libs/lib/bash` before running
 `bin/base-test`.
 

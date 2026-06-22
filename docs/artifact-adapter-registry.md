@@ -1,5 +1,10 @@
 # Artifact Adapter Registry
 
+> **DESIGN DOC** — As of Base 1.1.0, Base still uses
+> `cli/python/base_setup/registry.py` for built-in artifact mappings. This
+> document describes the planned future declarative registry; implementation is
+> tracked in [#925](https://github.com/basefoundry/base/issues/925).
+
 This design records how Base should evolve the current built-in artifact
 mapping in `cli/python/base_setup/registry.py` without turning project setup
 into arbitrary plugin execution.

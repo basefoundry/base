@@ -1,5 +1,9 @@
 # basectl check parallelism
 
+> **NOT YET IMPLEMENTED** as of Base 1.1.0. This document records the design for
+> a future `basectl check` performance PR; current check behavior remains
+> sequential and deterministic.
+
 `basectl check` is called frequently enough that reducing wall time matters, but
 the command also has to stay easy to reason about. The output order is part of
 the user experience and the JSON order is useful to automation, so the command

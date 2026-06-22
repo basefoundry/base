@@ -1,5 +1,8 @@
 # Local Observability Model
 
+> **DESIGN DOC** — These commands are not yet implemented as of Base 1.1.0.
+> Use `basectl logs` for current log access.
+
 Issue: #396
 
 Base currently exposes raw runtime logs through `basectl logs`. This document

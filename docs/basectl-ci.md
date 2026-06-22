@@ -97,8 +97,14 @@ Full Linux bootstrap can come later through the Linux support plan.
     mkdir -p "$HOME/.base.d/base"
     python -m venv "$HOME/.base.d/base/.venv"
     "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
-    "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
+    "$HOME/.base.d/base/.venv/bin/python" -m pip install PyYAML click
 
 - name: Check Base project
   run: ./bin/basectl ci check base --format json
 ```
+
+The Homebrew formula bundles Base's Python runtime environment. A source
+checkout CI job that prepares `~/.base.d/base/.venv` manually must install the
+same bootstrap packages that Base uses to read manifests and run Python command
+entry points. Add project-specific packages separately when the target project's
+manifest requires them.
