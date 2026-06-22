@@ -12,7 +12,7 @@ from .logging import configure_logger, log_invocation
 from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
 from .redaction import parameter_name_from_decls
 
-_STANDARD_OPTION_KEYS = ("debug", "environment", "config", "keep_temp", "log_file")
+_STANDARD_OPTION_KEYS = ("debug", "quiet", "environment", "config", "keep_temp", "log_file")
 _GROUP_STANDARD_OPTIONS_KEY = "base_cli_standard_options"
 
 
@@ -116,6 +116,7 @@ class App:
                 _group_standard_options(click),
                 _pop_standard_options(kwargs),
             )
+            _validate_standard_options(click, standard)
             try:
                 context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get(dry_run_parameter)))
             except (RuntimeError, ValueError) as exc:
@@ -151,6 +152,7 @@ class App:
 
         environment = standard.get("environment") or config.get("environment") or "dev"
         debug = bool(standard.get("debug") or str(config.get("log_level", "")).lower() == "debug")
+        quiet = bool(standard.get("quiet"))
         keep_temp = bool(standard.get("keep_temp") or config.get("keep_temp"))
 
         cache_root = base_cache_root()
@@ -170,7 +172,7 @@ class App:
             if log_file is None:
                 log_file = log_dir / f"{run_id}.log"
             _create_runtime_directory(log_file.parent, cache_root)
-        logger = configure_logger(self.name, log_file, debug)
+        logger = configure_logger(self.name, log_file, debug, quiet=quiet)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
         if self.max_log_files is not None and uses_default_log_file and log_file is not None:
             _prune_log_files(log_dir, log_file, self.max_log_files, logger)
@@ -190,6 +192,7 @@ class App:
             config=config,
             environment=environment,
             debug=debug,
+            quiet=quiet,
             keep_temp=keep_temp,
             log=logger,
             user_config=user_config,
@@ -275,6 +278,13 @@ def _decorate_standard_options(click: Any, func: Callable[..., Any], version: st
         default=None,
         help="Enable DEBUG logging on the user-facing stream.",
     )(func)
+    func = click.option(
+        "--quiet",
+        "-q",
+        is_flag=True,
+        default=None,
+        help="Suppress INFO logs on the user-facing stream.",
+    )(func)
     if version is not None:
         func = click.version_option(version)(func)
     return func
@@ -293,6 +303,11 @@ def _merge_standard_options(group_standard: dict[str, Any], command_standard: di
         value = command_standard.get(key)
         merged[key] = group_standard.get(key) if value is None else value
     return merged
+
+
+def _validate_standard_options(click: Any, standard: dict[str, Any]) -> None:
+    if standard.get("debug") and standard.get("quiet"):
+        raise click.UsageError("--debug and --quiet cannot be used together.")
 
 
 def _group_standard_options(click: Any) -> dict[str, Any]:

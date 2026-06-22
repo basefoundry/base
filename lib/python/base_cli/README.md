@@ -7,8 +7,8 @@ It is intentionally thin. Click still owns argument parsing and command
 execution, while `base_cli` adds the Base-specific behavior every project CLI
 should get by default:
 
-- standard command options such as `--debug`, `--environment`, `--config`,
-  `--keep-temp`, and `--log-file`
+- standard command options such as `--debug`, `--quiet`, `--environment`,
+  `--config`, `--keep-temp`, and `--log-file`
 - structured logging to stderr and, by default, to a persistent per-run log file
 - Base project discovery through `base_manifest.yaml`
 - config loading with predictable precedence
@@ -63,6 +63,7 @@ Running this command automatically adds the standard Base options:
 ```bash
 hello --name Ada
 hello --debug --name Ada
+hello --quiet --name Ada
 hello --environment prod --name Ada
 hello --keep-temp --name Ada
 hello --log-file /tmp/hello.log --name Ada
@@ -176,6 +177,7 @@ option that is ignored by `ctx.dry_run`.
 Every `base_cli.App` command gets these options:
 
 - `--debug`: enable DEBUG logging on the user-facing stderr stream.
+- `--quiet`, `-q`: suppress INFO logs on the user-facing stderr stream.
 - `--environment <name>`: set `ctx.environment` for the run.
 - `--config <path>`: merge an additional YAML config file.
 - `--keep-temp`: preserve the run's temp directory after command completion.
@@ -228,6 +230,7 @@ Important fields include:
 - `ctx.user_config`: typed user configuration from `~/.base.d/config.yaml`.
 - `ctx.environment`: active environment, defaulting to `dev`.
 - `ctx.debug`: whether debug logging is enabled for the stderr stream.
+- `ctx.quiet`: whether INFO logs are suppressed on the stderr stream.
 - `ctx.dry_run`: whether the command is running in a no-durable-write mode.
 - `ctx.keep_temp`: whether `ctx.temp_dir` should survive cleanup.
 - `ctx.log`: standard Python logger configured by Base.
@@ -249,9 +252,15 @@ def helper() -> None:
 
 `base_cli` configures two handlers:
 
-- a user-facing stderr handler at INFO by default, DEBUG with `--debug`
+- a user-facing stderr handler at INFO by default, DEBUG with `--debug`, or
+  WARNING with `--quiet` / `-q`
 - a persistent file handler that records DEBUG logs when persistent logging is
   enabled
+
+`--quiet` suppresses INFO output on the user-facing stream but still shows
+warnings and errors. `--debug` and `--quiet` cannot be used together. Persistent
+log files still receive DEBUG-level detail, including INFO messages suppressed
+from stderr.
 
 Advanced tests and CI wrappers can call `base_cli.configure_logger(...,
 stream=..., formatter=...)` to capture user-facing logs or apply a custom
@@ -259,10 +268,10 @@ formatter without replacing Base's logger setup. Leave those arguments as
 `None` to keep the default stderr stream and `BaseCliFormatter`.
 
 Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
-to keep the standard context and `--debug` behavior without creating default
-`logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this mode so
-`basectl logs` does not appear in its own output. An explicit `--log-file <path>`
-still enables file logging for that invocation.
+to keep the standard context, `--debug`, and `--quiet` behavior without creating
+default `logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this
+mode so `basectl logs` does not appear in its own output. An explicit
+`--log-file <path>` still enables file logging for that invocation.
 
 Commands running with `ctx.dry_run` also skip default `logs/`, `cache/`, and
 `tmp/<run-id>/` creation. Passing `--log-file <path>` still writes to that

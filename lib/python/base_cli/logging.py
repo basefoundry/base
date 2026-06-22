@@ -11,11 +11,13 @@ from .context import get_current_context
 from .redaction import redact_argv
 
 
+# pylint: disable=too-many-arguments
 def configure_logger(
     cli_name: str,
     log_file: Path | None,
     debug: bool,
     *,
+    quiet: bool = False,
     stream: TextIO | None = None,
     formatter: logging.Formatter | None = None,
 ) -> logging.Logger:
@@ -27,7 +29,7 @@ def configure_logger(
         logger.removeHandler(handler)
 
     user_handler = logging.StreamHandler(stream)
-    user_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+    user_handler.setLevel(_user_stream_level(debug, quiet))
     user_handler.setFormatter(_handler_formatter(formatter))
     logger.addHandler(user_handler)
 
@@ -38,6 +40,14 @@ def configure_logger(
         file_handler.setFormatter(_handler_formatter(formatter))
         logger.addHandler(file_handler)
     return logger
+
+
+def _user_stream_level(debug: bool, quiet: bool) -> int:
+    if quiet:
+        return logging.WARNING
+    if debug:
+        return logging.DEBUG
+    return logging.INFO
 
 
 def _handler_formatter(formatter: logging.Formatter | None) -> logging.Formatter:
