@@ -1,4 +1,4 @@
-# Codex Guidance
+# AI Agent Guidance
 
 This file gives coding agents the repository-specific rules for Base. It is a
 navigation layer over the existing contributor docs, not a replacement for
@@ -24,7 +24,7 @@ them.
 - Use one primary category label: `bug`, `enhancement`, `documentation`, `ci`,
   or `security`.
 - Do not create or apply `type:*` issue labels.
-- Assign Codex-created Base repository issues to `codeforester` when GitHub
+- Assign agent-created Base repository issues to `codeforester` when GitHub
   allows it; `.github/base-project.yml` carries this repo-local default for
   `basectl gh issue create`.
 - For issues tracked in Base Roadmap, set Project `Status` to `In Progress`
@@ -75,7 +75,11 @@ milestones, GitHub Projects, and cleanup rules.
 
 ## AI Context Maintenance
 
-- Treat `.ai-context/` as the AI-facing orientation layer for Base.
+- Treat `.ai-context/` at the repository root as the AI-facing orientation layer
+  for Base.
+- Use `basectl export-context base --print` to view the current context pack, or
+  `ls .ai-context/` to inspect available context files. When
+  `.ai-context/INDEX.md` exists, it controls export ordering.
 - For every meaningful PR, decide whether `.ai-context/` needs an update and
   state the result in the PR body.
 - Update `.ai-context/` when a change affects Base's product shape,

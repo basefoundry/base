@@ -147,6 +147,8 @@ Before opening a PR:
 - The PR body explains what changed and how it was validated.
 - Relevant BATS and Python tests pass.
 - Documentation is updated when behavior or user-facing commands change.
+- `.ai-context/` is updated when the change affects Base's product shape,
+  architecture, command surface, manifest model, workflows, or release status.
 - The PR includes `Fixes #<issue>` when it should close the issue.
 - `Demo Impact` is meaningful for `needs-demo` work, or explicitly says
   `None.` when no demo update is needed.
