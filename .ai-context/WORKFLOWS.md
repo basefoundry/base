@@ -26,6 +26,11 @@ Issue creation is unassigned by default unless `basectl gh issue create`
 receives `--assignee <login>` or `.github/base-project.yml` sets
 `project.issue_defaults.assignee`; use `--no-assignee` to skip that repo-local
 default for a specific issue.
+Starter issues for first external contributors use the `good first issue`
+label only when the issue has explicit acceptance criteria, concrete Project
+metadata, `Size` `T` or `S`, and local validation that does not require private
+state. Use `help wanted` without `good first issue` for broader work where
+outside help is useful but deeper Base context is needed.
 
 Base-managed repositories should carry `.github/workflows/project-intake.yml`
 as the fallback for issues created outside `basectl gh issue create`.
@@ -101,6 +106,9 @@ behavior, installation layout assumptions, or public behavior that cannot be
 proven by a focused unit test.
 
 Documentation-only changes usually need `git diff --check`.
+First external PRs should start from an issue labeled `good first issue`.
+Contributor-facing guidance lives in `CONTRIBUTING.md`; the workflow policy and
+starter-issue criteria live in `docs/github-workflow.md`.
 
 ## Release Flow
 

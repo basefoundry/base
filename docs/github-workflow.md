@@ -24,10 +24,40 @@ Use one primary category label on each issue:
 - `needs-demo`
   Changes that should update Base's self-demo, the `base-demo` reference
   project, or demo documentation. See [Demo Maintenance](demo-maintenance.md).
+- `good first issue`
+  Small, well-scoped issues that an external contributor can complete without
+  private maintainer context.
+- `help wanted`
+  Issues where maintainers want outside contribution, even if the work is too
+  broad or specialized to be a first contribution.
 
 Avoid creating new `type:*` labels. Older issues may still carry historical
 `type:fix`, `type:feat`, `type:chore`, or `type:docs` labels, but new work
 should use the labels above.
+
+## Starter Issues
+
+Use `good first issue` only when the issue is genuinely ready for a first
+external PR. Starter issues should have:
+
+- clear acceptance criteria in the issue body
+- one primary category label, usually `documentation`, `ci`, or a very narrow
+  `enhancement`
+- Project fields set before advertising the issue: `Status` `Ready`,
+  `Priority` `P3` or `P2`, a concrete `Area`, `Initiative`, and `Size` `T` or
+  `S`
+- a validation path that can be run locally without credentials, paid services,
+  or private repository state
+
+Good first issues should not require architectural decisions, cross-command
+refactors, release coordination, secret configuration, or knowledge that only
+maintainers have. Use `help wanted` without `good first issue` when outside
+help is welcome but the work needs deeper Base context.
+
+Maintainers should keep at least one real starter issue open when the project is
+inviting new contributors. If no open backlog item qualifies, create a small
+documentation, fixture, or test-hygiene issue instead of labeling broad design
+work as a starter task.
 
 ## Issue Assignment
 
