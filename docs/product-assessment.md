@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-06-17
-Base era reviewed: 1.0.x
+Last reviewed: 2026-06-21
+Base era reviewed: 1.1.0
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
@@ -189,6 +189,65 @@ modern uv-managed Python projects can opt into `python.manager: uv`, which lets
 uv own the repo-local `.venv` while Base keeps discovery, activation, setup,
 check, doctor, and command orchestration.
 
+### 2026-06-21 / 1.1.0 Product Review Delta
+
+The 1.1.0 release materially improves the product story since the 2026-06-17
+review. The strongest shipped signal is team onboarding: workspace manifests,
+`basectl workspace clone --manifest <path>`, workspace pull/configure flows,
+and Project intake repair make a peer-repo workspace easier to materialize and
+keep aligned. That does not make Base a team product by itself, but it gives the
+"one coherent workspace, many repositories" thesis a concrete team-shaped
+workflow rather than only a single-developer convenience.
+
+Other shipped improvements reduce earlier product objections:
+
+- `python.manager: uv` lets uv-managed Python repositories keep a repo-local
+  `.venv` while Base remains the discovery, activation, check/doctor, and
+  command orchestration layer. The stale Base-venv cleanup/docs work is already
+  tracked through the uv follow-up line (#896, #912, #931).
+- `bootstrap.sh`, bottled Homebrew upgrades, and the 1.1.0 release train make
+  first-mile install and update behavior easier to explain than the earlier
+  source-checkout-only story.
+- `.ai-context/` plus `basectl export-context` gives Base a repo-visible AI
+  context surface without assuming provider-specific upload APIs; provider
+  upload adapters remain a separate follow-up in #570.
+- Standalone `base-bash-libs` is now a reusable primitive rather than hidden
+  Base internals. That strengthens the "Base is a control plane, not a pile of
+  private shell snippets" story, while Homebrew/core packaging remains tracked
+  separately in #909.
+
+AGPL-3.0-or-later is now an explicit adoption tradeoff. It improves the
+project's open-source reciprocity stance and is coherent for a control-plane
+tool, but it may slow adoption in companies with strict license review. This is
+a positioning and sales-friction risk, not a reason to reopen the license choice
+inside this assessment.
+
+Remaining risks should stay issue-backed rather than becoming a parallel
+backlog here:
+
+- Linux remains the largest platform expansion unlock; keep the first supported
+  Linux runtime target in #562.
+- Dev Container and Nix bridges should remain export/bridge work from Base
+  manifests, not a replacement for those ecosystems; this is tracked in #876.
+- A local dashboard is still plausible, but should follow durable observability
+  and history data rather than lead it; keep the dashboard in #875 and command
+  history in #926.
+- AI provider upload is useful only after local export stays deterministic and
+  privacy boundaries are explicit; keep that in #570.
+- `base-bash-libs` packaging/readiness should stay in the standalone library
+  lane, with Homebrew core preparation tracked in #909.
+
+Maintainability is the refreshed watchlist. The current file-size pressure is
+not in the reusable Bash standard library anymore; #873 documents why
+single-file shell-library standards remain intentional. The more important
+ownership pressure is in command orchestration files: `repo.sh` is roughly
+3,400 lines, `setup_common.sh` is roughly 2,170 lines, `repo.bats` is roughly
+1,730 lines, and `gh.bats`, `base_projects/engine.py`, and
+`base_github_projects/engine.py` are all around the 1,000-line mark. The right
+response is not an abstract split-everything campaign. Reduce ownership where a
+stable subdomain is visible, keep tests near behavior, and use #929 for the
+known `setup_common.sh` ownership-reduction path.
+
 ## 4. Creator And Engineering Skill Assessment
 
 Assessment: at least Staff-level; plausibly upper Staff or early Senior
@@ -260,6 +319,10 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-06-21: Updated for the 1.1.0 review delta, including workspace clone
+  onboarding, uv-managed project support, bootstrap/Homebrew release maturity,
+  AI context exports, standalone `base-bash-libs`, AGPL adoption tradeoffs, and
+  the current maintainability watchlist.
 - 2026-06-17: Added latest product-review delta and linked follow-up issues for
   Linux runtime support, workspace manifest sync, artifact adapter design, and
   manifest command linting.
