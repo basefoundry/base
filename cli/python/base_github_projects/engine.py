@@ -7,8 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import graphql_queries as queries
-from .project_configure import ConfigureDryRunPlan, ProjectReplacement
-from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
+from .project_configure import standard_template_view_errors
 from .project_item_fields import FieldCopySummary
 from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
 from .project_item_fields import copy_missing_project_item_fields as _copy_missing_project_item_fields
@@ -403,225 +402,21 @@ def find_option(field: ProjectField, name: str) -> SelectOption | None:
 
 
 def doctor_command(args: ProjectArguments) -> int:
-    owner = require_owner(args)
-    owner_info = find_owner_and_project(owner, args.project_title or "")
-    if owner_info.project is None:
-        print(f"MISSING Project {args.project_title}")
-        return 1
-    fields = fetch_project_fields(owner_info.project.project_id)
-    findings = compare_schema(fields, schema_for_args(args))
-    if not findings:
-        print(f"OK      Project {args.project_title}")
-        return 0
-    for finding in findings:
-        print(f"{finding.status.upper():<8}{finding.name}  {finding.message}")
-    return 1
+    from .project_doctor_command import doctor_command as command
+
+    return command(args, ops=sys.modules[__name__])
 
 
 def configure_command(args: ProjectArguments) -> int:
-    owner = require_owner(args)
-    if args.replace_project and not args.repo:
-        raise ProjectUsageError("--replace-project requires --repo.")
-    project_config = project_config_for_args(args)
-    schema = schema_for_args(args)
-    owner_info = find_owner_and_project(owner, args.project_title or "")
-    project = owner_info.project
-    replacement = replacement_plan_for_args(args, owner, project)
-    should_copy_template = args.repo is not None and project is None
-    fields = fetch_existing_configure_fields(project, replacement)
-    actions = plan_configure_actions(project, fields, schema, should_copy_template, replacement)
-    errors = [action for action in actions if action.action == "error"]
-    if errors:
-        for action in errors:
-            print(f"ERROR   {action.name}  {action.message}", file=sys.stderr)
-        return 1
-    if args.dry_run:
-        render_dry_run_configure(
-            args,
-            ConfigureDryRunPlan(
-                actions=actions,
-                would_copy_template=should_copy_template,
-                replacement=replacement,
-                project_config=project_config,
-            ),
-        )
-        return 0
-    project = prepare_configure_project(owner, owner_info, args, project, replacement)
-    fields = fetch_project_fields(project.project_id)
-    ensure_schema_fields(project.project_id, fields, schema)
-    fields = fetch_project_fields(project.project_id)
-    link_and_backfill_project(project.project_id, args.repo)
-    copy_replacement_project_fields(project.project_id, replacement)
-    copy_project_fields_from_source(owner, project.project_id, args.copy_fields_from_project)
-    apply_project_config_defaults(project.project_id, fields, project_config)
-    close_replacement_project(replacement)
-    print(f"✓ Configured GitHub Project {args.project_title}")
-    return 0
+    from .project_configure_command import configure_command as command
 
-
-def replacement_plan_for_args(
-    args: ProjectArguments,
-    owner: str,
-    project: ProjectInfo | None,
-) -> ProjectReplacement | None:
-    if not args.replace_project:
-        return None
-    if not args.repo:
-        raise ProjectUsageError("--replace-project requires --repo.")
-    if project is None:
-        raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'; cannot replace it.")
-    view_errors = standard_template_view_errors(fetch_project_views(project.project_id))
-    if not view_errors:
-        print(f"INFO: Project '{args.project_title}' already has standard Base views; skipping replacement.")
-        return None
-    return ProjectReplacement(
-        legacy_project=project,
-        legacy_title=legacy_project_title(args.project_title or ""),
-        view_errors=view_errors,
-    )
-
-
-def fetch_existing_configure_fields(
-    project: ProjectInfo | None,
-    replacement: ProjectReplacement | None,
-) -> tuple[ProjectField, ...]:
-    if project is None or replacement is not None:
-        return ()
-    return fetch_project_fields(project.project_id)
-
-
-def plan_configure_actions(
-    project: ProjectInfo | None,
-    fields: tuple[ProjectField, ...],
-    schema: ProjectSchema,
-    should_copy_template: bool,
-    replacement: ProjectReplacement | None,
-) -> tuple[ConfigureAction, ...]:
-    if should_copy_template or replacement is not None:
-        return ()
-    return configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
-
-
-def prepare_configure_project(
-    owner: str,
-    owner_info: OwnerInfo,
-    args: ProjectArguments,
-    project: ProjectInfo | None,
-    replacement: ProjectReplacement | None,
-) -> ProjectInfo:
-    if replacement is not None:
-        update_project(replacement.legacy_project.project_id, title=replacement.legacy_title)
-        new_project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
-        verify_standard_template_views(fetch_project_views(new_project.project_id))
-        print(f"✓ Renamed existing Project {args.project_title} to {replacement.legacy_title}")
-        return new_project
-    if project is not None:
-        return project
-    if args.repo:
-        new_project = copy_template_project(owner, owner_info.owner_id, args.project_title or "")
-        verify_standard_template_views(fetch_project_views(new_project.project_id))
-        return new_project
-    return create_project(owner_info.owner_id, args.project_title or "")
-
-
-def ensure_schema_fields(project_id: str, fields: tuple[ProjectField, ...], schema: ProjectSchema) -> None:
-    by_name = {field.name: field for field in fields}
-    for spec in schema.fields:
-        field = by_name.get(spec.name)
-        if field is None:
-            create_single_select_field(project_id, spec)
-        elif missing_option_names(field, spec):
-            update_single_select_field(field, spec)
-
-
-def link_and_backfill_project(project_id: str, repo: str | None) -> None:
-    if not repo:
-        return
-    link_project_to_repository(project_id, repo)
-    count = backfill_repository_issues(project_id, repo)
-    print(f"✓ Backfilled {count} issue(s) from {repo}")
-
-
-def copy_replacement_project_fields(project_id: str, replacement: ProjectReplacement | None) -> None:
-    if replacement is None:
-        return
-    summary = copy_missing_project_item_fields(replacement.legacy_project.project_id, project_id)
-    print(f"✓ Copied {summary.applied_count} Project item field value(s) from {replacement.legacy_title}")
-    for skipped in summary.skipped:
-        print(
-            f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
-            file=sys.stderr,
-        )
-
-
-def close_replacement_project(replacement: ProjectReplacement | None) -> None:
-    if replacement is None:
-        return
-    update_project(replacement.legacy_project.project_id, closed=True)
-    print(f"✓ Closed legacy GitHub Project {replacement.legacy_title}")
-
-
-def copy_project_fields_from_source(owner: str, target_project_id: str, source_project_title: str | None) -> None:
-    if not source_project_title:
-        return
-    source = find_owner_and_project(owner, source_project_title).project
-    if source is None:
-        raise ProjectError(f"Source Project '{source_project_title}' was not found for owner '{owner}'.")
-    summary = copy_missing_project_item_fields(source.project_id, target_project_id)
-    print(f"✓ Copied {summary.applied_count} Project item field value(s) from {source_project_title}")
-    for skipped in summary.skipped:
-        print(
-            f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
-            file=sys.stderr,
-        )
-
-
-def apply_project_config_defaults(
-    target_project_id: str,
-    target_fields: tuple[ProjectField, ...],
-    project_config: ProjectConfig,
-) -> None:
-    defaults = project_field_defaults_for_config(project_config)
-    if not defaults:
-        return
-    summary = apply_missing_project_item_defaults(target_project_id, target_fields, defaults)
-    print(f"✓ Applied {summary.applied_count} default Project item field value(s)")
-    for skipped in summary.skipped:
-        print(
-            f"WARN    Issue #{skipped.issue_number} {skipped.field_name}={skipped.option_name}: {skipped.reason}",
-            file=sys.stderr,
-        )
+    return command(args, ops=sys.modules[__name__])
 
 
 def issue_set_fields_command(args: ProjectArguments) -> int:
-    owner = require_owner(args)
-    repo = require_repo(args)
-    owner_info = find_owner_and_project(owner, args.project_title or "")
-    if owner_info.project is None:
-        raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'.")
-    project = owner_info.project
-    fields = fetch_project_fields(project.project_id)
-    updates = resolve_issue_field_updates(
-        fields,
-        issue_field_values_for_args(args),
-        project_title=args.project_title or "",
-    )
-    if not updates:
-        raise ProjectUsageError("At least one field option must be provided.")
-    repo_owner, repo_name = split_repo(repo)
-    issue_id = fetch_issue_id(repo_owner, repo_name, args.issue_number or 0)
-    item_id = find_project_item_id(project.project_id, issue_id)
-    if args.dry_run:
-        print(f"[DRY-RUN] Would add issue #{args.issue_number} to Project '{args.project_title}' if needed.")
-        for update in updates:
-            print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
-        return 0
-    if item_id is None:
-        item_id = add_project_item(project.project_id, issue_id)
-    for update in updates:
-        update_item_field(project.project_id, item_id, update)
-    print(f"✓ Updated Project metadata for issue #{args.issue_number}")
-    return 0
+    from .project_issue_fields_command import issue_set_fields_command as command
+
+    return command(args, ops=sys.modules[__name__])
 
 
 def require_owner(args: ProjectArguments) -> str:

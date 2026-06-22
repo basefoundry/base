@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from base_github_projects import engine, project_model
+from base_github_projects import project_configure_command
 
 
 def complete_project_fields() -> tuple[engine.ProjectField, ...]:
@@ -156,7 +157,7 @@ def test_configure_command_replace_project_dry_run_reports_cutover_plan(
         lambda project_id: (engine.ProjectView("View 1", "TABLE_LAYOUT"),),
     )
     monkeypatch.setattr(
-        engine,
+        project_configure_command,
         "legacy_project_title",
         lambda title: "base-demo-legacy-20260619-120000",
     )
@@ -224,7 +225,7 @@ def test_configure_command_replace_project_renames_copies_backfills_and_closes_l
 
     monkeypatch.setattr(engine, "find_owner_and_project", fake_find_owner_and_project)
     monkeypatch.setattr(
-        engine,
+        project_configure_command,
         "legacy_project_title",
         lambda title: "base-demo-legacy-20260619-120000",
     )
