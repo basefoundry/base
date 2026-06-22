@@ -246,6 +246,11 @@ def helper() -> None:
 - a persistent file handler that records DEBUG logs when persistent logging is
   enabled
 
+Advanced tests and CI wrappers can call `base_cli.configure_logger(...,
+stream=..., formatter=...)` to capture user-facing logs or apply a custom
+formatter without replacing Base's logger setup. Leave those arguments as
+`None` to keep the default stderr stream and `BaseCliFormatter`.
+
 Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
 to keep the standard context and `--debug` behavior without creating default
 `logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this mode so

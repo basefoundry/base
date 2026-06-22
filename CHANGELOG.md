@@ -13,6 +13,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   can use the configured workspace root without reaching through user config.
 - Added `base_cli.testing.invoke(..., manifest={...})` for project-aware tests
   that need a fixture `base_manifest.yaml`.
+- Added optional stream and formatter overrides to `base_cli.configure_logger`
+  for tests and CI wrappers that need to capture or reshape user-facing logs.
 - Documented the `base-bash-libs` Homebrew/core readiness path, including the
   formula-name audit command and future `basefoundry` dependency plan.
 - Documented the `basectl setup` parallelism evaluation and the decision to

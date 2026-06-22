@@ -5,6 +5,7 @@ import os
 import platform
 import sys
 from pathlib import Path
+from typing import TextIO
 
 from .context import get_current_context
 from .redaction import redact_argv
@@ -14,6 +15,9 @@ def configure_logger(
     cli_name: str,
     log_file: Path | None,
     debug: bool,
+    *,
+    stream: TextIO | None = None,
+    formatter: logging.Formatter | None = None,
 ) -> logging.Logger:
     logger = logging.getLogger(f"base_cli.{cli_name}")
     logger.setLevel(logging.DEBUG)
@@ -22,18 +26,24 @@ def configure_logger(
         handler.close()
         logger.removeHandler(handler)
 
-    user_handler = logging.StreamHandler()
+    user_handler = logging.StreamHandler(stream)
     user_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-    user_handler.setFormatter(BaseCliFormatter())
+    user_handler.setFormatter(_handler_formatter(formatter))
     logger.addHandler(user_handler)
 
     if log_file is not None:
         file_handler = logging.FileHandler(log_file, encoding="utf-8")
         secure_log_file_permissions(log_file)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(BaseCliFormatter())
+        file_handler.setFormatter(_handler_formatter(formatter))
         logger.addHandler(file_handler)
     return logger
+
+
+def _handler_formatter(formatter: logging.Formatter | None) -> logging.Formatter:
+    if formatter is not None:
+        return formatter
+    return BaseCliFormatter()
 
 
 def secure_log_file_permissions(log_file: Path) -> None:
