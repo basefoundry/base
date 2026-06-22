@@ -17,6 +17,8 @@ below when precise detail matters:
 
 - `README.md` - product front door and current command overview.
 - `docs/README.md` - documentation map.
+- `docs/product-requirements.md` - accepted product intent, target users,
+  durable requirements, non-goals, and PRD maintenance rules.
 - `docs/architecture.md` - product direction, command model, environment model,
   and repository conventions.
 - `docs/execution-model.md` - `basectl` runtime and dispatch contract.
