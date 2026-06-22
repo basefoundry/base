@@ -172,6 +172,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | `basectl check [project] [--profile]` | Quick pass/fail readiness check |
 | `basectl doctor [project] [--profile]` | Human-readable findings + fix commands |
 | `basectl logs [--tail\|--command\|--path\|--open]` | Inspect runtime logs |
+| `basectl history [--format json]` | Inspect structured local command history |
 | `basectl config path\|show\|doctor` | Machine-local config |
 | `basectl clean [--older-than\|--keep-last]` | Prune cache/logs |
 

@@ -27,6 +27,7 @@ _base_basectl_completion() {
         'release:Inspect release readiness, notes, and publishing'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
+        'history:List recent Base command history records'
         'config:Inspect Base machine-local user config'
         'doctor:Diagnose the local Base environment'
         'gh:Manage GitHub issues, pull requests, branches, and hygiene'
@@ -285,6 +286,14 @@ _base_basectl_completion() {
                 '--tail[Tail and follow most recent log]' \
                 '--open[Open most recent log]' \
                 '--lines[Lines to show before following]:count:' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        history)
+            _arguments '--project[Filter by Base project]:project:' \
+                '--command[Filter by command]:command:' \
+                '--status[Filter by status]:status:(ok warn error)' \
+                '--limit[Number of records]:count:' \
+                '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)

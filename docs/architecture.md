@@ -628,7 +628,8 @@ Doctor findings use stable identifiers documented in
 on those IDs instead of human-readable messages.
 
 Base should also remain locally observable. `basectl logs` exposes recent Base
-CLI runtime logs from the Base cache root without sending telemetry anywhere.
+CLI runtime logs from the Base cache root, and `basectl history` lists the
+structured local command-history index without sending telemetry anywhere.
 Useful command metadata includes the command, target project or workspace,
 start and end time, exit code, manifest version where relevant, external tools
 invoked, and log file paths.

@@ -135,6 +135,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "logs_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl history --); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "history_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl repo ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -225,6 +229,7 @@ EOF
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
+    [[ "$output" == *"history_options=--project --command --status --limit --format"* ]]
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run"* ]]
     [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]

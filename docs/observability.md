@@ -1,14 +1,15 @@
 # Local Observability Model
 
-> **DESIGN DOC** — These commands are not yet implemented as of Base 1.1.0.
-> Use `basectl logs` for current log access.
+> **STATUS** — `basectl history` and the local history index are implemented as
+> the first slice. `basectl explain last-error`, `basectl report`, and history
+> cleanup integration remain future work.
 
 Issue: #396
 
-Base currently exposes raw runtime logs through `basectl logs`. This document
-defines the next local observability layer: structured command history,
-last-error explanation, and report generation. It is a design contract for
-future implementation, not a statement that these commands exist today.
+Base currently exposes raw runtime logs through `basectl logs` and structured
+local command metadata through `basectl history`. This document defines the
+local observability layer: shipped command history, future last-error
+explanation, and future report generation.
 
 ## Goals
 
@@ -48,7 +49,7 @@ Those questions need a structured index in addition to raw log discovery.
 
 ## History Index
 
-Base should add a structured command history index under the Base cache root:
+Base writes a structured command history index under the Base cache root:
 
 ```text
 <base-cache-root>/history/runs.jsonl
@@ -57,17 +58,16 @@ Base should add a structured command history index under the Base cache root:
 Each line is one JSON object. JSON Lines keeps writes append-only, easy to
 inspect with ordinary tools, and easy to recover when one line is malformed.
 
-History writes should be best-effort:
+History writes are best-effort:
 
-- write a start record when a command begins
-- write a completion record when the command exits
-- tolerate missing completion records
+- write a final completion record when a Python-backed command with a
+  persistent log exits
 - never fail the user command because the history file cannot be written
 - ignore malformed history lines while warning in debug output
 
-The first implementation can either emit one final record per run or pair
-`started` and `finished` events. If paired events are used, readers should
-collapse them by `run_id` and prefer the latest completion event.
+The first implementation emits one `finished` record per recorded run. Shell-only
+commands and no-durable-write modes such as `ctx.dry_run` or
+`App(log_to_file=False)` do not create history records in this slice.
 
 ## Record Shape
 
@@ -148,7 +148,7 @@ The retention contract should be:
 
 ### `basectl history`
 
-`basectl history` should read the structured index and print a compact table of
+`basectl history` reads the structured index and prints a compact table of
 recent Base command runs:
 
 ```text
@@ -205,7 +205,7 @@ should never upload the report.
 
 The commands should ship in separate, reviewable slices:
 
-1. Add history recording and `basectl history`.
+1. Add history recording and `basectl history`. **Shipped.**
 2. Add `basectl explain last-error` after history records exist.
 3. Add `basectl report` after history and explanation have stable local data.
 4. Extend `basectl clean` to compact or prune history records once the history
@@ -214,16 +214,13 @@ The commands should ship in separate, reviewable slices:
 This order keeps the data model and privacy boundary reviewable before Base
 starts producing summaries or shareable diagnostic artifacts.
 
-## Open Questions For Implementation
+## First Slice Decisions
 
-- Should shell-only commands record history before the Python layer starts, or
-  should the first slice cover only Python-backed commands?
-- Should the history writer live in `base_cli.App`, the Bash dispatcher, or a
-  small shared module used by both?
-- Should report generation include raw log excerpts by default, or require an
-  explicit `--include-log-excerpts` option?
-- Should missing logs be a warning row in `history`, or only visible with a
-  verbose flag?
-
-These questions should be answered in the first implementation issue before
-writing the history recorder.
+- The history writer lives in `base_cli.App`, so Python-backed commands share
+  the same local metadata lifecycle as persistent logs.
+- Shell-only commands are deferred until Base has a shell-side writer with the
+  same redaction and best-effort guarantees.
+- `basectl history` marks missing log files directly in text output and exposes
+  `log_exists` in JSON output.
+- Future report generation should require an explicit option before embedding
+  raw log excerpts.

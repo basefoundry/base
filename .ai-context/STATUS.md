@@ -20,7 +20,7 @@ The current command surface covers:
 - mise integration
 - bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
-- cleanup and logs
+- cleanup, logs, and local command history
 - local config inspection
 - onboarding
 - repository baseline creation and checks
@@ -43,7 +43,7 @@ source builds treated as fallback validation rather than the normal user path.
 
 Recent released work includes:
 
-- local observability model for future command history and report surfaces
+- local command-history index with future report surfaces still deferred
 - workspace manifest status/check/doctor reporting plus explicit clone and pull
   support
 - guarded `basectl release publish`

@@ -270,12 +270,19 @@ formatter without replacing Base's logger setup. Leave those arguments as
 Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
 to keep the standard context, `--debug`, and `--quiet` behavior without creating
 default `logs/`, `cache/`, or `tmp/<run-id>/` directories. `base_logs` uses this
-mode so `basectl logs` does not appear in its own output. An explicit
-`--log-file <path>` still enables file logging for that invocation.
+mode so `basectl logs` does not appear in its own output; `base_history` does
+the same for `basectl history`. An explicit `--log-file <path>` still enables
+file logging for that invocation.
 
 Commands running with `ctx.dry_run` also skip default `logs/`, `cache/`, and
 `tmp/<run-id>/` creation. Passing `--log-file <path>` still writes to that
 explicit file so tests and diagnostics can inspect dry-run logs when needed.
+
+For Python-backed commands with persistent logs, `base_cli.App` also writes a
+best-effort final history record to `<base-cache-root>/history/runs.jsonl`.
+History records contain redacted command metadata, timing, exit status, project
+context when known, and a pointer to the raw log file. History writes are local
+only and do not fail the user command when the index cannot be updated.
 
 High-frequency tools can set `base_cli.App(max_log_files=<count>)` to keep at
 most that many default persistent log files for the CLI. Retention runs during
