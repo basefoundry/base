@@ -125,6 +125,10 @@ For example, Homebrew exposes both executables under the Homebrew prefix, but
 `basectl` or a project-owned launcher instead of invoking `base-wrapper`
 directly.
 
+`base-wrapper` answers "which Python environment should run this package?",
+while `base_cli` answers "how should a Base Python CLI behave?" See the
+`base_cli` question below for that package's role.
+
 ### Why does Base require an external base-bash-libs checkout or package?
 
 Base's reusable Bash helpers live in the standalone
