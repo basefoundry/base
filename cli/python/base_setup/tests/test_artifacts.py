@@ -413,6 +413,49 @@ class ArtifactReconcileTests(unittest.TestCase):
 
         project_venv_dir.assert_called_once_with("demo")
 
+    def test_recreate_project_venv_backs_up_stale_venv_before_install(self) -> None:
+        definition = get_artifact_definition("python-package", "requests")
+        self.assertIsNotNone(definition)
+        ctx = fake_context()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            marker = root / "stale-python-ran"
+            venv_dir = root / "demo" / ".venv"
+            python_bin = venv_dir / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            (venv_dir / "pyvenv.cfg").write_text("home = /missing/python\n", encoding="utf-8")
+            (venv_dir / "old.txt").write_text("old venv\n", encoding="utf-8")
+            python_bin.write_text(f"#!/bin/sh\ntouch '{marker}'\nexit 1\n", encoding="utf-8")
+            python_bin.chmod(0o755)
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_SETUP_RECREATE_PROJECT_VENV": "true"}),
+                mock.patch("base_setup.artifacts.project_venv_dir", return_value=venv_dir),
+                mock.patch("base_setup.artifacts.venv.create") as create_venv,
+                mock.patch("base_setup.process.run_command") as run_command,
+            ):
+                artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=False)
+
+            backups = list((root / "demo").glob(".venv.backup.*"))
+
+            self.assertEqual(len(backups), 1)
+            self.assertTrue((backups[0] / "old.txt").is_file())
+            self.assertFalse((venv_dir / "old.txt").exists())
+            self.assertFalse(marker.exists())
+        create_venv.assert_called_once_with(venv_dir, with_pip=True)
+        run_command.assert_called_once_with(
+            ctx,
+            [
+                str(venv_dir / "bin" / "python"),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "requests",
+            ],
+        )
+
     def test_reconcile_artifacts_batches_python_installs(self) -> None:
         click = get_artifact_definition("python-package", "click")
         requests = get_artifact_definition("python-package", "requests")

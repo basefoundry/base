@@ -556,6 +556,9 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         esac
         shift || true
     done
+    if [[ "$action" == "bootstrap" ]]; then
+        printf '%s\n' "${BASE_SETUP_RECREATE_PROJECT_VENV:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-bootstrap-recreate-venv"
+    fi
     if [[ "$action" == "precheck" && "$output_format" == "json" ]]; then
         if [[ "$remote_network" == true ]]; then
             printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""},{"id":"BASE-P083","status":"ok","name":"git_origin_reachability","message":"Project Git origin remote is reachable.","fix":""}]\n'

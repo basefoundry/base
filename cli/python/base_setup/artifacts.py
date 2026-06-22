@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 import venv
 from collections.abc import Iterable
 from pathlib import Path
@@ -293,10 +294,14 @@ def reconcile_python_artifacts(
 ) -> None:
     venv_dir = project_venv_dir(project)
     python_bin = venv_dir / "bin" / "python"
+    recreate_venv = project_venv_recreate_enabled()
     missing = []
 
+    if recreate_venv:
+        backup_existing_project_venv(ctx, venv_dir, dry_run=dry_run)
+
     for definition, version in artifact_definitions:
-        if python_artifact_installed(python_bin, definition.package, version):
+        if not recreate_venv and python_artifact_installed(python_bin, definition.package, version):
             ctx.log.info(
                 "Python artifact '%s' is already installed in the project virtual environment.",
                 definition.name,
@@ -310,12 +315,12 @@ def reconcile_python_artifacts(
     requirements = [requirement for _definition, _version, requirement in missing]
 
     if dry_run:
-        if not python_bin.exists():
+        if recreate_venv or not python_bin.exists():
             ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", venv_dir)
         process.dry_run_command(ctx, pip_install_command(python_bin, requirements))
         return
 
-    if not python_bin.exists():
+    if recreate_venv or not python_bin.exists():
         ctx.log.info("Creating project virtual environment at '%s'.", venv_dir)
         venv.create(venv_dir, with_pip=True)
 
@@ -330,6 +335,28 @@ def reconcile_python_artifacts(
         ctx.log.warning("Batch Python artifact install failed; retrying one artifact at a time.")
         ctx.log.debug("Batch Python artifact install failed: %s", exc)
         reconcile_python_artifacts_sequential(ctx, python_bin, missing)
+
+
+def project_venv_recreate_enabled() -> bool:
+    return os.environ.get("BASE_SETUP_RECREATE_PROJECT_VENV") == "true"
+
+
+def backup_existing_project_venv(ctx: base_cli.Context, venv_dir: Path, dry_run: bool) -> None:
+    if not venv_dir.exists():
+        return
+    timestamp = time.strftime("%Y%m%dT%H%M%S")
+    backup_path = venv_dir.with_name(f"{venv_dir.name}.backup.{timestamp}")
+    if backup_path.exists():
+        raise ArtifactError(f"Project virtual environment backup path already exists at '{backup_path}'.")
+    if dry_run:
+        ctx.log.info(
+            "[DRY-RUN] Would move existing project virtual environment '%s' to '%s'.",
+            venv_dir,
+            backup_path,
+        )
+        return
+    ctx.log.info("Moving existing project virtual environment '%s' to '%s'.", venv_dir, backup_path)
+    venv_dir.rename(backup_path)
 
 
 def reconcile_python_artifacts_sequential(
