@@ -209,6 +209,7 @@ Important fields include:
 - `ctx.run_id`: timestamp plus short random suffix for this invocation.
 - `ctx.base_home`: resolved `BASE_HOME`, when available.
 - `ctx.project_root`: directory containing the nearest `base_manifest.yaml`.
+- `ctx.workspace_root`: configured workspace root from `~/.base.d/config.yaml`.
 - `ctx.manifest_path`: nearest discovered Base manifest.
 - `ctx.state_dir`: per-CLI runtime directory under the Base cache root.
 - `ctx.log_dir`: persistent log directory.

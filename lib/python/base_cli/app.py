@@ -170,6 +170,7 @@ class App:
             run_id=run_id,
             base_home=resolve_base_home(),
             project_root=project_root,
+            workspace_root=user_config.workspace.root,
             manifest_path=manifest_path,
             state_dir=state_dir,
             log_dir=log_dir,

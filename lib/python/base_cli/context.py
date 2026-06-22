@@ -40,6 +40,7 @@ class Context:
     manifest_path: Path | None = None
     user_config: UserConfig = field(default_factory=_default_user_config)
     cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
+    workspace_root: Path | None = None
 
     def on_cleanup(self, hook: Callable[[], None]) -> None:
         self.cleanup_hooks.append(hook)

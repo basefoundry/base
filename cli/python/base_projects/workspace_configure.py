@@ -192,8 +192,8 @@ def print_workspace_configure_header(
 def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
     if workspace:
         return Path(workspace).expanduser().resolve()
-    if ctx.user_config.workspace.root is not None:
-        return ctx.user_config.workspace.root
+    if ctx.workspace_root is not None:
+        return ctx.workspace_root
     if ctx.base_home is None:
         raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
     return ctx.base_home.parent.resolve()
