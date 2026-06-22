@@ -107,6 +107,10 @@ env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
 shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 ```
 
+The command examples above use the Intel Homebrew prefix. On Apple Silicon,
+replace `/usr/local/bin/basectl` with `/opt/homebrew/bin/basectl` and include
+`/opt/homebrew/bin` instead of `/usr/local/bin` in the explicit `PATH` values.
+
 Accept the rehearsal only when:
 
 - `brew upgrade --no-ask basefoundry/base/base` exits zero.
@@ -124,6 +128,14 @@ Accept the rehearsal only when:
 If any Base-specific breakage appears, fix it or file a blocking follow-up
 before 1.0.0. If a host prerequisite blocks the run, record it and rerun on a
 qualified host; do not close the rehearsal issue.
+
+## Historical Run Record Notes
+
+The run records below are historical rehearsal notes. Treat the macOS, Xcode,
+and Command Line Tools strings as the host facts recorded by the operator at the
+time of the run, not as normative examples of current Apple release numbering.
+New run records should paste fresh output from `sw_vers`, `xcodebuild -version`,
+and Homebrew diagnostics so the version fields can be audited later.
 
 ## 2026-06-09 Run Record
 

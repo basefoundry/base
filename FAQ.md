@@ -125,6 +125,35 @@ For example, Homebrew exposes both executables under the Homebrew prefix, but
 `basectl` or a project-owned launcher instead of invoking `base-wrapper`
 directly.
 
+### Why does Base require an external base-bash-libs checkout or package?
+
+Base's reusable Bash helpers live in the standalone
+`basefoundry/base-bash-libs` repository so other scripts can reuse the logging,
+command execution, filesystem, and Git conventions without depending on the
+full Base workspace control plane.
+
+That separation also keeps the Homebrew packaging path cleaner: `base-bash-libs`
+can mature as its own formula, and a future Homebrew/core Base formula can
+depend on it directly instead of bundling reusable library files inside Base.
+
+Base resolves the libraries in this order:
+
+1. `BASE_BASH_LIBS_DIR`, for tests and nonstandard source worktrees.
+2. A sibling checkout at `~/work/base-bash-libs/lib/bash`.
+3. The Homebrew `base-bash-libs` package when Base itself is Homebrew-managed.
+
+If the library source is missing, clone the sibling repository or install the
+tap formula:
+
+```bash
+git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-libs
+brew install basefoundry/base/base-bash-libs
+```
+
+`basectl check` and `basectl doctor` report the resolved source through the
+`BASE-D007` finding. See [Base Bash Libraries](docs/base-bash-libs.md) for the
+full resolution contract.
+
 ### How do I know which basectl is active?
 
 Run:

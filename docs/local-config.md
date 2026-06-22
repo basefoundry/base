@@ -30,6 +30,38 @@ environment. `show` prints the parsed config as JSON. `doctor` reports whether
 the file exists, whether it is valid YAML, whether it is a mapping, and whether
 the path is a symlink.
 
+## Complete Example
+
+A fully populated user config keeps each section as a top-level YAML key:
+
+```yaml
+workspace:
+  root: ~/work
+  manifest: ~/work/base-workspace/workspace.yaml
+  manifest_source: https://raw.githubusercontent.com/example/platform/main/workspace.yaml
+
+github:
+  default_owner: your-github-username
+  clone_protocol: ssh
+
+ide:
+  enabled: true
+
+  vscode:
+    enabled: true
+    install: false
+    extra_extensions:
+      - eamodio.gitlens
+    settings:
+      editor.fontSize: 14
+
+  cursor:
+    enabled: false
+```
+
+Omit sections or keys you do not use. Base treats omitted sections as empty
+defaults.
+
 ## Ownership Boundary
 
 Base owns the meaning of `~/.base.d/config.yaml`.
@@ -126,7 +158,7 @@ commands:
 
 ```yaml
 github:
-  default_owner: codeforester
+  default_owner: your-github-username
   clone_protocol: ssh
 ```
 
