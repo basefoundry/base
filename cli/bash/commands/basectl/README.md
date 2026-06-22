@@ -73,8 +73,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   hygiene, and GitHub Project metadata using Base's opinionated workflow. It
   uses standard GitHub-style issue categories such as `bug`, `enhancement`,
   `documentation`, `ci`, and `security`, and derives branch names from those
-  categories. Prefer this command for Base repository GitHub workflows when it
-  supports the task.
+  categories. Issue creation is unassigned by default unless `--assignee` is
+  passed or `.github/base-project.yml` sets `project.issue_defaults.assignee`.
+  Prefer this command for Base repository GitHub workflows when it supports the
+  task.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.

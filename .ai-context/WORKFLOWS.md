@@ -22,6 +22,10 @@ Use the smallest accurate `Size` when creating issues: `T` for tiny obvious
 work, `S` for normal small work or unknown scope, `M` for interacting changes,
 and `L` only for work that should probably be split. The default remains `S`
 when automation cannot infer scope.
+Issue creation is unassigned by default unless `basectl gh issue create`
+receives `--assignee <login>` or `.github/base-project.yml` sets
+`project.issue_defaults.assignee`; use `--no-assignee` to skip that repo-local
+default for a specific issue.
 
 Base-managed repositories should carry `.github/workflows/project-intake.yml`
 as the fallback for issues created outside `basectl gh issue create`.

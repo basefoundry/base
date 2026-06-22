@@ -8,7 +8,7 @@ base_gh_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--size <T|S|M|L>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
@@ -32,6 +32,8 @@ Branch naming:
 Issue create project options:
   --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
   --category <category>         Issue label category. Defaults to enhancement.
+  --assignee <login>            Assign the issue to a GitHub login.
+  --no-assignee                 Do not assign the issue, even when repo config has a default.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
@@ -42,7 +44,8 @@ Issue categories:
 
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
-  - Issues created through this command are assigned to codeforester.
+  - Issues are unassigned unless --assignee is passed or .github/base-project.yml
+    sets project.issue_defaults.assignee.
   - When the GitHub repo is known, issue create also adds the issue to the
     repo-named Project and applies defaults from .github/base-project.yml.
   - PR creation auto-injects Fixes #<issue> when the branch follows the Base
@@ -56,7 +59,7 @@ base_gh_issue_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--size <T|S|M|L>] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
 
 Purpose:
@@ -68,12 +71,15 @@ Branch naming:
 Issue create project options:
   --repo <owner/name>           Repository to create the issue in. Defaults to the origin remote.
   --category <category>         Issue label category. Defaults to enhancement.
+  --assignee <login>            Assign the issue to a GitHub login.
+  --no-assignee                 Do not assign the issue, even when repo config has a default.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
   --no-project                  Skip Project metadata updates.
 
 Default category: enhancement.
+Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml.
 Categories: bug, enhancement, documentation, ci, security.
 EOF
 }
@@ -330,6 +336,50 @@ base_gh_project_config_path() {
     printf '%s\n' "$path"
 }
 
+base_gh_trim_scalar() {
+    printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+base_gh_issue_default_assignee_from_config() {
+    local in_defaults=0
+    local in_project=0
+    local line path trimmed value
+
+    path="$1"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        trimmed="$(base_gh_trim_scalar "$line")"
+        [[ -n "$trimmed" && "$trimmed" != \#* ]] || continue
+
+        if [[ "$line" != [[:space:]]* ]]; then
+            in_defaults=0
+            if [[ "$trimmed" == "project:" ]]; then
+                in_project=1
+            else
+                in_project=0
+            fi
+            continue
+        fi
+
+        if ((in_project)) && [[ "$line" == "  "* && "$line" != "    "* ]]; then
+            if [[ "$trimmed" == "issue_defaults:" ]]; then
+                in_defaults=1
+            else
+                in_defaults=0
+            fi
+            continue
+        fi
+
+        if ((in_project)) && ((in_defaults)) && [[ "$line" == "    "* && "$trimmed" == assignee:* ]]; then
+            value="$(base_gh_trim_scalar "${trimmed#assignee:}")"
+            [[ -n "$value" ]] || return 1
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done <"$path"
+
+    return 1
+}
+
 base_gh_issue_number_from_output() {
     local output="$1"
     local issue_number
@@ -399,13 +449,17 @@ base_gh_do_issue() {
 }
 
 base_gh_issue_create() {
+    local assignee=""
+    local assignee_explicit=0
     local body=""
     local category=""
     local configure_project=1
     local config_path=""
     local github_repo=""
+    local issue_args=()
     local issue_number=""
     local issue_output=""
+    local no_assignee=0
     local project_owner=""
     local project_size=""
     local project_title=""
@@ -424,6 +478,14 @@ base_gh_issue_create() {
             --title)
                 title="${2:-}"
                 shift
+                ;;
+            --assignee)
+                assignee="${2:-}"
+                assignee_explicit=1
+                shift
+                ;;
+            --no-assignee)
+                no_assignee=1
                 ;;
             --body)
                 body="${2:-}"
@@ -468,21 +530,37 @@ base_gh_issue_create() {
     if [[ -n "$project_size" ]]; then
         base_gh_validate_project_size "$project_size" || return 1
     fi
+    if ((assignee_explicit)) && ((no_assignee)); then
+        base_gh_error "Options '--assignee' and '--no-assignee' cannot be used together."
+        return 1
+    fi
+    if ((assignee_explicit)) && [[ -z "$assignee" ]]; then
+        base_gh_error "Option '--assignee' requires an argument."
+        return 1
+    fi
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
-    if [[ -n "$body" ]]; then
-        if [[ -n "$github_repo" ]]; then
-            issue_output="$(base_gh_run issue create --title "$title" --body "$body" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
-        else
-            issue_output="$(base_gh_run issue create --title "$title" --body "$body" --label "$category" --assignee codeforester)" || return $?
-        fi
-    else
-        if [[ -n "$github_repo" ]]; then
-            issue_output="$(base_gh_run issue create --title "$title" --label "$category" --assignee codeforester --repo "$github_repo")" || return $?
-        else
-            issue_output="$(base_gh_run issue create --title "$title" --label "$category" --assignee codeforester)" || return $?
-        fi
+    config_path="$(base_gh_project_config_path || true)"
+    if ((assignee_explicit)); then
+        :
+    elif ((no_assignee)); then
+        assignee=""
+    elif [[ -n "$config_path" ]]; then
+        assignee="$(base_gh_issue_default_assignee_from_config "$config_path" || true)"
     fi
+
+    issue_args=(issue create --title "$title")
+    if [[ -n "$body" ]]; then
+        issue_args+=(--body "$body")
+    fi
+    issue_args+=(--label "$category")
+    if [[ -n "$assignee" ]]; then
+        issue_args+=(--assignee "$assignee")
+    fi
+    if [[ -n "$github_repo" ]]; then
+        issue_args+=(--repo "$github_repo")
+    fi
+    issue_output="$(base_gh_run "${issue_args[@]}")" || return $?
     printf '%s\n' "$issue_output"
 
     if ((configure_project)) && [[ -n "$github_repo" ]]; then
@@ -492,7 +570,6 @@ base_gh_issue_create() {
         }
         [[ -n "$project_title" ]] || project_title="$(base_gh_default_project_title "$github_repo")"
         [[ -n "$project_owner" ]] || project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
-        config_path="$(base_gh_project_config_path || true)"
         if [[ -n "$config_path" ]]; then
             local field_args=(
                 "$issue_number"

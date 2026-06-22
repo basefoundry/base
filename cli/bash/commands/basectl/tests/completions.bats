@@ -271,6 +271,8 @@ EOF
     [[ "$output" == *"--category"* ]]
     [[ "$output" == *"--title"* ]]
     [[ "$output" == *"--body"* ]]
+    [[ "$output" == *"--assignee"* ]]
+    [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size"* ]]
     [[ "$output" != *"--type"* ]]
 }

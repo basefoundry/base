@@ -200,7 +200,7 @@ _base_basectl_completion() {
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "list create start" "$cur"
                     else
-                        _base_basectl_completion_compgen "--category --title --body --repo --project --project-owner --size --no-project -h --help" "$cur"
+                        _base_basectl_completion_compgen "--category --title --body --repo --assignee --no-assignee --project --project-owner --size --no-project -h --help" "$cur"
                     fi
                     ;;
                 pr)
