@@ -131,19 +131,29 @@ Complete these steps in `basefoundry/homebrew-base` after the Base tag exists:
    ```bash
    brew install --build-from-source Formula/base.rb
    brew test basefoundry/base/base
-   brew audit --new --formula Formula/base.rb
+   brew audit --new --formula basefoundry/base/base
    ```
 
-6. Run the `Build Base Bottles` GitHub Actions workflow from the tap release
+6. Confirm the tap-owned `base-bash-libs` formula remains Homebrew/core-ready.
+   The formula should keep its stable release archive, SPDX license metadata,
+   `bash` dependency, test block, and `base-bash-libs` package name so a future
+   `basefoundry` Homebrew/core formula can depend on it directly:
+
+   ```bash
+   brew test basefoundry/base/base-bash-libs
+   brew audit --new --formula basefoundry/base/base-bash-libs
+   ```
+
+7. Run the `Build Base Bottles` GitHub Actions workflow from the tap release
    branch. The workflow builds bottles on supported macOS runners, uploads
    bottle tarballs to the tap GitHub Release named `base-vX.Y.Z`, merges the
    generated bottle JSON into `Formula/base.rb`, and pushes the bottle stanza
    back to the branch.
-7. Confirm the tap PR includes a `bottle do` block for supported macOS targets
+8. Confirm the tap PR includes a `bottle do` block for supported macOS targets
    before merging. The bottle `root_url` should point at the tap release created
    by the workflow.
-8. Open or update the tap PR, wait for checks, and merge it.
-9. Smoke-test the consumer bottle and upgrade paths:
+9. Open or update the tap PR, wait for checks, and merge it.
+10. Smoke-test the consumer bottle and upgrade paths:
 
    ```bash
    brew update
@@ -155,7 +165,7 @@ Complete these steps in `basefoundry/homebrew-base` after the Base tag exists:
 
    Use `brew reinstall --force-bottle basefoundry/base/base` when Base is
    already installed on the validation host.
-10. Before 1.0.0, complete the
+11. Before 1.0.0, complete the
    [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) against a
    release candidate or equivalent test formula. Record the exact commands,
    host facts, pre-upgrade state, post-upgrade checks, and any follow-up issues.

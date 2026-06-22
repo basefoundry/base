@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Documented the `base-bash-libs` Homebrew/core readiness path, including the
+  formula-name audit command and future `basefoundry` dependency plan.
+
 ## [1.1.0] - 2026-06-21
 
 ### Changed

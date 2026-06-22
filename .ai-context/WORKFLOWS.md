@@ -113,6 +113,11 @@ Supported macOS tap releases should publish Homebrew bottles before the tap PR
 is merged: run the tap's `Build Base Bottles` workflow from the tap release
 branch, let it upload bottle assets to the tap release `base-vX.Y.Z`, and commit
 the generated `bottle do` stanza back to `Formula/base.rb`.
+Homebrew formula audits should be run by formula name, for example
+`brew audit --new --formula basefoundry/base/base` and
+`brew audit --new --formula basefoundry/base/base-bash-libs`. Keep
+`base-bash-libs` core-ready as a standalone dependency so a future
+Homebrew/core `basefoundry` formula can declare `depends_on "base-bash-libs"`.
 
 ## AI Context Maintenance
 
