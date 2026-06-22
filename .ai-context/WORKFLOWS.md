@@ -62,7 +62,9 @@ clean it up after merge.
 Pull requests are issue-backed by default and scoped to one issue unless there
 is a documented exception. `basectl gh pr create` adds `Fixes #<issue>` from
 Base branch names by default; pass `--no-fixes` only when the PR should not
-close the issue automatically. PR bodies should include:
+close the issue automatically. If `base_manifest.yaml` declares `github.pr`,
+the command renders required PR sections from that project policy. PR bodies
+should include:
 
 - summary of what changed and why
 - issue reference such as `Fixes #<issue>` or `Closes #<issue>`

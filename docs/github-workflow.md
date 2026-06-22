@@ -133,7 +133,8 @@ tooling is authenticated.
 default for one issue. `basectl gh pr create` auto-injects `Fixes #<issue>`
 when the current branch follows the Base `<category>/<issue>-<YYYYMMDD>-<slug>`
 convention; pass `--no-fixes` when the PR should not close the issue
-automatically.
+automatically. When `base_manifest.yaml` declares `github.pr`, PR creation
+renders the body from that project policy and still preserves the issue link.
 
 Fallbacks are allowed when `basectl gh` does not support the needed operation,
 when local GitHub CLI authentication is unavailable, or when the GitHub
@@ -265,6 +266,36 @@ PR bodies should include:
 
 Prefer small PR trains over large mixed PRs. A train may contain several
 worktrees and PRs, but each PR should still close one issue cleanly.
+
+Projects can declare their PR body policy in `base_manifest.yaml`:
+
+```yaml
+github:
+  pr:
+    template: .github/pull_request_template.md
+    required_sections:
+      default:
+        - Summary
+        - Issue
+        - Validation
+      labels:
+        needs-demo:
+          - Demo Impact
+        security:
+          - Security Notes
+        breaking-change:
+          - Migration Notes
+      paths:
+        docs/**:
+          - Docs Impact
+        migrations/**:
+          - Migration Plan
+          - Rollback Plan
+```
+
+`default` sections are always rendered. `labels` and `paths` add sections when
+the linked issue or changed files match. Missing sections are appended to the
+configured template, and duplicate headings are skipped.
 
 ### PR Metadata Inheritance
 

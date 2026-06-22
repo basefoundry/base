@@ -25,6 +25,29 @@ release:
     formula_path: Formula/base.rb
     package: basefoundry/base/base
 
+github:
+  pr:
+    required_sections:
+      default:
+        - Summary
+        - Issue
+        - Validation
+      labels:
+        needs-demo:
+          - Demo Impact
+        security:
+          - Security Notes
+        breaking-change:
+          - Migration Notes
+      paths:
+        docs/**:
+          - Docs Impact
+        .ai-context/**:
+          - AI Context Impact
+        migrations/**:
+          - Migration Plan
+          - Rollback Plan
+
 # Optional relative path to a Homebrew Brewfile for ordinary macOS tools.
 # Base runs `brew bundle --file=<path>` during setup when this is set.
 # Keep Base-specific managed dependencies in `artifacts`; use Brewfile for

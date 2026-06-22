@@ -293,6 +293,11 @@ portable: `Summary`, `Issue`, `Validation`, `Notes`, and a short checklist.
 Base-specific sections such as `Demo Impact` belong only in projects that
 choose that policy.
 
+Projects that need generated PR body sections can declare them in
+`base_manifest.yaml` under `github.pr.required_sections`. Use `default` for
+sections every PR should carry, `labels` for issue or PR label triggers, and
+`paths` for changed-file globs.
+
 ## GitHub Configuration
 
 `repo init` creates the GitHub repository when needed, using private visibility

@@ -49,7 +49,9 @@ Notes:
   - When the GitHub repo is known, issue create also adds the issue to the
     repo-named Project and applies defaults from .github/base-project.yml.
   - PR creation auto-injects Fixes #<issue> when the branch follows the Base
-    naming convention. Pass --no-fixes to suppress that body injection.
+    naming convention. If base_manifest.yaml declares github.pr, the generated
+    body also follows that project policy. Pass --no-fixes to suppress body
+    injection.
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
 EOF
@@ -99,6 +101,7 @@ Purpose:
 Notes:
   - PR creation links the current issue automatically when the branch follows
     <category>/<issue>-<YYYYMMDD>-<slug>.
+  - base_manifest.yaml may declare github.pr sections for generated PR bodies.
   - --no-fixes disables automatic Fixes #<issue> body injection for create.
   - Pull request implementation work should happen in a dedicated worktree.
 EOF
@@ -287,6 +290,26 @@ base_gh_issue_title() {
     gh issue view "$issue" --json title --jq '.title'
 }
 
+base_gh_issue_labels() {
+    local issue="$1"
+
+    gh issue view "$issue" --json labels --jq '.labels[].name' 2>/dev/null || true
+}
+
+base_gh_pr_changed_paths() {
+    local default_branch base_ref candidate
+
+    default_branch="$(base_gh_default_branch)"
+    for candidate in "origin/$default_branch" "$default_branch"; do
+        if git rev-parse --verify --quiet "$candidate^{commit}" >/dev/null; then
+            base_ref="$candidate"
+            break
+        fi
+    done
+    [[ -n "${base_ref:-}" ]] || return 0
+    git diff --name-only "$base_ref"...HEAD
+}
+
 base_gh_infer_github_repo() {
     local remote_url
 
@@ -332,6 +355,16 @@ base_gh_project_config_path() {
     root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
     [[ -n "$root" ]] || return 1
     path="$root/.github/base-project.yml"
+    [[ -f "$path" ]] || return 1
+    printf '%s\n' "$path"
+}
+
+base_gh_manifest_path() {
+    local root path
+
+    root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$root" ]] || return 1
+    path="$root/base_manifest.yaml"
     [[ -f "$path" ]] || return 1
     printf '%s\n' "$path"
 }
@@ -397,6 +430,34 @@ base_gh_project_issue_set_fields() {
         return 1
     }
     "$wrapper" --project base base_github_projects project issue set-fields "$@"
+}
+
+base_gh_pr_policy_body() {
+    local issue="$1"
+    local manifest wrapper label path
+    local policy_args=()
+
+    manifest="$(base_gh_manifest_path || true)"
+    if [[ -z "$manifest" ]]; then
+        printf 'Fixes #%s\n' "$issue"
+        return 0
+    fi
+
+    wrapper="${BASE_GH_PYTHON_WRAPPER:-${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}}"
+    [[ -x "$wrapper" ]] || {
+        printf 'Fixes #%s\n' "$issue"
+        return 0
+    }
+
+    policy_args=(--project base base_pr_policy body --manifest "$manifest" --issue "$issue")
+    while IFS= read -r label || [[ -n "$label" ]]; do
+        [[ -n "$label" ]] && policy_args+=(--label "$label")
+    done < <(base_gh_issue_labels "$issue")
+    while IFS= read -r path || [[ -n "$path" ]]; do
+        [[ -n "$path" ]] && policy_args+=(--path "$path")
+    done < <(base_gh_pr_changed_paths)
+
+    "$wrapper" "${policy_args[@]}"
 }
 
 base_gh_validate_project_size() {
@@ -616,7 +677,11 @@ base_gh_pr_create() {
     issue="$(base_gh_current_issue_from_branch || true)"
     if [[ -n "$issue" && "$no_fixes" -eq 0 ]]; then
         body_file="$(mktemp "${TMPDIR:-/tmp}/basectl-gh-pr.XXXXXX")" || return 1
-        printf 'Fixes #%s\n' "$issue" > "$body_file"
+        base_gh_pr_policy_body "$issue" > "$body_file" || {
+            status=$?
+            rm -f "$body_file"
+            return "$status"
+        }
         printf 'Auto-linking PR to issue #%s from branch name. Pass --no-fixes to suppress.\n' "$issue"
         base_gh_run pr create --fill --body-file "$body_file" "${passthrough[@]}"
         status=$?
