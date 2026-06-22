@@ -123,9 +123,11 @@ Base has its own self-demo:
 basectl demo base -- --non-interactive
 ```
 
-That script lives in the Base repository at `demo/demo.sh`. It demonstrates the
-Base control-plane workflow using Base itself and does not depend on the
-external reference repository.
+That script lives in the Base repository at `$BASE_HOME/demo/demo.sh`. It
+demonstrates the Base control-plane workflow using Base itself and does not
+depend on the external reference repository. It follows the same
+`--non-interactive` pattern described above, so contributors can compare their
+own demo scripts against a working reference.
 
 ## Reference Project
 
