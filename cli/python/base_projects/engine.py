@@ -14,7 +14,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 import base_cli
-from base_cli.config import read_user_config
 from base_cli.paths import base_cache_root, discover_manifest
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
@@ -816,12 +815,8 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int
 def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
     if workspace:
         return Path(workspace).expanduser().resolve()
-    try:
-        workspace_root = read_user_config().workspace.root
-    except (RuntimeError, ValueError) as exc:
-        raise ProjectDiscoveryError(str(exc)) from exc
-    if workspace_root is not None:
-        return workspace_root
+    if ctx.workspace_root is not None:
+        return ctx.workspace_root
     if ctx.base_home is None:
         raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
     return ctx.base_home.parent.resolve()
