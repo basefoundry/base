@@ -122,6 +122,58 @@ class AppSubcommandTests(unittest.TestCase):
             self.assertFalse((home / ".cache" / "base").exists())
             self.assertIn("preview", result.stderr)
 
+    def test_group_standard_debug_option_before_subcommand(self) -> None:
+        app = base_cli.App(name="group-debug", log_to_file=False)
+        seen = {}
+
+        @app.subcommand()
+        def status(ctx: base_cli.Context) -> None:
+            seen["debug"] = ctx.debug
+            ctx.log.debug("debug status")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(app, ["--debug", "status"], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertTrue(seen["debug"])
+        self.assertIn("debug status", result.stderr)
+
+    def test_group_standard_environment_option_before_subcommand(self) -> None:
+        app = base_cli.App(name="group-environment", log_to_file=False)
+        seen = {}
+
+        @app.subcommand()
+        def status(ctx: base_cli.Context) -> None:
+            seen["environment"] = ctx.environment
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(app, ["--environment", "stage", "status"], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["environment"], "stage")
+
+    def test_subcommand_standard_debug_option_after_subcommand_still_works(self) -> None:
+        app = base_cli.App(name="subcommand-debug", log_to_file=False)
+        seen = {}
+
+        @app.subcommand()
+        def status(ctx: base_cli.Context) -> None:
+            seen["debug"] = ctx.debug
+            ctx.log.debug("debug status")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(app, ["status", "--debug"], home=home)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertTrue(seen["debug"])
+        self.assertIn("debug status", result.stderr)
+
     def test_subcommand_redacts_sensitive_options_per_subcommand(self) -> None:
         app = base_cli.App(name="secret-subcommands")
         seen = {}

@@ -12,6 +12,9 @@ from .logging import configure_logger, log_invocation
 from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
 from .redaction import parameter_name_from_decls
 
+_STANDARD_OPTION_KEYS = ("debug", "environment", "config", "keep_temp", "log_file")
+_GROUP_STANDARD_OPTIONS_KEY = "base_cli_standard_options"
+
 
 def _require_click():
     try:
@@ -96,9 +99,7 @@ class App:
                 command_kwargs.setdefault("help", self.help)
             return click.command(*self._command_args, **command_kwargs)(wrapper)
 
-        group_wrapper = _build_group_wrapper()
-        if self.version is not None:
-            group_wrapper = click.version_option(self.version)(group_wrapper)
+        group_wrapper = _decorate_standard_options(click, _build_group_wrapper(click), self.version)
         group = click.group(name=self.name, help=self.help)(group_wrapper)
         for func, command_args, command_kwargs in self._subcommands:
             wrapper = self._build_command_wrapper(click, func, include_version=False)
@@ -111,7 +112,10 @@ class App:
 
         @functools.wraps(func)
         def wrapper(**kwargs: Any):
-            standard = _pop_standard_options(kwargs)
+            standard = _merge_standard_options(
+                _group_standard_options(click),
+                _pop_standard_options(kwargs),
+            )
             try:
                 context = self._create_context(standard, sensitive_options, dry_run=bool(kwargs.get(dry_run_parameter)))
             except (RuntimeError, ValueError) as exc:
@@ -262,10 +266,15 @@ def argument(*param_decls: str, **attrs: Any):
 
 def _decorate_standard_options(click: Any, func: Callable[..., Any], version: str | None):
     func = click.option("--log-file", type=click.Path(dir_okay=False), help="Override the persistent log file.")(func)
-    func = click.option("--keep-temp", is_flag=True, help="Preserve this run's temp directory.")(func)
+    func = click.option("--keep-temp", is_flag=True, default=None, help="Preserve this run's temp directory.")(func)
     func = click.option("--config", type=click.Path(dir_okay=False), help="Load an additional config file.")(func)
     func = click.option("--environment", help="Set the Base CLI environment.")(func)
-    func = click.option("--debug", is_flag=True, help="Enable DEBUG logging on the user-facing stream.")(func)
+    func = click.option(
+        "--debug",
+        is_flag=True,
+        default=None,
+        help="Enable DEBUG logging on the user-facing stream.",
+    )(func)
     if version is not None:
         func = click.version_option(version)(func)
     return func
@@ -273,14 +282,34 @@ def _decorate_standard_options(click: Any, func: Callable[..., Any], version: st
 
 def _pop_standard_options(kwargs: dict[str, Any]) -> dict[str, Any]:
     standard = {}
-    for key in ("debug", "environment", "config", "keep_temp", "log_file"):
+    for key in _STANDARD_OPTION_KEYS:
         standard[key] = kwargs.pop(key, None)
     return standard
 
 
-def _build_group_wrapper() -> Callable[[], None]:
-    def group_wrapper() -> None:
-        return None
+def _merge_standard_options(group_standard: dict[str, Any], command_standard: dict[str, Any]) -> dict[str, Any]:
+    merged = {}
+    for key in _STANDARD_OPTION_KEYS:
+        value = command_standard.get(key)
+        merged[key] = group_standard.get(key) if value is None else value
+    return merged
+
+
+def _group_standard_options(click: Any) -> dict[str, Any]:
+    context = click.get_current_context(silent=True)
+    parent = context.parent if context is not None else None
+    if parent is None or not isinstance(parent.obj, dict):
+        return {}
+    standard = parent.obj.get(_GROUP_STANDARD_OPTIONS_KEY)
+    return dict(standard) if isinstance(standard, dict) else {}
+
+
+def _build_group_wrapper(click: Any) -> Callable[..., None]:
+    @click.pass_context
+    def group_wrapper(context: Any, **kwargs: Any) -> None:
+        obj = dict(context.obj) if isinstance(context.obj, dict) else {}
+        obj[_GROUP_STANDARD_OPTIONS_KEY] = _pop_standard_options(kwargs)
+        context.obj = obj
 
     return group_wrapper
 

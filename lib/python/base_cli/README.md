@@ -125,10 +125,12 @@ def sync_project(ctx: base_cli.Context, dry_run: bool) -> None:
 
 Subcommands use the same `base_cli.option()` and `base_cli.argument()` metadata
 as single commands. `App(help=...)` appears in the command group's `--help`
-output. Standard Base options belong to the subcommand invocation, for example
-`workspace-tools status --debug demo`. Use either `@app.command()` for a
-single-command CLI or `@app.subcommand()` for a command group; do not mix the
-two registration styles on one `App`.
+output. For subcommand apps, prefer standard Base options before the subcommand
+name, for example `workspace-tools --debug status demo`. The post-subcommand
+form, such as `workspace-tools status --debug demo`, remains accepted for
+compatibility. Use either `@app.command()` for a single-command CLI or
+`@app.subcommand()` for a command group; do not mix the two registration styles
+on one `App`.
 
 ## Options And Arguments
 
