@@ -559,6 +559,12 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$action" == "bootstrap" ]]; then
         printf '%s\n' "${BASE_SETUP_RECREATE_PROJECT_VENV:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-bootstrap-recreate-venv"
     fi
+    if [[ -f "$BASE_SETUP_TEST_STATE_DIR/project-setup-fail-before-output" ]]; then
+        if [[ -f "$BASE_SETUP_TEST_STATE_DIR/project-setup-stderr" ]]; then
+            cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-stderr" >&2
+        fi
+        exit "$(cat "$BASE_SETUP_TEST_STATE_DIR/project-setup-exit-code")"
+    fi
     if [[ "$action" == "precheck" && "$output_format" == "json" ]]; then
         if [[ "$remote_network" == true ]]; then
             printf '[{"id":"BASE-P080","status":"ok","name":"git_repository","message":"Project is inside a Git repository.","fix":""},{"id":"BASE-P083","status":"ok","name":"git_origin_reachability","message":"Project Git origin remote is reachable.","fix":""}]\n'

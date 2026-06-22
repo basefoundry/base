@@ -2069,7 +2069,9 @@ setup_run_check_json() {
 
     if setup_profiles_enabled; then
         if ! profile_json="$(setup_run_base_dev_layer check --format json)"; then
-            [[ -n "$profile_json" ]] || profile_json='{"schema_version":1,"status":"error","profiles":[],"checks":[]}'
+            if [[ -z "$profile_json" ]]; then
+                return 1
+            fi
         fi
         profile_status="$(setup_json_payload_status "$profile_json")"
         status="$(setup_merge_diagnostic_status "$status" "$profile_status")"
@@ -2077,7 +2079,9 @@ setup_run_check_json() {
 
     if [[ -n "$project" ]]; then
         if ! project_json="$(setup_run_project_artifact_check_json "$remote_network")"; then
-            [[ -n "$project_json" ]] || project_json='{"schema_version":1,"status":"error","checks":[]}'
+            if [[ -z "$project_json" ]]; then
+                return 1
+            fi
         fi
         project_status="$(setup_json_payload_status "$project_json")"
         status="$(setup_merge_diagnostic_status "$status" "$project_status")"
