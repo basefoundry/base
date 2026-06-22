@@ -17,6 +17,14 @@ see [Release Process](release-process.md).
 For self-guided or live walkthrough material, see
 [Presentations](presentations/README.md).
 
+## Internal Planning Artifacts
+
+The `docs/superpowers/` directory contains agent-written planning artifacts
+such as implementation plans and feature specs. These files are useful for
+understanding how a change was shaped, but they are not the canonical product
+contract. Treat the mapped documents below, the top-level README, FAQ, and
+CHANGELOG as the normative documentation for shipped Base behavior.
+
 ## Naming Convention
 
 Use stable topic names for documentation files:
