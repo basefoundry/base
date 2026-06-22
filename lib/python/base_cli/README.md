@@ -160,6 +160,9 @@ def main(ctx: base_cli.Context, preview: bool) -> None:
 
 The conventional `dry_run` parameter is recognized automatically, so commands
 using `@base_cli.option("--dry-run", is_flag=True)` do not need the marker.
+Only one option on a command may be marked `dry_run=True`; duplicate dry-run
+markers fail during command registration so authors do not accidentally ship an
+option that is ignored by `ctx.dry_run`.
 
 ## Standard Options
 
