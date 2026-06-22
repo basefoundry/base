@@ -22,6 +22,18 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_uv_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\npython:\n  manager: uv\n",
+        encoding="utf-8",
+    )
+    python_bin = project_root / ".venv" / "bin" / "python"
+    python_bin.parent.mkdir(parents=True)
+    python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+    python_bin.chmod(0o755)
+
+
 def write_last_check(home: Path, project: str, checked_at: str, status: str = "ok") -> None:
     record_path = home / ".base.d" / project / "checks" / "last.json"
     record_path.parent.mkdir(parents=True)
@@ -293,6 +305,23 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertIn("base                 ok     ready    valid    2026-06-17", stdout)
         self.assertIn("demo                 warn   missing  valid    -", stdout)
         self.assertIn("1 project(s) need attention", stdout)
+
+    def test_workspace_status_reports_uv_project_venv_ready_without_base_project_venv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_uv_manifest(workspace / "bankbuddy", "bankbuddy")
+
+            status, stdout, stderr = invoke_engine(["status", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("bankbuddy            ok     ready    valid    -", stdout)
+        self.assertIn("All discovered projects look ok.", stdout)
 
     def test_workspace_status_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

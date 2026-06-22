@@ -21,6 +21,7 @@ from base_setup.engine import manifest_checks
 from base_setup.engine import pre_venv_manifest_checks
 from base_setup.engine import read_default_manifest
 from base_setup.manifest import BaseManifest, ManifestError, read_manifest
+from base_setup.uv import manifest_uses_uv_project_manager
 
 
 class ProjectDiscoveryError(RuntimeError):
@@ -200,7 +201,7 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
         )
 
     last_check = project_last_check(manifest.project_name)
-    venv_dir = project_venv_dir(manifest.project_name)
+    venv_dir = project_venv_dir(manifest)
     if project_venv_ready(venv_dir):
         return WorkspaceProjectStatus(
             name=manifest.project_name,
@@ -225,8 +226,10 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
     )
 
 
-def project_venv_dir(project_name: str) -> Path:
-    return base_state_root() / project_name / ".venv"
+def project_venv_dir(manifest: BaseManifest) -> Path:
+    if manifest_uses_uv_project_manager(manifest):
+        return manifest.path.parent / ".venv"
+    return base_state_root() / manifest.project_name / ".venv"
 
 
 def project_venv_ready(venv_dir: Path) -> bool:
@@ -392,11 +395,14 @@ def workspace_project_check_result(
             checks=checks,
         )
 
-    venv_check = project_venv_check(manifest.project_name)
-    if venv_check.ok:
-        checks = (venv_check,) + manifest_checks(default_manifest, manifest)
+    if manifest_uses_uv_project_manager(manifest):
+        checks = manifest_checks(default_manifest, manifest)
     else:
-        checks = pre_venv_manifest_checks(manifest) + (venv_check,)
+        venv_check = project_venv_check(manifest)
+        if venv_check.ok:
+            checks = (venv_check,) + manifest_checks(default_manifest, manifest)
+        else:
+            checks = pre_venv_manifest_checks(manifest) + (venv_check,)
 
     return WorkspaceProjectCheckResult(
         name=manifest.project_name,
@@ -507,8 +513,8 @@ def most_severe_status(*statuses: str) -> str:
     return "ok"
 
 
-def project_venv_check(project_name: str) -> ArtifactCheck:
-    venv_dir = project_venv_dir(project_name)
+def project_venv_check(manifest: BaseManifest) -> ArtifactCheck:
+    venv_dir = project_venv_dir(manifest)
     if project_venv_ready(venv_dir):
         return ArtifactCheck(
             name="project_virtualenv",
@@ -522,7 +528,7 @@ def project_venv_check(project_name: str) -> ArtifactCheck:
         name="project_virtualenv",
         ok=False,
         message=f"Project virtual environment is missing or incomplete at '{venv_dir}'.",
-        fix=f"Run 'basectl setup {project_name} --recreate-venv' to recreate the project virtual environment.",
+        fix=f"Run 'basectl setup {manifest.project_name} --recreate-venv' to recreate the project virtual environment.",
         status="error",
         finding_id="BASE-P050",
     )

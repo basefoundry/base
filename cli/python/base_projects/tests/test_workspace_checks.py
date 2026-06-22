@@ -20,6 +20,23 @@ def write_manifest(project_root: Path, name: str) -> None:
     )
 
 
+def write_uv_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\npython:\n  manager: uv\n",
+        encoding="utf-8",
+    )
+    (project_root / "pyproject.toml").write_text(
+        f"[project]\nname = \"{name}\"\nrequires-python = \">=3.12\"\n",
+        encoding="utf-8",
+    )
+    (project_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+    python_bin = project_root / ".venv" / "bin" / "python"
+    python_bin.parent.mkdir(parents=True)
+    python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+    python_bin.chmod(0o755)
+
+
 def write_workspace_manifest(path: Path, repos: str | None = None) -> None:
     path.write_text(
         "\n".join(
@@ -220,6 +237,48 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertIn("Project: broken [error]", stdout)
         self.assertIn("BASE-P002", stdout)
         self.assertIn("Workspace has 1 error finding(s).", stdout)
+
+    def test_workspace_check_uses_uv_project_venv_without_base_project_venv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_uv_manifest(workspace / "bankbuddy", "bankbuddy")
+
+            with mock.patch("base_setup.uv.process.command_exists", return_value=True):
+                status, stdout, stderr = invoke_engine(["check", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Project: bankbuddy [ok]", stdout)
+        self.assertIn("BASE-P154", stdout)
+        self.assertNotIn("BASE-P050", stdout)
+        self.assertIn("All discovered projects passed.", stdout)
+
+    def test_workspace_doctor_uses_uv_project_venv_without_base_project_venv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_uv_manifest(workspace / "bankbuddy", "bankbuddy")
+
+            with mock.patch("base_setup.uv.process.command_exists", return_value=True):
+                status, stdout, stderr = invoke_engine(["doctor", "--workspace", str(workspace)], base_home, home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Project: bankbuddy [ok]", stdout)
+        self.assertIn("BASE-P154", stdout)
+        self.assertNotIn("BASE-P050", stdout)
+        self.assertIn("All discovered projects passed.", stdout)
 
     def test_workspace_check_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
