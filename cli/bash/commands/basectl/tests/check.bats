@@ -524,6 +524,33 @@ load ./setup_helpers.bash
     [ "${stderr:-}" = "" ]
 }
 
+@test "basectl check project --format json fails fast on runtime directory errors" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/bats-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv" 1
+    touch "$TEST_STATE_DIR/project-setup-fail-before-output"
+    printf "Error: Unable to create Base runtime directory '%s'.\n" "$TEST_TMPDIR/unwritable-cache/cli/base_setup/logs" > "$TEST_STATE_DIR/project-setup-stderr"
+
+    run_base_command_separate_stderr BASE_SETUP_TEST_WORKSPACE="$workspace" check demo --format json
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+    [[ "$stderr" == *"Error: Unable to create Base runtime directory"* ]]
+    [[ "$stderr" != *'"project_checks"'* ]]
+    [[ "$stderr" != *"Project artifact check passed."* ]]
+}
+
 @test "basectl check project --format json reports broken project virtualenv integrity" {
     local missing_home="$TEST_TMPDIR/missing-project-python-home"
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
