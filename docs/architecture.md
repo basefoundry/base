@@ -727,14 +727,23 @@ These extras emerge organically from real needs — they are not designed upfron
 
 ---
 
-## Open Questions (To Resolve Through Use)
+## Settled Design References
 
-- Version conflict resolution strategy across projects with different dependency versions
-- Docker/dev container integration path for banyanlabs
-- How Base handles projects that don't use Python at all
-- Fish shell support — revisit if real demand emerges
-- Workspace manifest location, trust model, and clone/update policy for team
-  onboarding
+Several questions from the early architecture pass now have dedicated reference
+documents:
+
+- Workspace manifest location, trust, clone, pull, and team-onboarding policy
+  are covered by [Workspace Manifest](workspace-manifest.md).
+- Non-Python projects stay inside the Base manifest command contract and use
+  project-owned tools through `basectl run`, `basectl test`, `mise`, or direct
+  shell commands. See [Tool Boundaries](tool-boundaries.md) and
+  [Python Manifest Section](python-manifest.md).
+- Docker and dev container integration remain coexistence and orchestration
+  topics rather than Base-owned container management. See
+  [Tool Boundaries](tool-boundaries.md).
+
+Remaining questions should be tracked as GitHub Issues when they become concrete
+enough to affect a project or release.
 
 ---
 
@@ -750,5 +759,5 @@ for that boundary. Base must ship first.
 
 ---
 
-*This document reflects design decisions made in May 2026. It is a living document —
-update it as the design evolves through real implementation experience.*
+*This is a living document. See [CHANGELOG.md](../CHANGELOG.md) for the dated
+history of architecture and command-surface changes.*
