@@ -230,7 +230,14 @@ def option(*param_decls: str, sensitive: bool = False, dry_run: bool = False, **
             options.add(parameter_name_from_decls(param_decls))
             func.__base_cli_sensitive_options__ = options
         if dry_run:
-            func.__base_cli_dry_run_parameter__ = parameter_name_from_decls(param_decls)
+            dry_run_parameter = parameter_name_from_decls(param_decls)
+            existing_dry_run_parameter = getattr(func, "__base_cli_dry_run_parameter__", None)
+            if existing_dry_run_parameter is not None:
+                raise RuntimeError(
+                    f"{func.__name__} already designates '{existing_dry_run_parameter}' as dry-run. "
+                    "only one option can be designated dry_run=True."
+                )
+            func.__base_cli_dry_run_parameter__ = dry_run_parameter
         return func
 
     return decorator

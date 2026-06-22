@@ -16,6 +16,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Corrected 1.1.0 documentation status, source-checkout `base-bash-libs`
   prerequisites, future-design banners, and CI bootstrap package guidance.
 
+### Fixed
+
+- Made `base_cli.option(..., dry_run=True)` reject duplicate dry-run markers on
+  the same command function.
+
 ## [1.1.0] - 2026-06-21
 
 ### Changed
