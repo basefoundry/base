@@ -10,6 +10,7 @@ from base_cli.paths import discover_manifest
 
 from .artifacts import check_artifact
 from .artifacts import merge_artifacts
+from .artifacts import ProjectRuntimeConfig
 from .artifacts import reconcile_artifacts
 from .artifacts import resolve_artifact_definitions
 from .build import check_build
@@ -39,6 +40,7 @@ from .ide import reconcile_ide_installs
 from .ide import reconcile_ide_settings
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .pyproject import check_pyproject
+from .python_policy import python_requirement_checks
 from .uv import check_uv
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project
@@ -210,7 +212,13 @@ def reconcile_manifest(
     reconcile_uv_project(ctx, effective_manifest, dry_run=dry_run)
 
     if artifacts:
-        reconcile_artifacts(ctx, artifacts, definitions, effective_manifest.project_name, dry_run=dry_run)
+        reconcile_artifacts(
+            ctx,
+            artifacts,
+            definitions,
+            project_runtime_argument(effective_manifest),
+            dry_run=dry_run,
+        )
 
     ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
@@ -229,7 +237,22 @@ def reconcile_bootstrap_artifacts(
         ctx.log.info("Base default manifest declares no bootstrap artifacts.")
         return
 
-    reconcile_artifacts(ctx, artifacts, definitions, manifest.project_name, dry_run=dry_run)
+    reconcile_artifacts(
+        ctx,
+        artifacts,
+        definitions,
+        project_runtime_argument(manifest),
+        dry_run=dry_run,
+    )
+
+
+def project_runtime_argument(manifest: BaseManifest) -> str | ProjectRuntimeConfig:
+    if manifest.python.requires_python is None:
+        return manifest.project_name
+    return ProjectRuntimeConfig(
+        name=manifest.project_name,
+        python_requirement=manifest.python.requires_python,
+    )
 
 
 def check_manifest(
@@ -329,7 +352,10 @@ def doctor_pre_venv_manifest(
 
 
 def pre_venv_manifest_checks(manifest: BaseManifest, remote_network: bool = False) -> tuple[ArtifactCheck, ...]:
-    return check_git_remote(manifest, check_network=remote_network)
+    checks: list[ArtifactCheck] = []
+    checks.extend(python_requirement_checks(manifest))
+    checks.extend(check_git_remote(manifest, check_network=remote_network))
+    return tuple(checks)
 
 
 def manifest_checks(
@@ -366,7 +392,7 @@ def manifest_checks(
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(effective_manifest.project_name, artifact, definition))
 
-    if not checks:
+    if not pre_venv_checks and not checks:
         checks.append(
             ArtifactCheck(
                 name="manifest",

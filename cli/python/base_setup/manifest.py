@@ -129,6 +129,7 @@ class ActivateConfig:
 @dataclass(frozen=True)
 class PythonConfig:
     manager: str | None = None
+    requires_python: str | None = None
 
 
 @dataclass(frozen=True)
@@ -690,21 +691,27 @@ def _read_python(path: Path, python_data: Any) -> PythonConfig:
     if not isinstance(python_data, dict):
         raise ManifestError(f"{path}: python must be a mapping when provided.")
 
-    allowed_keys = {"manager"}
+    allowed_keys = {"manager", "requires_python"}
     unknown_keys = sorted(set(python_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: python has unsupported keys: {', '.join(unknown_keys)}.")
 
     manager = python_data.get("manager")
-    if manager is None:
-        return PythonConfig()
-    if not isinstance(manager, str) or not manager.strip():
-        raise ManifestError(f"{path}: python.manager must be a non-empty string when provided.")
-    manager = manager.strip()
-    if manager not in SUPPORTED_PYTHON_MANAGERS:
-        supported = ", ".join(sorted(SUPPORTED_PYTHON_MANAGERS))
-        raise ManifestError(f"{path}: python.manager must be one of: {supported}.")
-    return PythonConfig(manager=manager)
+    if manager is not None:
+        if not isinstance(manager, str) or not manager.strip():
+            raise ManifestError(f"{path}: python.manager must be a non-empty string when provided.")
+        manager = manager.strip()
+        if manager not in SUPPORTED_PYTHON_MANAGERS:
+            supported = ", ".join(sorted(SUPPORTED_PYTHON_MANAGERS))
+            raise ManifestError(f"{path}: python.manager must be one of: {supported}.")
+
+    requires_python = python_data.get("requires_python")
+    if requires_python is not None:
+        if not isinstance(requires_python, str) or not requires_python.strip():
+            raise ManifestError(f"{path}: python.requires_python must be a non-empty string when provided.")
+        requires_python = requires_python.strip()
+
+    return PythonConfig(manager=manager, requires_python=requires_python)
 
 
 def _read_optional_runner(path: Path, field_name: str, runner_data: Any) -> str | None:

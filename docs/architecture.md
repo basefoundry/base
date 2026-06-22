@@ -462,11 +462,13 @@ project venv is therefore
 `~/.base.d/base/.venv`. The wrapper `bin/base-wrapper` runs Python packages
 through that project-scoped venv.
 
-A structured `python:` manifest section is the preferred future shape when
-projects need to express requirement files, package requirement strings, or venv
-settings more clearly than artifact rows allow. That section is not part of the
-current manifest contract. See [python-manifest.md](python-manifest.md) for the
-design target and migration boundary.
+A structured `python:` manifest section owns Python project runtime policy.
+`python.manager: uv` delegates environment setup to uv. `python.requires_python`
+lets a project select a supported Python 3.10 through 3.13 minor for
+Base-managed virtualenv creation, while check/doctor distinguish unsupported
+requests from supported-but-unavailable interpreters. See
+[python-manifest.md](python-manifest.md) for the current contract and migration
+boundary.
 
 Homebrew-managed `tool` artifacts currently support `version: latest`. If a
 project requests a pinned Homebrew version, setup fails clearly instead of

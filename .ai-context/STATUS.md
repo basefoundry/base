@@ -20,6 +20,7 @@ The current command surface covers:
 - mise integration
 - bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
+- project Python runtime requirements through `python.requires_python`
 - cleanup, logs, and local command history
 - local config inspection
 - onboarding
@@ -34,8 +35,8 @@ The current command surface covers:
 
 The `v1.1.0` milestone is complete. Future work is tracked in GitHub Issues,
 with Linux runtime support, Docker/service artifacts, project-specific PR
-policy, and broader setup/Python version policy work remaining outside the
-1.1 release contract.
+policy, and broader setup policy work remaining outside the 1.1 release
+contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -44,6 +45,7 @@ source builds treated as fallback validation rather than the normal user path.
 Recent released work includes:
 
 - local command-history index with future report surfaces still deferred
+- project Python version requirements for Base-managed virtualenv creation
 - workspace manifest status/check/doctor reporting plus explicit clone and pull
   support
 - guarded `basectl release publish`

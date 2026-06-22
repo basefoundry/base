@@ -39,6 +39,7 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertFalse(manifest.artifacts[0].bootstrap)
         self.assertEqual(manifest.activate.source, ())
         self.assertIsNone(manifest.python.manager)
+        self.assertIsNone(manifest.python.requires_python)
 
     def test_rejects_missing_manifest_path_with_manifest_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -69,6 +70,28 @@ class ManifestParsingTests(unittest.TestCase):
 
         self.assertEqual(manifest.python.manager, "uv")
 
+    def test_reads_manifest_python_requirement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "python:",
+                        "  requires_python: '>=3.11,<3.14'",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertEqual(manifest.python.requires_python, ">=3.11,<3.14")
+
 
     def test_rejects_invalid_manifest_python_config(self) -> None:
         invalid_values = {
@@ -77,6 +100,8 @@ class ManifestParsingTests(unittest.TestCase):
             "empty_manager": "python:\n  manager: ''",
             "non_string_manager": "python:\n  manager: 7",
             "unsupported_manager": "python:\n  manager: poetry",
+            "empty_requires_python": "python:\n  requires_python: ''",
+            "non_string_requires_python": "python:\n  requires_python: 7",
         }
         for name, python_yaml in invalid_values.items():
             with self.subTest(name=name):
