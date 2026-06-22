@@ -103,7 +103,11 @@ Use `@app.subcommand()` when one CLI needs multiple verbs while keeping Base's
 standard context, logging, redaction, and cleanup lifecycle for each invocation:
 
 ```python
-app = base_cli.App(name="workspace-tools", version="0.1.0")
+app = base_cli.App(
+    name="workspace-tools",
+    version="0.1.0",
+    help="Inspect and sync workspace projects.",
+)
 
 
 @app.subcommand()
@@ -120,10 +124,11 @@ def sync_project(ctx: base_cli.Context, dry_run: bool) -> None:
 ```
 
 Subcommands use the same `base_cli.option()` and `base_cli.argument()` metadata
-as single commands. Standard Base options belong to the subcommand invocation,
-for example `workspace-tools status --debug demo`. Use either `@app.command()`
-for a single-command CLI or `@app.subcommand()` for a command group; do not mix
-the two registration styles on one `App`.
+as single commands. `App(help=...)` appears in the command group's `--help`
+output. Standard Base options belong to the subcommand invocation, for example
+`workspace-tools status --debug demo`. Use either `@app.command()` for a
+single-command CLI or `@app.subcommand()` for a command group; do not mix the
+two registration styles on one `App`.
 
 ## Options And Arguments
 
