@@ -31,6 +31,9 @@ Instead, use the typed contracts Base already understands:
 `activate.source` is intentionally not a setup hook: it does not run during
 `basectl setup`, `basectl check`, or `basectl doctor`, and it exists only for
 shell state that must affect the activated interactive subshell.
+See the `activate.source` field in [Architecture - Project Manifest](architecture.md#project-manifest)
+for the full shell activation contract, including when it runs and its scope
+relative to setup.
 
 When a project needs a product-specific guided installer or imperative
 bootstrap, that logic should live in the project repository, for example:
