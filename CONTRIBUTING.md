@@ -84,6 +84,35 @@ Base source development resolves reusable Bash libraries from the sibling
 `~/work/base-bash-libs` checkout. If that checkout already exists, update it
 instead of cloning a second copy.
 
+## First External PR
+
+Start with an open issue labeled `good first issue`. A good first contribution
+should be real Base work, but it should also be small enough to review without
+private maintainer context: documentation corrections, narrow test coverage,
+small fixture updates, or tightly scoped command-output polish are usually good
+fits.
+
+Before opening the PR:
+
+1. Read the issue acceptance notes and ask for clarification on the issue when
+   the expected result is not explicit.
+2. Create an issue branch and worktree using the workflow above.
+3. Make the smallest change that satisfies the issue.
+4. Run the narrowest validation command that proves the change.
+
+For documentation-only starter issues, `git diff --check` is usually enough.
+For Python-only changes, run the focused pytest target with
+`PYTHONPATH=lib/python:cli/python python -m pytest`. For shell command or
+runtime changes, run the focused BATS test when one exists and broaden only
+when the change crosses command boundaries.
+
+When the full source-checkout suite is needed from a linked worktree under
+`~/work/base-worktrees`, export the reusable Bash library path first:
+
+```bash
+BASE_BASH_LIBS_DIR=~/work/base-bash-libs/lib/bash env -u BASE_HOME ./bin/base-test
+```
+
 ## Running Tests
 
 Run the narrowest relevant checks first, then broaden when the change touches
