@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,22 +9,20 @@ from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.artifacts import homebrew_package_outdated, reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
-from base_setup.process import command_exists, dry_run_command, run_check, run_command
+from base_setup.process import command_exists, run_check
 from base_setup.registry import ArtifactDefinition
+
+from .ai_tools import ai_tool_checks, setup_ai_tools
+from .checks import DevCheck
+from .checks import check_to_doctor_json
+from .checks import check_to_json
+from .checks import checks_status
+from .checks import doctor_status
+from .checks import print_doctor_finding
 
 
 app = base_cli.App(name="base_dev")
 SUPPORTED_PROFILES = ("dev", "sre", "ai")
-
-
-@dataclass(frozen=True)
-class DevCheck:
-    name: str
-    ok: bool
-    message: str
-    fix: str
-    status: str = ""
-    finding_id: str = "BASE-D100"
 
 
 @dataclass(frozen=True)
@@ -36,39 +32,8 @@ class ProfileManifest:
     definitions: tuple[ArtifactDefinition, ...]
 
 
-@dataclass(frozen=True)
-class AITool:
-    name: str
-    display_name: str
-    version_args: tuple[str, ...]
-    installer_url: str
-    installer_shell: str
-
-
 class ProfileError(ValueError):
     pass
-
-
-AI_TOOLS = (
-    AITool(
-        name="codex",
-        display_name="Codex CLI",
-        version_args=("--version",),
-        installer_url="https://chatgpt.com/codex/install.sh",
-        installer_shell="sh",
-    ),
-    AITool(
-        name="claude",
-        display_name="Claude Code",
-        version_args=("--version",),
-        installer_url="https://claude.ai/install.sh",
-        installer_shell="bash",
-    ),
-)
-AI_REMOTE_INSTALLER_ALLOWLIST = (
-    "https://chatgpt.com/codex/install.sh",
-    "https://claude.ai/install.sh",
-)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -241,54 +206,6 @@ def setup_profile_artifacts(
     return 0
 
 
-def setup_ai_tools(ctx: base_cli.Context, dry_run: bool) -> int:
-    ctx.log.info("Setting up Base 'ai' prerequisites.")
-    try:
-        for tool in AI_TOOLS:
-            check = check_ai_tool(tool)
-            if check.ok:
-                ctx.log.info("%s", check.message)
-                continue
-            installer_command = ai_tool_installer_command(tool)
-            log_ai_remote_installer_policy(ctx, tool)
-            ctx.log.info("Installing %s.", tool.display_name)
-            if dry_run:
-                dry_run_command(ctx, list(installer_command))
-            else:
-                run_command(ctx, list(installer_command))
-    except ArtifactError as exc:
-        ctx.log.error(str(exc))
-        return 1
-
-    ctx.log.info("Base 'ai' prerequisite setup is complete.")
-    return 0
-
-
-def ai_remote_installer_urls() -> tuple[str, ...]:
-    return AI_REMOTE_INSTALLER_ALLOWLIST
-
-
-def validate_ai_remote_installer(tool: AITool) -> None:
-    if tool.installer_url not in AI_REMOTE_INSTALLER_ALLOWLIST:
-        raise ArtifactError(
-            "Remote installer URL is not allowlisted for Base 'ai' profile: "
-            f"{tool.installer_url}"
-        )
-
-
-def ai_tool_installer_command(tool: AITool) -> tuple[str, ...]:
-    validate_ai_remote_installer(tool)
-    return ("sh", "-c", f"curl -fsSL {tool.installer_url} | {tool.installer_shell}")
-
-
-def log_ai_remote_installer_policy(ctx: base_cli.Context, tool: AITool) -> None:
-    ctx.log.info(
-        "Remote installer policy: %s uses allowlisted installer %s; execution requires explicit --profile ai.",
-        tool.display_name,
-        tool.installer_url,
-    )
-
-
 def check_profile_manifests(
     ctx: base_cli.Context,
     profile_manifests: tuple[ProfileManifest, ...],
@@ -452,60 +369,6 @@ def dev_checks(
     return tuple(checks)
 
 
-def ai_tool_checks() -> tuple[DevCheck, ...]:
-    return tuple(check_ai_tool(tool) for tool in AI_TOOLS)
-
-
-def check_ai_tool(tool: AITool) -> DevCheck:
-    executable_path = shutil.which(tool.name)
-    if executable_path is None:
-        return DevCheck(
-            name=tool.name,
-            ok=False,
-            message=f"{tool.display_name} '{tool.name}' was not found.",
-            fix=profile_setup_fix("ai"),
-            finding_id="BASE-D107",
-        )
-
-    command = [executable_path, *tool.version_args]
-    completed = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        detail = summarize_command_output(completed.stderr) or summarize_command_output(completed.stdout)
-        message = f"{tool.display_name} version check failed with exit {completed.returncode}."
-        if detail:
-            message = f"{message} {detail}"
-        return DevCheck(
-            name=tool.name,
-            ok=False,
-            message=message,
-            fix=profile_setup_fix("ai"),
-            finding_id="BASE-D107",
-        )
-
-    version = (
-        summarize_command_output(completed.stdout)
-        or summarize_command_output(completed.stderr)
-        or "version unknown"
-    )
-    return DevCheck(
-        name=tool.name,
-        ok=True,
-        message=f"{tool.display_name} is already installed at '{executable_path}' ({version}).",
-        fix="",
-        finding_id="BASE-D107",
-    )
-
-
-def summarize_command_output(output: str | None) -> str:
-    return " ".join((output or "").split())
-
-
 def profile_setup_fix(profile: str) -> str:
     return f"basectl setup --profile {profile}"
 
@@ -597,36 +460,3 @@ def check_github_cli_auth() -> DevCheck:
         fix="gh auth login -h github.com",
         finding_id="BASE-D106",
     )
-
-
-def check_to_json(check: DevCheck) -> dict[str, str]:
-    return {
-        "id": check.finding_id,
-        "status": doctor_status(check),
-        "name": check.name,
-        "message": check.message,
-        "fix": check.fix,
-    }
-
-
-def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
-    return check_to_json(check)
-
-
-def checks_status(checks: tuple[DevCheck, ...]) -> str:
-    statuses = tuple(doctor_status(check) for check in checks)
-    if "error" in statuses:
-        return "error"
-    if "warn" in statuses:
-        return "warn"
-    return "ok"
-
-
-def doctor_status(check: DevCheck) -> str:
-    return check.status or ("ok" if check.ok else "error")
-
-
-def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
-    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}")
-    if fix:
-        print(f"       Fix: {fix}")

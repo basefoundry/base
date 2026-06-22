@@ -16,6 +16,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_dev import ai_tools
 from base_dev import engine
 from base_dev.engine import main
 
@@ -101,14 +102,14 @@ class DevManifestTests(unittest.TestCase):
 
     def test_ai_remote_installer_urls_are_allowlisted(self) -> None:
         self.assertEqual(
-            engine.ai_remote_installer_urls(),
+            ai_tools.ai_remote_installer_urls(),
             (
                 "https://chatgpt.com/codex/install.sh",
                 "https://claude.ai/install.sh",
             ),
         )
         self.assertEqual(
-            [engine.ai_tool_installer_command(tool) for tool in engine.AI_TOOLS],
+            [ai_tools.ai_tool_installer_command(tool) for tool in ai_tools.AI_TOOLS],
             [
                 ("sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"),
                 ("sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"),
@@ -182,7 +183,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertNotIn("claude.ai/install.sh", stderr)
 
     def test_setup_ai_tools_rejects_unallowlisted_remote_installer(self) -> None:
-        tool = engine.AITool(
+        tool = ai_tools.AITool(
             name="bad-ai",
             display_name="Bad AI",
             version_args=("--version",),
@@ -192,11 +193,11 @@ class DevManifestTests(unittest.TestCase):
         ctx = mock.Mock()
 
         with (
-            mock.patch("base_dev.engine.AI_TOOLS", (tool,)),
-            mock.patch("base_dev.engine.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "")),
-            mock.patch("base_dev.engine.run_command") as run_command,
+            mock.patch("base_dev.ai_tools.AI_TOOLS", (tool,)),
+            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "")),
+            mock.patch("base_dev.ai_tools.run_command") as run_command,
         ):
-            status = engine.setup_ai_tools(ctx, dry_run=False)
+            status = ai_tools.setup_ai_tools(ctx, dry_run=False)
 
         self.assertEqual(status, 1)
         self.assertIn("Remote installer URL is not allowlisted", ctx.log.error.call_args.args[0])
@@ -207,10 +208,10 @@ class DevManifestTests(unittest.TestCase):
 
         with (
             mock.patch.dict(os.environ, {"CI": "true"}),
-            mock.patch("base_dev.engine.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "")),
-            mock.patch("base_dev.engine.run_command") as run_command,
+            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "")),
+            mock.patch("base_dev.ai_tools.run_command") as run_command,
         ):
-            status = engine.setup_ai_tools(ctx, dry_run=False)
+            status = ai_tools.setup_ai_tools(ctx, dry_run=False)
 
         self.assertEqual(status, 0)
         self.assertEqual(
