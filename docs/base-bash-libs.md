@@ -65,6 +65,47 @@ git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-lib
 source "$HOME/work/base-bash-libs/lib/bash/std/lib_std.sh"
 ```
 
+## Homebrew/Core Readiness
+
+The current public package lives in the `basefoundry/homebrew-base` tap as
+`Formula/base-bash-libs.rb`. That formula is intentionally shaped so it can be
+prepared for Homebrew/core without changing the Base runtime contract:
+
+- it installs from the stable `basefoundry/base-bash-libs` release archive;
+- it declares SPDX license metadata with `license "Apache-2.0"`;
+- it keeps the Homebrew package name `base-bash-libs`;
+- it depends only on Homebrew `bash`;
+- it installs reusable libraries under `libexec/lib/bash`;
+- it includes README, changelog, license, notice, and examples under
+  `pkgshare`; and
+- its formula test sources `lib_std.sh`, imports the companion `file` and `git`
+  libraries, and verifies the expected public functions through Homebrew Bash.
+
+Before submitting or refreshing a Homebrew/core proposal, validate the tap
+formula by name, not by local formula path:
+
+```bash
+brew test basefoundry/base/base-bash-libs
+brew audit --new --formula basefoundry/base/base-bash-libs
+```
+
+The future Homebrew/core path should keep `base-bash-libs` available as its own
+formula so the eventual Base formula can depend on it directly:
+
+```ruby
+depends_on "base-bash-libs"
+```
+
+That lets the intended user-facing Base install remain:
+
+```bash
+brew install basefoundry
+```
+
+Until Homebrew/core accepts those formulae, users should continue installing
+Base and the standalone libraries from the existing tap with the explicit
+`basefoundry/base/...` formula names documented above.
+
 ## How Base Resolves Libraries
 
 When `basectl` loads `base_init.sh`, Base resolves `BASE_BASH_LIBS_DIR` before

@@ -56,7 +56,7 @@ reference. The filename should answer "what is this about?"
   Base-managed environment variables, `~/.baserc`, and mutability rules.
 - [Base Bash Libraries](base-bash-libs.md) documents the standalone
   `base-bash-libs` package, Base's external reusable-library consumption path,
-  and the post-migration boundary.
+  Homebrew/core readiness path, and the post-migration boundary.
 - [Local Observability](observability.md) defines the future local command
   history, last-error explanation, and report model beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,

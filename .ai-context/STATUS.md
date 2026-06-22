@@ -62,6 +62,8 @@ Recent released work includes:
   workflow generation, and resilient `basectl gh` command execution
 - external `base-bash-libs` consumption for reusable Bash libraries, with Base
   retaining only Bash runtime and version helpers
+- documented `base-bash-libs` Homebrew/core readiness as the future standalone
+  dependency for a non-conflicting `basefoundry` core formula
 
 ## Recent Merged Changes
 
@@ -76,6 +78,7 @@ Recent commits on `main` include:
 - Homebrew bottle and upgrade-path release process hardening
 - external reusable Bash library resolution from `base-bash-libs`
 - documented `base-bash-libs` consumption and post-migration contract
+- formula-name Homebrew audit guidance for Base and `base-bash-libs`
 
 ## Useful Orientation Links
 

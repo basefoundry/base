@@ -998,6 +998,15 @@ Use the full formula name `basefoundry/base/base` for Homebrew installs and
 upgrades. `basefoundry/base` is the tap name, not the formula, and bare `base`
 can resolve to unrelated Homebrew formulae or casks.
 
+Base is not yet in Homebrew/core. Until that changes, use the tap commands
+above. The planned core path keeps the reusable Bash libraries as a separate
+`base-bash-libs` dependency so a future non-conflicting Base formula, expected
+to be named `basefoundry`, can install with:
+
+```bash
+brew install basefoundry
+```
+
 The trust step is required on Homebrew versions that block formulae from
 non-official taps until the tap is trusted. It is safe to run again on machines
 that already trust `basefoundry/base`. Existing installs that predate this
