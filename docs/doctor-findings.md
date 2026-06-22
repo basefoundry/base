@@ -160,6 +160,8 @@ when uv tooling or expected uv project files are missing, because check/doctor
 should explain readiness without performing dependency resolution. Command
 invocation still fails hard when a command declares `runner: uv` and the `uv`
 executable is unavailable.
+For the full uv manifest contract, migration paths, and runner configuration,
+see [Python Manifest](python-manifest.md).
 
 `BASE-P160` and `BASE-P161` are advisory manifest command-lint diagnostics for
 `test.command`, `commands.*.command`, and `build.targets.*.command`. They look
@@ -167,6 +169,8 @@ for obvious missing executables or missing/non-executable project script paths
 without executing command strings or treating the manifest as safe. They should
 not reject complex shell syntax or replace human review of unfamiliar
 repositories.
+For uv-backed command execution and `runner: uv` examples, see
+[Python Manifest - Command Runners](python-manifest.md#command-runners).
 
 `BASE-P170` and `BASE-P171` are project Python runtime diagnostics for
 `python.requires_python`. `BASE-P170` validates the request against Base's
