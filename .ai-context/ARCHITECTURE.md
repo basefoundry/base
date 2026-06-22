@@ -29,6 +29,11 @@ Base keeps clear layer ownership:
 - Persistent local state lives under `~/.base.d`.
 - Ephemeral logs, temp files, and caches live under Base's cache root.
 
+The `setup_common.sh` ownership-reduction path is documented in
+`docs/setup-common-ownership.md`: reduce Bash ownership by moving project
+routing and JSON formatting to Python before considering any new shell
+boundary. Do not split `setup_common.sh` into sourced fragments by topic.
+
 ## Runtime Entrypoints
 
 `bin/basectl` is the public control-plane command. It derives `BASE_HOME` from
