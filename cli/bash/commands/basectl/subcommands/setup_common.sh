@@ -187,6 +187,18 @@ setup_recreate_venv_enabled() {
     [[ "${BASE_SETUP_RECREATE_VENV:-false}" == true ]]
 }
 
+setup_base_recreate_venv_enabled() {
+    setup_recreate_venv_enabled || return 1
+    [[ -z "${BASE_SETUP_PROJECT_NAME:-}" || "${BASE_SETUP_PROJECT_NAME:-}" == base ]]
+}
+
+setup_project_recreate_venv_enabled() {
+    local project="$1"
+
+    setup_recreate_venv_enabled || return 1
+    [[ -n "$project" && "$project" != base ]]
+}
+
 setup_notifications_enabled() {
     [[ "${BASE_SETUP_NOTIFY:-true}" == true ]]
 }
@@ -648,7 +660,7 @@ setup_create_virtualenv() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
-    if setup_virtualenv_exists && ! setup_recreate_venv_enabled; then
+    if setup_virtualenv_exists && ! setup_base_recreate_venv_enabled; then
         log_info "Virtual environment already exists at '$venv_dir'."
         return 0
     fi
@@ -683,7 +695,7 @@ setup_base_python_package_installed() {
     local package="$1"
     local venv_dir python_bin
 
-    if setup_is_dry_run && setup_recreate_venv_enabled; then
+    if setup_is_dry_run && setup_base_recreate_venv_enabled; then
         return 1
     fi
 
@@ -1157,7 +1169,20 @@ setup_run_project_bootstrap_layer() {
             -u BASE_PROJECT_VENV_DIR
         )
     fi
-    env "${project_env_args[@]}" BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
+    if setup_project_recreate_venv_enabled "$project"; then
+        env "${project_env_args[@]}" \
+            BASE_HOME="$BASE_HOME" \
+            BASE_PROJECT="$project" \
+            BASE_SETUP_RECREATE_PROJECT_VENV=true \
+            PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$python_bin" -m base_setup "${args[@]}"
+    else
+        env "${project_env_args[@]}" \
+            BASE_HOME="$BASE_HOME" \
+            BASE_PROJECT="$project" \
+            PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$python_bin" -m base_setup "${args[@]}"
+    fi
 }
 
 setup_run_project_artifact_layer() {

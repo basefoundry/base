@@ -429,6 +429,31 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
 }
 
+@test "basectl setup project --recreate-venv targets the project virtualenv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$demo_venv_dir"
+    printf 'base marker\n' > "$base_venv_dir/old.txt"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command setup --dry-run --manifest "$manifest_path" --recreate-venv demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Would move existing virtual environment '$base_venv_dir'"* ]]
+    [ -f "$base_venv_dir/old.txt" ]
+    [ "$(cat "$TEST_STATE_DIR/project-bootstrap-recreate-venv")" = "true" ]
+}
+
 @test "basectl setup infers project name from explicit manifest" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
