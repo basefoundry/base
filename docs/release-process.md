@@ -173,6 +173,24 @@ Complete these steps in `basefoundry/homebrew-base` after the Base tag exists:
    `brew upgrade --no-ask basefoundry/base/base` and the post-upgrade Base
    project checks pass on a qualified host.
 
+### Common Failures And Recovery
+
+If Homebrew tap or bottle validation fails, check the
+[Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) for historical run
+records before retrying. Known recovery patterns include:
+
+- Outdated Command Line Tools: stop the release host validation, update Xcode
+  Command Line Tools until `brew doctor` no longer blocks package installation,
+  then rerun the Homebrew checklist from the failed step.
+- Stale versioned Cellar paths after upgrade: clear the shell command cache with
+  `hash -r`, rerun `/usr/local/bin/basectl update-profile` or
+  `/opt/homebrew/bin/basectl update-profile` with inherited `BASE_*` variables
+  unset, then start a fresh login shell before rechecking `basectl version`.
+- Homebrew source-build sandbox path failures: do not treat user-directory
+  cleanup as the release fix. Prefer bottle publishing for supported macOS
+  hosts, rerun the `Build Base Bottles` workflow, and retry consumer validation
+  with `brew install --force-bottle basefoundry/base/base`.
+
 ## Cleanup
 
 After the Base release PR and Homebrew tap PR are merged, clean up their
