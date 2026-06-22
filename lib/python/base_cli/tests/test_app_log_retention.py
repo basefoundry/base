@@ -30,8 +30,8 @@ class AppLogRetentionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
             log_dir = home / ".cache" / "base" / "cli" / "retention-demo" / "logs"
-            oldest = log_dir / "oldest.log"
-            newest = log_dir / "newest.log"
+            oldest = log_dir / "20260620T120000_oldest.log"
+            newest = log_dir / "20260621T120000_newest.log"
             write_log_file(oldest, 1)
             write_log_file(newest, 2)
 
@@ -40,6 +40,33 @@ class AppLogRetentionTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertFalse(oldest.exists())
             self.assertTrue(newest.exists())
+            self.assertIsNotNone(seen["log_file"])
+            self.assertTrue(seen["log_file"].exists())
+            self.assertEqual(len(tuple(log_dir.glob("*.log"))), 2)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_prunes_by_filename_when_mtimes_disagree(self) -> None:
+        app = base_cli.App(name="retention-filename", max_log_files=2)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("filename retention")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            log_dir = home / ".cache" / "base" / "cli" / "retention-filename" / "logs"
+            older_by_name = log_dir / "20260620T120000_old.log"
+            newer_by_name = log_dir / "20260621T120000_new.log"
+            write_log_file(older_by_name, 2)
+            write_log_file(newer_by_name, 1)
+
+            result = invoke(app, home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertFalse(older_by_name.exists())
+            self.assertTrue(newer_by_name.exists())
             self.assertIsNotNone(seen["log_file"])
             self.assertTrue(seen["log_file"].exists())
             self.assertEqual(len(tuple(log_dir.glob("*.log"))), 2)
@@ -70,6 +97,33 @@ class AppLogRetentionTests(unittest.TestCase):
             self.assertIsNotNone(seen["log_file"])
             self.assertTrue(seen["log_file"].exists())
             self.assertEqual(tuple(log_dir.glob("*.log")), (seen["log_file"],))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_keeps_logs_when_count_is_within_limit(self) -> None:
+        app = base_cli.App(name="retention-within-limit", max_log_files=3)
+        seen = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("within retention limit")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            log_dir = home / ".cache" / "base" / "cli" / "retention-within-limit" / "logs"
+            old_a = log_dir / "20260620T120000_a.log"
+            old_b = log_dir / "20260621T120000_b.log"
+            write_log_file(old_a, 1)
+            write_log_file(old_b, 2)
+
+            result = invoke(app, home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(old_a.exists())
+            self.assertTrue(old_b.exists())
+            self.assertIsNotNone(seen["log_file"])
+            self.assertTrue(seen["log_file"].exists())
+            self.assertEqual(len(tuple(log_dir.glob("*.log"))), 3)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_is_disabled_by_default(self) -> None:

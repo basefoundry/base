@@ -284,22 +284,17 @@ def _prune_log_files(
     max_log_files: int,
     logger: logging.Logger,
 ) -> None:
-    candidates: list[tuple[float, str, Path]] = []
+    candidates: list[tuple[str, Path]] = []
     for path in log_dir.glob("*.log"):
         if _same_path(path, current_log_file):
             continue
-        try:
-            stat = path.stat()
-        except OSError as exc:
-            logger.warning("Could not inspect log file '%s' for pruning: %s", path, exc)
-            continue
-        candidates.append((stat.st_mtime, path.name, path))
+        candidates.append((path.name, path))
 
     excess_count = len(candidates) + 1 - max_log_files
     if excess_count <= 0:
         return
 
-    for _, _, path in sorted(candidates)[:excess_count]:
+    for _, path in sorted(candidates)[:excess_count]:
         try:
             path.unlink()
         except OSError as exc:

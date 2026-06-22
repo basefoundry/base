@@ -20,6 +20,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Made `base_cli.option(..., dry_run=True)` reject duplicate dry-run markers on
   the same command function.
+- Made default `base_cli.App(max_log_files=...)` log retention prune by
+  timestamp-prefixed run-id filename instead of filesystem modification time.
 
 ## [1.1.0] - 2026-06-21
 
