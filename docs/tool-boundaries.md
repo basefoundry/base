@@ -26,7 +26,9 @@ Base is strongest when it stays focused on these responsibilities:
 - shared shell startup and shell-environment layering
 - peer-repo workspace discovery under a shared parent directory
 - workspace-level orchestration across sibling repositories
-- shared execution conventions through `basectl` and a future `base-python-wrapper`
+- shared execution conventions through `basectl` and `base-wrapper`, the
+  Python execution wrapper that routes package commands through project virtual
+  environments
 - a small project manifest and command contract for participating repositories
 
 Base gets weaker when it drifts into becoming any of these:

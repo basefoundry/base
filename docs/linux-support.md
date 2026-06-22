@@ -10,7 +10,7 @@ Start with Ubuntu/Debian runtime support:
 
 - Base Python CLIs run under Linux.
 - `base-wrapper` can select the project venv under `~/.base.d/<project>/.venv`.
-- `basectl projects list`, `check`, `doctor`, and future `ci` work when
+- `basectl projects list`, `check`, `doctor`, and `ci` work when
   prerequisites are already installed.
 - Setup gives clear guidance instead of invoking macOS-only installers.
 
@@ -81,21 +81,20 @@ basectl ci check base --format json
 basectl ci doctor base --format json
 ```
 
-The first CI-compatible milestone documents manual prerequisite setup in the
-workflow before invoking Base. `basectl ci` then runs runtime checks without
-requiring Homebrew or Xcode on Linux.
+The first CI-compatible milestone is live: workflows install their own
+prerequisites before invoking Base, and `basectl ci` runs non-interactive
+runtime checks without requiring Homebrew or Xcode on Linux.
 
 ## Implementation Phases
 
-1. Split macOS-only setup checks from portable runtime checks. Initial support
-   exists through `basectl ci`.
-2. Add Linux platform detection and explicit unsupported-platform messages.
-3. Make `basectl check` and `doctor` report Linux prerequisite status without
-   requiring Homebrew or Xcode.
-4. Add Ubuntu CI coverage for read-only commands.
-5. Add apt-backed setup for simple prerequisites.
-6. Revisit Python installation once the desired Linux Python distribution
-   strategy is clear.
+| Phase | Status | Notes |
+|---|---|---|
+| 1. Split macOS-only setup checks from portable runtime checks. | Done | Initial support exists through the live `basectl ci` entry point. |
+| 2. Add platform detection and explicit unsupported-platform messages. | Done for macOS setup boundaries | `basectl setup` fails clearly outside the supported macOS setup contract. Linux runtime support remains narrower than setup support. |
+| 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Future | `basectl ci` is the current Linux-friendly read-only path; broader Linux prerequisite reporting still needs implementation. |
+| 4. Add Ubuntu CI coverage for read-only commands. | Future | Add once the runtime checks are stable enough to gate every PR. |
+| 5. Add apt-backed setup for simple prerequisites. | Future | Keep setup conservative until the first supported Linux distribution contract is finalized. |
+| 6. Revisit Python installation once the desired Linux Python distribution strategy is clear. | Future | Do not silently fall back to arbitrary system Python. |
 
 ## Non-Goals
 

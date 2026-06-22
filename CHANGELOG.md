@@ -85,7 +85,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Documented Homebrew tap trust for Base and standalone `base-bash-libs`
   installs, and updated direct Base upgrade examples to use
-  `brew upgrade --no-ask codeforester/base/base`.
+  `brew upgrade --no-ask basefoundry/base/base`.
 
 ### Fixed
 
@@ -327,7 +327,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 ### Changed
 
 - Changed `basectl update` to detect Homebrew-managed Base installs, hand off
-  only to `brew upgrade codeforester/base/base`, preserve non-mutating dry-run
+  only to `brew upgrade basefoundry/base/base`, preserve non-mutating dry-run
   output, and run setup with inherited Base environment variables cleared.
 
 ### Fixed
@@ -438,7 +438,7 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Updated Base-managed shell profile sections to use shorter `>>> base: ...`
   markers, clearer overwrite guidance, and quoted source paths.
 - Moved the optional `caff` and `sort-in-place` utility CLIs out of Base and
-  into `codeforester/base-platform-tools`.
+  into `basefoundry/base-platform-tools`.
 
 ### Fixed
 
