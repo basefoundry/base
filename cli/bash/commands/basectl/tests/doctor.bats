@@ -627,6 +627,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        exit 0
+    fi
     printf 'ok     demo-artifact               Project artifact check passed.\n'
     exit 0
 fi
@@ -710,6 +714,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        exit 0
+    fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
     printf 'ok     demo-artifact               Project artifact check passed.\n'
     exit 0
@@ -791,6 +799,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        exit 0
+    fi
     printf '[{"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
     exit 0
 fi
@@ -870,6 +882,10 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        exit 0
+    fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
     shift 2
     action="setup"

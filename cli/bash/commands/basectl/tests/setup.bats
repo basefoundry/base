@@ -54,6 +54,10 @@ if [[ "${1:-}" == "--version" ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi

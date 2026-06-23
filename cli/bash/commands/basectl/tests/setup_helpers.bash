@@ -95,6 +95,10 @@ if [[ "${1:-}" == "--version" ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
@@ -172,6 +176,10 @@ if [[ "${1:-}" == "--version" ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
@@ -219,6 +227,10 @@ VENVEOF
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
@@ -320,6 +332,10 @@ if [[ "${1:-}" == "--version" ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
@@ -367,6 +383,10 @@ VENVEOF
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
@@ -530,18 +550,18 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     shift 2
-    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
-    printf '%s\n' "$0" >> "$BASE_SETUP_TEST_STATE_DIR/project-setup-python"
-    printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
-    printf '%s\n' "${BASE_CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-base-ci"
-    printf '%s\n' "${CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-ci"
-    printf '%s\n' "${BASE_SETUP_NOTIFY:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-notify"
-    touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
+    original_args=("$@")
     action="setup"
+    manifest_path=""
     output_format="text"
+    project_arg=""
     remote_network=false
     while (($#)); do
         case "$1" in
+            --manifest)
+                shift
+                manifest_path="${1:-}"
+                ;;
             --action)
                 shift
                 action="${1:-}"
@@ -553,9 +573,52 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
             --remote-network)
                 remote_network=true
                 ;;
+            --*)
+                ;;
+            *)
+                project_arg="$1"
+                ;;
         esac
         shift || true
     done
+    if [[ "$action" == "route" ]]; then
+        project_root="$(cd -- "$(dirname -- "$manifest_path")" && pwd -P)"
+        if [[ -z "$project_arg" && -f "$manifest_path" ]]; then
+            project_arg="$(awk '/^[[:space:]]*name:/ { print $2; exit }' "$manifest_path")"
+        fi
+        if awk '
+            /^[[:space:]]*#/ { next }
+            /^[^[:space:]][^:]*:/ { in_python = 0 }
+            /^[[:space:]]*python:[[:space:]]*$/ { in_python = 1; next }
+            in_python && /^[[:space:]]+manager:[[:space:]]*['\''"]?uv['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
+            END { exit found ? 0 : 1 }
+        ' "$manifest_path"; then
+            uses_uv_manager=true
+        else
+            uses_uv_manager=false
+        fi
+        if [[ "$project_arg" != base && -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+            route_venv_dir="$BASE_PROJECT_VENV_DIR"
+        elif [[ "$project_arg" != base && "$uses_uv_manager" == true ]]; then
+            route_venv_dir="$project_root/.venv"
+        else
+            route_venv_dir="$HOME/.base.d/$project_arg/.venv"
+        fi
+        if [[ "$output_format" == "json" ]]; then
+            printf '{"schema_version":1,"project":"%s","project_root":"%s","manifest_path":"%s","project_venv_dir":"%s","uses_uv_manager":%s}\n' \
+                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
+        else
+            printf '%s\t%s\t%s\t%s\t%s\n' "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
+        fi
+        exit 0
+    fi
+    printf '%s\n' "${original_args[@]}" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-args"
+    printf '%s\n' "$0" >> "$BASE_SETUP_TEST_STATE_DIR/project-setup-python"
+    printf '%s\n' "${BASE_PROJECT:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-project"
+    printf '%s\n' "${BASE_CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-base-ci"
+    printf '%s\n' "${CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-ci"
+    printf '%s\n' "${BASE_SETUP_NOTIFY:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-notify"
+    touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     if [[ "$action" == "bootstrap" ]]; then
         printf '%s\n' "${BASE_SETUP_RECREATE_PROJECT_VENV:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-bootstrap-recreate-venv"
     fi

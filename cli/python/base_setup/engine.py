@@ -40,6 +40,8 @@ from .ide import reconcile_ide_installs
 from .ide import reconcile_ide_settings
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .pyproject import check_pyproject
+from .project_routing import route_for_manifest
+from .project_routing import route_to_text
 from .python_policy import python_requirement_checks
 from .uv import check_uv
 from .uv import manifest_uses_uv_project_manager
@@ -69,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option(
     "--action",
     default="setup",
-    help="Action to run: setup, bootstrap, check, or doctor. Defaults to setup.",
+    help="Action to run: setup, bootstrap, check, doctor, or route. Defaults to setup.",
 )
 @base_cli.option("--format", "output_format", default="text", help="Output format for check/doctor: text or json.")
 @base_cli.option(
@@ -99,22 +101,27 @@ def run(
     try:
         base_manifest = read_manifest(manifest_path)
         validate_project_name(base_manifest, project)
-        default_manifest = read_default_manifest(ctx)
-        return run_manifest_action(
-            ctx,
-            ManifestAction(action, dry_run, output_format, remote_network),
-            default_manifest,
-            base_manifest,
-        )
+        manifest_action = ManifestAction(action, dry_run, output_format, remote_network)
+        if action == "route":
+            status = route_manifest(ctx, manifest_action, base_manifest)
+        else:
+            default_manifest = read_default_manifest(ctx)
+            status = run_manifest_action(
+                ctx,
+                manifest_action,
+                default_manifest,
+                base_manifest,
+            )
     except ManifestError as exc:
         ctx.log.error(str(exc))
-        return 1
+        status = 1
     except ValueError as exc:
         ctx.log.error(str(exc))
-        return 1
+        status = 1
     except ArtifactError as exc:
         ctx.log.error(str(exc))
-        return 1
+        status = 1
+    return status
 
 
 def run_manifest_action(
@@ -160,11 +167,25 @@ def run_manifest_action(
         )
     else:
         ctx.log.error(
-            "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, precheck, or predoctor.",
+            "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, "
+            "route, precheck, or predoctor.",
             action,
         )
         status = 2
     return status
+
+
+def route_manifest(
+    ctx: base_cli.Context,
+    manifest_action: ManifestAction,
+    manifest: BaseManifest,
+) -> int:
+    try:
+        print(route_to_text(route_for_manifest(manifest), manifest_action.output_format))
+    except ValueError as exc:
+        ctx.log.error(str(exc))
+        return 2
+    return 0
 
 
 def validate_project_name(manifest: BaseManifest, expected_project: str | None) -> None:
