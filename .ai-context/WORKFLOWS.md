@@ -109,6 +109,12 @@ Documentation-only changes usually need `git diff --check`.
 First external PRs should start from an issue labeled `good first issue`.
 Contributor-facing guidance lives in `CONTRIBUTING.md`; the workflow policy and
 starter-issue criteria live in `docs/github-workflow.md`.
+When running the full source-checkout suite from a linked issue worktree under
+`~/work/base-worktrees/<slug>`, set the reusable library path explicitly:
+
+```bash
+BASE_BASH_LIBS_DIR=~/work/base-bash-libs/lib/bash env -u BASE_HOME ./bin/base-test
+```
 
 ## Release Flow
 

@@ -87,9 +87,14 @@ env -u BASE_HOME ./bin/base-test
 
 The full suite expects Base to resolve external reusable Bash libraries. A
 normal `~/work/base` checkout uses sibling `~/work/base-bash-libs`
-automatically. For a nonstandard worktree layout, set
-`BASE_BASH_LIBS_DIR=/path/to/base-bash-libs/lib/bash` before running
-`bin/base-test`.
+automatically. A linked issue worktree under `~/work/base-worktrees/<slug>` is a
+nonstandard layout because the sibling lookup would search
+`~/work/base-worktrees/base-bash-libs`. For the standard contributor checkout
+shape, point Base at the reusable library checkout explicitly:
+
+```bash
+BASE_BASH_LIBS_DIR=~/work/base-bash-libs/lib/bash env -u BASE_HOME ./bin/base-test
+```
 
 `basectl test base` delegates to the same runner when the `base` project
 resolves to a source checkout. In a packaged install such as Homebrew,
