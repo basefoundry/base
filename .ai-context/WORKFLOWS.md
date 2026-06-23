@@ -1,5 +1,20 @@
 # Base Workflow Context
 
+## Pre-Edit Workflow Gate
+
+Before modifying Base files, classify the request.
+
+For implementation work in `basefoundry/base`, do not edit on `main`. Create
+or choose the GitHub issue, set the required Project metadata, move Project
+`Status` to `In Progress`, create the issue branch and dedicated worktree, and
+verify the active branch is not `main` before editing files.
+
+Read-only investigation, design-only discussion, and requests explicitly scoped
+to local-only/no-PR work may stay outside this gate. If the scope turns into
+issue-backed implementation work after edits have started, stop, create or
+choose the issue, move the work onto the issue branch/worktree, and then
+continue.
+
 ## Issue-First Work
 
 Base uses GitHub Issues as the public product backlog. Implementation work
