@@ -17,6 +17,8 @@ ecosystem boundary model, see [Tool Boundaries](tool-boundaries.md).
 Review this assessment:
 
 - during each minor release line, such as `1.1.0`, `1.2.0`, and later;
+- by running `basectl prompt product-self-review` to generate the current
+  review prompt before revising this document;
 - before any major repositioning of Base's product scope;
 - before public claims about Linux, Windows, WSL, or team-scale adoption;
 - after meaningful external usage, contributor growth, or support feedback;

@@ -63,7 +63,7 @@ _base_basectl_completion_project_profiles_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test export-context build demo run repo ci release clean logs history config doctor gh onboard update-profile update projects workspace version help"
+    local commands="activate setup check test export-context build demo run repo ci release prompt clean logs history config doctor gh onboard update-profile update projects workspace version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -175,6 +175,13 @@ _base_basectl_completion() {
                 _base_basectl_completion_compgen "check plan notes publish" "$cur"
             else
                 _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+            fi
+            ;;
+        prompt)
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen "list product-self-review" "$cur"
+            else
+                _base_basectl_completion_compgen "-v -h --help" "$cur"
             fi
             ;;
         clean)

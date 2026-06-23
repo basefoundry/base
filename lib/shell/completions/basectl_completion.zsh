@@ -25,6 +25,7 @@ _base_basectl_completion() {
         'repo:Create, check, and configure repository baseline'
         'ci:Run Base setup, checks, and diagnostics in CI'
         'release:Inspect release readiness, notes, and publishing'
+        'prompt:Print repo-owned Markdown prompts'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
         'history:List recent Base command history records'
@@ -165,6 +166,11 @@ _base_basectl_completion() {
                 project_names=("${(@f)$(_base_basectl_completion_project_names)}")
                 _describe -t projects 'Base project' project_names
             fi
+            ;;
+        prompt)
+            _arguments '1:prompt:(list product-self-review)' \
+                '-v[Enable DEBUG logging]' \
+                '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         repo)
             case "${words[3]:-}" in

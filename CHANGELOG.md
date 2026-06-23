@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `basectl prompt list` and `basectl prompt product-self-review` to render
+  repo-owned Markdown prompts for periodic AI-assisted Base workflow reviews.
+
 ### Changed
 
 - Added `ctx.workspace_root` to `base_cli.Context` so workspace-aware commands

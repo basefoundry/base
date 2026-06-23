@@ -24,6 +24,8 @@ conversations.
 - `WORKFLOWS.md` - issue, branch, PR, validation, release, and cleanup flow.
 - `DECISIONS.md` - durable product and architecture decisions.
 - `STATUS.md` - current version, active work, and recent changes.
+- `prompts/` - repo-owned prompts that `basectl prompt` can render for
+  AI-assisted Base workflows.
 
 ## Maintenance
 

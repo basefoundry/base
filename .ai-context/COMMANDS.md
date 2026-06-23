@@ -19,6 +19,10 @@ the canonical current command list.
 - `basectl run <project> <command>` - run a declared project command.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
   Zip bundle for manual upload or copy/paste into AI tools.
+- `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
+  for AI-assisted Base workflows. `product-self-review` prints the periodic
+  product assessment prompt with current Base metadata; Base does not send the
+  prompt to an AI provider.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
 - `basectl workspace <status|check|doctor|clone|pull|configure>` - inspect
@@ -119,5 +123,7 @@ Important Python packages include:
 - `base_export_context` - deterministic local Markdown and Zip exports from a
   project's `.ai-context/` directory. Provider uploads are intentionally out of
   scope.
+- `base_prompt` - repo-owned prompt listing and rendering. AI execution and
+  provider integration are intentionally out of scope.
 - `base_github_projects` - GitHub Project V2 schema inspection, configuration,
   and issue field updates for Base roadmap metadata.
