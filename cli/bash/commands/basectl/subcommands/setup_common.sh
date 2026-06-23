@@ -796,6 +796,44 @@ setup_pythonpath() {
     printf '%s\n' "$_BASE_SETUP_PYTHONPATH_CACHE"
 }
 
+setup_diagnostics_python_bin() {
+    local candidate python_bin venv_dir
+    local candidates=()
+
+    setup_ensure_cached_paths
+    if command -v python3 >/dev/null 2>&1; then
+        candidates+=("$(command -v python3)")
+    fi
+    if python_bin="$(setup_find_python_bin)"; then
+        candidates+=("$python_bin")
+    fi
+    candidates+=("/usr/bin/python3")
+    for candidate in "${candidates[@]}"; do
+        if [[ -x "$candidate" ]] && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$candidate" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
+    if python_bin="$(setup_base_venv_python_bin "$venv_dir")" && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+        printf '%s\n' "$python_bin"
+        return 0
+    fi
+    return 1
+}
+
+setup_run_diagnostics_json() {
+    local python_bin
+
+    python_bin="$(setup_diagnostics_python_bin)" ||
+        fatal_error "Python is required to render Base diagnostic JSON."
+    setup_ensure_cached_paths
+    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -m base_setup.diagnostics "$@"
+}
+
 setup_resolve_project_manifest() {
     local project="$1"
     local python_bin="$2"
@@ -866,7 +904,7 @@ setup_project_check_record_path() {
 }
 
 setup_record_project_check_result() {
-    local checked_at path project="$1" status="$2" temp_file
+    local checked_at path project="$1" status="$2"
 
     [[ -n "$project" ]] || return 0
     case "$status" in
@@ -878,26 +916,12 @@ setup_record_project_check_result() {
     esac
 
     path="$(setup_project_check_record_path "$project")"
-    safe_mkdir -p "$(dirname "$path")" || return 0
-    temp_file="$path.$$"
     checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 0
-
-    {
-        printf '{\n'
-        printf '  "schema_version": 1,\n'
-        printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
-        printf '  "command": "basectl check",\n'
-        printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
-        printf '  "checked_at": "%s"\n' "$(setup_json_escape "$checked_at")"
-        printf '}\n'
-    } >"$temp_file" || {
-        rm -f -- "$temp_file"
-        return 0
-    }
-    mv -- "$temp_file" "$path" || {
-        rm -f -- "$temp_file"
-        return 0
-    }
+    setup_run_diagnostics_json record-check \
+        --project "$project" \
+        --status "$status" \
+        --checked-at "$checked_at" \
+        --output-path "$path" >/dev/null || return 0
 }
 
 setup_user_config_path() {
@@ -956,16 +980,6 @@ setup_recovery_project_venv() {
     local project="$1"
 
     printf "Run 'basectl setup %s --recreate-venv' to back up and recreate the project virtual environment.\n" "$project"
-}
-
-setup_json_array_items() {
-    local value="$1"
-
-    value="${value//$'\n'/}"
-    value="${value//$'\r'/}"
-    value="${value#\[}"
-    value="${value%\]}"
-    printf '%s' "$value"
 }
 
 setup_doctor_visual_status_enabled() {
@@ -1031,30 +1045,15 @@ setup_print_project_check_json_with_venv() {
     local message="$3"
     local fix="$4"
     local project="$5"
-    local items precheck_status status venv_status
+    local status
 
-    venv_status="$(setup_diagnostic_status_from_ok "$ok")"
-    precheck_status="$(setup_json_payload_status "$precheck_json")"
-    status="$(setup_merge_diagnostic_status "$precheck_status" "$venv_status")"
-    items="$(setup_json_array_items "$precheck_json")"
-
-    printf '{\n'
-    printf '  "schema_version": 1,\n'
-    printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
-    printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
-    printf '  "checks": [\n'
-    if [[ -n "$items" ]]; then
-        printf '    %s,\n' "$items"
-    fi
-    setup_print_check_json_item \
-        "" \
-        "BASE-P050" \
-        "$venv_status" \
-        "project_virtualenv" \
-        "$message" \
-        "$fix"
-    printf '  ]\n'
-    printf '}\n'
+    status="$(setup_diagnostic_status_from_ok "$ok")"
+    setup_run_diagnostics_json project-venv-check-json \
+        --project "$project" \
+        --status "$status" \
+        --message "$message" \
+        --fix "$fix" \
+        --precheck-json "$precheck_json"
 }
 
 setup_print_project_venv_check_json() {
@@ -1065,17 +1064,11 @@ setup_print_project_venv_check_json() {
     local status
 
     status="$(setup_diagnostic_status_from_ok "$ok")"
-    printf '{\n'
-    printf '  "schema_version": 1,\n'
-    printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
-    printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
-    printf '  "checks": [\n'
-    printf '    {"id":"BASE-P050","status":"%s","name":"project_virtualenv","message":"%s","fix":"%s"}\n' \
-        "$(setup_json_escape "$status")" \
-        "$(setup_json_escape "$message")" \
-        "$(setup_json_escape "$fix")"
-    printf '  ]\n'
-    printf '}\n'
+    setup_run_diagnostics_json project-venv-check-json \
+        --project "$project" \
+        --status "$status" \
+        --message "$message" \
+        --fix "$fix"
 }
 
 setup_print_project_venv_doctor_json() {
@@ -1083,18 +1076,12 @@ setup_print_project_venv_doctor_json() {
     local status="$2"
     local message="$3"
     local fix="$4"
-    local items
 
-    items="$(setup_json_array_items "$precheck_json")"
-
-    printf '['
-    if [[ -n "$items" ]]; then
-        printf '%s,' "$items"
-    fi
-    printf '{"id":"BASE-P050","status":"%s","name":"project_virtualenv","message":"%s","fix":"%s"}]\n' \
-        "$(setup_json_escape "$status")" \
-        "$(setup_json_escape "$message")" \
-        "$(setup_json_escape "$fix")"
+    setup_run_diagnostics_json project-venv-doctor-json \
+        --status "$status" \
+        --message "$message" \
+        --fix "$fix" \
+        --precheck-json "$precheck_json"
 }
 
 setup_run_project_pre_venv_layer() {
@@ -1883,53 +1870,6 @@ setup_run_check() {
     return 1
 }
 
-setup_json_escape() {
-    local value="${1:-}"
-    local char code escaped i
-    local output=""
-    local LC_ALL=C
-
-    for ((i = 0; i < ${#value}; i++)); do
-        char="${value:i:1}"
-        case "$char" in
-            '"')
-                output+='\"'
-                ;;
-            '\')
-                output+='\\'
-                ;;
-            $'\b')
-                output+='\b'
-                ;;
-            $'\f')
-                output+='\f'
-                ;;
-            $'\n')
-                output+='\n'
-                ;;
-            $'\r')
-                output+='\r'
-                ;;
-            $'\t')
-                output+='\t'
-                ;;
-            *)
-                printf -v code '%d' "'$char"
-                # JSON requires escaping C0 controls and DEL. C1 controls are
-                # valid UTF-8 codepoints and are intentionally left as-is here.
-                if ((code < 32 || code == 127)); then
-                    printf -v escaped '\\u%04x' "$code"
-                    output+="$escaped"
-                else
-                    output+="$char"
-                fi
-                ;;
-        esac
-    done
-
-    printf '%s' "$output"
-}
-
 setup_diagnostic_status_from_ok() {
     if [[ "$1" == true ]]; then
         printf '%s\n' "ok"
@@ -1938,137 +1878,16 @@ setup_diagnostic_status_from_ok() {
     fi
 }
 
-setup_merge_diagnostic_status() {
-    local current="$1"
-    local next="$2"
-
-    if [[ "$current" == error || "$next" == error ]]; then
-        printf '%s\n' "error"
-    elif [[ "$current" == warn || "$next" == warn ]]; then
-        printf '%s\n' "warn"
-    else
-        printf '%s\n' "ok"
-    fi
-}
-
-setup_json_payload_status() {
-    local payload="$1"
-
-    if [[ "$payload" == *'"status":"error"'* || "$payload" == *'"status": "error"'* ]]; then
-        printf '%s\n' "error"
-    elif [[ "$payload" == *'"status":"warn"'* || "$payload" == *'"status": "warn"'* ]]; then
-        printf '%s\n' "warn"
-    else
-        printf '%s\n' "ok"
-    fi
-}
-
-setup_check_results_status() {
-    local count i status="ok"
-
-    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
-    for ((i = 0; i < count; i++)); do
-        status="$(setup_merge_diagnostic_status "$status" "$(setup_check_result_status "$i")")"
-    done
-
-    printf '%s\n' "$status"
-}
-
-setup_base_check_finding_id() {
-    case "$1" in
-        homebrew)
-            printf '%s\n' "BASE-D001"
-            ;;
-        xcode_command_line_tools)
-            printf '%s\n' "BASE-D002"
-            ;;
-        python)
-            printf '%s\n' "BASE-D003"
-            ;;
-        base_virtualenv)
-            printf '%s\n' "BASE-D004"
-            ;;
-        pyyaml)
-            printf '%s\n' "BASE-D005"
-            ;;
-        click)
-            printf '%s\n' "BASE-D006"
-            ;;
-        base_bash_libraries)
-            printf '%s\n' "BASE-D007"
-            ;;
-        *)
-            printf '%s\n' "BASE-D000"
-            ;;
-    esac
-}
-
-setup_print_check_json_item() {
-    local trailing_comma="$1"
-    local finding_id="$2"
-    local status="$3"
-    local name="$4"
-    local message="$5"
-    local fix="${6:-}"
-
-    printf '    {"id":"%s","status":"%s","name":"%s","message":"%s","fix":"%s"}%s\n' \
-        "$(setup_json_escape "$finding_id")" \
-        "$(setup_json_escape "$status")" \
-        "$(setup_json_escape "$name")" \
-        "$(setup_json_escape "$message")" \
-        "$(setup_json_escape "$fix")" \
-        "$trailing_comma"
-}
-
-setup_print_check_json_results() {
-    local count fix i status trailing_comma
-
-    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
-    for ((i = 0; i < count; i++)); do
-        trailing_comma=","
-        if ((i == count - 1)); then
-            trailing_comma=""
-        fi
-        status="$(setup_check_result_status "$i")"
-        fix="$(setup_check_result_recovery "$i")"
-        setup_print_check_json_item \
-            "$trailing_comma" \
-            "$(setup_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
-            "$status" \
-            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
-            "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
-            "$fix"
-    done
-}
-
-setup_print_json_property_value() {
-    local first_line=true
-    local key="$1"
-    local line
-    local value="$2"
-
-    printf '  "%s": ' "$(setup_json_escape "$key")"
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$first_line" == true ]]; then
-            printf '%s\n' "$line"
-            first_line=false
-        else
-            printf '  %s\n' "$line"
-        fi
-    done <<<"$value"
-}
-
 setup_run_check_json() {
+    local args=()
+    local checked_at=""
+    local count fix i
     local profile_json=""
-    local profile_status="ok"
     local project="${BASE_SETUP_PROJECT_NAME:-}"
     local project_json=""
-    local project_status="ok"
     local remote_network="${1:-${BASE_SETUP_REMOTE_NETWORK:-}}"
-    local status
 
     setup_collect_base_check_results warn || true
-    status="$(setup_check_results_status)"
 
     if setup_profiles_enabled; then
         if ! profile_json="$(setup_run_base_dev_layer check --format json)"; then
@@ -2076,8 +1895,6 @@ setup_run_check_json() {
                 return 1
             fi
         fi
-        profile_status="$(setup_json_payload_status "$profile_json")"
-        status="$(setup_merge_diagnostic_status "$status" "$profile_status")"
     fi
 
     if [[ -n "$project" ]]; then
@@ -2086,40 +1903,26 @@ setup_run_check_json() {
                 return 1
             fi
         fi
-        project_status="$(setup_json_payload_status "$project_json")"
-        status="$(setup_merge_diagnostic_status "$status" "$project_status")"
+        checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 1
     fi
 
-    setup_record_project_check_result "$project" "$status"
-
-    printf '{\n'
-    printf '  "schema_version": 1,\n'
-    printf '  "status": "%s",\n' "$(setup_json_escape "$status")"
+    args+=(check-json)
     if [[ -n "$project" ]]; then
-        printf '  "project": "%s",\n' "$(setup_json_escape "$project")"
+        args+=(--project "$project")
     fi
-    printf '  "checks": [\n'
-    setup_print_check_json_results
-    printf '  ]'
-    if setup_profiles_enabled || [[ -n "$project" ]]; then
-        printf ',\n'
-    else
-        printf '\n'
-    fi
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        fix="$(setup_check_result_recovery "$i")"
+        args+=(--check "${_BASE_SETUP_CHECK_NAMES[$i]}" "$(setup_check_result_status "$i")" "${_BASE_SETUP_CHECK_MESSAGES[$i]}" "$fix")
+    done
     if setup_profiles_enabled; then
-        setup_print_json_property_value "$(setup_profile_json_key checks)" "$profile_json"
-        if [[ -n "$project" ]]; then
-            printf ',\n'
-        else
-            printf '\n'
-        fi
+        args+=(--embedded-payload "$(setup_profile_json_key checks)" "$profile_json")
     fi
     if [[ -n "$project" ]]; then
-        setup_print_json_property_value "project_checks" "$project_json"
+        args+=(--embedded-payload "project_checks" "$project_json")
+        args+=(--record-path "$(setup_project_check_record_path "$project")" --checked-at "$checked_at")
     fi
-    printf '}\n'
-
-    [[ "$status" != error ]]
+    setup_run_diagnostics_json "${args[@]}"
 }
 
 setup_run_ci_runtime_install() {

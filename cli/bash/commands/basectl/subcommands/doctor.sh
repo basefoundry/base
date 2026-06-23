@@ -60,6 +60,35 @@ base_doctor_count_check_errors() {
     printf '%s\n' "$errors"
 }
 
+base_doctor_base_check_finding_id() {
+    case "$1" in
+        homebrew)
+            printf '%s\n' "BASE-D001"
+            ;;
+        xcode_command_line_tools)
+            printf '%s\n' "BASE-D002"
+            ;;
+        python)
+            printf '%s\n' "BASE-D003"
+            ;;
+        base_virtualenv)
+            printf '%s\n' "BASE-D004"
+            ;;
+        pyyaml)
+            printf '%s\n' "BASE-D005"
+            ;;
+        click)
+            printf '%s\n' "BASE-D006"
+            ;;
+        base_bash_libraries)
+            printf '%s\n' "BASE-D007"
+            ;;
+        *)
+            printf '%s\n' "BASE-D000"
+            ;;
+    esac
+}
+
 base_doctor_print_collected_check_results() {
     local count fix i status
 
@@ -76,7 +105,7 @@ base_doctor_print_collected_check_results() {
 
         base_doctor_print_finding \
             "$status" \
-            "$(setup_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
+            "$(base_doctor_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
             "${_BASE_SETUP_CHECK_NAMES[$i]}" \
             "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
             "$fix"
@@ -238,68 +267,43 @@ base_doctor_check_python_package() {
 }
 
 base_doctor_run_json() {
-    local errors=0 profile_errors=0 profile_json="[]"
+    local args=()
+    local count fix i
+    local profile_json="[]"
     local project="$1"
-    local project_errors=0 project_json="[]"
+    local project_json="[]"
     local remote_network="${2:-${BASE_SETUP_REMOTE_NETWORK:-}}"
-    local status="ok"
 
     BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_collect_base_check_results warn || true
-    errors="$(base_doctor_count_check_errors)"
-    status="$(setup_check_results_status)"
 
     if setup_profiles_enabled; then
-        if profile_json="$(setup_run_base_dev_layer doctor --format json)"; then
-            profile_errors=0
-        else
-            profile_errors=$?
+        if ! profile_json="$(setup_run_base_dev_layer doctor --format json)"; then
             [[ -n "$profile_json" ]] || profile_json="[]"
-            errors=$((errors + profile_errors))
         fi
-        status="$(setup_merge_diagnostic_status "$status" "$(setup_json_payload_status "$profile_json")")"
     fi
 
     if [[ -n "$project" ]]; then
-        if project_json="$(setup_run_project_artifact_doctor_json "$remote_network")"; then
-            project_errors=0
-        else
-            project_errors=$?
+        if ! project_json="$(setup_run_project_artifact_doctor_json "$remote_network")"; then
             [[ -n "$project_json" ]] || project_json="[]"
-            errors=$((errors + project_errors))
         fi
-        status="$(setup_merge_diagnostic_status "$status" "$(setup_json_payload_status "$project_json")")"
     fi
 
-    printf '{\n'
-    printf '  "schema_version": 1,\n'
-    printf '  "status": "%s"' "$(setup_json_escape "$status")"
+    args+=(doctor-json)
     if [[ -n "$project" ]]; then
-        printf ',\n'
-        printf '  "project": "%s"' "$(setup_json_escape "$project")"
+        args+=(--project "$project")
     fi
-    printf ',\n'
-    printf '  "findings": [\n'
-    setup_print_check_json_results
-    printf '  ]'
-    if setup_profiles_enabled || [[ -n "$project" ]]; then
-        printf ',\n'
-    else
-        printf '\n'
-    fi
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        fix="$(setup_check_result_recovery "$i")"
+        args+=(--finding "${_BASE_SETUP_CHECK_NAMES[$i]}" "$(setup_check_result_status "$i")" "${_BASE_SETUP_CHECK_MESSAGES[$i]}" "$fix")
+    done
     if setup_profiles_enabled; then
-        setup_print_json_property_value "$(setup_profile_json_key findings)" "$profile_json"
-        if [[ -n "$project" ]]; then
-            printf ',\n'
-        else
-            printf '\n'
-        fi
+        args+=(--embedded-payload "$(setup_profile_json_key findings)" "$profile_json")
     fi
     if [[ -n "$project" ]]; then
-        setup_print_json_property_value "project_findings" "$project_json"
+        args+=(--embedded-payload "project_findings" "$project_json")
     fi
-    printf '}\n'
-
-    [[ "$errors" -eq 0 ]]
+    setup_run_diagnostics_json "${args[@]}"
 }
 
 base_doctor_subcommand_main() {

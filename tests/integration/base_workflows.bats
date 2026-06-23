@@ -205,7 +205,7 @@ run_basectl_separate_stderr() {
     [[ "$output" == *'"project": "demo"'* ]]
     [[ "$output" == *'"project_checks":'* ]]
     [[ "$output" != *'"ok":'* ]]
-    [[ "$output" == *'"name": "click"'* ]]
+    [[ "$output" == *'"name":"click"'* || "$output" == *'"name": "click"'* ]]
 
     run_basectl_separate_stderr doctor demo --format json
     [ "$status" -eq 0 ]
