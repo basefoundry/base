@@ -60,6 +60,60 @@ class UvProjectTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "uv is required"):
                     reconcile_uv_project(ctx, manifest, dry_run=False)
 
+    def test_reconcile_uv_project_skips_sync_when_project_is_synchronized(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch("base_setup.uv.process.command_exists", return_value=True),
+                mock.patch("base_setup.uv.process.run_check", return_value=True) as run_check,
+                mock.patch("base_setup.uv.process.run_command") as run_command,
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=False)
+
+        run_check.assert_called_once_with(["uv", "sync", "--check"], cwd=root)
+        run_command.assert_not_called()
+        ctx.log.info.assert_any_call("uv project environment is already synchronized for '%s'.", root)
+
+    def test_reconcile_uv_project_runs_sync_when_project_is_not_synchronized(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch("base_setup.uv.process.command_exists", return_value=True),
+                mock.patch("base_setup.uv.process.run_check", return_value=False),
+                mock.patch("base_setup.uv.process.run_command") as run_command,
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["uv", "sync"], cwd=root)
+
     def test_check_uv_warns_for_missing_uv_manager_tool(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
