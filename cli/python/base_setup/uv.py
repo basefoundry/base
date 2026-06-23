@@ -40,6 +40,9 @@ def reconcile_uv_project(ctx: base_cli.Context, manifest: BaseManifest, dry_run:
         return
     if not process.command_exists("uv"):
         raise ArtifactError("uv is required to set up this project. Install uv and rerun basectl setup.")
+    if process.run_check(["uv", "sync", "--check"], cwd=project_root):
+        ctx.log.info("uv project environment is already synchronized for '%s'.", project_root)
+        return
     process.run_command(ctx, command, cwd=project_root)
 
 

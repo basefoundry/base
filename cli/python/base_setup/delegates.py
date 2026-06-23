@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,7 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P011",
         )
 
-    ok = process.run_check(["brew", "bundle", "check", f"--file={brewfile_path}"])
+    ok = process.run_check(["brew", "bundle", "check", f"--file={brewfile_path}"], env=homebrew_no_auto_update_env())
     if ok:
         return ArtifactCheck(
             name="brewfile",
@@ -198,6 +199,7 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
 
     brewfile_path = resolve_brewfile_path(manifest)
     command = ["brew", "bundle", f"--file={brewfile_path}"]
+    check_command = ["brew", "bundle", "check", f"--file={brewfile_path}"]
 
     if dry_run:
         process.dry_run_command(ctx, command)
@@ -206,8 +208,13 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
     if not process.command_exists("brew"):
         raise ArtifactError(f"Homebrew is required to install Brewfile dependencies from '{brewfile_path}'.")
 
+    env = homebrew_no_auto_update_env()
+    if process.run_check(check_command, env=env):
+        ctx.log.info("Brewfile dependencies are already satisfied for '%s'.", brewfile_path)
+        return
+
     ctx.log.info("Installing Homebrew dependencies from Brewfile '%s'.", brewfile_path)
-    process.run_command(ctx, command)
+    process.run_command(ctx, command, env=env)
 
 
 def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
@@ -243,6 +250,12 @@ def resolve_brewfile_path(manifest: BaseManifest) -> Path:
     if not brewfile_path.is_file():
         raise ArtifactError(f"{manifest.path}: brewfile '{manifest.brewfile}' does not exist.")
     return brewfile_path
+
+
+def homebrew_no_auto_update_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+    return env
 
 
 def command_text(stdout: str, stderr: str) -> str:

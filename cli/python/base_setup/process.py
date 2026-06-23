@@ -56,8 +56,20 @@ def command_exists(name: str) -> bool:
     return shutil.which(name) is not None
 
 
-def run_check(command: list[str]) -> bool:
-    return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+def run_check(
+    command: list[str],
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> bool:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return completed.returncode == 0
 
 
 def run_capture(
@@ -76,12 +88,18 @@ def run_capture(
     )
 
 
-def run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
+def run_command(
+    ctx: base_cli.Context,
+    command: list[str],
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> None:
     stdout_recorder = CommandOutputRecorder()
     stderr_recorder = CommandOutputRecorder()
     with subprocess.Popen(
         command,
         cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ) as process:
