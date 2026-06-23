@@ -9,6 +9,8 @@ Recommended read order for an AI assistant:
 5. `WORKFLOWS.md` - read when doing repo work, PRs, validation, or releases.
 6. `DECISIONS.md` - read when evaluating proposals against durable choices.
 7. `README.md` - read when maintaining this context pack.
+8. `prompts/product-self-review.md` - read when revising the maintained product
+   assessment prompt.
 
 ## Canonical Sources
 
@@ -32,3 +34,5 @@ below when precise detail matters:
 - `docs/release-process.md` - release ceremony and Homebrew tap handoff.
 - `CHANGELOG.md` - current release and unreleased changes.
 - `AGENTS.md` - repo-specific instructions for AI coding agents.
+- `.ai-context/prompts/` - repo-owned prompt templates rendered by
+  `basectl prompt`.

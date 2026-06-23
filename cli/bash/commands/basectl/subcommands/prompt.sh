@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+[[ -n "${_base_prompt_subcommand_sourced:-}" ]] && return
+_base_prompt_subcommand_sourced=1
+readonly _base_prompt_subcommand_sourced
+
+base_prompt_subcommand_usage() {
+    cat <<'EOF'
+Usage:
+  basectl prompt list
+  basectl prompt <name>
+
+Prompts:
+  product-self-review  Periodic Base product self-review
+
+Options:
+  -v          Enable DEBUG logging for this subcommand.
+  -h, --help  Show this help text.
+
+Print repo-owned Markdown prompts for AI-assisted Base workflows. Base renders
+the prompt; an AI tool performs the review.
+EOF
+}
+
+base_prompt_usage_error() {
+    base_prompt_subcommand_usage >&2
+    print_error "$*"
+    return 2
+}
+
+base_prompt_subcommand_main() {
+    local wrapper="$BASE_HOME/bin/base-wrapper"
+    local args=()
+
+    while (($#)); do
+        case "$1" in
+            -h|--help|help)
+                base_prompt_subcommand_usage
+                return 0
+                ;;
+            -v)
+                args+=(--debug)
+                shift
+                ;;
+            -*)
+                base_prompt_usage_error "Unknown prompt option '$1'."
+                return $?
+                ;;
+            *)
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if ((${#args[@]} == 0)); then
+        base_prompt_usage_error "The 'prompt' command requires 'list' or a prompt name."
+        return $?
+    fi
+    if ((${#args[@]} > 1)); then
+        base_prompt_usage_error "The 'prompt' command accepts exactly one argument."
+        return $?
+    fi
+
+    [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    "$wrapper" --project base base_prompt "${args[@]}"
+}

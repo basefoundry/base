@@ -32,6 +32,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `export-context`
 - `gh`
 - `onboard`
+- `prompt`
 - `repo init/clone/check/configure/agent-guidance/installer-template`
 - `test`
 - `build`
@@ -139,6 +140,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   directory for manual AI tool upload or copy/paste. Markdown exports include
   stable file headings and use `INDEX.md` ordering when available. Zip exports
   contain only files from `.ai-context`.
+- `basectl prompt list` lists repo-owned Markdown prompts that Base can render
+  for AI-assisted workflows. `basectl prompt product-self-review` prints the
+  periodic Base product self-review prompt with current Base metadata. Base
+  renders the prompt only; an AI tool performs the review.
 - `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
 - `basectl update [project]` updates the selected project checkout through Git
   and then runs `basectl setup <project>`. Omitting the project selects `base`;

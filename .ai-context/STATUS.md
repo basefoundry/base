@@ -29,6 +29,7 @@ The current command surface covers:
 - workspace status/check/doctor/configure flows
 - release readiness inspection and guarded GitHub release publishing
 - local AI context export bundles
+- repo-owned prompt rendering through `basectl prompt`
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
 
 ## Active Development Direction

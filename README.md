@@ -215,6 +215,8 @@ Current implemented commands include:
 - `basectl release plan --version <version>`
 - `basectl release notes --version <version>`
 - `basectl release publish --version <version>`
+- `basectl prompt list`
+- `basectl prompt product-self-review`
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl build <project> [target...]`
@@ -710,6 +712,20 @@ Base-managed project. Markdown exports combine context Markdown files with
 stable source headings, using `.ai-context/INDEX.md` order when available and
 falling back to deterministic filename order for unlisted files. Zip exports
 contain only files from `.ai-context/` so they can be uploaded manually.
+
+Print repo-owned AI workflow prompts with:
+
+```bash
+basectl prompt list
+basectl prompt product-self-review
+```
+
+`basectl prompt` renders maintained Markdown prompts from Base's repo-visible
+prompt library. The command prints prompts to stdout for manual use with AI
+tools; Base does not run the review or send the prompt to any provider. The
+first built-in prompt, `product-self-review`, is the periodic product
+assessment ritual for revisiting Base's originality, usefulness, adoption
+potential, creator-skill evidence, risks, and next directions.
 
 Once a project is discoverable, activate it with:
 
@@ -1481,9 +1497,9 @@ setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
 guarded GitHub release publishing, GitHub workflow helpers, workspace
-status/check/doctor/configure flows, local AI context exports, external reusable Bash
-library consumption, and explicit prerequisite profiles for developer, SRE, and
-AI tooling.
+status/check/doctor/configure flows, local AI context exports, repo-owned prompt
+rendering, external reusable Bash library consumption, and explicit prerequisite
+profiles for developer, SRE, and AI tooling.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For accepted product requirements, see

@@ -127,6 +127,14 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "onboard_profiles=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl prompt ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "prompt_names=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl prompt product-self-review --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "prompt_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl clean --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -227,6 +235,8 @@ EOF
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"* ]]
+    [[ "$output" == *"prompt_names=list product-self-review"* ]]
+    [[ "$output" == *"prompt_options=--help"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"history_options=--project --command --status --limit --format"* ]]
