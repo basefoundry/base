@@ -4,6 +4,21 @@ Base uses GitHub Issues as the public product backlog and Git worktrees for
 parallel pull request trains. This page captures the repository workflow so
 humans and AI-assisted development agents follow the same rules.
 
+## Pre-Edit Workflow Gate
+
+Before modifying Base files, classify the request.
+
+For implementation work in `basefoundry/base`, do not edit on `main`. Create
+or choose the GitHub issue, set the required Project metadata, move Project
+`Status` to `In Progress`, create the issue branch and dedicated worktree, and
+verify the active branch is not `main` before editing files.
+
+This gate does not apply to read-only investigation, design-only discussion, or
+requests explicitly scoped to local-only/no-PR work. If the scope changes into
+issue-backed implementation work after edits have started, stop, create or
+choose the issue, move the work onto the issue branch/worktree, and then
+continue.
+
 ## Labels
 
 Base uses GitHub default-style labels instead of `type:*` labels.
@@ -193,6 +208,9 @@ security/247-20260529-restrict-log-permissions
 
 Use `enhancement/` for maintenance work unless the issue is more specifically
 `documentation`, `ci`, or `security`.
+
+Before committing or opening a pull request, verify the active branch is not
+`main` and follows the issue-backed branch convention.
 
 ## Worktrees
 

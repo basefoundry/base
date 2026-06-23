@@ -20,6 +20,24 @@ them.
 
 ## GitHub Workflow
 
+### Pre-Edit Workflow Gate
+
+Before modifying files in this repository, classify the request.
+
+- For implementation work in `basefoundry/base`, do not edit on `main`.
+- First create or choose the GitHub issue, set required Project metadata, move
+  Project `Status` to `In Progress`, create the issue branch and worktree, and
+  verify the active branch is not `main`.
+- Only start file edits after the issue-backed worktree is active.
+- Read-only investigation, design-only discussion, and requests explicitly
+  scoped to local-only/no-PR work may stay outside this gate, but keep that
+  scope explicit in the handoff.
+- If edits start before the work is recognized as issue-backed implementation
+  work, stop, create or choose the issue, move the work onto the issue
+  branch/worktree, and then continue.
+
+### Standard Issue Flow
+
 - Create or choose a GitHub issue before implementation work.
 - Use one primary category label: `bug`, `enhancement`, `documentation`, `ci`,
   or `security`.
