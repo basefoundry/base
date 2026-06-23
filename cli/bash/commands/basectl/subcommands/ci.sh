@@ -168,6 +168,51 @@ base_ci_check_or_doctor_delegate_args() {
     printf '%s\n' "$BASE_CI_PROJECT" --format "$BASE_CI_FORMAT"
 }
 
+base_ci_json_escape() {
+    local value="${1:-}"
+    local char code escaped i
+    local output=""
+    local LC_ALL=C
+
+    for ((i = 0; i < ${#value}; i++)); do
+        char="${value:i:1}"
+        case "$char" in
+            '"')
+                output+='\"'
+                ;;
+            '\')
+                output+='\\'
+                ;;
+            $'\b')
+                output+='\b'
+                ;;
+            $'\f')
+                output+='\f'
+                ;;
+            $'\n')
+                output+='\n'
+                ;;
+            $'\r')
+                output+='\r'
+                ;;
+            $'\t')
+                output+='\t'
+                ;;
+            *)
+                printf -v code '%d' "'$char"
+                if ((code < 32 || code == 127)); then
+                    printf -v escaped '\\u%04x' "$code"
+                    output+="$escaped"
+                else
+                    output+="$char"
+                fi
+                ;;
+        esac
+    done
+
+    printf '%s' "$output"
+}
+
 base_ci_print_setup_json() {
     local command_output="$1"
     local exit_code="$2"
@@ -186,13 +231,13 @@ base_ci_print_setup_json() {
     printf '  "schema_version": 1,\n'
     printf '  "command": "setup",\n'
     printf '  "status": "%s",\n' "$status"
-    printf '  "project": "%s",\n' "$(setup_json_escape "$BASE_CI_PROJECT")"
-    printf '  "output": "%s"' "$(setup_json_escape "$command_output")"
+    printf '  "project": "%s",\n' "$(base_ci_json_escape "$BASE_CI_PROJECT")"
+    printf '  "output": "%s"' "$(base_ci_json_escape "$command_output")"
     if ((exit_code)) && ((${#output_lines[@]})); then
         printf ',\n'
         printf '  "output_lines": [\n'
         for index in "${!output_lines[@]}"; do
-            printf '    "%s"' "$(setup_json_escape "${output_lines[$index]}")"
+            printf '    "%s"' "$(base_ci_json_escape "${output_lines[$index]}")"
             if ((index < ${#output_lines[@]} - 1)); then
                 printf ','
             fi
