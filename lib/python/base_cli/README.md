@@ -58,7 +58,8 @@ if __name__ == "__main__":
     raise SystemExit(base_cli.run_app(app))
 ```
 
-Running this command automatically adds the standard Base options:
+Running this command directly as a Python package automatically adds the
+standard Base options:
 
 ```bash
 hello --name Ada
@@ -71,6 +72,11 @@ hello --log-file /tmp/hello.log --name Ada
 
 Long options with values use space-separated syntax. `base_cli.run_app()` rejects
 equals-form values such as `--name=Ada` before Click parses arguments.
+These are direct package options. Public `basectl` launchers expose `-v` for
+command-level debug logs and command-specific flags from
+`basectl <command> --help`; they do not expose `--debug`, `--quiet`,
+`--log-file`, `--config`, `--environment`, or `--keep-temp` as public
+`basectl` options.
 
 ## Command Registration
 

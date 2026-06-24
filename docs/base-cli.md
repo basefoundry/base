@@ -291,7 +291,7 @@ Recommended shape:
 
 ## Standard Options
 
-Every `base_cli.App` command gets:
+Direct `base_cli.App` command packages get:
 
 | Option | Purpose |
 |---|---|
@@ -306,6 +306,12 @@ Every `base_cli.App` command gets:
 Long option values must use the space-separated form, for example
 `--environment prod`. Base rejects `--option=value` before Click parses
 arguments.
+
+These are direct Python package options. Public `basectl` launchers expose
+`-v` for command-level debug logs and command-specific flags from
+`basectl <command> --help`; they do not expose `--debug`, `--quiet`,
+`--log-file`, `--config`, `--environment`, or `--keep-temp` as public
+`basectl` options.
 
 ## Interrupt And Cleanup
 
