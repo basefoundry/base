@@ -81,6 +81,45 @@ load ./basectl_helpers.bash
     [[ "$output" != *"Project virtual environment Python was not found"* ]]
 }
 
+@test "basectl rejects Python standard options consistently before command delegation" {
+    run_basectl logs --debug --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--debug' is not supported by basectl. Use '-v' for command-level debug logs or '--debug-wrapper' for wrapper startup logging."* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
+
+    run_basectl check --debug
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--debug' is not supported by basectl. Use '-v' for command-level debug logs or '--debug-wrapper' for wrapper startup logging."* ]]
+
+    run_basectl logs --quiet --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--quiet' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
+
+    run_basectl logs --log-file "$TEST_TMPDIR/base.log" --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--log-file' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+
+    run_basectl logs --config "$TEST_TMPDIR/config.yaml" --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--config' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+
+    run_basectl logs --environment prod --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--environment' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+
+    run_basectl logs --keep-temp --path
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--keep-temp' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+}
+
 @test "AI command context includes current clone and update surfaces" {
     local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
 

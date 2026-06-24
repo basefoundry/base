@@ -8,6 +8,11 @@ Base rejects `--option=value` syntax before command delegation. Arguments after
 `--` belong to the delegated project command and may use that command's native
 syntax.
 
+`basectl` exposes `-v` as the public command-level debug switch. Direct
+`base_cli` package standard options such as `--debug`, `--quiet`, `--log-file`,
+`--config`, `--environment`, and `--keep-temp` are private to Python package
+execution and are rejected by `basectl`.
+
 ## Install And Bootstrap
 
 | Command | What it does | Important flags |

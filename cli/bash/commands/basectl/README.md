@@ -17,6 +17,11 @@ Long options with values use the space-separated form, for example
 delegation. Arguments after a `--` separator belong to the delegated project
 command and may use that command's native syntax.
 
+`basectl` exposes `-v` as the public command-level debug switch. Direct
+`base_cli` package standard options such as `--debug`, `--quiet`, `--log-file`,
+`--config`, `--environment`, and `--keep-temp` are not public `basectl`
+options.
+
 The public entrypoint lives at `bin/basectl`. It establishes the Base runtime
 for command implementations, then sources this command implementation and calls
 `main`.

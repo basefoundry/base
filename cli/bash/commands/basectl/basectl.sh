@@ -80,12 +80,15 @@ Notes:
   - Use space-separated values for long options, for example `--format json`.
     Base rejects `--option=value` syntax before command delegation. Arguments
     after `--` belong to the delegated project command.
+  - Use `-v` for command-level debug logs. Python package standard options such
+    as `--debug`, `--quiet`, `--log-file`, `--config`, `--environment`, and
+    `--keep-temp` are not public `basectl` options.
   - Invoking `basectl` with no command starts a Base runtime shell for the
     nearest project manifest above the current directory, preserving that
     directory. If no manifest is found, it falls back to project `base`. In
     non-interactive shells it prints this help text.
-  - Use `-v` for command-level debug logs. Use `--debug-wrapper` when debugging
-    startup before command dispatch or Base runtime initialization.
+  - Use `--debug-wrapper` when debugging startup before command dispatch or
+    Base runtime initialization.
 EOF
 }
 
@@ -119,6 +122,35 @@ basectl_reject_equals_option_values() {
         case "$argument" in
             --?*=*)
                 basectl_equals_option_usage_error "$argument"
+                return $?
+                ;;
+        esac
+    done
+
+    return 0
+}
+
+basectl_private_standard_option_usage_error() {
+    local option="$1"
+
+    case "$option" in
+        --debug)
+            basectl_usage_error "Option '--debug' is not supported by basectl. Use '-v' for command-level debug logs or '--debug-wrapper' for wrapper startup logging."
+            ;;
+        *)
+            basectl_usage_error "Option '$option' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."
+            ;;
+    esac
+}
+
+basectl_reject_private_standard_options() {
+    local argument
+
+    for argument in "$@"; do
+        [[ "$argument" == "--" ]] && return 0
+        case "$argument" in
+            --debug|--quiet|--log-file|--config|--environment|--keep-temp)
+                basectl_private_standard_option_usage_error "$argument"
                 return $?
                 ;;
         esac
@@ -377,6 +409,10 @@ basectl_main() {
             basectl_equals_option_usage_error "$1"
             return $?
             ;;
+        --debug|--quiet|--log-file|--config|--environment|--keep-temp)
+            basectl_private_standard_option_usage_error "$1"
+            return $?
+            ;;
         --*)
             basectl_usage_error "Unknown option '$1'"
             return $?
@@ -409,6 +445,7 @@ basectl_main() {
     [[ -n "$command" ]] && shift
 
     basectl_reject_equals_option_values "$@" || return $?
+    basectl_reject_private_standard_options "$@" || return $?
 
     basectl_get_base_home || return 1
     ((base_debug)) && basectl_enable_debug_logging

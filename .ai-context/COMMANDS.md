@@ -8,6 +8,11 @@ Base rejects `--option=value` before command delegation. Arguments after `--`
 belong to the delegated project command and may use that command's native
 syntax.
 
+`basectl` exposes `-v` as the command-level debug switch. Direct `base_cli`
+package standard options such as `--debug`, `--quiet`, `--log-file`,
+`--config`, `--environment`, and `--keep-temp` are not public `basectl`
+options.
+
 ## Current Public Commands
 
 - `basectl activate <project>` - start an interactive Base Bash runtime shell
