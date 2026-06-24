@@ -997,6 +997,22 @@ EOF
     [[ "$output" == *"Run 'basectl repo init incomplete --path $repo_dir' to create the missing files."* ]]
 }
 
+@test "basectl repo check prints fix hint for non-executable validation script" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+    chmod -x "$repo_dir/tests/validate.sh"
+
+    cd "$repo_dir"
+    run_basectl repo check .
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Repository baseline: all 12 required files present, but some requirements failed."* ]]
+    [[ "$output" == *"  Not executable: tests/validate.sh"* ]]
+    [[ "$output" == *"  Fix: chmod +x tests/validate.sh"* ]]
+}
+
 @test "basectl repo check reports missing agent guidance only when opted in" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 
