@@ -1059,6 +1059,21 @@ EOF
     [[ "$output" != *'Change\ should\ update\ a\ project\ demo'* ]]
 }
 
+@test "basectl repo configure explains GitHub origin inference failures" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+
+    run_basectl repo configure "$repo_dir" --dry-run --no-project
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to infer GitHub repository from '$repo_dir'."* ]]
+    [[ "$output" == *"Inference requires a git remote named 'origin' that points to github.com."* ]]
+    [[ "$output" == *"Pass --repo <owner/name> to configure explicitly, or run:"* ]]
+    [[ "$output" == *"git -C $repo_dir remote -v"* ]]
+    [[ "$output" == *"to inspect the current remotes."* ]]
+}
+
 @test "basectl repo configure dry-run protects the default branch by default" {
     local repo_dir="$TEST_TMPDIR/repo"
 
