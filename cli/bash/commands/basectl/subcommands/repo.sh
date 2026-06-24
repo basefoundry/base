@@ -2714,6 +2714,7 @@ base_repo_clone_check_destination() {
     actual_repo="$(base_repo_infer_github_repo "$target" || true)"
     if [[ "$actual_repo" == "$expected_repo" ]]; then
         printf "Repository '%s' already exists at '%s'.\n" "$expected_repo" "$target"
+        printf "To update: git -C %s pull --ff-only\n" "$(base_repo_pretty_arg "$target")"
         return 2
     fi
 

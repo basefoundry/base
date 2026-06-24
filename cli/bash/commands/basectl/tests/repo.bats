@@ -136,6 +136,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository 'codeforester/base-demo' already exists at '$repo_dir'."* ]]
+    [[ "$output" == *"To update: git -C $repo_dir pull --ff-only"* ]]
     [[ "$output" != *"gh repo clone"* ]]
 
     git -C "$repo_dir" remote set-url origin git@github.com:codeforester/base-demo
@@ -144,6 +145,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository 'codeforester/base-demo' already exists at '$repo_dir'."* ]]
+    [[ "$output" == *"To update: git -C $repo_dir pull --ff-only"* ]]
 }
 
 @test "basectl repo clone rejects conflicting existing checkouts" {
