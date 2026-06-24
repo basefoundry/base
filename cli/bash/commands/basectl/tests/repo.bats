@@ -1264,6 +1264,128 @@ EOF
     grep -Fq "label create needs-demo --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
 }
 
+@test "basectl repo configure warns when Homebrew-managed gh is outdated" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "list" && "$2" == "gh" ]]; then
+    exit 0
+fi
+if [[ "$1" == "outdated" && "$2" == "gh" ]]; then
+    printf 'gh\n'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/brew"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
+            --repo codeforester/base-demo \
+            --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub CLI 'gh' is outdated; run 'basectl setup --profile dev' to upgrade Base-managed developer prerequisites."* ]]
+    [[ "$output" == *"Configuration complete."* ]]
+}
+
+@test "basectl repo configure does not warn when Homebrew-managed gh is current" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "list" && "$2" == "gh" ]]; then
+    exit 0
+fi
+if [[ "$1" == "outdated" && "$2" == "gh" ]]; then
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/brew"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
+            --repo codeforester/base-demo \
+            --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"GitHub CLI 'gh' is outdated"* ]]
+    [[ "$output" == *"Configuration complete."* ]]
+}
+
+@test "basectl repo configure skips gh freshness warning when Homebrew cannot inspect gh" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/brew" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "list" && "$2" == "gh" ]]; then
+    exit 1
+fi
+if [[ "$1" == "outdated" && "$2" == "gh" ]]; then
+    printf 'gh\n'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/brew"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
+            --repo codeforester/base-demo \
+            --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"GitHub CLI 'gh' is outdated"* ]]
+    [[ "$output" == *"Configuration complete."* ]]
+}
+
 @test "basectl repo configure applies project metadata through Base project engine" {
     local repo_dir="$TEST_TMPDIR/repo"
 
