@@ -212,6 +212,8 @@ base_update_profile_subcommand_main() {
     }
     if [[ "${BASE_HOME:-}" != "$base_home" ]]; then
         print_error "Resolved Base home '$base_home' does not match runtime BASE_HOME '${BASE_HOME:-unset}'."
+        printf "       This command must be invoked through the Base dispatcher, not directly.\n" >&2
+        printf "       Fix: unset BASE_HOME and run 'basectl update-profile' through the installed 'basectl' binary.\n" >&2
         return 1
     fi
     export BASE_HOME
