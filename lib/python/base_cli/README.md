@@ -55,7 +55,7 @@ def main(ctx: base_cli.Context, name: str) -> None:
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(base_cli.run_app(app))
 ```
 
 Running this command automatically adds the standard Base options:
@@ -68,6 +68,9 @@ hello --environment prod --name Ada
 hello --keep-temp --name Ada
 hello --log-file /tmp/hello.log --name Ada
 ```
+
+Long options with values use space-separated syntax. `base_cli.run_app()` rejects
+equals-form values such as `--name=Ada` before Click parses arguments.
 
 ## Command Registration
 
@@ -154,7 +157,9 @@ def main(ctx: base_cli.Context, token: str) -> None:
     ...
 ```
 
-Both `--token secret` and `--token=secret` are redacted in debug logs.
+Both `--token secret` and an externally supplied `--token=secret` token are
+redacted in debug logs, even though Base command invocation rejects equals-form
+option values before Click parses them.
 
 Use `dry_run=True` when a nonstandard option should drive `ctx.dry_run` and
 Base's default durable-write suppression:

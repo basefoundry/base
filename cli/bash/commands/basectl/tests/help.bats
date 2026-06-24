@@ -67,6 +67,20 @@ load ./basectl_helpers.bash
     [[ "$output" != *"-V"* ]]
 }
 
+@test "basectl rejects equals-form long option values before command delegation" {
+    run_basectl history --limit=2
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--limit' uses unsupported equals syntax. Use '--limit 2' instead."* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
+
+    run_basectl export-context demo --format=zip
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--format' uses unsupported equals syntax. Use '--format zip' instead."* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
+}
+
 @test "AI command context includes current clone and update surfaces" {
     local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
 

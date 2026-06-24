@@ -43,11 +43,14 @@ def main(ctx: base_cli.Context, name: str) -> None:
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(base_cli.run_app(app))
 ```
 
 The command function receives `ctx` as its first argument. Infrastructure is
 created immediately before command execution and cleaned up afterward.
+`base_cli.run_app()` applies Base's command syntax guard before Click parses
+arguments: long options with values must use space-separated syntax, such as
+`--name Ada`; equals-form values such as `--name=Ada` are rejected.
 
 ## Package Layout
 
@@ -299,6 +302,10 @@ Every `base_cli.App` command gets:
 | `--log-file <path>` | override the persistent log file |
 | `--version` | show the CLI version when configured |
 | `--help` | Click help |
+
+Long option values must use the space-separated form, for example
+`--environment prod`. Base rejects `--option=value` before Click parses
+arguments.
 
 ## Interrupt And Cleanup
 

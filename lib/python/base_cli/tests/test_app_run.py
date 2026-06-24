@@ -67,6 +67,38 @@ class RunAppTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "boom"):
                     base_cli.run_app(app, [])
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_run_app_rejects_equals_form_long_option_values(self) -> None:
+        app = base_cli.App(name="space-options", log_to_file=False)
+        seen = {}
+
+        @app.command()
+        @base_cli.option("--name", required=True)
+        def main(ctx: base_cli.Context, name: str) -> None:
+            del ctx
+            seen["name"] = name
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            stderr = io.StringIO()
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "HOME": str(home),
+                    "BASE_CACHE_DIR": str(home / ".cache" / "base"),
+                    "BASE_HOME": str(Path(__file__).resolve().parents[4]),
+                },
+            ), redirect_stderr(stderr):
+                status = base_cli.run_app(app, ["--name=demo"])
+
+        self.assertEqual(status, 2)
+        self.assertEqual(seen, {})
+        self.assertIn(
+            "Option '--name' uses unsupported equals syntax. Use '--name demo' instead.",
+            stderr.getvalue(),
+        )
+        self.assertNotIn("Traceback", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
