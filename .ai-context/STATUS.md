@@ -47,8 +47,8 @@ Recent released work includes:
 
 - local command-history index with future report surfaces still deferred
 - project Python version requirements for Base-managed virtualenv creation
-- workspace manifest status/check/doctor reporting plus explicit clone and pull
-  support
+- workspace manifest status/check/doctor reporting plus explicit init, clone,
+  and pull support
 - guarded `basectl release publish`
 - release check, plan, and notes commands
 - local `.ai-context/` export bundles through `basectl export-context`

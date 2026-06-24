@@ -57,6 +57,25 @@ Fetch and validate a canonical workspace manifest before updating the local mani
 EOF
 }
 
+base_workspace_init_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace init <workspace-source> [options]
+
+Options:
+  --owner <owner>     GitHub owner for short workspace repository names.
+  --path <path>       Workspace configuration repository checkout path.
+  --workspace <path>  Workspace directory for member repositories.
+  --manifest <path>   Workspace manifest path or name. Defaults to workspace.yaml in the config repo.
+  --include-optional  Include optional workspace manifest repositories when cloning.
+  --dry-run           Show planned workspace initialization without writing.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Initialize a workspace from a workspace configuration repository.
+EOF
+}
+
 base_workspace_configure_usage() {
     cat <<'EOF'
 Usage:
@@ -85,13 +104,16 @@ base_workspace_subcommand_usage() {
         pull)
             base_workspace_pull_usage
             ;;
+        init)
+            base_workspace_init_usage
+            ;;
         configure)
             base_workspace_configure_usage
             ;;
         *)
             cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|clone|pull|configure> [options]
+  basectl workspace <status|check|doctor|clone|pull|init|configure> [options]
 
 Commands:
   status     Show workspace status. Supports --format text|json.
@@ -99,6 +121,7 @@ Commands:
   doctor     Run workspace diagnostics. Supports --format text|json.
   clone      Clone or validate expected repositories from a workspace manifest.
   pull       Fetch and validate a canonical workspace manifest source.
+  init       Initialize a workspace from a workspace configuration repository.
   configure  Apply repo configure across workspace repositories.
 
 Run `basectl workspace <command> --help` for command-specific options.
@@ -123,7 +146,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|clone|pull|configure)
+        status|check|doctor|clone|pull|init|configure)
             shift
             ;;
         *)
