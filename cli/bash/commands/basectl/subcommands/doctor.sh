@@ -37,6 +37,12 @@ See also:
 EOF
 }
 
+base_doctor_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl doctor --help' for usage.\n" >&2
+    return 2
+}
+
 base_doctor_print_finding() {
     local status="$1"
     local finding_id="$2"
@@ -321,40 +327,35 @@ base_doctor_subcommand_main() {
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--profile' requires an argument."
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "Option '--profile' requires an argument."
+                    return $?
                 fi
                 if ! setup_enable_profile_argument "$1"; then
-                    print_error "$BASE_SETUP_PROFILE_ERROR"
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "$BASE_SETUP_PROFILE_ERROR"
+                    return $?
                 fi
                 ;;
             --format)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--format' requires an argument."
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "Option '--format' requires an argument."
+                    return $?
                 fi
                 case "$1" in
                     text|json)
                         output_format="$1"
                         ;;
                     *)
-                        print_error "Unsupported doctor output format '$1'."
-                        base_doctor_subcommand_usage >&2
-                        return 2
+                        base_doctor_usage_error "Unsupported doctor output format '$1'."
+                        return $?
                         ;;
                 esac
                 ;;
             --manifest)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--manifest' requires an argument."
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "Option '--manifest' requires an argument."
+                    return $?
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
@@ -371,14 +372,12 @@ base_doctor_subcommand_main() {
                 ;;
             *)
                 if [[ "$1" == -* ]]; then
-                    print_error "Unknown option '$1'."
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "Unknown option '$1'."
+                    return $?
                 fi
                 if [[ -n "$project" ]]; then
-                    print_error "The 'doctor' command accepts at most one project name."
-                    base_doctor_subcommand_usage >&2
-                    return 2
+                    base_doctor_usage_error "The 'doctor' command accepts at most one project name."
+                    return $?
                 fi
                 project="$1"
                 ;;

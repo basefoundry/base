@@ -33,6 +33,12 @@ Updated files:
 EOF
 }
 
+base_update_profile_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl update-profile --help' for usage.\n" >&2
+    return 2
+}
+
 base_update_profile_source_file_library() {
     import_base_lib file/lib_file.sh
 }
@@ -190,18 +196,16 @@ base_update_profile_subcommand_main() {
                 setup_enable_debug_logging
                 ;;
             *)
-                print_error "Unknown option '$1'."
-                base_update_profile_subcommand_usage >&2
-                return 2
+                base_update_profile_usage_error "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
     done
 
     if ((enable_defaults && disable_defaults)); then
-        print_error "Options '--defaults' and '--no-defaults' cannot be used together."
-        base_update_profile_subcommand_usage >&2
-        return 2
+        base_update_profile_usage_error "Options '--defaults' and '--no-defaults' cannot be used together."
+        return $?
     fi
 
     log_debug "Running 'basectl update-profile'."

@@ -45,6 +45,12 @@ Check does:
 EOF
 }
 
+base_check_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl check --help' for usage.\n" >&2
+    return 2
+}
+
 base_check_subcommand_main() {
     local output_format="text"
     local project=""
@@ -61,40 +67,35 @@ base_check_subcommand_main() {
             --format)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--format' requires an argument."
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "Option '--format' requires an argument."
+                    return $?
                 fi
                 case "$1" in
                     text|json)
                         output_format="$1"
                         ;;
                     *)
-                        print_error "Unsupported check output format '$1'."
-                        base_check_subcommand_usage >&2
-                        return 2
+                        base_check_usage_error "Unsupported check output format '$1'."
+                        return $?
                         ;;
                 esac
                 ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--profile' requires an argument."
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "Option '--profile' requires an argument."
+                    return $?
                 fi
                 if ! setup_enable_profile_argument "$1"; then
-                    print_error "$BASE_SETUP_PROFILE_ERROR"
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "$BASE_SETUP_PROFILE_ERROR"
+                    return $?
                 fi
                 ;;
             --manifest)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--manifest' requires an argument."
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "Option '--manifest' requires an argument."
+                    return $?
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
@@ -107,14 +108,12 @@ base_check_subcommand_main() {
                 ;;
             *)
                 if [[ "$1" == -* ]]; then
-                    print_error "Unknown option '$1'."
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "Unknown option '$1'."
+                    return $?
                 fi
                 if [[ -n "$project" ]]; then
-                    print_error "The 'check' command accepts at most one project name."
-                    base_check_subcommand_usage >&2
-                    return 2
+                    base_check_usage_error "The 'check' command accepts at most one project name."
+                    return $?
                 fi
                 project="$1"
                 ;;
