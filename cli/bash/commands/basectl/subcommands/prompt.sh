@@ -30,7 +30,9 @@ base_prompt_usage_error() {
 
 base_prompt_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local args=()
+    local debug=0
+    local prompt_args=()
+    local renderer_args=()
 
     while (($#)); do
         case "$1" in
@@ -39,7 +41,7 @@ base_prompt_subcommand_main() {
                 return 0
                 ;;
             -v)
-                args+=(--debug)
+                debug=1
                 shift
                 ;;
             -*)
@@ -47,21 +49,23 @@ base_prompt_subcommand_main() {
                 return $?
                 ;;
             *)
-                args+=("$1")
+                prompt_args+=("$1")
                 shift
                 ;;
         esac
     done
 
-    if ((${#args[@]} == 0)); then
+    if ((${#prompt_args[@]} == 0)); then
         base_prompt_usage_error "The 'prompt' command requires 'list' or a prompt name."
         return $?
     fi
-    if ((${#args[@]} > 1)); then
+    if ((${#prompt_args[@]} > 1)); then
         base_prompt_usage_error "The 'prompt' command accepts exactly one argument."
         return $?
     fi
 
+    ((debug)) && renderer_args+=(--debug)
+
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_prompt "${args[@]}"
+    "$wrapper" --project base base_prompt "${renderer_args[@]}" "${prompt_args[@]}"
 }
