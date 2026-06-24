@@ -91,7 +91,7 @@ _base_basectl_completion() {
             ;;
         workspace)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "status check doctor clone pull configure" "$cur"
+                _base_basectl_completion_compgen "status check doctor clone pull init configure" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                     status|check|doctor)
@@ -102,6 +102,9 @@ _base_basectl_completion() {
                         ;;
                     pull)
                         _base_basectl_completion_compgen "--source --manifest --dry-run -v -h --help" "$cur"
+                        ;;
+                    init)
+                        _base_basectl_completion_compgen "--owner --path --workspace --manifest --include-optional --dry-run -v -h --help" "$cur"
                         ;;
                     configure)
                         _base_basectl_completion_compgen "--workspace --manifest --dry-run -v -h --help" "$cur"

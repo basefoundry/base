@@ -25,16 +25,18 @@ the canonical current command list.
   prompt to an AI provider.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor|clone|pull|configure>` - inspect
+- `basectl workspace <status|check|doctor|clone|pull|init|configure>` - inspect
   workspace status, checks, and diagnostics; explicitly clone expected
-  repositories from a manifest; explicitly sync a local manifest from a
-  configured canonical source; or apply repo configuration across a workspace.
+  repositories from a manifest; initialize a workspace from a workspace
+  configuration repo; explicitly sync a local manifest from a configured
+  canonical source; or apply repo configuration across a workspace.
   - `workspace status`, `workspace check`, and `workspace doctor` support
-    `--format json`; `workspace clone`, `workspace pull`, and
+    `--format json`; `workspace clone`, `workspace pull`, `workspace init`, and
     `workspace configure` use text output.
   - `workspace clone` mutates repository checkouts only when invoked directly;
     `workspace pull` mutates only the local workspace manifest after validating
-    the source.
+    the source; `workspace init` can clone the workspace configuration repo,
+    update `~/.base.d/config.yaml`, and materialize manifest repositories.
   - `workspace configure --dry-run` previews delegated `repo configure` calls;
     without `--dry-run`, it skips missing or non-Base-managed repos, continues
     after per-repo failures, and reports configured/skipped/failed counts.

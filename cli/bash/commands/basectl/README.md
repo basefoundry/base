@@ -166,6 +166,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   Optional repositories are reported but skipped unless `--include-optional` is
   supplied, `--dry-run` previews the delegated clone work, and explicit
   `--manifest <path>` takes precedence over `workspace.manifest`.
+- `basectl workspace init <workspace-source>` bootstraps a workspace from a
+  workspace configuration repository. The source may be a local path, GitHub URL,
+  `owner/repo`, or a short repository name resolved by `--owner <owner>` or
+  `github.default_owner`. `--path <path>` controls the configuration repo
+  checkout, while `--workspace <path>` controls member repository destinations.
 - `basectl workspace pull` explicitly fetches and validates a canonical
   workspace manifest source from `workspace.manifest_source` in
   `~/.base.d/config.yaml`, or from an explicit `--source <url-or-path>`, and

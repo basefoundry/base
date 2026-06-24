@@ -169,6 +169,36 @@ EOF
     [ "$output" = "ARGS=--workspace $workspace --manifest $manifest --dry-run" ]
 }
 
+@test "basectl workspace init delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local config_repo="$TEST_TMPDIR/base-workspace"
+    local manifest="$TEST_TMPDIR/base-workspace/workspace.yaml"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base" "$config_repo"
+    touch "$manifest"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "init" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace init python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+    config_repo="$(cd "$config_repo" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace init base-workspace --owner codeforester --path "$config_repo" --workspace "$workspace" --manifest workspace.yaml --include-optional --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=base-workspace --owner codeforester --path $config_repo --workspace $workspace --manifest workspace.yaml --include-optional --dry-run" ]
+}
+
 @test "basectl workspace commands print help without requiring the Base Python venv" {
     run_basectl workspace status --help
 
@@ -216,6 +246,18 @@ EOF
     [[ "$output" == *"basectl workspace configure [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" != *"--format <format>"* ]]
+
+    run_basectl workspace init --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace init <workspace-source> [options]"* ]]
+    [[ "$output" == *"--owner <owner>"* ]]
+    [[ "$output" == *"--path <path>"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--include-optional"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" != *"--format <format>"* ]]
 }

@@ -457,6 +457,7 @@ basectl workspace status --format json
 basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
+basectl workspace init basefoundry/base-workspace --dry-run
 basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
 basectl workspace configure --dry-run
 ```
@@ -468,8 +469,8 @@ Use `--workspace <path>` to inspect a different workspace root for one command.
 Project list output is tab-separated as `<project-name><TAB><path>`.
 `basectl projects list` and the read-only workspace status, check, and doctor
 commands support `--format json` for machine-readable output. Workspace clone,
-pull, and configure use text output only. Workspace status, check, and doctor are
-read-only. Status reports each discovered project's manifest
+pull, init, and configure use text output only. Workspace status, check, and
+doctor are read-only. Status reports each discovered project's manifest
 validity, whether the Base-managed project virtual environment is present, and
 the latest recorded `basectl check <project>` date when one exists. Check
 records live under `~/.base.d/<project>/checks/last.json`; status JSON includes
@@ -490,6 +491,15 @@ manifest. The command keeps existing repositories visible, delegates each
 repository operation to `basectl repo clone`, and supports `--dry-run` for a
 no-write preview. Optional repositories are reported but skipped unless
 `--include-optional` is supplied.
+
+Use `basectl workspace init <workspace-source>` for first-run bootstrap from a
+workspace configuration repository. The source can be a local path, GitHub URL,
+`owner/repo`, or a short repository name resolved with `--owner <owner>` or
+`github.default_owner`. `--path <path>` controls where the workspace
+configuration repo is checked out or read. `--workspace <path>` controls where
+member repositories are cloned. Init validates `workspace.yaml` before
+materializing member repositories and then delegates those clones through
+`basectl workspace clone`.
 
 Use `basectl workspace pull`, or `basectl workspace pull --dry-run`, when
 `workspace.manifest_source` and `workspace.manifest` are configured to refresh a

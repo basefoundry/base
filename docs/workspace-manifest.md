@@ -278,6 +278,28 @@ With a configured or explicit manifest, commands report both expected
 repositories and discovered projects, including missing expected repositories
 and extra discovered projects.
 
+The init path bootstraps a workspace from a workspace configuration repository:
+
+```bash
+basectl workspace init basefoundry/base-workspace --dry-run
+basectl workspace init basefoundry/base-workspace
+basectl workspace init base-workspace --owner basefoundry --path ~/work/base-workspace
+```
+
+The positional argument is a workspace source, not the workspace name. The
+source can be a local path, a GitHub URL, `owner/repo`, or a short repository
+name resolved by `--owner <owner>` or `github.default_owner`. `--path` controls
+where the workspace configuration repository is checked out or read.
+`--workspace` controls where member repositories are cloned. If neither
+`--workspace` nor configured `workspace.root` is available, init uses the parent
+of the workspace configuration repo path as the workspace root.
+
+Init validates the workspace manifest before cloning member repositories. When
+the workspace source is remote, init first delegates the workspace configuration
+repo checkout to `basectl repo clone`, then delegates member repository
+materialization to `basectl workspace clone`. A remote dry-run can stop after the
+configuration repo clone plan when the local manifest is not available yet.
+
 The clone path requires a manifest from either config or the command line:
 
 ```bash

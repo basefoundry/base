@@ -111,6 +111,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "workspace_pull_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace init --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_init_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl workspace configure --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -227,10 +231,11 @@ EOF
     [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"export_context_options=--workspace --format --output --print --list-files"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
-    [[ "$output" == *"workspace_commands=status check doctor clone pull"* ]]
+    [[ "$output" == *"workspace_commands=status check doctor clone pull init"* ]]
     [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
     [[ "$output" == *"workspace_clone_options=--workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_pull_options=--source --manifest --dry-run"* ]]
+    [[ "$output" == *"workspace_init_options=--owner --path --workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_configure_options=--workspace --manifest --dry-run"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --no-profile"* ]]
     [[ "$output" == *"onboard_projects=base demo"* ]]
@@ -307,6 +312,6 @@ EOF
             printf "options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"commands=status check doctor clone pull configure"* ]]
+    [[ "$output" == *"commands=status check doctor clone pull init configure"* ]]
     [[ "$output" == *"options=--workspace --manifest --dry-run"* ]]
 }
