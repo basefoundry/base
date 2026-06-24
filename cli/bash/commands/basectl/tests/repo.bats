@@ -79,11 +79,12 @@ EOF
     run_basectl repo clone base-demo --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository: codeforester/base-demo"* ]]
-    [[ "$output" == *"Destination: $repo_dir"* ]]
-    [[ "$output" == *"Tool: gh repo clone"* ]]
-    [[ "$output" == *"Clone URL: git@github.com:codeforester/base-demo.git"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir"* ]]
+    [ "$(line_at "$output" 1)" = "[DRY-RUN] Would clone codeforester/base-demo (git@github.com:codeforester/base-demo.git) into $repo_dir." ]
+    [ "$(line_at "$output" 2)" = "[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir" ]
+    [[ "$output" != *"Repository:"* ]]
+    [[ "$output" != *"Destination:"* ]]
+    [[ "$output" != *"Tool:"* ]]
+    [[ "$output" != *"Clone URL:"* ]]
     [ ! -e "$repo_dir" ]
 }
 
@@ -93,9 +94,8 @@ EOF
     run_basectl repo clone base-demo --owner codeforester --path "~/work/base-demo" --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository: codeforester/base-demo"* ]]
-    [[ "$output" == *"Destination: $repo_dir"* ]]
-    [[ "$output" == *"Clone URL: git@github.com:codeforester/base-demo.git"* ]]
+    [ "$(line_at "$output" 1)" = "[DRY-RUN] Would clone codeforester/base-demo (git@github.com:codeforester/base-demo.git) into $repo_dir." ]
+    [ "$(line_at "$output" 2)" = "[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir" ]
     [ ! -e "$repo_dir" ]
 }
 
@@ -112,9 +112,8 @@ EOF
     run_basectl repo clone codeforester/bankbuddy --path "$repo_dir" --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository: codeforester/bankbuddy"* ]]
-    [[ "$output" == *"Destination: $repo_dir"* ]]
-    [[ "$output" == *"Clone URL: https://github.com/codeforester/bankbuddy.git"* ]]
+    [ "$(line_at "$output" 1)" = "[DRY-RUN] Would clone codeforester/bankbuddy (https://github.com/codeforester/bankbuddy.git) into $repo_dir." ]
+    [ "$(line_at "$output" 2)" = "[DRY-RUN] Would run: gh repo clone codeforester/bankbuddy $repo_dir" ]
 }
 
 @test "basectl repo clone requires an owner for short names" {
