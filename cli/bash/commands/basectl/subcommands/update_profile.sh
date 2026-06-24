@@ -192,7 +192,7 @@ base_update_profile_subcommand_main() {
             *)
                 print_error "Unknown option '$1'."
                 base_update_profile_subcommand_usage >&2
-                return 1
+                return 2
                 ;;
         esac
         shift
@@ -201,7 +201,7 @@ base_update_profile_subcommand_main() {
     if ((enable_defaults && disable_defaults)); then
         print_error "Options '--defaults' and '--no-defaults' cannot be used together."
         base_update_profile_subcommand_usage >&2
-        return 1
+        return 2
     fi
 
     log_debug "Running 'basectl update-profile'."

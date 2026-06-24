@@ -583,7 +583,7 @@ EOF
 @test "basectl update-profile rejects conflicting defaults options" {
     run_base_command update-profile --defaults --no-defaults
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Options '--defaults' and '--no-defaults' cannot be used together."* ]]
     [[ "$output" == *"Usage:"* ]]
     [ ! -e "$TEST_HOME/.base.d/profile.conf" ]

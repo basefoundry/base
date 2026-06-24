@@ -63,7 +63,7 @@ base_check_subcommand_main() {
                 if [[ -z "${1:-}" ]]; then
                     print_error "Option '--format' requires an argument."
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 case "$1" in
                     text|json)
@@ -72,7 +72,7 @@ base_check_subcommand_main() {
                     *)
                         print_error "Unsupported check output format '$1'."
                         base_check_subcommand_usage >&2
-                        return 1
+                        return 2
                         ;;
                 esac
                 ;;
@@ -81,12 +81,12 @@ base_check_subcommand_main() {
                 if [[ -z "${1:-}" ]]; then
                     print_error "Option '--profile' requires an argument."
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 if ! setup_enable_profile_argument "$1"; then
                     print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 ;;
             --manifest)
@@ -94,7 +94,7 @@ base_check_subcommand_main() {
                 if [[ -z "${1:-}" ]]; then
                     print_error "Option '--manifest' requires an argument."
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
@@ -109,12 +109,12 @@ base_check_subcommand_main() {
                 if [[ "$1" == -* ]]; then
                     print_error "Unknown option '$1'."
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 if [[ -n "$project" ]]; then
                     print_error "The 'check' command accepts at most one project name."
                     base_check_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 project="$1"
                 ;;

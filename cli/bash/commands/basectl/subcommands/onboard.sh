@@ -119,12 +119,12 @@ base_onboard_subcommand_main() {
                 if [[ -z "${1:-}" ]]; then
                     print_error "Option '--profile' requires an argument."
                     base_onboard_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 if ! setup_enable_profile_argument "$1"; then
                     print_error "$BASE_SETUP_PROFILE_ERROR"
                     base_onboard_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 ;;
             --dry-run)
@@ -146,13 +146,13 @@ base_onboard_subcommand_main() {
             -*)
                 print_error "Unknown option '$1'."
                 base_onboard_subcommand_usage >&2
-                return 1
+                return 2
                 ;;
             *)
                 if ((project_explicit)); then
                     print_error "The onboard command accepts at most one project."
                     base_onboard_subcommand_usage >&2
-                    return 1
+                    return 2
                 fi
                 project="$1"
                 project_explicit=1
