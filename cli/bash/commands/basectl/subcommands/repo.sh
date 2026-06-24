@@ -2749,10 +2749,10 @@ base_repo_clone_with_gh() {
     esac
 
     if [[ "$dry_run" == "1" ]]; then
-        printf "Repository: %s\n" "$repo"
-        printf "Destination: %s\n" "$target"
-        printf "Tool: gh repo clone\n"
-        printf "Clone URL: %s\n" "$clone_url"
+        printf "[DRY-RUN] Would clone %s (%s) into %s.\n" \
+            "$repo" \
+            "$clone_url" \
+            "$(base_repo_pretty_arg "$target")"
         printf "[DRY-RUN] Would run: "
         base_repo_pretty_command gh repo clone "$repo" "$target"
         printf "\n"
