@@ -192,14 +192,14 @@ load ./setup_helpers.bash
 @test "basectl check rejects unknown profiles" {
     run_base_command check --profile ops
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl check rejects empty profile list entries" {
     run_base_command check --profile dev,,sre
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Profile list must not contain empty entries."* ]]
 }
 
@@ -708,6 +708,6 @@ load ./setup_helpers.bash
 @test "basectl check rejects unsupported output formats" {
     run_base_command check --format xml
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Unsupported check output format 'xml'."* ]]
 }

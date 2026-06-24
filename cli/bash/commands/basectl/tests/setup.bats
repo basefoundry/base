@@ -694,14 +694,14 @@ EOF
 @test "basectl setup rejects unknown profiles" {
     run_base_command setup --profile ops
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
 @test "basectl setup rejects empty profile list entries" {
     run_base_command setup --profile dev,,sre
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Profile list must not contain empty entries."* ]]
 }
 

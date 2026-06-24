@@ -85,9 +85,9 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_subcommand_main bankbuddy base-demo --dry-run
-        '
+    '
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"The onboard command accepts at most one project."* ]]
 }
 
@@ -99,9 +99,9 @@ load ./basectl_helpers.bash
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_subcommand_main --profile ops
-        '
+    '
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
 }
 
