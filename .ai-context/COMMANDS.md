@@ -3,6 +3,11 @@
 `basectl` is the public Base control-plane command. Run `basectl --help` for
 the canonical current command list.
 
+Long options with values use space-separated syntax, such as `--format json`.
+Base rejects `--option=value` before command delegation. Arguments after `--`
+belong to the delegated project command and may use that command's native
+syntax.
+
 ## Current Public Commands
 
 - `basectl activate <project>` - start an interactive Base Bash runtime shell

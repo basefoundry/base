@@ -3,6 +3,11 @@
 This page is a compact lookup table for the current `basectl` command surface.
 Run `basectl --help` or `basectl <command> --help` for full usage.
 
+Use space-separated values for long options, for example `--format json`.
+Base rejects `--option=value` syntax before command delegation. Arguments after
+`--` belong to the delegated project command and may use that command's native
+syntax.
+
 ## Install And Bootstrap
 
 | Command | What it does | Important flags |

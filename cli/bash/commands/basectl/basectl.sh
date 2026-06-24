@@ -77,6 +77,9 @@ Notes:
   - `basectl setup` is the preferred entrypoint for machine bootstrap.
   - `basectl check` verifies the same local requirements without making changes.
     Pass a project name to include that project's manifest artifacts.
+  - Use space-separated values for long options, for example `--format json`.
+    Base rejects `--option=value` syntax before command delegation. Arguments
+    after `--` belong to the delegated project command.
   - Invoking `basectl` with no command starts a Base runtime shell for the
     nearest project manifest above the current directory, preserving that
     directory. If no manifest is found, it falls back to project `base`. In
@@ -94,6 +97,34 @@ basectl_usage_error() {
     basectl_error "$*"
     basectl_show_help >&2
     return 2
+}
+
+basectl_equals_option_usage_error() {
+    local argument="$1"
+    local option="${argument%%=*}"
+    local value="${argument#*=}"
+
+    if [[ -n "$value" ]]; then
+        basectl_usage_error "Option '$option' uses unsupported equals syntax. Use '$option $value' instead."
+    else
+        basectl_usage_error "Option '$option' uses unsupported equals syntax. Pass its value as the next argument."
+    fi
+}
+
+basectl_reject_equals_option_values() {
+    local argument
+
+    for argument in "$@"; do
+        [[ "$argument" == "--" ]] && return 0
+        case "$argument" in
+            --?*=*)
+                basectl_equals_option_usage_error "$argument"
+                return $?
+                ;;
+        esac
+    done
+
+    return 0
 }
 
 basectl_get_base_home() {
@@ -342,6 +373,10 @@ basectl_main() {
     fi
 
     case "${1:-}" in
+        --?*=*)
+            basectl_equals_option_usage_error "$1"
+            return $?
+            ;;
         --*)
             basectl_usage_error "Unknown option '$1'"
             return $?
@@ -372,6 +407,8 @@ basectl_main() {
 
     command="${1:-}"
     [[ -n "$command" ]] && shift
+
+    basectl_reject_equals_option_values "$@" || return $?
 
     basectl_get_base_home || return 1
     ((base_debug)) && basectl_enable_debug_logging
