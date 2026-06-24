@@ -223,7 +223,7 @@ class WorkspaceInitTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn(f"Workspace source: codeforester/base-workspace", stdout)
+        self.assertIn("Workspace source: codeforester/base-workspace", stdout)
         self.assertIn(f"Workspace manifest: {(source / 'workspace.yaml').resolve()} (demo-suite)", stdout)
         self.assertEqual(
             state_lines,
@@ -267,11 +267,14 @@ class WorkspaceInitTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertIn("Workspace init", stdout)
-        self.assertIn(f"Workspace source: codeforester/base-workspace", stdout)
+        self.assertIn("Workspace source: codeforester/base-workspace", stdout)
         self.assertIn(f"Workspace config repo: {source.resolve()}", stdout)
         self.assertIn(f"Workspace root: {workspace.resolve()}", stdout)
         self.assertIn(f"[DRY-RUN] Would read workspace manifest: {(source / 'workspace.yaml').resolve()}", stdout)
-        self.assertIn("[DRY-RUN] Skipping member repository plan because the workspace config repo is not present.", stdout)
+        self.assertIn(
+            "[DRY-RUN] Skipping member repository plan because the workspace config repo is not present.",
+            stdout,
+        )
         self.assertEqual(
             state_lines,
             [f"repo clone codeforester/base-workspace --path {source.resolve()} --dry-run"],

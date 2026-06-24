@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import hashlib
 import json
 import os
@@ -555,7 +557,10 @@ def resolve_workspace_init_source(
         )
 
     if "/" in workspace_source:
-        raise ProjectUsageError("Workspace source must be a local path, GitHub URL, '<owner>/<repo>', or short repo name.")
+        raise ProjectUsageError(
+            "Workspace source must be a local path, GitHub URL, "
+            "'<owner>/<repo>', or short repo name."
+        )
 
     effective_owner = owner or ctx.user_config.github.default_owner
     if effective_owner is None:
@@ -630,7 +635,9 @@ def clone_workspace_config_repo(ctx: base_cli.Context, repo_spec: str, target: P
     try:
         result = subprocess.run(command, check=False, capture_output=True, text=True)
     except OSError as exc:
-        raise WorkspaceManifestError(f"Could not run basectl repo clone for workspace source '{repo_spec}': {exc}") from exc
+        raise WorkspaceManifestError(
+            f"Could not run basectl repo clone for workspace source '{repo_spec}': {exc}"
+        ) from exc
     if result.stdout:
         print(result.stdout, end="")
     if result.stderr:
