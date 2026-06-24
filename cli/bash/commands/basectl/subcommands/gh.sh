@@ -373,12 +373,12 @@ base_gh_trim_scalar() {
     printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
-base_gh_issue_default_assignee_from_config() {
+base_gh_issue_default_from_config() {
+    local path="$1" key="$2"
     local in_defaults=0
     local in_project=0
-    local line path trimmed value
+    local line trimmed value
 
-    path="$1"
     while IFS= read -r line || [[ -n "$line" ]]; do
         trimmed="$(base_gh_trim_scalar "$line")"
         [[ -n "$trimmed" && "$trimmed" != \#* ]] || continue
@@ -402,8 +402,8 @@ base_gh_issue_default_assignee_from_config() {
             continue
         fi
 
-        if ((in_project)) && ((in_defaults)) && [[ "$line" == "    "* && "$trimmed" == assignee:* ]]; then
-            value="$(base_gh_trim_scalar "${trimmed#assignee:}")"
+        if ((in_project)) && ((in_defaults)) && [[ "$line" == "    "* && "$trimmed" == "$key":* ]]; then
+            value="$(base_gh_trim_scalar "${trimmed#"$key":}")"
             [[ -n "$value" ]] || return 1
             printf '%s\n' "$value"
             return 0
@@ -411,6 +411,10 @@ base_gh_issue_default_assignee_from_config() {
     done <"$path"
 
     return 1
+}
+
+base_gh_issue_default_assignee_from_config() {
+    base_gh_issue_default_from_config "$1" assignee
 }
 
 base_gh_issue_number_from_output() {
@@ -430,6 +434,82 @@ base_gh_project_issue_set_fields() {
         return 1
     }
     "$wrapper" --project base base_github_projects project issue set-fields "$@"
+}
+
+base_gh_join_csv() {
+    local joined="" value
+
+    for value in "$@"; do
+        if [[ -n "$joined" ]]; then
+            joined+=", "
+        fi
+        joined+="$value"
+    done
+    printf '%s\n' "$joined"
+}
+
+base_gh_project_field_summary() {
+    local project_title="$1" config_path="$2" project_size="$3"
+    local status="" priority="" size="" area="" initiative=""
+    local fields=()
+
+    if [[ -n "$config_path" ]]; then
+        status="$(base_gh_issue_default_from_config "$config_path" status || true)"
+        priority="$(base_gh_issue_default_from_config "$config_path" priority || true)"
+        size="$(base_gh_issue_default_from_config "$config_path" size || true)"
+        area="$(base_gh_issue_default_from_config "$config_path" area || true)"
+        initiative="$(base_gh_issue_default_from_config "$config_path" initiative || true)"
+    else
+        status="Backlog"
+        priority="P2"
+        size="${project_size:-S}"
+    fi
+    if [[ -n "$project_size" ]]; then
+        size="$project_size"
+    fi
+
+    [[ -n "$status" ]] && fields+=("Status=$status")
+    [[ -n "$priority" ]] && fields+=("Priority=$priority")
+    [[ -n "$size" ]] && fields+=("Size=$size")
+    [[ -n "$area" ]] && fields+=("Area=$area")
+    [[ -n "$initiative" ]] && fields+=("Initiative=$initiative")
+
+    if ((${#fields[@]})); then
+        printf "Project '%s': %s applied.\n" "$project_title" "$(base_gh_join_csv "${fields[@]}")"
+    else
+        printf "Project '%s': fields applied.\n" "$project_title"
+    fi
+}
+
+base_gh_project_issue_set_fields_command() {
+    printf 'basectl gh project issue set-fields'
+    printf ' %q' "$@"
+    printf '\n'
+}
+
+base_gh_apply_project_issue_fields() {
+    local project_title="$1" config_path="$2" project_size="$3"
+    local output status line
+    shift 3
+
+    output="$(base_gh_project_issue_set_fields "$@" 2>&1)"
+    status=$?
+    if ((status == 0)); then
+        if [[ -n "$output" ]]; then
+            printf '%s\n' "$output"
+        fi
+        base_gh_project_field_summary "$project_title" "$config_path" "$project_size"
+        return 0
+    fi
+
+    if [[ -n "$output" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ -n "$line" ]] && log_warn "$line"
+        done <<<"$output"
+    fi
+    log_warn "Project field update failed. Set fields manually or rerun:"
+    log_warn "$(base_gh_project_issue_set_fields_command "$@")"
+    return "$status"
 }
 
 base_gh_pr_policy_body() {
@@ -642,16 +722,19 @@ base_gh_issue_create() {
             if [[ -n "$project_size" ]]; then
                 field_args+=(--size "$project_size")
             fi
-            base_gh_project_issue_set_fields "${field_args[@]}"
+            base_gh_apply_project_issue_fields "$project_title" "$config_path" "$project_size" "${field_args[@]}" || return $?
         else
             [[ -n "$project_size" ]] || project_size="S"
-            base_gh_project_issue_set_fields "$issue_number" \
-                --project "$project_title" \
-                --owner "$project_owner" \
-                --repo "$github_repo" \
-                --status Backlog \
-                --priority P2 \
+            local field_args=(
+                "$issue_number"
+                --project "$project_title"
+                --owner "$project_owner"
+                --repo "$github_repo"
+                --status Backlog
+                --priority P2
                 --size "$project_size"
+            )
+            base_gh_apply_project_issue_fields "$project_title" "" "$project_size" "${field_args[@]}" || return $?
         fi
     fi
 }
