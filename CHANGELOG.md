@@ -16,6 +16,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `ctx.workspace_root` to `base_cli.Context` so workspace-aware commands
   can use the configured workspace root without reaching through user config.
+- Made `basectl repo configure` warn when Homebrew reports the local GitHub CLI
+  package is outdated, pointing users to `basectl setup --profile dev`.
 - Added `base_cli.testing.invoke(..., manifest={...})` for project-aware tests
   that need a fixture `base_manifest.yaml`.
 - Added optional stream and formatter overrides to `base_cli.configure_logger`

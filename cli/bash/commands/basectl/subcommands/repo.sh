@@ -1370,6 +1370,21 @@ base_repo_require_gh() {
     }
 }
 
+base_repo_homebrew_gh_outdated() {
+    local output=""
+
+    command -v brew >/dev/null 2>&1 || return 1
+    HOMEBREW_NO_AUTO_UPDATE=1 brew list gh >/dev/null 2>&1 || return 1
+    output="$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated gh 2>/dev/null || true)"
+    printf '%s\n' "$output" | awk '$1 == "gh" { found = 1 } END { exit found ? 0 : 1 }'
+}
+
+base_repo_warn_if_gh_outdated() {
+    if base_repo_homebrew_gh_outdated; then
+        log_warn "GitHub CLI 'gh' is outdated; run 'basectl setup --profile dev' to upgrade Base-managed developer prerequisites."
+    fi
+}
+
 base_repo_pretty_quote() {
     local value="$1"
 
@@ -1709,6 +1724,7 @@ base_repo_configure_github() {
         printf "[DRY-RUN] Would run: gh repo edit %s --enable-issues --enable-projects --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge --squash-merge-commit-message pr-title-description\n" "$repo"
     else
         base_repo_require_gh || return 1
+        base_repo_warn_if_gh_outdated
         printf "Configuring GitHub repository '%s'...\n" "$repo"
         gh repo edit "$repo" \
             --enable-issues \
