@@ -306,6 +306,50 @@ EOF
     [[ "$output" != *"basectl repo agent-guidance [path] [options]"* ]]
 }
 
+@test "basectl repo check rejects a second positional path after dot" {
+    local current_dir="$TEST_TMPDIR/current"
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    mkdir -p "$current_dir"
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+
+    cd "$current_dir"
+    run_basectl repo check . "$repo_dir"
+
+    [ "$status" -eq 2 ]
+    [ "$(line_at "$output" 1)" = "ERROR: The 'repo check' command accepts at most one path." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo check --help' for usage." ]
+}
+
+@test "basectl repo configure rejects a second positional path after dot" {
+    local current_dir="$TEST_TMPDIR/current"
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$current_dir" "$repo_dir"
+
+    cd "$current_dir"
+    run_basectl repo configure . "$repo_dir" --repo codeforester/base-demo --dry-run --no-project
+
+    [ "$status" -eq 2 ]
+    [ "$(line_at "$output" 1)" = "ERROR: The 'repo configure' command accepts at most one path." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo configure --help' for usage." ]
+}
+
+@test "basectl repo agent-guidance rejects a second positional path after dot" {
+    local current_dir="$TEST_TMPDIR/current"
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$current_dir" "$repo_dir"
+
+    cd "$current_dir"
+    run_basectl repo agent-guidance . "$repo_dir" --repo-name base-demo --dry-run
+
+    [ "$status" -eq 2 ]
+    [ "$(line_at "$output" 1)" = "ERROR: The 'repo agent-guidance' command accepts at most one path." ]
+    [ "$(line_at "$output" 2)" = "Run 'basectl repo agent-guidance --help' for usage." ]
+}
+
 @test "basectl repo installer-template prints the maintained template" {
     run_basectl repo installer-template --print
 
