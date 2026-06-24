@@ -430,7 +430,7 @@ EOF
     [[ "$output" != *"unexpected gh args"* ]]
 }
 
-@test "basectl gh issue start creates convention branch from issue metadata" {
+@test "basectl gh issue start prints worktree command from issue metadata" {
     local repo
 
     repo="$TEST_TMPDIR/repo"
@@ -468,8 +468,11 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == "enhancement/117-"*"-add-basectl-gh-workflow-for-issues" ]]
-    [ "$(git -C "$repo" branch --show-current)" = "$output" ]
+    [[ "$(printf '%s\n' "$output" | sed -n '1p')" == "enhancement/117-"*"-add-basectl-gh-workflow-for-issues" ]]
+    [ "$(printf '%s\n' "$output" | sed -n '2p')" = "" ]
+    [ "$(printf '%s\n' "$output" | sed -n '3p')" = "To create a worktree:" ]
+    [[ "$(printf '%s\n' "$output" | sed -n '4p')" == "  git worktree add -b enhancement/117-"*"-add-basectl-gh-workflow-for-issues "*"/repo-worktrees/117-add-basectl-gh-workflow-for-issues origin/master" ]]
+    [ "$(git -C "$repo" branch --show-current)" = "master" ]
 }
 
 @test "basectl gh issue start accepts explicit category and title without gh" {
@@ -491,7 +494,11 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == "enhancement/117-"*"-prune-merged-branches" ]]
+    [[ "$(printf '%s\n' "$output" | sed -n '1p')" == "enhancement/117-"*"-prune-merged-branches" ]]
+    [ "$(printf '%s\n' "$output" | sed -n '2p')" = "" ]
+    [ "$(printf '%s\n' "$output" | sed -n '3p')" = "To create a worktree:" ]
+    [[ "$(printf '%s\n' "$output" | sed -n '4p')" == "  git worktree add -b enhancement/117-"*"-prune-merged-branches "*"/repo-worktrees/117-prune-merged-branches origin/master" ]]
+    [ "$(git -C "$repo" branch --show-current)" = "master" ]
 }
 
 @test "basectl gh branch prune falls back to main when default branch is unknown" {
