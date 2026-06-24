@@ -7,17 +7,33 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-24
+
 ### Added
 
+- Added `basectl workspace init` to clone a workspace repository, read its
+  workspace configuration, and clone the repositories declared by that
+  workspace.
 - Added `basectl prompt list` and `basectl prompt product-self-review` to render
   repo-owned Markdown prompts for periodic AI-assisted Base workflow reviews.
+- Added a local command-history index for Python-backed Base command runs.
+- Added manifest-declared PR policy support for Base-managed GitHub PR helpers.
+- Added project Python version requirements and declarative artifact registry
+  support for Base-managed artifacts.
 
 ### Changed
 
 - Added `ctx.workspace_root` to `base_cli.Context` so workspace-aware commands
   can use the configured workspace root without reaching through user config.
+- Improved `basectl repo clone`, `repo check`, `repo configure`, and
+  `gh issue create|start` diagnostics so repository workflow failures include
+  clearer update, chmod, origin, Project-field, and worktree-command guidance.
 - Made `basectl repo configure` warn when Homebrew reports the local GitHub CLI
   package is outdated, pointing users to `basectl setup --profile dev`.
+- Made lifecycle command usage errors compact and consistent, returning exit
+  code `2` for `setup`, `check`, `doctor`, `onboard`, and `update-profile`.
+- Made idempotent `basectl setup` reconciliation quieter when no action is
+  required.
 - Added `base_cli.testing.invoke(..., manifest={...})` for project-aware tests
   that need a fixture `base_manifest.yaml`.
 - Added optional stream and formatter overrides to `base_cli.configure_logger`
@@ -35,6 +51,14 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Fixed `basectl prompt -v <name>` so the verbose flag no longer counts as a
+  second prompt argument.
+- Added actionable recovery guidance when `basectl update-profile` detects a
+  runtime `BASE_HOME` mismatch.
+- Fixed workspace reports for uv-managed project virtual environments and
+  broken project virtualenv detection.
+- Fixed project `--recreate-venv` repair and fail-fast runtime directory
+  handling for check diagnostics.
 - Allowed standard `base_cli.App` options such as `--debug` and
   `--environment` before subcommand names.
 - Made `base_cli.option(..., dry_run=True)` reject duplicate dry-run markers on
