@@ -30,6 +30,12 @@ Project:
 EOF
 }
 
+base_onboard_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl onboard --help' for usage.\n" >&2
+    return 2
+}
+
 base_onboard_print_heading() {
     printf '\n%s\n' "$1"
     printf '%s\n' "----------------"
@@ -117,14 +123,12 @@ base_onboard_subcommand_main() {
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--profile' requires an argument."
-                    base_onboard_subcommand_usage >&2
-                    return 2
+                    base_onboard_usage_error "Option '--profile' requires an argument."
+                    return $?
                 fi
                 if ! setup_enable_profile_argument "$1"; then
-                    print_error "$BASE_SETUP_PROFILE_ERROR"
-                    base_onboard_subcommand_usage >&2
-                    return 2
+                    base_onboard_usage_error "$BASE_SETUP_PROFILE_ERROR"
+                    return $?
                 fi
                 ;;
             --dry-run)
@@ -144,15 +148,13 @@ base_onboard_subcommand_main() {
                 return 0
                 ;;
             -*)
-                print_error "Unknown option '$1'."
-                base_onboard_subcommand_usage >&2
-                return 2
+                base_onboard_usage_error "Unknown option '$1'."
+                return $?
                 ;;
             *)
                 if ((project_explicit)); then
-                    print_error "The onboard command accepts at most one project."
-                    base_onboard_subcommand_usage >&2
-                    return 2
+                    base_onboard_usage_error "The onboard command accepts at most one project."
+                    return $?
                 fi
                 project="$1"
                 project_explicit=1

@@ -50,6 +50,12 @@ Notes:
 EOF
 }
 
+base_setup_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl setup --help' for usage.\n" >&2
+    return 2
+}
+
 base_setup_subcommand_main() {
     local exit_code
     local project_name=""
@@ -68,22 +74,19 @@ base_setup_subcommand_main() {
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--profile' requires an argument."
-                    base_setup_subcommand_usage >&2
-                    return 2
+                    base_setup_usage_error "Option '--profile' requires an argument."
+                    return $?
                 fi
                 if ! setup_enable_profile_argument "$1"; then
-                    print_error "$BASE_SETUP_PROFILE_ERROR"
-                    base_setup_subcommand_usage >&2
-                    return 2
+                    base_setup_usage_error "$BASE_SETUP_PROFILE_ERROR"
+                    return $?
                 fi
                 ;;
             --manifest)
                 shift
                 if [[ -z "${1:-}" ]]; then
-                    print_error "Option '--manifest' requires an argument."
-                    base_setup_subcommand_usage >&2
-                    return 2
+                    base_setup_usage_error "Option '--manifest' requires an argument."
+                    return $?
                 fi
                 BASE_SETUP_MANIFEST="$1"
                 export BASE_SETUP_MANIFEST
@@ -101,15 +104,13 @@ base_setup_subcommand_main() {
                 setup_enable_debug_logging
                 ;;
             --*)
-                print_error "Unknown option '$1'."
-                base_setup_subcommand_usage >&2
-                return 2
+                base_setup_usage_error "Unknown option '$1'."
+                return $?
                 ;;
             *)
                 if [[ -n "$project_name" ]]; then
-                    print_error "Only one project argument is supported."
-                    base_setup_subcommand_usage >&2
-                    return 2
+                    base_setup_usage_error "Only one project argument is supported."
+                    return $?
                 fi
                 project_name="$1"
                 ;;

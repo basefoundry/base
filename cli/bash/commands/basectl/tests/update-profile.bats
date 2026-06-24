@@ -585,6 +585,7 @@ EOF
 
     [ "$status" -eq 2 ]
     [[ "$output" == *"Options '--defaults' and '--no-defaults' cannot be used together."* ]]
-    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"Run 'basectl update-profile --help' for usage."* ]]
+    [[ "$output" != *"Usage:"* ]]
     [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
 }
