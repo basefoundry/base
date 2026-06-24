@@ -3226,7 +3226,10 @@ base_repo_configure() {
     fi
     [[ -n "$github_repo" ]] || {
         log_error "Unable to infer GitHub repository from '$path'."
-        log_error "Pass --repo <owner/name> to configure a GitHub repository explicitly."
+        printf "       Inference requires a git remote named 'origin' that points to github.com.\n" >&2
+        printf "       Pass --repo <owner/name> to configure explicitly, or run:\n" >&2
+        printf "         git -C %s remote -v\n" "$(base_repo_pretty_arg "$path")" >&2
+        printf "       to inspect the current remotes.\n" >&2
         return 1
     }
 
