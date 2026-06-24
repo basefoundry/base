@@ -273,6 +273,19 @@ base_gh_slug() {
     printf '%.60s\n' "$slug" | sed -E 's/-+$//'
 }
 
+base_gh_issue_worktree_path() {
+    local issue="$1" slug="$2"
+    local repo_root repo_name repo_parent slug_short
+
+    repo_root="$(git rev-parse --show-toplevel)" || return 1
+    repo_name="$(basename "$repo_root")"
+    repo_parent="$(dirname "$repo_root")"
+    slug_short="$(printf '%s\n' "$slug" | cut -c1-40 | sed -E 's/-+$//')"
+    [[ -n "$slug_short" ]] || slug_short="work"
+
+    printf '%s/%s-worktrees/%s-%s\n' "$repo_parent" "$repo_name" "$issue" "$slug_short"
+}
+
 base_gh_issue_category_from_labels() {
     local issue="$1"
     local category
@@ -692,7 +705,7 @@ base_gh_pr_create() {
 }
 
 base_gh_issue_start() {
-    local issue="${1:-}" category="" title="" slug branch today
+    local issue="${1:-}" category="" title="" slug branch today default_branch worktree_path
 
     [[ -n "$issue" ]] || {
         base_gh_error "Missing issue number."
@@ -737,9 +750,13 @@ base_gh_issue_start() {
     slug="$(base_gh_slug "$title")"
     today="$(date +%Y%m%d)"
     branch="$category/$issue-$today-$slug"
+    default_branch="$(base_gh_default_branch)"
+    worktree_path="$(base_gh_issue_worktree_path "$issue" "$slug")" || return 1
 
-    git switch --quiet -c "$branch"
     printf '%s\n' "$branch"
+    printf '\n'
+    printf 'To create a worktree:\n'
+    printf '  git worktree add -b %s %s origin/%s\n' "$branch" "$worktree_path" "$default_branch"
 }
 
 base_gh_do_pr() {
