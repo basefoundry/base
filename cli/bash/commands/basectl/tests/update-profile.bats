@@ -101,6 +101,32 @@ EOF
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"/Cellar/base/0.4.0"* ]]
 }
 
+@test "basectl update-profile explains BASE_HOME mismatch recovery" {
+    local runtime_base="$TEST_TMPDIR/runtime-base"
+    local resolved_base="$TEST_TMPDIR/resolved-base"
+
+    mkdir -p "$runtime_base" "$resolved_base"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$runtime_base" \
+        PATH="$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$TEST_BASH_BIN_DIR/bash" -c '\
+            base_repo_root="$1"; \
+            resolved_base="$2"; \
+            source "$base_repo_root/base_init.sh"; \
+            source "$base_repo_root/cli/bash/commands/basectl/basectl.sh"; \
+            source "$base_repo_root/cli/bash/commands/basectl/subcommands/update_profile.sh"; \
+            basectl_runtime_base_home() { printf "%s\n" "$resolved_base"; }; \
+            base_update_profile_subcommand_main' \
+        bash "$BASE_REPO_ROOT" "$resolved_base"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Resolved Base home '$resolved_base' does not match runtime BASE_HOME '$runtime_base'."* ]]
+    [[ "$output" == *"This command must be invoked through the Base dispatcher, not directly."* ]]
+    [[ "$output" == *"Fix: unset BASE_HOME and run 'basectl update-profile' through the installed 'basectl' binary."* ]]
+}
+
 @test "basectl update-profile preserves non-Base dotfile content and is idempotent" {
     printf '%s
 ' 'user line before' > "$TEST_HOME/.bashrc"
