@@ -2888,7 +2888,7 @@ base_repo_clone() {
 
 base_repo_check() {
     local agent_guidance=0
-    local path="."
+    local path=""
     local status=0
 
     while (($#)); do
@@ -2911,7 +2911,7 @@ base_repo_check() {
                 return $?
                 ;;
             *)
-                if [[ "$path" != "." ]]; then
+                if [[ -n "$path" ]]; then
                     base_repo_check_usage_error "The 'repo check' command accepts at most one path."
                     return $?
                 fi
@@ -2921,6 +2921,7 @@ base_repo_check() {
         esac
     done
 
+    [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
     base_repo_check_baseline "$path" || status=1
     if ((agent_guidance)); then
@@ -2935,7 +2936,7 @@ base_repo_agent_guidance() {
     local default_branch_explicit=0
     local dry_run=0
     local github_repo=""
-    local path="."
+    local path=""
     local pr_branch=""
     local pr_default_branch=""
     local repo_name=""
@@ -3016,7 +3017,7 @@ base_repo_agent_guidance() {
                 return $?
                 ;;
             *)
-                if [[ "$path" != "." ]]; then
+                if [[ -n "$path" ]]; then
                     base_repo_agent_guidance_usage_error "The 'repo agent-guidance' command accepts at most one path."
                     return $?
                 fi
@@ -3026,6 +3027,7 @@ base_repo_agent_guidance() {
         esac
     done
 
+    [[ -n "$path" ]] || path="."
     root="$(base_repo_target_path "$path")"
     [[ -n "$repo_name" ]] || repo_name="$(basename -- "$root")"
     if [[ "$default_branch_explicit" != "1" ]]; then
@@ -3087,7 +3089,7 @@ base_repo_configure() {
     local dry_run=0
     local github_repo=""
     local initiative_options=()
-    local path="."
+    local path=""
     local project_owner=""
     local replace_project=0
     local project_schema="base-project"
@@ -3198,7 +3200,7 @@ base_repo_configure() {
                 return $?
                 ;;
             *)
-                if [[ "$path" != "." ]]; then
+                if [[ -n "$path" ]]; then
                     base_repo_configure_usage_error "The 'repo configure' command accepts at most one path."
                     return $?
                 fi
@@ -3208,6 +3210,7 @@ base_repo_configure() {
         esac
     done
 
+    [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
     if [[ -z "$github_repo" ]]; then
         github_repo="$(base_repo_infer_github_repo "$path" || true)"
