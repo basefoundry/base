@@ -2330,6 +2330,8 @@ base_repo_pr_baseline_has_changes() {
 }
 
 base_repo_check_baseline() {
+    local current_dir
+    local fix_path
     local missing_files=()
     local path="$1"
     local rel
@@ -2360,8 +2362,15 @@ base_repo_check_baseline() {
         for rel in "${missing_files[@]}"; do
             printf "  Missing: %s\n" "$rel"
         done
+        current_dir="$(pwd -P)"
         for rel in "${not_executable_files[@]}"; do
             printf "  Not executable: %s\n" "$rel"
+            if [[ "$path" == "$current_dir" ]]; then
+                fix_path="$rel"
+            else
+                fix_path="$path/$rel"
+            fi
+            printf "  Fix: chmod +x %s\n" "$(base_repo_pretty_arg "$fix_path")"
         done
         if ((${#missing_files[@]})); then
             repo_name="$(basename -- "$path")"
