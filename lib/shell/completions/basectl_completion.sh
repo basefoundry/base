@@ -4,11 +4,60 @@
 # Bash completion for basectl.
 #
 
-_base_basectl_completion_project_names() {
+_BASE_BASECTL_COMPLETION_PROJECT_NAMES=""
+_BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=0
+_BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+
+_base_basectl_completion_project_cache_ttl() {
+    local ttl="${BASE_COMPLETION_PROJECT_CACHE_TTL:-5}"
+
+    [[ "$ttl" =~ ^[0-9]+$ ]] || ttl=5
+    printf '%s\n' "$((10#$ttl))"
+}
+
+_base_basectl_completion_now() {
+    date +%s 2>/dev/null || printf '0'
+}
+
+_base_basectl_completion_refresh_project_cache() {
+    local names now ttl
     local wrapper="${BASE_HOME:-}/bin/base-wrapper"
 
-    [[ -x "$wrapper" ]] || return 0
-    "$wrapper" --project base base_projects list 2>/dev/null | awk -F '\t' '{print $1}'
+    [[ -x "$wrapper" ]] || {
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES=""
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+        return 0
+    }
+
+    ttl="$(_base_basectl_completion_project_cache_ttl)"
+    now="$(_base_basectl_completion_now)"
+    if ((ttl > 0)) &&
+        ((_BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET)) &&
+        ((_BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT > now)); then
+        return 0
+    fi
+
+    names="$("$wrapper" --project base base_projects list 2>/dev/null | awk -F '\t' '{print $1}')"
+    _BASE_BASECTL_COMPLETION_PROJECT_NAMES="$names"
+    _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
+    if ((ttl > 0)); then
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=$((now + ttl))
+    else
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+    fi
+}
+
+_base_basectl_completion_project_names() {
+    _base_basectl_completion_refresh_project_cache || return 0
+    printf '%s\n' "$_BASE_BASECTL_COMPLETION_PROJECT_NAMES"
+}
+
+_base_basectl_completion_project_candidates() {
+    local current="$1"
+
+    _base_basectl_completion_refresh_project_cache || return 0
+    _base_basectl_completion_compgen "$_BASE_BASECTL_COMPLETION_PROJECT_NAMES" "$current"
 }
 
 _base_basectl_completion_compgen() {
@@ -31,7 +80,7 @@ _base_basectl_completion_project_or_options() {
     local current="$2"
 
     if ((COMP_CWORD == 2)) && [[ "$current" != -* ]]; then
-        _base_basectl_completion_compgen "$(_base_basectl_completion_project_names)" "$current"
+        _base_basectl_completion_project_candidates "$current"
     else
         _base_basectl_completion_compgen "$options" "$current"
     fi
@@ -77,7 +126,7 @@ _base_basectl_completion() {
     case "$command" in
         activate)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "$(_base_basectl_completion_project_names)" "$cur"
+                _base_basectl_completion_project_candidates "$cur"
             else
                 _base_basectl_completion_compgen "--workspace --no-cd -v -h --help" "$cur"
             fi
