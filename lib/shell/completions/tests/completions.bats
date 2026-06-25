@@ -245,3 +245,43 @@ assert_bash_completion_options_match_help() {
 
     [[ "$block" == *"--replace-project"* ]]
 }
+
+@test "Bash project-name completions reuse shell-session project cache" {
+    local base_home="$TEST_TMPDIR/base"
+    local wrapper="$base_home/bin/base-wrapper"
+    local count_file="$TEST_TMPDIR/project-list-count"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+count=0
+if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
+    read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$BASE_COMPLETION_TEST_COUNT_FILE"
+printf 'base\t/Users/test/base\n'
+printf 'demo\t/Users/test/demo\n'
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        BASE_COMPLETION_TEST_COUNT_FILE="$count_file" \
+        bash -c '\
+            source "$1"; \
+            COMP_WORDS=(basectl test ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "first=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl build ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "second=%s\n" "${COMPREPLY[*]}"' \
+            bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"first=base demo"* ]]
+    [[ "$output" == *"second=base demo"* ]]
+    [ "$(cat "$count_file")" = "1" ]
+}

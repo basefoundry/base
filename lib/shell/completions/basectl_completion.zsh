@@ -2,11 +2,63 @@
 # Zsh completion for basectl.
 #
 
-_base_basectl_completion_project_names() {
+typeset -g _BASE_BASECTL_COMPLETION_PROJECT_NAMES=''
+typeset -gi _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=0
+typeset -gi _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+
+_base_basectl_completion_project_cache_ttl() {
+    local ttl="${BASE_COMPLETION_PROJECT_CACHE_TTL:-5}"
+
+    case "$ttl" in
+        ''|*[!0-9]*) ttl=5 ;;
+    esac
+    printf '%s\n' "$ttl"
+}
+
+_base_basectl_completion_now() {
+    date +%s 2>/dev/null || printf '0'
+}
+
+_base_basectl_completion_refresh_project_cache() {
+    local names now ttl
     local wrapper="${BASE_HOME:-}/bin/base-wrapper"
 
-    [[ -x "$wrapper" ]] || return 0
-    "$wrapper" --project base base_projects list 2>/dev/null | awk -F '\t' '{print $1}'
+    if [[ ! -x "$wrapper" ]]; then
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES=''
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+        return 0
+    fi
+
+    ttl="$(_base_basectl_completion_project_cache_ttl)"
+    now="$(_base_basectl_completion_now)"
+    if ((ttl > 0)) &&
+        ((_BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET)) &&
+        ((_BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT > now)); then
+        return 0
+    fi
+
+    names="$("$wrapper" --project base base_projects list 2>/dev/null | awk -F '\t' '{print $1}')"
+    _BASE_BASECTL_COMPLETION_PROJECT_NAMES="$names"
+    _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
+    if ((ttl > 0)); then
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=$((now + ttl))
+    else
+        _BASE_BASECTL_COMPLETION_PROJECT_NAMES_EXPIRES_AT=0
+    fi
+}
+
+_base_basectl_completion_project_names() {
+    _base_basectl_completion_refresh_project_cache || return 0
+    printf '%s\n' "$_BASE_BASECTL_COMPLETION_PROJECT_NAMES"
+}
+
+_base_basectl_completion_describe_projects() {
+    local -a project_names
+
+    _base_basectl_completion_refresh_project_cache || return 0
+    project_names=("${(@f)_BASE_BASECTL_COMPLETION_PROJECT_NAMES}")
+    _describe -t projects 'Base project' project_names
 }
 
 _base_basectl_completion() {
@@ -49,8 +101,7 @@ _base_basectl_completion() {
     case "${words[2]:-}" in
         activate)
             if ((CURRENT == 3)); then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             else
                 _arguments '--workspace[Workspace directory to scan]:path:_files' \
                     '--no-cd[Preserve the caller current directory]' \
@@ -128,8 +179,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         test)
@@ -138,8 +188,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         export-context)
@@ -151,8 +200,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         build)
@@ -162,8 +210,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects' '*:Build target:'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         demo)
@@ -172,8 +219,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         run)
@@ -183,8 +229,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects' '2:Project command:'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         prompt)
@@ -302,8 +347,7 @@ _base_basectl_completion() {
                     ;;
             esac
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         release)
@@ -350,8 +394,7 @@ _base_basectl_completion() {
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         gh)
@@ -449,8 +492,7 @@ _base_basectl_completion() {
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
         update-profile)
@@ -463,8 +505,7 @@ _base_basectl_completion() {
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
-                project_names=("${(@f)$(_base_basectl_completion_project_names)}")
-                _describe -t projects 'Base project' project_names
+                _base_basectl_completion_describe_projects
             fi
             ;;
     esac
