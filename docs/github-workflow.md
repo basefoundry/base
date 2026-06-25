@@ -188,6 +188,37 @@ GitHub connector, raw `gh`, or `git` as appropriate and keep the resulting
 issue labels, branch names, assignments, and PR bodies aligned with this
 policy.
 
+## GitHub API Budget Discipline
+
+Treat GitHub API budget, especially Project V2 mutation capacity, as shared
+infrastructure. Agents and scripts should be quiet, exact, and idempotent.
+
+Use these rules for issue and Project writes:
+
+- Serialize mutating requests. Do not run parallel `gh issue`, `gh pr`, or
+  Project field writes against the same repository or Project.
+- Prefer exact-item GraphQL or Base wrapper operations when the issue, PR, or
+  Project item is already known. Avoid broad Project scans to update one issue.
+- Read the current item state first, compute the minimal diff, and write only
+  fields that actually need to change.
+- Reuse data gathered earlier in the run instead of refetching the same issue,
+  Project item, or field schema repeatedly.
+- Page through lists only when the task genuinely needs a list. Stop once the
+  target item is found.
+- Keep dry runs read-only. They may explain planned writes, but should not probe
+  by performing and undoing mutations.
+
+If GitHub reports rate limiting, abuse detection, or a secondary limit, stop
+mutating immediately. Wait for any reset or retry window GitHub provides, then
+retry the smallest failed operation once. If pressure continues, leave the item
+unchanged, report the exact operation that failed, and resume later instead of
+looping or widening the scan.
+
+GitHub Apps are appropriate for recurring multi-repo automation that needs its
+own installation-level rate budget and narrowly scoped permissions. They are not
+required for ordinary one-off Base issue, PR, or Project updates from a local
+development session.
+
 ## Branch Names
 
 Branch names should be derived from the issue category:

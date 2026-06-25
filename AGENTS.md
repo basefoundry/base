@@ -56,6 +56,10 @@ Before modifying files in this repository, classify the request.
   operations.
 - Fall back to the GitHub connector, raw `gh`, or `git` when `basectl gh` does
   not support the needed operation or local tooling is unavailable.
+- Treat GitHub API budget as shared infrastructure: serialize mutating issue and
+  Project writes, prefer exact-item reads/writes over broad scans, compute
+  minimal diffs before writing fields, and back off instead of retry-looping when
+  GitHub reports rate or secondary-limit pressure.
 - Branch from `origin/main` with
   `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - Use a dedicated worktree under `~/work/base-worktrees/<slug>` for PR work.
