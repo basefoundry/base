@@ -36,7 +36,24 @@ source_project_command_helpers() {
     HOME="$TEST_HOME"
     unset BASE_PROJECT_VENV_DIR
 
-    run base_project_venv_dir demo "$project_root" "$manifest_path"
+    run base_project_venv_dir demo "$project_root" "$manifest_path" "__base_project_venv_dir=$project_root/.venv"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$project_root/.venv" ]
+}
+
+@test "project command helper uses Python route venv metadata" {
+    source_project_command_helpers
+
+    local project_root="$TEST_TMPDIR/demo"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    mkdir -p "$project_root"
+    printf 'project:\n  name: demo\npython: {manager: uv}\nartifacts: []\n' > "$manifest_path"
+    HOME="$TEST_HOME"
+    unset BASE_PROJECT_VENV_DIR
+
+    run base_project_venv_dir demo "$project_root" "$manifest_path" "__base_project_venv_dir=$project_root/.venv"
 
     [ "$status" -eq 0 ]
     [ "$output" = "$project_root/.venv" ]

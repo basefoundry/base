@@ -14,7 +14,10 @@ load ./basectl_helpers.bash
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        "${HOME:?}/.base.d/demo/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -62,7 +65,10 @@ EOF
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        "${HOME:?}/.base.d/demo/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -100,7 +106,10 @@ EOF
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=true\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -140,7 +149,10 @@ EOF
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        "${HOME:?}/.base.d/demo/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -179,7 +191,10 @@ EOF
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=true\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2

@@ -43,6 +43,7 @@ from base_projects.workspace_reports import workspace_status_to_json
 from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, CommandConfig, ManifestError, TestConfig, read_manifest
+from base_setup.project_routing import route_for_manifest
 
 
 app = base_cli.App(name="base_projects")
@@ -781,11 +782,12 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
 
     try:
         project = resolve_named_project(ctx, project_name, workspace)
-    except ProjectDiscoveryError as exc:
+        manifest = read_manifest(project.manifest_path)
+    except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
         return 1
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    print(_project_output(project.name, project.root, project.manifest_path, manifest))
     return 0
 
 
@@ -809,7 +811,7 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         return 1
 
     command_config = test_command(manifest.test)
-    print(_command_output(project.name, project.root, project.manifest_path, command_config))
+    print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
     return 0
 
 
@@ -832,7 +834,7 @@ def demo_script_project_command(ctx: base_cli.Context, project_name: str | None,
         ctx.log.error(str(exc))
         return 1
 
-    print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest.demo.runner))
+    print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest))
     return 0
 
 
@@ -875,7 +877,7 @@ def run_command_project_command(
         ctx.log.error(str(exc))
         return 1
 
-    print(_command_output(project.name, project.root, project.manifest_path, command_config))
+    print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
     return 0
 
 
@@ -953,10 +955,30 @@ def project_command(manifest: BaseManifest, command_name: str) -> CommandConfig:
         ) from exc
 
 
-def _command_output(project_name: str, project_root: Path, manifest_path: Path, command: CommandConfig) -> str:
+def _route_metadata_fields(manifest: BaseManifest) -> list[str]:
+    route = route_for_manifest(manifest)
+    uses_uv = "true" if route.uses_uv_manager else "false"
+    return [
+        f"__base_project_venv_dir={route.project_venv_dir}",
+        f"__base_uses_uv_manager={uses_uv}",
+    ]
+
+
+def _project_output(project_name: str, project_root: Path, manifest_path: Path, manifest: BaseManifest) -> str:
+    return "\t".join([project_name, str(project_root), str(manifest_path), *_route_metadata_fields(manifest)])
+
+
+def _command_output(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    command: CommandConfig,
+    manifest: BaseManifest,
+) -> str:
     fields = [project_name, str(project_root), str(manifest_path), command.command]
     if command.runner is not None:
         fields.append(command.runner)
+    fields.extend(_route_metadata_fields(manifest))
     return "\t".join(fields)
 
 
@@ -978,11 +1000,12 @@ def _demo_output(
     project_root: Path,
     manifest_path: Path,
     demo_script: Path,
-    runner: str | None,
+    manifest: BaseManifest,
 ) -> str:
     fields = [project_name, str(project_root), str(manifest_path), str(demo_script)]
-    if runner is not None:
-        fields.append(runner)
+    if manifest.demo.runner is not None:
+        fields.append(manifest.demo.runner)
+    fields.extend(_route_metadata_fields(manifest))
     return "\t".join(fields)
 
 

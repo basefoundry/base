@@ -33,6 +33,7 @@ base_export_context_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="markdown" output_path="" print_bundle=0 list_files=0 workspace_requested=0
     local resolve_args=() exporter_args=()
+    local resolve_fields=()
 
     while (($#)); do
         case "$1" in
@@ -137,7 +138,10 @@ base_export_context_subcommand_main() {
     else
         resolve_output="$("$wrapper" --project base base_projects current)" || return $?
     fi
-    IFS=$'\t' read -r resolved_name project_root manifest_path <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    project_root="${resolve_fields[1]:-}"
+    manifest_path="${resolve_fields[2]:-}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project for export-context."

@@ -35,6 +35,7 @@ base_test_subcommand_main() {
     local command_to_run display_command
     local dry_run=0 workspace_requested=0
     local args=() extra_args=()
+    local resolve_fields=()
 
     while (($#)); do
         case "$1" in
@@ -95,13 +96,18 @@ base_test_subcommand_main() {
     local command_args=(test-command)
     [[ -z "$project" ]] || command_args+=("$project")
     resolve_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}")" || return $?
-    IFS=$'\t' read -r resolved_name project_root manifest_path test_command command_runner <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    project_root="${resolve_fields[1]:-}"
+    manifest_path="${resolve_fields[2]:-}"
+    test_command="${resolve_fields[3]:-}"
+    command_runner="$(base_project_command_runner_from_field "${resolve_fields[4]:-}" || true)"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$test_command" ]] || {
         fatal_error "Unable to resolve test command for project '$project'."
     }
 
-    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
+    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:4}")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"

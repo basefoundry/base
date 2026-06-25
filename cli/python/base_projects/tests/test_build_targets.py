@@ -92,19 +92,60 @@ def write_build_manifest_with_runner(project_root: Path, name: str) -> None:
     )
 
 
+def write_inline_uv_build_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "services" / "api").mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        "\n".join(
+            [
+                "project:",
+                f"  name: {name}",
+                "python: {manager: uv}",
+                "build:",
+                "  default:",
+                "    - api",
+                "  targets:",
+                "    api:",
+                "      description: Build the API service.",
+                "      working_dir: services/api",
+                "      command: python -m build",
+                "artifacts: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+_engine_homes: list[Path] = []
+
+
 def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
-    env = {
-        "HOME": str(base_home.parent / "home"),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
+    with tempfile.TemporaryDirectory() as home_dir:
+        _engine_homes.append(Path(home_dir))
+        env = {
+            "HOME": str(_engine_homes[-1]),
+            "BASE_HOME": str(base_home),
+            "BASE_PROJECT": "",
+            "BASE_PROJECT_MANIFEST": "",
+        }
+        with mock.patch.dict(os.environ, env):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+def base_route_fields(base_home: Path, project: str) -> str:
+    del base_home
+    if not _engine_homes:
+        raise AssertionError("run_engine must be called before base_route_fields")
+    venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    return f"\t__base_project_venv_dir={venv_dir}\t__base_uses_uv_manager=false"
+
+
+def uv_route_fields(project_root: Path) -> str:
+    return f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}\t__base_uses_uv_manager=true"
 
 
 class BuildTargetTests(unittest.TestCase):
@@ -174,10 +215,11 @@ class BuildTargetTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"\tapi\t{(project_root / 'services' / 'api').resolve()}\tgo build ./cmd/api\tBuild the API service.\n"
+            f"\tapi\t{(project_root / 'services' / 'api').resolve()}\tgo build ./cmd/api\tBuild the API service."
+            f"{base_route_fields(base_home, 'demo')}\n"
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tworker\t{(project_root / 'services' / 'worker').resolve()}\tgo build ./cmd/worker"
-            "\tBuild the worker service.\n",
+            f"\tBuild the worker service.{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_build_targets_prints_explicit_targets(self) -> None:
@@ -196,7 +238,7 @@ class BuildTargetTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tworker\t{(project_root / 'services' / 'worker').resolve()}\tgo build ./cmd/worker"
-            "\tBuild the worker service.\n",
+            f"\tBuild the worker service.{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_build_targets_prints_runner_when_declared(self) -> None:
@@ -215,7 +257,26 @@ class BuildTargetTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tpackage\t{(project_root / 'services' / 'api').resolve()}\tpython -m build"
-            "\tBuild the Python package.\tuv\n",
+            f"\tBuild the Python package.\tuv{base_route_fields(base_home, 'demo')}\n",
+        )
+
+    def test_projects_build_targets_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_inline_uv_build_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["build-targets", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\tapi\t{(project_root / 'services' / 'api').resolve()}\tpython -m build"
+            f"\tBuild the API service.{uv_route_fields(project_root)}\n",
         )
 
     def test_projects_build_target_list_prints_all_targets(self) -> None:

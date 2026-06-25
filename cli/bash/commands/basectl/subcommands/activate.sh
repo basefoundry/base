@@ -40,8 +40,9 @@ base_activate_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
     local manifest_path="${3:-}"
+    shift 3
 
-    base_project_venv_dir "$project" "$project_root" "$manifest_path"
+    base_project_venv_dir "$project" "$project_root" "$manifest_path" "$@"
 }
 
 base_activate_shell_is_bash() {
@@ -56,6 +57,7 @@ base_activate_subcommand_main() {
     local resolved_name project_root manifest_path venv_dir shell_rc
     local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
     local args=()
+    local resolve_fields=()
 
     while (($# > 0)); do
         case "$1" in
@@ -107,15 +109,18 @@ base_activate_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     resolve_output="$(base_activate_resolve_project "$project" "$wrapper" "${args[@]}")" || return $?
-    IFS=$'\t' read -r resolved_name project_root manifest_path <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    project_root="${resolve_fields[1]:-}"
+    manifest_path="${resolve_fields[2]:-}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project '$project'."
     }
 
-    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
+    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:3}")"
     venv_fix="Run 'basectl setup $resolved_name' first."
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_uses_uv_manager "$manifest_path"; then
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_route_uses_uv_manager "${resolve_fields[@]:3}"; then
         venv_fix="Run 'uv sync' in '$project_root' first."
     fi
     [[ -x "$venv_dir/bin/python" ]] || {
