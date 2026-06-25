@@ -260,14 +260,16 @@ Run everything locally with `basectl test base` or `bin/base-test`.
 
 ## Current Status
 
-Base **1.1.0** (June 2026) covers: first-mile `bootstrap.sh`
+Base **1.2.0** (June 2026) covers: first-mile `bootstrap.sh`
 installation, setup, check, doctor, project discovery, workspace
 status/check/doctor/clone/pull/configure, `basectl onboard`, project activation
 (subshell), test execution, build targets, named commands, demo scripts,
 explicit `python.manager: uv` project support, standalone and source-checkout
 `base-bash-libs` consumption, repository baseline creation, guarded GitHub
-release publishing, AI context export, `basectl ci` for non-interactive CI, IDE
-bootstrapping (VS Code/Cursor), and release readiness inspection.
+release publishing, AI context export, repo-owned prompt rendering, local
+command history, manifest-declared PR policy, Base-managed artifact
+declarations, `basectl ci` for non-interactive CI, IDE bootstrapping (VS
+Code/Cursor), and release readiness inspection.
 
 Linux support is a design target but not yet an implemented or tested contract.
 Windows is out of scope.
