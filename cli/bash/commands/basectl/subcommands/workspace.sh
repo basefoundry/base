@@ -142,7 +142,7 @@ base_workspace_subcommand_main() {
     local args=()
 
     case "$workspace_command" in
-        ""|-h|--help)
+        ""|-h|--help|help)
             base_workspace_subcommand_usage
             return 0
             ;;

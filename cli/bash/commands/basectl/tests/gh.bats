@@ -89,10 +89,33 @@ load ./basectl_helpers.bash
 @test "basectl gh rejects retired todo area" {
     run_basectl gh todo --help
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Unknown gh area 'todo'."* ]]
     [[ "$output" != *"TODO.md"* ]]
     [[ "$output" != *"basectl gh todo plan"* ]]
+}
+
+@test "basectl gh usage errors return status 2" {
+    run_basectl gh issue unknown
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown gh issue command 'unknown'."* ]]
+    [[ "$output" == *"basectl gh issue create"* ]]
+
+    run_basectl gh issue create
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Missing required --title."* ]]
+
+    run_basectl gh issue create --bad-option
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown option '--bad-option'."* ]]
+
+    run_basectl gh branch stale --days never
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: --days must be a positive integer."* ]]
 }
 
 @test "basectl gh issue create accepts explicit assignee" {

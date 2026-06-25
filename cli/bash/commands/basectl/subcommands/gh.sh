@@ -166,6 +166,15 @@ base_gh_error() {
     print_error "$*"
 }
 
+base_gh_usage_error() {
+    local usage_function="$1"
+    shift
+
+    base_gh_error "$*"
+    "$usage_function" >&2
+    return 2
+}
+
 base_gh_require_command() {
     local command="$1"
 
@@ -257,7 +266,7 @@ base_gh_validate_category() {
         bug|enhancement|documentation|ci|security) return 0 ;;
         *)
             base_gh_error "Invalid category '$1'. Expected one of: bug, enhancement, documentation, ci, security."
-            return 1
+            return 2
             ;;
     esac
 }
@@ -562,7 +571,7 @@ base_gh_validate_project_size() {
             ;;
     esac
     base_gh_error "Invalid size '$size'. Expected one of: T, S, M, L."
-    return 1
+    return 2
 }
 
 base_gh_current_issue_from_branch() {
@@ -595,9 +604,8 @@ base_gh_do_issue() {
             base_gh_issue_usage
             ;;
         *)
-            base_gh_error "Unknown gh issue command '$command'."
-            base_gh_issue_usage >&2
-            return 1
+            base_gh_usage_error base_gh_issue_usage "Unknown gh issue command '$command'."
+            return $?
             ;;
     esac
 }
@@ -665,32 +673,38 @@ base_gh_issue_create() {
                 return 0
                 ;;
             *)
-                base_gh_error "Unknown option '$1'."
-                return 1
+                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
     done
 
     [[ -n "$title" ]] || {
-        base_gh_error "Missing required --title."
-        return 1
+        base_gh_usage_error base_gh_issue_usage "Missing required --title."
+        return $?
     }
     if [[ -z "$category" ]]; then
         category="enhancement"
         printf 'Using default --category: enhancement\n'
     fi
-    base_gh_validate_category "$category" || return 1
+    base_gh_validate_category "$category" || {
+        base_gh_issue_usage >&2
+        return 2
+    }
     if [[ -n "$project_size" ]]; then
-        base_gh_validate_project_size "$project_size" || return 1
+        base_gh_validate_project_size "$project_size" || {
+            base_gh_issue_usage >&2
+            return 2
+        }
     fi
     if ((assignee_explicit)) && ((no_assignee)); then
-        base_gh_error "Options '--assignee' and '--no-assignee' cannot be used together."
-        return 1
+        base_gh_usage_error base_gh_issue_usage "Options '--assignee' and '--no-assignee' cannot be used together."
+        return $?
     fi
     if ((assignee_explicit)) && [[ -z "$assignee" ]]; then
-        base_gh_error "Option '--assignee' requires an argument."
-        return 1
+        base_gh_usage_error base_gh_issue_usage "Option '--assignee' requires an argument."
+        return $?
     fi
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
@@ -791,8 +805,8 @@ base_gh_issue_start() {
     local issue="${1:-}" category="" title="" slug branch today default_branch worktree_path
 
     [[ -n "$issue" ]] || {
-        base_gh_error "Missing issue number."
-        return 1
+        base_gh_usage_error base_gh_issue_usage "Missing issue number."
+        return $?
     }
     shift
 
@@ -811,8 +825,8 @@ base_gh_issue_start() {
                 return 0
                 ;;
             *)
-                base_gh_error "Unknown option '$1'."
-                return 1
+                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
@@ -825,7 +839,10 @@ base_gh_issue_start() {
     if [[ -z "$category" ]]; then
         category="$(base_gh_issue_category_from_labels "$issue")" || return 1
     fi
-    base_gh_validate_category "$category" || return 1
+    base_gh_validate_category "$category" || {
+        base_gh_issue_usage >&2
+        return 2
+    }
     if [[ -z "$title" ]]; then
         title="$(base_gh_issue_title "$issue")" || return 1
     fi
@@ -886,9 +903,8 @@ base_gh_do_pr() {
             base_gh_pr_usage
             ;;
         *)
-            base_gh_error "Unknown gh pr command '$command'."
-            base_gh_pr_usage >&2
-            return 1
+            base_gh_usage_error base_gh_pr_usage "Unknown gh pr command '$command'."
+            return $?
             ;;
     esac
 }
@@ -907,16 +923,16 @@ base_gh_branch_stale() {
                 return 0
                 ;;
             *)
-                base_gh_error "Unknown option '$1'."
-                return 1
+                base_gh_usage_error base_gh_branch_usage "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
     done
 
     [[ "$days" =~ ^[0-9]+$ ]] || {
-        base_gh_error "--days must be a positive integer."
-        return 1
+        base_gh_usage_error base_gh_branch_usage "--days must be a positive integer."
+        return $?
     }
     base_gh_require_git_repo || return 1
 
@@ -1218,8 +1234,8 @@ base_gh_branch_prune() {
                 return 0
                 ;;
             *)
-                base_gh_error "Unknown option '$1'."
-                return 1
+                base_gh_usage_error base_gh_branch_usage "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
@@ -1312,8 +1328,8 @@ base_gh_worktree_prune() {
                 return 0
                 ;;
             *)
-                base_gh_error "Unknown option '$1'."
-                return 1
+                base_gh_usage_error base_gh_worktree_usage "Unknown option '$1'."
+                return $?
                 ;;
         esac
         shift
@@ -1401,9 +1417,8 @@ base_gh_do_branch() {
         prune) base_gh_branch_prune "$@" ;;
         -h|--help|help|"") base_gh_branch_usage ;;
         *)
-            base_gh_error "Unknown gh branch command '$command'."
-            base_gh_branch_usage >&2
-            return 1
+            base_gh_usage_error base_gh_branch_usage "Unknown gh branch command '$command'."
+            return $?
             ;;
     esac
 }
@@ -1416,9 +1431,8 @@ base_gh_do_worktree() {
         prune) base_gh_worktree_prune "$@" ;;
         -h|--help|help|"") base_gh_worktree_usage ;;
         *)
-            base_gh_error "Unknown gh worktree command '$command'."
-            base_gh_worktree_usage >&2
-            return 1
+            base_gh_usage_error base_gh_worktree_usage "Unknown gh worktree command '$command'."
+            return $?
             ;;
     esac
 }
@@ -1450,9 +1464,8 @@ base_gh_subcommand_main() {
         worktree) base_gh_do_worktree "$@" ;;
         -h|--help|help|"") base_gh_usage ;;
         *)
-            base_gh_error "Unknown gh area '$area'."
-            base_gh_usage >&2
-            return 1
+            base_gh_usage_error base_gh_usage "Unknown gh area '$area'."
+            return $?
             ;;
     esac
 }
