@@ -125,6 +125,28 @@ Notes:
 EOF
 }
 
+base_gh_project_issue_set_fields_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh project issue set-fields <number> --project <title> --repo <owner/name> [--owner <login>] [--config <path>] [--status <name>] [--priority <name>] [--area <name>] [--initiative <name>] [--size <T|S|M|L>] [--dry-run]
+
+Purpose:
+  Add or update Base Project field values for a GitHub issue.
+
+Options:
+  --project <title>     Project title to update.
+  --repo <owner/name>   Repository containing the issue. Defaults to the origin remote when available.
+  --owner <login>       Project owner. Defaults to the repository owner or Git remote owner.
+  --config <path>       Project intake config for issue defaults and repository-specific options.
+  --status <name>       Status option, such as Backlog, In Progress, In Review, or Done.
+  --priority <name>     Priority option, such as P0, P1, P2, or P3.
+  --area <name>         Area option.
+  --initiative <name>   Initiative option.
+  --size <T|S|M|L>      Size option.
+  --dry-run             Print the planned Project updates without applying them.
+EOF
+}
+
 base_gh_branch_usage() {
     cat <<'EOF'
 Usage:
@@ -1419,6 +1441,10 @@ base_gh_do_worktree() {
 base_gh_do_project() {
     local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
 
+    if [[ "${1:-}" == "issue" && "${2:-}" == "set-fields" ]] && base_gh_args_request_help "$@"; then
+        base_gh_project_issue_set_fields_usage
+        return 0
+    fi
     if base_gh_args_request_help "$@"; then
         base_gh_project_usage
         return 0
