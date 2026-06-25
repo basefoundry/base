@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import base_cli
 from base_cli.config import UserConfig, load_user_config, read_user_config, user_config_path
+from base_cli.redaction import REDACTED, is_secret_key, redact_text_value
 
 
 app = base_cli.App(
@@ -49,7 +51,10 @@ def print_usage(file=sys.stdout) -> None:
   base_config doctor
 
 Purpose:
-  Inspect Base's machine-local user config.""",
+  Inspect Base's machine-local user config.
+
+Notes:
+  - config show redacts secret-shaped keys and URL credentials.""",
         file=file,
     )
 
@@ -61,8 +66,20 @@ def show_config_command() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    print(json.dumps(config, indent=2, sort_keys=True))
+    print(json.dumps(redact_config(config), indent=2, sort_keys=True))
     return 0
+
+
+def redact_config(value: Any, key: str | None = None) -> Any:
+    if key is not None and is_secret_key(key):
+        return REDACTED
+    if isinstance(value, dict):
+        return {name: redact_config(item, str(name)) for name, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [redact_config(item) for item in value]
+    if isinstance(value, str):
+        return redact_text_value(value)
+    return value
 
 
 def doctor_config_command() -> int:

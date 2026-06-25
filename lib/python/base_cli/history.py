@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,13 +10,11 @@ from typing import Any
 from .config import load_yaml_file
 from .context import Context
 from .paths import base_cache_root
-from .redaction import REDACTED, option_name_to_parameter, redact_argv
+from .redaction import REDACTED, is_secret_key, option_name_to_parameter, redact_argv, redact_text_value
 
 
 SCHEMA_VERSION = 1
 HISTORY_PATH = Path("history") / "runs.jsonl"
-SECRET_KEY_RE = re.compile(r"(token|password|secret|api[-_]?key|authorization)", re.IGNORECASE)
-URL_CREDENTIALS_RE = re.compile(r"://[^/@\s]+@")
 
 
 def utc_now() -> datetime:
@@ -168,12 +165,7 @@ def redact_history_text(value: str) -> str:
     key, separator, _value = value.partition("=")
     if separator and is_secret_key(key):
         return f"{key}={REDACTED}"
-    redacted = URL_CREDENTIALS_RE.sub(f"://{REDACTED}@", value)
-    return compact_home_text(redacted)
-
-
-def is_secret_key(value: str) -> bool:
-    return SECRET_KEY_RE.search(value) is not None
+    return compact_home_text(redact_text_value(value))
 
 
 def compact_optional_path(path: Path | None) -> str | None:
