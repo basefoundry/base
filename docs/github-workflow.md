@@ -190,13 +190,16 @@ policy.
 
 ## GitHub API Budget Discipline
 
-Treat GitHub API budget, especially Project V2 mutation capacity, as shared
-infrastructure. Agents and scripts should be quiet, exact, and idempotent.
+Treat GitHub API budget, especially Project V2 mutation capacity and
+content-generating issue, PR, label, and comment writes, as shared
+infrastructure. Agents and scripts should be quiet, exact, and idempotent even
+when the primary API rate limit still has capacity.
 
 Use these rules for issue and Project writes:
 
-- Serialize mutating requests. Do not run parallel `gh issue`, `gh pr`, or
-  Project field writes against the same repository or Project.
+- Serialize mutating requests. Do not run parallel `gh issue`, `gh pr`,
+  `gh label`, comment, or Project field writes against the same repository or
+  Project.
 - Prefer exact-item GraphQL or Base wrapper operations when the issue, PR, or
   Project item is already known. Avoid broad Project scans to update one issue.
 - Read the current item state first, compute the minimal diff, and write only
@@ -208,7 +211,8 @@ Use these rules for issue and Project writes:
 - Keep dry runs read-only. They may explain planned writes, but should not probe
   by performing and undoing mutations.
 
-If GitHub reports rate limiting, abuse detection, or a secondary limit, stop
+If GitHub reports rate limiting, abuse detection, a secondary limit,
+content-generation throttling, `retry-after`, or `x-ratelimit-reset`, stop
 mutating immediately. Wait for any reset or retry window GitHub provides, then
 retry the smallest failed operation once. If pressure continues, leave the item
 unchanged, report the exact operation that failed, and resume later instead of

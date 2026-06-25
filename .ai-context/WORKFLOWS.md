@@ -47,6 +47,18 @@ metadata, `Size` `T` or `S`, and local validation that does not require private
 state. Use `help wanted` without `good first issue` for broader work where
 outside help is useful but deeper Base context is needed.
 
+When updating GitHub issues, pull requests, labels, comments, or Project
+metadata, protect the API budget. Use a read-plan-write flow: fetch the target
+IDs and current values, compute the minimal local diff, then write only changed
+fields. Do not run parallel mutating GitHub requests. Prefer exact issue and
+Project item updates, exact-item GraphQL mutations, or
+`basectl gh project issue set-fields` with known targets over broad scans. Cache
+IDs during the train, pause between bulk writes, and obey `retry-after`,
+`x-ratelimit-reset`, secondary-limit, and content-generation-limit responses. If
+a limit is hit, stop writes and report completed and remaining targets before
+resuming later. Consider GitHub Apps only for recurring multi-repo automation
+that needs a separate installation budget and narrowly scoped permissions.
+
 Base-managed repositories should carry `.github/workflows/project-intake.yml`
 as the fallback for issues created outside `basectl gh issue create`.
 `basectl repo init` seeds it for new repositories, and `basectl repo configure`
@@ -59,15 +71,6 @@ If a repo Project has GitHub's default `View 1` instead of the standard Base
 views, use `basectl repo configure --replace-project` with `--repo`; Base
 archives the old Project and recreates it from `base-project-template`.
 Already-standard Projects are left intact and continue through metadata repair.
-
-Treat GitHub API budget as shared infrastructure. Serialize mutating issue, PR,
-and Project writes; prefer exact-item GraphQL or `basectl gh` operations over
-broad scans; read current field values before writing; and update only fields
-whose values differ. If GitHub reports rate or secondary-limit pressure, stop
-mutating, wait for the indicated retry window when available, retry the smallest
-failed operation once, and otherwise report the blocked write instead of
-retry-looping. Consider GitHub Apps only for recurring multi-repo automation
-that needs a separate installation budget and narrowly scoped permissions.
 
 ## Branch And Worktree Flow
 
