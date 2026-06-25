@@ -11,7 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine
+from base_projects import engine, project_discovery
 
 
 def write_manifest(project_root: Path, name: str) -> None:
@@ -209,6 +209,14 @@ def run_engine_with_home(args: list[str], base_home: Path, home: Path) -> tuple[
 
 
 class ProjectDiscoveryTests(unittest.TestCase):
+    def test_project_discovery_implementation_is_split_from_engine(self) -> None:
+        engine_path = Path(engine.__file__)
+        discovery_path = engine_path.with_name("project_discovery.py")
+
+        self.assertTrue(discovery_path.exists())
+        self.assertIn("def discover_projects_cached", discovery_path.read_text(encoding="utf-8"))
+        self.assertNotIn("def discover_projects_cached", engine_path.read_text(encoding="utf-8"))
+
     def test_main_reports_config_errors_without_traceback(self) -> None:
         status, _stdout, stderr = run_engine(
             ["list"],
@@ -227,7 +235,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
             write_manifest(workspace / "alpha", "alpha")
             (workspace / "notes").mkdir()
 
-            projects = engine.discover_projects(workspace)
+            projects = project_discovery.discover_projects(workspace)
 
         self.assertEqual([project.name for project in projects], ["alpha", "zeta"])
 
@@ -420,7 +428,9 @@ class ProjectDiscoveryTests(unittest.TestCase):
             base_home.mkdir()
             write_manifest(workspace / "demo", "demo")
 
-            with mock.patch("base_projects.engine.read_project", wraps=engine.read_project) as read_project_mock:
+            with mock.patch(
+                "base_projects.project_discovery.read_project", wraps=project_discovery.read_project
+            ) as read_project_mock:
                 status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
                 self.assertEqual(status, 0)
                 self.assertEqual(stderr, "")
@@ -444,7 +454,9 @@ class ProjectDiscoveryTests(unittest.TestCase):
             project_root = workspace / "demo"
             write_manifest(project_root, "demo")
 
-            with mock.patch("base_projects.engine.read_project", wraps=engine.read_project) as read_project_mock:
+            with mock.patch(
+                "base_projects.project_discovery.read_project", wraps=project_discovery.read_project
+            ) as read_project_mock:
                 status, stdout, stderr = invoke_engine(["list", "--workspace", str(workspace)], base_home, home)
                 self.assertEqual(status, 0)
                 self.assertEqual(stderr, "")
@@ -1291,7 +1303,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
             write_manifest(workspace / "two", "demo")
 
             with self.assertRaisesRegex(engine.ProjectDiscoveryError, "Duplicate project names"):
-                engine.discover_projects(workspace)
+                project_discovery.discover_projects(workspace)
 
 if __name__ == "__main__":
     unittest.main()
