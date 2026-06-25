@@ -391,54 +391,6 @@ base_gh_manifest_path() {
     printf '%s\n' "$path"
 }
 
-base_gh_trim_scalar() {
-    printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-}
-
-base_gh_issue_default_from_config() {
-    local path="$1" key="$2"
-    local in_defaults=0
-    local in_project=0
-    local line trimmed value
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        trimmed="$(base_gh_trim_scalar "$line")"
-        [[ -n "$trimmed" && "$trimmed" != \#* ]] || continue
-
-        if [[ "$line" != [[:space:]]* ]]; then
-            in_defaults=0
-            if [[ "$trimmed" == "project:" ]]; then
-                in_project=1
-            else
-                in_project=0
-            fi
-            continue
-        fi
-
-        if ((in_project)) && [[ "$line" == "  "* && "$line" != "    "* ]]; then
-            if [[ "$trimmed" == "issue_defaults:" ]]; then
-                in_defaults=1
-            else
-                in_defaults=0
-            fi
-            continue
-        fi
-
-        if ((in_project)) && ((in_defaults)) && [[ "$line" == "    "* && "$trimmed" == "$key":* ]]; then
-            value="$(base_gh_trim_scalar "${trimmed#"$key":}")"
-            [[ -n "$value" ]] || return 1
-            printf '%s\n' "$value"
-            return 0
-        fi
-    done <"$path"
-
-    return 1
-}
-
-base_gh_issue_default_assignee_from_config() {
-    base_gh_issue_default_from_config "$1" assignee
-}
-
 base_gh_issue_number_from_output() {
     local output="$1"
     local issue_number
@@ -456,6 +408,33 @@ base_gh_project_issue_set_fields() {
         return 1
     }
     BASE_CLI_DISPLAY_COMMAND="basectl gh" "$wrapper" --project base base_github_projects project issue set-fields "$@"
+}
+
+base_gh_project_issue_defaults() {
+    local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
+
+    [[ -x "$wrapper" ]] || {
+        base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
+        return 1
+    }
+    BASE_CLI_DISPLAY_COMMAND="basectl gh" "$wrapper" --project base base_github_projects project issue defaults "$@"
+}
+
+base_gh_issue_default_from_config() {
+    local path="$1" key="$2"
+    local default_key default_value
+
+    while IFS=$'\t' read -r default_key default_value; do
+        [[ "$default_key" == "$key" && -n "$default_value" ]] || continue
+        printf '%s\n' "$default_value"
+        return 0
+    done < <(base_gh_project_issue_defaults --config "$path")
+
+    return 1
+}
+
+base_gh_issue_default_assignee_from_config() {
+    base_gh_issue_default_from_config "$1" assignee
 }
 
 base_gh_join_csv() {

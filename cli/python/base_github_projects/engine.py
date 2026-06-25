@@ -99,6 +99,7 @@ def print_usage(file=sys.stdout) -> None:
                 "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",
                 f"  {command} project issue set-fields <number> "
                 "--repo <owner/name> --project <title> [--config <path>] [field options...]",
+                f"  {command} project issue defaults --config <path>",
             )
         ),
         file=file,
@@ -125,6 +126,11 @@ def parse_args(arguments: tuple[str, ...]) -> ProjectArguments:
         require_project_title(state)
         return state_to_args("configure", state)
     if command == "issue":
+        if remaining and remaining[0] == "defaults":
+            state = parse_project_options(remaining[1:], allow_fields=False, allow_issue=False)
+            if not state.config_path:
+                raise ProjectUsageError("The 'project issue defaults' command requires --config.")
+            return state_to_args("issue-defaults", state)
         if len(remaining) < 2 or remaining[0] != "set-fields":
             raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
         try:
@@ -252,6 +258,8 @@ def run_command(args: ProjectArguments) -> int:
         return configure_command(args)
     if args.command == "issue-set-fields":
         return issue_set_fields_command(args)
+    if args.command == "issue-defaults":
+        return issue_defaults_command(args)
     raise ProjectUsageError(f"Unknown project command '{args.command}'.")
 
 
@@ -278,6 +286,18 @@ def issue_field_values_for_args(args: ProjectArguments) -> dict[str, str]:
     values = dict(config.issue_defaults)
     values.update(args.field_values or {})
     return values
+
+
+ISSUE_DEFAULT_OUTPUT_ORDER = ("status", "priority", "size", "area", "initiative", "assignee")
+
+
+def issue_defaults_command(args: ProjectArguments) -> int:
+    config = project_config_for_args(args)
+    for key in ISSUE_DEFAULT_OUTPUT_ORDER:
+        value = config.issue_defaults.get(key)
+        if value:
+            print(f"{key}\t{value}")
+    return 0
 
 
 def project_field_defaults_for_config(config: ProjectConfig) -> dict[str, str]:
