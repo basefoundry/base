@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -15,6 +16,7 @@ from .redaction import parameter_name_from_decls
 
 _STANDARD_OPTION_KEYS = ("debug", "quiet", "environment", "config", "keep_temp", "log_file")
 _GROUP_STANDARD_OPTIONS_KEY = "base_cli_standard_options"
+DISPLAY_COMMAND_ENV = "BASE_CLI_DISPLAY_COMMAND"
 
 
 def _require_click():
@@ -234,11 +236,22 @@ def run_app(app: App, argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
         _reject_equals_option_values(click, args)
-        result = app.click_command.main(args=args, standalone_mode=False)
+        display_command = delegated_display_command()
+        if display_command:
+            result = app.click_command.main(args=args, prog_name=display_command, standalone_mode=False)
+        else:
+            result = app.click_command.main(args=args, standalone_mode=False)
     except click.ClickException as exc:
         exc.show()
         return int(exc.exit_code)
     return int(result or 0)
+
+
+def delegated_display_command(default: str | None = None) -> str | None:
+    display_command = os.environ.get(DISPLAY_COMMAND_ENV, "").strip()
+    if display_command:
+        return display_command
+    return default
 
 
 def command(*args: Any, **kwargs: Any):

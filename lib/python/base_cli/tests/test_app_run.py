@@ -99,6 +99,26 @@ class RunAppTests(unittest.TestCase):
         )
         self.assertNotIn("Traceback", stderr.getvalue())
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_run_app_uses_delegated_display_command_for_usage_errors(self) -> None:
+        app = base_cli.App(name="internal-cli", log_to_file=False)
+
+        @app.command(context_settings={"help_option_names": ["-h", "--help"]})
+        def main(ctx: base_cli.Context) -> None:
+            del ctx
+
+        stderr = io.StringIO()
+        with mock.patch.dict(
+            os.environ,
+            {"BASE_CLI_DISPLAY_COMMAND": "basectl demo"},
+        ), redirect_stderr(stderr):
+            status = base_cli.run_app(app, ["--bad-option"])
+
+        self.assertEqual(status, 2)
+        self.assertIn("Usage: basectl demo", stderr.getvalue())
+        self.assertIn("No such option '--bad-option'.", stderr.getvalue())
+        self.assertNotIn("internal-cli", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

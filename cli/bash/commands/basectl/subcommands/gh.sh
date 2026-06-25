@@ -446,7 +446,7 @@ base_gh_project_issue_set_fields() {
         base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
         return 1
     }
-    "$wrapper" --project base base_github_projects project issue set-fields "$@"
+    BASE_CLI_DISPLAY_COMMAND="basectl gh" "$wrapper" --project base base_github_projects project issue set-fields "$@"
 }
 
 base_gh_join_csv() {
@@ -1435,7 +1435,7 @@ base_gh_do_project() {
         base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
         return 1
     }
-    "$wrapper" --project base base_github_projects project "$@"
+    BASE_CLI_DISPLAY_COMMAND="basectl gh" "$wrapper" --project base base_github_projects project "$@"
 }
 
 base_gh_subcommand_main() {

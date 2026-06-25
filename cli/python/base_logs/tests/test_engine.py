@@ -30,13 +30,34 @@ def write_history_line(cache_root: Path, payload: dict | str) -> None:
 def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
-    with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+    with mock.patch.dict(
+        os.environ,
+        {"BASE_CACHE_DIR": str(cache_root), "BASE_CLI_DISPLAY_COMMAND": ""},
+    ):
         with redirect_stdout(stdout), redirect_stderr(stderr):
             status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
 
 
 class BaseLogsTests(unittest.TestCase):
+    def test_delegated_unknown_option_usage_uses_basectl_logs(self) -> None:
+        stderr = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "BASE_CACHE_DIR": str(Path(tmpdir)),
+                    "BASE_CLI_DISPLAY_COMMAND": "basectl logs",
+                },
+            ), redirect_stderr(stderr):
+                status = engine.main(["--bad-option"])
+
+        self.assertEqual(status, 2)
+        self.assertIn("Usage: basectl logs", stderr.getvalue())
+        self.assertIn("No such option '--bad-option'.", stderr.getvalue())
+        self.assertNotIn("python -m base_logs", stderr.getvalue())
+        self.assertNotIn("base_logs", stderr.getvalue())
+
     def test_recent_logs_sorts_by_run_id_timestamp(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

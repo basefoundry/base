@@ -11,6 +11,7 @@ load ./basectl_helpers.bash
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+    printf 'DISPLAY=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
     printf 'ARGS=%s\n' "${*:3}"
     exit 0
 fi
@@ -23,6 +24,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=base"* ]]
+    [[ "$output" == *"DISPLAY=basectl logs"* ]]
     [[ "$output" == *"ARGS=--command check --limit 3 --path"* ]]
 }
 

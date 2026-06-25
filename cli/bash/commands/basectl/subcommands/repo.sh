@@ -1695,7 +1695,7 @@ base_repo_configure_project_metadata() {
 
     log_info "Configuring GitHub Project '$project_title' for '$repo'."
     log_info "Running: $(base_repo_pretty_command "${command[@]}")"
-    output="$("${command[@]}" 2>&1)" || status=$?
+    output="$(BASE_CLI_DISPLAY_COMMAND="basectl gh" "${command[@]}" 2>&1)" || status=$?
     if [[ "$status" -eq 0 ]]; then
         [[ -z "$output" ]] || printf '%s\n' "$output"
         printf "  GitHub Project '%s': Status, Priority, Area, Size, Initiative fields configured.\n" "$project_title"

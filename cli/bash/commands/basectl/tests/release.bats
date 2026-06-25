@@ -40,6 +40,7 @@ load ./basectl_helpers.bash
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_release" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT" > "${BASE_TEST_RELEASE_STATE:?}"
+    printf 'DISPLAY=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
     printf 'ARGS=%s\n' "${*:3}"
     exit 0
 fi
@@ -55,7 +56,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" release publish --dry-run --version 1.2.3 --manifest "$manifest"
 
     [ "$status" -eq 0 ]
-    [ "$output" = "ARGS=publish --dry-run --version 1.2.3 --manifest $manifest" ]
+    [[ "$output" == *"DISPLAY=basectl release"* ]]
+    [[ "$output" == *"ARGS=publish --dry-run --version 1.2.3 --manifest $manifest"* ]]
     [ "$(cat "$TEST_TMPDIR/release-state")" = "BASE_PROJECT=base" ]
 }
 

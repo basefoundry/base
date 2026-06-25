@@ -429,6 +429,7 @@ EOF
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+printf '%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}" > "${BASE_GH_TEST_STATE_DIR:?}/display-command"
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
 
@@ -446,6 +447,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project doctor --project Base Roadmap --owner codeforester" ]
+    [ "$(cat "$TEST_STATE_DIR/display-command")" = "basectl gh" ]
 }
 
 @test "basectl gh issue list reports command failure with auth diagnostics" {

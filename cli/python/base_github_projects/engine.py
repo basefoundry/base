@@ -6,6 +6,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import base_cli
+
 from . import graphql_queries as queries
 from .project_configure import standard_template_view_errors
 from .project_item_fields import FieldCopySummary
@@ -65,16 +67,17 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def print_usage(file=sys.stdout) -> None:
+    command = base_cli.delegated_display_command("base_github_projects")
     print(
         "\n".join(
             (
                 "Usage:",
-                "  base_github_projects project doctor --project <title> "
+                f"  {command} project doctor --project <title> "
                 "[--owner <login>] [--schema base-project]",
-                "  base_github_projects project configure --project <title> "
+                f"  {command} project configure --project <title> "
                 "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
                 "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",
-                "  base_github_projects project issue set-fields <number> "
+                f"  {command} project issue set-fields <number> "
                 "--repo <owner/name> --project <title> [--config <path>] [field options...]",
             )
         ),

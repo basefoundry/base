@@ -54,5 +54,5 @@ base_release_subcommand_main() {
     esac
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_release "$@"
+    BASE_CLI_DISPLAY_COMMAND="basectl release" "$wrapper" --project base base_release "$@"
 }

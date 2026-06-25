@@ -37,14 +37,19 @@ def pushd(path: Path):
         os.chdir(old_cwd)
 
 
-def run_engine(args: list[str], cwd: Path) -> tuple[int, str, str]:
+def run_engine(args: list[str], cwd: Path, extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
+    env = {
+        "BASE_CLI_DISPLAY_COMMAND": "",
+        "BASE_HOME": str(Path(__file__).resolve().parents[4]),
+        "HOME": "",
+    }
+    if extra_env:
+        env.update(extra_env)
     with tempfile.TemporaryDirectory() as home_dir:
-        with mock.patch.dict(
-            os.environ,
-            {"BASE_HOME": str(Path(__file__).resolve().parents[4]), "HOME": home_dir},
-        ):
+        env["HOME"] = home_dir
+        with mock.patch.dict(os.environ, env):
             with pushd(cwd), redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()
@@ -119,6 +124,36 @@ def add_origin_with_remote_tag(root: Path, tag_name: str) -> None:
     subprocess.run(["git", "tag", tag_name], cwd=root, check=True)
     subprocess.run(["git", "push", "origin", tag_name], cwd=root, check=True, stdout=subprocess.DEVNULL)
     subprocess.run(["git", "tag", "-d", tag_name], cwd=root, check=True, stdout=subprocess.DEVNULL)
+
+
+class ReleaseUsageTests(unittest.TestCase):
+    def test_delegated_unknown_option_usage_uses_basectl_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = run_engine(
+                ["check", "--wat"],
+                Path(tmpdir),
+                {"BASE_CLI_DISPLAY_COMMAND": "basectl release"},
+            )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("basectl release check --version <version>", stderr)
+        self.assertIn("ERROR: Unknown release check option '--wat'.", stderr)
+        self.assertNotIn("base_release", stderr)
+
+    def test_delegated_missing_required_option_usage_uses_basectl_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = run_engine(
+                ["check"],
+                Path(tmpdir),
+                {"BASE_CLI_DISPLAY_COMMAND": "basectl release"},
+            )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("basectl release check --version <version>", stderr)
+        self.assertIn("ERROR: The 'release check' command requires --version.", stderr)
+        self.assertNotIn("base_release", stderr)
 
 
 class ReleaseEngineTests(unittest.TestCase):
