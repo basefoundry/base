@@ -6,29 +6,29 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from base_setup.manifest import ManifestError, read_manifest
+from base_setup.manifest import BaseManifest, ManifestError, read_manifest
+
 
 class ManifestParsingTests(unittest.TestCase):
 
-    def test_reads_basic_manifest(self) -> None:
+    @staticmethod
+    def read_manifest_lines(*lines: str) -> BaseManifest:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
-            manifest_path.write_text(
-                "\n".join(
-                    [
-                        "project:",
-                        "  name: demo",
-                        "",
-                        "artifacts:",
-                        "  - type: tool",
-                        "    name: terraform",
-                        "    version: \"1.8.5\"",
-                    ]
-                ),
-                encoding="utf-8",
-            )
+            manifest_path.write_text("\n".join(lines), encoding="utf-8")
 
-            manifest = read_manifest(manifest_path)
+            return read_manifest(manifest_path)
+
+    def test_reads_basic_manifest(self) -> None:
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "",
+            "artifacts:",
+            "  - type: tool",
+            "    name: terraform",
+            "    version: \"1.8.5\"",
+        )
 
         self.assertEqual(manifest.schema_version, 1)
         self.assertEqual(manifest.project_name, "demo")
@@ -49,86 +49,59 @@ class ManifestParsingTests(unittest.TestCase):
                 read_manifest(manifest_path)
 
     def test_reads_manifest_python_uv_manager(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manifest_path = Path(tmpdir) / "base_manifest.yaml"
-            manifest_path.write_text(
-                "\n".join(
-                    [
-                        "project:",
-                        "  name: demo",
-                        "",
-                        "python:",
-                        "  manager: uv",
-                        "",
-                        "artifacts: []",
-                    ]
-                ),
-                encoding="utf-8",
-            )
-
-            manifest = read_manifest(manifest_path)
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "",
+            "python:",
+            "  manager: uv",
+            "",
+            "artifacts: []",
+        )
 
         self.assertEqual(manifest.python.manager, "uv")
 
     def test_reads_manifest_python_requirement(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manifest_path = Path(tmpdir) / "base_manifest.yaml"
-            manifest_path.write_text(
-                "\n".join(
-                    [
-                        "project:",
-                        "  name: demo",
-                        "",
-                        "python:",
-                        "  requires_python: '>=3.11,<3.14'",
-                        "",
-                        "artifacts: []",
-                    ]
-                ),
-                encoding="utf-8",
-            )
-
-            manifest = read_manifest(manifest_path)
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "",
+            "python:",
+            "  requires_python: '>=3.11,<3.14'",
+            "",
+            "artifacts: []",
+        )
 
         self.assertEqual(manifest.python.requires_python, ">=3.11,<3.14")
 
 
     def test_reads_manifest_github_pr_policy(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manifest_path = Path(tmpdir) / "base_manifest.yaml"
-            manifest_path.write_text(
-                "\n".join(
-                    [
-                        "project:",
-                        "  name: demo",
-                        "",
-                        "github:",
-                        "  pr:",
-                        "    template: .github/pull_request_template.md",
-                        "    required_sections:",
-                        "      default:",
-                        "        - Summary",
-                        "        - Issue",
-                        "        - Validation",
-                        "      labels:",
-                        "        needs-demo:",
-                        "          - Demo Impact",
-                        "        security:",
-                        "          - Security Notes",
-                        "      paths:",
-                        "        docs/**:",
-                        "          - Docs Impact",
-                        "        migrations/**:",
-                        "          - Migration Plan",
-                        "          - Rollback Plan",
-                        "",
-                        "artifacts: []",
-                    ]
-                ),
-                encoding="utf-8",
-            )
-
-            manifest = read_manifest(manifest_path)
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "",
+            "github:",
+            "  pr:",
+            "    template: .github/pull_request_template.md",
+            "    required_sections:",
+            "      default:",
+            "        - Summary",
+            "        - Issue",
+            "        - Validation",
+            "      labels:",
+            "        needs-demo:",
+            "          - Demo Impact",
+            "        security:",
+            "          - Security Notes",
+            "      paths:",
+            "        docs/**:",
+            "          - Docs Impact",
+            "        migrations/**:",
+            "          - Migration Plan",
+            "          - Rollback Plan",
+            "",
+            "artifacts: []",
+        )
 
         self.assertIsNotNone(manifest.github.pr)
         assert manifest.github.pr is not None
@@ -168,22 +141,13 @@ class ManifestParsingTests(unittest.TestCase):
         }
         for name, github_yaml in invalid_values.items():
             with self.subTest(name=name):
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
-                    manifest_path.write_text(
-                        "\n".join(
-                            [
-                                "project:",
-                                "  name: demo",
-                                github_yaml,
-                                "artifacts: []",
-                            ]
-                        ),
-                        encoding="utf-8",
+                with self.assertRaises(ManifestError):
+                    self.read_manifest_lines(
+                        "project:",
+                        "  name: demo",
+                        github_yaml,
+                        "artifacts: []",
                     )
-
-                    with self.assertRaises(ManifestError):
-                        read_manifest(manifest_path)
 
 
     def test_rejects_invalid_manifest_python_config(self) -> None:
@@ -198,22 +162,13 @@ class ManifestParsingTests(unittest.TestCase):
         }
         for name, python_yaml in invalid_values.items():
             with self.subTest(name=name):
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    manifest_path = Path(tmpdir) / "base_manifest.yaml"
-                    manifest_path.write_text(
-                        "\n".join(
-                            [
-                                "project:",
-                                "  name: demo",
-                                python_yaml,
-                                "artifacts: []",
-                            ]
-                        ),
-                        encoding="utf-8",
+                with self.assertRaises(ManifestError):
+                    self.read_manifest_lines(
+                        "project:",
+                        "  name: demo",
+                        python_yaml,
+                        "artifacts: []",
                     )
-
-                    with self.assertRaises(ManifestError):
-                        read_manifest(manifest_path)
 
 
 
