@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import re
 
 REDACTED = "[REDACTED]"
+SECRET_KEY_RE = re.compile(r"(token|password|secret|api[-_]?key|authorization)", re.IGNORECASE)
+URL_CREDENTIALS_RE = re.compile(r"(?P<prefix>[a-zA-Z][a-zA-Z0-9+.-]*://)[^/@\s]+@")
 
 
 def option_name_to_parameter(param_decl: str) -> str:
@@ -37,3 +40,11 @@ def redact_argv(argv: list[str], sensitive_options: set[str]) -> list[str]:
 
         redacted.append(arg)
     return redacted
+
+
+def is_secret_key(value: str) -> bool:
+    return SECRET_KEY_RE.search(value) is not None
+
+
+def redact_text_value(value: str) -> str:
+    return URL_CREDENTIALS_RE.sub(lambda match: f"{match.group('prefix')}{REDACTED}@", value)

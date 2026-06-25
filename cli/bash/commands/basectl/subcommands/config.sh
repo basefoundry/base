@@ -16,6 +16,7 @@ Purpose:
 
 Notes:
   - The default config path is ~/.base.d/config.yaml.
+  - config show redacts secret-shaped keys and URL credentials.
   - Missing config is treated as an empty config.
   - Base does not edit or sync this file.
 EOF

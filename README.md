@@ -820,8 +820,9 @@ basectl config doctor
 
 Base creates `~/.base.d/config.yaml` with a small first-run default when the file
 is missing, then leaves user edits and symlinks alone. Base owns the meaning of
-that file, but users own how it is edited, backed up, or synced. See
-[docs/local-config.md](docs/local-config.md).
+that file, but users own how it is edited, backed up, or synced. `config show`
+prints redacted JSON for routine inspection; Base config is not a secret store.
+See [docs/local-config.md](docs/local-config.md).
 
 Inspect release readiness for a Base-managed repository with:
 

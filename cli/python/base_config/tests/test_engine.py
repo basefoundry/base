@@ -90,6 +90,46 @@ class BaseConfigCommandTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(json.loads(stdout.getvalue()), {"ide": {"enabled": True}})
 
+    def test_show_config_redacts_secret_shaped_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, {"HOME": tmpdir}):
+                path = user_config_path(Path(tmpdir))
+                path.parent.mkdir(parents=True)
+                path.write_text(
+                    "\n".join(
+                        (
+                            "workspace:",
+                            "  root: /tmp/work",
+                            "github:",
+                            "  default_owner: codeforester",
+                            "private:",
+                            "  github_token: ghp_super_secret",
+                            "  service:",
+                            "    password: local-password",
+                            "    url: https://user:local-secret@example.invalid/repo.git",
+                            "  mirrors:",
+                            "    - https://user:mirror-secret@example.invalid/repo.git",
+                        )
+                    ),
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    status = engine.show_config_command()
+
+        config = json.loads(stdout.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual(config["workspace"]["root"], "/tmp/work")
+        self.assertEqual(config["github"]["default_owner"], "codeforester")
+        self.assertEqual(config["private"]["github_token"], "[REDACTED]")
+        self.assertEqual(config["private"]["service"]["password"], "[REDACTED]")
+        self.assertEqual(config["private"]["service"]["url"], "https://[REDACTED]@example.invalid/repo.git")
+        self.assertEqual(config["private"]["mirrors"], ["https://[REDACTED]@example.invalid/repo.git"])
+        self.assertNotIn("super_secret", stdout.getvalue())
+        self.assertNotIn("local-password", stdout.getvalue())
+        self.assertNotIn("local-secret", stdout.getvalue())
+        self.assertNotIn("mirror-secret", stdout.getvalue())
+
     def test_show_config_reports_invalid_yaml(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch.dict(os.environ, {"HOME": tmpdir}):

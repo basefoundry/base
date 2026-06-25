@@ -57,7 +57,7 @@ inspect the resolved command contract first.
 | `basectl history` | List recent structured Base command runs. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |
 | `basectl clean` | Remove old Base runtime logs, temp files, and cache entries. | `--older-than <age>`, `--keep-last <count>`, `--dry-run` |
 | `basectl config path` | Print the local Base config path. | none |
-| `basectl config show` | Show local Base config. | none |
+| `basectl config show` | Show local Base config as redacted JSON. | none |
 | `basectl config doctor` | Diagnose local Base config. | none |
 
 ## Workspace

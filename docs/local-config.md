@@ -26,9 +26,9 @@ basectl config doctor
 ```
 
 `basectl config path` prints the default path without requiring the Base Python
-environment. `show` prints the parsed config as JSON. `doctor` reports whether
-the file exists, whether it is valid YAML, whether it is a mapping, and whether
-the path is a symlink.
+environment. `show` prints the parsed config as JSON with secret-shaped keys and
+URL credentials redacted. `doctor` reports whether the file exists, whether it
+is valid YAML, whether it is a mapping, and whether the path is a symlink.
 
 ## Complete Example
 
@@ -241,6 +241,12 @@ Aside from the first-run seed, Base does not edit this file. There is no
 `basectl config set` or IDE preference editor command by design; developers can
 edit YAML directly, and Base keeps the runtime behavior inspectable through
 `basectl config show` and `basectl config doctor`.
+
+`basectl config show` is intended for routine inspection and support-safe
+copy/paste. It redacts values under keys that look like tokens, passwords,
+secrets, API keys, or authorization data, and it redacts credentials embedded in
+URLs. Keep actual secrets in a password manager, shell secret store, or the
+target tool's own credential system rather than in Base config.
 
 ## Sync Guidance
 
