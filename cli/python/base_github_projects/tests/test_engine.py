@@ -7,6 +7,21 @@ import pytest
 from base_github_projects import engine, project_model
 
 
+def test_delegated_usage_uses_basectl_gh_project_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("BASE_CLI_DISPLAY_COMMAND", "basectl gh")
+
+    status = engine.main(["project", "configure", "--wat"])
+
+    captured = capsys.readouterr()
+    assert status == 2
+    assert "basectl gh project configure --project <title>" in captured.err
+    assert "ERROR: Unknown option '--wat'." in captured.err
+    assert "base_github_projects" not in captured.err
+
+
 def test_parse_project_configure_arguments() -> None:
     args = engine.parse_args(
         (

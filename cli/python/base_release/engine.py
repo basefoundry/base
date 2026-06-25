@@ -162,12 +162,13 @@ def require_publish_option(command: str, option_name: str) -> None:
 
 
 def print_usage(file=sys.stdout) -> None:
+    command = base_cli.delegated_display_command("base_release")
     print(
-        """Usage:
-  base_release check --version <version> [--manifest <path>]
-  base_release plan --version <version> [--manifest <path>]
-  base_release notes --version <version> [--manifest <path>]
-  base_release publish --version <version> [--manifest <path>] [--dry-run] [--yes]
+        f"""Usage:
+  {command} check --version <version> [--manifest <path>]
+  {command} plan --version <version> [--manifest <path>]
+  {command} notes --version <version> [--manifest <path>]
+  {command} publish --version <version> [--manifest <path>] [--dry-run] [--yes]
 
 Purpose:
   Inspect release readiness and guarded GitHub publishing for a Base-managed

@@ -57,5 +57,5 @@ base_logs_subcommand_main() {
     done
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_logs "${args[@]}"
+    BASE_CLI_DISPLAY_COMMAND="basectl logs" "$wrapper" --project base base_logs "${args[@]}"
 }
