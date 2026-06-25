@@ -67,14 +67,14 @@ _base_basectl_completion() {
         workspace)
             case "${words[3]:-}" in
                 status|check|doctor)
-                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 clone)
-                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--include-optional[Include optional manifest repositories when cloning]' \
@@ -82,14 +82,32 @@ _base_basectl_completion() {
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pull)
-                    _arguments '1:workspace command:(status check doctor clone pull)' \
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)' \
                         '--source[Canonical workspace manifest source]:url-or-path:' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace pull work without writing]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                init)
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)' \
+                        '2:workspace source:' \
+                        '--owner[GitHub owner for short workspace repository names]:owner:' \
+                        '--path[Workspace configuration repository checkout path]:path:_files' \
+                        '--workspace[Workspace directory for member repositories]:path:_files' \
+                        '--manifest[Workspace manifest path or name]:path:_files' \
+                        '--include-optional[Include optional manifest repositories when cloning]' \
+                        '--dry-run[Show planned workspace initialization without writing]' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                configure)
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)' \
+                        '--workspace[Workspace directory to configure]:path:_files' \
+                        '--manifest[Local workspace manifest]:path:_files' \
+                        '--dry-run[Show planned workspace configuration without applying repo changes]' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
                 *)
-                    _arguments '1:workspace command:(status check doctor clone pull)'
+                    _arguments '1:workspace command:(status check doctor clone pull init configure)'
                     ;;
             esac
             ;;
@@ -105,6 +123,8 @@ _base_basectl_completion() {
         check)
             _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
                 '--format[Output format]:format:(text json)' \
+                '--manifest[Use a specific manifest]:path:_files' \
+                '--remote-network[Opt in to bounded project Git origin reachability checks]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
@@ -175,10 +195,11 @@ _base_basectl_completion() {
         repo)
             case "${words[3]:-}" in
                 init)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:repository name:' \
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
+                        '--pr[Commit the generated baseline on a branch and open a pull request]' \
                         '--description[Repository description]:description:' \
                         '--copyright-holder[Copyright holder]:name:' \
                         '--private[Create a private GitHub repository when needed]' \
@@ -189,20 +210,30 @@ _base_basectl_completion() {
                         '--project-owner[GitHub Project owner]:owner:' \
                         '--project-schema[Project metadata schema]:schema:(base-project)' \
                         '--initiative-option[Initiative option to seed]:name:' \
+                        '--copy-project-fields-from[Copy missing Project item field values from another Project]:title:' \
                         '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
+                clone)
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '2:repository name or owner/name:' \
+                        '--owner[GitHub owner for short repository names]:owner:' \
+                        '--path[Clone destination]:path:_files' \
+                        '--dry-run[Print planned clone without modifying the filesystem]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
                 check)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--agent-guidance[Include optional agent guidance files]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
@@ -210,13 +241,15 @@ _base_basectl_completion() {
                         '--project-owner[GitHub Project owner]:owner:' \
                         '--project-schema[Project metadata schema]:schema:(base-project)' \
                         '--initiative-option[Initiative option to seed]:name:' \
+                        '--copy-project-fields-from[Copy missing Project item field values from another Project]:title:' \
+                        '--replace-project[Replace a nonstandard existing Project from base-project-template]' \
                         '--no-project[Skip GitHub Project metadata configuration]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 agent-guidance)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository for pull request]:repo:' \
                         '--repo-name[Repository name for generated guidance]:name:' \
@@ -228,7 +261,7 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 installer-template)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)' \
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository for pull request]:repo:' \
                         '--pr[Commit generated installer template and open a draft pull request]' \
@@ -237,7 +270,7 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:repo command:(init check configure agent-guidance installer-template)'
+                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)'
                     ;;
             esac
             ;;
@@ -308,6 +341,9 @@ _base_basectl_completion() {
         doctor)
             _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
                 '--format[Output format]:format:(text json)' \
+                '--manifest[Use a specific manifest]:path:_files' \
+                '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
+                '--no-color[Disable doctor status colors and symbols in text output]' \
                 '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
