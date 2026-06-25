@@ -94,6 +94,38 @@ zsh_completion_nested_commands() {
         sort -u
 }
 
+zsh_completion_nested_block() {
+    local parent="$1"
+    local child="$2"
+
+    awk -v parent="$parent" -v child="$child" '
+        $0 ~ "^[[:space:]]*" parent "\\)" { in_parent = 1 }
+        in_parent && $0 ~ "^[[:space:]]*" child "\\)" {
+            in_block = 1
+            next
+        }
+        in_block && /^[[:space:]]*;;/ { exit }
+        in_block { print }
+    ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+}
+
+zsh_completion_deep_nested_block() {
+    local parent="$1"
+    local child="$2"
+    local grandchild="$3"
+
+    awk -v parent="$parent" -v child="$child" -v grandchild="$grandchild" '
+        $0 ~ "^[[:space:]]*" parent "\\)" { in_parent = 1 }
+        in_parent && $0 ~ "^[[:space:]]*" child "\\)" { in_child = 1 }
+        in_child && $0 ~ "^[[:space:]]*" grandchild "\\)" {
+            in_block = 1
+            next
+        }
+        in_block && /^[[:space:]]*;;/ { exit }
+        in_block { print }
+    ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+}
+
 long_options_from_help() {
     "$BASE_REPO_ROOT/bin/basectl" "$@" --help |
         awk '
@@ -180,4 +212,36 @@ assert_bash_completion_options_match_help() {
     assert_bash_completion_options_match_help doctor doctor
     assert_bash_completion_options_match_help repo-init repo init
     assert_bash_completion_options_match_help repo-configure repo configure
+    assert_bash_completion_options_match_help repo-installer-template repo installer-template
+}
+
+@test "Zsh repo installer-template completion includes print options" {
+    local block
+
+    block="$(zsh_completion_nested_block repo installer-template)"
+
+    [[ "$block" == *"--print"* ]]
+    [[ "$block" == *"--stdout"* ]]
+}
+
+@test "Zsh gh issue completion includes issue create project options" {
+    local block
+
+    block="$(zsh_completion_nested_block gh issue)"
+
+    [[ "$block" == *"--repo"* ]]
+    [[ "$block" == *"--assignee"* ]]
+    [[ "$block" == *"--no-assignee"* ]]
+    [[ "$block" == *"--project"* ]]
+    [[ "$block" == *"--project-owner"* ]]
+    [[ "$block" == *"--size"* ]]
+    [[ "$block" == *"--no-project"* ]]
+}
+
+@test "Zsh gh project configure completion includes replace-project option" {
+    local block
+
+    block="$(zsh_completion_deep_nested_block gh project configure)"
+
+    [[ "$block" == *"--replace-project"* ]]
 }

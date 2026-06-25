@@ -156,7 +156,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--repo --repo-name --default-branch --validation-command --pr --dry-run -v -h --help" "$cur"
                     ;;
                 installer-template)
-                    _base_basectl_completion_compgen "--repo --pr --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--print --stdout --repo --pr --dry-run -v -h --help" "$cur"
                     ;;
             esac
             ;;

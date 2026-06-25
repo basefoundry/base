@@ -263,6 +263,8 @@ _base_basectl_completion() {
                 installer-template)
                     _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
+                        '--print[Print the maintained template to stdout instead of writing a file]' \
+                        '--stdout[Alias for --print]' \
                         '--repo[GitHub repository for pull request]:repo:' \
                         '--pr[Commit generated installer template and open a draft pull request]' \
                         '--dry-run[Print planned changes]' \
@@ -360,6 +362,13 @@ _base_basectl_completion() {
                         '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
                         '--body[Issue body]:body:' \
+                        '--repo[GitHub repository]:repo:' \
+                        '--assignee[Issue assignee]:login:' \
+                        '--no-assignee[Do not assign the issue]' \
+                        '--project[GitHub Project title]:title:' \
+                        '--project-owner[GitHub Project owner]:owner:' \
+                        '--size[Project size option]:size:(T S M L)' \
+                        '--no-project[Skip Project metadata updates]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pr)
@@ -400,6 +409,7 @@ _base_basectl_completion() {
                                 '--schema[Project metadata schema]:schema:(base-project)' \
                                 '--initiative-option[Initiative option to seed]:name:' \
                                 '--repo[GitHub repository]:repo:' \
+                                '--replace-project[Replace a nonstandard existing Project from base-project-template]' \
                                 '--dry-run[Print planned changes]' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;

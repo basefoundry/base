@@ -251,7 +251,7 @@ EOF
     [[ "$output" == *"repo_check_options=--agent-guidance"* ]]
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo --repo-name --default-branch --validation-command --pr --dry-run"* ]]
-    [[ "$output" == *"repo_installer_template_options=--repo --pr --dry-run"* ]]
+    [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --pr --dry-run"* ]]
     [[ "$output" == *"ci_commands=setup check doctor"* ]]
     [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
