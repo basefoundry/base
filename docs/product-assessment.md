@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-06-21
-Base era reviewed: 1.1.0
+Last reviewed: 2026-06-25
+Base era reviewed: 1.2.0
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
@@ -250,6 +250,57 @@ response is not an abstract split-everything campaign. Reduce ownership where a
 stable subdomain is visible, keep tests near behavior, and use #929 for the
 known `setup_common.sh` ownership-reduction path.
 
+### 2026-06-25 / 1.2.0 Product Review Delta
+
+The 1.2.0 release line strengthens Base's repeatability story more than it
+changes the core product thesis. The target user and product boundary remain
+the same: macOS-first multi-repo workspace orchestration, with mature tools
+delegated to rather than replaced.
+
+The strongest shipped signal is that Base now has a more durable review and
+workflow loop around itself:
+
+- `basectl workspace init` makes a workspace repository the entry point for
+  cloning and materializing the declared repo set.
+- `basectl prompt list` and `basectl prompt product-self-review` make
+  repo-owned prompts inspectable and repeatable instead of private chat-only
+  process.
+- local command history gives future reporting work a factual substrate without
+  making a dashboard the first step.
+- manifest-declared PR policy lets repository workflow guidance travel with the
+  project contract while GitHub Issues and PRs remain the durable execution
+  record.
+- Python runtime requirements and Base-managed artifact declarations make
+  project readiness more explicit without turning Base into a package solver.
+
+The post-release hardening train also improved product trust signals without
+changing the positioning: GitHub Project defaults route through the Python
+Project engine, `basectl config show` now redacts secret-shaped values, CI has a
+documented dependency-audit policy, nested completions are closer to command
+parity, and `basectl gh project issue set-fields --help` exposes concrete field
+options instead of a generic placeholder.
+
+The working ratings remain unchanged. 1.2.0 gives better proof that the product
+can keep its own workflow, documentation, and release record current, but it
+does not yet provide the external adoption, contributor independence, or
+cross-platform support evidence that would justify raising the adoption or
+organizational-impact assessment.
+
+Current watchlist for the next release line:
+
+- Linux remains the largest platform expansion unlock; keep #562 narrow and
+  tested before making broader claims.
+- Command history should earn user-facing reports before a local dashboard
+  becomes product surface.
+- Artifact support should stay Base-managed and manifest-explicit until real
+  adapter demand proves a constrained extension model.
+- Setup parallelism should wait behind a deterministic setup-plan/preflight
+  layer; mutating installers should remain serial.
+- Ownership pressure is still concentrated in large Bash command modules,
+  Project engines, and broad BATS files; keep #1072, #1073, #1074, and #1075 as
+  issue-backed maintainability work rather than turning this assessment into a
+  parallel backlog.
+
 ## 4. Creator And Engineering Skill Assessment
 
 Assessment: at least Staff-level; plausibly upper Staff or early Senior
@@ -321,6 +372,11 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-06-25: Updated for the 1.2.0 review delta, including workspace init,
+  repo-owned prompt rendering, command history, manifest PR policy, Python
+  runtime requirements, artifact declarations, and post-release hardening
+  around Project routing, config redaction, CI supply-chain checks, completions,
+  and concrete nested help.
 - 2026-06-21: Updated for the 1.1.0 review delta, including workspace clone
   onboarding, uv-managed project support, bootstrap/Homebrew release maturity,
   AI context exports, standalone `base-bash-libs`, AGPL adoption tradeoffs, and

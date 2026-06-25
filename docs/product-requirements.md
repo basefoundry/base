@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-06-22
-Base era reviewed: 1.1.0
+Last reviewed: 2026-06-25
+Base era reviewed: 1.2.0
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide
@@ -72,6 +72,8 @@ Base should help a target user answer these questions quickly:
   workflow conventions?
 - How do I export repo-visible AI context without depending on a
   provider-specific upload path?
+- How do I render repo-owned prompts for review workflows without moving
+  private prompt libraries into Base?
 
 ## Requirements
 
@@ -119,6 +121,9 @@ Base should help a target user answer these questions quickly:
 - Base should coexist strongly with tools such as Homebrew, `mise`, uv, Docker,
   IDEs, project task runners, Devbox, Nix, and Dev Containers where a project
   chooses them.
+- Built-in artifact support may cover Base-managed artifacts with explicit
+  manifest declarations. External artifact adapters should remain constrained
+  and evidence-driven before becoming part of Base core.
 - New tool-family support must remain explicit and opt-in until real usage
   proves a narrower Base-owned contract.
 
@@ -129,18 +134,24 @@ Base should help a target user answer these questions quickly:
 - Base repository work should use issue-backed branches, dedicated worktrees,
   pull requests, validation, and Project metadata as documented in
   [GitHub Workflow](github-workflow.md).
+- Base may render repo-declared pull request policy from project manifests, but
+  issues, pull requests, milestones, and Projects remain the durable GitHub
+  source of truth for execution state.
 - Release support must remain guarded and explicit, with changelog, version,
   GitHub Release, and Homebrew tap handoff behavior documented in
   [Release Process](release-process.md).
 
 ### AI Context
 
-- Base may maintain repo-visible `.ai-context/` files as a curated orientation
-  layer for AI assistants.
+- Base may maintain repo-visible `.ai-context/` files and repo-owned prompt
+  templates as curated orientation and review surfaces for AI assistants.
 - Canonical docs remain the source of truth. `.ai-context/` must summarize
   current repository state and must be updated when product shape,
   architecture, workflows, command surface, manifest model, or durable
   decisions change.
+- Repo-owned prompts must stay inspectable, provider-neutral, and tied to
+  current repository evidence. Private prompt libraries remain outside Base's
+  public product contract.
 - Base must not promise provider-specific AI upload support until official
   supported APIs and privacy boundaries are confirmed.
 
@@ -176,6 +187,8 @@ Base is succeeding when:
 - the release, install, upgrade, and Homebrew paths are boring and repeatable;
 - another contributor or AI-assisted agent can follow the docs, issues, tests,
   and context pack without needing private maintainer knowledge;
+- repo-owned prompts and context exports make periodic product and workflow
+  reviews repeatable without becoming hidden private process;
 - external adoption evidence grows without widening Base into a catch-all
   developer tools bundle.
 
@@ -239,6 +252,11 @@ repositioning, and after meaningful external user feedback.
 
 ## Decision Log
 
+- 2026-06-25: Reviewed for the 1.2.0 release line.
+  The 1.2.0 release adds workspace initialization, repo-owned prompt rendering,
+  local command history, manifest-declared PR policy, Python runtime
+  requirements, and Base-managed artifact declarations without changing Base's
+  target user or workspace-control-plane thesis.
 - 2026-06-22: Add a maintained PRD for Base.
   Base already has product, architecture, boundary, and assessment docs, but
   needs one concise source for accepted product intent, requirements,

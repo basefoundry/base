@@ -1,6 +1,6 @@
 # basectl check parallelism
 
-> **NOT YET IMPLEMENTED** as of Base 1.1.0. This document records the design for
+> **NOT YET IMPLEMENTED** as of Base 1.2.0. This document records the design for
 > a future `basectl check` performance PR; current check behavior remains
 > sequential and deterministic.
 
