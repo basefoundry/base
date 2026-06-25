@@ -294,6 +294,7 @@ base_update_resolve_project() {
     local base_home="$1"
     local project="$2"
     local wrapper="$base_home/bin/base-wrapper"
+    local resolve_fields=()
     local resolve_output resolved_name resolved_root resolved_manifest
 
     if [[ -z "$project" ]]; then
@@ -311,7 +312,10 @@ base_update_resolve_project() {
     }
 
     resolve_output="$("$wrapper" --project base base_projects resolve "$project")" || return $?
-    IFS=$'\t' read -r resolved_name resolved_root resolved_manifest <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    resolved_root="${resolve_fields[1]:-}"
+    resolved_manifest="${resolve_fields[2]:-}"
     [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || {
         log_error "Unable to resolve Base project '$project'."
         return 1
@@ -334,6 +338,7 @@ base_update_subcommand_main() {
     local project=base
     local project_arg=""
     local repo
+    local resolve_fields=()
     local resolve_output
     local resolved_project
     local update_branch
@@ -370,7 +375,10 @@ base_update_subcommand_main() {
     done
 
     resolve_output="$(base_update_resolve_project "$base_home" "$project")" || return $?
-    IFS=$'\t' read -r resolved_project repo manifest_path <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_project="${resolve_fields[0]:-}"
+    repo="${resolve_fields[1]:-}"
+    manifest_path="${resolve_fields[2]:-}"
     [[ -n "$resolved_project" && -n "$repo" && -n "$manifest_path" ]] || {
         log_error "Unable to resolve Base project '$project'."
         return 1

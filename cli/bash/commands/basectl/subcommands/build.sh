@@ -41,13 +41,22 @@ base_build_list_targets() {
     local list_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
     local display_text
     local printed_header=0
+    local target_fields=()
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     list_output="$("$wrapper" --project base base_projects build-target-list "$project" "${args[@]}")" || return $?
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description command_runner <<<"$line"
+        IFS=$'\t' read -r -a target_fields <<<"$line"
+        resolved_name="${target_fields[0]:-}"
+        project_root="${target_fields[1]:-}"
+        manifest_path="${target_fields[2]:-}"
+        target_name="${target_fields[3]:-}"
+        working_dir="${target_fields[4]:-}"
+        build_command="${target_fields[5]:-}"
+        description="${target_fields[6]:-}"
+        command_runner="$(base_project_command_runner_from_field "${target_fields[7]:-}" || true)"
         [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" ]] || {
             fatal_error "Unable to parse build targets for project '$project'."
         }
@@ -73,6 +82,7 @@ base_build_subcommand_main() {
     local venv_dir command_to_run display_command
     local dry_run=0 list_targets=0 workspace_requested=0
     local args=() extra_args=() targets=()
+    local target_fields=()
 
     while (($#)); do
         case "$1" in
@@ -158,13 +168,21 @@ base_build_subcommand_main() {
     venv_dir=""
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path target_name working_dir build_command description command_runner <<<"$line"
+        IFS=$'\t' read -r -a target_fields <<<"$line"
+        resolved_name="${target_fields[0]:-}"
+        project_root="${target_fields[1]:-}"
+        manifest_path="${target_fields[2]:-}"
+        target_name="${target_fields[3]:-}"
+        working_dir="${target_fields[4]:-}"
+        build_command="${target_fields[5]:-}"
+        description="${target_fields[6]:-}"
+        command_runner="$(base_project_command_runner_from_field "${target_fields[7]:-}" || true)"
         [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" && -n "$build_command" ]] || {
             fatal_error "Unable to parse build target '$target_name' for project '$project'."
         }
 
         if [[ -z "$venv_dir" ]]; then
-            venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
+            venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${target_fields[@]:7}")"
             export BASE_PROJECT="$resolved_name"
             export BASE_PROJECT_ROOT="$project_root"
             export BASE_PROJECT_MANIFEST="$manifest_path"

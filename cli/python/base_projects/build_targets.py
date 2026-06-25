@@ -6,6 +6,7 @@ from typing import Protocol
 
 import base_cli
 from base_setup.manifest import BaseManifest, BuildTargetConfig, ManifestError, read_manifest
+from base_setup.project_routing import route_for_manifest
 
 
 class ProjectLike(Protocol):
@@ -65,7 +66,7 @@ def build_targets_project_command(
         return 1
 
     for target_name, target_config, working_dir in targets:
-        print_build_target(project, target_name, target_config, working_dir)
+        print_build_target(project, manifest, target_name, target_config, working_dir)
     return 0
 
 
@@ -88,12 +89,13 @@ def list_build_targets_command(
         return 1
 
     for target_name, target_config, working_dir in targets:
-        print_build_target(project, target_name, target_config, working_dir)
+        print_build_target(project, manifest, target_name, target_config, working_dir)
     return 0
 
 
 def print_build_target(
     project: ProjectLike,
+    manifest: BaseManifest,
     target_name: str,
     target_config: BuildTargetConfig,
     working_dir: Path,
@@ -109,7 +111,17 @@ def print_build_target(
     ]
     if target_config.runner is not None:
         fields.append(target_config.runner)
+    fields.extend(route_metadata_fields(manifest))
     print("\t".join(fields))
+
+
+def route_metadata_fields(manifest: BaseManifest) -> list[str]:
+    route = route_for_manifest(manifest)
+    uses_uv = "true" if route.uses_uv_manager else "false"
+    return [
+        f"__base_project_venv_dir={route.project_venv_dir}",
+        f"__base_uses_uv_manager={uses_uv}",
+    ]
 
 
 def selected_build_targets(

@@ -837,6 +837,7 @@ setup_run_diagnostics_json() {
 setup_resolve_project_manifest() {
     local project="$1"
     local python_bin="$2"
+    local resolve_fields=()
     local resolve_output resolved_manifest resolved_name resolved_root
 
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
@@ -865,7 +866,10 @@ setup_resolve_project_manifest() {
             "$python_bin" -m base_projects resolve "$project"
     )" || return 1
 
-    IFS=$'\t' read -r resolved_name resolved_root resolved_manifest <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    resolved_root="${resolve_fields[1]:-}"
+    resolved_manifest="${resolve_fields[2]:-}"
     [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || return 1
 
     printf '%s\t%s\t%s\n' "$resolved_name" "$resolved_root" "$resolved_manifest"
@@ -1169,6 +1173,7 @@ setup_run_project_artifact_layer() {
     local exit_code manifest_path precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output route_output venv_dir
     local args=()
     local project_env_args=()
+    local resolve_fields=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
@@ -1185,7 +1190,10 @@ setup_run_project_artifact_layer() {
         return 1
     }
     if [[ "$resolve_output" == *$'\t'* ]]; then
-        IFS=$'\t' read -r resolved_name resolved_root manifest_path <<<"$resolve_output"
+        IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+        resolved_name="${resolve_fields[0]:-}"
+        resolved_root="${resolve_fields[1]:-}"
+        manifest_path="${resolve_fields[2]:-}"
         project="$resolved_name"
         if [[ "$output_format" != json ]]; then
             if [[ "$action" == setup ]]; then

@@ -4,31 +4,52 @@
 _base_project_command_helpers_sourced=1
 readonly _base_project_command_helpers_sourced
 
-base_project_uses_uv_manager() {
-    local manifest_path="$1"
+base_project_route_value() {
+    local marker="$1" field
+    shift
 
-    [[ -n "$manifest_path" && -f "$manifest_path" ]] || return 1
-    awk '
-        /^[[:space:]]*#/ { next }
-        /^[^[:space:]][^:]*:/ { in_python = 0 }
-        /^[[:space:]]*python:[[:space:]]*$/ { in_python = 1; next }
-        in_python && /^[[:space:]]+manager:[[:space:]]*['\''"]?uv['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
-        END { exit found ? 0 : 1 }
-    ' "$manifest_path"
+    for field in "$@"; do
+        case "$field" in
+            "$marker"*)
+                printf '%s\n' "${field#"$marker"}"
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+base_project_route_venv_dir() {
+    base_project_route_value "__base_project_venv_dir=" "$@"
+}
+
+base_project_route_uses_uv_manager() {
+    [[ "$(base_project_route_value "__base_uses_uv_manager=" "$@" || true)" == "true" ]]
+}
+
+base_project_command_runner_from_field() {
+    local candidate="${1:-}"
+
+    [[ -n "$candidate" ]] || return 1
+    [[ "$candidate" != __base_* ]] || return 1
+    printf '%s\n' "$candidate"
 }
 
 base_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
     local manifest_path="${3:-}"
+    local route_fields=("${@:4}")
+    local route_venv_dir=""
 
     if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
 
-    if [[ -n "$project_root" ]] && base_project_uses_uv_manager "$manifest_path"; then
-        printf '%s\n' "$project_root/.venv"
+    route_venv_dir="$(base_project_route_venv_dir "${route_fields[@]}" || true)"
+    if [[ -n "$route_venv_dir" ]]; then
+        printf '%s\n' "$route_venv_dir"
         return 0
     fi
 

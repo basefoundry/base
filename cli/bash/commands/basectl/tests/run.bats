@@ -88,7 +88,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-command" && "${4:-}" == "demo" && "${5:-}" == "dev" ]]; then
-    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" 'printf "venv=%s\npath=%s\n" "$BASE_PROJECT_VENV_DIR" "$PATH" > "$BASE_TEST_RUN_STATE"'
+    printf 'demo\t%s\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=true\n' \
+        "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
+        'printf "venv=%s\npath=%s\n" "$BASE_PROJECT_VENV_DIR" "$PATH" > "$BASE_TEST_RUN_STATE"' \
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected run python args: %s\n' "$*" >&2

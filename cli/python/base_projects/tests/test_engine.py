@@ -32,10 +32,35 @@ def write_uv_manifest(project_root: Path, name: str) -> None:
     write_ready_python_bin(python_bin)
 
 
+def write_inline_uv_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\npython: {{manager: uv}}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+    python_bin = project_root / ".venv" / "bin" / "python"
+    write_ready_python_bin(python_bin)
+
+
 def write_ready_python_bin(python_bin: Path) -> None:
     python_bin.parent.mkdir(parents=True)
     python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
+
+
+_engine_homes: list[Path] = []
+
+
+def base_route_fields(base_home: Path, project: str) -> str:
+    del base_home
+    if not _engine_homes:
+        raise AssertionError("run_engine must be called before base_route_fields")
+    venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    return f"\t__base_project_venv_dir={venv_dir}\t__base_uses_uv_manager=false"
+
+
+def uv_route_fields(project_root: Path) -> str:
+    return f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}\t__base_uses_uv_manager=true"
 
 
 def write_last_check(home: Path, project: str, checked_at: str, status: str = "ok") -> None:
@@ -147,7 +172,7 @@ def invoke_engine(
     stderr = io.StringIO()
     if user_config is not None:
         config_path = home / ".base.d" / "config.yaml"
-        config_path.parent.mkdir(parents=True)
+        config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(user_config, encoding="utf-8")
     env = {
         "HOME": str(home),
@@ -170,7 +195,8 @@ def run_engine(
     extra_env: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
     with tempfile.TemporaryDirectory() as home_dir:
-        return invoke_engine(args, base_home, Path(home_dir), user_config=user_config, extra_env=extra_env)
+        _engine_homes.append(Path(home_dir))
+        return invoke_engine(args, base_home, _engine_homes[-1], user_config=user_config, extra_env=extra_env)
 
 
 def run_engine_with_home(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
@@ -458,7 +484,29 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"{base_route_fields(base_home, 'demo')}\n",
+        )
+
+    def test_projects_resolve_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_inline_uv_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["resolve", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"{uv_route_fields(project_root)}\n",
+        )
 
     def test_projects_resolve_uses_active_project_manifest_without_workspace_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -484,7 +532,10 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}\n")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}{base_route_fields(base_home, 'demo')}\n",
+        )
 
     def test_projects_resolve_explicit_workspace_wins_over_active_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -510,7 +561,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}\n",
+            f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}"
+            f"{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_resolve_rejects_active_project_manifest_mismatch(self) -> None:
@@ -550,7 +602,11 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout, f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\n")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"{base_route_fields(base_home, 'demo')}\n",
+        )
 
     def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -564,7 +620,11 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout, f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\n")
+        self.assertEqual(
+            stdout,
+            f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}"
+            f"{base_route_fields(base_home, 'base')}\n",
+        )
 
     def test_projects_resolve_base_uses_base_home_with_configured_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -583,7 +643,11 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(stdout, f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\n")
+        self.assertEqual(
+            stdout,
+            f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}"
+            f"{base_route_fields(base_home, 'base')}\n",
+        )
 
     def test_projects_test_command_prints_project_details_and_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -599,7 +663,40 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/"
+            f"{base_route_fields(base_home, 'demo')}\n",
+        )
+
+    def test_projects_test_command_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            project_root.mkdir(parents=True)
+            (project_root / "base_manifest.yaml").write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python: {manager: uv}",
+                        "test:",
+                        "  command: pytest tests/",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = run_engine(["test-command", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\tpytest tests/\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
+            "\t__base_uses_uv_manager=true\n",
         )
 
     def test_projects_test_command_for_base_uses_base_home_without_workspace_scan(self) -> None:
@@ -616,7 +713,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\t./bin/base-test\n",
+            f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}\t./bin/base-test"
+            f"{base_route_fields(base_home, 'base')}\n",
         )
 
     def test_projects_test_command_prints_mise_task_command(self) -> None:
@@ -633,7 +731,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tmise run unit\n",
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tmise run unit"
+            f"{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_activation_sources_prints_validated_source_paths(self) -> None:
@@ -755,7 +854,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/"
+            f"{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_test_command_requires_manifest_test_command(self) -> None:
@@ -785,7 +885,39 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            "\tuvicorn app:app --reload\n",
+            f"\tuvicorn app:app --reload{base_route_fields(base_home, 'demo')}\n",
+        )
+
+    def test_projects_run_command_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            project_root.mkdir(parents=True)
+            (project_root / "base_manifest.yaml").write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python: {manager: uv}",
+                        "commands:",
+                        "  dev: uvicorn app:app --reload",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = run_engine(["run-command", "demo", "dev"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\tuvicorn app:app --reload\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
+            "\t__base_uses_uv_manager=true\n",
         )
 
     def test_projects_run_command_test_delegates_to_test_contract(self) -> None:
@@ -802,7 +934,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/\n",
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/"
+            f"{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_run_command_prints_runner_when_declared(self) -> None:
@@ -820,7 +953,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            "\tpytest tests/audit\tuv\n",
+            f"\tpytest tests/audit\tuv{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_test_command_prints_runner_when_declared(self) -> None:
@@ -838,7 +971,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            "\tpytest tests/\tuv\n",
+            f"\tpytest tests/\tuv{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_run_command_reports_unknown_command(self) -> None:
@@ -873,7 +1006,42 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"\t{script.resolve()}\n",
+            f"\t{script.resolve()}{base_route_fields(base_home, 'demo')}\n",
+        )
+
+    def test_projects_demo_script_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            script = project_root / "demo" / "demo.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            script.chmod(0o755)
+            (project_root / "base_manifest.yaml").write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python: {manager: uv}",
+                        "demo:",
+                        "  script: ./demo/demo.sh",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = run_engine(["demo-script", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            stdout,
+            f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
+            f"\t{script.resolve()}\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
+            "\t__base_uses_uv_manager=true\n",
         )
 
     def test_projects_demo_script_prints_runner_when_declared(self) -> None:
@@ -895,7 +1063,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"\t{script.resolve()}\tuv\n",
+            f"\t{script.resolve()}\tuv{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_demo_script_defaults_to_current_project(self) -> None:
@@ -924,7 +1092,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"\t{script.resolve()}\n",
+            f"\t{script.resolve()}{base_route_fields(base_home, 'demo')}\n",
         )
 
     def test_projects_demo_script_requires_demo_declaration(self) -> None:

@@ -66,6 +66,7 @@ base_run_subcommand_main() {
     local command_to_run display_command
     local dry_run=0 list_commands=0 workspace_requested=0
     local args=() extra_args=()
+    local resolve_fields=()
 
     while (($#)); do
         case "$1" in
@@ -152,13 +153,18 @@ base_run_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     resolve_output="$("$wrapper" --project base base_projects run-command "$project" "$command_name" "${args[@]}")" || return $?
-    IFS=$'\t' read -r resolved_name project_root manifest_path run_command command_runner <<<"$resolve_output"
+    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
+    resolved_name="${resolve_fields[0]:-}"
+    project_root="${resolve_fields[1]:-}"
+    manifest_path="${resolve_fields[2]:-}"
+    run_command="${resolve_fields[3]:-}"
+    command_runner="$(base_project_command_runner_from_field "${resolve_fields[4]:-}" || true)"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$run_command" ]] || {
         fatal_error "Unable to resolve command '$command_name' for project '$project'."
     }
 
-    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path")"
+    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:4}")"
     export BASE_PROJECT="$resolved_name"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
