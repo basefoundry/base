@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -9,8 +10,10 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import base_cli
+from base_cli.history import HISTORY_PATH
 from base_cli.paths import base_cache_root
 
 
@@ -27,6 +30,7 @@ class LogEntry:
     path: Path
     timestamp: datetime
     status: str
+    exit_code: int | None = None
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,18 @@ class LogCommandOptions:
     tail: bool
     open_file: bool
     lines: int
+
+
+@dataclass(frozen=True)
+class HistoryLogStatus:
+    status: str
+    exit_code: int | None
+
+
+@dataclass(frozen=True)
+class HistoryLogStatusIndex:
+    by_run_id: dict[str, HistoryLogStatus]
+    by_log_path: dict[str, HistoryLogStatus]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -137,6 +153,7 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
     if not cli_root.is_dir():
         return []
 
+    history_statuses = read_history_log_statuses(cache_root)
     entries: list[LogEntry] = []
     for logs_dir in sorted(cli_root.glob("*/logs"), key=str):
         if not logs_dir.is_dir():
@@ -145,6 +162,7 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
         for path in sorted(logs_dir.glob("*.log"), key=lambda item: item.name):
             if not path.is_file():
                 continue
+            history_status = history_status_for_log(history_statuses, run_id=path.stem, path=path)
             entries.append(
                 LogEntry(
                     command=infer_display_command(raw_command, path),
@@ -152,10 +170,67 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
                     run_id=path.stem,
                     path=path,
                     timestamp=entry_timestamp(path),
-                    status=infer_status(path),
+                    status=history_status.status if history_status is not None else infer_status(path),
+                    exit_code=history_status.exit_code if history_status is not None else None,
                 )
             )
     return entries
+
+
+def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
+    path = cache_root / HISTORY_PATH
+    index = HistoryLogStatusIndex(by_run_id={}, by_log_path={})
+    if not path.is_file():
+        return index
+
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            record = parse_history_log_status_line(line)
+            if record is None:
+                continue
+            run_id, log_path, history_status = record
+            index.by_run_id[run_id] = history_status
+            if log_path is not None:
+                index.by_log_path[normalize_history_log_path(log_path)] = history_status
+    return index
+
+
+def parse_history_log_status_line(line: str) -> tuple[str, str | None, HistoryLogStatus] | None:
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        return None
+    if payload.get("event") != "finished":
+        return None
+
+    run_id = optional_string(payload.get("run_id"))
+    status = optional_string(payload.get("status"))
+    if run_id is None or status is None:
+        return None
+
+    return (
+        run_id,
+        optional_string(payload.get("log_path")),
+        HistoryLogStatus(status=status, exit_code=optional_int(payload.get("exit_code"))),
+    )
+
+
+def optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def optional_int(value: Any) -> int | None:
+    return value if isinstance(value, int) else None
+
+
+def history_status_for_log(index: HistoryLogStatusIndex, run_id: str, path: Path) -> HistoryLogStatus | None:
+    return index.by_run_id.get(run_id) or index.by_log_path.get(normalize_history_log_path(str(path)))
+
+
+def normalize_history_log_path(value: str) -> str:
+    return str(Path(value).expanduser().resolve(strict=False))
 
 
 def infer_display_command(raw_command: str, path: Path) -> str:
