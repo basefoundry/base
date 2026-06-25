@@ -51,12 +51,8 @@ base_config_subcommand_main() {
             ;;
         show|doctor)
             shift
-            if (($#)); then
-                base_config_usage_error "config $config_command does not accept arguments."
-                return $?
-            fi
             [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-            "$wrapper" --project base base_config "$config_command"
+            BASE_CLI_DISPLAY_COMMAND="basectl config" "$wrapper" --project base base_config "$config_command" "$@"
             ;;
         *)
             base_config_usage_error "Unknown config command '$config_command'."

@@ -10,8 +10,11 @@ from base_github_projects import engine, project_model
 def test_delegated_usage_uses_basectl_gh_project_prefix(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("BASE_CLI_DISPLAY_COMMAND", "basectl gh")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("BASE_CACHE_DIR", str(tmp_path / ".cache" / "base"))
 
     status = engine.main(["project", "configure", "--wat"])
 
@@ -20,6 +23,21 @@ def test_delegated_usage_uses_basectl_gh_project_prefix(
     assert "basectl gh project configure --project <title>" in captured.err
     assert "ERROR: Unknown option '--wat'." in captured.err
     assert "base_github_projects" not in captured.err
+
+
+def test_main_rejects_equals_form_project_options(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("BASE_CACHE_DIR", str(tmp_path / ".cache" / "base"))
+
+    status = engine.main(["project", "configure", "--project=Base Roadmap", "--dry-run"])
+
+    captured = capsys.readouterr()
+    assert status == 2
+    assert "Option '--project' uses unsupported equals syntax." in captured.err
 
 
 def test_parse_project_configure_arguments() -> None:
@@ -89,38 +107,6 @@ def test_parse_project_configure_accepts_copy_fields_from_project() -> None:
     )
 
     assert args.copy_fields_from_project == "Base Roadmap"
-
-
-def test_parse_project_arguments_accept_equals_options() -> None:
-    args = engine.parse_args(
-        (
-            "project",
-            "issue",
-            "set-fields",
-            "604",
-            "--project=Base Roadmap",
-            "--repo=codeforester/base",
-            "--status=Backlog",
-            "--priority=P2",
-            "--area=CLI",
-            "--initiative=v1.0 Readiness",
-            "--size=M",
-            "--dry-run",
-        )
-    )
-
-    assert args.command == "issue-set-fields"
-    assert args.project_title == "Base Roadmap"
-    assert args.repo == "codeforester/base"
-    assert args.issue_number == 604
-    assert args.field_values == {
-        "status": "Backlog",
-        "priority": "P2",
-        "area": "CLI",
-        "initiative": "v1.0 Readiness",
-        "size": "M",
-    }
-    assert args.dry_run is True
 
 
 def test_read_project_config_loads_repo_taxonomy(tmp_path: Path) -> None:

@@ -9,7 +9,9 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.history import HISTORY_PATH
 from base_cli.config import user_config_path
+from base_cli.testing import invoke
 from base_config import engine
 
 
@@ -59,6 +61,21 @@ class BaseConfigCommandTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(json.loads(stdout.getvalue()), {})
+
+    def test_show_config_uses_base_cli_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+
+            result = invoke(engine.app, ["show"], home=home)
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(json.loads(result.stdout), {})
+            log_dir = home / ".cache" / "base" / "cli" / "base_config" / "logs"
+            self.assertEqual(len(tuple(log_dir.glob("*.log"))), 1)
+            history_path = home / ".cache" / "base" / HISTORY_PATH
+            history_record = json.loads(history_path.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(history_record["raw_command"], "base_config")
+            self.assertEqual(history_record["status"], "ok")
 
     def test_show_config_prints_parsed_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

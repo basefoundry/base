@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import argparse
 import fnmatch
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import base_cli
 from base_cli.paths import discover_manifest
 from base_setup.github_manifest import GithubPrConfig
 from base_setup.manifest import ManifestError, read_manifest
@@ -92,41 +92,50 @@ def body_from_manifest(
     )
 
 
+app = base_cli.App(
+    name="base_pr_policy",
+    help="Render Base-managed GitHub pull request policy content.",
+)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
-
-    if args.command == "body":
-        manifest_path = Path(args.manifest).expanduser().resolve() if args.manifest else discover_manifest(Path.cwd())
-        if manifest_path is None:
-            print("ERROR: No base_manifest.yaml found from the current directory upward.", file=sys.stderr)
-            return 2
-        try:
-            body = body_from_manifest(
-                manifest_path,
-                issue_number=args.issue,
-                labels=tuple(args.labels or ()),
-                paths=tuple(args.paths or ()),
-            )
-        except (ManifestError, PrPolicyError) as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 1
-        sys.stdout.write(body)
-        return 0
-
-    parser.print_usage(sys.stderr)
-    return 2
+    return base_cli.run_app(app, argv)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="base_pr_policy")
-    subparsers = parser.add_subparsers(dest="command")
-    body_parser = subparsers.add_parser("body", help="Render a pull request body from base_manifest.yaml.")
-    body_parser.add_argument("--manifest", help="Path to base_manifest.yaml.")
-    body_parser.add_argument("--issue", type=int, help="Issue number to link with Fixes #<number>.")
-    body_parser.add_argument("--label", action="append", dest="labels", help="Issue or PR label name.")
-    body_parser.add_argument("--path", action="append", dest="paths", help="Changed path relative to the repo root.")
-    return parser
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.argument("command", required=False)
+@base_cli.option("--manifest", help="Path to base_manifest.yaml.")
+@base_cli.option("--issue", type=int, help="Issue number to link with Fixes #<number>.")
+@base_cli.option("--label", "labels", multiple=True, help="Issue or PR label name.")
+@base_cli.option("--path", "paths", multiple=True, help="Changed path relative to the repo root.")
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def run(
+    ctx: base_cli.Context,
+    command: str | None,
+    manifest: str | None,
+    issue: int | None,
+    labels: tuple[str, ...],
+    paths: tuple[str, ...],
+) -> int:
+    if command != "body":
+        ctx.log.error("Expected command 'body'.")
+        return 2
+    manifest_path = Path(manifest).expanduser().resolve() if manifest else discover_manifest(Path.cwd())
+    if manifest_path is None:
+        ctx.log.error("No base_manifest.yaml found from the current directory upward.")
+        return 2
+    try:
+        body = body_from_manifest(
+            manifest_path,
+            issue_number=issue,
+            labels=labels,
+            paths=paths,
+        )
+    except (ManifestError, PrPolicyError) as exc:
+        ctx.log.error(str(exc))
+        return 1
+    sys.stdout.write(body)
+    return 0
 
 
 def _template_body(policy: GithubPrConfig, inputs: PrPolicyInputs) -> str:
