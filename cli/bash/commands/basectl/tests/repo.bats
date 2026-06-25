@@ -9,6 +9,32 @@ line_at() {
     printf '%s\n' "$text" | sed -n "${line_number}p"
 }
 
+write_repo_configure_gh_recorder() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo" && "${BASE_REPO_TEST_REPO_VIEW_MISSING:-}" == "1" ]]; then
+    exit 1
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+run_repo_command_with_mocks() {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_TEST_REPO_VIEW_MISSING="${BASE_REPO_TEST_REPO_VIEW_MISSING:-}" \
+        BASE_REPO_PROJECT_WRAPPER="${BASE_REPO_PROJECT_WRAPPER:-}" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo "$@"
+}
 
 @test "basectl repo prints help" {
     run_basectl repo --help
@@ -883,7 +909,9 @@ EOF
     grep -Fq 'Update `CHANGELOG.md` only for notable user-visible or release-worthy' "$repo_dir/CONTRIBUTING.md"
     grep -Fq "## Checklist" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "CHANGELOG is updated for notable user-visible or release-worthy changes." "$repo_dir/.github/pull_request_template.md"
-    ! grep -Fq "Demo Impact" "$repo_dir/.github/pull_request_template.md"
+    if grep -Fq "Demo Impact" "$repo_dir/.github/pull_request_template.md"; then
+        fail "pull request template should not include Demo Impact by default"
+    fi
     grep -Fq "GNU Affero General Public License" "$repo_dir/LICENSE"
     run grep -F "Base - a workspace control plane" "$repo_dir/LICENSE"
     [ "$status" -eq 1 ]
@@ -1244,23 +1272,10 @@ EOF
     local repo_dir="$TEST_TMPDIR/repo"
 
     mkdir -p "$repo_dir"
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$*" == "repo view codeforester/base-demo" ]]; then
-    exit 1
-fi
-printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_repo_configure_gh_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+    BASE_REPO_TEST_REPO_VIEW_MISSING=1 \
+        run_repo_command_with_mocks configure "$repo_dir" --repo codeforester/base-demo --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Configuring GitHub repository 'codeforester/base-demo'..."* ]]
@@ -1290,25 +1305,11 @@ fi
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/brew"
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_repo_configure_gh_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
-            --repo codeforester/base-demo \
-            --no-project
+    run_repo_command_with_mocks configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"GitHub CLI 'gh' is outdated; run 'basectl setup --profile dev' to upgrade Base-managed developer prerequisites."* ]]
@@ -1330,25 +1331,11 @@ fi
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/brew"
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_repo_configure_gh_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
-            --repo codeforester/base-demo \
-            --no-project
+    run_repo_command_with_mocks configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"GitHub CLI 'gh' is outdated"* ]]
@@ -1371,25 +1358,11 @@ fi
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/brew"
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_repo_configure_gh_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
-            --repo codeforester/base-demo \
-            --no-project
+    run_repo_command_with_mocks configure "$repo_dir" \
+        --repo codeforester/base-demo \
+        --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"GitHub CLI 'gh' is outdated"* ]]
@@ -1405,29 +1378,15 @@ project:
   areas:
     - Demo App
 EOF
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_repo_configure_gh_recorder
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_REPO_TEST_STATE_DIR:?}/project-args"
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" \
+    BASE_REPO_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        run_repo_command_with_mocks configure "$repo_dir" \
             --repo codeforester/base-demo \
             --copy-project-fields-from "Base Roadmap"
 
@@ -1784,7 +1743,9 @@ EOF
     [[ "$commit_files" == *"base_manifest.yaml"* ]]
     [[ "$commit_files" != *"src/app.txt"* ]]
     grep -Fq "pr create --repo codeforester/base-demo --base master --head base/repo-baseline-base-demo --title Add Base repository baseline --body-file" "$TEST_STATE_DIR/gh-args"
-    ! grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
+    if grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"; then
+        fail "repo init --pr should not configure GitHub when opening a baseline pull request"
+    fi
     grep -Fq "Add Base-managed repository baseline files." "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
     [[ "$output" == *"Baseline PR opened: https://github.com/codeforester/base-demo/pull/1"* ]]
@@ -1841,7 +1802,9 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"No repository baseline changes to commit; continuing with GitHub repository configuration."* ]]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
-    ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
+    if grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"; then
+        fail "repo init --pr should not open a pull request when there are no baseline changes"
+    fi
     [ "$(cat "$TEST_STATE_DIR/project-args")" = "--project base base_github_projects project configure --project base-demo --owner codeforester --repo codeforester/base-demo --schema base-project --config $repo_dir/.github/base-project.yml --copy-fields-from Base Roadmap" ]
 }
 

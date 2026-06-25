@@ -2,6 +2,34 @@
 
 load ./basectl_helpers.bash
 
+write_gh_args_recorder() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+run_gh_subcommand() {
+    local cwd="${BASE_GH_TEST_CWD:-$TEST_HOME}"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_CWD="$cwd" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="${BASE_GH_PROJECT_WRAPPER:-}" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$BASE_GH_TEST_CWD"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main "$@"
+        ' bash "$@"
+}
 
 @test "basectl gh prints help" {
     run_basectl gh --help
@@ -133,25 +161,10 @@ load ./basectl_helpers.bash
 }
 
 @test "basectl gh issue create accepts explicit assignee" {
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_gh_args_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Repair branch pruning" --repo codeforester/base --assignee codeforester --no-project
-        '
+    run_gh_subcommand issue create --category bug --title "Repair branch pruning" \
+        --repo codeforester/base --assignee codeforester --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"Using default --category"* ]]
@@ -159,26 +172,10 @@ EOF
 }
 
 @test "basectl gh issue create announces default category without forcing an assignee" {
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_gh_args_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            cd "$HOME"
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --title "Default category issue" --repo codeforester/base --no-project
-        '
+    run_gh_subcommand issue create --title "Default category issue" \
+        --repo codeforester/base --no-project
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Using default --category: enhancement"* ]]
@@ -186,14 +183,7 @@ EOF
 }
 
 @test "basectl gh issue create uses repo config assignee default" {
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_gh_args_recorder
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
@@ -203,18 +193,10 @@ fi
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+    BASE_GH_TEST_CWD="$BASE_REPO_ROOT" \
         BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            cd "$BASE_HOME"
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Base repo issue" --repo basefoundry/base --no-project
-        '
+        run_gh_subcommand issue create --category bug --title "Base repo issue" \
+            --repo basefoundry/base --no-project
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Base repo issue --label bug --assignee codeforester --repo basefoundry/base" ]
@@ -234,14 +216,7 @@ EOF
 project:
   issue_defaults: {assignee: codeforester}
 EOF
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_gh_args_recorder
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
@@ -251,18 +226,10 @@ fi
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+    BASE_GH_TEST_CWD="$repo" \
         BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            cd "$1"
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Base-like repo issue" --repo basefoundry/base-like --no-project
-        ' bash "$repo"
+        run_gh_subcommand issue create --category bug --title "Base-like repo issue" \
+            --repo basefoundry/base-like --no-project
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Base-like repo issue --label bug --assignee codeforester --repo basefoundry/base-like" ]
@@ -270,26 +237,11 @@ EOF
 }
 
 @test "basectl gh issue create --no-assignee ignores repo config assignee default" {
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_gh_args_recorder
 
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            cd "$BASE_HOME"
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category bug --title "Unassigned Base repo issue" --repo basefoundry/base --no-assignee --no-project
-        '
+    BASE_GH_TEST_CWD="$BASE_REPO_ROOT" \
+        run_gh_subcommand issue create --category bug --title "Unassigned Base repo issue" \
+            --repo basefoundry/base --no-assignee --no-project
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Unassigned Base repo issue --label bug --repo basefoundry/base" ]
