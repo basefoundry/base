@@ -4,22 +4,37 @@ import json
 import sys
 from pathlib import Path
 
+import base_cli
 from base_cli.config import UserConfig, load_user_config, read_user_config, user_config_path
 
 
+app = base_cli.App(
+    name="base_config",
+    help="Inspect Base's machine-local user config.",
+)
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = list(sys.argv[1:] if argv is None else argv)
-    command = args[0] if args else "show"
-    if command in ("-h", "--help", "help"):
-        print_usage()
-        return 0
-    if len(args) > 1:
-        print_usage(file=sys.stderr)
-        print(f"ERROR: config {command} does not accept arguments.", file=sys.stderr)
-        return 2
+    return base_cli.run_app(app, argv)
+
+
+@app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.argument("command", required=False, metavar="[show|doctor]")
+@base_cli.argument("arguments", nargs=-1)
+def run(ctx: base_cli.Context, command: str | None, arguments: tuple[str, ...]) -> int:
+    del ctx
+    command = command or "show"
     if command == "show":
+        if arguments:
+            print_usage(file=sys.stderr)
+            print("ERROR: config show does not accept arguments.", file=sys.stderr)
+            return 2
         return show_config_command()
     if command == "doctor":
+        if arguments:
+            print_usage(file=sys.stderr)
+            print("ERROR: config doctor does not accept arguments.", file=sys.stderr)
+            return 2
         return doctor_config_command()
 
     print_usage(file=sys.stderr)

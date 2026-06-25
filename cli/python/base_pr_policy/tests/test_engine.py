@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from base_pr_policy import engine
 from base_pr_policy.engine import PrPolicyInputs, render_pr_body
 from base_setup.github_manifest import GithubPrConfig, GithubPrRequiredSectionsConfig
+
+
+def test_main_rejects_equals_form_options(capsys) -> None:
+    status = engine.main(["body", "--issue=403"])
+
+    captured = capsys.readouterr()
+    assert status == 2
+    assert "Option '--issue' uses unsupported equals syntax." in captured.err
 
 
 def test_render_pr_body_uses_default_label_and_path_sections() -> None:

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+import click
 
 from . import graphql_queries as queries
 from .project_configure import standard_template_view_errors
@@ -34,6 +35,11 @@ class ProjectAuthError(ProjectError):
     pass
 
 
+app = base_cli.App(
+    name="base_github_projects",
+    help="Configure GitHub Projects for Base-managed repositories.",
+)
+
 HELP_OPTIONS = ("-h", "--help", "help")
 PROJECT_VALUE_OPTIONS = (
     "--project",
@@ -48,8 +54,22 @@ ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--si
 
 
 def main(argv: list[str] | None = None) -> int:
+    return base_cli.run_app(app, argv)
+
+
+@app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "allow_interspersed_args": False,
+        "help_option_names": ["-h", "--help"],
+        "ignore_unknown_options": True,
+    }
+)
+@base_cli.argument("arguments", nargs=-1, type=click.UNPROCESSED)
+def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
+    del ctx
     try:
-        args = parse_args(tuple(sys.argv[1:] if argv is None else argv))
+        args = parse_args(arguments)
         return run_command(args)
     except SystemExit as exc:
         return int(exc.code or 0)
@@ -143,9 +163,6 @@ def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_iss
         if arg in HELP_OPTIONS:
             print_usage()
             raise SystemExit(0)
-        if apply_equals_option(state, arg, allow_fields=allow_fields):
-            index += 1
-            continue
         if arg == "--dry-run":
             state.dry_run = True
             index += 1
@@ -168,19 +185,6 @@ def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_iss
     if not state.owner:
         state.owner = infer_owner_from_git()
     return state
-
-
-def apply_equals_option(state: OptionState, arg: str, *, allow_fields: bool) -> bool:
-    if not arg.startswith("--") or "=" not in arg:
-        return False
-    name, value = arg.split("=", 1)
-    if name in PROJECT_VALUE_OPTIONS:
-        apply_project_option(state, name, value)
-        return True
-    if allow_fields and name in ISSUE_FIELD_OPTIONS:
-        state.field_values[name[2:]] = value
-        return True
-    return False
 
 
 def apply_spaced_option(state: OptionState, remaining: list[str], index: int, *, allow_fields: bool) -> int:

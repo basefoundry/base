@@ -169,6 +169,29 @@ load ./basectl_helpers.bash
     [ "$output" = "$TEST_HOME/.base.d/config.yaml" ]
 }
 
+@test "basectl config show forwards standard Python lifecycle options" {
+    local base_home="$TEST_TMPDIR/base-home"
+    mkdir -p "$base_home/bin"
+    cat > "$base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'display=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$base_home/bin/base-wrapper"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/config.sh"
+            base_config_subcommand_main show --debug --log-file /tmp/base-config.log
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"display=basectl config"* ]]
+    [[ "$output" == *"args=--project base base_config show --debug --log-file /tmp/base-config.log"* ]]
+}
+
 @test "basectl config reports unknown command as a usage error" {
     run_basectl config unknown
 

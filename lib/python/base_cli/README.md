@@ -455,6 +455,15 @@ explicit cache location.
 Use `base_cli` for Python commands that are part of Base or a Base-supported
 project and need standard Base behavior.
 
+Base public command engines under `cli/python/base_*/engine.py` should
+instantiate `base_cli.App` so standard options, logging, redaction, runtime
+state, and local command history stay consistent. If a future public Python
+engine intentionally bypasses this lifecycle, document the reason in code and
+in this guide, then add it as an explicit lifecycle-audit exemption. Shell-only
+helpers that avoid Python startup, such as `basectl config path`, do not create
+Python logs or history records; once a `basectl` path enters a Python command
+package, it should participate in `base_cli.App`.
+
 It is a good fit for:
 
 - project discovery commands
