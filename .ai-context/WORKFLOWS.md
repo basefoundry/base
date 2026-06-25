@@ -60,6 +60,15 @@ views, use `basectl repo configure --replace-project` with `--repo`; Base
 archives the old Project and recreates it from `base-project-template`.
 Already-standard Projects are left intact and continue through metadata repair.
 
+Treat GitHub API budget as shared infrastructure. Serialize mutating issue, PR,
+and Project writes; prefer exact-item GraphQL or `basectl gh` operations over
+broad scans; read current field values before writing; and update only fields
+whose values differ. If GitHub reports rate or secondary-limit pressure, stop
+mutating, wait for the indicated retry window when available, retry the smallest
+failed operation once, and otherwise report the blocked write instead of
+retry-looping. Consider GitHub Apps only for recurring multi-repo automation
+that needs a separate installation budget and narrowly scoped permissions.
+
 ## Branch And Worktree Flow
 
 Use a dedicated worktree for PR work. Branch names follow:
