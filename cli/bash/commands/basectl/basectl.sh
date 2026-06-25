@@ -388,7 +388,16 @@ basectl_main() {
     local base_debug=0 command=""
     local opt
 
-    if [[ "${1:-}" =~ ^(-h|--help|-help|help)$ ]]; then
+    if [[ "${1:-}" == "help" ]]; then
+        shift
+        if [[ $# -eq 0 || "${1:-}" == "help" ]]; then
+            basectl_show_help
+            return 0
+        fi
+        set -- "$@" --help
+    fi
+
+    if [[ "${1:-}" =~ ^(-h|--help|-help)$ ]]; then
         basectl_show_help
         return 0
     fi

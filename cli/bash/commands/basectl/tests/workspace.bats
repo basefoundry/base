@@ -260,6 +260,12 @@ EOF
     [[ "$output" == *"--include-optional"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" != *"--format <format>"* ]]
+
+    run_basectl workspace help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
 }
 
 @test "basectl workspace rejects unknown subcommands" {

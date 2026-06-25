@@ -67,6 +67,29 @@ load ./basectl_helpers.bash
     [[ "$output" != *"-V"* ]]
 }
 
+@test "basectl help routes to command-specific help" {
+    run_basectl help repo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl repo init <name>"* ]]
+    [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
+
+    run_basectl help workspace
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
+
+    run_basectl help release
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl release check --version <version>"* ]]
+    [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
+}
+
 @test "basectl rejects equals-form long option values before command delegation" {
     run_basectl history --limit=2
 
