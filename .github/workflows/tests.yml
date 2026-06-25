@@ -171,6 +171,10 @@ jobs:
         run: |
           bandit -q -r cli/python lib/python -x '*/tests/*' --severity-level medium
 
+      - name: Run pip-audit
+        run: |
+          python -m pip_audit --cache-dir "$RUNNER_TEMP/pip-audit" -r requirements-dev.txt
+
       - name: Run ShellCheck
         run: |
           git ls-files -z \

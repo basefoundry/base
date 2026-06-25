@@ -50,7 +50,7 @@ them by scanning the workspace root.
 | Package management | Homebrew (tools), pip/venv (Python) |
 | Runtime versioning | `mise` (optional, per-project) |
 | Testing | BATS (Bash), pytest (Python) |
-| Static analysis | ShellCheck, Pylint, Bandit |
+| Static analysis | ShellCheck, Pylint, Bandit, pip-audit |
 | CI | GitHub Actions (tests, lint, skills) |
 
 ## Architecture: Three Layers
@@ -254,6 +254,7 @@ exec "$SHELL" -l
 | Shell static analysis | ShellCheck | All `*.sh` files |
 | Python lint | Pylint | `cli/python/`, `lib/python/` (3.10–3.13 matrix) |
 | Python security scan | Bandit | `cli/python/`, `lib/python/` |
+| Python dependency audit | pip-audit | `requirements-dev.txt` |
 
 Run everything locally with `basectl test base` or `bin/base-test`.
 
