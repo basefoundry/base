@@ -77,6 +77,9 @@ reference. The filename should answer "what is this about?"
   pre-1.0.0 consumer upgrade proof and records rehearsal results.
 - [Testing](testing.md) explains Base's Python, BATS, and hermetic integration
   test layers.
+- [CI Supply Chain Policy](ci-supply-chain-policy.md) defines GitHub Action
+  pinning, Python dependency auditing, and package-manager trust boundaries for
+  repository workflows.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
   such as `mise`, `direnv`, Homebrew, IDEs, Docker, and dotfile managers.
 
