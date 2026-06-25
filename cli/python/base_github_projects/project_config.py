@@ -63,7 +63,7 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
 
 
 def read_string_list(path: Path, project: dict[str, Any], key: str) -> tuple[str, ...]:
-    raw = project.get(key, ())
+    raw = project.get(key, [])
     if raw is None:
         return ()
     if not isinstance(raw, list):
