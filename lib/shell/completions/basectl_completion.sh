@@ -118,7 +118,7 @@ _base_basectl_completion() {
                 "--profile --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help"
             ;;
         check)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format --manifest --remote-network -v -h --help"
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
@@ -141,7 +141,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init clone check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --no-project --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --pr --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 clone)
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
@@ -150,7 +150,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"
                     ;;
                 configure)
-                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --replace-project --no-project --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 agent-guidance)
                     _base_basectl_completion_compgen "--repo --repo-name --default-branch --validation-command --pr --dry-run -v -h --help" "$cur"
@@ -202,7 +202,7 @@ _base_basectl_completion() {
             fi
             ;;
         doctor)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format --manifest --remote-network --no-color -v -h --help"
             ;;
         gh)
             case "${COMP_WORDS[2]:-}" in
