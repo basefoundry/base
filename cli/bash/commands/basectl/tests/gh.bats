@@ -62,6 +62,20 @@ load ./basectl_helpers.bash
     [[ "$output" != *"basectl gh worktree prune"* ]]
 }
 
+@test "basectl gh project issue set-fields prints concrete help" {
+    run_basectl gh project issue set-fields --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh project issue set-fields <number>"* ]]
+    [[ "$output" == *"--status <name>"* ]]
+    [[ "$output" == *"--priority <name>"* ]]
+    [[ "$output" == *"--area <name>"* ]]
+    [[ "$output" == *"--initiative <name>"* ]]
+    [[ "$output" == *"--size <T|S|M|L>"* ]]
+    [[ "$output" != *"[field options...]"* ]]
+    [[ "$output" != *"basectl gh project configure"* ]]
+}
+
 @test "basectl gh branch prints area help" {
     run_basectl gh branch --help
 
