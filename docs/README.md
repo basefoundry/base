@@ -107,6 +107,8 @@ reference. The filename should answer "what is this about?"
   `basectl repo check`, `basectl repo configure`, and the optional
   `basectl repo agent-guidance` layer for standardizing new Base-managed
   repositories.
+- [`basectl repo` Ownership Map](repo-command-ownership.md) maps the current
+  `repo.sh` responsibility boundaries and records the safe split direction.
 - [Remote Installer Policy](remote-installer-policy.md) defines the allowed
   remote shell installer URLs, opt-in boundaries, dry-run behavior, and logging
   expectations for setup paths.

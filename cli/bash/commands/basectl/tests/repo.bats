@@ -274,6 +274,16 @@ EOF
     [[ "$output" != *"--project <title>"* ]]
 }
 
+@test "basectl repo installer-template implementation is split from repo dispatcher" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_installer_template.sh"
+
+    [ -f "$helper" ]
+    grep -Fq "repo_installer_template.sh" "$dispatcher"
+    grep -Eq '^base_repo_installer_template\(\)' "$helper"
+    ! grep -Eq '^base_repo_installer_template\(\)' "$dispatcher"
+}
+
 @test "basectl repo init missing name shows focused usage and example" {
     run_basectl repo init --repo codeforester/bankbuddy --pr
 
