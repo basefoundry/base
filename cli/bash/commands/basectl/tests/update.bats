@@ -69,8 +69,23 @@ load ./basectl_helpers.bash
             base_update_subcommand_main demo other
         '
 
-    [ "$status" -eq 1 ]
+    [ "$status" -eq 2 ]
     [[ "$output" == *"The 'update' command accepts at most one project name."* ]]
+}
+
+@test "basectl update rejects unknown options as usage errors" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_subcommand_main --mystery
+        '
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unknown option '--mystery'."* ]]
+    [[ "$output" == *"Usage:"* ]]
 }
 
 @test "basectl update dry-run reports Homebrew handoff without running brew" {
