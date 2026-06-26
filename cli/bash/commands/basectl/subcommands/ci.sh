@@ -168,125 +168,29 @@ base_ci_check_or_doctor_delegate_args() {
     printf '%s\n' "$BASE_CI_PROJECT" --format "$BASE_CI_FORMAT"
 }
 
-base_ci_json_escape() {
-    local value="${1:-}"
-    local char code escaped i
-    local output=""
-    local LC_ALL=C
-
-    for ((i = 0; i < ${#value}; i++)); do
-        char="${value:i:1}"
-        case "$char" in
-            '"')
-                output+='\"'
-                ;;
-            '\')
-                output+='\\'
-                ;;
-            $'\b')
-                output+='\b'
-                ;;
-            $'\f')
-                output+='\f'
-                ;;
-            $'\n')
-                output+='\n'
-                ;;
-            $'\r')
-                output+='\r'
-                ;;
-            $'\t')
-                output+='\t'
-                ;;
-            *)
-                printf -v code '%d' "'$char"
-                if ((code < 32 || code == 127)); then
-                    printf -v escaped '\\u%04x' "$code"
-                    output+="$escaped"
-                else
-                    output+="$char"
-                fi
-                ;;
-        esac
-    done
-
-    printf '%s' "$output"
-}
-
 base_ci_print_setup_json() {
-    local command_output="$1"
-    local exit_code="$2"
-    local status="ok"
-    local output_lines=()
-    local index
+    local exit_code="$1"
+    local stdout_file="$2"
+    local stderr_file="$3"
+    local python_bin
 
-    shift 2
-    output_lines=("$@")
-
-    if ((exit_code)); then
-        status="error"
-    fi
-
-    printf '{\n'
-    printf '  "schema_version": 1,\n'
-    printf '  "command": "setup",\n'
-    printf '  "status": "%s",\n' "$status"
-    printf '  "project": "%s",\n' "$(base_ci_json_escape "$BASE_CI_PROJECT")"
-    printf '  "output": "%s"' "$(base_ci_json_escape "$command_output")"
-    if ((exit_code)) && ((${#output_lines[@]})); then
-        printf ',\n'
-        printf '  "output_lines": [\n'
-        for index in "${!output_lines[@]}"; do
-            printf '    "%s"' "$(base_ci_json_escape "${output_lines[$index]}")"
-            if ((index < ${#output_lines[@]} - 1)); then
-                printf ','
-            fi
-            printf '\n'
-        done
-        printf '  ]\n'
-    else
-        printf '\n'
-    fi
-    printf '}\n'
-}
-
-base_ci_compact_setup_output_lines() {
-    local output_file="$1"
-    local line
-    local message
-
-    [[ -f "$output_file" ]] || return 0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        [[ -n "$line" ]] || continue
-        if [[ "$line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}[[:space:]][A-Z]+[[:space:]]+[^[:space:]]+[[:space:]]+(.*)$ ]]; then
-            message="${BASH_REMATCH[1]}"
-        else
-            message="$line"
-        fi
-        printf '%s\n' "$message"
-    done < "$output_file"
-}
-
-base_ci_compact_setup_output() {
-    local output_file="$1"
-    local line
-    local message=""
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        message="$line"
-    done < <(base_ci_compact_setup_output_lines "$output_file")
-
-    printf '%s\n' "$message"
+    python_bin="$(setup_diagnostics_python_bin)" ||
+        fatal_error "Python is required to render Base CI setup JSON."
+    setup_ensure_cached_paths
+    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -m base_setup.ci_json setup-json \
+        --project "$BASE_CI_PROJECT" \
+        --exit-code "$exit_code" \
+        --stdout-file "$stdout_file" \
+        --stderr-file "$stderr_file"
 }
 
 base_ci_run_setup_json() {
     local args=("$@")
     local stdout_file
     local stderr_file
-    local command_output
     local exit_code
-    local output_lines=()
-    local output_source_file
+    local render_status
 
     stdout_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stdout.XXXXXX")" || return 1
     stderr_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stderr.XXXXXX")" || {
@@ -304,18 +208,12 @@ base_ci_run_setup_json() {
         cat "$stderr_file" >&2
     fi
 
-    command_output="$(base_ci_compact_setup_output "$stderr_file")"
-    output_source_file="$stderr_file"
-    if [[ -z "$command_output" ]]; then
-        command_output="$(base_ci_compact_setup_output "$stdout_file")"
-        output_source_file="$stdout_file"
-    fi
-    if ((exit_code)); then
-        mapfile -t output_lines < <(base_ci_compact_setup_output_lines "$output_source_file")
-    fi
-
+    base_ci_print_setup_json "$exit_code" "$stdout_file" "$stderr_file"
+    render_status=$?
     rm -f "$stdout_file" "$stderr_file"
-    base_ci_print_setup_json "$command_output" "$exit_code" "${output_lines[@]}"
+    if ((render_status)); then
+        return "$render_status"
+    fi
     return "$exit_code"
 }
 

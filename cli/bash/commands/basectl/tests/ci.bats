@@ -121,6 +121,25 @@ prepare_ci_runtime() {
     [[ "$stderr" == *"Python project setup layer failed."* ]]
 }
 
+@test "basectl ci setup json output preserves utf8" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+    printf '%s\n' \
+        "2026-06-10 10:15:33 ERROR   setup_common.sh:801 Café setup failed for 東京." \
+        > "$TEST_STATE_DIR/project-setup-stderr"
+    printf '%s\n' 17 > "$TEST_STATE_DIR/project-setup-exit-code"
+
+    run_base_command_separate_stderr BASE_SETUP_TEST_WORKSPACE="$workspace" ci setup demo --format json
+
+    [ "$status" -eq 17 ]
+    [[ "$output" == *'"status": "error"'* ]]
+    [[ "$output" == *'"Café setup failed for 東京."'* ]]
+    [[ "$output" != *"\\u00e9"* ]]
+    [[ "$output" != *"\\u6771"* ]]
+    [[ "$stderr" == *"Café setup failed for 東京."* ]]
+}
+
 @test "basectl ci check supports Linux runtime-only JSON checks" {
     create_system_python3_stub
     create_project_setup_venv_stub "$TEST_HOME/.base.d/base/.venv"
