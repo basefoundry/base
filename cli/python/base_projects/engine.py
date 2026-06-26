@@ -326,7 +326,9 @@ def workspace_status_command(
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
-        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
+        effective_manifest = effective_workspace_manifest(ctx, workspace_manifest)
+        log_workspace_status_discovery(ctx, workspace, workspace_root, workspace_manifest, effective_manifest)
+        manifest = resolve_workspace_manifest(effective_manifest)
         statuses = workspace_project_statuses(workspace_root, manifest)
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
@@ -674,6 +676,48 @@ def effective_workspace_manifest_path(ctx: base_cli.Context, workspace_manifest:
     if configured_manifest is None:
         return None
     return configured_manifest
+
+
+def log_workspace_status_discovery(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    workspace_root: Path,
+    workspace_manifest: str | None,
+    effective_manifest: str | None,
+) -> None:
+    ctx.log.debug(
+        "Workspace status root: %s (source: %s).",
+        workspace_root,
+        workspace_root_source(ctx, workspace),
+    )
+    if effective_manifest is None:
+        ctx.log.debug(
+            "Workspace status manifest: none supplied or configured; scanning immediate child directories "
+            "under %s for base_manifest.yaml.",
+            workspace_root,
+        )
+        return
+    ctx.log.debug(
+        "Workspace status manifest: %s (source: %s).",
+        Path(effective_manifest).expanduser().resolve(strict=False),
+        workspace_manifest_source_label(ctx, workspace_manifest),
+    )
+
+
+def workspace_root_source(ctx: base_cli.Context, workspace: str | None) -> str:
+    if workspace:
+        return "--workspace"
+    if ctx.workspace_root is not None:
+        return "workspace.root"
+    return "BASE_HOME parent"
+
+
+def workspace_manifest_source_label(ctx: base_cli.Context, workspace_manifest: str | None) -> str:
+    if workspace_manifest is not None:
+        return "--manifest"
+    if ctx.user_config.workspace.manifest is not None:
+        return "workspace.manifest"
+    return "none"
 
 
 def effective_workspace_manifest_source(ctx: base_cli.Context, workspace_manifest_source: str | None) -> str | None:
