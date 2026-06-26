@@ -295,13 +295,39 @@ base_gh_validate_category() {
 
 base_gh_slug() {
     local input="$1"
-    local slug
+    local char
+    local i
+    local previous_dash=1
+    local slug=""
 
-    slug="$(printf '%s\n' "$input" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')"
+    input="${input,,}"
+    for ((i = 0; i < ${#input}; i++)); do
+        char="${input:i:1}"
+        case "$char" in
+            [a-z0-9])
+                slug+="$char"
+                previous_dash=0
+                ;;
+            *)
+                if ((previous_dash == 0)); then
+                    slug+="-"
+                    previous_dash=1
+                fi
+                ;;
+        esac
+    done
+    while [[ "$slug" == *- ]]; do
+        slug="${slug%-}"
+    done
     if [[ -z "$slug" ]]; then
         slug="work"
     fi
-    printf '%.60s\n' "$slug" | sed -E 's/-+$//'
+    slug="${slug:0:60}"
+    while [[ "$slug" == *- ]]; do
+        slug="${slug%-}"
+    done
+    [[ -n "$slug" ]] || slug="work"
+    printf '%s\n' "$slug"
 }
 
 base_gh_issue_worktree_path() {
@@ -944,9 +970,17 @@ base_gh_branch_stale() {
         if ((age >= days)); then
             name="${ref#refs/heads/}"
             name="${name#refs/remotes/}"
-            printf '%s\t%s\t%s\n' "$age" "$(date -r "$timestamp" +%Y-%m-%d 2>/dev/null || date -d "@$timestamp" +%Y-%m-%d)" "$name"
+            printf '%s\t%s\t%s\n' "$age" "$(base_gh_format_unix_date "$timestamp")" "$name"
         fi
     done < <(git for-each-ref --format='%(committerdate:unix) %(refname)' refs/heads refs/remotes/origin | grep -v ' refs/remotes/origin/HEAD$')
+}
+
+base_gh_format_unix_date() {
+    local timestamp="$1"
+
+    date -r "$timestamp" +%Y-%m-%d 2>/dev/null && return 0
+    date -d "@$timestamp" +%Y-%m-%d 2>/dev/null && return 0
+    printf 'unknown\n'
 }
 
 base_gh_worktree_path_for_branch() {
@@ -1008,22 +1042,22 @@ base_gh_branch_github_merged() {
 base_gh_branch_cleanup_merged() {
     local branch="$1"
     local default_branch="$2"
+    local merge_source_var="${3:-}"
     local rc
 
-    BASE_GH_BRANCH_MERGE_SOURCE=""
     if base_gh_branch_merged_to_ref "$branch" "$default_branch"; then
-        BASE_GH_BRANCH_MERGE_SOURCE=git
+        [[ -z "$merge_source_var" ]] || printf -v "$merge_source_var" '%s' git
         return 0
     fi
 
     base_gh_branch_github_merged "$branch"
     rc=$?
     if ((rc == 0)); then
-        BASE_GH_BRANCH_MERGE_SOURCE=github
+        [[ -z "$merge_source_var" ]] || printf -v "$merge_source_var" '%s' github
         return 0
     fi
     if ((rc == 2)); then
-        BASE_GH_BRANCH_MERGE_SOURCE=unknown
+        [[ -z "$merge_source_var" ]] || printf -v "$merge_source_var" '%s' unknown
     fi
     return 1
 }
@@ -1068,10 +1102,10 @@ base_gh_branch_prune_local() {
         branch="${branch## }"
         [[ -z "$branch" || "$branch" == "$default_branch" || "$branch" == "$current_branch" ]] && continue
 
-        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch"; then
+        merge_source=""
+        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch" merge_source; then
             continue
         fi
-        merge_source="$BASE_GH_BRANCH_MERGE_SOURCE"
         candidates=$((candidates + 1))
 
         worktree_path="$(base_gh_worktree_path_for_branch "$branch" || true)"
@@ -1369,8 +1403,9 @@ base_gh_worktree_prune() {
             skipped_dirty=$((skipped_dirty + 1))
             continue
         fi
-        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch"; then
-            if [[ "$BASE_GH_BRANCH_MERGE_SOURCE" == unknown ]]; then
+        merge_source=""
+        if ! base_gh_branch_cleanup_merged "$branch" "$default_branch" merge_source; then
+            if [[ "$merge_source" == unknown ]]; then
                 printf 'SKIP   %s (%s)  branch is not confirmed merged into %s or a merged GitHub PR\n' "$path" "$branch" "$default_branch"
             else
                 printf 'SKIP   %s (%s)  branch is not merged into %s or a merged GitHub PR\n' "$path" "$branch" "$default_branch"
@@ -1378,7 +1413,6 @@ base_gh_worktree_prune() {
             skipped_unmerged=$((skipped_unmerged + 1))
             continue
         fi
-        merge_source="$BASE_GH_BRANCH_MERGE_SOURCE"
 
         if ((dry_run)); then
             if [[ "$merge_source" == github ]]; then

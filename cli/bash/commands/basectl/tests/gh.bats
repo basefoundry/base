@@ -160,6 +160,47 @@ run_gh_subcommand() {
     [[ "$output" == *"ERROR: --days must be a positive integer."* ]]
 }
 
+@test "basectl gh slug generation does not require tr or sed" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            tr() { printf "tr should not run\n" >&2; return 97; }
+            sed() { printf "sed should not run\n" >&2; return 98; }
+            printf "slug=%s\n" "$(base_gh_slug "  A/B: Thing -- #42!  ")"
+            printf "fallback=%s\n" "$(base_gh_slug "!!!")"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"slug=a-b-thing-42"* ]]
+    [[ "$output" == *"fallback=work"* ]]
+    [[ "$output" != *"tr should not run"* ]]
+    [[ "$output" != *"sed should not run"* ]]
+}
+
+@test "basectl gh branch cleanup returns merge source without module global" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_branch_merged_to_ref() { return 0; }
+            base_gh_branch_github_merged() { return 1; }
+            BASE_GH_BRANCH_MERGE_SOURCE=preexisting
+            merge_source=unset
+            base_gh_branch_cleanup_merged feature main merge_source || exit $?
+            printf "merge_source=%s\n" "$merge_source"
+            printf "global=%s\n" "${BASE_GH_BRANCH_MERGE_SOURCE:-unset}"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"merge_source=git"* ]]
+    [[ "$output" == *"global=preexisting"* ]]
+}
+
 @test "basectl gh issue create accepts explicit assignee" {
     write_gh_args_recorder
 
@@ -793,6 +834,39 @@ EOF
     [[ "$output" != *"Pruning origin"* ]]
     [[ "$output" != *"URL:"* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
+}
+
+@test "basectl gh branch stale prints fallback date when date formatting is unavailable" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+
+    cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "+%s" ]]; then
+    printf '2000000000\n'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch stale --days 0
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\tunknown\tmaster'* ]]
 }
 
 @test "basectl gh branch prune --remote previews safe GitHub branch deletion" {
