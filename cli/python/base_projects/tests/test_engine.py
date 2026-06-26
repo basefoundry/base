@@ -403,6 +403,32 @@ class ProjectDiscoveryTests(unittest.TestCase):
         )
         self.assertIn("project virtual environment missing", payload["projects"][0]["issues"][0])
 
+    def test_workspace_status_debug_logs_default_discovery_scan_without_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = workspace / "base"
+            home.mkdir()
+            write_manifest(base_home, "base")
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = invoke_engine(
+                ["--debug", "status", "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(payload["workspace"], str(workspace.resolve()))
+        self.assertIn(f"Workspace status root: {workspace.resolve()} (source: BASE_HOME parent).", stderr)
+        self.assertIn(
+            "Workspace status manifest: none supplied or configured; scanning immediate child directories "
+            f"under {workspace.resolve()} for base_manifest.yaml.",
+            stderr,
+        )
+
     def test_workspace_status_json_reports_uv_project_python_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
