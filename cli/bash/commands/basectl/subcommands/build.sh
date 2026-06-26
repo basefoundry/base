@@ -79,8 +79,8 @@ base_build_list_targets() {
 
 base_build_subcommand_main() {
     local project="" wrapper resolve_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
-    local venv_dir command_to_run display_command
-    local dry_run=0 list_targets=0 workspace_requested=0
+    local command_to_run display_command
+    local dry_run=0 list_targets=0 workspace_requested=0 environment_prepared=0
     local args=() extra_args=() targets=()
     local target_fields=()
 
@@ -165,7 +165,6 @@ base_build_subcommand_main() {
     [[ -n "$resolve_output" ]] || fatal_error "Unable to resolve build targets for project '$project'."
 
     resolved_name=""
-    venv_dir=""
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
         IFS=$'\t' read -r -a target_fields <<<"$line"
@@ -181,19 +180,9 @@ base_build_subcommand_main() {
             fatal_error "Unable to parse build target '$target_name' for project '$project'."
         }
 
-        if [[ -z "$venv_dir" ]]; then
-            venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${target_fields[@]:7}")"
-            export BASE_PROJECT="$resolved_name"
-            export BASE_PROJECT_ROOT="$project_root"
-            export BASE_PROJECT_MANIFEST="$manifest_path"
-            export BASE_PROJECT_VENV_DIR="$venv_dir"
-
-            if [[ -d "$venv_dir/bin" ]]; then
-                PATH="$venv_dir/bin:$PATH"
-                export PATH
-            elif [[ "$dry_run" != "1" ]]; then
-                log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
-            fi
+        if ((environment_prepared == 0)); then
+            base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${target_fields[@]:7}" >/dev/null
+            environment_prepared=1
         fi
 
         command_runner="${command_runner:-}"
@@ -208,6 +197,6 @@ base_build_subcommand_main() {
 
         log_info "Building target '$target_name' for project '$resolved_name': $display_command"
         base_validate_command_runner "$command_runner"
-        (cd "$working_dir" && bash -c "$command_to_run" basectl-build "${extra_args[@]}") || return $?
+        base_project_run_shell_command "$working_dir" "$command_to_run" basectl-build "${extra_args[@]}" || return $?
     done <<<"$resolve_output"
 }

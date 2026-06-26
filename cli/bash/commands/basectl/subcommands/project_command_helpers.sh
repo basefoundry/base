@@ -56,6 +56,30 @@ base_project_venv_dir() {
     printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
+base_project_activate_environment() {
+    local project="$1"
+    local project_root="$2"
+    local manifest_path="$3"
+    local dry_run="${4:-0}"
+    local route_fields=("${@:5}")
+    local venv_dir
+
+    venv_dir="$(base_project_venv_dir "$project" "$project_root" "$manifest_path" "${route_fields[@]}")"
+    export BASE_PROJECT="$project"
+    export BASE_PROJECT_ROOT="$project_root"
+    export BASE_PROJECT_MANIFEST="$manifest_path"
+    export BASE_PROJECT_VENV_DIR="$venv_dir"
+
+    if [[ -d "$venv_dir/bin" ]]; then
+        PATH="$venv_dir/bin:$PATH"
+        export PATH
+    elif [[ "$dry_run" != "1" ]]; then
+        log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $project' first."
+    fi
+
+    printf '%s\n' "$venv_dir"
+}
+
 base_format_extra_args() {
     local arg quoted output=""
 
@@ -99,6 +123,17 @@ base_command_with_runner() {
             return 2
             ;;
     esac
+}
+
+base_project_run_shell_command() {
+    local working_dir="$1"
+    local command_to_run="$2"
+    local command_name="$3"
+    shift 3
+
+    # Bash assigns the word after `bash -c <command>` to `$0`; use a stable
+    # sentinel so delegated extra args start at `$1` and populate `$@`.
+    (cd "$working_dir" && bash -c "$command_to_run" "$command_name" "$@")
 }
 
 base_validate_command_runner() {

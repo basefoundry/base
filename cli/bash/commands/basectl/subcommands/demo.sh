@@ -31,7 +31,7 @@ base_demo_usage_error() {
 }
 
 base_demo_subcommand_main() {
-    local project="" wrapper resolve_output resolved_name project_root manifest_path demo_script command_runner venv_dir
+    local project="" wrapper resolve_output resolved_name project_root manifest_path demo_script command_runner
     local quoted_demo_script command_to_run display_command
     local dry_run=0 workspace_requested=0
     local args=() extra_args=() project_args=()
@@ -107,18 +107,7 @@ base_demo_subcommand_main() {
         fatal_error "Unable to resolve demo script for project '${project:-current project}'."
     }
 
-    venv_dir="$(base_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:4}")"
-    export BASE_PROJECT="$resolved_name"
-    export BASE_PROJECT_ROOT="$project_root"
-    export BASE_PROJECT_MANIFEST="$manifest_path"
-    export BASE_PROJECT_VENV_DIR="$venv_dir"
-
-    if [[ -d "$venv_dir/bin" ]]; then
-        PATH="$venv_dir/bin:$PATH"
-        export PATH
-    elif [[ "$dry_run" != "1" ]]; then
-        log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $resolved_name' first."
-    fi
+    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
 
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
@@ -137,5 +126,5 @@ base_demo_subcommand_main() {
         return $?
     fi
     base_validate_command_runner "$command_runner"
-    (cd "$project_root" && bash -c "$command_to_run" basectl-demo "${extra_args[@]}")
+    base_project_run_shell_command "$project_root" "$command_to_run" basectl-demo "${extra_args[@]}"
 }
