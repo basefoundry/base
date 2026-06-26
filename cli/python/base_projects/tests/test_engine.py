@@ -48,6 +48,12 @@ def write_ready_python_bin(python_bin: Path) -> None:
     python_bin.chmod(0o755)
 
 
+def write_versioned_python_bin(python_bin: Path, version: str) -> None:
+    python_bin.parent.mkdir(parents=True, exist_ok=True)
+    python_bin.write_text(f"#!/bin/sh\nprintf '{version}\\n'\n", encoding="utf-8")
+    python_bin.chmod(0o755)
+
+
 _engine_homes: list[Path] = []
 
 
@@ -396,6 +402,34 @@ class ProjectDiscoveryTests(unittest.TestCase):
             },
         )
         self.assertIn("project virtual environment missing", payload["projects"][0]["issues"][0])
+
+    def test_workspace_status_json_reports_uv_project_python_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            project_root = workspace / "bankbuddy"
+            home.mkdir()
+            base_home.mkdir()
+            write_uv_manifest(project_root, "bankbuddy")
+            python_bin = project_root / ".venv" / "bin" / "python"
+            write_versioned_python_bin(python_bin, "3.12")
+
+            status, stdout, stderr = invoke_engine(
+                ["status", "--workspace", str(workspace), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        runtime = payload["projects"][0]["python_runtime"]
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(runtime["manager"], "uv")
+        self.assertEqual(runtime["version"], "3.12")
+        self.assertEqual(runtime["python"], str(python_bin.resolve()))
+        self.assertEqual(runtime["venv"], str(python_bin.parent.parent.resolve()))
 
     def test_workspace_status_reports_invalid_manifest_without_stopping_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

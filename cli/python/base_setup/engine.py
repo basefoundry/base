@@ -43,6 +43,7 @@ from .pyproject import check_pyproject
 from .project_routing import route_for_manifest
 from .project_routing import route_to_text
 from .python_policy import python_requirement_checks
+from .python_runtime import project_python_runtime_check
 from .uv import check_uv
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project
@@ -409,6 +410,7 @@ def manifest_checks(
     checks.extend(check_ide_settings(effective_manifest))
     checks.extend(check_uv(effective_manifest))
     checks.extend(check_pyproject(effective_manifest))
+    checks.extend(project_python_runtime_check(effective_manifest))
 
     for artifact, definition in zip(artifacts, definitions, strict=True):
         checks.append(check_artifact(effective_manifest.project_name, artifact, definition))

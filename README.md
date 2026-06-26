@@ -441,6 +441,9 @@ For uv-managed projects, Base delegates setup to `uv sync`, uses the
 project-local `.venv` for activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](docs/python-manifest.md).
+Use `basectl check <project> --format json` for detailed runtime diagnostics
+and `basectl workspace status --format json` to compare actual project Python
+versions across a workspace.
 
 Artifacts may include `bootstrap: true` when they are part of the minimum Python
 runtime contract needed before Base can reconcile a project's remaining
