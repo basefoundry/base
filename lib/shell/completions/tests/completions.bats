@@ -285,3 +285,114 @@ EOF
     [[ "$output" == *"second=base demo"* ]]
     [ "$(cat "$count_file")" = "1" ]
 }
+
+@test "Bash project-name completion cache expires by TTL" {
+    local base_home="$TEST_TMPDIR/base"
+    local wrapper="$base_home/bin/base-wrapper"
+    local count_file="$TEST_TMPDIR/project-list-count"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+count=0
+if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
+    read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$BASE_COMPLETION_TEST_COUNT_FILE"
+if [[ "$count" -eq 1 ]]; then
+    printf 'base\t/Users/test/base\n'
+else
+    printf 'base-fresh\t/Users/test/base-fresh\n'
+fi
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=1 \
+        BASE_COMPLETION_TEST_COUNT_FILE="$count_file" \
+        bash -c '\
+            source "$1"; \
+            _base_basectl_completion_now() { printf "%s\n" "$BASE_COMPLETION_TEST_NOW"; }; \
+            BASE_COMPLETION_TEST_NOW=100; \
+            COMP_WORDS=(basectl test ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "first=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl build ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "second=%s\n" "${COMPREPLY[*]}"; \
+            BASE_COMPLETION_TEST_NOW=102; \
+            COMP_WORDS=(basectl run ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "third=%s\n" "${COMPREPLY[*]}"' \
+            bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"first=base"* ]]
+    [[ "$output" == *"second=base"* ]]
+    [[ "$output" == *"third=base-fresh"* ]]
+    [ "$(cat "$count_file")" = "2" ]
+}
+
+@test "Bash project-name completion preserves names containing spaces" {
+    local base_home="$TEST_TMPDIR/base"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'base\t/Users/test/base\n'
+printf 'demo app\t/Users/test/demo app\n'
+printf 'data tools\t/Users/test/data tools\n'
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        bash -c '\
+            source "$1"; \
+            COMP_WORDS=(basectl test d); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "<%s>\n" "${COMPREPLY[@]}"' \
+            bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"<demo app>"* ]]
+    [[ "$output" == *"<data tools>"* ]]
+    [[ "$output" != *"<demo>"* ]]
+    [[ "$output" != *"<app>"* ]]
+    [[ "$output" != *"<data>"* ]]
+    [[ "$output" != *"<tools>"* ]]
+}
+
+@test "Bash completion now helper does not require external date" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+    local date_called="$TEST_TMPDIR/date-called"
+
+    mkdir -p "$mockbin"
+    cat > "$mockbin/date" <<'EOF'
+#!/usr/bin/env bash
+printf 'called\n' > "${BASE_COMPLETION_TEST_DATE_CALLED:?}"
+printf 'external date should not run\n' >&2
+exit 99
+EOF
+    chmod +x "$mockbin/date"
+
+    run env \
+        BASE_COMPLETION_TEST_DATE_CALLED="$date_called" \
+        PATH="$mockbin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '\
+            source "$1"; \
+            now="$(_base_basectl_completion_now)" || exit $?; \
+            [[ "$now" =~ ^[0-9]+$ ]]; \
+            printf "now=%s\n" "$now"' \
+            bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == now=* ]]
+    [ ! -e "$date_called" ]
+}
