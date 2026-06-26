@@ -51,12 +51,20 @@ zstyle ':completion:*' menu select
 
 _base_zsh_defaults_git_prompt() {
     local branch
+    local git_state
+    local inside
 
     command -v git >/dev/null 2>&1 || return 0
-    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
 
-    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" || \
+    git_state="$(git rev-parse --is-inside-work-tree --abbrev-ref HEAD 2>/dev/null)" || return 0
+    [[ "$git_state" == *$'\n'* ]] || return 0
+    inside="${git_state%%$'\n'*}"
+    branch="${git_state#*$'\n'}"
+    branch="${branch%%$'\n'*}"
+    [[ "$inside" == "true" ]] || return 0
+    if [[ -z "$branch" || "$branch" == "HEAD" ]]; then
         branch="$(git rev-parse --short HEAD 2>/dev/null)" || return 0
+    fi
     [[ -n "$branch" ]] || return 0
 
     printf '(%s) ' "$branch"
