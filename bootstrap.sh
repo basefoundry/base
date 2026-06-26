@@ -78,8 +78,6 @@ bootstrap_require_macos() {
     [[ "$os_name" == "Darwin" ]] || bootstrap_die "bootstrap.sh currently supports macOS only."
 }
 
-BOOTSTRAP_BREW_BIN=""
-
 bootstrap_find_brew() {
     local candidate
     local candidates="${BASE_BOOTSTRAP_BREW_CANDIDATES:-/opt/homebrew/bin/brew:/usr/local/bin/brew}"
@@ -107,13 +105,14 @@ bootstrap_find_brew() {
 }
 
 bootstrap_refresh_brew() {
+    local result_var="$1"
     local brew_bin
     local brew_dir
 
     brew_bin="$(bootstrap_find_brew || true)"
     [[ -n "$brew_bin" ]] || return 1
 
-    BOOTSTRAP_BREW_BIN="$brew_bin"
+    printf -v "$result_var" '%s' "$brew_bin"
     brew_dir="$(bootstrap_parent_dir "$brew_bin")"
     case ":$PATH:" in
         *":$brew_dir:"*) ;;
@@ -123,13 +122,14 @@ bootstrap_refresh_brew() {
 }
 
 bootstrap_install_homebrew() {
+    local result_var="$1"
     local installer
     local installer_url="${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
 
     bootstrap_log "Installing Homebrew."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         bootstrap_log "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
-        BOOTSTRAP_BREW_BIN=brew
+        printf -v "$result_var" '%s' brew
         return 0
     fi
 
@@ -140,21 +140,26 @@ bootstrap_install_homebrew() {
 
 bootstrap_ensure_homebrew() {
     local allow_install="$1"
+    local result_var="$2"
+    local resolved_brew_bin
 
-    if bootstrap_refresh_brew; then
-        bootstrap_log "Homebrew is available at '$BOOTSTRAP_BREW_BIN'."
+    if bootstrap_refresh_brew resolved_brew_bin; then
+        printf -v "$result_var" '%s' "$resolved_brew_bin"
+        bootstrap_log "Homebrew is available at '$resolved_brew_bin'."
         return 0
     fi
 
     [[ "$allow_install" == "true" ]] || bootstrap_die "Homebrew is required. Install Homebrew from https://brew.sh/ or rerun without --no-homebrew-install."
 
-    bootstrap_install_homebrew || bootstrap_die "Homebrew installation failed."
+    bootstrap_install_homebrew resolved_brew_bin || bootstrap_die "Homebrew installation failed."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
+        printf -v "$result_var" '%s' "$resolved_brew_bin"
         return 0
     fi
 
-    bootstrap_refresh_brew || bootstrap_die "Homebrew installation completed, but 'brew' was not found."
-    bootstrap_log "Homebrew is available at '$BOOTSTRAP_BREW_BIN'."
+    bootstrap_refresh_brew resolved_brew_bin || bootstrap_die "Homebrew installation completed, but 'brew' was not found."
+    printf -v "$result_var" '%s' "$resolved_brew_bin"
+    bootstrap_log "Homebrew is available at '$resolved_brew_bin'."
 }
 
 bootstrap_git_usable() {
@@ -163,13 +168,15 @@ bootstrap_git_usable() {
 }
 
 bootstrap_ensure_git() {
+    local brew_bin="$1"
+
     if bootstrap_git_usable; then
         bootstrap_log "Git is available."
         return 0
     fi
 
     bootstrap_log "Installing Git through Homebrew."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install git || bootstrap_die "Failed to install Git through Homebrew."
+    bootstrap_run "$brew_bin" install git || bootstrap_die "Failed to install Git through Homebrew."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         return 0
     fi
@@ -205,13 +212,15 @@ bootstrap_find_supported_bash() {
 }
 
 bootstrap_ensure_supported_bash() {
+    local brew_bin="$1"
+
     if bootstrap_find_supported_bash >/dev/null 2>&1; then
         bootstrap_log "Bash 4.2+ is available for Base."
         return 0
     fi
 
     bootstrap_log "Installing Bash 4.2+ through Homebrew."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install bash || bootstrap_die "Failed to install Bash through Homebrew."
+    bootstrap_run "$brew_bin" install bash || bootstrap_die "Failed to install Bash through Homebrew."
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         return 0
     fi
@@ -226,10 +235,11 @@ bootstrap_source_checkout_present() {
 }
 
 bootstrap_brew_base_installed() {
-    local formula="$1"
+    local brew_bin="$1"
+    local formula="$2"
 
-    [[ -n "$BOOTSTRAP_BREW_BIN" ]] || return 1
-    "$BOOTSTRAP_BREW_BIN" list --formula "$formula" >/dev/null 2>&1
+    [[ -n "$brew_bin" ]] || return 1
+    "$brew_bin" list --formula "$formula" >/dev/null 2>&1
 }
 
 bootstrap_validate_mode() {
@@ -245,13 +255,14 @@ bootstrap_select_mode() {
     local requested_mode="$1"
     local install_dir="$2"
     local formula="$3"
+    local brew_bin="$4"
 
     if [[ -n "$requested_mode" ]]; then
         printf '%s\n' "$requested_mode"
         return 0
     fi
 
-    if bootstrap_brew_base_installed "$formula"; then
+    if bootstrap_brew_base_installed "$brew_bin" "$formula"; then
         printf 'brew\n'
         return 0
     fi
@@ -291,24 +302,26 @@ bootstrap_install_source() {
 }
 
 bootstrap_install_brew_base() {
-    local formula="$1"
+    local brew_bin="$1"
+    local formula="$2"
 
-    if bootstrap_brew_base_installed "$formula"; then
+    if bootstrap_brew_base_installed "$brew_bin" "$formula"; then
         bootstrap_log "Base Homebrew formula '$formula' is already installed."
         return 0
     fi
 
     bootstrap_log "Installing Base with Homebrew formula '$formula'."
-    bootstrap_run "$BOOTSTRAP_BREW_BIN" install "$formula" || bootstrap_die "Failed to install Base Homebrew formula '$formula'."
+    bootstrap_run "$brew_bin" install "$formula" || bootstrap_die "Failed to install Base Homebrew formula '$formula'."
 }
 
 bootstrap_find_homebrew_basectl() {
+    local brew_bin="$1"
     local active_basectl
     local candidate
     local prefix
 
-    if [[ -n "$BOOTSTRAP_BREW_BIN" && "$BOOTSTRAP_BREW_BIN" != "brew" ]]; then
-        prefix="$("$BOOTSTRAP_BREW_BIN" --prefix 2>/dev/null || true)"
+    if [[ -n "$brew_bin" && "$brew_bin" != "brew" ]]; then
+        prefix="$("$brew_bin" --prefix 2>/dev/null || true)"
         if [[ -n "$prefix" ]]; then
             candidate="$prefix/bin/basectl"
             if [[ -x "$candidate" ]]; then
@@ -331,11 +344,12 @@ bootstrap_find_homebrew_basectl() {
 
 bootstrap_print_provenance() {
     local active_basectl
+    local brew_bin="$3"
     local brew_basectl
     local install_dir="$1"
     local mode="$2"
 
-    brew_basectl="$(bootstrap_find_homebrew_basectl || true)"
+    brew_basectl="$(bootstrap_find_homebrew_basectl "$brew_bin" || true)"
     active_basectl="$(command -v basectl 2>/dev/null || true)"
 
     bootstrap_log ""
@@ -358,17 +372,18 @@ bootstrap_print_provenance() {
 }
 
 bootstrap_brew_basectl_command() {
+    local brew_bin="$1"
     local brew_basectl
     local prefix
 
-    brew_basectl="$(bootstrap_find_homebrew_basectl || true)"
+    brew_basectl="$(bootstrap_find_homebrew_basectl "$brew_bin" || true)"
     if [[ -n "$brew_basectl" ]]; then
         printf '%s\n' "$brew_basectl"
         return 0
     fi
 
-    if [[ -n "$BOOTSTRAP_BREW_BIN" && "$BOOTSTRAP_BREW_BIN" != "brew" ]]; then
-        prefix="$("$BOOTSTRAP_BREW_BIN" --prefix 2>/dev/null || true)"
+    if [[ -n "$brew_bin" && "$brew_bin" != "brew" ]]; then
+        prefix="$("$brew_bin" --prefix 2>/dev/null || true)"
         if [[ -n "$prefix" ]]; then
             printf '%s\n' "$prefix/bin/basectl"
             return 0
@@ -380,13 +395,14 @@ bootstrap_brew_basectl_command() {
 
 bootstrap_print_next_steps() {
     local basectl_command
+    local brew_bin="$3"
     local install_dir="$1"
     local mode="$2"
 
     if [[ "$mode" == "source" ]]; then
         basectl_command="$install_dir/bin/basectl"
     else
-        basectl_command="$(bootstrap_brew_basectl_command)"
+        basectl_command="$(bootstrap_brew_basectl_command "$brew_bin")"
     fi
 
     bootstrap_log ""
@@ -399,6 +415,7 @@ bootstrap_print_next_steps() {
 bootstrap_main() {
     local allow_homebrew_install="${BASE_BOOTSTRAP_HOMEBREW_INSTALL:-true}"
     local branch="${BASE_BOOTSTRAP_BRANCH:-}"
+    local brew_bin=""
     local formula="${BASE_BOOTSTRAP_BREW_FORMULA:-basefoundry/base/base}"
     local install_dir="${BASE_BOOTSTRAP_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local mode="${BASE_BOOTSTRAP_MODE:-}"
@@ -455,11 +472,11 @@ bootstrap_main() {
 
     bootstrap_log "Base bootstrap"
     bootstrap_require_macos || return $?
-    bootstrap_ensure_homebrew "$allow_homebrew_install" || return $?
-    bootstrap_ensure_git || return $?
-    bootstrap_ensure_supported_bash || return $?
+    bootstrap_ensure_homebrew "$allow_homebrew_install" brew_bin || return $?
+    bootstrap_ensure_git "$brew_bin" || return $?
+    bootstrap_ensure_supported_bash "$brew_bin" || return $?
 
-    mode="$(bootstrap_select_mode "$mode" "$install_dir" "$formula")" || return $?
+    mode="$(bootstrap_select_mode "$mode" "$install_dir" "$formula" "$brew_bin")" || return $?
     bootstrap_log "Install mode: $mode"
 
     case "$mode" in
@@ -470,12 +487,12 @@ bootstrap_main() {
             ;;
         brew)
             bootstrap_log "Formula: $formula"
-            bootstrap_install_brew_base "$formula" || return $?
+            bootstrap_install_brew_base "$brew_bin" "$formula" || return $?
             ;;
     esac
 
-    bootstrap_print_provenance "$install_dir" "$mode" || return $?
-    bootstrap_print_next_steps "$install_dir" "$mode" || return $?
+    bootstrap_print_provenance "$install_dir" "$mode" "$brew_bin" || return $?
+    bootstrap_print_next_steps "$install_dir" "$mode" "$brew_bin" || return $?
 }
 
 if [[ "${BASE_BOOTSTRAP_TESTING:-false}" != "true" ]]; then
