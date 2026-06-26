@@ -196,8 +196,9 @@ EOF
     run_basectl config unknown
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"ERROR: Unknown config command 'unknown'."* ]]
+    [[ "$output" == *"Run 'basectl config --help' for usage."* ]]
+    [[ "$output" != *"Usage:"* ]]
     [[ "$output" != *"FATAL"* ]]
     [[ "$output" != *"Encountered a fatal error"* ]]
 }
