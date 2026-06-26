@@ -31,8 +31,9 @@
 # immediately, so callers do not need duplicate checks.
 #
 
-[[ -n "${__base_init_sourced__:-}" ]] && return 0
-readonly __base_init_sourced__=1
+[[ -n "${_base_init_sourced:-}" ]] && return 0
+_base_init_sourced=1
+readonly _base_init_sourced
 
 base_init_error() {
     printf 'ERROR: %s\n' "$*" >&2

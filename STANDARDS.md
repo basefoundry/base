@@ -149,7 +149,7 @@ call Base's Python layer.
 Libraries should guard against repeated sourcing:
 
 ```bash
-[[ -n "${_base_example_lib_sourced:-}" ]] && return
+[[ -n "${_base_example_lib_sourced:-}" ]] && return 0
 _base_example_lib_sourced=1
 readonly _base_example_lib_sourced
 ```

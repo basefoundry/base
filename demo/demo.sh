@@ -1,6 +1,12 @@
 #!/usr/bin/env basectl
 # shellcheck shell=bash
 
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    [[ -n "${_base_demo_script_sourced:-}" ]] && return 0
+    _base_demo_script_sourced=1
+    readonly _base_demo_script_sourced
+fi
+
 base_demo_script_dir() {
     cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P
 }

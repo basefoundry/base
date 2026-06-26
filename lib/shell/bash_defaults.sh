@@ -27,6 +27,7 @@
 #     - machine-specific overrides
 #
 [[ $- != *i* ]] && return 0
+[[ -n "${_base_bash_defaults_sourced:-}" ]] && return 0
 
 base_bash_defaults_file="${BASE_HOME:-}/lib/shell/base_defaults.sh"
 [[ -f "$base_bash_defaults_file" ]] || {
@@ -40,6 +41,9 @@ source "$base_bash_defaults_file" || {
     return 1
 }
 unset base_bash_defaults_file
+
+_base_bash_defaults_sourced=1
+readonly _base_bash_defaults_sourced
 
 set -o vi
 

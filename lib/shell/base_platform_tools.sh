@@ -5,8 +5,9 @@
 # This file is intentionally compatible with both Bash and Zsh startup snippets.
 # Do not source base_init.sh from here; ordinary dotfile startup must stay light.
 
-[[ -n "${__base_platform_tools_sourced__:-}" ]] && return 0
-readonly __base_platform_tools_sourced__=1
+[[ -n "${_base_platform_tools_sourced:-}" ]] && return 0
+_base_platform_tools_sourced=1
+readonly _base_platform_tools_sourced
 
 base_platform_tools_clear() {
     unset BASE_PLATFORM_TOOLS_HOME BASE_PLATFORM_TOOLS_BIN_DIR

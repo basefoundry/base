@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -n "${_base_repo_installer_template_sourced:-}" ]] && return
+[[ -n "${_base_repo_installer_template_sourced:-}" ]] && return 0
 _base_repo_installer_template_sourced=1
 readonly _base_repo_installer_template_sourced
 

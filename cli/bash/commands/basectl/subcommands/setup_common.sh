@@ -13,7 +13,7 @@
 # directly.
 #
 
-[[ -n "${_base_setup_common_sourced:-}" ]] && return
+[[ -n "${_base_setup_common_sourced:-}" ]] && return 0
 _base_setup_common_sourced=1
 readonly _base_setup_common_sourced
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -n "${_base_project_command_helpers_sourced:-}" ]] && return
+[[ -n "${_base_project_command_helpers_sourced:-}" ]] && return 0
 _base_project_command_helpers_sourced=1
 readonly _base_project_command_helpers_sourced
 

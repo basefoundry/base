@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    [[ -n "${_basectl_dispatcher_sourced:-}" ]] && return 0
+    _basectl_dispatcher_sourced=1
+    readonly _basectl_dispatcher_sourced
+fi
+
 basectl_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }

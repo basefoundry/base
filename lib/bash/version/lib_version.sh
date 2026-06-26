@@ -3,8 +3,9 @@
 # lib_version.sh: shared Base version helpers.
 #
 
-[[ -n "${__lib_version_sourced__:-}" ]] && return 0
-readonly __lib_version_sourced__=1
+[[ -n "${_base_lib_version_sourced:-}" ]] && return 0
+_base_lib_version_sourced=1
+readonly _base_lib_version_sourced
 
 base_read_version() {
     local base_home="$1"

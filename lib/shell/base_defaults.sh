@@ -25,8 +25,9 @@
 #
 [[ $- != *i* ]] && return 0
 
-[[ -n "${__base_defaults_sourced__:-}" ]] && return 0
-readonly __base_defaults_sourced__=1
+[[ -n "${_base_defaults_sourced:-}" ]] && return 0
+_base_defaults_sourced=1
+readonly _base_defaults_sourced
 
 alias rm='rm -i'
 alias cp='cp -i'

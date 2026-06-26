@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-[[ -n "${_base_clean_subcommand_sourced:-}" ]] && return
+[[ -n "${_base_clean_subcommand_sourced:-}" ]] && return 0
 _base_clean_subcommand_sourced=1
 readonly _base_clean_subcommand_sourced
 

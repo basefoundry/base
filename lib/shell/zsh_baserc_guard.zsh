@@ -13,8 +13,9 @@
 #     base_zsh_baserc_guard_source caller_debug_function
 #
 
-[[ -n "${__base_zsh_baserc_guard_sourced__:-}" ]] && return 0
-readonly __base_zsh_baserc_guard_sourced__=1
+[[ -n "${_base_zsh_baserc_guard_sourced:-}" ]] && return 0
+_base_zsh_baserc_guard_sourced=1
+readonly _base_zsh_baserc_guard_sourced
 
 base_zsh_baserc_guard_debug() {
     local debug_function="${1:-}"
@@ -89,7 +90,7 @@ base_zsh_baserc_guard_source() {
     local before_value
     local baserc_status=0
 
-    [[ -n "${__base_baserc_sourced__:-}" ]] && return 0
+    [[ -n "${_base_baserc_sourced:-}" ]] && return 0
     [[ -f "$baserc" && -r "$baserc" ]] || return 0
 
     base_owned_vars="$(base_zsh_baserc_guard_owned_vars)"
@@ -99,9 +100,9 @@ base_zsh_baserc_guard_source() {
         eval "local ${snapshot_name}_value=\"\${(P)var_name}\""
     done
 
-    __base_baserc_sourced__=1
+    _base_baserc_sourced=1
     source "$baserc" || {
-        unset __base_baserc_sourced__
+        unset _base_baserc_sourced
         printf "ERROR: Failed to source Base user config '%s'.\n" "$baserc" >&2
         return 1
     }
@@ -116,7 +117,7 @@ base_zsh_baserc_guard_source() {
     done
 
     if [[ "$baserc_status" -ne 0 ]]; then
-        unset __base_baserc_sourced__
+        unset _base_baserc_sourced
         return "$baserc_status"
     fi
 
