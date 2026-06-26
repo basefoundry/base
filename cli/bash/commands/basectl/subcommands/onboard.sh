@@ -51,13 +51,29 @@ base_onboard_run_command() {
     "$BASE_HOME/bin/basectl" "$@"
 }
 
+base_onboard_read_prompt_answer() {
+    local answer_var="$1"
+    local tty_fd="${BASE_ONBOARD_TTY_FD:-}"
+    local tty_path="${BASE_ONBOARD_TTY_PATH:-/dev/tty}"
+
+    if [[ -n "$tty_fd" ]]; then
+        [[ "$tty_fd" =~ ^[0-9]+$ ]] || return 1
+        IFS= read -r -u "$tty_fd" "$answer_var"
+        return $?
+    fi
+
+    [[ -r "$tty_path" ]] || return 1
+    IFS= read -r "$answer_var" < "$tty_path"
+}
+
 base_onboard_prompt() {
     local prompt="$1"
     local answer
 
     printf '%s [y/N] ' "$prompt"
-    if ! IFS= read -r answer; then
+    if ! base_onboard_read_prompt_answer answer; then
         printf '\n'
+        printf '%s\n' "No interactive terminal is available; rerun with --yes to accept defaults." >&2
         return 1
     fi
 

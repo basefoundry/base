@@ -179,6 +179,25 @@ EOF
     [ ! -e "$state_file" ]
 }
 
+@test "Base self-demo pause reads from terminal fd when stdin is redirected" {
+    local tty_input="$TEST_TMPDIR/demo-tty"
+
+    printf '\n' > "$tty_input"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-/Users/rameshhp/work/base-bash-libs/lib/bash}" \
+        BASE_DEMO_TTY_FD=9 \
+        bash -c '
+            source "$BASE_HOME/demo/demo.sh"
+            exec 9< "$1"
+            printf "not enter\n" | base_demo_pause
+        ' bash "$tty_input"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Press Enter to continue..."* ]]
+}
+
 @test "basectl demo reports missing demo declaration" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

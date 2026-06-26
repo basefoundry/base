@@ -106,15 +106,21 @@ load ./basectl_helpers.bash
 }
 
 @test "basectl onboard declines setup conservatively" {
+    local tty_input="$TEST_TMPDIR/onboard-tty"
+
+    printf '\n' > "$tty_input"
+
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_ONBOARD_TTY_FD=9 \
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "RUN:%s\n" "$*"; return 0; }
-            printf "\n" | base_onboard_subcommand_main
-        '
+            exec 9< "$1"
+            base_onboard_subcommand_main
+        ' bash "$tty_input"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"RUN:check base"* ]]
@@ -123,16 +129,45 @@ load ./basectl_helpers.bash
     [[ "$output" != *"RUN:setup base"* ]]
 }
 
-@test "basectl onboard accepted flow runs setup profile doctor and projects" {
+@test "basectl onboard reads prompts from terminal fd when stdin is redirected" {
+    local tty_input="$TEST_TMPDIR/onboard-tty"
+
+    printf 'y\nn\n' > "$tty_input"
+
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_ONBOARD_TTY_FD=9 \
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
             base_onboard_run_command() { printf "RUN:%s\n" "$*"; return 0; }
-            printf "y\ny\n" | base_onboard_subcommand_main --profile dev
-        '
+            exec 9< "$1"
+            printf "\n\n" | base_onboard_subcommand_main
+        ' bash "$tty_input"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"RUN:setup base"* ]]
+    [[ "$output" == *"Shell profile update skipped. You can run 'basectl update-profile' later."* ]]
+    [[ "$output" != *"RUN:update-profile"* ]]
+}
+
+@test "basectl onboard accepted flow runs setup profile doctor and projects" {
+    local tty_input="$TEST_TMPDIR/onboard-tty"
+
+    printf 'y\ny\n' > "$tty_input"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_ONBOARD_TTY_FD=9 \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() { printf "RUN:%s\n" "$*"; return 0; }
+            exec 9< "$1"
+            base_onboard_subcommand_main --profile dev
+        ' bash "$tty_input"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"RUN:check base --profile dev"* ]]
