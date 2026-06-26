@@ -208,6 +208,8 @@ Python manifest support adds these project diagnostics:
 - `BASE-P170`: project `python.requires_python` compatibility with Base's
   supported Python runtime window
 - `BASE-P171`: selected project Python interpreter availability
+- `BASE-P172`: actual project Python runtime path and version when the project
+  virtual environment can be inspected
 - `BASE-P150`: uv CLI availability for uv-managed projects or uv runners
 - `BASE-P151`: uv-managed project `pyproject.toml` presence
 - `BASE-P152`: uv-managed project `uv.lock` presence
@@ -223,6 +225,11 @@ These diagnostics are warning-oriented in `check` and `doctor`; they explain
 readiness without performing dependency resolution or executing project command
 strings. Command linting is advisory and does not replace reviewing manifests
 from unfamiliar repositories before running their declared commands.
+
+`basectl workspace status --format json` also includes a `python_runtime`
+object for each ready, inspectable project environment. That summary reports
+the environment manager, virtualenv path, interpreter path, and actual Python
+minor version for both Base-managed and uv-managed projects.
 
 ## Non-Goals
 

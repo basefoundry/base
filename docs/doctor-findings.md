@@ -180,6 +180,11 @@ interpreter when it creates a Base-managed project virtual environment and
 requires `--recreate-venv` before replacing an existing venv with a different
 Python minor.
 
+`BASE-P172` reports the actual inspectable project Python runtime: environment
+manager, virtualenv path, interpreter path, and Python minor version. Missing or
+broken virtual environments continue to use their existing readiness findings
+instead of emitting runtime version data.
+
 `BASE-P080` through `BASE-P083` are read-only project Git remote diagnostics.
 They report whether the project directory is inside a Git repository, whether
 `origin` is configured and parseable, and whether GitHub CLI authentication is

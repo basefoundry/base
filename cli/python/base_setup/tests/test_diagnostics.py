@@ -20,6 +20,7 @@ from base_setup.manifest import IdeConfig
 from base_setup.manifest import PortHealthConfig
 from base_setup.manifest import PythonConfig
 from base_setup.manifest import read_manifest
+from base_setup.python_policy import PythonInterpreter
 from base_setup.registry import get_artifact_definition
 from base_setup.tests.helpers import fake_context, run_engine
 
@@ -506,6 +507,45 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual([check["id"] for check in payload["checks"]], ["BASE-P170", "BASE-P171"])
         self.assertEqual([check["status"] for check in payload["checks"]], ["ok", "error"])
         self.assertIn("Python 3.12 is not available", payload["checks"][1]["message"])
+
+    def test_check_json_reports_actual_project_python_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project_root = root / "demo"
+            home.mkdir()
+            project_root.mkdir()
+            manifest_path = project_root / "base_manifest.yaml"
+            manifest_path.write_text(
+                "project:\n  name: demo\npython:\n  requires_python: '3.12'\nartifacts: []\n",
+                encoding="utf-8",
+            )
+            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/bin/sh\nprintf '3.12\\n'\n", encoding="utf-8")
+            python_bin.chmod(0o755)
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = read_manifest(manifest_path)
+
+            with mock.patch.dict(os.environ, {"HOME": str(home)}), mock.patch(
+                "base_setup.python_policy.resolve_python_interpreter",
+                return_value=PythonInterpreter(path=python_bin, version=(3, 12)),
+            ), redirect_stdout(io.StringIO()) as stdout:
+                status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+
+        payload = json.loads(stdout.getvalue())
+        runtime_check = next(check for check in payload["checks"] if check["id"] == "BASE-P172")
+        self.assertEqual(status, 0)
+        self.assertEqual(runtime_check["status"], "ok")
+        self.assertEqual(runtime_check["details"]["python_version"], "3.12")
+        self.assertEqual(runtime_check["details"]["python"], str(python_bin))
+        self.assertEqual(runtime_check["details"]["venv"], str(python_bin.parent.parent))
+        self.assertEqual(runtime_check["details"]["requires_python"], "3.12")
 
     def test_manifest_checks_include_same_directory_pyproject(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -22,6 +22,8 @@ from base_setup.engine import manifest_checks
 from base_setup.engine import pre_venv_manifest_checks
 from base_setup.engine import read_default_manifest
 from base_setup.manifest import BaseManifest, ManifestError, read_manifest
+from base_setup.python_runtime import ProjectPythonRuntime
+from base_setup.python_runtime import project_python_runtime
 from base_setup.uv import manifest_uses_uv_project_manager
 
 
@@ -58,6 +60,7 @@ class WorkspaceProjectStatus:
     repository: str | None = None
     url: str | None = None
     default_branch: str | None = None
+    python_runtime: ProjectPythonRuntime | None = None
 
 
 @dataclass(frozen=True)
@@ -213,6 +216,7 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
             manifest="valid",
             issues=(),
             last_check=last_check,
+            python_runtime=project_python_runtime(manifest, venv_dir=venv_dir),
         )
 
     return WorkspaceProjectStatus(
@@ -582,6 +586,8 @@ def workspace_status_item_to_json(
     }
     if workspace_manifest is not None:
         item.update(workspace_manifest_item_metadata(status))
+    if status.python_runtime is not None:
+        item["python_runtime"] = status.python_runtime.to_json()
     return item
 
 
