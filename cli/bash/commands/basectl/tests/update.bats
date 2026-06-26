@@ -153,6 +153,27 @@ EOF
     [[ ! -e "$brew_log" ]]
 }
 
+@test "basectl update only accepts structured Homebrew trust entries" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+
+            base_update_homebrew_trust_contains "{\"taps\":[\"basefoundry/base\"],\"formulae\":[],\"casks\":[],\"commands\":[]}" "basefoundry/base" || exit 10
+            base_update_homebrew_trust_contains "{\"taps\":[],\"formulae\":[\"basefoundry/base/base-bash-libs\"],\"casks\":[],\"commands\":[]}" "basefoundry/base/base-bash-libs" || exit 11
+            if base_update_homebrew_trust_contains "{\"taps\":[],\"formulae\":[],\"metadata\":[\"basefoundry/base\"]}" "basefoundry/base"; then
+                exit 12
+            fi
+            if base_update_homebrew_trust_contains "{not json" "basefoundry/base"; then
+                exit 13
+            fi
+        '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "basectl update runs exact Homebrew package upgrade and clears Base env for setup" {
     local fake_bin="$TEST_TMPDIR/bin"
     local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"

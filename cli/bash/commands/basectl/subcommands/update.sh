@@ -137,11 +137,66 @@ base_update_homebrew_requires_tap_trust() {
     [[ "$config_output" == *"HOMEBREW_REQUIRE_TAP_TRUST: set"* ]]
 }
 
+base_update_json_python_bin() {
+    local candidate
+
+    if [[ -n "${BASE_UPDATE_JSON_PYTHON:-}" && -x "${BASE_UPDATE_JSON_PYTHON:-}" ]]; then
+        printf '%s\n' "$BASE_UPDATE_JSON_PYTHON"
+        return 0
+    fi
+
+    if command -v python3 >/dev/null 2>&1; then
+        command -v python3
+        return 0
+    fi
+
+    for candidate in \
+        "/opt/homebrew/opt/$(setup_python_formula)/bin/python3" \
+        "/usr/local/opt/$(setup_python_formula)/bin/python3" \
+        /usr/bin/python3; do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 base_update_homebrew_trust_contains() {
     local trust_json="$1"
     local target="$2"
+    local python_bin
 
-    [[ "$trust_json" == *"\"$target\""* ]]
+    python_bin="$(base_update_json_python_bin)" || return 1
+    TRUST_JSON="$trust_json" TRUST_TARGET="$target" "$python_bin" - <<'PY'
+import json
+import os
+import sys
+
+try:
+    data = json.loads(os.environ["TRUST_JSON"])
+except (KeyError, json.JSONDecodeError):
+    sys.exit(1)
+
+target = os.environ.get("TRUST_TARGET", "")
+
+
+def entry_matches(entry):
+    if isinstance(entry, str):
+        return entry == target
+    if isinstance(entry, dict):
+        return any(entry.get(key) == target for key in ("name", "full_name", "tap", "token"))
+    return False
+
+
+for key in ("taps", "formulae"):
+    entries = data.get(key, [])
+    if isinstance(entries, list) and any(entry_matches(entry) for entry in entries):
+        sys.exit(0)
+
+sys.exit(1)
+PY
 }
 
 base_update_homebrew_trust_satisfied() {
