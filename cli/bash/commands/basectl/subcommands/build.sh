@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -n "${_base_build_subcommand_sourced:-}" ]] && return
+[[ -n "${_base_build_subcommand_sourced:-}" ]] && return 0
 _base_build_subcommand_sourced=1
 readonly _base_build_subcommand_sourced
 

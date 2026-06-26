@@ -62,3 +62,7 @@ EOF
     [[ "$output" == *"Skipping source-checkout-only Bats tests for packaged Base."* ]]
     [[ "$output" == *"Run 'env -u BASE_HOME ./bin/base-test' from a Base source checkout for the full developer suite."* ]]
 }
+
+@test "base-test includes source guard coverage in the source checkout suite" {
+    grep -Fqx '    tests/source_guards.bats \' "$BASE_REPO_ROOT/bin/base-test"
+}

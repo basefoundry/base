@@ -22,8 +22,9 @@ EOF
     chmod +x "$fake_base/bin/basectl"
     cat > "$fake_base/base_init.sh" <<'EOF'
 #!/usr/bin/env bash
-[[ -n "${__base_init_sourced__:-}" ]] && return 0
-readonly __base_init_sourced__=1
+[[ -n "${_base_init_sourced:-}" ]] && return 0
+_base_init_sourced=1
+readonly _base_init_sourced
 BASE_HOME="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 BASE_BIN_DIR="$BASE_HOME/bin"
 BASE_LIB_DIR="$BASE_HOME/lib"

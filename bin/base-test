@@ -69,4 +69,5 @@ env "${base_test_unset_env[@]}" \
     tests/base_init.bats \
     tests/bootstrap.bats \
     tests/install.bats \
+    tests/source_guards.bats \
     tests/integration/base_workflows.bats

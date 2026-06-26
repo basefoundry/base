@@ -27,6 +27,7 @@
 #     - machine-specific overrides
 #
 [[ ! -o interactive ]] && return 0
+[[ -n "${_base_zsh_defaults_sourced:-}" ]] && return 0
 
 base_zsh_defaults_file="${BASE_HOME:-}/lib/shell/base_defaults.sh"
 [[ -f "$base_zsh_defaults_file" ]] || {
@@ -40,6 +41,9 @@ source "$base_zsh_defaults_file" || {
     return 1
 }
 unset base_zsh_defaults_file
+
+_base_zsh_defaults_sourced=1
+readonly _base_zsh_defaults_sourced
 
 bindkey -v
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
