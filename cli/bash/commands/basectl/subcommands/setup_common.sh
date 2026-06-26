@@ -75,6 +75,14 @@ setup_supported_profiles_display() {
     printf '%s\n' "dev, sre, ai"
 }
 
+setup_epoch_seconds() {
+    printf '%(%s)T\n' -1
+}
+
+setup_backup_timestamp() {
+    printf '%(%Y%m%dT%H%M%S)T\n' -1
+}
+
 setup_profile_supported() {
     local profile="$1"
 
@@ -92,7 +100,7 @@ setup_normalize_profile_name() {
     local profile="$1"
 
     profile="${profile//[[:space:]]/}"
-    printf '%s' "$profile" | tr '[:upper:]' '[:lower:]'
+    printf '%s' "${profile,,}"
 }
 
 setup_profile_enabled() {
@@ -299,7 +307,7 @@ setup_backup_existing_venv_path() {
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     [[ -e "$venv_dir" ]] || return 0
 
-    timestamp="$(date +%Y%m%dT%H%M%S)"
+    timestamp="$(setup_backup_timestamp)" || fatal_error "Unable to generate virtual environment backup timestamp."
     backup_path="${venv_dir}.backup.${timestamp}"
     [[ ! -e "$backup_path" ]] || fatal_error "Virtual environment backup path already exists at '$backup_path'."
 
@@ -401,6 +409,7 @@ setup_recovery_project_layer() {
 
 setup_notify_completion() {
     local exit_code="$1"
+    local current_seconds
     local elapsed_seconds=0
     local message title
     local min_seconds
@@ -420,7 +429,8 @@ setup_notify_completion() {
         min_seconds=30
     fi
     if [[ -n "${BASE_SETUP_START_TIME:-}" && "$BASE_SETUP_START_TIME" =~ ^[0-9]+$ ]]; then
-        elapsed_seconds=$(($(date +%s) - BASE_SETUP_START_TIME))
+        current_seconds="$(setup_epoch_seconds)" || current_seconds="$BASE_SETUP_START_TIME"
+        elapsed_seconds=$((current_seconds - BASE_SETUP_START_TIME))
     fi
     if ! setup_notifications_forced && ((elapsed_seconds < min_seconds)); then
         return 0
@@ -563,10 +573,10 @@ setup_install_xcode_tools() {
 
     timeout="$(setup_xcode_wait_timeout_seconds)"
     interval="$(setup_xcode_wait_interval_seconds)"
-    start_time="$(date +%s)"
+    start_time="$(setup_epoch_seconds)" || fatal_error "Unable to read current time while waiting for Xcode Command Line Tools."
 
     until setup_xcode_tools_installed; do
-        current_time="$(date +%s)"
+        current_time="$(setup_epoch_seconds)" || fatal_error "Unable to read current time while waiting for Xcode Command Line Tools."
         if ((current_time - start_time >= timeout)); then
             fatal_error "Timed out waiting for Xcode Command Line Tools installation to complete. If the installer is still open, finish it. Otherwise $(setup_recovery_xcode_tools)"
         fi
@@ -920,6 +930,8 @@ setup_record_project_check_result() {
     esac
 
     path="$(setup_project_check_record_path "$project")"
+    # Keep external date -u here so persisted JSON records carry explicit UTC
+    # without mutating shell TZ; Bash printf time formatting follows local time.
     checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 0
     setup_run_diagnostics_json record-check \
         --project "$project" \
@@ -1911,6 +1923,8 @@ setup_run_check_json() {
                 return 1
             fi
         fi
+        # Keep external date -u here so persisted JSON records carry explicit UTC
+        # without mutating shell TZ; Bash printf time formatting follows local time.
         checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 1
     fi
 
