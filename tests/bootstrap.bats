@@ -120,6 +120,13 @@ EOF
     [ "$output" -eq 2 ]
 }
 
+@test "bootstrap keeps Homebrew binary state out of module globals" {
+    run grep -nE '(^|[^A-Z_])BOOTSTRAP_BREW_BIN([^A-Z_]|$)' "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
 @test "bootstrap source dry-run installs first-mile prerequisites and prints handoff commands" {
     local install_dir="$TEST_HOME/work/base"
 
