@@ -73,12 +73,14 @@ base_ci_parse_args() {
     BASE_CI_PROJECT=""
     BASE_CI_RECREATE_VENV=0
     BASE_CI_VERBOSE=0
+    BASE_CI_HELP_REQUESTED=0
 
     while (($#)); do
         case "$1" in
             -h|--help|help)
                 base_ci_subcommand_usage
-                return 10
+                BASE_CI_HELP_REQUESTED=1
+                return 0
                 ;;
             --format)
                 shift
@@ -264,16 +266,12 @@ base_ci_subcommand_main() {
             shift
             base_ci_parse_args "$command" "$@"
             parse_status=$?
-            case "$parse_status" in
-                0)
-                    ;;
-                10)
+            if ((parse_status != 0)); then
+                return "$parse_status"
+            fi
+            if ((BASE_CI_HELP_REQUESTED)); then
                     return 0
-                    ;;
-                *)
-                    return "$parse_status"
-                    ;;
-            esac
+            fi
             ;;
         *)
             base_ci_usage_error "Unknown ci command '$command'."

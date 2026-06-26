@@ -34,6 +34,12 @@ Notes:
 EOF
 }
 
+base_update_usage_error() {
+    print_error "$*"
+    base_update_subcommand_usage >&2
+    return 2
+}
+
 base_update_source_git_library() {
     import_base_lib git/lib_git.sh
 }
@@ -412,15 +418,13 @@ base_update_subcommand_main() {
                 setup_enable_debug_logging
                 ;;
             --*)
-                print_error "Unknown option '$1'."
-                base_update_subcommand_usage >&2
-                return 1
+                base_update_usage_error "Unknown option '$1'."
+                return $?
                 ;;
             *)
                 if [[ -n "$project_arg" ]]; then
-                    print_error "The 'update' command accepts at most one project name."
-                    base_update_subcommand_usage >&2
-                    return 1
+                    base_update_usage_error "The 'update' command accepts at most one project name."
+                    return $?
                 fi
                 project_arg="$1"
                 project="$1"

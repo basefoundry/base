@@ -58,6 +58,23 @@ prepare_ci_runtime() {
     [[ "$output" == *"The 'ci check' command requires a project name."* ]]
 }
 
+@test "basectl ci parser tracks help without magic status codes" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/ci.sh"
+            base_ci_parse_args setup --help
+            printf "status=%s help=%s\n" "$?" "${BASE_CI_HELP_REQUESTED:-}"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"status=0 help=1"* ]]
+}
+
 @test "basectl ci check delegates with CI defaults and JSON output" {
     local workspace="$TEST_TMPDIR/workspace"
 
