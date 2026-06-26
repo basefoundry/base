@@ -62,12 +62,23 @@ base_demo_parse_args() {
 }
 
 base_demo_pause() {
-    if [[ "$BASE_DEMO_NON_INTERACTIVE" == "1" || ! -t 0 ]]; then
+    local tty_fd="${BASE_DEMO_TTY_FD:-}"
+    local tty_path="${BASE_DEMO_TTY_PATH:-/dev/tty}"
+
+    if [[ "$BASE_DEMO_NON_INTERACTIVE" == "1" ]]; then
+        return 0
+    fi
+    if [[ -z "$tty_fd" && ! -r "$tty_path" ]]; then
         return 0
     fi
 
     printf '\nPress Enter to continue...'
-    read -r _
+    if [[ -n "$tty_fd" ]]; then
+        [[ "$tty_fd" =~ ^[0-9]+$ ]] || return 0
+        IFS= read -r -u "$tty_fd" _ || return 0
+    else
+        IFS= read -r _ < "$tty_path" || return 0
+    fi
     printf '\n'
 }
 
