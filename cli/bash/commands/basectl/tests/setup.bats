@@ -22,6 +22,69 @@ load ./setup_helpers.bash
     [[ "$output" == *"Create ~/.base.d/config.yaml with workspace.root: ~/work if missing."* ]]
 }
 
+@test "setup profile normalization does not shell out to tr" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    create_tr_failure_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            setup_enable_profile_argument " DEV , Ai " || exit $?
+            printf "profiles=%s\n" "$BASE_SETUP_PROFILES"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"profiles=dev ai"* ]]
+    [[ "$output" != *"tr should not run"* ]]
+}
+
+@test "setup time helpers use Bash formatting without date subprocesses" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    create_date_logger_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            epoch="$(setup_epoch_seconds)" || exit $?
+            stamp="$(setup_backup_timestamp)" || exit $?
+            [[ "$epoch" =~ ^[0-9]+$ ]] || exit 10
+            [[ "$stamp" =~ ^[0-9]{8}T[0-9]{6}$ ]] || exit 11
+            printf "epoch=%s\n" "$epoch"
+            printf "stamp=%s\n" "$stamp"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"epoch="* ]]
+    [[ "$output" == *"stamp="* ]]
+    [ ! -e "$TEST_STATE_DIR/date-args" ]
+}
+
+@test "setup_common documents UTC date subprocess exceptions" {
+    local comment_count
+
+    comment_count="$(
+        grep -B2 "date -u '+%Y-%m-%dT%H:%M:%SZ'" \
+            "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/setup_common.sh" |
+            grep -Fc "Keep external date -u"
+    )"
+    [ "$comment_count" -eq 2 ]
+}
+
 @test "basectl setup fails on unsupported operating systems" {
     OSTYPE_OVERRIDE="linux-gnu"
 

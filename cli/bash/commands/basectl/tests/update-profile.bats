@@ -101,6 +101,29 @@ EOF
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"/Cellar/base/0.4.0"* ]]
 }
 
+@test "update-profile spacing helper checks trailing newline without wc" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    create_wc_failure_stub
+    printf 'export CUSTOM=1' > "$TEST_HOME/.bashrc"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_prepare_section_spacing "$HOME/.bashrc" "# >>> base: bashrc managed >>>"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"wc should not run"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc"; printf marker)" == $'export CUSTOM=1\n\nmarker' ]]
+}
+
 @test "basectl update-profile explains BASE_HOME mismatch recovery" {
     local runtime_base="$TEST_TMPDIR/runtime-base"
     local resolved_base="$TEST_TMPDIR/resolved-base"

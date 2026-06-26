@@ -119,7 +119,7 @@ base_setup_subcommand_main() {
     done
 
     BASE_SETUP_PROJECT_NAME="$project_name"
-    BASE_SETUP_START_TIME="$(date +%s)"
+    BASE_SETUP_START_TIME="$(setup_epoch_seconds)" || BASE_SETUP_START_TIME=0
     export BASE_SETUP_START_TIME
     export BASE_SETUP_PROJECT_NAME
     log_debug "Running 'basectl setup' (DRY_RUN=$(setup_is_dry_run && printf true || printf false))."

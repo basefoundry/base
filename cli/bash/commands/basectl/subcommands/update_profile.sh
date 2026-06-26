@@ -63,6 +63,14 @@ base_update_profile_source_line() {
     printf 'source %s\n' "$quoted_source_path"
 }
 
+base_update_profile_file_ends_with_newline() {
+    local target_file="$1"
+    local last_byte
+
+    last_byte="$(tail -c 1 "$target_file" 2>/dev/null || true)"
+    [[ -z "$last_byte" ]]
+}
+
 base_update_profile_section_lines() {
     local snippet_name="$1"
     local snippet_path="$BASE_SHELL_DIR/$snippet_name"
@@ -80,7 +88,7 @@ base_update_profile_prepare_section_spacing() {
     [[ -s "$target_file" ]] || return 0
     grep -qF -- "$start_marker" "$target_file" && return 0
 
-    if [[ $(tail -c 1 "$target_file" 2>/dev/null | wc -l) -eq 0 ]]; then
+    if ! base_update_profile_file_ends_with_newline "$target_file"; then
         printf '\n\n' >> "$target_file"
         return 0
     fi

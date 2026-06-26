@@ -78,6 +78,47 @@ EOF
     chmod +x "$TEST_MOCKBIN/osascript"
 }
 
+create_date_logger_stub() {
+    cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${BASE_SETUP_TEST_STATE_DIR:?}/date-args"
+case "$*" in
+    "+%s")
+        printf '1710000000\n'
+        ;;
+    "+%Y%m%dT%H%M%S")
+        printf '20240309T160000\n'
+        ;;
+    "-u +%Y-%m-%dT%H:%M:%SZ"|"-u '+%Y-%m-%dT%H:%M:%SZ'")
+        printf '2024-03-09T16:00:00Z\n'
+        ;;
+    *)
+        printf 'unexpected date args: %s\n' "$*" >&2
+        exit 1
+        ;;
+esac
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+}
+
+create_tr_failure_stub() {
+    cat > "$TEST_MOCKBIN/tr" <<'EOF'
+#!/usr/bin/env bash
+printf 'tr should not run\n' >&2
+exit 97
+EOF
+    chmod +x "$TEST_MOCKBIN/tr"
+}
+
+create_wc_failure_stub() {
+    cat > "$TEST_MOCKBIN/wc" <<'EOF'
+#!/usr/bin/env bash
+printf 'wc should not run\n' >&2
+exit 98
+EOF
+    chmod +x "$TEST_MOCKBIN/wc"
+}
+
 create_system_python3_stub() {
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
