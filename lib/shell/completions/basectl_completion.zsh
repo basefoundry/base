@@ -16,11 +16,24 @@ _base_basectl_completion_project_cache_ttl() {
 }
 
 _base_basectl_completion_now() {
-    date +%s 2>/dev/null || printf '0'
+    printf '%s\n' "${SECONDS:-0}"
+}
+
+_base_basectl_completion_project_names_from_list() {
+    local line name names=''
+
+    while IFS= read -r line; do
+        [[ -n "$line" ]] || continue
+        name="${line%%$'\t'*}"
+        [[ -n "$name" ]] || continue
+        names+="${names:+$'\n'}$name"
+    done
+
+    print -r -- "$names"
 }
 
 _base_basectl_completion_refresh_project_cache() {
-    local names now ttl
+    local names now ttl project_list
     local wrapper="${BASE_HOME:-}/bin/base-wrapper"
 
     if [[ ! -x "$wrapper" ]]; then
@@ -38,7 +51,8 @@ _base_basectl_completion_refresh_project_cache() {
         return 0
     fi
 
-    names="$("$wrapper" --project base base_projects list 2>/dev/null | awk -F '\t' '{print $1}')"
+    project_list="$("$wrapper" --project base base_projects list 2>/dev/null || true)"
+    names="$(_base_basectl_completion_project_names_from_list <<<"$project_list")"
     _BASE_BASECTL_COMPLETION_PROJECT_NAMES="$names"
     _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
     if ((ttl > 0)); then
