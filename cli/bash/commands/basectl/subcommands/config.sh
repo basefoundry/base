@@ -28,8 +28,8 @@ base_config_path() {
 }
 
 base_config_usage_error() {
-    base_config_subcommand_usage >&2
     print_error "$*"
+    printf "Run 'basectl config --help' for usage.\n" >&2
     return 2
 }
 

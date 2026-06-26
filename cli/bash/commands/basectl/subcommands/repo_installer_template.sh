@@ -153,6 +153,10 @@ base_repo_installer_template() {
                 ;;
             --repo=*)
                 github_repo="${1#--repo=}"
+                [[ -n "$github_repo" ]] || {
+                    base_repo_installer_template_usage_error "Option '--repo' requires an argument."
+                    return $?
+                }
                 shift
                 ;;
             --print|--stdout)
