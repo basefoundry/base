@@ -54,8 +54,11 @@ jobs:
             lib/bash/runtime/tests/runtime_bashrc.bats \
             lib/bash/version/tests/lib_version.bats \
             lib/shell/completions/tests/completions.bats \
+            tests/base_test.bats \
             tests/base_init.bats \
-            tests/install.bats
+            tests/bootstrap.bats \
+            tests/install.bats \
+            tests/source_guards.bats
 
   macos:
     name: macOS smoke tests
@@ -181,6 +184,7 @@ jobs:
             '*.sh' \
             'base_init.sh' \
             'install.sh' \
+            'lib/bash/runtime/bashrc' \
             'bin/*' \
             | xargs -0 shellcheck --severity=error
 
@@ -191,5 +195,6 @@ jobs:
             '*.sh' \
             'base_init.sh' \
             'install.sh' \
+            'lib/bash/runtime/bashrc' \
             'bin/*' \
             | xargs -0 shellcheck --severity=warning --format=tty

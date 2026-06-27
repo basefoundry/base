@@ -26,6 +26,14 @@ def workflow_steps(path: Path) -> list[dict[str, Any]]:
     return steps
 
 
+def workflow_step(path: Path, job: str, name: str) -> dict[str, Any]:
+    workflow = load_workflow(path)
+    for step in workflow["jobs"][job]["steps"]:
+        if step.get("name") == name:
+            return step
+    raise AssertionError(f"{path}: job '{job}' must include step '{name}'.")
+
+
 def test_github_actions_references_follow_supply_chain_policy() -> None:
     workflow_paths = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
 
@@ -58,3 +66,27 @@ def test_security_workflow_runs_python_dependency_audit() -> None:
     assert "--cache-dir" in audit_command
     assert "python -m pip_audit" in audit_command
     assert "-r requirements-dev.txt" in audit_command
+
+
+def test_ci_bats_job_covers_base_test_source_suite() -> None:
+    tests_workflow = REPO_ROOT / ".github" / "workflows" / "tests.yml"
+    base_test = (REPO_ROOT / "bin" / "base-test").read_text(encoding="utf-8")
+    bats_command = workflow_step(tests_workflow, "bats", "Run BATS tests").get("run", "")
+
+    source_checkout_bats = (
+        "tests/base_test.bats",
+        "tests/base_init.bats",
+        "tests/bootstrap.bats",
+        "tests/install.bats",
+        "tests/source_guards.bats",
+    )
+    for test_path in source_checkout_bats:
+        assert test_path in base_test
+        assert test_path in bats_command
+
+
+def test_shellcheck_covers_runtime_bashrc() -> None:
+    tests_workflow = REPO_ROOT / ".github" / "workflows" / "tests.yml"
+    for step_name in ("Run ShellCheck", "Run ShellCheck warnings"):
+        shellcheck_command = workflow_step(tests_workflow, "security", step_name).get("run", "")
+        assert "lib/bash/runtime/bashrc" in shellcheck_command
