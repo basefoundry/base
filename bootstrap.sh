@@ -2,6 +2,8 @@
 
 # Base shell standards require explicit error handling instead of shell strict mode.
 
+BASE_DEFAULT_HOMEBREW_INSTALLER_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+
 bootstrap_usage() {
     cat <<'EOF'
 Usage:
@@ -121,12 +123,125 @@ bootstrap_refresh_brew() {
     return 0
 }
 
+bootstrap_homebrew_pinned_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ||
+        -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256+x}" ]]
+}
+
+bootstrap_homebrew_pinned_url_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL+x}" ]]
+}
+
+bootstrap_homebrew_pinned_sha256_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ||
+        -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256+x}" ]]
+}
+
+bootstrap_homebrew_installer_url() {
+    if [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ]]; then
+        printf '%s\n' "$BASE_HOMEBREW_INSTALLER_URL"
+        return 0
+    fi
+    if [[ -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL+x}" ]]; then
+        printf '%s\n' "$BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL"
+        return 0
+    fi
+    printf '%s\n' "$BASE_DEFAULT_HOMEBREW_INSTALLER_URL"
+}
+
+bootstrap_homebrew_installer_sha256() {
+    if [[ -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ]]; then
+        printf '%s\n' "$BASE_HOMEBREW_INSTALLER_SHA256"
+        return 0
+    fi
+    if [[ -n "${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256+x}" ]]; then
+        printf '%s\n' "$BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256"
+        return 0
+    fi
+}
+
+bootstrap_fetch_homebrew_installer() {
+    local installer_url="$1"
+    local target="$2"
+    local installer_path
+
+    case "$installer_url" in
+        file://*)
+            installer_path="${installer_url#file://}"
+            cp "$installer_path" "$target"
+            ;;
+        /*|./*|../*)
+            cp "$installer_url" "$target"
+            ;;
+        *)
+            command -v curl >/dev/null 2>&1 || return 127
+            curl -fsSL "$installer_url" -o "$target"
+            ;;
+    esac
+}
+
+bootstrap_run_verified_homebrew_installer() {
+    local installer_url="$1"
+    local expected_sha256="$2"
+    local installer_file
+    local checksum
+    local actual_sha256
+    local exit_code
+
+    installer_file="$(mktemp "${TMPDIR:-/tmp}/base-homebrew-installer.XXXXXX")" || bootstrap_die "Failed to create a temporary Homebrew installer file."
+    bootstrap_fetch_homebrew_installer "$installer_url" "$installer_file" || {
+        rm -f "$installer_file"
+        bootstrap_die "Failed to read pinned Homebrew installer content from '$installer_url'."
+    }
+
+    command -v shasum >/dev/null 2>&1 || {
+        rm -f "$installer_file"
+        bootstrap_die "shasum is required to verify pinned Homebrew installer content."
+    }
+    checksum="$(shasum -a 256 "$installer_file")" || {
+        rm -f "$installer_file"
+        bootstrap_die "Failed to compute Homebrew installer checksum."
+    }
+    actual_sha256="${checksum%% *}"
+    if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+        rm -f "$installer_file"
+        bootstrap_die "Homebrew installer checksum mismatch (expected $expected_sha256, got $actual_sha256)."
+    fi
+
+    /bin/bash "$installer_file"
+    exit_code=$?
+    rm -f "$installer_file"
+    [[ "$exit_code" -eq 0 ]] || bootstrap_die "Homebrew installer failed."
+}
+
 bootstrap_install_homebrew() {
     local result_var="$1"
     local installer
-    local installer_url="${BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
+    local installer_url
+    local installer_sha256
 
+    installer_url="$(bootstrap_homebrew_installer_url)"
+    installer_sha256="$(bootstrap_homebrew_installer_sha256)"
     bootstrap_log "Installing Homebrew."
+    if bootstrap_homebrew_pinned_selected; then
+        bootstrap_homebrew_pinned_url_selected &&
+            bootstrap_homebrew_pinned_sha256_selected &&
+            [[ -n "$installer_url" && -n "$installer_sha256" ]] ||
+            bootstrap_die "Pinned Homebrew installer URL and SHA-256 are both required."
+        bootstrap_log "Using pinned Homebrew installer from $installer_url."
+        if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
+            bootstrap_log "[DRY-RUN] Would verify Homebrew installer SHA-256 $installer_sha256"
+            bootstrap_log "[DRY-RUN] Would run: /bin/bash <verified Homebrew installer from $installer_url>"
+            printf -v "$result_var" '%s' brew
+            return 0
+        fi
+        bootstrap_run_verified_homebrew_installer "$installer_url" "$installer_sha256"
+        return 0
+    fi
+
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         bootstrap_log "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
         printf -v "$result_var" '%s' brew

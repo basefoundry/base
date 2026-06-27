@@ -94,6 +94,24 @@ EOF
     chmod +x "$bash_path"
 }
 
+create_homebrew_installer_stub() {
+    local installer="$TEST_TMPDIR/homebrew-installer.sh"
+
+    cat > "$installer" <<'EOF'
+#!/usr/bin/env bash
+touch "${BASE_BOOTSTRAP_TEST_MARKER:?}"
+EOF
+    chmod +x "$installer"
+    printf '%s\n' "$installer"
+}
+
+sha256_file() {
+    local checksum
+
+    checksum="$(shasum -a 256 "$1")"
+    printf '%s\n' "${checksum%% *}"
+}
+
 @test "bootstrap prints help" {
     run_bootstrap --help
 
@@ -148,6 +166,95 @@ EOF
     [[ "$output" == *"$install_dir/bin/basectl setup"* ]]
     [[ "$output" == *"$install_dir/bin/basectl update-profile"* ]]
     [[ "$output" == *"exec \"\$SHELL\" -l"* ]]
+}
+
+@test "bootstrap dry-run reports pinned Homebrew installer verification" {
+    local install_dir="$TEST_HOME/work/base"
+    local installer
+    local checksum
+
+    create_unusable_git_stub
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
+        BASE_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source --install-dir "$install_dir" --repo-url https://example.test/base.git
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [[ "$output" == *"[DRY-RUN] Would verify Homebrew installer SHA-256 $checksum"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: /bin/bash <verified Homebrew installer from $installer>"* ]]
+}
+
+@test "bootstrap rejects pinned Homebrew installer without checksum" {
+    local installer
+
+    installer="$(create_homebrew_installer_stub)"
+
+    run env \
+        BASE_BOOTSTRAP_TESTING=true \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL="$installer" \
+        "$BASH" -c 'source "$1"; bootstrap_install_homebrew resolved_brew; printf "resolved=%s\n" "$resolved_brew"' _ "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+}
+
+@test "bootstrap rejects pinned Homebrew checksum without installer location" {
+    run env \
+        BASE_BOOTSTRAP_TESTING=true \
+        BASE_BOOTSTRAP_DRY_RUN=true \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        "$BASH" -c 'source "$1"; bootstrap_install_homebrew resolved_brew' _ "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+}
+
+@test "bootstrap rejects mismatched pinned Homebrew installer checksum" {
+    local installer
+    local marker="$TEST_TMPDIR/homebrew-install-ran"
+
+    installer="$(create_homebrew_installer_stub)"
+
+    run env \
+        BASE_BOOTSTRAP_TESTING=true \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        BASE_BOOTSTRAP_TEST_MARKER="$marker" \
+        "$BASH" -c 'source "$1"; bootstrap_install_homebrew resolved_brew; printf "resolved=%s\n" "$resolved_brew"' _ "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Homebrew installer checksum mismatch"* ]]
+    [ ! -e "$marker" ]
+}
+
+@test "bootstrap runs verified pinned Homebrew installer" {
+    local installer
+    local checksum
+    local marker="$TEST_TMPDIR/homebrew-install-ran"
+
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run env \
+        BASE_BOOTSTRAP_TESTING=true \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        BASE_BOOTSTRAP_TEST_MARKER="$marker" \
+        "$BASH" -c 'source "$1"; bootstrap_install_homebrew resolved_brew; printf "resolved=%s\n" "$resolved_brew"' _ "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [ -f "$marker" ]
 }
 
 @test "bootstrap reports source clone failures without printing handoff commands" {

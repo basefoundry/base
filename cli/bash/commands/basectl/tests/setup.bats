@@ -877,6 +877,87 @@ EOF
     [ ! -e "$TEST_HOME/.base.d/base/.venv" ]
 }
 
+@test "basectl setup dry-run reports pinned Homebrew installer verification" {
+    local installer
+    local checksum
+
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run_base_command \
+        BASE_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [[ "$output" == *"[DRY-RUN] Would verify Homebrew installer SHA-256 $checksum"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: /bin/bash <verified Homebrew installer from $installer>"* ]]
+}
+
+@test "basectl setup rejects pinned Homebrew installer without checksum" {
+    local installer
+
+    create_curl_failure_stub
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_HOMEBREW_INSTALLER_URL="$installer" \
+        setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+    [ ! -e "$TEST_STATE_DIR/homebrew-install-ran" ]
+}
+
+@test "basectl setup rejects pinned Homebrew checksum without installer location" {
+    run_base_command \
+        BASE_SETUP_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        setup --dry-run
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+    [ ! -e "$TEST_STATE_DIR/homebrew-install-ran" ]
+}
+
+@test "basectl setup rejects mismatched pinned Homebrew installer checksum" {
+    local installer
+
+    create_curl_failure_stub
+    installer="$(create_homebrew_installer_stub)"
+
+    run_base_command \
+        BASE_SETUP_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_SETUP_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Homebrew installer checksum mismatch"* ]]
+    [ ! -e "$TEST_STATE_DIR/homebrew-install-ran" ]
+}
+
+@test "basectl setup runs verified pinned Homebrew installer" {
+    local installer
+    local checksum
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_curl_failure_stub
+    create_xcode_stubs
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run_base_command \
+        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
+        BASE_SETUP_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_SETUP_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [ -f "$TEST_STATE_DIR/homebrew-install-ran" ]
+    [ -f "$venv_dir/pyvenv.cfg" ]
+}
+
 @test "basectl setup --profile dev dry-run defers developer prerequisites until Python bootstrap dependencies exist" {
     run_base_command setup --profile dev --dry-run
 
