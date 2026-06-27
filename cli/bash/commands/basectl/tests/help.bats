@@ -152,6 +152,24 @@ load ./basectl_helpers.bash
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
 }
 
+@test "command reference documents workspace init help surface" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+    local workspace_init_row
+
+    run_basectl workspace init --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace init <workspace-source> [options]"* ]]
+
+    workspace_init_row="$(grep -F '| `basectl workspace init <workspace-source>` |' "$command_reference")"
+    [[ "$workspace_init_row" == *"Initialize a workspace from a workspace configuration repository"* ]]
+
+    for flag in "--owner <owner>" "--path <path>" "--workspace <path>" "--manifest <path>" "--include-optional" "--dry-run"; do
+        [[ "$output" == *"$flag"* ]]
+        [[ "$workspace_init_row" == *"$flag"* ]]
+    done
+}
+
 @test "basectl config prints help" {
     run_basectl config --help
 
