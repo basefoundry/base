@@ -84,7 +84,39 @@ class GitRemoteCheckTests(unittest.TestCase):
         self.assertFalse(checks[2].ok)
         self.assertEqual(doctor_status(checks[2]), "warn")
         self.assertEqual(checks[2].fix, "gh auth login -h github.com")
-        run_check.assert_called_once_with(["gh", "auth", "status", "-h", "github.com"])
+        run_check.assert_called_once_with(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=git_remote_module.REMOTE_REACHABILITY_TIMEOUT_SECONDS,
+        )
+
+    def test_reports_github_auth_timeout_as_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "git@github.com:codeforester/base.git")
+            manifest = manifest_for(project_root)
+
+            with (
+                mock.patch("base_setup.git_remote.process.command_exists", return_value=True),
+                mock.patch(
+                    "base_setup.git_remote.process.run_check",
+                    side_effect=subprocess.TimeoutExpired(["gh", "auth", "status"], 5),
+                ) as run_check,
+            ):
+                checks = check_git_remote(manifest)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081", "BASE-P082"])
+        self.assertFalse(checks[2].ok)
+        self.assertEqual(doctor_status(checks[2]), "warn")
+        self.assertIn("timed out", checks[2].message)
+        self.assertIn("retry", checks[2].fix)
+        self.assertEqual(checks[2].details["gh_available"], True)
+        self.assertEqual(checks[2].details["authenticated"], False)
+        self.assertEqual(checks[2].details["failure_category"], "timeout")
+        run_check.assert_called_once_with(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=git_remote_module.REMOTE_REACHABILITY_TIMEOUT_SECONDS,
+        )
 
     def test_non_github_remote_does_not_check_github_cli_auth(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -62,6 +62,7 @@ def run_check(
     command: list[str],
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
+    timeout_seconds: int | None = None,
 ) -> bool:
     completed = subprocess.run(
         command,
@@ -70,6 +71,7 @@ def run_check(
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
+        timeout=timeout_seconds,
     )
     return completed.returncode == 0
 
