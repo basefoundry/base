@@ -142,29 +142,58 @@ EOF
 @test "Base home verification does not require a git repository" {
     local base_home="$TEST_TMPDIR/embedded/base"
 
-    mkdir -p \
-        "$base_home/bin" \
-        "$base_home/lib/shell" \
-        "$base_home/lib/bash/runtime" \
-        "$base_home/lib/bash/version" \
-        "$base_home/cli/bash/commands/basectl"
-    touch \
-        "$base_home/VERSION" \
-        "$base_home/base_init.sh" \
-        "$base_home/lib/shell/bash_profile" \
-        "$base_home/lib/shell/bashrc" \
-        "$base_home/lib/shell/baserc_guard.sh" \
-        "$base_home/lib/bash/runtime/bashrc" \
-        "$base_home/lib/bash/version/lib_version.sh" \
-        "$base_home/bin/basectl" \
-        "$base_home/bin/base-wrapper" \
-        "$base_home/cli/bash/commands/basectl/basectl.sh"
-
-    run bash -c 'source "$1"; basectl_verify_home "$2"' _ \
+    run bash -c '
+        source "$1"
+        base_home="$2"
+        for file in "${BASECTL_REQUIRED_HOME_FILES[@]}"; do
+            mkdir -p "$base_home/$(dirname -- "$file")"
+            : > "$base_home/$file"
+        done
+        basectl_verify_home "$base_home"
+    ' _ \
         "$BASE_REPO_ROOT/cli/bash/commands/basectl/basectl.sh" \
         "$base_home"
 
     [ "$status" -eq 0 ]
+}
+
+@test "Base home verification contract is a readonly required-file list" {
+    run bash -c 'source "$1"; declare -p BASECTL_REQUIRED_HOME_FILES' _ \
+        "$BASE_REPO_ROOT/cli/bash/commands/basectl/basectl.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == declare\ -ar\ BASECTL_REQUIRED_HOME_FILES=* ]]
+    [[ "$output" == *'VERSION'* ]]
+    [[ "$output" == *'base_init.sh'* ]]
+    [[ "$output" == *'bin/basectl'* ]]
+    [[ "$output" == *'cli/bash/commands/basectl/basectl.sh'* ]]
+}
+
+@test "Base home verification reports missing required files" {
+    local base_home="$TEST_TMPDIR/incomplete/base"
+
+    run bash -c '
+        source "$1"
+        base_home="$2"
+        omitted="bin/base-wrapper"
+        for file in "${BASECTL_REQUIRED_HOME_FILES[@]}"; do
+            [[ "$file" == "$omitted" ]] && continue
+            mkdir -p "$base_home/$(dirname -- "$file")"
+            : > "$base_home/$file"
+        done
+        if basectl_verify_home "$base_home"; then
+            printf "verified unexpectedly\n"
+            exit 0
+        fi
+        printf "%s\n" "$BASE_CLI_ERROR_MESSAGE"
+        exit 1
+    ' _ \
+        "$BASE_REPO_ROOT/cli/bash/commands/basectl/basectl.sh" \
+        "$base_home"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Files missing in Base home '$base_home': bin/base-wrapper"* ]]
+    [[ "$output" != *"VERSION"* ]]
 }
 
 @test "base-wrapper runs package commands in the selected project venv" {
