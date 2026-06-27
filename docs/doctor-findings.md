@@ -189,7 +189,9 @@ instead of emitting runtime version data.
 They report whether the project directory is inside a Git repository, whether
 `origin` is configured and parseable, and whether GitHub CLI authentication is
 ready when `origin` points at GitHub. Default project check and doctor do not
-probe network remote reachability.
+probe network remote reachability. The GitHub CLI authentication diagnostic is
+bounded so a slow `gh auth status` call reports a warning instead of blocking
+the check indefinitely.
 
 `BASE-P083` appears only when the user explicitly opts in with
 `--remote-network`. It delegates reachability to Git with a bounded

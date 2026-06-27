@@ -187,7 +187,26 @@ def check_github_cli_auth(remote_info: RemoteInfo) -> ArtifactCheck:
             details=details | {"gh_available": False},
         )
 
-    if process.run_check(["gh", "auth", "status", "-h", GITHUB_HOST]):
+    try:
+        authenticated = process.run_check(
+            ["gh", "auth", "status", "-h", GITHUB_HOST],
+            timeout_seconds=REMOTE_REACHABILITY_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name="github_cli_auth",
+            ok=False,
+            message=(
+                "GitHub CLI authentication check timed out after "
+                f"{REMOTE_REACHABILITY_TIMEOUT_SECONDS} seconds."
+            ),
+            fix="Check network access and GitHub CLI authentication, then retry the Base check.",
+            finding_id="BASE-P082",
+            status="warn",
+            details=details | {"gh_available": True, "authenticated": False, "failure_category": "timeout"},
+        )
+
+    if authenticated:
         return ArtifactCheck(
             name="github_cli_auth",
             ok=True,
