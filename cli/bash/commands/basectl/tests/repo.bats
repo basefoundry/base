@@ -310,6 +310,18 @@ EOF
     ! grep -Eq '^base_repo_installer_template\(\)' "$dispatcher"
 }
 
+@test "basectl repo agent-guidance implementation is split from repo dispatcher" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_agent_guidance.sh"
+
+    [ -f "$helper" ]
+    grep -Fq "repo_agent_guidance.sh" "$dispatcher"
+    grep -Eq '^base_repo_agent_guidance\(\)' "$helper"
+    if grep -Eq '^base_repo_agent_guidance\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_agent_guidance"
+    fi
+}
+
 @test "basectl repo init missing name shows focused usage and example" {
     run_basectl repo init --repo codeforester/bankbuddy --pr
 

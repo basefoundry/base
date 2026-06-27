@@ -1,7 +1,7 @@
 # `basectl repo` Ownership Map
 
 Status: maintained implementation boundary map
-Last reviewed: 2026-06-25
+Last reviewed: 2026-06-27
 
 `basectl repo` has grown from local baseline generation into a mixed local and
 GitHub workflow surface. This page maps the current responsibilities so future
@@ -14,7 +14,7 @@ refactors can reduce `repo.sh` safely without changing public command behavior.
 | Command dispatch and usage routing | `basectl repo ...` | Bash | Keep in Bash as the thin public front-end. |
 | Local path, config, and dry-run plumbing | all repo commands | Bash | Keep small shared Bash helpers until a broader repo command parser exists. |
 | Local baseline file generation | `repo init`, `repo check` | Bash | Keep file writes in Bash for now; extract stable writer groups only when the file set is already well-covered by BATS. |
-| Agent guidance generation | `repo agent-guidance` | Bash | Candidate for a dedicated Bash helper file after installer-template, because it is a discrete generated-file workflow with focused tests. |
+| Agent guidance generation | `repo agent-guidance` | Bash helper | Extracted to `repo_agent_guidance.sh`; it still uses shared repo path, write, and PR helpers from `repo.sh`. |
 | Installer template generation | `repo installer-template` | Bash helper | Extracted to `repo_installer_template.sh`; it still uses shared repo path, write, and PR helpers from `repo.sh`. |
 | GitHub repository settings and labels | `repo init`, `repo configure` | Bash calling `gh` | Keep the orchestration in Bash short-term. Move structured payload construction behind Python only when behavior needs richer validation or reusable JSON construction. |
 | Default branch protection | `repo configure` | Bash calling `gh api` | Candidate for Python helper if ruleset payloads grow or need deeper schema tests. |
@@ -32,7 +32,7 @@ refactors can reduce `repo.sh` safely without changing public command behavior.
 - Add or keep focused BATS coverage for each extracted command before moving
   code.
 
-## First Extraction
+## Completed Extractions
 
 The first split moves `repo installer-template` implementation into
 `cli/bash/commands/basectl/subcommands/repo_installer_template.sh`.
@@ -42,9 +42,14 @@ copies a maintained shell template, parses repo-specific flags, and optionally
 uses the existing generated-PR helper path. Keeping it in Bash avoids changing
 runtime behavior while proving that `repo.sh` can source command-owned helpers.
 
+The second split moves `repo agent-guidance` generation into
+`cli/bash/commands/basectl/subcommands/repo_agent_guidance.sh`. The helper owns
+the generated guidance file content, command parsing, generated PR body, and
+agent-guidance PR finish path while still reusing shared repo path, Git,
+dry-run, logging, and PR worktree primitives from `repo.sh`.
+
 Follow-up candidates:
 
-- Move `repo agent-guidance` generation into a dedicated Bash helper.
 - Separate GitHub repository settings and branch-protection payload helpers
   from local baseline generation.
 - Continue reducing Project-specific logic in Bash by delegating schema and
