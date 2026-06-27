@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 FETCH_PROJECT_FIELDS = """
 query($id: ID!) {
   node(id: $id) {

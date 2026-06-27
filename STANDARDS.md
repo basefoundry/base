@@ -218,7 +218,8 @@ in practice.
 
 ### 4.1 Style And Structure
 
-1. Use `from __future__ import annotations` in Python modules.
+1. Use `from __future__ import annotations` in non-empty Python modules.
+   Truly empty package marker files may remain empty.
 2. Prefer `pathlib.Path` over string path manipulation.
 3. Use dataclasses for small structured records when they make behavior clearer.
 4. Prefer explicit return values over mutation-heavy helper APIs.
