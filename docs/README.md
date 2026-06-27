@@ -68,6 +68,9 @@ reference. The filename should answer "what is this about?"
 - [Base Bash Libraries](base-bash-libs.md) documents the standalone
   `base-bash-libs` package, Base's external reusable-library consumption path,
   Homebrew/core readiness path, and the post-migration boundary.
+- [GitHub Bash Helper Boundary](github-bash-helper-boundary.md) records what
+  GitHub CLI shell behavior can move to `base-bash-libs` and what must stay in
+  Base or Python.
 - [Local Observability](observability.md) defines the shipped local command
   history index plus the future last-error explanation and report model beyond
   raw runtime logs.
