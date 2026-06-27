@@ -18,9 +18,11 @@ from .errors import ArtifactError
 
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
+REDACTED = "[REDACTED]"
 SECRET_VALUE_RE = re.compile(
     r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key|authorization)[A-Za-z0-9_.:-]*)=\S+"
 )
+SECRET_NAME_RE = re.compile(r"(?i)(?:token|password|secret|api[-_]?key|authorization)")
 URL_CREDENTIALS_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^@\s/]+@")
 HOMEBREW_LINK_FAILURE = "The `brew link` step did not complete successfully"
 HOMEBREW_LINK_DRY_RUN_RE = re.compile(r"(?m)^\s*(brew link --overwrite [^\r\n]+ --dry-run)\s*$")
@@ -123,7 +125,7 @@ def run_command(
         for thread in threads:
             thread.join()
     if returncode:
-        message = f"Command failed with exit {returncode}: {redact_command_output(format_command(command))}"
+        message = f"Command failed with exit {returncode}: {format_command_for_logging(command)}"
         stdout_tail = stdout_recorder.text()
         stderr_tail = stderr_recorder.text()
         if stdout_tail:
@@ -135,20 +137,50 @@ def run_command(
             message = f"{message}\n\n{guidance}"
         raise ArtifactError(message)
     if cwd is not None:
-        ctx.log.debug("Command succeeded in '%s': %s", cwd, format_command(command))
+        ctx.log.debug("Command succeeded in '%s': %s", cwd, format_command_for_logging(command))
     else:
-        ctx.log.debug("Command succeeded: %s", format_command(command))
+        ctx.log.debug("Command succeeded: %s", format_command_for_logging(command))
 
 
 def dry_run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:
     if cwd is not None:
-        ctx.log.info("[DRY-RUN] Would run in '%s': %s", cwd, format_command(command))
+        ctx.log.info("[DRY-RUN] Would run in '%s': %s", cwd, format_command_for_logging(command))
         return
-    ctx.log.info("[DRY-RUN] Would run: %s", format_command(command))
+    ctx.log.info("[DRY-RUN] Would run: %s", format_command_for_logging(command))
 
 
 def format_command(command: list[str]) -> str:
     return shlex.join(command)
+
+
+def format_command_for_logging(command: list[str]) -> str:
+    return format_command(redact_command_argv(command))
+
+
+def redact_command_argv(command: list[str]) -> list[str]:
+    redacted: list[str] = []
+    redact_next = False
+    for arg in command:
+        if redact_next:
+            redacted.append(REDACTED)
+            redact_next = False
+            continue
+
+        option, separator, _value = arg.partition("=")
+        if option.startswith("--") and SECRET_NAME_RE.search(option):
+            if separator:
+                redacted.append(f"{option}={REDACTED}")
+            else:
+                redacted.append(option)
+                redact_next = True
+            continue
+
+        if separator and SECRET_NAME_RE.search(option):
+            redacted.append(f"{option}={REDACTED}")
+            continue
+
+        redacted.append(redact_command_output(arg))
+    return redacted
 
 
 def redact_command_output(text: str) -> str:
