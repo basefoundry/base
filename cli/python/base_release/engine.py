@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -278,6 +279,8 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
             ],
             cwd=project_root,
         )
+    except ReleaseError as exc:
+        raise ReleaseError(f"{exc}\n\n{release_publish_recovery_guidance(ctx, title)}") from exc
     finally:
         notes_path.unlink(missing_ok=True)
 
@@ -286,6 +289,31 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     print("")
     print_homebrew_handoff(ctx, after_publish=True)
     return 0
+
+
+def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
+    display_command = base_cli.delegated_display_command("basectl release") or "basectl release"
+    notes_file = f"{ctx.tag_name}-notes.md"
+    notes_command = (
+        f"{display_command} notes --version {shlex.quote(ctx.version)} "
+        f"--manifest {shlex.quote(str(ctx.manifest_path))}"
+    )
+    create_release_command = (
+        f"gh release create {shlex.quote(ctx.tag_name)} "
+        f"--repo {shlex.quote(ctx.release.github.repository)} "
+        f"--title {shlex.quote(title)} "
+        f"--notes-file {shlex.quote(notes_file)}"
+    )
+    return (
+        f"Release publish already created and pushed tag {ctx.tag_name}, "
+        "but GitHub Release creation failed.\n"
+        "To complete the release after fixing GitHub access, create the GitHub Release from the pushed tag:\n"
+        f"  {notes_command} > {shlex.quote(notes_file)}\n"
+        f"  {create_release_command}\n"
+        "To abandon this release attempt, remove the local and remote tag after confirming no one else is using it:\n"
+        f"  git tag -d {shlex.quote(ctx.tag_name)}\n"
+        f"  git push origin :refs/tags/{shlex.quote(ctx.tag_name)}"
+    )
 
 
 def release_findings(ctx: ReleaseContext) -> tuple[ReleaseFinding, ...]:
