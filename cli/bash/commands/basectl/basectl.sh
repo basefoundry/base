@@ -6,6 +6,20 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     readonly _basectl_dispatcher_sourced
 fi
 
+BASECTL_REQUIRED_HOME_FILES=(
+    VERSION
+    base_init.sh
+    lib/shell/bash_profile
+    lib/shell/bashrc
+    lib/shell/baserc_guard.sh
+    lib/bash/runtime/bashrc
+    lib/bash/version/lib_version.sh
+    bin/basectl
+    bin/base-wrapper
+    cli/bash/commands/basectl/basectl.sh
+)
+readonly BASECTL_REQUIRED_HOME_FILES
+
 basectl_error() {
     printf 'ERROR: %s\n' "$*" >&2
 }
@@ -195,7 +209,7 @@ basectl_verify_home() {
         return 1
     fi
 
-    for file in VERSION base_init.sh lib/shell/bash_profile lib/shell/bashrc lib/shell/baserc_guard.sh lib/bash/runtime/bashrc lib/bash/version/lib_version.sh bin/basectl bin/base-wrapper cli/bash/commands/basectl/basectl.sh; do
+    for file in "${BASECTL_REQUIRED_HOME_FILES[@]}"; do
         if [[ ! -f "$base_home/$file" ]]; then
             missing+=("$file")
         fi
