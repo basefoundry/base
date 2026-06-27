@@ -25,11 +25,6 @@ BASE_REPO_AGENT_GUIDANCE_FILES=(
     .github/pull_request_template.md
 )
 
-_base_repo_installer_template_module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/repo_installer_template.sh"
-# shellcheck source=cli/bash/commands/basectl/subcommands/repo_installer_template.sh
-source "$_base_repo_installer_template_module_path"
-unset _base_repo_installer_template_module_path
-
 base_repo_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -213,6 +208,22 @@ base_repo_configure_usage_error() {
 
 base_repo_installer_template_usage_error() {
     base_repo_print_usage_error "basectl repo installer-template" "$@"
+}
+
+base_repo_load_installer_template() {
+    local module_path
+
+    if declare -F base_repo_installer_template >/dev/null 2>&1; then
+        return 0
+    fi
+
+    module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/repo_installer_template.sh" || return 1
+    [[ -f "$module_path" ]] || {
+        log_error "repo installer-template helper was not found at '$module_path'."
+        return 1
+    }
+    # shellcheck source=cli/bash/commands/basectl/subcommands/repo_installer_template.sh
+    source "$module_path"
 }
 
 base_repo_agent_guidance_usage() {
@@ -3189,6 +3200,7 @@ base_repo_subcommand_main() {
             ;;
         installer-template)
             shift
+            base_repo_load_installer_template || return 1
             base_repo_installer_template "$@"
             ;;
         *)

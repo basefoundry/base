@@ -79,15 +79,14 @@ EOF
 }
 
 base_repo_finish_installer_template_pr() {
-    local body_file
+    local dry_run="$1"
+    local target_path="$2"
+    local root="$3"
+    local repo="$4"
     local branch="$5"
     local default_branch="$6"
-    local dry_run="$1"
     local rel_path="$7"
-    local repo="$4"
-    local root="$3"
-    local status
-    local target_path="$2"
+    local body_file status
 
     if [[ "$dry_run" == "1" ]]; then
         base_repo_finish_generated_pr \
