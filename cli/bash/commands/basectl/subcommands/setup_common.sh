@@ -801,6 +801,64 @@ setup_add_base_bash_libraries_check_result() {
         "$recovery"
 }
 
+setup_base_check_finding_id() {
+    case "$1" in
+        homebrew)
+            printf '%s\n' "BASE-D001"
+            ;;
+        xcode_command_line_tools)
+            printf '%s\n' "BASE-D002"
+            ;;
+        python)
+            printf '%s\n' "BASE-D003"
+            ;;
+        base_virtualenv)
+            printf '%s\n' "BASE-D004"
+            ;;
+        pyyaml)
+            printf '%s\n' "BASE-D005"
+            ;;
+        click)
+            printf '%s\n' "BASE-D006"
+            ;;
+        base_bash_libraries)
+            printf '%s\n' "BASE-D007"
+            ;;
+        *)
+            printf '%s\n' "BASE-D000"
+            ;;
+    esac
+}
+
+setup_base_check_display_name() {
+    case "$1" in
+        homebrew)
+            printf '%s\n' "Homebrew"
+            ;;
+        xcode_command_line_tools)
+            printf '%s\n' "Xcode Command Line Tools"
+            ;;
+        python)
+            printf '%s\n' "Python"
+            ;;
+        base_virtualenv)
+            printf '%s\n' "Base virtualenv"
+            ;;
+        pyyaml)
+            setup_pyyaml_package
+            ;;
+        click)
+            setup_click_package
+            ;;
+        base_bash_libraries)
+            printf '%s\n' "Base Bash libraries"
+            ;;
+        *)
+            printf '%s\n' "$1"
+            ;;
+    esac
+}
+
 setup_pythonpath() {
     setup_ensure_cached_paths
     printf '%s\n' "$_BASE_SETUP_PYTHONPATH_CACHE"
