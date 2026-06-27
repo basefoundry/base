@@ -424,8 +424,23 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"Base doctor"* ]]
     [[ "$output" == *"error"*"Homebrew"*"Homebrew is not installed."* ]]
-    [[ "$output" == *"Fix: basectl setup"* ]]
+    [[ "$output" == *"Fix: Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."* ]]
     [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
+}
+
+@test "basectl doctor text uses shared base check recovery hints" {
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Fix: Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."* ]]
+    [[ "$output" == *"Fix: Run 'xcode-select --install' in an interactive terminal, complete the installer, then rerun 'basectl setup'."* ]]
+    [[ "$output" == *"Fix: Run 'basectl setup' to install Homebrew Python, or run 'brew install python@3.13'."* ]]
 }
 
 @test "basectl doctor reports broken Base virtualenv integrity" {
@@ -483,7 +498,7 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"error"*"BASE-D004"*"Base virtualenv"*"home path '$missing_home'"* ]]
-    [[ "$output" == *"Fix: basectl setup --recreate-venv"* ]]
+    [[ "$output" == *"Fix: Run 'basectl setup --recreate-venv' to back up and recreate the Base virtual environment."* ]]
 }
 
 @test "basectl doctor --format json reports structured findings" {
