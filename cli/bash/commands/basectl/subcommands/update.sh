@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 
-[[ -n "${_base_update_subcommand_sourced:-}" ]] && return 0
+if [[ -n "${_base_update_subcommand_sourced:-}" ]]; then
+    # Source guards are shell-local. Ignore exported sentinels inherited from a
+    # parent process so test and command shells still load their definitions.
+    case "$(declare -p _base_update_subcommand_sourced 2>/dev/null)" in
+        declare\ -*x*)
+            unset _base_update_subcommand_sourced 2>/dev/null || return 0
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+fi
 _base_update_subcommand_sourced=1
 readonly _base_update_subcommand_sourced
 

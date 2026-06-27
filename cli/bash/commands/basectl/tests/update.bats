@@ -2,6 +2,16 @@
 
 load ./basectl_helpers.bash
 
+assert_status() {
+    local expected="$1"
+
+    if [ "$status" -ne "$expected" ]; then
+        printf 'expected status %s, got %s\n' "$expected" "$status" >&3
+        printf 'output:\n%s\n' "$output" >&3
+        return 1
+    fi
+}
+
 
 @test "basectl update prints help" {
     run_basectl update --help
@@ -69,7 +79,22 @@ load ./basectl_helpers.bash
             base_update_subcommand_main demo other
         '
 
-    [ "$status" -eq 2 ]
+    assert_status 2
+    [[ "$output" == *"The 'update' command accepts at most one project name."* ]]
+}
+
+@test "basectl update ignores inherited source guard state" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        _base_update_subcommand_sourced=1 \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_subcommand_main demo other
+        '
+
+    assert_status 2
     [[ "$output" == *"The 'update' command accepts at most one project name."* ]]
 }
 
@@ -83,7 +108,7 @@ load ./basectl_helpers.bash
             base_update_subcommand_main --mystery
         '
 
-    [ "$status" -eq 2 ]
+    assert_status 2
     [[ "$output" == *"Unknown option '--mystery'."* ]]
     [[ "$output" == *"Usage:"* ]]
 }
