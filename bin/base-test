@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
 base_test_python="${BASE_TEST_PYTHON:-$HOME/.base.d/base/.venv/bin/python}"
 base_test_home="${BASE_HOME:-$(pwd)}"
 base_test_unset_env=(
@@ -51,6 +49,10 @@ base_test_run_python_suite() {
 }
 
 base_test_run_python_suite
+base_test_python_status=$?
+if ((base_test_python_status != 0)); then
+    exit "$base_test_python_status"
+fi
 
 if ! base_test_is_source_checkout; then
     printf "INFO: Base source checkout not detected at '%s'.\n" "$base_test_home" >&2
@@ -71,3 +73,5 @@ env "${base_test_unset_env[@]}" \
     tests/install.bats \
     tests/source_guards.bats \
     tests/integration/base_workflows.bats
+base_test_bats_status=$?
+exit "$base_test_bats_status"
