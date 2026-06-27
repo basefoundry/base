@@ -33,6 +33,15 @@ EOF
     chmod +x "$TEST_MOCKBIN/python"
 }
 
+create_failing_python_stub() {
+    cat > "$TEST_MOCKBIN/python" <<'EOF'
+#!/usr/bin/env bash
+printf 'python %s\n' "$*" >> "${BASE_TEST_STATE_DIR:?}/python.log"
+exit 7
+EOF
+    chmod +x "$TEST_MOCKBIN/python"
+}
+
 create_bats_stub() {
     cat > "$TEST_MOCKBIN/bats" <<'EOF'
 #!/usr/bin/env bash
@@ -63,6 +72,30 @@ EOF
     [[ "$output" == *"Run 'env -u BASE_HOME ./bin/base-test' from a Base source checkout for the full developer suite."* ]]
 }
 
+@test "base-test stops before Bats when the Python suite fails" {
+    create_packaged_base_home
+    create_failing_python_stub
+    create_bats_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$TEST_PACKAGE_HOME" \
+        BASE_TEST_PYTHON="$TEST_MOCKBIN/python" \
+        BASE_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$TEST_PACKAGE_HOME/bin/base-test"
+
+    [ "$status" -eq 7 ]
+    grep -Fqx 'python -m pytest' "$TEST_STATE_DIR/python.log"
+    [ ! -f "$TEST_STATE_DIR/bats.log" ]
+}
+
 @test "base-test includes source guard coverage in the source checkout suite" {
-    grep -Fqx '    tests/source_guards.bats \' "$BASE_REPO_ROOT/bin/base-test"
+    grep -Fqx "    tests/source_guards.bats \\" "$BASE_REPO_ROOT/bin/base-test"
+}
+
+@test "base-test uses explicit error handling instead of shell strict mode" {
+    run grep -nE '^[[:space:]]*set[[:space:]].*(-e|-u|pipefail)' "$BASE_REPO_ROOT/bin/base-test"
+
+    [ "$status" -eq 1 ]
 }
