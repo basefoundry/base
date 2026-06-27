@@ -119,6 +119,15 @@ EOF
     chmod +x "$TEST_MOCKBIN/wc"
 }
 
+create_curl_failure_stub() {
+    cat > "$TEST_MOCKBIN/curl" <<'EOF'
+#!/usr/bin/env bash
+printf 'curl should not run for pinned local Homebrew installer: %s\n' "$*" >&2
+exit 96
+EOF
+    chmod +x "$TEST_MOCKBIN/curl"
+}
+
 create_system_python3_stub() {
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
@@ -463,6 +472,13 @@ EOF
     chmod +x "$installer"
 
     printf '%s\n' "$installer"
+}
+
+sha256_file() {
+    local checksum
+
+    checksum="$(shasum -a 256 "$1")"
+    printf '%s\n' "${checksum%% *}"
 }
 
 run_base_command() {

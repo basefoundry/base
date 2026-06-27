@@ -501,17 +501,139 @@ setup_xcode_homebrew_diagnostics_enabled() {
     [[ "${BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS:-false}" == true ]]
 }
 
+setup_homebrew_default_installer_url() {
+    printf '%s\n' "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+}
+
+setup_homebrew_pinned_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_SETUP_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ||
+        -n "${BASE_SETUP_HOMEBREW_INSTALLER_SHA256+x}" ]]
+}
+
+setup_homebrew_pinned_url_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ||
+        -n "${BASE_SETUP_HOMEBREW_INSTALLER_URL+x}" ]]
+}
+
+setup_homebrew_pinned_sha256_selected() {
+    [[ -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ||
+        -n "${BASE_SETUP_HOMEBREW_INSTALLER_SHA256+x}" ]]
+}
+
+setup_homebrew_installer_url() {
+    if [[ -n "${BASE_HOMEBREW_INSTALLER_URL+x}" ]]; then
+        printf '%s\n' "$BASE_HOMEBREW_INSTALLER_URL"
+        return 0
+    fi
+    if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_URL+x}" ]]; then
+        printf '%s\n' "$BASE_SETUP_HOMEBREW_INSTALLER_URL"
+        return 0
+    fi
+    setup_homebrew_default_installer_url
+}
+
+setup_homebrew_installer_sha256() {
+    if [[ -n "${BASE_HOMEBREW_INSTALLER_SHA256+x}" ]]; then
+        printf '%s\n' "$BASE_HOMEBREW_INSTALLER_SHA256"
+        return 0
+    fi
+    if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_SHA256+x}" ]]; then
+        printf '%s\n' "$BASE_SETUP_HOMEBREW_INSTALLER_SHA256"
+        return 0
+    fi
+}
+
+setup_fetch_homebrew_installer() {
+    local installer_url="$1"
+    local target="$2"
+    local installer_path
+
+    case "$installer_url" in
+        file://*)
+            installer_path="${installer_url#file://}"
+            cp "$installer_path" "$target"
+            ;;
+        /*|./*|../*)
+            cp "$installer_url" "$target"
+            ;;
+        *)
+            command -v curl >/dev/null 2>&1 || return 127
+            curl -fsSL "$installer_url" -o "$target"
+            ;;
+    esac
+}
+
+setup_run_verified_homebrew_installer() {
+    local installer_url="$1"
+    local expected_sha256="$2"
+    local installer_file
+    local checksum
+    local actual_sha256
+    local exit_code
+
+    installer_file="$(mktemp "${TMPDIR:-/tmp}/base-homebrew-installer.XXXXXX")" || fatal_error "Failed to create a temporary Homebrew installer file."
+    setup_fetch_homebrew_installer "$installer_url" "$installer_file" || {
+        rm -f "$installer_file"
+        fatal_error "Failed to read pinned Homebrew installer content from '$installer_url'."
+    }
+
+    command -v shasum >/dev/null 2>&1 || {
+        rm -f "$installer_file"
+        fatal_error "shasum is required to verify pinned Homebrew installer content."
+    }
+    checksum="$(shasum -a 256 "$installer_file")" || {
+        rm -f "$installer_file"
+        fatal_error "Failed to compute Homebrew installer checksum."
+    }
+    actual_sha256="${checksum%% *}"
+    if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+        rm -f "$installer_file"
+        fatal_error "Homebrew installer checksum mismatch (expected $expected_sha256, got $actual_sha256)."
+    fi
+
+    /bin/bash "$installer_file"
+    exit_code=$?
+    rm -f "$installer_file"
+    if ((exit_code)); then
+        log_error "$(setup_recovery_homebrew)"
+    fi
+    exit_if_error "$exit_code" "Homebrew installer failed."
+}
+
 setup_install_homebrew() {
     # Trust decision: Base follows Homebrew's official install command, which
     # intentionally fetches the installer from the mutable HEAD ref. Pinning a
     # reviewed commit would reduce mutability risk, but would also make Base own
     # installer refreshes and drift from Homebrew's supported bootstrap path.
-    local installer_url="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+    local installer_url
+    local installer_sha256
     local exit_code
+
+    installer_url="$(setup_homebrew_installer_url)"
+    installer_sha256="$(setup_homebrew_installer_sha256)"
 
     if setup_find_brew_bin >/dev/null 2>&1; then
         setup_refresh_brew_path || fatal_error "Homebrew is installed, but its bin directory could not be added to PATH. $(setup_recovery_brew_path)"
         log_info "Homebrew is already installed."
+        return 0
+    fi
+
+    if setup_homebrew_pinned_selected; then
+        setup_homebrew_pinned_url_selected &&
+            setup_homebrew_pinned_sha256_selected &&
+            [[ -n "$installer_url" && -n "$installer_sha256" ]] ||
+            fatal_error "Pinned Homebrew installer URL and SHA-256 are both required."
+        log_info "Installing Homebrew."
+        log_info "Using pinned Homebrew installer from $installer_url."
+        if setup_is_dry_run; then
+            log_info "[DRY-RUN] Would verify Homebrew installer SHA-256 $installer_sha256"
+            log_info "[DRY-RUN] Would run: /bin/bash <verified Homebrew installer from $installer_url>"
+            return 0
+        fi
+        setup_run_verified_homebrew_installer "$installer_url" "$installer_sha256"
+        setup_refresh_brew_path || fatal_error "Homebrew installation finished, but 'brew' was not found on PATH. $(setup_recovery_brew_path)"
         return 0
     fi
 

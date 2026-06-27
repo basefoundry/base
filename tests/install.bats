@@ -38,6 +38,24 @@ EOF
     chmod +x "$TEST_MOCKBIN/bash"
 }
 
+create_homebrew_installer_stub() {
+    local installer="$TEST_TMPDIR/homebrew-installer.sh"
+
+    cat > "$installer" <<'EOF'
+#!/usr/bin/env bash
+touch "${BASE_INSTALL_TEST_MARKER:?}"
+EOF
+    chmod +x "$installer"
+    printf '%s\n' "$installer"
+}
+
+sha256_file() {
+    local checksum
+
+    checksum="$(shasum -a 256 "$1")"
+    printf '%s\n' "${checksum%% *}"
+}
+
 create_install_source_repo() {
     local source_dir="$TEST_TMPDIR/source-repo"
 
@@ -148,6 +166,92 @@ assert_base_init_loads() {
     [[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: brew install bash"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: /opt/homebrew/bin/bash $TEST_HOME/work/base/bin/basectl setup"* ]]
+}
+
+@test "installer dry-run reports pinned Homebrew installer verification" {
+    local installer
+    local checksum
+
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_TEST_BASH_VERSION=32 \
+        BASE_INSTALL_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_INSTALL_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
+        BASE_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        "$BASE_REPO_ROOT/install.sh" --dry-run --dir "$TEST_HOME/work/base" --no-profile
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [[ "$output" == *"[DRY-RUN] Would verify Homebrew installer SHA-256 $checksum"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: /bin/bash <verified Homebrew installer from $installer>"* ]]
+}
+
+@test "installer rejects pinned Homebrew installer without checksum" {
+    local installer
+
+    installer="$(create_homebrew_installer_stub)"
+
+    run env \
+        BASE_INSTALL_TESTING=true \
+        BASE_INSTALL_HOMEBREW_INSTALLER_URL="$installer" \
+        "$BASH" -c 'source "$1"; install_homebrew' _ "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+}
+
+@test "installer rejects pinned Homebrew checksum without installer location" {
+    run env \
+        BASE_INSTALL_TESTING=true \
+        BASE_INSTALL_DRY_RUN=true \
+        BASE_INSTALL_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        "$BASH" -c 'source "$1"; install_homebrew' _ "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Pinned Homebrew installer URL and SHA-256 are both required."* ]]
+}
+
+@test "installer rejects mismatched pinned Homebrew installer checksum" {
+    local installer
+    local marker="$TEST_TMPDIR/homebrew-install-ran"
+
+    installer="$(create_homebrew_installer_stub)"
+
+    run env \
+        BASE_INSTALL_TESTING=true \
+        BASE_INSTALL_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_INSTALL_HOMEBREW_INSTALLER_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+        BASE_INSTALL_TEST_MARKER="$marker" \
+        "$BASH" -c 'source "$1"; install_homebrew' _ "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Homebrew installer checksum mismatch"* ]]
+    [ ! -e "$marker" ]
+}
+
+@test "installer runs verified pinned Homebrew installer" {
+    local installer
+    local checksum
+    local marker="$TEST_TMPDIR/homebrew-install-ran"
+
+    installer="$(create_homebrew_installer_stub)"
+    checksum="$(sha256_file "$installer")"
+
+    run env \
+        BASE_INSTALL_TESTING=true \
+        BASE_INSTALL_HOMEBREW_INSTALLER_URL="$installer" \
+        BASE_INSTALL_HOMEBREW_INSTALLER_SHA256="$checksum" \
+        BASE_INSTALL_TEST_MARKER="$marker" \
+        "$BASH" -c 'source "$1"; install_homebrew' _ "$BASE_REPO_ROOT/install.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Using pinned Homebrew installer from $installer."* ]]
+    [ -f "$marker" ]
 }
 
 @test "installer rejects an existing non-git install path" {
