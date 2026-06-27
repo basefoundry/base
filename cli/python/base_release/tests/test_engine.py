@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_release.engine import ReleaseError
 from base_release.engine import ReleaseFinding
 from base_release.engine import main
 
@@ -331,6 +332,42 @@ class ReleaseEngineTests(unittest.TestCase):
         self.assertIn("GitHub Release published: https://github.com/codeforester/demo/releases/tag/v1.2.3", stdout)
         self.assertIn("Tag URL: https://github.com/codeforester/demo/tree/v1.2.3", stdout)
         self.assertIn("Homebrew handoff required after GitHub release", stdout)
+
+
+    def test_publish_yes_reports_recovery_when_github_release_create_fails_after_tag_push(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+            commands: list[tuple[list[str], Path | None]] = []
+
+            def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
+                commands.append((command, cwd))
+                if command[:3] == ["gh", "release", "create"]:
+                    raise ReleaseError("Release command failed: gh release create v1.2.3: network unavailable")
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS), mock.patch(
+                "base_release.engine.github_release_finding",
+                return_value=ReleaseFinding("ok", "github_release", "GitHub Release is available."),
+                create=True,
+            ), mock.patch(
+                "base_release.engine.run_release_step",
+                side_effect=fake_run_release_step,
+                create=True,
+            ):
+                status, stdout, stderr = run_engine(
+                    ["publish", "--yes", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertEqual(commands[0][0], ["git", "tag", "-a", "v1.2.3", "-m", "Release v1.2.3"])
+        self.assertEqual(commands[1][0], ["git", "push", "origin", "v1.2.3"])
+        self.assertIn("Release command failed: gh release create v1.2.3: network unavailable", stderr)
+        self.assertIn("Release publish already created and pushed tag v1.2.3", stderr)
+        self.assertIn("basectl release notes --version 1.2.3", stderr)
+        self.assertIn("gh release create v1.2.3 --repo codeforester/demo", stderr)
+        self.assertIn("git push origin :refs/tags/v1.2.3", stderr)
 
 
     def test_publish_fails_when_readiness_has_errors(self) -> None:
