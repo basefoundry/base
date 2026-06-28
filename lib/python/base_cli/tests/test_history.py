@@ -87,6 +87,57 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertNotIn("super-secret", json.dumps(record))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_run_app_uses_explicit_argv_for_history_and_log_metadata(self) -> None:
+        app = base_cli.App(name="history-explicit", version="0.1.0")
+        seen = {}
+        current_endpoint = "https://current.example/path"
+        stale_endpoint = "https://stale.invalid/path"
+
+        @app.command()
+        @base_cli.option("--endpoint", required=True)
+        @base_cli.option("--token", sensitive=True, required=True)
+        def main(ctx: base_cli.Context, endpoint: str, token: str) -> None:
+            seen["endpoint"] = endpoint
+            seen["token"] = token
+            seen["log_file"] = ctx.log_file
+            ctx.log.info("processed request")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir) / "home"
+            home.mkdir()
+            stderr = io.StringIO()
+            with mock.patch.dict(
+                os.environ,
+                {"HOME": str(home), "BASE_CACHE_DIR": str(home / ".cache" / "base")},
+            ):
+                with mock.patch.object(
+                    os.sys,
+                    "argv",
+                    ["stale-wrapper", "--debug", "--endpoint", stale_endpoint, "--token", "stale-secret"],
+                ):
+                    with redirect_stderr(stderr):
+                        status = base_cli.run_app(
+                            app,
+                            ["--debug", "--endpoint", current_endpoint, "--token", "super-secret"],
+                        )
+            records = read_history_records(home / ".cache" / "base")
+            log_text = seen["log_file"].read_text(encoding="utf-8")
+
+        self.assertEqual(status, 0, stderr.getvalue())
+        self.assertEqual(seen["endpoint"], current_endpoint)
+        self.assertEqual(seen["token"], "super-secret")
+        self.assertEqual(len(records), 1)
+        record_text = json.dumps(records[0])
+        self.assertIn(current_endpoint, record_text)
+        self.assertNotIn(stale_endpoint, record_text)
+        self.assertNotIn("super-secret", record_text)
+        self.assertNotIn("stale-secret", record_text)
+        self.assertIn(current_endpoint, log_text)
+        self.assertNotIn(stale_endpoint, log_text)
+        self.assertNotIn("super-secret", log_text)
+        self.assertNotIn("stale-secret", log_text)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_failed_command_history(self) -> None:
         app = base_cli.App(name="failing-history")
 

@@ -4,6 +4,7 @@ import functools
 import logging
 import os
 import sys
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Callable
 
@@ -17,6 +18,7 @@ from .redaction import parameter_name_from_decls
 _STANDARD_OPTION_KEYS = ("debug", "quiet", "environment", "config", "keep_temp", "log_file")
 _GROUP_STANDARD_OPTIONS_KEY = "base_cli_standard_options"
 DISPLAY_COMMAND_ENV = "BASE_CLI_DISPLAY_COMMAND"
+_INVOCATION_ARGV: ContextVar[list[str] | None] = ContextVar("base_cli_invocation_argv", default=None)
 
 
 def _require_click():
@@ -127,8 +129,9 @@ class App:
             token = set_current_context(context)
             started_at = utc_now()
             exit_code = 0
+            invocation_argv = _current_invocation_argv()
             try:
-                log_invocation(context.log, sys.argv, sensitive_options)
+                log_invocation(context.log, invocation_argv, sensitive_options)
                 if context.project_root is not None:
                     context.log.debug("project_root=%s", context.project_root)
                 if context.manifest_path is not None:
@@ -140,7 +143,7 @@ class App:
                 exit_code = 1
                 raise
             finally:
-                write_finished_record(context, sys.argv, sensitive_options, started_at, exit_code)
+                write_finished_record(context, invocation_argv, sensitive_options, started_at, exit_code)
                 reset_current_context(token)
                 context.cleanup()
 
@@ -233,18 +236,42 @@ def run_app(app: App, argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    explicit_argv = argv is not None
     args = list(sys.argv[1:] if argv is None else argv)
     try:
         _reject_equals_option_values(click, args)
         display_command = delegated_display_command()
-        if display_command:
-            result = app.click_command.main(args=args, prog_name=display_command, standalone_mode=False)
-        else:
-            result = app.click_command.main(args=args, standalone_mode=False)
+        invocation_argv = _effective_invocation_argv(app, args, explicit_argv, display_command)
+        invocation_token = _INVOCATION_ARGV.set(invocation_argv)
+        try:
+            if display_command:
+                result = app.click_command.main(args=args, prog_name=display_command, standalone_mode=False)
+            else:
+                result = app.click_command.main(args=args, standalone_mode=False)
+        finally:
+            _INVOCATION_ARGV.reset(invocation_token)
     except click.ClickException as exc:
         exc.show()
         return int(exc.exit_code)
     return int(result or 0)
+
+
+def _effective_invocation_argv(
+    app: App,
+    args: list[str],
+    explicit_argv: bool,
+    display_command: str | None,
+) -> list[str]:
+    if not explicit_argv:
+        return list(sys.argv)
+    return [display_command or app.name, *args]
+
+
+def _current_invocation_argv() -> list[str]:
+    invocation_argv = _INVOCATION_ARGV.get()
+    if invocation_argv is not None:
+        return list(invocation_argv)
+    return list(sys.argv)
 
 
 def delegated_display_command(default: str | None = None) -> str | None:
