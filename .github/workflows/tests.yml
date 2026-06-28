@@ -23,10 +23,10 @@ jobs:
           - "3.13"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -49,11 +49,12 @@ jobs:
       BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
+          ref: 34a71d08decf715f5767ab064197f7e63f418448
           path: .dependencies/base-bash-libs
 
       - name: Install BATS
@@ -82,15 +83,16 @@ jobs:
       BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
+          ref: 34a71d08decf715f5767ab064197f7e63f418448
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.13"
 
@@ -135,15 +137,16 @@ jobs:
       BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
+          ref: 34a71d08decf715f5767ab064197f7e63f418448
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.13"
 
@@ -175,10 +178,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.13"
 

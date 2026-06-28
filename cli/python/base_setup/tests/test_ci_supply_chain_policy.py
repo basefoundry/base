@@ -9,7 +9,6 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FULL_SHA_RE = re.compile(r"[a-f0-9]{40}")
-FIRST_PARTY_ACTION_REF_RE = re.compile(r"v\d+|[a-f0-9]{40}")
 
 
 def load_workflow(path: Path) -> dict[str, Any]:
@@ -34,7 +33,7 @@ def workflow_step(path: Path, job: str, name: str) -> dict[str, Any]:
     raise AssertionError(f"{path}: job '{job}' must include step '{name}'.")
 
 
-def test_github_actions_references_follow_supply_chain_policy() -> None:
+def test_github_actions_references_are_pinned_to_full_shas() -> None:
     workflow_paths = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
 
     for path in workflow_paths:
@@ -43,15 +42,25 @@ def test_github_actions_references_follow_supply_chain_policy() -> None:
             if not uses:
                 continue
 
-            action, separator, ref = uses.partition("@")
+            _action, separator, ref = uses.partition("@")
             assert separator, f"{path}: action reference '{uses}' must include an explicit ref."
-            owner = action.split("/", 1)[0]
-            if owner == "actions":
-                assert FIRST_PARTY_ACTION_REF_RE.fullmatch(ref), (
-                    f"{path}: first-party action '{uses}' must use a maintained major tag or full SHA."
-                )
-            else:
-                assert FULL_SHA_RE.fullmatch(ref), f"{path}: third-party action '{uses}' must be pinned to a full SHA."
+            assert FULL_SHA_RE.fullmatch(ref), f"{path}: action '{uses}' must be pinned to a full SHA."
+
+
+def test_base_bash_libs_ci_checkouts_are_pinned() -> None:
+    workflow_paths = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+    checkouts: list[tuple[Path, str]] = []
+
+    for path in workflow_paths:
+        for step in workflow_steps(path):
+            with_config = step.get("with", {})
+            if isinstance(with_config, dict) and with_config.get("repository") == "basefoundry/base-bash-libs":
+                ref = with_config.get("ref")
+                checkouts.append((path, str(ref)))
+
+    assert checkouts, "CI must explicitly check out basefoundry/base-bash-libs where shell tests need it."
+    for path, ref in checkouts:
+        assert FULL_SHA_RE.fullmatch(ref), f"{path}: base-bash-libs checkout must pin a full SHA."
 
 
 def test_security_workflow_runs_python_dependency_audit() -> None:

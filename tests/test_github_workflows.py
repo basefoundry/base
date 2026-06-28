@@ -49,16 +49,12 @@ def test_python_tests_run_on_supported_minor_versions() -> None:
     setup_steps = [
         step
         for step in python_job["steps"]
-        if isinstance(step, dict) and step.get("uses") == "actions/setup-python@v5"
+        if isinstance(step, dict) and step.get("uses", "").startswith("actions/setup-python@")
     ]
 
-    assert setup_steps == [
-        {
-            "name": "Set up Python",
-            "uses": "actions/setup-python@v5",
-            "with": {"python-version": "${{ matrix.python-version }}"},
-        }
-    ]
+    assert len(setup_steps) == 1
+    assert setup_steps[0]["name"] == "Set up Python"
+    assert setup_steps[0]["with"] == {"python-version": "${{ matrix.python-version }}"}
 
 
 def test_macos_smoke_tests_cover_shell_compatibility_surfaces() -> None:
