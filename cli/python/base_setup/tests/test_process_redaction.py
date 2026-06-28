@@ -30,6 +30,23 @@ class ProcessCommandRedactionTests(unittest.TestCase):
             timeout=7,
         )
 
+    def test_run_command_reports_missing_stdout_pipe_without_assert(self) -> None:
+        class MissingPipeProcess:
+            stdout = None
+            stderr = None
+
+            def __enter__(self) -> object:
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                return None
+
+        ctx = fake_context()
+
+        with unittest.mock.patch("base_setup.process.subprocess.Popen", return_value=MissingPipeProcess()):
+            with self.assertRaisesRegex(ArtifactError, "stdout pipe"):
+                process.run_command(ctx, ["installer"])
+
     def test_run_command_redacts_sensitive_command_arguments_from_failure(self) -> None:
         ctx = fake_context()
         stdout = io.StringIO()

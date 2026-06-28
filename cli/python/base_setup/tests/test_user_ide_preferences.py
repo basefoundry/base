@@ -135,6 +135,58 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
 
         self.assertEqual(ide.effective_ide_config(project_ide, user_config), {})
 
+    def test_reconcile_manifest_uses_context_user_config(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={"vscode": IdeConfig(install=True, extensions=("ms-python.python",), settings={})},
+        )
+        ctx = fake_context()
+        ctx.user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=False, preferences={}))
+
+        with (
+            mock.patch("base_setup.engine.reconcile_brewfile"),
+            mock.patch("base_setup.engine.reconcile_mise"),
+            mock.patch("base_setup.engine.reconcile_ide_installs") as reconcile_ide_installs,
+            mock.patch("base_setup.engine.reconcile_ide_extensions"),
+            mock.patch("base_setup.engine.reconcile_ide_settings"),
+            mock.patch("base_setup.engine.reconcile_uv_project"),
+        ):
+            engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=True)
+
+        effective_manifest = reconcile_ide_installs.call_args.args[1]
+        self.assertEqual(effective_manifest.ide, {})
+
+    def test_manifest_checks_accepts_injected_user_config(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={"vscode": IdeConfig(install=True, extensions=("ms-python.python",), settings={})},
+        )
+        user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=False, preferences={}))
+
+        checks = engine.manifest_checks(default_manifest, manifest, user_config=user_config)
+
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0].name, "user IDE config")
+        self.assertIn("disables", checks[0].message)
+
 
 
     def test_effective_ide_config_can_disable_one_ide(self) -> None:
