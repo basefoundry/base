@@ -202,10 +202,10 @@ reopen, close, and manual dispatch events. It is a visible fallback for issues
 created outside `basectl gh issue create`: the workflow idempotently adds the
 issue to the repo-named Project and sets `Status`, `Priority`, `Size`, `Area`,
 and `Initiative` from the generated defaults. Set a `BASE_PROJECT_TOKEN`
-Actions secret with Project write access when `GITHUB_TOKEN` cannot update the
-user or organization Project. `basectl repo configure` checks for
+Actions secret with Project write access. `basectl repo configure` checks for
 `BASE_PROJECT_TOKEN` when Project support is enabled and reports the
-`gh secret set BASE_PROJECT_TOKEN` command if the secret is missing.
+`gh secret set BASE_PROJECT_TOKEN` command if the secret is missing. Without
+that secret, Project Intake fails before running Project operations.
 
 For older repositories that predate this workflow, rerun
 `basectl repo configure <path> --repo <owner/name>` to create the missing

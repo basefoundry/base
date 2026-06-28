@@ -175,6 +175,10 @@ source-fragment graph.
 
 1. Do not use `set -e`, `set -u`, or `set -o pipefail` in Base shell scripts
    or libraries.
+   GitHub Actions `run:` blocks are a narrow exception because they are
+   workflow-local CI glue, not Base runtime scripts or sourced libraries. Keep
+   that exception inside `.github/workflows/`; do not copy strict-mode patterns
+   into Base-owned executable shell files.
 2. Do not rely on implicit shell exit behavior for control flow.
 3. Prefer explicit error handling using helper functions such as:
    - `run`

@@ -911,11 +911,16 @@ EOF
     grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
     grep -Fq "name: Project Intake" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq 'GH_TOKEN: ${{ secrets.BASE_PROJECT_TOKEN }}' "$repo_dir/.github/workflows/project-intake.yml"
+    grep -Fq "BASE_PROJECT_TOKEN secret is required for Project Intake." "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "gh project item-add" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "If this Project exists, set BASE_PROJECT_TOKEN" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "set_single_select_if_missing Priority priority" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_DEFAULT_AREA: Product" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish" "$repo_dir/.github/workflows/project-intake.yml"
+    if grep -Fq "github.token" "$repo_dir/.github/workflows/project-intake.yml"; then
+        fail "project-intake workflow should not fall back to github.token"
+    fi
     grep -Fq "<category>/<issue>-<YYYYMMDD>-<slug>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/<default-branch>" "$repo_dir/CONTRIBUTING.md"
     grep -Fq 'Update `CHANGELOG.md` only for notable user-visible or release-worthy' "$repo_dir/CONTRIBUTING.md"
