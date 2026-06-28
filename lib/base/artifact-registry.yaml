@@ -19,6 +19,15 @@ artifacts:
       kind: python_import
 
   - type: python-package
+    name: tomli
+    manager: pip
+    package: tomli
+    target: project-venv
+    version_policy: requested
+    check:
+      kind: python_import
+
+  - type: python-package
     name: pylint
     manager: pip
     package: pylint
