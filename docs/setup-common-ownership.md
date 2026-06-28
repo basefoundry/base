@@ -72,6 +72,14 @@ serialization to `base_setup.diagnostics`, but it still owns top-level
 diagnostic status merging, check argument assembly, and Base/profile/project
 payload splicing before calling the Python formatter.
 
+`base_setup.diagnostics` is intentionally an internal pre-CLI helper rather
+than a public `base_cli.App` command. `setup_common.sh` can call it while
+diagnosing whether Click, PyYAML, or the normal Base CLI runtime is present, so
+the helper accepts only its documented argparse subcommands. It does not support
+Base CLI standard flags such as `--debug`, `--log-file`, `--keep-temp`, or
+history/run-id behavior; outer setup/check/doctor orchestration owns user-facing
+logging and status handling.
+
 Python already has diagnostic payload helpers in `base_setup.checks`, and JSON
 serialization is a better Python responsibility. Bash can continue to collect
 host probe results and call a Python formatter for structured output.
