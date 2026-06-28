@@ -1,3 +1,13 @@
+"""Internal pre-CLI JSON renderer for setup/check/doctor shell orchestration.
+
+This module intentionally does not expose a public ``base_cli.App`` command.
+``setup_common.sh`` calls it while collecting host diagnostics, including cases
+where Click, PyYAML, or the normal Base CLI runtime may be missing or unhealthy.
+It therefore accepts only its argparse subcommands, writes structured payloads
+to stdout or explicit output files, and does not provide base_cli.App debug,
+log-file, history, run-id, or standard-option behavior.
+"""
+
 from __future__ import annotations
 
 import argparse
