@@ -10,6 +10,7 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/work}"
 BASE_DIR="${BASE_DIR:-$WORKSPACE_DIR/base}"
 PROJECT_DIR="${PROJECT_DIR:-$WORKSPACE_DIR/$PROJECT_NAME}"
 BASE_INSTALL_URL="${BASE_INSTALL_URL:-https://raw.githubusercontent.com/basefoundry/base/HEAD/install.sh}"
+BASE_INSTALL_SHA256="${BASE_INSTALL_SHA256:-}"
 RUN_UPDATE_PROFILE="${RUN_UPDATE_PROFILE:-true}"
 
 INSTALLER_TMP=""
@@ -41,6 +42,26 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || die "Required command '$1' was not found."
 }
 
+verify_base_installer() {
+    local actual_sha256
+    local checksum_output
+
+    if [[ -z "$BASE_INSTALL_SHA256" ]]; then
+        return 0
+    fi
+
+    require_command shasum
+    [[ "$BASE_INSTALL_SHA256" =~ ^[0-9a-fA-F]{64}$ ]] || die "BASE_INSTALL_SHA256 must be a 64-character SHA-256 hex digest."
+
+    checksum_output="$(shasum -a 256 "$INSTALLER_TMP")" || die "Failed to compute Base installer checksum."
+    actual_sha256="${checksum_output%% *}"
+    if [[ "$actual_sha256" != "$BASE_INSTALL_SHA256" ]]; then
+        die "Base installer checksum mismatch (expected $BASE_INSTALL_SHA256, got $actual_sha256)."
+    fi
+
+    log "Verified Base installer SHA-256 $BASE_INSTALL_SHA256."
+}
+
 ensure_workspace() {
     run mkdir -p "$WORKSPACE_DIR" || die "Failed to create workspace directory '$WORKSPACE_DIR'."
 }
@@ -62,6 +83,7 @@ install_or_update_base() {
     INSTALLER_TMP="$(mktemp "${TMPDIR:-/tmp}/base-install.XXXXXX")" || die "Failed to create installer temp file."
     log "Installing Base into '$BASE_DIR'."
     run curl -fsSL -o "$INSTALLER_TMP" "$BASE_INSTALL_URL" || die "Failed to download Base installer."
+    verify_base_installer || die "Base installer verification failed."
     run bash "$INSTALLER_TMP" --dir "$BASE_DIR" --no-profile || die "Failed to install Base into '$BASE_DIR'."
 }
 

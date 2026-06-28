@@ -77,7 +77,20 @@ PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/basefoundry/banyanlabs.
 WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/work}"
 BASE_DIR="${BASE_DIR:-$WORKSPACE_DIR/base}"
 PROJECT_DIR="${PROJECT_DIR:-$WORKSPACE_DIR/$PROJECT_NAME}"
+BASE_INSTALL_URL="${BASE_INSTALL_URL:-https://raw.githubusercontent.com/basefoundry/base/HEAD/install.sh}"
+BASE_INSTALL_SHA256="${BASE_INSTALL_SHA256:-}"
 RUN_UPDATE_PROFILE="${RUN_UPDATE_PROFILE:-true}"
+```
+
+`BASE_INSTALL_SHA256` is empty by default because the maintained template points
+at Base's mutable `HEAD/install.sh`. When a project pins `BASE_INSTALL_URL` to a
+tag, commit, or project-owned copy, set `BASE_INSTALL_SHA256` to that installer's
+SHA-256 digest. The template verifies the downloaded installer before executing
+it and stops immediately on a mismatch. Update the digest whenever the pinned
+installer content changes:
+
+```bash
+curl -fsSL "$BASE_INSTALL_URL" | shasum -a 256
 ```
 
 It should also replace the generic success text with project-specific next
