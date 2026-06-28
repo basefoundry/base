@@ -8,6 +8,10 @@ from typing import Any
 
 import base_cli
 from base_cli.history import HISTORY_PATH
+from base_cli.history import optional_int
+from base_cli.history import optional_string
+from base_cli.history import parse_finished_history_record_line
+from base_cli.history import parse_positive_int
 from base_cli.paths import base_cache_root
 
 
@@ -102,15 +106,6 @@ def normalize_format(value: str) -> str:
     return normalized
 
 
-def parse_positive_int(option: str, value: str) -> int:
-    if not value.isdigit():
-        raise ValueError(f"Option '{option}' must be a positive integer.")
-    amount = int(value)
-    if amount <= 0:
-        raise ValueError(f"Option '{option}' must be greater than zero.")
-    return amount
-
-
 def recent_history(
     cache_root: Path,
     options: HistoryOptions | None = None,
@@ -143,13 +138,8 @@ def read_history_records(cache_root: Path, logger: Any | None = None) -> list[Hi
 
 
 def parse_history_line(line: str) -> HistoryRecord | None:
-    try:
-        payload = json.loads(line)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-        return None
-    if payload.get("event") != "finished":
+    payload = parse_finished_history_record_line(line)
+    if payload is None:
         return None
 
     run_id = optional_string(payload.get("run_id"))
@@ -170,14 +160,6 @@ def parse_history_line(line: str) -> HistoryRecord | None:
         sort_time=parse_timestamp(ended_at),
         log_path=optional_string(payload.get("log_path")),
     )
-
-
-def optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) and value else None
-
-
-def optional_int(value: Any) -> int | None:
-    return value if isinstance(value, int) else None
 
 
 def parse_timestamp(value: str) -> datetime:

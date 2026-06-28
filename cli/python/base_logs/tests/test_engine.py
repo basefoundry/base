@@ -149,6 +149,37 @@ class BaseLogsTests(unittest.TestCase):
         self.assertEqual([entry.path for entry in display_filtered], [log_path])
         self.assertEqual([entry.path for entry in raw_filtered], [log_path])
 
+    def test_history_command_overrides_base_setup_log_action_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            run_id = "20260601T010000_aaaaaaaa"
+            log_path = write_log(
+                cache_root,
+                "base_setup",
+                run_id,
+                "2026-06-01 01:00:00 DEBUG argv=['base_setup']\n",
+            )
+            write_history_line(
+                cache_root,
+                {
+                    "schema_version": 1,
+                    "run_id": run_id,
+                    "event": "finished",
+                    "command": "check",
+                    "raw_command": "base_setup",
+                    "ended_at": "2026-06-01T01:00:02Z",
+                    "exit_code": 0,
+                    "status": "ok",
+                    "log_path": str(log_path),
+                },
+            )
+
+            entries = engine.recent_logs(cache_root)
+            filtered = engine.recent_logs(cache_root, command_filter="check")
+
+        self.assertEqual(entries[0].command, "check")
+        self.assertEqual([entry.path for entry in filtered], [log_path])
+
     def test_history_status_can_match_by_log_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

@@ -98,6 +98,35 @@ def display_command(cli_name: str, argv: list[str]) -> str:
     return cli_name.replace("_", "-")
 
 
+def parse_positive_int(option: str, value: str) -> int:
+    if not value.isdigit():
+        raise ValueError(f"Option '{option}' must be a positive integer.")
+    amount = int(value)
+    if amount <= 0:
+        raise ValueError(f"Option '{option}' must be greater than zero.")
+    return amount
+
+
+def parse_finished_history_record_line(line: str) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
+        return None
+    if payload.get("event") != "finished":
+        return None
+    return payload
+
+
+def optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def optional_int(value: Any) -> int | None:
+    return value if isinstance(value, int) else None
+
+
 def base_setup_action(argv: list[str]) -> str | None:
     for index, arg in enumerate(argv):
         if arg == "--action" and index + 1 < len(argv):
