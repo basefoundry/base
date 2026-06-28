@@ -26,6 +26,71 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+write_project_installer_template_mocks() {
+    local real_bash="$1"
+    local installer_body="$2"
+
+    cat > "$TEST_MOCKBIN/curl" <<EOF
+#!$real_bash
+output=""
+while ((\$#)); do
+    case "\$1" in
+        -o)
+            output="\$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+[[ -n "\$output" ]] || exit 1
+cat > "\$output" <<'INSTALLER'
+$installer_body
+INSTALLER
+EOF
+    chmod +x "$TEST_MOCKBIN/curl"
+
+    cat > "$TEST_MOCKBIN/git" <<EOF
+#!$real_bash
+case "\${1:-}" in
+    clone)
+        target="\${@: -1}"
+        mkdir -p "\$target/.git"
+        printf 'project:\n  name: demo\nartifacts: []\n' > "\$target/base_manifest.yaml"
+        ;;
+    *)
+        ;;
+esac
+EOF
+    chmod +x "$TEST_MOCKBIN/git"
+
+    cat > "$TEST_MOCKBIN/bash" <<EOF
+#!$real_bash
+printf 'bash %s\n' "\$*" >> "\${BASE_REPO_TEST_STATE_DIR:?}/bash.log"
+base_dir=""
+while ((\$#)); do
+    case "\$1" in
+        --dir)
+            base_dir="\$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+[[ -n "\$base_dir" ]] || exit 1
+mkdir -p "\$base_dir/.git" "\$base_dir/bin"
+cat > "\$base_dir/bin/basectl" <<'BASECTL'
+#!$real_bash
+printf 'basectl %s\n' "\$*" >> "\${BASE_REPO_TEST_STATE_DIR:?}/basectl.log"
+BASECTL
+chmod +x "\$base_dir/bin/basectl"
+EOF
+    chmod +x "$TEST_MOCKBIN/bash"
+}
+
 run_repo_command_with_mocks() {
     run env \
         HOME="$TEST_HOME" \
@@ -405,10 +470,56 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *'PROJECT_NAME="${PROJECT_NAME:-example-project}"'* ]]
     [[ "$output" == *'PROJECT_REPO_URL="${PROJECT_REPO_URL:-https://github.com/example/example-project.git}"'* ]]
+    [[ "$output" == *'BASE_INSTALL_SHA256="${BASE_INSTALL_SHA256:-}"'* ]]
     [[ "$output" == *'basectl" setup --manifest "$PROJECT_DIR/base_manifest.yaml" "$PROJECT_NAME"'* ]]
     [[ "$output" == *"Explicit error handling is used instead of set -e"* ]]
     [[ "$output" == *'run git -C "$BASE_DIR" pull --ff-only || die'* ]]
     [[ "$output" != *"set -euo pipefail"* ]]
+}
+
+@test "project installer template rejects mismatched Base installer checksum before execution" {
+    local real_bash
+    local installer_body='printf "installer should not run\n"'
+
+    real_bash="$(command -v bash)"
+    write_project_installer_template_mocks "$real_bash" "$installer_body"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_SHA256="0000000000000000000000000000000000000000000000000000000000000000" \
+        WORKSPACE_DIR="$TEST_TMPDIR/workspace" \
+        PROJECT_NAME="demo" \
+        "$real_bash" "$BASE_REPO_ROOT/templates/project-install.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Base installer checksum mismatch"* ]]
+    [ ! -f "$TEST_STATE_DIR/bash.log" ]
+}
+
+@test "project installer template verifies matching Base installer checksum" {
+    local real_bash
+    local installer_body='printf "installer ok\n"'
+    local checksum
+
+    real_bash="$(command -v bash)"
+    checksum="$(printf '%s\n' "$installer_body" | shasum -a 256)"
+    checksum="${checksum%% *}"
+    write_project_installer_template_mocks "$real_bash" "$installer_body"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_SHA256="$checksum" \
+        WORKSPACE_DIR="$TEST_TMPDIR/workspace" \
+        PROJECT_NAME="demo" \
+        "$real_bash" "$BASE_REPO_ROOT/templates/project-install.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Verified Base installer SHA-256 $checksum."* ]]
+    [ -f "$TEST_STATE_DIR/bash.log" ]
 }
 
 @test "basectl repo installer-template writes install.sh by default" {
