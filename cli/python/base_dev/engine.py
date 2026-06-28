@@ -57,10 +57,10 @@ def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, p
         profile_manifests = read_profile_manifests(ctx, normalized_profiles)
     except (ManifestError, ArtifactError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
     except ProfileError as exc:
         ctx.log.error(str(exc))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     if action == "setup":
         return setup_profiles(ctx, normalized_profiles, profile_manifests, dry_run=dry_run)
@@ -70,7 +70,7 @@ def run(ctx: base_cli.Context, action: str, dry_run: bool, output_format: str, p
         return doctor_profiles(normalized_profiles, profile_manifests, output_format=output_format)
 
     ctx.log.error("Unsupported base_dev action '%s'. Expected setup, check, or doctor.", action)
-    return 2
+    return base_cli.ExitCode.USAGE_ERROR
 
 
 def normalize_profiles(profiles: tuple[str, ...]) -> tuple[str, ...]:
@@ -141,7 +141,7 @@ def setup_profile_manifests(
         )
         if status != 0:
             return status
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def setup_profiles(
@@ -167,7 +167,7 @@ def setup_profiles(
             )
         if status != 0:
             return status
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def setup_dev_artifacts(
@@ -198,13 +198,13 @@ def setup_profile_artifacts(
             reconcile_artifact(ctx, definition, artifact.version, manifest.project_name, dry_run=dry_run)
     except ArtifactError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if profile == "dev":
         ctx.log.info("Base developer prerequisite setup is complete.")
     else:
         ctx.log.info("Base '%s' prerequisite setup is complete.", profile)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def check_profile_manifests(
@@ -275,9 +275,11 @@ def print_check_results(
                 ctx.log.warning(check.message)
     else:
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
-    return 0 if all(doctor_status(check) != "error" for check in checks) else 1
+    if all(doctor_status(check) != "error" for check in checks):
+        return base_cli.ExitCode.SUCCESS
+    return base_cli.ExitCode.FAILURE
 
 
 def doctor_profile_manifests(
@@ -320,7 +322,7 @@ def print_doctor_results(checks: tuple[DevCheck, ...], output_format: str) -> in
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
     if output_format != "text":
         print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     error_count = 0
     for check in checks:

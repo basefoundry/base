@@ -122,7 +122,7 @@ def run(
         )
     except ProjectUsageError as exc:
         ctx.log.error(str(exc))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
 
 def dispatch_projects_command(
@@ -195,7 +195,7 @@ def dispatch_projects_command(
         "run-commands, build-targets, build-target-list, pull.",
         command,
     )
-    return 2
+    return base_cli.ExitCode.USAGE_ERROR
 
 
 def require_argument_count(command: str, arguments: tuple[str, ...], minimum: int, maximum: int) -> None:
@@ -290,14 +290,14 @@ def workspace_init_from_args(
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         projects = discover_projects_cached(ctx, workspace_root)
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if output_format == "json":
         print(
@@ -306,11 +306,11 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
                 separators=(",", ":"),
             )
         )
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     for project in projects:
         print(f"{project.name}\t{project.root}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def workspace_status_command(
@@ -321,7 +321,7 @@ def workspace_status_command(
 ) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
@@ -331,14 +331,16 @@ def workspace_status_command(
         statuses = workspace_project_statuses(workspace_root, manifest)
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if output_format == "json":
         print(dumps_json(workspace_status_to_json(workspace_root, statuses, manifest)))
     else:
         print_workspace_status(workspace_root, statuses, manifest)
 
-    return 1 if any(project.status == "error" for project in statuses) else 0
+    if any(project.status == "error" for project in statuses):
+        return base_cli.ExitCode.FAILURE
+    return base_cli.ExitCode.SUCCESS
 
 
 def workspace_check_command(
@@ -349,7 +351,7 @@ def workspace_check_command(
 ) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
@@ -357,14 +359,16 @@ def workspace_check_command(
         results = workspace_project_check_results(ctx, workspace_root, manifest)
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if output_format == "json":
         print(dumps_json(workspace_check_to_json(workspace_root, results, manifest)))
     else:
         print_workspace_check(workspace_root, results, manifest)
 
-    return 1 if any(result.status == "error" for result in results) else 0
+    if any(result.status == "error" for result in results):
+        return base_cli.ExitCode.FAILURE
+    return base_cli.ExitCode.SUCCESS
 
 
 def workspace_doctor_command(
@@ -375,7 +379,7 @@ def workspace_doctor_command(
 ) -> int:
     if output_format not in ("text", "json"):
         ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
@@ -383,7 +387,7 @@ def workspace_doctor_command(
         results = workspace_project_check_results(ctx, workspace_root, manifest)
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if output_format == "json":
         print(dumps_json(workspace_doctor_to_json(workspace_root, results, manifest)))
@@ -402,11 +406,11 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
         manifest = require_workspace_clone_manifest(ctx, options.workspace_manifest)
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if ctx.base_home is None:
         ctx.log.error("BASE_HOME is required to clone workspace repositories.")
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     basectl = ctx.base_home / "bin" / "basectl"
     print(f"Workspace clone: {workspace_root} ({len(manifest.repos)} repositories)")
@@ -427,10 +431,10 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
 
     if errors:
         print(f"Workspace clone completed with {errors} error(s).")
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print("Workspace clone completed.")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def workspace_pull_command(ctx: base_cli.Context, options: WorkspaceCommandOptions) -> int:
@@ -449,7 +453,7 @@ def workspace_pull_command(ctx: base_cli.Context, options: WorkspaceCommandOptio
         result = pull_workspace_manifest(source, target, dry_run=options.dry_run)
     except WorkspaceManifestError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print("Workspace manifest pull")
     print(f"Source: {result.source}")
@@ -459,14 +463,14 @@ def workspace_pull_command(ctx: base_cli.Context, options: WorkspaceCommandOptio
 
     if options.dry_run:
         print("[DRY-RUN] No files changed.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     if not result.changed:
         print("Workspace manifest already up to date.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     print(f"Updated workspace manifest: {result.target}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def workspace_init_command(ctx: base_cli.Context, workspace_source: str, options: WorkspaceCommandOptions) -> int:
@@ -479,7 +483,7 @@ def workspace_init_command(ctx: base_cli.Context, workspace_source: str, options
         workspace_root = resolve_workspace_init_root(ctx, options.workspace, config_repo)
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print("Workspace init")
     print(f"Workspace source: {source.display}")
@@ -496,13 +500,13 @@ def workspace_init_command(ctx: base_cli.Context, workspace_source: str, options
             print(f"  workspace.root: {workspace_root}")
             print(f"  workspace.manifest: {manifest_path}")
             print("[DRY-RUN] Skipping member repository plan because the workspace config repo is not present.")
-            return 0
+            return base_cli.ExitCode.SUCCESS
         manifest = resolve_workspace_manifest(str(manifest_path))
         if manifest is None:
             raise WorkspaceManifestError(f"{manifest_path}: workspace manifest is required.")
     except WorkspaceManifestError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(f"Workspace manifest: {manifest.path} ({manifest.name})")
 
@@ -749,7 +753,7 @@ def clone_workspace_repo(
             repo.name,
             repo.url,
         )
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     command = [str(basectl), "repo", "clone", repo_spec, "--path", str(target)]
     if dry_run:
@@ -762,14 +766,14 @@ def clone_workspace_repo(
         )
     except ProjectRunnerError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     write_project_command_output(result)
     if result.returncode == 0:
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     ctx.log.error("Clone failed for repository '%s'.", repo.name)
-    return 1
+    return base_cli.ExitCode.FAILURE
 
 
 def workspace_clone_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
@@ -782,17 +786,17 @@ def workspace_clone_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
 def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = resolve_named_project(ctx, project_name, workspace)
         manifest = read_manifest(project.manifest_path)
     except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(_project_output(project.name, project.root, project.manifest_path, manifest))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def test_command_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
@@ -804,7 +808,7 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         manifest = read_manifest(project.manifest_path)
     except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if manifest.test is None:
         ctx.log.error(
@@ -812,11 +816,11 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
             project.name,
             project.manifest_path,
         )
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     command_config = test_command(manifest.test)
     print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def demo_script_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
@@ -832,20 +836,20 @@ def demo_script_project_command(ctx: base_cli.Context, project_name: str | None,
                 project.name,
                 project.manifest_path,
             )
-            return 1
+            return base_cli.ExitCode.FAILURE
         demo_script = resolve_demo_script_path(manifest)
     except (ProjectDiscoveryError, ManifestError, ArtifactError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def activation_sources_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = resolve_named_project(ctx, project_name, workspace)
@@ -853,11 +857,11 @@ def activation_sources_project_command(ctx: base_cli.Context, project_name: str 
         sources = activation_source_paths(project, manifest.activate.source)
     except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     for source in sources:
         print(source)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def run_command_project_command(
@@ -868,10 +872,10 @@ def run_command_project_command(
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     if not command_name:
         ctx.log.error("Command name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = resolve_named_project(ctx, project_name, workspace)
@@ -879,10 +883,10 @@ def run_command_project_command(
         command_config = project_command(manifest, command_name)
     except (ProjectDiscoveryError, ManifestError, ProjectCommandError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
@@ -894,16 +898,16 @@ def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, w
         manifest = read_manifest(project.manifest_path)
     except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     commands = project_commands(manifest)
     if not commands:
         ctx.log.error("Project '%s' does not declare runnable commands in '%s'.", project.name, project.manifest_path)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     for command_name, command_config in commands.items():
         print(_named_command_output(project.name, project.root, project.manifest_path, command_name, command_config))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def current_project_command(ctx: base_cli.Context) -> int:
@@ -911,10 +915,10 @@ def current_project_command(ctx: base_cli.Context) -> int:
         project = current_project()
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def test_command(test_config: TestConfig) -> CommandConfig:
@@ -1039,16 +1043,16 @@ def resolve_activation_source_path(project: Project, source_path: str, index: in
 def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:
     if not manifest:
         ctx.log.error("Manifest path is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = read_project(Path(manifest).expanduser().resolve())
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:

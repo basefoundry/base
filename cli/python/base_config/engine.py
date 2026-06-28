@@ -30,18 +30,18 @@ def run(ctx: base_cli.Context, command: str | None, arguments: tuple[str, ...]) 
         if arguments:
             print_usage(file=sys.stderr)
             print("ERROR: config show does not accept arguments.", file=sys.stderr)
-            return 2
+            return base_cli.ExitCode.USAGE_ERROR
         return show_config_command()
     if command == "doctor":
         if arguments:
             print_usage(file=sys.stderr)
             print("ERROR: config doctor does not accept arguments.", file=sys.stderr)
-            return 2
+            return base_cli.ExitCode.USAGE_ERROR
         return doctor_config_command()
 
     print_usage(file=sys.stderr)
     print(f"ERROR: Unknown config command '{command}'. Supported commands: show, doctor.", file=sys.stderr)
-    return 2
+    return base_cli.ExitCode.USAGE_ERROR
 
 
 def print_usage(file=sys.stdout) -> None:
@@ -64,10 +64,10 @@ def show_config_command() -> int:
         config = load_user_config()
     except (RuntimeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print(json.dumps(redact_config(config), indent=2, sort_keys=True))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def redact_config(value: Any, key: str | None = None) -> Any:
@@ -91,18 +91,18 @@ def doctor_config_command() -> int:
             print_finding("ok", "symlink", f"Config path is a symlink to '{safe_resolve(path)}'.")
         else:
             print_finding("warn", "symlink", f"Config path is a broken symlink to '{safe_resolve(path)}'.")
-            return 0
+            return base_cli.ExitCode.SUCCESS
     elif path.exists():
         print_finding("ok", "file", "Config file exists.")
     else:
         print_finding("warn", "file", "Config file is missing; Base will use an empty user config.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     try:
         config = load_user_config()
     except (RuntimeError, ValueError) as exc:
         print_finding("error", "yaml", str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print_finding("ok", "yaml", "Config YAML is valid.")
     print_finding("ok", "mapping", f"Config contains {len(config)} top-level key(s).")
@@ -110,11 +110,11 @@ def doctor_config_command() -> int:
         user_config = read_user_config()
     except (RuntimeError, ValueError) as exc:
         print_finding("error", "schema", str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     print_workspace_findings(user_config)
     print_github_findings(user_config)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def print_workspace_findings(user_config: UserConfig) -> None:

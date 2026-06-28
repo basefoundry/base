@@ -93,10 +93,10 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
     except ReleaseUsageError as exc:
         print_usage(file=sys.stderr)
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     except (ManifestError, ReleaseError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
 
 def parse_release_args(arguments: tuple[str, ...]) -> ReleaseArguments:
@@ -208,8 +208,8 @@ def release_check_command(ctx: ReleaseContext) -> int:
     for finding in findings:
         print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")
     if any(finding.status == "error" for finding in findings):
-        return 1
-    return 0
+        return base_cli.ExitCode.FAILURE
+    return base_cli.ExitCode.SUCCESS
 
 
 def release_plan_command(ctx: ReleaseContext) -> int:
@@ -223,12 +223,12 @@ def release_plan_command(ctx: ReleaseContext) -> int:
     print(f"GitHub release title: {title}")
     print("")
     print_homebrew_handoff(ctx, after_publish=False)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def release_notes_command(ctx: ReleaseContext) -> int:
     print(extract_changelog_section(ctx.changelog, ctx.version))
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
@@ -241,7 +241,7 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     if blockers:
         print(f"\nRelease publish blocked by readiness findings for {ctx.manifest.project_name} v{ctx.version}\n")
         print_findings(blockers)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     notes = extract_changelog_section(ctx.changelog, ctx.version)
 
@@ -255,7 +255,7 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
         print(f"GitHub Release URL: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
         print("")
         print_homebrew_handoff(ctx, after_publish=True)
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     if not args.yes:
         require_interactive_publish_confirmation(ctx, title)
@@ -290,7 +290,7 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
     print("")
     print_homebrew_handoff(ctx, after_publish=True)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:

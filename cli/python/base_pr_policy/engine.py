@@ -119,11 +119,11 @@ def run(
 ) -> int:
     if command != "body":
         ctx.log.error("Expected command 'body'.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     manifest_path = Path(manifest).expanduser().resolve() if manifest else discover_manifest(Path.cwd())
     if manifest_path is None:
         ctx.log.error("No base_manifest.yaml found from the current directory upward.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     try:
         body = body_from_manifest(
             manifest_path,
@@ -133,9 +133,9 @@ def run(
         )
     except (ManifestError, PrPolicyError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
     sys.stdout.write(body)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def _template_body(policy: GithubPrConfig, inputs: PrPolicyInputs) -> str:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import base_cli
+
 
 def issue_set_fields_command(args: Any, ops: Any) -> int:
     owner = ops.require_owner(args)
@@ -25,10 +27,10 @@ def issue_set_fields_command(args: Any, ops: Any) -> int:
         print(f"[DRY-RUN] Would add issue #{args.issue_number} to Project '{args.project_title}' if needed.")
         for update in updates:
             print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
     if item_id is None:
         item_id = ops.add_project_item(project.project_id, issue_id)
     for update in updates:
         ops.update_item_field(project.project_id, item_id, update)
     print(f"✓ Updated Project metadata for issue #{args.issue_number}")
-    return 0
+    return base_cli.ExitCode.SUCCESS

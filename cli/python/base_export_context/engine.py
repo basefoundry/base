@@ -75,13 +75,13 @@ def run(
     validation_error = validate_options(options, raw_output_format=output_format)
     if validation_error is not None:
         ctx.log.error(validation_error)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         return export_context(options)
     except ExportContextError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
 
 def validate_options(options: ExportContextOptions, raw_output_format: str) -> str | None:
@@ -105,7 +105,7 @@ def export_context(options: ExportContextOptions) -> int:
         )
         for context_file in files:
             print(context_file.display_path)
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     if options.output_format == MARKDOWN_FORMAT:
         return export_markdown_context(options)
@@ -114,7 +114,7 @@ def export_context(options: ExportContextOptions) -> int:
     destination = resolve_output_path(options.project_name, options.output_path, "zip")
     write_zip_file(destination, files)
     print(f"Wrote Zip AI context export for project '{options.project_name}' to {destination}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def export_markdown_context(options: ExportContextOptions) -> int:
@@ -122,11 +122,11 @@ def export_markdown_context(options: ExportContextOptions) -> int:
     content = render_markdown_bundle(options.project_name, files)
     if options.print_bundle:
         print(content, end="")
-        return 0
+        return base_cli.ExitCode.SUCCESS
     destination = resolve_output_path(options.project_name, options.output_path, "md")
     write_text_file(destination, content)
     print(f"Wrote Markdown AI context export for project '{options.project_name}' to {destination}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def resolve_output_path(project_name: str, output_path: str | None, extension: str) -> Path:

@@ -80,17 +80,17 @@ def run(
         )
     except ValueError as exc:
         ctx.log.error(str(exc))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     records = recent_history(base_cache_root(), options=options, logger=ctx.log)
     if options.output_format == "json":
         print(json.dumps([record.to_json() for record in records], indent=2))
-        return 0
+        return base_cli.ExitCode.SUCCESS
     if not records:
         print(f"No Base command history found under {base_cache_root() / HISTORY_PATH}.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
     print_history_table(records)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def normalize_optional_filter(value: str | None) -> str | None:
