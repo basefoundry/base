@@ -161,7 +161,12 @@ def _read_optional_string(path: Path, field: str, value: Any) -> str | None:
 
 
 def _validate_repo_url(path: Path, index: int, url: str) -> None:
-    if url.startswith(("https://", "http://", "git://", "ssh://", "file://")):
+    if url.startswith("http://"):
+        raise WorkspaceManifestError(
+            f"{path}: repos[{index}].url uses insecure cleartext HTTP. "
+            "Use HTTPS, SSH, file://, or an absolute local path."
+        )
+    if url.startswith(("https://", "git://", "ssh://", "file://")):
         return
     if re.match(r"^[^@\s]+@[^:\s]+:.+$", url):
         return

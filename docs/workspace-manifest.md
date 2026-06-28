@@ -130,9 +130,11 @@ guidance.
 stable identifier used in reports.
 
 `repos[].url` is optional v1 metadata for a Git clone URL. The
-`basectl workspace clone` command supports common `github.com` SSH and HTTPS
-repository URLs and otherwise falls back to `repos[].name` when no URL is
-provided. Base does not parse credentials or manage authentication.
+`basectl workspace clone` command supports HTTPS, SSH, Git protocol,
+SCP-style SSH, `file://`, and absolute local path repository sources. It
+otherwise falls back to `repos[].name` when no URL is provided. Cleartext
+`http://` repository URLs are rejected by default. Base does not parse
+credentials or manage authentication.
 
 `repos[].default_branch` is advisory metadata for reports and future clone
 validation. It should default to the remote's default branch when omitted, but
