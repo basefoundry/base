@@ -31,7 +31,7 @@ Usage: basectl [options] <command> [args...]
 Commands:
   activate <project> [options]
     Start an interactive Base runtime subshell for a project.
-  setup [options]
+  setup [options] [project]
     Install and bootstrap the local Base CLI environment on macOS.
   check [project] [options]
     Verify the local Base CLI environment and optional project artifacts without making changes.
@@ -41,7 +41,7 @@ Commands:
     Export a project's .ai-context directory as Markdown or Zip.
   build <project> [target...] [options]
     Run a project's declared build targets.
-  demo <project> [options]
+  demo [project] [options]
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
@@ -69,7 +69,7 @@ Commands:
     Guide a user through the first Base setup checklist.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
-  update [options]
+  update [project] [options]
     Update Base from Git and run setup.
   projects list [options]
     List Base-managed projects discovered in the workspace.
