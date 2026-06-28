@@ -83,8 +83,12 @@ RUN_UPDATE_PROFILE="${RUN_UPDATE_PROFILE:-true}"
 ```
 
 `BASE_INSTALL_SHA256` is empty by default because the maintained template points
-at Base's mutable `HEAD/install.sh`. When a project pins `BASE_INSTALL_URL` to a
-tag, commit, or project-owned copy, set `BASE_INSTALL_SHA256` to that installer's
+at Base's mutable `HEAD/install.sh`. That path is convenient for starter
+templates, but it is intentionally visible at runtime: when the value is empty,
+the template warns that downloaded installer checksum verification was skipped.
+
+For project-owned installers, prefer pinning `BASE_INSTALL_URL` to a tag, commit,
+or project-owned copy and setting `BASE_INSTALL_SHA256` to that installer's
 SHA-256 digest. The template verifies the downloaded installer before executing
 it and stops immediately on a mismatch. Update the digest whenever the pinned
 installer content changes:

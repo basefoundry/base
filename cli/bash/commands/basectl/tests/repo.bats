@@ -498,6 +498,26 @@ EOF
     [ ! -f "$TEST_STATE_DIR/bash.log" ]
 }
 
+@test "project installer template warns when Base installer checksum is not configured" {
+    local real_bash
+    local installer_body='printf "installer ok\n"'
+
+    real_bash="$(command -v bash)"
+    write_project_installer_template_mocks "$real_bash" "$installer_body"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        WORKSPACE_DIR="$TEST_TMPDIR/workspace" \
+        PROJECT_NAME="demo" \
+        "$real_bash" "$BASE_REPO_ROOT/templates/project-install.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"WARNING: BASE_INSTALL_SHA256 is empty; downloaded Base installer checksum verification was skipped."* ]]
+    [ -f "$TEST_STATE_DIR/bash.log" ]
+}
+
 @test "project installer template verifies matching Base installer checksum" {
     local real_bash
     local installer_body='printf "installer ok\n"'

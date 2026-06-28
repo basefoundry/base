@@ -19,6 +19,10 @@ log() {
     printf '%s\n' "$*"
 }
 
+warn() {
+    printf 'WARNING: %s\n' "$*" >&2
+}
+
 die() {
     printf 'ERROR: %s\n' "$*" >&2
     exit 1
@@ -47,6 +51,7 @@ verify_base_installer() {
     local checksum_output
 
     if [[ -z "$BASE_INSTALL_SHA256" ]]; then
+        warn "BASE_INSTALL_SHA256 is empty; downloaded Base installer checksum verification was skipped."
         return 0
     fi
 
