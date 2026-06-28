@@ -110,17 +110,17 @@ def run_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ) as process:
-        assert process.stdout is not None
-        assert process.stderr is not None
+        stdout_pipe = _require_process_pipe(process.stdout, "stdout", command)
+        stderr_pipe = _require_process_pipe(process.stderr, "stderr", command)
         threads = (
             threading.Thread(
                 target=_tee_stream,
-                args=(ctx, process.stdout, sys.stdout, "stdout", stdout_recorder),
+                args=(ctx, stdout_pipe, sys.stdout, "stdout", stdout_recorder),
                 daemon=True,
             ),
             threading.Thread(
                 target=_tee_stream,
-                args=(ctx, process.stderr, sys.stderr, "stderr", stderr_recorder),
+                args=(ctx, stderr_pipe, sys.stderr, "stderr", stderr_recorder),
                 daemon=True,
             ),
         )
@@ -145,6 +145,14 @@ def run_command(
         ctx.log.debug("Command succeeded in '%s': %s", cwd, format_command_for_logging(command))
     else:
         ctx.log.debug("Command succeeded: %s", format_command_for_logging(command))
+
+
+def _require_process_pipe(stream: BinaryIO | None, label: str, command: list[str]) -> BinaryIO:
+    if stream is None:
+        raise ArtifactError(
+            f"Command did not provide a {label} pipe: {format_command_for_logging(command)}"
+        )
+    return stream
 
 
 def dry_run_command(ctx: base_cli.Context, command: list[str], cwd: Path | None = None) -> None:

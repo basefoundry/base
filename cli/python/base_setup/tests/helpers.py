@@ -7,6 +7,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.config import UserConfig, UserIdeConfig
 from base_setup.engine import main
 
 
@@ -36,4 +37,5 @@ def run_engine(args: list[str]) -> tuple[int, str, str]:
 def fake_context() -> mock.Mock:
     ctx = mock.Mock()
     ctx.log = mock.Mock()
+    ctx.user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=None, preferences={}))
     return ctx
