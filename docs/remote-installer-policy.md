@@ -26,8 +26,11 @@ non-interactive setup stays deterministic.
 ## Managed Workstations And Pinned Installers
 
 Base intentionally follows Homebrew's official mutable installer entry point
-instead of pinning a reviewed commit by default. Teams that require pinned,
-mirrored, or managed Homebrew installer content can opt in by setting both a
+instead of pinning a reviewed commit by default. When Base uses that default
+path, it prints the trust policy before downloading or running the installer.
+
+Teams that require pinned, mirrored, or managed Homebrew installer content can
+opt in by setting both a
 Homebrew installer location and its expected SHA-256 before running Base:
 
 - all Homebrew entry points: `BASE_HOMEBREW_INSTALLER_URL` and
