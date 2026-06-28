@@ -244,19 +244,13 @@ Base Python CLIs should use `base_cli.App`:
 from __future__ import annotations
 
 import base_cli
-import click
 
 
-app = base_cli.App(name="example_cli")
+app = base_cli.App(name="example_cli", version="0.1.0")
 
 
 def main(argv: list[str] | None = None) -> int:
-    try:
-        result = app.click_command.main(args=argv, standalone_mode=False)
-    except click.ClickException as exc:
-        exc.show()
-        return int(exc.exit_code)
-    return int(result or 0)
+    return base_cli.run_app(app, argv)
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
@@ -265,8 +259,8 @@ def run(ctx: base_cli.Context, dry_run: bool) -> int:
     ctx.log.info("Running example_cli.")
     if dry_run:
         print("[DRY-RUN] Would do the work.")
-        return 0
-    return 0
+        return base_cli.ExitCode.SUCCESS
+    return base_cli.ExitCode.SUCCESS
 ```
 
 Package entrypoints should provide `__main__.py`:
@@ -277,6 +271,11 @@ from .engine import main
 
 raise SystemExit(main())
 ```
+
+For standard options, `base_cli.ExitCode`, sensitive-option redaction, and the
+`--option value` syntax policy, use
+[`lib/python/base_cli/README.md`](lib/python/base_cli/README.md) as the
+canonical guide.
 
 ### 4.3 Logging And Output
 

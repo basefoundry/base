@@ -347,6 +347,10 @@ Environment variables currently recognized by the config layer:
 - `BASE_CLI_LOG_LEVEL`
 - `BASE_CLI_KEEP_TEMP`
 
+`LOG_DEBUG=1` or `LOG_DEBUG=true` is also accepted as an internal compatibility
+fallback for wrapper/debug paths when `BASE_CLI_LOG_LEVEL` is unset. Prefer
+`BASE_CLI_LOG_LEVEL=debug` for user-facing Python CLI debug logging.
+
 Command-line standard options are applied after config is loaded. For example,
 `--environment prod` overrides `environment: dev` from config.
 

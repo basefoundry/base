@@ -151,6 +151,7 @@ These variables are involved in normal shell startup rather than the full
 | `BASE_ENABLE_BASH_DEFAULTS` | Base | Generated preference controlling optional Base Bash defaults. | Change with `basectl update-profile --defaults` or `--no-defaults`, not by editing files directly. |
 | `BASE_ENABLE_ZSH_DEFAULTS` | Base | Generated preference controlling optional Base Zsh defaults. | Change with `basectl update-profile --defaults` or `--no-defaults`, not by editing files directly. |
 | `BASE_DEBUG` | User | Enables debug traces in Base-managed shell startup snippets and the runtime Bash rcfile. | Safe to set in `~/.baserc` or as a one-off environment variable. |
+| `LOG_DEBUG` | Base wrapper compatibility | Internal debug signal exported by wrapper/debug paths before the full runtime exists. The Python config layer treats `1` or `true` as a fallback for `BASE_CLI_LOG_LEVEL=debug` when `BASE_CLI_LOG_LEVEL` is unset. | Do not set directly; use wrapper debug flags or `BASE_CLI_LOG_LEVEL=debug` for Python CLI logs. |
 
 The ordinary Bash/Zsh dotfile snippets derive `BASE_HOME` and add
 `$BASE_HOME/bin` to `PATH` so `basectl` is available in new terminals. When a
