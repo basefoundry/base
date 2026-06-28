@@ -7,16 +7,40 @@ under `.github/workflows/`.
 ## GitHub Actions
 
 - Use first-party `actions/*` actions when an action is needed.
-- Pin first-party `actions/*` actions to a maintained major tag such as `v4` or
-  to a full commit SHA.
-- Pin non-GitHub third-party actions to a full 40-character commit SHA. Version
-  tags are not enough for third-party actions.
+- Pin every GitHub Action reference to a full 40-character commit SHA. Version
+  tags are useful for discovering updates, but workflow history should resolve
+  to immutable action code.
+- Pin sibling repository checkouts, including `basefoundry/base-bash-libs`, with
+  an explicit full-SHA `ref`.
 - Prefer shell steps over adding a new action when the command is simple and the
   runner already has the required tool or installs it through an approved
   package manager.
 
 `cli/python/base_setup/tests/test_ci_supply_chain_policy.py` enforces the
-action-reference rule.
+action-reference and sibling-checkout rules.
+
+## Updating CI Pins
+
+Update pins in a small PR that only changes workflow dependency references and
+this policy if the rule changes.
+
+1. Resolve the intended upstream refs:
+
+   ```bash
+   git ls-remote https://github.com/actions/checkout refs/tags/v4
+   git ls-remote https://github.com/actions/setup-python refs/tags/v5
+   git ls-remote https://github.com/basefoundry/base-bash-libs refs/heads/main
+   ```
+
+2. Replace the workflow SHAs with the resolved commits and keep the
+   `base-bash-libs` checkout pinned to the commit Base CI should test against.
+3. Run:
+
+   ```bash
+   PYTHONPATH=lib/python:cli/python python -m pytest cli/python/base_setup/tests/test_ci_supply_chain_policy.py -q
+   ```
+
+4. Let pull request CI run the pinned workflows before merging.
 
 ## Python Dependencies
 
