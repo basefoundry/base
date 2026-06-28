@@ -7,6 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover - fcntl is unavailable on Windows.
+    _fcntl = None  # type: ignore[assignment]
+
 from .config import load_yaml_file
 from .context import Context
 from .paths import base_cache_root
@@ -75,10 +80,39 @@ def build_finished_record(
 def write_history_record(record: dict[str, Any]) -> None:
     path = base_cache_root() / HISTORY_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, sort_keys=True))
-        handle.write("\n")
+    append_history_line(path, f"{json.dumps(record, sort_keys=True)}\n")
     path.chmod(0o600)
+
+
+def append_history_line(path: Path, line: str) -> None:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        lock_history_file(fd)
+        try:
+            write_all(fd, line.encode("utf-8"))
+        finally:
+            unlock_history_file(fd)
+    finally:
+        os.close(fd)
+
+
+def lock_history_file(fd: int) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(fd, _fcntl.LOCK_EX)
+
+
+def unlock_history_file(fd: int) -> None:
+    if _fcntl is not None:
+        _fcntl.flock(fd, _fcntl.LOCK_UN)
+
+
+def write_all(fd: int, data: bytes) -> None:
+    remaining = data
+    while remaining:
+        written = os.write(fd, remaining)
+        if written == 0:
+            raise OSError("history append wrote zero bytes")
+        remaining = remaining[written:]
 
 
 def format_timestamp(value: datetime) -> str:

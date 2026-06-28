@@ -52,6 +52,41 @@ class BaseCliHistoryTests(unittest.TestCase):
                     str(outside_home.expanduser().resolve(strict=False)),
                 )
 
+    def test_write_history_record_uses_locked_append_payload(self) -> None:
+        record = {
+            "schema_version": 1,
+            "event": "finished",
+            "run_id": "run-1",
+            "command": "check",
+            "status": "ok",
+            "exit_code": 0,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir) / "cache"
+            real_os_write = os.write
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+                with mock.patch("base_cli.history._fcntl") as fcntl_module:
+                    fcntl_module.LOCK_EX = 1
+                    fcntl_module.LOCK_UN = 8
+                    with mock.patch("base_cli.history.os.write", wraps=real_os_write) as os_write:
+                        history_helpers.write_history_record(record)
+
+            history_path = cache_root / "history" / "runs.jsonl"
+            payloads = [call.args[1] for call in os_write.call_args_list]
+            history_mode = history_path.stat().st_mode & 0o777
+
+        fcntl_module.flock.assert_has_calls(
+            [
+                mock.call(mock.ANY, fcntl_module.LOCK_EX),
+                mock.call(mock.ANY, fcntl_module.LOCK_UN),
+            ]
+        )
+        self.assertEqual(len(payloads), 1)
+        self.assertTrue(payloads[0].endswith(b"\n"))
+        self.assertEqual(json.loads(payloads[0]), record)
+        self.assertEqual(history_mode, 0o600)
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_successful_command_history_with_redacted_metadata(self) -> None:
         app = base_cli.App(name="history-demo", version="0.1.0")
