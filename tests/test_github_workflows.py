@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import yaml
@@ -5,6 +6,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
+FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
 def workflow_files() -> list[Path]:
@@ -15,6 +17,44 @@ def load_workflow(path: Path) -> dict:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(payload, dict), f"{path} did not parse as a YAML mapping"
     return payload
+
+
+def workflow_steps(path: Path) -> list[tuple[str, int, dict]]:
+    workflow = load_workflow(path)
+    jobs = workflow.get("jobs")
+    assert isinstance(jobs, dict), f"{path} jobs did not parse as a YAML mapping"
+
+    steps: list[tuple[str, int, dict]] = []
+    for job_name, job in jobs.items():
+        assert isinstance(job, dict), f"{path} job {job_name} did not parse as a YAML mapping"
+        job_steps = job.get("steps", [])
+        assert isinstance(job_steps, list), f"{path} job {job_name} steps did not parse as a list"
+        steps.extend(
+            (job_name, index, step)
+            for index, step in enumerate(job_steps)
+            if isinstance(step, dict)
+        )
+    return steps
+
+
+def workflow_action_references_without_full_sha() -> list[str]:
+    unpinned: list[str] = []
+    for path in workflow_files():
+        for job_name, index, step in workflow_steps(path):
+            uses = step.get("uses")
+            if not isinstance(uses, str) or uses.startswith("./"):
+                continue
+            if not FULL_COMMIT_SHA_ACTION_REF.match(uses):
+                unpinned.append(f"{path.name}:{job_name}:steps[{index}] uses {uses}")
+    return unpinned
+
+
+def workflow_step_by_name(job: dict, name: str) -> dict:
+    steps = job.get("steps", [])
+    assert isinstance(steps, list)
+    matches = [step for step in steps if isinstance(step, dict) and step.get("name") == name]
+    assert len(matches) == 1, f"Expected exactly one workflow step named {name!r}, found {len(matches)}."
+    return matches[0]
 
 
 def test_all_workflows_cancel_superseded_runs() -> None:
@@ -34,6 +74,12 @@ def test_all_workflow_jobs_have_timeouts() -> None:
                 missing.append(f"{path.name}:{job_name}")
 
     assert not missing, missing
+
+
+def test_all_workflow_action_uses_are_pinned_to_full_commit_sha() -> None:
+    unpinned = workflow_action_references_without_full_sha()
+
+    assert not unpinned, unpinned
 
 
 def test_python_tests_run_on_supported_minor_versions() -> None:
@@ -73,7 +119,8 @@ def test_macos_smoke_tests_cover_shell_compatibility_surfaces() -> None:
 def test_project_intake_requires_base_project_token() -> None:
     workflow = load_workflow(WORKFLOW_DIR / "project-intake.yml")
     sync_job = workflow["jobs"]["sync"]
-    run_command = sync_job["steps"][0]["run"]
+    reconcile_step = workflow_step_by_name(sync_job, "Reconcile Project item")
+    run_command = reconcile_step["run"]
 
     assert sync_job["env"]["GH_TOKEN"] == "${{ secrets.BASE_PROJECT_TOKEN }}"
     assert "github.token" not in run_command
