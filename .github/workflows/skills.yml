@@ -23,11 +23,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate skills.md
     if: github.event_name != 'workflow_dispatch' || inputs.create_pr != 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +53,7 @@ jobs:
     name: Create skills.md PR
     if: github.event_name == 'workflow_dispatch' && inputs.create_pr == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
