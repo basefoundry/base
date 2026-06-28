@@ -129,8 +129,8 @@ reference. The filename should answer "what is this about?"
   and its relationship to project installers.
 - [`basectl ci`](basectl-ci.md) defines the non-interactive CI entry point and
   its relationship to Linux runtime support.
-- [`basectl check` parallelism](check-parallelism.md) records the evaluation and
-  implementation constraints for parallel check probes.
+- [`basectl check` parallelism](check-parallelism.md) documents the shipped
+  base-probe concurrency model and its deterministic rendering constraints.
 - [Doctor Finding IDs](doctor-findings.md) is the stable reference for
   `BASE-D*`, `BASE-P*`, `BASE-H*`, and `BASE-W*` finding identifiers emitted by
   `basectl doctor --format json`.

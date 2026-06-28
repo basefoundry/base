@@ -1,20 +1,17 @@
 # basectl check parallelism
 
-> **NOT YET IMPLEMENTED** as of Base 1.2.0. This document records the design for
-> a future `basectl check` performance PR; current check behavior remains
-> sequential and deterministic.
-
-`basectl check` is called frequently enough that reducing wall time matters, but
-the command also has to stay easy to reason about. The output order is part of
-the user experience and the JSON order is useful to automation, so the command
-should not print directly from background jobs.
+`basectl check` parallelizes independent base-environment probes on macOS while
+preserving deterministic text and JSON output. The command is called frequently
+enough that reducing wall time matters, but the output order is part of the user
+experience and the JSON order is useful to automation, so background jobs must
+not print directly.
 
 ## Decision
 
 Parallelize only independent probes, collect their results, and render them in
 the existing deterministic order.
 
-Good candidates:
+The shipped macOS base probes run concurrently for:
 
 - Homebrew presence and path discovery
 - Xcode Command Line Tools presence
@@ -22,44 +19,49 @@ Good candidates:
 - Base virtual environment integrity
 - Base bootstrap Python package checks
 
-Do not parallelize steps that mutate process state or depend on an earlier
-probe's side effect. In particular, `setup_refresh_brew_path` modifies `PATH`
-and should remain in the parent shell after Homebrew discovery succeeds.
+The parent shell then reads the probe result files in this order:
 
-## Recommended Shape
+1. Homebrew
+2. Base reusable Bash libraries
+3. Xcode Command Line Tools
+4. Python formula
+5. Base virtual environment integrity
+6. PyYAML
+7. click
+8. prerequisite profile checks, when `--profile` is set
+9. project artifact checks, when a project is supplied
 
-Introduce small result-producing helpers instead of backgrounding the current
-logging flow directly:
+`setup_refresh_brew_path` still runs in the parent shell after the Homebrew
+probe succeeds, because it mutates `PATH`. The Base reusable Bash libraries
+check also remains parent-owned because it depends on the effective library
+resolution path rather than an independent external probe.
+
+## Implementation Shape
+
+The background probe helpers write structured shell-safe result files:
 
 ```bash
-setup_check_homebrew_probe >"$tmpdir/homebrew" &
-setup_check_xcode_probe >"$tmpdir/xcode" &
-setup_check_python_probe >"$tmpdir/python" &
-setup_check_venv_probe >"$tmpdir/venv" &
-setup_check_python_package_probe "$pyyaml_package" >"$tmpdir/pyyaml" &
-setup_check_python_package_probe "$click_package" >"$tmpdir/click" &
-wait
+setup_write_homebrew_check_probe "$tmpdir/homebrew" &
+setup_write_xcode_check_probe "$tmpdir/xcode" &
+setup_write_python_check_probe "$tmpdir/python" &
+setup_write_virtualenv_check_probe "$tmpdir/base_virtualenv" &
+setup_write_python_package_check_probe "$tmpdir/pyyaml" "pyyaml" "$pyyaml_package" &
+setup_write_python_package_check_probe "$tmpdir/click" "click" "$click_package" &
 ```
 
-Each probe should write structured shell-safe data such as:
+Each result file uses key/value fields:
 
 ```text
+name=homebrew
 ok=true
 message=Homebrew is installed.
 recovery=
+debug=Resolved Homebrew binary: /opt/homebrew/bin/brew
 ```
 
-The parent should then read those files and emit text or JSON in the current
-order:
-
-1. Homebrew
-2. Xcode Command Line Tools
-3. Python formula
-4. Base virtual environment integrity
-5. PyYAML
-6. click
-7. prerequisite profile checks, when `--profile` is set
-8. project artifact checks, when a project is supplied
+After all probe PIDs exit, the parent shell parses the files, validates required
+fields, adds any parent-owned results, and only then renders text or calls the
+Python JSON renderer.
 
 ## Constraints
 
@@ -67,16 +69,20 @@ order:
 - Preserve the text output order.
 - Keep `setup_clear_run_state` before probe collection.
 - Keep `setup_require_macos` before probe collection.
+- Keep CI runtime-only checks serial unless the CI path gets its own result-file
+  collector; the macOS background probe implementation is not reused there.
 - Avoid background jobs for project artifact checks until the Python layer has
   an explicit concurrent check API.
 - Avoid background jobs for prerequisite profile checks until `base_dev`
   exposes a result-only mode that can be merged deterministically.
 
-## Follow-Up
+## Test Coverage
 
-The implementation should be a dedicated performance PR with focused tests for:
+The regression suite covers:
 
 - deterministic text output order
 - deterministic JSON output order
-- missing Homebrew with other probes still reported
-- package checks not failing spuriously when the venv is absent
+- overlapping base probes while text output remains ordered
+- overlapping base probes while JSON findings remain ordered
+- missing Homebrew with the remaining base probes still reported
+- package checks that do not fail spuriously when the venv is absent
