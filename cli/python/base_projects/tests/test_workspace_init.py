@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import importlib
 import os
 import tempfile
 import unittest
@@ -89,6 +90,14 @@ def invoke_engine(
 
 
 class WorkspaceInitTests(unittest.TestCase):
+    def test_workspace_init_command_is_extracted_from_engine(self) -> None:
+        workspace_init = importlib.import_module("base_projects.workspace_init")
+
+        self.assertIs(
+            engine.workspace_init_from_args.__globals__["workspace_init_command"],
+            workspace_init.workspace_init_command,
+        )
+
     def test_workspace_init_dry_run_uses_local_source_without_writing_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
