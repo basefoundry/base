@@ -745,7 +745,6 @@ class BaseCliTests(unittest.TestCase):
 
         @app.command()
         def main(ctx: base_cli.Context) -> None:
-            seen["cwd"] = Path.cwd()
             seen["manifest_path"] = ctx.manifest_path
             seen["project_root"] = ctx.project_root
 
@@ -765,7 +764,6 @@ class BaseCliTests(unittest.TestCase):
             result = invoke(app, [], home=home, cwd=nested)
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertEqual(seen["cwd"], nested.resolve())
         self.assertEqual(seen["manifest_path"], manifest_path.resolve())
         self.assertEqual(seen["project_root"], project.resolve())
         self.assertEqual(Path.cwd(), original_cwd)
@@ -777,7 +775,6 @@ class BaseCliTests(unittest.TestCase):
 
         @app.command()
         def main(ctx: base_cli.Context) -> None:
-            seen["cwd"] = Path.cwd()
             seen["manifest_path"] = ctx.manifest_path
             seen["project_root"] = ctx.project_root
 
@@ -794,7 +791,6 @@ class BaseCliTests(unittest.TestCase):
             result = invoke(app, [], home=home, cwd=isolated)
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertEqual(seen["cwd"], isolated.resolve())
         self.assertIsNone(seen["manifest_path"])
         self.assertIsNone(seen["project_root"])
         self.assertEqual(Path.cwd(), original_cwd)

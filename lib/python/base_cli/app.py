@@ -12,7 +12,14 @@ from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
 from .history import utc_now, write_finished_record
 from .logging import configure_logger, log_invocation
-from .paths import base_cache_root, discover_manifest, make_run_id, normalize_cli_name, resolve_base_home
+from .paths import (
+    base_cache_root,
+    current_working_dir,
+    discover_manifest,
+    make_run_id,
+    normalize_cli_name,
+    resolve_base_home,
+)
 from .redaction import parameter_name_from_decls
 
 _STANDARD_OPTION_KEYS = ("debug", "quiet", "environment", "config", "keep_temp", "log_file")
@@ -158,7 +165,7 @@ class App:
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options
         run_id = make_run_id()
-        manifest_path = discover_manifest(Path.cwd())
+        manifest_path = discover_manifest(current_working_dir())
         project_root = manifest_path.parent if manifest_path is not None else None
         explicit_config = Path(standard["config"]).expanduser() if standard.get("config") else None
         user_config = read_user_config()

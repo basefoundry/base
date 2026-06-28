@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import inspect
-import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+from .paths import use_working_dir
 
 
 # pylint: disable=too-many-arguments
@@ -17,7 +18,7 @@ def invoke(
     *,
     manifest: Mapping[str, Any] | None = None,
 ):
-    cwd_path = Path(cwd) if cwd is not None else None
+    cwd_path = Path(cwd).expanduser().resolve() if cwd is not None else None
     if manifest is not None:
         if cwd_path is None:
             raise ValueError("manifest requires cwd so base_manifest.yaml has a target directory.")
@@ -36,14 +37,8 @@ def invoke(
     if "mix_stderr" in inspect.signature(CliRunner).parameters:
         runner_kwargs["mix_stderr"] = False
     runner = CliRunner(**runner_kwargs)
-    original_cwd = Path.cwd()
-    if cwd_path is not None:
-        os.chdir(cwd_path)
-    try:
+    with use_working_dir(cwd_path):
         return runner.invoke(app.click_command, args or [], env=invoke_env)
-    finally:
-        if cwd_path is not None:
-            os.chdir(original_cwd)
 
 
 def _write_manifest_fixture(cwd: Path, manifest: Mapping[str, Any]) -> None:

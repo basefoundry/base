@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import os
 import sys
 import time
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
+
+_WORKING_DIRECTORY_OVERRIDE: contextvars.ContextVar[Path | None] = contextvars.ContextVar(
+    "base_cli_working_directory_override",
+    default=None,
+)
 
 
 def base_state_root(home: Path | None = None) -> Path:
@@ -19,6 +27,23 @@ def base_cache_root(home: Path | None = None) -> Path:
     if sys.platform == "darwin":
         return root / "Library" / "Caches" / "base"
     return root / ".cache" / "base"
+
+
+def current_working_dir() -> Path:
+    return _WORKING_DIRECTORY_OVERRIDE.get() or Path.cwd()
+
+
+@contextlib.contextmanager
+def use_working_dir(path: Path | None) -> Iterator[None]:
+    if path is None:
+        yield
+        return
+
+    token = _WORKING_DIRECTORY_OVERRIDE.set(path.expanduser().resolve())
+    try:
+        yield
+    finally:
+        _WORKING_DIRECTORY_OVERRIDE.reset(token)
 
 
 def make_run_id() -> str:

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TextIO
 
 from .context import get_current_context
+from .paths import current_working_dir
 from .redaction import redact_argv
 
 
@@ -107,7 +108,7 @@ def _source_path(record: logging.LogRecord) -> str:
     project_root = _active_project_root()
     if project_root is not None:
         candidates.append(project_root)
-    candidates.append(Path.cwd())
+    candidates.append(current_working_dir())
 
     for root in candidates:
         try:
