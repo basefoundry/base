@@ -17,6 +17,9 @@ class ProjectCommandError(RuntimeError):
     pass
 
 
+PROJECT_COMMAND_TIMEOUT_SECONDS = 120
+
+
 @dataclass(frozen=True)
 class ProjectCommandResult:
     returncode: int
@@ -53,9 +56,26 @@ def format_project_command(command: list[str]) -> str:
     return shlex.join(redact_text_value(arg) for arg in command)
 
 
-def run_project_command(command: list[str], *, error_context: str) -> ProjectCommandResult:
+def run_project_command(
+    command: list[str],
+    *,
+    error_context: str,
+    timeout_seconds: int = PROJECT_COMMAND_TIMEOUT_SECONDS,
+) -> ProjectCommandResult:
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout = exc.timeout if exc.timeout is not None else timeout_seconds
+        raise ProjectCommandError(
+            f"Timed out running {error_context} after {timeout} seconds. "
+            f"Command: {format_project_command(command)}"
+        ) from exc
     except OSError as exc:
         raise ProjectCommandError(
             f"Could not run {error_context}: {exc}. Command: {format_project_command(command)}"
