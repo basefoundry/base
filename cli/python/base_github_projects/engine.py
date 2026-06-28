@@ -8,6 +8,7 @@ from pathlib import Path
 
 import base_cli
 import click
+from base_projects.command_helpers import ProjectUsageError, github_repo_spec
 
 from . import graphql_queries as queries
 from .project_configure import standard_template_view_errors
@@ -21,10 +22,6 @@ from .project_model import SelectFieldSpec, SelectOption
 from .project_config import ProjectConfig, ProjectConfigError
 from .project_config import read_project_config as _read_project_config
 from .project_errors import missing_issue_field_option_message
-
-
-class ProjectUsageError(RuntimeError):
-    pass
 
 
 class ProjectError(RuntimeError):
@@ -487,15 +484,7 @@ def infer_repo_from_git() -> str | None:
     )
     if result.returncode != 0:
         return None
-    remote = result.stdout.strip()
-    if remote.startswith("git@github.com:"):
-        remote = remote.removeprefix("git@github.com:")
-    elif remote.startswith("https://github.com/"):
-        remote = remote.removeprefix("https://github.com/")
-    else:
-        return None
-    remote = remote.removesuffix(".git")
-    return remote if "/" in remote else None
+    return github_repo_spec(result.stdout)
 
 
 def run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:

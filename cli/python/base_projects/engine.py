@@ -3,9 +3,7 @@ from __future__ import annotations
 # pylint: disable=too-many-lines
 
 import json
-import subprocess
 import shlex
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +14,11 @@ from base_cli.config import load_user_config
 from base_cli.config import user_config_path
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
+from base_projects.command_helpers import ProjectCommandError as ProjectRunnerError
+from base_projects.command_helpers import ProjectUsageError
+from base_projects.command_helpers import github_repo_spec
+from base_projects.command_helpers import run_project_command
+from base_projects.command_helpers import write_project_command_output
 from base_projects.project_discovery import Project
 from base_projects.project_discovery import discover_projects_cached
 from base_projects.project_discovery import find_project_in_projects
@@ -193,10 +196,6 @@ def dispatch_projects_command(
         command,
     )
     return 2
-
-
-class ProjectUsageError(RuntimeError):
-    pass
 
 
 def require_argument_count(command: str, arguments: tuple[str, ...], minimum: int, maximum: int) -> None:
@@ -572,17 +571,7 @@ def is_workspace_init_path_source(workspace_source: str) -> bool:
 
 
 def workspace_init_github_repo_spec(workspace_source: str) -> str | None:
-    parsed = urlparse(workspace_source)
-    if parsed.scheme and parsed.hostname == "github.com":
-        return github_repo_spec_from_path(parsed.path)
-
-    git_ssh_prefix = "git@github.com:"
-    if workspace_source.startswith(git_ssh_prefix):
-        return github_repo_spec_from_path(workspace_source[len(git_ssh_prefix) :])
-
-    if "/" in workspace_source and not parsed.scheme:
-        return github_repo_spec_from_path(workspace_source)
-    return None
+    return github_repo_spec(workspace_source, allow_path=True)
 
 
 def resolve_workspace_config_repo_path(
@@ -628,15 +617,13 @@ def clone_workspace_config_repo(ctx: base_cli.Context, repo_spec: str, target: P
     if dry_run:
         command.append("--dry-run")
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
-    except OSError as exc:
-        raise WorkspaceManifestError(
-            f"Could not run basectl repo clone for workspace source '{repo_spec}': {exc}"
-        ) from exc
-    if result.stdout:
-        print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+        result = run_project_command(
+            command,
+            error_context=f"basectl repo clone for workspace source '{repo_spec}'",
+        )
+    except ProjectRunnerError as exc:
+        raise WorkspaceManifestError(str(exc)) from exc
+    write_project_command_output(result)
     if result.returncode != 0:
         raise WorkspaceManifestError(f"Workspace source clone failed for '{repo_spec}'.")
 
@@ -769,15 +756,15 @@ def clone_workspace_repo(
         command.append("--dry-run")
 
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
-    except OSError as exc:
-        ctx.log.error("Could not run basectl repo clone for repository '%s': %s", repo.name, exc)
+        result = run_project_command(
+            command,
+            error_context=f"basectl repo clone for repository '{repo.name}'",
+        )
+    except ProjectRunnerError as exc:
+        ctx.log.error(str(exc))
         return 1
 
-    if result.stdout:
-        print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+    write_project_command_output(result)
     if result.returncode == 0:
         return 0
 
@@ -789,26 +776,7 @@ def workspace_clone_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
     if repo.url is None:
         return repo.name
 
-    url = repo.url
-    parsed = urlparse(url)
-    if parsed.scheme and parsed.hostname == "github.com":
-        return github_repo_spec_from_path(parsed.path)
-
-    git_ssh_prefix = "git@github.com:"
-    if url.startswith(git_ssh_prefix):
-        return github_repo_spec_from_path(url[len(git_ssh_prefix) :])
-
-    return None
-
-
-def github_repo_spec_from_path(path: str) -> str | None:
-    normalized = path.strip().lstrip("/")
-    if normalized.endswith(".git"):
-        normalized = normalized[:-4]
-    parts = normalized.split("/")
-    if len(parts) != 2 or not all(parts):
-        return None
-    return f"{parts[0]}/{parts[1]}"
+    return github_repo_spec(repo.url)
 
 
 def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
