@@ -38,14 +38,14 @@ def workspace_configure_from_options(
 ) -> int:
     if options.output_format != "text":
         ctx.log.error("Unsupported output format '%s'. Expected: text.", options.output_format)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, options.workspace)
         manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, options.workspace_manifest))
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     return workspace_configure_command(ctx, workspace_root, manifest, dry_run=options.dry_run)
 
@@ -59,7 +59,7 @@ def workspace_configure_command(
 ) -> int:
     if ctx.base_home is None:
         ctx.log.error("BASE_HOME is required to configure workspace repositories.")
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     basectl = ctx.base_home / "bin" / "basectl"
     targets = workspace_configure_targets(workspace_root, workspace_manifest)
@@ -76,7 +76,7 @@ def workspace_configure_command(
         "Workspace configure completed: "
         f"configured={counts.configured} skipped={counts.skipped} failed={counts.failed}."
     )
-    return 1 if counts.failed else 0
+    return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
 
 
 def workspace_configure_targets(
@@ -163,17 +163,17 @@ def configure_workspace_repo(
         result = subprocess.run(command, check=False, capture_output=True, text=True)
     except OSError as exc:
         ctx.log.error("Could not run basectl repo configure for repository '%s': %s", target.name, exc)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     if result.stdout:
         print(result.stdout, end="")
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr)
     if result.returncode == 0:
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     ctx.log.error("Configure failed for repository '%s'.", target.name)
-    return 1
+    return base_cli.ExitCode.FAILURE
 
 
 def print_workspace_configure_header(

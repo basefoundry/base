@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+import base_cli
+
 from .project_configure import ConfigureDryRunPlan, ProjectReplacement
 from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
 
@@ -37,7 +39,7 @@ def configure_command(args: Any, ops: Any) -> int:
     if errors:
         for action in errors:
             print(f"ERROR   {action.name}  {action.message}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
     if args.dry_run:
         render_dry_run_configure(
             args,
@@ -48,7 +50,7 @@ def configure_command(args: Any, ops: Any) -> int:
                 project_config=project_config,
             ),
         )
-        return 0
+        return base_cli.ExitCode.SUCCESS
     project = prepare_configure_project(
         ConfigureExecution(
             owner=owner,
@@ -68,7 +70,7 @@ def configure_command(args: Any, ops: Any) -> int:
     apply_project_config_defaults(project.project_id, fields, project_config, ops)
     close_replacement_project(replacement, ops)
     print(f"✓ Configured GitHub Project {args.project_title}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def replacement_plan_for_args(

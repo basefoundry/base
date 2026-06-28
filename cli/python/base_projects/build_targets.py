@@ -30,7 +30,7 @@ def build_targets_project_from_args(
 ) -> int:
     if len(arguments) < 1:
         ctx.log.error("Command 'build-targets' requires at least 1 argument (project name); got %d.", len(arguments))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     return build_targets_project_command(ctx, arguments[0], arguments[1:], workspace, resolve_project)
 
 
@@ -42,7 +42,7 @@ def list_build_targets_from_args(
 ) -> int:
     if len(arguments) != 1:
         ctx.log.error("Command 'build-target-list' requires exactly 1 argument (project name); got %d.", len(arguments))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     return list_build_targets_command(ctx, arguments[0], workspace, resolve_project)
 
 
@@ -55,7 +55,7 @@ def build_targets_project_command(
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = resolve_project(ctx, project_name, workspace)
@@ -63,11 +63,11 @@ def build_targets_project_command(
         targets = selected_build_targets(project, manifest, target_names)
     except (RuntimeError, ManifestError, BuildTargetError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     for target_name, target_config, working_dir in targets:
         print_build_target(project, manifest, target_name, target_config, working_dir)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def list_build_targets_command(
@@ -78,7 +78,7 @@ def list_build_targets_command(
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     try:
         project = resolve_project(ctx, project_name, workspace)
@@ -86,11 +86,11 @@ def list_build_targets_command(
         targets = all_build_targets(project, manifest)
     except (RuntimeError, ManifestError, BuildTargetError) as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     for target_name, target_config, working_dir in targets:
         print_build_target(project, manifest, target_name, target_config, working_dir)
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def print_build_target(

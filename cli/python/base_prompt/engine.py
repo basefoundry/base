@@ -51,14 +51,14 @@ def run(ctx: base_cli.Context, prompt_name: str | None) -> int:
             raise PromptUsageError("The 'prompt' command requires 'list' or a prompt name.")
         prompt = prompt_definition(prompt_name)
         print(render_prompt(ctx.base_home, prompt), end="")
-        return 0
+        return base_cli.ExitCode.SUCCESS
     except PromptUsageError as exc:
         print_usage(file=sys.stderr)
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     except PromptError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
 
 def print_usage(file=sys.stdout) -> None:
@@ -80,7 +80,7 @@ Purpose:
 def list_prompts() -> int:
     for prompt in PROMPTS:
         print(f"{prompt.name}\t{prompt.description}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def prompt_definition(name: str) -> PromptDefinition:

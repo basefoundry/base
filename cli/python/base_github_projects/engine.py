@@ -73,14 +73,14 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
     except ProjectUsageError as exc:
         print_usage(file=sys.stderr)
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     except ProjectAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         print("Run `gh auth refresh -h github.com -s project` and retry.", file=sys.stderr)
         return 3
     except ProjectError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
 
 
 def print_usage(file=sys.stdout) -> None:
@@ -194,11 +194,11 @@ def apply_spaced_option(state: OptionState, remaining: list[str], index: int, *,
     option = remaining[index]
     if option in PROJECT_VALUE_OPTIONS:
         apply_project_option(state, option, option_value(remaining, index))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     if allow_fields and option in ISSUE_FIELD_OPTIONS:
         state.field_values[option[2:]] = option_value(remaining, index)
-        return 2
-    return 0
+        return base_cli.ExitCode.USAGE_ERROR
+    return base_cli.ExitCode.SUCCESS
 
 
 def option_value(remaining: list[str], index: int) -> str:
@@ -294,7 +294,7 @@ def issue_defaults_command(args: ProjectArguments) -> int:
         value = config.issue_defaults.get(key)
         if value:
             print(f"{key}\t{value}")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def project_field_defaults_for_config(config: ProjectConfig) -> dict[str, str]:

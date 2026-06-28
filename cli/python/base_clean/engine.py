@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
 def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dry_run: bool) -> int:
     if not older_than and not keep_last:
         ctx.log.error("One of '--older-than' or '--keep-last' is required.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     cache_root = base_cache_root()
     ctx.log.debug("Scanning Base cache root '%s'.", cache_root)
@@ -44,7 +44,7 @@ def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dr
             threshold_seconds = parse_age(older_than)
         except ValueError as exc:
             ctx.log.error(str(exc))
-            return 2
+            return base_cli.ExitCode.USAGE_ERROR
         cutoff = time.time() - threshold_seconds
         candidates.extend(find_clean_candidates(cache_root, cutoff, ctx.log))
 
@@ -53,14 +53,14 @@ def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dr
             keep_count = parse_keep_last(keep_last)
         except ValueError as exc:
             ctx.log.error(str(exc))
-            return 2
+            return base_cli.ExitCode.USAGE_ERROR
         candidates.extend(find_log_retention_candidates(cache_root, keep_count, ctx.log))
 
     unique_candidates = tuple(deduplicate_candidates(candidates))
 
     if not unique_candidates:
         ctx.log.info("No Base runtime artifacts matched the clean criteria.")
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     for candidate in unique_candidates:
         action = "Would remove" if dry_run else "Removing"
@@ -73,7 +73,7 @@ def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dr
         "Would remove" if dry_run else "Removed",
         len(unique_candidates),
     )
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def parse_age(value: str) -> int:

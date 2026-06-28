@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import base_cli
+
 
 LOG_LINE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}\s+"
@@ -106,10 +108,9 @@ def main(argv: list[str] | None = None) -> int:
                 stderr_file=args.stderr_file,
             )
         )
-        return 0
-    return 2
+        return base_cli.ExitCode.SUCCESS
+    return base_cli.ExitCode.USAGE_ERROR
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

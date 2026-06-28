@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import base_cli
+
 from .checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 
 
@@ -269,17 +271,17 @@ def main(argv: list[str] | None = None) -> int:
         status = payload_status(json.loads(payload))
         if args.record_path and args.project and args.checked_at:
             write_check_record(Path(args.record_path), args.project, status, args.checked_at)
-        return 0 if status != "error" else 1
+        return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
     if args.command == "doctor-json":
         checks = tuple(parse_check(finding) for finding in args.finding)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
         payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
         print(payload, end="")
         status = payload_status(json.loads(payload))
-        return 0 if status != "error" else 1
+        return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
     if args.command == "record-check":
         write_check_record(Path(args.output_path), args.project, args.status, args.checked_at)
-        return 0
+        return base_cli.ExitCode.SUCCESS
     if args.command == "project-venv-check-json":
         print(
             render_project_venv_check_payload(
@@ -291,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
             end="",
         )
-        return 0 if args.status != "error" else 1
+        return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
     if args.command == "project-venv-doctor-json":
         print(
             render_project_venv_doctor_payload(
@@ -302,9 +304,9 @@ def main(argv: list[str] | None = None) -> int:
             ),
             end="",
         )
-        return 0 if args.status != "error" else 1
+        return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
     parser.error(f"Unsupported diagnostics command '{args.command}'.")
-    return 2
+    return base_cli.ExitCode.USAGE_ERROR
 
 
 if __name__ == "__main__":

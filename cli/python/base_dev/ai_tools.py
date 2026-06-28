@@ -59,10 +59,10 @@ def setup_ai_tools(ctx: base_cli.Context, dry_run: bool) -> int:
                 run_command(ctx, list(installer_command))
     except ArtifactError as exc:
         ctx.log.error(str(exc))
-        return 1
+        return base_cli.ExitCode.FAILURE
 
     ctx.log.info("Base 'ai' prerequisite setup is complete.")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def ai_remote_installer_urls() -> tuple[str, ...]:

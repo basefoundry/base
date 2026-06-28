@@ -86,7 +86,7 @@ def run(
         line_count = parse_positive_int("--lines", lines)
     except ValueError as exc:
         ctx.log.error(str(exc))
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     options = LogCommandOptions(
         command_filter=command_filter,
@@ -99,7 +99,7 @@ def run(
     selected_actions = sum(1 for selected in (path_only, tail, open_file) if selected)
     if selected_actions > 1:
         ctx.log.error("Choose only one of --path, --tail, or --open.")
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
 
     cache_root = base_cache_root()
     ctx.log.debug("Scanning Base cache root '%s'.", cache_root)
@@ -112,23 +112,23 @@ def run(
 def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandOptions) -> int:
     if options.path_only or options.tail or options.open_file:
         ctx.log.error("No Base CLI logs found.")
-        return 1
+        return base_cli.ExitCode.FAILURE
     print(f"No Base CLI logs found under {cache_root / 'cli'}.")
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def run_with_entries(entries: list[LogEntry], options: LogCommandOptions) -> int:
     newest = entries[0]
     if options.path_only:
         print(newest.path)
-        return 0
+        return base_cli.ExitCode.SUCCESS
     if options.tail:
         return tail_log(newest.path, options.lines)
     if options.open_file:
         return open_log(newest.path)
 
     print_log_table(entries[: options.limit])
-    return 0
+    return base_cli.ExitCode.SUCCESS
 
 
 def recent_logs(cache_root: Path, command_filter: str | None = None) -> list[LogEntry]:
@@ -305,22 +305,22 @@ def tail_log(path: Path, lines: int) -> int:
     tail = shutil.which("tail")
     if tail is None:
         print(f"ERROR: tail was not found on PATH. Log path: {path}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
     os.execv(tail, [tail, "-n", str(lines), "-f", str(path)])
-    return 1
+    return base_cli.ExitCode.FAILURE
 
 
 def open_log(path: Path) -> int:
     command = os.environ.get("PAGER") or os.environ.get("EDITOR")
     if not command:
         print(path)
-        return 0
+        return base_cli.ExitCode.SUCCESS
 
     args = shlex.split(command)
     if not args:
         print(path)
-        return 0
+        return base_cli.ExitCode.SUCCESS
     if shutil.which(args[0]) is None:
         print(f"ERROR: {args[0]} was not found on PATH. Log path: {path}", file=sys.stderr)
-        return 1
+        return base_cli.ExitCode.FAILURE
     return subprocess.call([*args, str(path)])
