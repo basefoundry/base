@@ -128,3 +128,20 @@ Run only integration tests with:
 BASE_INTEGRATION_PYTHON="$HOME/.base.d/base/.venv/bin/python" \
   bats tests/integration/base_workflows.bats
 ```
+
+## Contract Checks
+
+Contract checks are the narrow review-hardening layer for documented behavior
+that has drifted in past reviews: workflow policy, workspace manifest URL
+policy, project installer integrity, and CLI docs/help/completion alignment.
+They are mapped in [Base Contracts](contracts.md).
+
+Run the current contract slice with:
+
+```bash
+tests/contracts/run.sh
+```
+
+Use this runner before or during large review-batch triage, and for PRs that
+edit the mapped contract areas. It composes existing focused tests and should
+stay smaller than the full source-checkout suite.

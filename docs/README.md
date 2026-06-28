@@ -80,6 +80,8 @@ reference. The filename should answer "what is this about?"
   pre-1.0.0 consumer upgrade proof and records rehearsal results.
 - [Testing](testing.md) explains Base's Python, BATS, and hermetic integration
   test layers.
+- [Base Contracts](contracts.md) maps documented behavior contracts to their
+  source of truth and executable enforcement checks.
 - [CI Supply Chain Policy](ci-supply-chain-policy.md) defines GitHub Action
   pinning, Python dependency auditing, and package-manager trust boundaries for
   repository workflows.
