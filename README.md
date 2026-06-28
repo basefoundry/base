@@ -591,7 +591,7 @@ Set a `BASE_PROJECT_TOKEN` Actions secret with Project write access so that
 workflow can add issue items and apply the repo Project defaults on issue open,
 reopen, and close events. `repo configure` checks for that secret when Project
 support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
-the workflow would otherwise fall back to the default Actions token.
+the required secret is missing.
 Pass `--no-protect-default-branch` when a repository intentionally skips that
 ruleset. Pass `--no-project` when a repository intentionally skips Base-managed
 Project metadata, or `--project`, `--project-owner`, and

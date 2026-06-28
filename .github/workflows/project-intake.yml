@@ -33,12 +33,18 @@ jobs:
       BASE_PROJECT_DEFAULT_SIZE: S
       BASE_PROJECT_DEFAULT_AREA: Product
       BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish
-      GH_TOKEN: ${{ secrets.BASE_PROJECT_TOKEN || github.token }}
+      GH_TOKEN: ${{ secrets.BASE_PROJECT_TOKEN }}
     steps:
       - name: Reconcile Project item
         shell: bash
         run: |
           set -euo pipefail
+
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::BASE_PROJECT_TOKEN secret is required for Project Intake."
+            echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY"
+            exit 1
+          fi
 
           issue_number="${BASE_PROJECT_ISSUE_NUMBER:-}"
           if [[ -z "$issue_number" ]]; then
@@ -59,7 +65,6 @@ jobs:
           if [[ -z "$project_number" ]]; then
             echo "::error::GitHub Project '$BASE_PROJECT_TITLE' was not found for owner '$BASE_PROJECT_OWNER'."
             echo "::error::If this Project exists, set BASE_PROJECT_TOKEN with user Project read/write access."
-            echo "::error::The default GitHub Actions token cannot access user-level Projects."
             echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY"
             exit 1
           fi

@@ -68,3 +68,24 @@ def test_macos_smoke_tests_cover_shell_compatibility_surfaces() -> None:
 
     assert "lib/bash/version/tests/lib_version.bats" in run_commands
     assert "lib/shell/completions/tests/completions.bats" in run_commands
+
+
+def test_project_intake_requires_base_project_token() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "project-intake.yml")
+    sync_job = workflow["jobs"]["sync"]
+    run_command = sync_job["steps"][0]["run"]
+
+    assert sync_job["env"]["GH_TOKEN"] == "${{ secrets.BASE_PROJECT_TOKEN }}"
+    assert "github.token" not in run_command
+    assert "BASE_PROJECT_TOKEN secret is required for Project Intake." in run_command
+    assert "gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY" in run_command
+
+
+def test_skills_workflow_generates_current_guidance_without_indent_stripping() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "skills.yml")
+    create_steps = workflow["jobs"]["create"]["steps"]
+    run_commands = "\n".join(step.get("run", "") for step in create_steps if isinstance(step, dict))
+
+    assert "AI_CONTEXT.md" not in run_commands
+    assert ".ai-context/README.md" in run_commands
+    assert "sed -i 's/^" not in run_commands

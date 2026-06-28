@@ -145,7 +145,8 @@ repo-named Project and set `Status`, `Priority`, `Size`, `Area`, and
 `Initiative` from the generated defaults on issue open, reopen, and close
 events. `basectl repo configure` verifies that the secret exists when Project
 support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
-the workflow would otherwise fall back to the default Actions token.
+the required secret is missing. Without that secret, Project Intake fails before
+running Project operations.
 Use `basectl gh project` directly for lower-level Project inspection,
 schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
