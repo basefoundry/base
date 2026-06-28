@@ -58,8 +58,12 @@ repos:
     url: https://github.com/codeforester/base.git
   - name: ssh-repo
     url: ssh://git@github.com/codeforester/base.git
+  - name: git-protocol-repo
+    url: git://github.com/codeforester/base.git
   - name: scp-repo
     url: git@github.com:codeforester/base.git
+  - name: file-repo
+    url: file:///opt/repos/base.git
   - name: local-repo
     url: {local_repo}
 """,
@@ -72,10 +76,33 @@ repos:
             [
                 "https://github.com/codeforester/base.git",
                 "ssh://git@github.com/codeforester/base.git",
+                "git://github.com/codeforester/base.git",
                 "git@github.com:codeforester/base.git",
+                "file:///opt/repos/base.git",
                 str(local_repo),
             ],
         )
+
+    def test_rejects_cleartext_http_repo_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "workspace.yaml"
+            write_workspace_manifest(
+                path,
+                """
+schema_version: 1
+workspace:
+  name: demo-workspace
+repos:
+  - name: base
+    url: http://github.com/codeforester/base.git
+""",
+            )
+
+            with self.assertRaisesRegex(
+                WorkspaceManifestError,
+                "repos\\[1\\]\\.url uses insecure cleartext HTTP",
+            ):
+                read_workspace_manifest(path)
 
     def test_rejects_repo_url_without_git_url_form(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
