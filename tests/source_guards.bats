@@ -42,6 +42,14 @@ EOF
     chmod +x "$TEST_MOCKBIN/git"
 }
 
+write_prompt_git_head() {
+    local repo_dir="$1"
+    local head_value="$2"
+
+    mkdir -p "$repo_dir/.git"
+    printf '%s\n' "$head_value" > "$repo_dir/.git/HEAD"
+}
+
 @test "Bash source guard examples use explicit success returns" {
     grep -F '[[ -n "${_base_example_lib_sourced:-}" ]] && return 0' "$BASE_REPO_ROOT/STANDARDS.md"
 }
@@ -128,16 +136,22 @@ EOF
     [[ "$output" == *"declare -r _base_defaults_sourced=\"1\""* ]]
 }
 
-@test "Bash defaults git prompt uses one Git process per branch prompt render" {
+@test "Bash defaults git prompt reads branch metadata without Git subprocesses" {
+    local repo_dir="$TEST_TMPDIR/bash-repo"
+
     write_prompt_git_stub
+    write_prompt_git_head "$repo_dir" "ref: refs/heads/main"
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_TEST_GIT_ARGS="$TEST_TMPDIR/bash-git-args" \
+        BASE_TEST_REPO="$repo_dir" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
+            cd "$BASE_TEST_REPO"
             printf "first=%s\n" "$(_base_bash_defaults_git_prompt)"
             printf "second=%s\n" "$(_base_bash_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
@@ -147,8 +161,33 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"first=(main) "* ]]
     [[ "$output" == *"second=(main) "* ]]
-    [[ "$output" == *"git_calls=2"* ]]
-    [[ "$output" == *"git_args=rev-parse --is-inside-work-tree --abbrev-ref HEAD|rev-parse --is-inside-work-tree --abbrev-ref HEAD|"* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+    [[ "$output" == *"git_args="* ]]
+}
+
+@test "Bash defaults git prompt reads detached HEAD metadata without Git subprocesses" {
+    local repo_dir="$TEST_TMPDIR/bash-detached-repo"
+
+    write_prompt_git_stub
+    write_prompt_git_head "$repo_dir" "abc1234567890"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_GIT_ARGS="$TEST_TMPDIR/bash-detached-git-args" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
+            source "$BASE_HOME/lib/shell/bash_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_bash_defaults_git_prompt)"
+            printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(abc1234) "* ]]
+    [[ "$output" == *"git_calls=0"* ]]
 }
 
 @test "Bash defaults git prompt keeps non-Git directories quiet with one probe" {
@@ -161,6 +200,7 @@ EOF
         BASE_TEST_GIT_MODE="non-git" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
             printf "prompt=%s\n" "$(_base_bash_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
@@ -169,8 +209,8 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"prompt="* ]]
-    [[ "$output" == *"git_calls=1"* ]]
-    [[ "$output" == *"git_args=rev-parse --is-inside-work-tree --abbrev-ref HEAD|"* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+    [[ "$output" == *"git_args="* ]]
 }
 
 @test "Zsh defaults re-sourcing preserves local overrides" {
@@ -197,17 +237,23 @@ EOF
     [[ "$output" == *"typeset -r _base_defaults_sourced=1"* ]]
 }
 
-@test "Zsh defaults git prompt uses one Git process per branch prompt render" {
+@test "Zsh defaults git prompt reads branch metadata without Git subprocesses" {
     command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+    local repo_dir="$TEST_TMPDIR/zsh-repo"
+
     write_prompt_git_stub
+    write_prompt_git_head "$repo_dir" "ref: refs/heads/main"
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_TEST_GIT_ARGS="$TEST_TMPDIR/zsh-git-args" \
+        BASE_TEST_REPO="$repo_dir" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
+            cd "$BASE_TEST_REPO"
             printf "first=%s\n" "$(_base_zsh_defaults_git_prompt)"
             printf "second=%s\n" "$(_base_zsh_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
@@ -217,8 +263,34 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"first=(main) "* ]]
     [[ "$output" == *"second=(main) "* ]]
-    [[ "$output" == *"git_calls=2"* ]]
-    [[ "$output" == *"git_args=rev-parse --is-inside-work-tree --abbrev-ref HEAD|rev-parse --is-inside-work-tree --abbrev-ref HEAD|"* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+    [[ "$output" == *"git_args="* ]]
+}
+
+@test "Zsh defaults git prompt reads detached HEAD metadata without Git subprocesses" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+    local repo_dir="$TEST_TMPDIR/zsh-detached-repo"
+
+    write_prompt_git_stub
+    write_prompt_git_head "$repo_dir" "abc1234567890"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_GIT_ARGS="$TEST_TMPDIR/zsh-detached-git-args" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
+            source "$BASE_HOME/lib/shell/zsh_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+            printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(abc1234) "* ]]
+    [[ "$output" == *"git_calls=0"* ]]
 }
 
 @test "Zsh defaults git prompt keeps non-Git directories quiet with one probe" {
@@ -232,6 +304,7 @@ EOF
         BASE_TEST_GIT_MODE="non-git" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
             printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
@@ -240,6 +313,6 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"prompt="* ]]
-    [[ "$output" == *"git_calls=1"* ]]
-    [[ "$output" == *"git_args=rev-parse --is-inside-work-tree --abbrev-ref HEAD|"* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+    [[ "$output" == *"git_args="* ]]
 }

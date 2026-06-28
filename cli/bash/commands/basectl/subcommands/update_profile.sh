@@ -65,10 +65,29 @@ base_update_profile_source_line() {
 
 base_update_profile_file_ends_with_newline() {
     local target_file="$1"
-    local last_byte
+    local line=""
 
-    last_byte="$(tail -c 1 "$target_file" 2>/dev/null || true)"
-    [[ -z "$last_byte" ]]
+    [[ -r "$target_file" && -s "$target_file" ]] || return 0
+    while IFS= read -r line; do
+        line=""
+    done < "$target_file" 2>/dev/null || return 0
+
+    [[ -z "$line" ]]
+}
+
+base_update_profile_file_last_line_is_empty() {
+    local target_file="$1"
+    local last_line=""
+    local line=""
+
+    [[ -r "$target_file" && -s "$target_file" ]] || return 0
+    while IFS= read -r line; do
+        last_line="$line"
+        line=""
+    done < "$target_file" 2>/dev/null || return 0
+    [[ -z "$line" ]] || last_line="$line"
+
+    [[ -z "$last_line" ]]
 }
 
 base_update_profile_section_lines() {
@@ -83,8 +102,6 @@ base_update_profile_section_lines() {
 base_update_profile_prepare_section_spacing() {
     local target_file="$1"
     local start_marker="$2"
-    local last_line=""
-
     [[ -s "$target_file" ]] || return 0
     grep -qF -- "$start_marker" "$target_file" && return 0
 
@@ -93,8 +110,7 @@ base_update_profile_prepare_section_spacing() {
         return 0
     fi
 
-    last_line="$(tail -n 1 "$target_file" 2>/dev/null || true)"
-    [[ -z "$last_line" ]] && return 0
+    base_update_profile_file_last_line_is_empty "$target_file" && return 0
 
     printf '\n' >> "$target_file"
 }
