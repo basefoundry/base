@@ -6,6 +6,33 @@ CONTRACTS_DOC = REPO_ROOT / "docs" / "contracts.md"
 CONTRACT_RUNNER = REPO_ROOT / "tests" / "contracts" / "run.sh"
 
 
+def contract_registry_rows() -> list[dict[str, str]]:
+    text = CONTRACTS_DOC.read_text(encoding="utf-8")
+    headers: list[str] = []
+    rows: list[dict[str, str]] = []
+    in_registry = False
+
+    for line in text.splitlines():
+        if line == "## Contract Registry":
+            in_registry = True
+            continue
+        if in_registry and line.startswith("## ") and rows:
+            break
+        if not in_registry or not line.startswith("|"):
+            continue
+
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not headers:
+            headers = cells
+            continue
+        if all(set(cell) <= {"-"} for cell in cells):
+            continue
+        if len(cells) == len(headers):
+            rows.append(dict(zip(headers, cells)))
+
+    return rows
+
+
 def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> None:
     text = CONTRACTS_DOC.read_text(encoding="utf-8")
 
@@ -23,6 +50,25 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
     assert "Source of truth" in text
     assert "Enforced by" in text
     assert "Failure mode" in text
+
+
+def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
+    rows = contract_registry_rows()
+
+    assert {row["Contract"] for row in rows} == {
+        "GitHub workflow policy",
+        "Workspace manifest repository URL policy",
+        "Workspace manifest source policy",
+        "Project installer template integrity",
+        "CLI local log file privacy",
+        "CLI docs, help, and completion drift",
+        "Project metadata defaults",
+    }
+    for row in rows:
+        assert row["Source of truth"], row
+        assert row["Enforced by"], row
+        assert row["Failure mode"], row
+        assert row["Area"], row
 
 
 def test_contract_runner_composes_existing_policy_checks() -> None:
