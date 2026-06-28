@@ -155,6 +155,7 @@ sha256_file() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Base bootstrap"* ]]
     [[ "$output" == *"Installing Homebrew."* ]]
+    [[ "$output" == *"Homebrew installer trust policy: using Homebrew's official mutable installer without checksum verification."* ]]
     [[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
     [[ "$output" == *"Installing Git through Homebrew."* ]]
     [[ "$output" == *"[DRY-RUN] Would run: brew install git"* ]]

@@ -163,6 +163,7 @@ assert_base_init_loads() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"A supported Bash was not found; bootstrapping Homebrew Bash before running basectl."* ]]
     [[ "$output" == *"Installing Homebrew."* ]]
+    [[ "$output" == *"Homebrew installer trust policy: using Homebrew's official mutable installer without checksum verification."* ]]
     [[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: brew install bash"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: /opt/homebrew/bin/bash $TEST_HOME/work/base/bin/basectl setup"* ]]

@@ -163,6 +163,11 @@ bootstrap_homebrew_installer_sha256() {
     fi
 }
 
+bootstrap_log_homebrew_mutable_policy() {
+    bootstrap_log "Homebrew installer trust policy: using Homebrew's official mutable installer without checksum verification."
+    bootstrap_log "Set BASE_HOMEBREW_INSTALLER_URL and BASE_HOMEBREW_INSTALLER_SHA256 to use a pinned verified installer."
+}
+
 bootstrap_fetch_homebrew_installer() {
     local installer_url="$1"
     local target="$2"
@@ -242,6 +247,7 @@ bootstrap_install_homebrew() {
         return 0
     fi
 
+    bootstrap_log_homebrew_mutable_policy
     if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
         bootstrap_log "[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from $installer_url>"
         printf -v "$result_var" '%s' brew
