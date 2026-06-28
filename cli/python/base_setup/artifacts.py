@@ -36,10 +36,11 @@ def homebrew_no_auto_update_env() -> dict[str, str]:
     return env
 
 
-def homebrew_package_outdated(package: str) -> bool:
+def homebrew_package_outdated(package: str, timeout_seconds: int | None = None) -> bool:
     completed = process.run_capture(
         ["brew", "outdated", package],
         env=homebrew_no_auto_update_env(),
+        timeout_seconds=timeout_seconds,
     )
     return homebrew_outdated_output_contains_package(completed.stdout, package)
 
@@ -154,8 +155,31 @@ def check_homebrew_artifact(
             finding_id="BASE-P032",
             details=artifact_details(definition),
         )
-    if process.run_check(["brew", "list", definition.package]):
-        if homebrew_package_outdated(definition.package):
+    try:
+        installed = process.run_check(
+            ["brew", "list", definition.package],
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+        outdated = installed and homebrew_package_outdated(
+            definition.package,
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=False,
+            message=(
+                f"Homebrew check for artifact '{artifact.name}' timed out after "
+                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
+            finding_id="BASE-P033",
+            status="warn",
+            details=artifact_details(definition),
+        )
+
+    if installed:
+        if outdated:
             return ArtifactCheck(
                 name=artifact.name,
                 ok=False,

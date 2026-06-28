@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import base_cli
 from base_setup.errors import ArtifactError
-from base_setup.process import dry_run_command, run_command
+from base_setup.process import DIAGNOSTIC_TIMEOUT_SECONDS, dry_run_command, run_command
 
 from .checks import DevCheck
 
@@ -106,13 +106,28 @@ def check_ai_tool(tool: AITool) -> DevCheck:
         )
 
     command = [executable_path, *tool.version_args]
-    completed = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
+    version_command = " ".join([tool.name, *tool.version_args])
+    try:
+        completed = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return DevCheck(
+            name=tool.name,
+            ok=False,
+            message=(
+                f"{tool.display_name} version check timed out after "
+                f"{DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry '{version_command}' or run '{_profile_setup_fix('ai')}'.",
+            status="warn",
+            finding_id="BASE-D107",
+        )
     if completed.returncode != 0:
         detail = summarize_command_output(completed.stderr) or summarize_command_output(completed.stdout)
         message = f"{tool.display_name} version check failed with exit {completed.returncode}."

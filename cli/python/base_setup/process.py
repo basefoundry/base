@@ -18,6 +18,7 @@ from .errors import ArtifactError
 
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
+DIAGNOSTIC_TIMEOUT_SECONDS = 10
 REDACTED = "[REDACTED]"
 SECRET_VALUE_RE = re.compile(
     r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key|authorization)[A-Za-z0-9_.:-]*)=\S+"
@@ -80,6 +81,7 @@ def run_capture(
     command: list[str],
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
+    timeout_seconds: int | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
@@ -89,6 +91,7 @@ def run_capture(
         stderr=subprocess.PIPE,
         text=True,
         check=False,
+        timeout=timeout_seconds,
     )
 
 

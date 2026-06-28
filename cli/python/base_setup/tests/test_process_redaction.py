@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import subprocess
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -11,6 +12,24 @@ from base_setup.tests.helpers import fake_context
 
 
 class ProcessCommandRedactionTests(unittest.TestCase):
+    def test_run_capture_passes_timeout_to_subprocess(self) -> None:
+        completed = subprocess.CompletedProcess(["tool", "--version"], 0, stdout="ok\n", stderr="")
+
+        with unittest.mock.patch("base_setup.process.subprocess.run", return_value=completed) as run:
+            result = process.run_capture(["tool", "--version"], timeout_seconds=7)
+
+        self.assertIs(result, completed)
+        run.assert_called_once_with(
+            ["tool", "--version"],
+            cwd=None,
+            env=None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=7,
+        )
+
     def test_run_command_redacts_sensitive_command_arguments_from_failure(self) -> None:
         ctx = fake_context()
         stdout = io.StringIO()

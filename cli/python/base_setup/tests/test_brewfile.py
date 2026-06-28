@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,8 +56,45 @@ class BrewfileTests(unittest.TestCase):
         run_check.assert_called_once_with(
             ["brew", "bundle", "check", f"--file={expected_brewfile}"],
             env=mock.ANY,
+            timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
         self.assertEqual(run_check.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
+
+    def test_brewfile_check_warns_when_probe_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            brewfile = project_root / "Brewfile"
+            brewfile.write_text("brew \"jq\"\n", encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+            expected_brewfile = brewfile.resolve()
+
+            with (
+                mock.patch("base_setup.process.command_exists", return_value=True),
+                mock.patch(
+                    "base_setup.process.run_check",
+                    side_effect=subprocess.TimeoutExpired(
+                        ["brew", "bundle", "check", f"--file={expected_brewfile}"],
+                        delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                    ),
+                ) as run_check,
+            ):
+                check = delegates.check_brewfile(manifest)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P012")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'basectl doctor demo' or inspect Homebrew with 'brew doctor'.")
+        run_check.assert_called_once_with(
+            ["brew", "bundle", "check", f"--file={expected_brewfile}"],
+            env=mock.ANY,
+            timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
     def test_brewfile_skips_brew_bundle_when_dependencies_are_satisfied(self) -> None:
         ctx = fake_context()
@@ -82,6 +120,7 @@ class BrewfileTests(unittest.TestCase):
         run_check.assert_called_once_with(
             ["brew", "bundle", "check", f"--file={expected_brewfile}"],
             env=mock.ANY,
+            timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
         self.assertEqual(run_check.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
         run_command.assert_not_called()

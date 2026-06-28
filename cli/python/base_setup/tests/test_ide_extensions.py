@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -120,12 +121,16 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch(
-            "base_setup.ide.subprocess.run",
+            "base_setup.ide.process.run_capture",
             return_value=mock.Mock(returncode=0, stdout="ms-python.python\n\ngithub.copilot\n", stderr=""),
-        ):
+        ) as run_capture:
             extensions = ide.list_ide_extensions(definition)
 
         self.assertEqual(extensions, {"ms-python.python", "github.copilot"})
+        run_capture.assert_called_once_with(
+            ["code", "--list-extensions"],
+            timeout_seconds=ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
 
 
@@ -133,10 +138,23 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["cursor"]
 
         with mock.patch(
-            "base_setup.ide.subprocess.run",
+            "base_setup.ide.process.run_capture",
             return_value=mock.Mock(returncode=1, stdout="", stderr="extensions unavailable\n"),
         ):
             with self.assertRaisesRegex(ArtifactError, "extensions unavailable"):
+                ide.list_ide_extensions(definition)
+
+    def test_list_ide_extensions_reports_timeout(self) -> None:
+        definition = ide.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch(
+            "base_setup.ide.process.run_capture",
+            side_effect=subprocess.TimeoutExpired(
+                ["code", "--list-extensions"],
+                ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+            ),
+        ):
+            with self.assertRaisesRegex(ArtifactError, "timed out"):
                 ide.list_ide_extensions(definition)
 
 

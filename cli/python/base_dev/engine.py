@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.artifacts import homebrew_package_outdated, reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
-from base_setup.process import command_exists, run_check
+from base_setup.process import DIAGNOSTIC_TIMEOUT_SECONDS, command_exists, run_check
 from base_setup.registry import ArtifactDefinition
 
 from .ai_tools import ai_tool_checks, setup_ai_tools
@@ -373,7 +374,7 @@ def profile_setup_fix(profile: str) -> str:
     return f"basectl setup --profile {profile}"
 
 
-def check_homebrew_artifact(
+def check_homebrew_artifact(  # pylint: disable=too-many-return-statements
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
     profile: str = "dev",
@@ -406,8 +407,30 @@ def check_homebrew_artifact(
             finding_id="BASE-D103",
         )
 
-    if run_check(["brew", "list", definition.package]):
-        if homebrew_package_outdated(definition.package):
+    try:
+        installed = run_check(
+            ["brew", "list", definition.package],
+            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+        outdated = installed and homebrew_package_outdated(
+            definition.package,
+            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return DevCheck(
+            name=artifact.name,
+            ok=False,
+            message=(
+                f"Homebrew check for artifact '{artifact.name}' timed out after "
+                f"{DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'basectl doctor --profile {profile}' or inspect Homebrew with 'brew doctor'.",
+            status="warn",
+            finding_id="BASE-D104",
+        )
+
+    if installed:
+        if outdated:
             return DevCheck(
                 name=artifact.name,
                 ok=False,
@@ -444,7 +467,20 @@ def check_github_cli_auth() -> DevCheck:
             finding_id="BASE-D105",
         )
 
-    ok = run_check(["gh", "auth", "status"])
+    try:
+        ok = run_check(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return DevCheck(
+            name="gh-auth",
+            ok=False,
+            message=f"GitHub CLI authentication check timed out after {DIAGNOSTIC_TIMEOUT_SECONDS} seconds.",
+            fix="Retry 'gh auth status -h github.com' or run 'gh auth login -h github.com'.",
+            status="warn",
+            finding_id="BASE-D106",
+        )
     if ok:
         return DevCheck(
             name="gh-auth",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +35,24 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P011",
         )
 
-    ok = process.run_check(["brew", "bundle", "check", f"--file={brewfile_path}"], env=homebrew_no_auto_update_env())
+    try:
+        ok = process.run_check(
+            ["brew", "bundle", "check", f"--file={brewfile_path}"],
+            env=homebrew_no_auto_update_env(),
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name="brewfile",
+            ok=False,
+            message=(
+                f"Homebrew Brewfile check for '{brewfile_path}' timed out after "
+                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'basectl doctor {manifest.project_name}' or inspect Homebrew with 'brew doctor'.",
+            status="warn",
+            finding_id="BASE-P012",
+        )
     if ok:
         return ArtifactCheck(
             name="brewfile",
@@ -95,7 +113,25 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
 
 
 def check_mise_trust(project_root: Path, mise_path: Path, details: dict[str, object]) -> ArtifactCheck | None:
-    trust_check = process.run_capture(["mise", "trust", "--show"], cwd=project_root)
+    try:
+        trust_check = process.run_capture(
+            ["mise", "trust", "--show"],
+            cwd=project_root,
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=(
+                f"mise trust status check for '{mise_path}' timed out after "
+                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'mise trust --show' in '{project_root}'.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details,
+        )
     trust_text = command_text(trust_check.stdout, trust_check.stderr)
     if trust_check.returncode != 0:
         return ArtifactCheck(
@@ -135,7 +171,25 @@ def check_mise_missing_tools(
     mise_path: Path,
     details: dict[str, object],
 ) -> ArtifactCheck | None:
-    missing_check = process.run_capture(["mise", "ls", "--missing", "--json"], cwd=project_root)
+    try:
+        missing_check = process.run_capture(
+            ["mise", "ls", "--missing", "--json"],
+            cwd=project_root,
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name="mise",
+            ok=False,
+            message=(
+                f"mise missing-tool status check for '{mise_path}' timed out after "
+                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'mise ls --missing --json' in '{project_root}'.",
+            status="warn",
+            finding_id="BASE-P022",
+            details=details,
+        )
     if missing_check.returncode != 0:
         missing_text = command_text(missing_check.stdout, missing_check.stderr)
         if mise_config_untrusted(missing_text):
@@ -209,7 +263,11 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
         raise ArtifactError(f"Homebrew is required to install Brewfile dependencies from '{brewfile_path}'.")
 
     env = homebrew_no_auto_update_env()
-    if process.run_check(check_command, env=env):
+    if process.run_check(
+        check_command,
+        env=env,
+        timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+    ):
         ctx.log.info("Brewfile dependencies are already satisfied for '%s'.", brewfile_path)
         return
 
