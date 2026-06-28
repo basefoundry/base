@@ -7,6 +7,56 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-28
+
+### Added
+
+- Added `basectl docs` as a convenience shortcut to open the Base GitHub README
+  documentation entrypoint, with `--show-url` for non-browser contexts.
+- Added CI setup JSON rendering and a documented CI supply-chain hardening
+  policy for Base-managed bootstrap paths.
+- Added project Python runtime diagnostics and release title placeholder
+  validation.
+- Added optional pinned Homebrew installer support for first-mile bootstrap
+  environments that need a verified installer source.
+- Added direct coverage for Base command helpers, source guards, completions,
+  bootstrap, install, and command-dispatch lifecycle behavior.
+
+### Changed
+
+- Standardized the `basectl` public command lifecycle around space-separated
+  long options, compact usage errors, consistent help routing, and explicit
+  command-level logging options.
+- Routed Python command packages through the shared `base_cli` lifecycle and
+  moved project command metadata, CI JSON rendering, and GitHub Project issue
+  defaults into Python-backed helpers.
+- Improved shell and completion performance by caching project-name completion
+  results, reducing Git prompt subprocess work, and reducing setup/profile
+  subprocess use.
+- Split repository helper ownership into focused `repo installer-template` and
+  `repo agent-guidance` modules, and centralized project command execution
+  helpers for `test`, `build`, `run`, and `demo`.
+- Hardened GitHub and Homebrew workflow handling with structured Homebrew trust
+  parsing, bounded GitHub authentication diagnostics, release-publish recovery
+  guidance, and portable GitHub Bash helper documentation.
+- Improved Base maintainability by normalizing Bash source guards, making the
+  Base home verification contract explicit, enforcing Python future annotation
+  standards, and using explicit error handling in `base-test`.
+
+### Fixed
+
+- Fixed nested and top-level completion parity gaps across Bash and Zsh.
+- Fixed inherited `basectl update` source-guard state so repeated sourced
+  command execution does not leak between invocations.
+- Fixed interactive prompt handling so redirected stdin does not block
+  onboarding and self-demo prompts from reading the terminal.
+- Fixed diagnostic probe duplication and bounded subprocess probes for Base
+  diagnostics.
+- Fixed sensitive value exposure in `basectl config show` and setup command
+  argument logging.
+- Fixed `base_cli` history records to use the effective argv for displayed
+  command history.
+
 ## [1.2.0] - 2026-06-24
 
 ### Added
