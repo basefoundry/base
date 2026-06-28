@@ -482,6 +482,67 @@ class ManifestParsingTests(unittest.TestCase):
         assert manifest.release is not None
         self.assertEqual(manifest.release.runner, "uv")
 
+    def test_reads_manifest_release_title_placeholders(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "release:",
+                        "  github:",
+                        "    repository: codeforester/demo",
+                        "    release_title: \"{repository} {version} {tag} {{literal}}\"",
+                        "",
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = read_manifest(manifest_path)
+
+        self.assertIsNotNone(manifest.release)
+        assert manifest.release is not None
+        self.assertEqual(manifest.release.github.release_title, "{repository} {version} {tag} {{literal}}")
+
+    def test_rejects_invalid_manifest_release_title_placeholders(self) -> None:
+        invalid_titles = {
+            "unknown": "{repository} {missing}",
+            "positional": "{} v{version}",
+            "attribute": "{version.major}",
+            "malformed": "{repository} {version",
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for name, title in invalid_titles.items():
+                with self.subTest(name=name):
+                    manifest_path = root / f"{name}.yaml"
+                    manifest_path.write_text(
+                        "\n".join(
+                            [
+                                "project:",
+                                "  name: demo",
+                                "",
+                                "release:",
+                                "  github:",
+                                "    repository: codeforester/demo",
+                                f"    release_title: {title!r}",
+                                "",
+                                "artifacts: []",
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(
+                        ManifestError,
+                        r"release\.github\.release_title.*repository.*version.*tag",
+                    ):
+                        read_manifest(manifest_path)
+
 
     def test_reads_manifest_build_target_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
