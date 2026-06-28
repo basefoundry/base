@@ -19,6 +19,7 @@ project:
     - pyproject/uv
     - v1.0 Readiness
     - Adoption Polish
+    - Contract Hardening
   issue_defaults:
     status: Backlog
     priority: P2

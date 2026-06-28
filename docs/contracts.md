@@ -1,0 +1,52 @@
+# Base Contracts
+
+Base contracts are documented promises that should fail loudly when behavior,
+docs, tests, generated guidance, or workflow policy drift apart. This registry
+maps the first high-value contracts to their source of truth and executable
+enforcement.
+
+Use this page during product reviews and large review-batch triage. If a
+finding says "the docs say X but the code does Y", add or update a contract row
+before treating the fix as complete.
+
+## Contract Registry
+
+| Contract | Source of truth | Enforced by | Failure mode | Area |
+| --- | --- | --- | --- | --- |
+| GitHub workflow policy | [GitHub Workflow](github-workflow.md), [CI Supply Chain Policy](ci-supply-chain-policy.md), `.github/workflows/*.yml` | `tests/test_github_workflows.py` | Workflow permissions, concurrency, timeout, token, supported Python, or generated-guidance policy drift | CI |
+| Workspace manifest repository URL policy | [Workspace Manifest](workspace-manifest.md), `cli/python/base_projects/workspace_manifest.py` | `cli/python/base_projects/tests/test_workspace_manifest.py` | A documented accepted URL form is rejected, or an insecure `http://` repository URL passes silently | Workspace |
+| Workspace manifest source policy | [Workspace Manifest](workspace-manifest.md), `cli/python/base_projects/workspace_pull.py` | `cli/python/base_projects/tests/test_workspace_pull.py` | `workspace.manifest_source` accepts cleartext HTTP or overwrites a local manifest after an invalid fetch | Workspace |
+| Project installer template integrity | [Project Installers](project-installers.md), `templates/project-install.sh` | `cli/bash/commands/basectl/tests/repo.bats` | The maintained installer template downloads and executes a Base installer without honoring configured SHA-256 verification | Security |
+| CLI docs, help, and completion drift | [Command Quick Reference](command-reference.md), `.ai-context/COMMANDS.md`, `bin/basectl`, shell completion scripts | `cli/bash/commands/basectl/tests/docs.bats`, `cli/bash/commands/basectl/tests/help.bats`, `cli/bash/commands/basectl/tests/completions.bats` | Public help, docs shortcut behavior, command reference, AI context, or completions no longer match the shipped command surface | CLI |
+| Project metadata defaults | `.github/base-project.yml`, [GitHub Workflow](github-workflow.md), [Repository Baseline](repo-baseline.md) | `cli/python/base_github_projects/tests/`, `cli/bash/commands/basectl/tests/gh.bats`, `cli/bash/commands/basectl/tests/repo.bats` | Issue defaults, Project field options, or repo-visible Project configuration drift from the Base Project schema | Product |
+
+## Contract Check Runner
+
+Run the first contract slice with:
+
+```bash
+tests/contracts/run.sh
+```
+
+The runner intentionally composes existing focused tests. It is not a
+replacement for the full suite. Use it when:
+
+- a review batch reports docs/implementation drift;
+- a change edits workflow policy, public command docs, generated guidance,
+  workspace manifest policy, or project installer behavior;
+- a PR needs a fast contract-focused signal before broader validation.
+
+## Review Finding Taxonomy
+
+Classify future review findings before opening issues:
+
+- `implementation bug`: shipped behavior is wrong even if docs are silent.
+- `docs/implementation drift`: docs and behavior disagree.
+- `missing regression test`: a fixed bug has no focused test.
+- `missing policy test`: a documented policy has no executable guard.
+- `duplicated helper/API drift`: parallel helpers disagree or invite inconsistent fixes.
+- `stale generated artifact`: generated guidance, completions, or exported context is out of date.
+
+This classification should appear in issue bodies for review-driven findings.
+It keeps future passes focused on the failure mode instead of producing another
+undifferentiated backlog.
