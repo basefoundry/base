@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.2.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.3.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -30,14 +30,14 @@ The current command surface covers:
 - release readiness inspection and guarded GitHub release publishing
 - local AI context export bundles
 - repo-owned prompt rendering through `basectl prompt`
+- documentation entrypoint opening through `basectl docs`
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
 
 ## Active Development Direction
 
-The `v1.2.0` milestone is complete. Future work is tracked in GitHub Issues,
-with Linux runtime support, Docker/service artifacts, project-specific PR
-policy, and broader setup policy work remaining outside the 1.2 release
-contract.
+The `v1.3.0` release is complete. Future work is tracked in GitHub Issues,
+with Linux runtime support, Docker/service artifacts, broader prompt ergonomics,
+and broader setup policy work remaining outside the 1.3 release contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -45,6 +45,15 @@ source builds treated as fallback validation rather than the normal user path.
 
 Recent released work includes:
 
+- `basectl docs` for opening the GitHub README documentation entrypoint
+- standardized `basectl` help, option, logging, and usage-error behavior
+- Python-backed CI setup JSON rendering and Project issue-default handling
+- release-publish recovery guidance and release title validation
+- optional pinned Homebrew installer support for verified bootstrap sources
+- shell and completion performance improvements for project-name and Git prompt
+  rendering
+- redaction hardening for config display and setup command logs
+- normalized Bash source guards and explicit `base-test` error handling
 - local command-history index with future report surfaces still deferred
 - project Python version requirements for Base-managed virtualenv creation
 - workspace manifest status/check/doctor reporting plus explicit init, clone,
