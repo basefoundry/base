@@ -13,6 +13,7 @@ from base_cli.ide_schema import parse_ide_settings
 from base_setup.github_manifest import GithubConfig
 from base_setup.github_manifest import GithubManifestError
 from base_setup.github_manifest import read_github_config
+from base_setup.release_title import release_title_template_error
 
 try:
     import yaml
@@ -417,7 +418,7 @@ def _read_release_github(path: Path, github_data: Any) -> ReleaseGithubConfig:
         raise ManifestError(f"{path}: release.github has unsupported keys: {', '.join(unknown_keys)}.")
 
     repository = _read_release_repository(path, "release.github.repository", github_data.get("repository"))
-    release_title = _read_release_string(
+    release_title = _read_release_title(
         path,
         "release.github.release_title",
         github_data.get("release_title", "{repository} v{version}"),
@@ -522,6 +523,13 @@ def _read_release_string(path: Path, field_name: str, value: Any) -> str:
     if _has_control_line_break(value):
         raise ManifestError(f"{path}: {field_name} must not contain control line breaks.")
     return value
+
+
+def _read_release_title(path: Path, field_name: str, value: Any) -> str:
+    title = _read_release_string(path, field_name, value)
+    if error := release_title_template_error(title):
+        raise ManifestError(f"{path}: {field_name} {error}")
+    return title
 
 
 def _read_build_default(
