@@ -101,6 +101,7 @@ inspect the resolved command contract first.
 | `basectl release plan --version <version>` | Print the release plan and downstream handoff details. | `--manifest <path>` |
 | `basectl release notes --version <version>` | Extract release notes for the requested version. | `--manifest <path>` |
 | `basectl release publish --version <version>` | Create the annotated Git tag and GitHub Release after checks pass. | `--manifest <path>`, `--dry-run`, `--yes` |
+| `basectl docs` | Open the Base documentation home page on GitHub. | `--show-url` |
 | `basectl export-context [project]` | Export a project's `.ai-context/` directory as Markdown or Zip. | `--workspace <path>`, `--format <markdown\|zip>`, `--output <path>`, `--print`, `--list-files` |
 | `basectl prompt list` | List repo-owned Markdown prompts that Base can render for AI-assisted workflows. | none |
 | `basectl prompt product-self-review` | Print the periodic Base product self-review prompt with current Base metadata. | none |

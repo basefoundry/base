@@ -18,6 +18,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"ci <setup|check|doctor> <project> [options]"* ]]
     [[ "$output" == *"release <check|plan|notes|publish> --version <version> [options]"* ]]
     [[ "$output" == *"prompt <list|name> [options]"* ]]
+    [[ "$output" == *"docs [options]"* ]]
     [[ "$output" == *"clean [--older-than <age>] [--keep-last <count>] [options]"* ]]
     [[ "$output" == *"logs [options]"* ]]
     [[ "$output" == *"history [options]"* ]]
@@ -60,6 +61,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
     grep -Fqx '  release <check|plan|notes|publish> --version <version> [options]' <<<"$output"
     grep -Fqx '  prompt <list|name> [options]' <<<"$output"
+    grep -Fqx '  docs [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  history [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor|clone|pull|init|configure> [options]' <<<"$output"
@@ -151,6 +153,7 @@ load ./basectl_helpers.bash
     grep -Fqx -- "  - \`workspace clone\` mutates repository checkouts only when invoked directly;" "$commands_file"
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
+    grep -Fqx -- "- \`basectl docs\` - open the Base documentation home page on GitHub." "$commands_file"
 }
 
 @test "command reference documents workspace init help surface" {
@@ -169,6 +172,12 @@ load ./basectl_helpers.bash
         [[ "$output" == *"$flag"* ]]
         [[ "$workspace_init_row" == *"$flag"* ]]
     done
+}
+
+@test "command reference documents docs shortcut" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+
+    grep -Fqx -- "| \`basectl docs\` | Open the Base documentation home page on GitHub. | \`--show-url\` |" "$command_reference"
 }
 
 @test "basectl config prints help" {

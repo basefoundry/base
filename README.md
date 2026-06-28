@@ -125,6 +125,7 @@ basectl test <project>
 basectl demo [project]
 basectl run <project> <command>
 basectl export-context <project>
+basectl docs
 basectl activate <project>
 ```
 
@@ -222,6 +223,7 @@ Current implemented commands include:
 - `basectl build <project> [target...]`
 - `basectl run <project> <command>`
 - `basectl export-context [project]`
+- `basectl docs`
 - `basectl onboard`
 - `basectl version`
 
@@ -725,6 +727,17 @@ Base-managed project. Markdown exports combine context Markdown files with
 stable source headings, using `.ai-context/INDEX.md` order when available and
 falling back to deterministic filename order for unlisted files. Zip exports
 contain only files from `.ai-context/` so they can be uploaded manually.
+
+Open Base's documentation home page on GitHub with:
+
+```bash
+basectl docs
+basectl docs --show-url
+```
+
+`basectl docs` opens the GitHub README because the README is the starting point
+for the rest of Base's documentation. Use `--show-url` to print the URL without
+opening a browser.
 
 Print repo-owned AI workflow prompts with:
 

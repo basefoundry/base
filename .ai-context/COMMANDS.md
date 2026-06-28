@@ -33,6 +33,7 @@ options.
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata; Base does not send the
   prompt to an AI provider.
+- `basectl docs` - open the Base documentation home page on GitHub.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
 - `basectl workspace <status|check|doctor|clone|pull|init|configure>` - inspect
