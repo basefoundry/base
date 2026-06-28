@@ -119,6 +119,15 @@ EOF
     chmod +x "$TEST_MOCKBIN/wc"
 }
 
+create_tail_failure_stub() {
+    cat > "$TEST_MOCKBIN/tail" <<'EOF'
+#!/usr/bin/env bash
+printf 'tail should not run\n' >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/tail"
+}
+
 create_curl_failure_stub() {
     cat > "$TEST_MOCKBIN/curl" <<'EOF'
 #!/usr/bin/env bash

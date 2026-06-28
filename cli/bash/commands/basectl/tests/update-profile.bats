@@ -101,12 +101,16 @@ EOF
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"/Cellar/base/0.4.0"* ]]
 }
 
-@test "update-profile spacing helper checks trailing newline without wc" {
+@test "update-profile spacing helper checks trailing newline without wc or tail" {
     local bash_libs_dir
 
     bash_libs_dir="$(base_bash_libs_fixture_dir)"
     create_wc_failure_stub
+    create_tail_failure_stub
     printf 'export CUSTOM=1' > "$TEST_HOME/.bashrc"
+    printf 'export CUSTOM=1\n' > "$TEST_HOME/.bash_profile"
+    printf 'export CUSTOM=1\n\n' > "$TEST_HOME/.zshrc"
+    : > "$TEST_HOME/.zprofile"
 
     run env \
         HOME="$TEST_HOME" \
@@ -117,11 +121,18 @@ EOF
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
             base_update_profile_prepare_section_spacing "$HOME/.bashrc" "# >>> base: bashrc managed >>>"
+            base_update_profile_prepare_section_spacing "$HOME/.bash_profile" "# >>> base: bash_profile managed >>>"
+            base_update_profile_prepare_section_spacing "$HOME/.zshrc" "# >>> base: zshrc managed >>>"
+            base_update_profile_prepare_section_spacing "$HOME/.zprofile" "# >>> base: zprofile managed >>>"
         '
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"wc should not run"* ]]
+    [[ "$output" != *"tail should not run"* ]]
     [[ "$(cat "$TEST_HOME/.bashrc"; printf marker)" == $'export CUSTOM=1\n\nmarker' ]]
+    [[ "$(cat "$TEST_HOME/.bash_profile"; printf marker)" == $'export CUSTOM=1\n\nmarker' ]]
+    [[ "$(cat "$TEST_HOME/.zshrc"; printf marker)" == $'export CUSTOM=1\n\nmarker' ]]
+    [[ "$(cat "$TEST_HOME/.zprofile"; printf marker)" == "marker" ]]
 }
 
 @test "basectl update-profile explains BASE_HOME mismatch recovery" {
