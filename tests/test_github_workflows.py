@@ -34,3 +34,41 @@ def test_all_workflow_jobs_have_timeouts() -> None:
                 missing.append(f"{path.name}:{job_name}")
 
     assert not missing, missing
+
+
+def test_python_tests_run_on_supported_minor_versions() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
+    python_job = workflow["jobs"]["python"]
+
+    assert python_job["strategy"]["matrix"]["python-version"] == [
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+    ]
+    setup_steps = [
+        step
+        for step in python_job["steps"]
+        if isinstance(step, dict) and step.get("uses") == "actions/setup-python@v5"
+    ]
+
+    assert setup_steps == [
+        {
+            "name": "Set up Python",
+            "uses": "actions/setup-python@v5",
+            "with": {"python-version": "${{ matrix.python-version }}"},
+        }
+    ]
+
+
+def test_macos_smoke_tests_cover_shell_compatibility_surfaces() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
+    macos_job = workflow["jobs"]["macos"]
+    run_commands = "\n".join(
+        step.get("run", "")
+        for step in macos_job["steps"]
+        if isinstance(step, dict)
+    )
+
+    assert "lib/bash/version/tests/lib_version.bats" in run_commands
+    assert "lib/shell/completions/tests/completions.bats" in run_commands

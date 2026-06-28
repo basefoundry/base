@@ -450,7 +450,7 @@ versions across a workspace.
 Artifacts may include `bootstrap: true` when they are part of the minimum Python
 runtime contract needed before Base can reconcile a project's remaining
 artifacts. Base currently uses this marker in `lib/base/default_manifest.yaml`
-for `click` and `PyYAML`.
+for `click`, `PyYAML`, and `tomli` for Python 3.10 TOML parsing.
 
 You can inspect the projects Base can see with:
 

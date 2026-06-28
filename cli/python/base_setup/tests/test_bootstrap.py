@@ -113,5 +113,6 @@ class BootstrapManifestTests(unittest.TestCase):
             {
                 ("python-package", "click"): True,
                 ("python-package", "PyYAML"): True,
+                ("python-package", "tomli"): True,
             },
         )

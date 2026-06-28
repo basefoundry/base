@@ -13,3 +13,8 @@ artifacts:
     name: PyYAML
     version: "6.0.3"
     bootstrap: true
+
+  - type: python-package
+    name: tomli
+    version: "2.4.1"
+    bootstrap: true

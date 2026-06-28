@@ -302,7 +302,10 @@ class ArtifactReconcileTests(unittest.TestCase):
             status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
-        self.assertIn("pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 rich", stderr)
+        self.assertIn(
+            "pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 tomli==2.4.1 rich",
+            stderr,
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_dry_run_ignores_inherited_project_runtime_environment(self) -> None:
@@ -338,7 +341,10 @@ class ArtifactReconcileTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertNotIn(str(inherited_venv_dir), stderr)
-        self.assertIn("pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 rich", stderr)
+        self.assertIn(
+            "pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 tomli==2.4.1 rich",
+            stderr,
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_known_homebrew_artifact_dry_run_does_not_require_brew(self) -> None:

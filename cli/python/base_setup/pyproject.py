@@ -7,9 +7,17 @@ from .checks import ArtifactCheck
 from .manifest import BaseManifest
 
 try:
-    import tomllib
-except ImportError:  # pragma: no cover - exercised only on Python runtimes without tomllib
-    tomllib = None  # type: ignore[assignment]
+    import tomllib as _toml
+except ImportError:  # pragma: no cover - exercised on Python 3.10
+    try:
+        import tomli as _toml
+    except ImportError as exc:  # pragma: no cover - bootstrap dependency missing
+        _toml = None  # type: ignore[assignment]
+        _toml_import_error = exc
+    else:
+        _toml_import_error = None
+else:
+    _toml_import_error = None
 
 
 def check_pyproject(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
@@ -30,15 +38,15 @@ def check_pyproject(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
 
 
 def read_pyproject(path: Path) -> tuple[dict[str, Any], str | None]:
-    if tomllib is None:
-        return {}, "tomllib is not available in this Python runtime"
+    if _toml is None:
+        return {}, f"TOML parser is not available in this Python runtime: {_toml_import_error}"
     if not path.is_file():
         return {}, "path is not a regular file"
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        data = _toml.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         return {}, str(exc)
-    except tomllib.TOMLDecodeError as exc:
+    except _toml.TOMLDecodeError as exc:
         return {}, str(exc)
     if not isinstance(data, dict):
         return {}, "top-level TOML document is not a mapping"
