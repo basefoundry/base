@@ -53,6 +53,8 @@ Commands:
     Inspect release readiness, plan, notes, and guarded GitHub publishing.
   prompt <list|name> [options]
     Print repo-owned Markdown prompts for AI-assisted Base workflows.
+  docs [options]
+    Open the Base documentation home page on GitHub.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
   logs [options]
@@ -310,6 +312,11 @@ basectl_do_prompt() {
     base_prompt_subcommand_main "$@"
 }
 
+basectl_do_docs() {
+    basectl_source_subcommand_module docs || return 1
+    base_docs_subcommand_main "$@"
+}
+
 basectl_do_clean() {
     basectl_source_subcommand_module clean || return 1
     base_clean_subcommand_main "$@"
@@ -492,6 +499,7 @@ basectl_main() {
         ci)               basectl_do_ci "$@" ;;
         release)          basectl_do_release "$@" ;;
         prompt)           basectl_do_prompt "$@" ;;
+        docs)             basectl_do_docs "$@" ;;
         clean)            basectl_do_clean "$@" ;;
         logs)             basectl_do_logs "$@" ;;
         history)          basectl_do_history "$@" ;;

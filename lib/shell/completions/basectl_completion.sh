@@ -132,7 +132,7 @@ _base_basectl_completion_project_profiles_or_options() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test export-context build demo run repo ci release prompt clean logs history config doctor gh onboard update-profile update projects workspace version help"
+    local commands="activate setup check test export-context build demo run repo ci release prompt docs clean logs history config doctor gh onboard update-profile update projects workspace version help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -255,6 +255,9 @@ _base_basectl_completion() {
             else
                 _base_basectl_completion_compgen "-v -h --help" "$cur"
             fi
+            ;;
+        docs)
+            _base_basectl_completion_compgen "--show-url -h --help" "$cur"
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --keep-last --dry-run -v -h --help" "$cur"

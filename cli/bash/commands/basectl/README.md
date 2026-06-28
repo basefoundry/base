@@ -39,6 +39,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `clean`
 - `config`
 - `doctor`
+- `docs`
 - `export-context`
 - `gh`
 - `onboard`
@@ -150,6 +151,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   directory for manual AI tool upload or copy/paste. Markdown exports include
   stable file headings and use `INDEX.md` ordering when available. Zip exports
   contain only files from `.ai-context`.
+- `basectl docs` opens the Base documentation home page on GitHub. Use
+  `--show-url` to print the URL without opening a browser.
 - `basectl prompt list` lists repo-owned Markdown prompts that Base can render
   for AI-assisted workflows. `basectl prompt product-self-review` prints the
   periodic Base product self-review prompt with current Base metadata. Base

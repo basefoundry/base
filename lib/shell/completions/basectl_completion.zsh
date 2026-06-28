@@ -92,6 +92,7 @@ _base_basectl_completion() {
         'ci:Run Base setup, checks, and diagnostics in CI'
         'release:Inspect release readiness, notes, and publishing'
         'prompt:Print repo-owned Markdown prompts'
+        'docs:Open the Base documentation home page on GitHub'
         'clean:Remove old Base CLI runtime artifacts'
         'logs:List and open recent Base CLI runtime logs'
         'history:List recent Base command history records'
@@ -249,6 +250,10 @@ _base_basectl_completion() {
         prompt)
             _arguments '1:prompt:(list product-self-review)' \
                 '-v[Enable DEBUG logging]' \
+                '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        docs)
+            _arguments '--show-url[Print the documentation URL without opening a browser]' \
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         repo)
