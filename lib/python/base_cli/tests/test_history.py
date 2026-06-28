@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 import base_cli
+from base_cli import history as history_helpers
 
 
 def read_history_records(cache_root: Path) -> list[dict]:
@@ -19,6 +20,38 @@ def read_history_records(cache_root: Path) -> list[dict]:
 
 
 class BaseCliHistoryTests(unittest.TestCase):
+    def test_shared_history_helpers_parse_records_and_display_paths(self) -> None:
+        payload = {
+            "schema_version": 1,
+            "event": "finished",
+            "run_id": "run-1",
+            "command": "check",
+            "status": "ok",
+            "exit_code": 0,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir) / "home"
+            inside_home = home / "logs" / "run.log"
+            outside_home = Path(tmpdir) / "outside" / "run.log"
+            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+                self.assertEqual(
+                    history_helpers.parse_finished_history_record_line(json.dumps(payload)),
+                    payload,
+                )
+                self.assertIsNone(history_helpers.parse_finished_history_record_line("{not json"))
+                self.assertIsNone(
+                    history_helpers.parse_finished_history_record_line(
+                        json.dumps({**payload, "event": "started"})
+                    )
+                )
+                self.assertEqual(history_helpers.display_command("base_setup", ["--action", "check"]), "check")
+                self.assertEqual(history_helpers.compact_path(inside_home), "~/logs/run.log")
+                self.assertEqual(
+                    history_helpers.compact_path(outside_home),
+                    str(outside_home.expanduser().resolve(strict=False)),
+                )
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_successful_command_history_with_redacted_metadata(self) -> None:
         app = base_cli.App(name="history-demo", version="0.1.0")

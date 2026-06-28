@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 import shlex
@@ -10,10 +9,15 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import base_cli
 from base_cli.history import HISTORY_PATH
+from base_cli.history import compact_path
+from base_cli.history import display_command
+from base_cli.history import optional_int
+from base_cli.history import optional_string
+from base_cli.history import parse_finished_history_record_line
+from base_cli.history import parse_positive_int
 from base_cli.paths import base_cache_root
 
 
@@ -47,6 +51,7 @@ class LogCommandOptions:
 class HistoryLogStatus:
     status: str
     exit_code: int | None
+    command: str | None
 
 
 @dataclass(frozen=True)
@@ -104,15 +109,6 @@ def run(
     return run_with_entries(entries, options)
 
 
-def parse_positive_int(option: str, value: str) -> int:
-    if not value.isdigit():
-        raise ValueError(f"Option '{option}' must be a positive integer.")
-    amount = int(value)
-    if amount <= 0:
-        raise ValueError(f"Option '{option}' must be greater than zero.")
-    return amount
-
-
 def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandOptions) -> int:
     if options.path_only or options.tail or options.open_file:
         ctx.log.error("No Base CLI logs found.")
@@ -165,7 +161,9 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
             history_status = history_status_for_log(history_statuses, run_id=path.stem, path=path)
             entries.append(
                 LogEntry(
-                    command=infer_display_command(raw_command, path),
+                    command=history_status.command
+                    if history_status is not None and history_status.command is not None
+                    else infer_display_command(raw_command, path),
                     raw_command=raw_command,
                     run_id=path.stem,
                     path=path,
@@ -196,13 +194,8 @@ def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
 
 
 def parse_history_log_status_line(line: str) -> tuple[str, str | None, HistoryLogStatus] | None:
-    try:
-        payload = json.loads(line)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-        return None
-    if payload.get("event") != "finished":
+    payload = parse_finished_history_record_line(line)
+    if payload is None:
         return None
 
     run_id = optional_string(payload.get("run_id"))
@@ -213,16 +206,12 @@ def parse_history_log_status_line(line: str) -> tuple[str, str | None, HistoryLo
     return (
         run_id,
         optional_string(payload.get("log_path")),
-        HistoryLogStatus(status=status, exit_code=optional_int(payload.get("exit_code"))),
+        HistoryLogStatus(
+            status=status,
+            exit_code=optional_int(payload.get("exit_code")),
+            command=optional_string(payload.get("command")),
+        ),
     )
-
-
-def optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) and value else None
-
-
-def optional_int(value: Any) -> int | None:
-    return value if isinstance(value, int) else None
 
 
 def history_status_for_log(index: HistoryLogStatusIndex, run_id: str, path: Path) -> HistoryLogStatus | None:
@@ -236,10 +225,8 @@ def normalize_history_log_path(value: str) -> str:
 def infer_display_command(raw_command: str, path: Path) -> str:
     if raw_command == "base_setup":
         action = infer_base_setup_action(path)
-        return action or "setup"
-    if raw_command.startswith("base_"):
-        return raw_command.removeprefix("base_").replace("_", "-")
-    return raw_command.replace("_", "-")
+        return action or display_command(raw_command, [])
+    return display_command(raw_command, [])
 
 
 def infer_base_setup_action(path: Path) -> str | None:
@@ -312,13 +299,6 @@ def print_log_table(entries: list[LogEntry]) -> None:
             f"{entry.status:<6}  "
             f"{compact_path(entry.path)}"
         )
-
-
-def compact_path(path: Path) -> str:
-    try:
-        return f"~/{path.expanduser().resolve().relative_to(Path.home().resolve())}"
-    except ValueError:
-        return str(path)
 
 
 def tail_log(path: Path, lines: int) -> int:
