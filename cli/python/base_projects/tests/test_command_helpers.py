@@ -8,6 +8,7 @@ from base_github_projects import engine as github_engine
 from base_projects import engine as projects_engine
 from base_projects.command_helpers import ProjectCommandError
 from base_projects.command_helpers import ProjectUsageError
+from base_projects.command_helpers import PROJECT_COMMAND_TIMEOUT_SECONDS
 from base_projects.command_helpers import format_project_command
 from base_projects.command_helpers import github_repo_spec
 from base_projects.command_helpers import github_repo_spec_from_path
@@ -76,6 +77,7 @@ class ProjectCommandHelperTests(unittest.TestCase):
             check=False,
             capture_output=True,
             text=True,
+            timeout=PROJECT_COMMAND_TIMEOUT_SECONDS,
         )
         self.assertEqual(result.stdout, "cloned\n")
         self.assertEqual(result.stderr, "")
@@ -95,5 +97,26 @@ class ProjectCommandHelperTests(unittest.TestCase):
 
         message = str(exc.exception)
         self.assertIn("Could not run basectl repo clone", message)
+        self.assertIn("[REDACTED]", message)
+        self.assertNotIn("secret", message)
+
+    def test_run_project_command_reports_timeout_with_redacted_command(self) -> None:
+        command = [
+            "basectl",
+            "repo",
+            "clone",
+            "https://user:secret@github.com/basefoundry/base.git",
+        ]
+
+        with mock.patch(
+            "base_projects.command_helpers.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(command, timeout=PROJECT_COMMAND_TIMEOUT_SECONDS),
+        ):
+            with self.assertRaises(ProjectCommandError) as exc:
+                run_project_command(command, error_context="basectl repo clone")
+
+        message = str(exc.exception)
+        self.assertIn("Timed out running basectl repo clone", message)
+        self.assertIn(str(PROJECT_COMMAND_TIMEOUT_SECONDS), message)
         self.assertIn("[REDACTED]", message)
         self.assertNotIn("secret", message)
