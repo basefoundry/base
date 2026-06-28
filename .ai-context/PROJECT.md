@@ -6,8 +6,9 @@
 - Repository: `github.com/basefoundry/base`
 - Current release: `1.3.0`
 - Primary platform: macOS
-- Future platform direction: Linux support is a design target; Windows is not
-  currently in scope.
+- Linux posture: active runtime and CI rollout; full Linux bootstrap support
+  remains narrower and is tracked in `docs/linux-support.md`.
+- Windows support is not currently in scope.
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side. It provides a shared layer for setup, diagnostics,
