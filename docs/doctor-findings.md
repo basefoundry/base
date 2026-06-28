@@ -17,6 +17,11 @@ Doctor findings should be specific, actionable, and non-alarming. Text output
 is for humans who need a safe next step; JSON output is for automation that
 needs stable IDs, statuses, names, messages, and fix guidance.
 
+Text and JSON doctor findings are primary command output and are written to
+stdout. Usage and validation errors, including unsupported `--format` values,
+are diagnostics and must be written to stderr so scripts can safely parse
+machine-readable stdout.
+
 `basectl doctor` should not mutate local state. A future fix path must be
 explicit, reviewable, and paired with dry-run behavior before Base offers it as
 part of the doctor workflow.

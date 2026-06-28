@@ -8,7 +8,7 @@ import socket
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -146,14 +146,61 @@ class ProjectCheckTests(unittest.TestCase):
             artifacts=(ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),),
         )
 
-        with redirect_stdout(io.StringIO()) as stdout:
+        with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
             status = engine.doctor_manifest(default_manifest, manifest, output_format="json")
 
         findings = json.loads(stdout.getvalue())
+        self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(status, 1)
         self.assertEqual(findings[0]["id"], "BASE-P040")
         self.assertEqual(findings[0]["status"], "error")
         self.assertEqual(findings[0]["fix"], "basectl setup demo")
+
+    def test_doctor_stream_contract_separates_output_from_usage_errors(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+
+        with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+            status = engine.doctor_manifest(default_manifest, manifest, output_format="xml")
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Unsupported doctor output format 'xml'. Expected text or json.", stderr.getvalue())
+
+        with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+            status = engine.doctor_pre_venv_manifest(manifest, output_format="yaml")
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Unsupported doctor output format 'yaml'. Expected text or json.", stderr.getvalue())
+
+        check = setup_checks.ArtifactCheck(
+            name="required-artifact",
+            ok=False,
+            message="Required project artifact is not installed.",
+            fix="basectl setup demo",
+            finding_id="BASE-P040",
+        )
+        with mock.patch("base_setup.engine.manifest_checks", return_value=(check,)):
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertIn("error", stdout.getvalue())
+        self.assertIn("BASE-P040", stdout.getvalue())
 
 
 
