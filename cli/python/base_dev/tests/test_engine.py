@@ -222,6 +222,40 @@ class DevManifestTests(unittest.TestCase):
             ],
         )
 
+    def test_check_ai_tool_warns_when_version_probe_times_out(self) -> None:
+        tool = ai_tools.AITool(
+            name="codex",
+            display_name="Codex CLI",
+            version_args=("--version",),
+            installer_url="https://chatgpt.com/codex/install.sh",
+            installer_shell="sh",
+        )
+
+        with (
+            mock.patch("base_dev.ai_tools.shutil.which", return_value="/tmp/bin/codex"),
+            mock.patch(
+                "base_dev.ai_tools.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(
+                    ["/tmp/bin/codex", "--version"],
+                    ai_tools.DIAGNOSTIC_TIMEOUT_SECONDS,
+                ),
+            ) as run,
+        ):
+            check = ai_tools.check_ai_tool(tool)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'codex --version' or run 'basectl setup --profile ai'.")
+        run.assert_called_once_with(
+            ["/tmp/bin/codex", "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+            timeout=ai_tools.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_profile_sre_reports_sre_fix_guidance(self) -> None:
         with (
@@ -389,14 +423,15 @@ class DevManifestTests(unittest.TestCase):
             stderr="",
         )
 
-        def fake_run_check(command: list[str]) -> bool:
+        def fake_run_check(command: list[str], **kwargs: object) -> bool:
+            self.assertEqual(kwargs.get("timeout_seconds"), engine.DIAGNOSTIC_TIMEOUT_SECONDS)
             if command == ["brew", "list", "bats-core"]:
                 return True
             if command == ["brew", "list", "gh"]:
                 return True
             if command == ["brew", "list", "shellcheck"]:
                 return True
-            if command == ["gh", "auth", "status"]:
+            if command == ["gh", "auth", "status", "-h", "github.com"]:
                 return False
             raise AssertionError(f"Unexpected command: {command}")
 
@@ -494,7 +529,10 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(check.name, "gh")
         self.assertEqual(check.fix, "")
         self.assertIn("is installed via Homebrew package 'gh'", check.message)
-        run_check.assert_called_once_with(["brew", "list", "gh"])
+        run_check.assert_called_once_with(
+            ["brew", "list", "gh"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
     def test_check_homebrew_artifact_reports_outdated_formula(self) -> None:
         artifact = engine.ArtifactRequest("tool", "gh", "latest")
@@ -532,7 +570,33 @@ class DevManifestTests(unittest.TestCase):
         self.assertFalse(check.ok)
         self.assertEqual(check.fix, "basectl setup --profile dev")
         self.assertIn("is not installed via Homebrew package 'bats-core'", check.message)
-        run_check.assert_called_once_with(["brew", "list", "bats-core"])
+        run_check.assert_called_once_with(
+            ["brew", "list", "bats-core"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+
+    def test_check_homebrew_artifact_warns_when_probe_times_out(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch(
+                "base_dev.engine.run_check",
+                side_effect=subprocess.TimeoutExpired(["brew", "list", "gh"], engine.DIAGNOSTIC_TIMEOUT_SECONDS),
+            ) as run_check,
+        ):
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-D104")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'basectl doctor --profile dev' or inspect Homebrew with 'brew doctor'.")
+        run_check.assert_called_once_with(
+            ["brew", "list", "gh"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
     def test_check_homebrew_artifact_reports_missing_homebrew(self) -> None:
         artifact = engine.ArtifactRequest("tool", "gh", "latest")
@@ -629,7 +693,10 @@ class DevManifestTests(unittest.TestCase):
         self.assertFalse(check.ok)
         self.assertEqual(check.message, "GitHub CLI authentication is not ready.")
         self.assertEqual(check.fix, "gh auth login -h github.com")
-        run_check.assert_called_once_with(["gh", "auth", "status"])
+        run_check.assert_called_once_with(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
     def test_check_github_cli_auth_reports_authenticated_gh(self) -> None:
         with (
@@ -641,7 +708,32 @@ class DevManifestTests(unittest.TestCase):
         self.assertTrue(check.ok)
         self.assertEqual(check.message, "GitHub CLI authentication is ready.")
         self.assertEqual(check.fix, "")
-        run_check.assert_called_once_with(["gh", "auth", "status"])
+        run_check.assert_called_once_with(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+
+    def test_check_github_cli_auth_warns_when_probe_times_out(self) -> None:
+        with (
+            mock.patch("base_dev.engine.command_exists", return_value=True),
+            mock.patch(
+                "base_dev.engine.run_check",
+                side_effect=subprocess.TimeoutExpired(
+                    ["gh", "auth", "status", "-h", "github.com"],
+                    engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+                ),
+            ) as run_check,
+        ):
+            check = engine.check_github_cli_auth()
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'gh auth status -h github.com' or run 'gh auth login -h github.com'.")
+        run_check.assert_called_once_with(
+            ["gh", "auth", "status", "-h", "github.com"],
+            timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
     def test_doctor_returns_number_of_failed_manifest_artifacts(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
@@ -669,14 +761,15 @@ class DevManifestTests(unittest.TestCase):
             stderr="",
         )
 
-        def fake_run_check(command: list[str]) -> bool:
+        def fake_run_check(command: list[str], **kwargs: object) -> bool:
+            self.assertEqual(kwargs.get("timeout_seconds"), engine.DIAGNOSTIC_TIMEOUT_SECONDS)
             if command == ["brew", "list", "bats-core"]:
                 return True
             if command == ["brew", "list", "gh"]:
                 return True
             if command == ["brew", "list", "shellcheck"]:
                 return True
-            if command == ["gh", "auth", "status"]:
+            if command == ["gh", "auth", "status", "-h", "github.com"]:
                 return False
             raise AssertionError(f"Unexpected command: {command}")
 

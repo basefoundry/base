@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -96,6 +97,27 @@ class IdeInstallTests(unittest.TestCase):
         self.assertEqual(check.name, "VS Code app")
         self.assertIn("Homebrew cask 'visual-studio-code'", check.message)
         self.assertEqual(check.fix, "basectl setup demo")
+
+    def test_check_ide_install_warns_when_cask_probe_times_out(self) -> None:
+        definition = ide.IDE_DEFINITIONS["vscode"]
+
+        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            "base_setup.process.run_check",
+            side_effect=subprocess.TimeoutExpired(
+                ["brew", "list", "--cask", "visual-studio-code"],
+                ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+            ),
+        ) as run_check:
+            check = ide.check_ide_install("demo", definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'basectl doctor demo' or inspect Homebrew with 'brew doctor'.")
+        run_check.assert_called_once_with(
+            ["brew", "list", "--cask", "visual-studio-code"],
+            timeout_seconds=ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
 
 

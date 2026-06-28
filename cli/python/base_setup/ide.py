@@ -232,13 +232,17 @@ def reconcile_ide_extensions(ctx: base_cli.Context, manifest: BaseManifest, dry_
 
 
 def list_ide_extensions(definition: IdeDefinition) -> set[str]:
-    completed = subprocess.run(
-        [definition.cli, "--list-extensions"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-    )
+    try:
+        completed = process.run_capture(
+            [definition.cli, "--list-extensions"],
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ArtifactError(
+            f"Unable to list {definition.label} extensions with "
+            f"'{definition.cli} --list-extensions': timed out after "
+            f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+        ) from exc
     if completed.returncode:
         stderr = (completed.stderr or "").strip()
         message = f"Unable to list {definition.label} extensions with '{definition.cli} --list-extensions'."
@@ -474,7 +478,23 @@ def check_ide_install(project: str, definition: IdeDefinition) -> ArtifactCheck:
             finding_id="BASE-P130",
         )
 
-    cask_installed = process.run_check(["brew", "list", "--cask", definition.cask])
+    try:
+        cask_installed = process.run_check(
+            ["brew", "list", "--cask", definition.cask],
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ArtifactCheck(
+            name=f"{definition.label} app",
+            ok=False,
+            message=(
+                f"Homebrew cask check for {definition.label} timed out after "
+                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+            ),
+            fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
+            status="warn",
+            finding_id="BASE-P131",
+        )
     cli_available = process.command_exists(definition.cli)
 
     if cask_installed and cli_available:

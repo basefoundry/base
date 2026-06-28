@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -144,6 +145,35 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(check.fix, f"mise trust {project_root.resolve() / '.mise.toml'}")
         self.assertEqual(log_lines, [f"{project_root.resolve()} trust --show"])
 
+    def test_mise_check_warns_when_trust_probe_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+
+            with (
+                mock.patch("base_setup.process.command_exists", return_value=True),
+                mock.patch(
+                    "base_setup.process.run_capture",
+                    side_effect=subprocess.TimeoutExpired(
+                        ["mise", "trust", "--show"],
+                        delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                    ),
+                ) as run_capture,
+            ):
+                check = delegates.check_mise(manifest)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P022")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, f"Retry 'mise trust --show' in '{project_root.resolve()}'.")
+        run_capture.assert_called_once_with(
+            ["mise", "trust", "--show"],
+            cwd=project_root.resolve(),
+            timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+
 
     def test_mise_check_reports_missing_tools(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -184,6 +214,47 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(check.status, "warn")
         self.assertIn("could not be parsed", check.message)
         self.assertEqual(check.fix, f"Run 'mise ls --missing --json' in '{project_root.resolve()}' for details.")
+
+    def test_mise_check_warns_when_missing_tools_probe_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+            trust_check = subprocess.CompletedProcess(
+                ["mise", "trust", "--show"],
+                0,
+                stdout=f"{project_root.resolve()}: trusted",
+                stderr="",
+            )
+
+            with (
+                mock.patch("base_setup.process.command_exists", return_value=True),
+                mock.patch(
+                    "base_setup.process.run_capture",
+                    side_effect=[
+                        trust_check,
+                        subprocess.TimeoutExpired(
+                            ["mise", "ls", "--missing", "--json"],
+                            delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                        ),
+                    ],
+                ) as run_capture,
+            ):
+                check = delegates.check_mise(manifest)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P022")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, f"Retry 'mise ls --missing --json' in '{project_root.resolve()}'.")
+        self.assertEqual(
+            run_capture.call_args_list[0].kwargs["timeout_seconds"],
+            delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            run_capture.call_args_list[1].kwargs["timeout_seconds"],
+            delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
 
 
 

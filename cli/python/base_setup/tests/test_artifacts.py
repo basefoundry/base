@@ -493,6 +493,33 @@ class ArtifactReconcileTests(unittest.TestCase):
         )
         self.assertEqual(run_capture.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
 
+    def test_check_homebrew_artifact_warns_when_probe_times_out(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        artifact = ArtifactRequest("tool", "terraform", "latest")
+
+        with (
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch(
+                "base_setup.process.run_check",
+                side_effect=subprocess.TimeoutExpired(
+                    ["brew", "list", "terraform"],
+                    process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                ),
+            ) as run_check,
+        ):
+            check = artifacts.check_homebrew_artifact("demo", artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P033")
+        self.assertIn("timed out", check.message)
+        self.assertEqual(check.fix, "Retry 'basectl doctor demo' or inspect Homebrew with 'brew doctor'.")
+        run_check.assert_called_once_with(
+            ["brew", "list", "terraform"],
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+
 
     def test_python_artifact_honors_project_venv_dir_override(self) -> None:
         definition = get_artifact_definition("python-package", "requests")
