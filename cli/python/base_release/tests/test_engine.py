@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_release import engine
 from base_release.engine import ReleaseError
 from base_release.engine import ReleaseFinding
 from base_release.engine import main
@@ -268,6 +269,31 @@ class ReleaseEngineTests(unittest.TestCase):
         self.assertIn("Would create GitHub Release: Demo v1.2.3", stdout)
         self.assertIn("Homebrew handoff required after GitHub release", stdout)
         run_step.assert_not_called()
+
+    def test_run_release_step_uses_bounded_timeout(self) -> None:
+        completed = subprocess.CompletedProcess(["git", "tag"], 0, stdout="")
+
+        with mock.patch("base_release.engine.subprocess.run", return_value=completed) as run:
+            engine.run_release_step(["git", "tag"], cwd=Path("/repo"))
+
+        self.assertEqual(run.call_args.kwargs["timeout"], engine.RELEASE_STEP_TIMEOUT_SECONDS)
+
+    def test_run_release_step_reports_timeout_as_release_error(self) -> None:
+        command = ["git", "push", "origin", "v1.2.3"]
+
+        with mock.patch(
+            "base_release.engine.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(command, timeout=30),
+        ):
+            with self.assertRaisesRegex(ReleaseError, "timed out"):
+                engine.run_release_step(command)
+
+    def test_run_release_step_reports_os_error_as_release_error(self) -> None:
+        command = ["gh", "release", "create", "v1.2.3"]
+
+        with mock.patch("base_release.engine.subprocess.run", side_effect=OSError("network unavailable")):
+            with self.assertRaisesRegex(ReleaseError, "Unable to run release command"):
+                engine.run_release_step(command)
 
 
     def test_publish_requires_yes_when_stdin_is_not_interactive(self) -> None:

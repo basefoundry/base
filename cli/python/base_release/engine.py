@@ -8,6 +8,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TextIO
 
 import base_cli
 from base_setup.manifest import BaseManifest
@@ -18,6 +19,7 @@ from base_setup.manifest import read_manifest
 
 app = base_cli.App(name="base_release")
 CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
+RELEASE_STEP_TIMEOUT_SECONDS = 120
 
 
 class ReleaseUsageError(RuntimeError):
@@ -162,7 +164,7 @@ def require_publish_option(command: str, option_name: str) -> None:
         raise ReleaseUsageError(f"Option '{option_name}' is only supported by release publish.")
 
 
-def print_usage(file=sys.stdout) -> None:
+def print_usage(file: TextIO = sys.stdout) -> None:
     command = base_cli.delegated_display_command("base_release")
     print(
         f"""Usage:
@@ -516,17 +518,23 @@ def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) ->
 
 
 def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
+    joined = " ".join(command)
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=RELEASE_STEP_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReleaseError(f"Release command timed out after {exc.timeout} seconds: {joined}") from exc
+    except OSError as exc:
+        raise ReleaseError(f"Unable to run release command: {joined}: {exc}") from exc
     if result.returncode != 0:
         detail = last_non_empty_line(result.stdout)
-        joined = " ".join(command)
         if detail:
             raise ReleaseError(f"Release command failed: {joined}: {detail}")
         raise ReleaseError(f"Release command failed: {joined}")
