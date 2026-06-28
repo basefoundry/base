@@ -4,6 +4,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import base_cli
 from base_cli.testing import invoke
@@ -45,6 +46,33 @@ class InvokeTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "manifest requires cwd"):
             invoke(app, [], manifest={"project": {"name": "demo"}})
+
+    def test_invoke_with_cwd_does_not_mutate_process_cwd(self) -> None:
+        app = base_cli.App(name="testing-cwd-isolation", log_to_file=False)
+        seen: dict[str, Path | None] = {}
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            seen["project_root"] = ctx.project_root
+            seen["manifest_path"] = ctx.manifest_path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project = root / "project"
+            home.mkdir()
+            project.mkdir()
+            manifest_path = project / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\n", encoding="utf-8")
+            original_cwd = Path.cwd()
+
+            with mock.patch("os.chdir", side_effect=AssertionError("process-global cwd mutation")):
+                result = invoke(app, [], home=home, cwd=project)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(seen["project_root"], project.resolve())
+        self.assertEqual(seen["manifest_path"], manifest_path.resolve())
+        self.assertEqual(Path.cwd(), original_cwd)
 
     def test_invoke_with_cwd_without_manifest_preserves_no_manifest_behavior(self) -> None:
         app = base_cli.App(name="testing-no-manifest", log_to_file=False)
