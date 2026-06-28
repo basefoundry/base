@@ -6,9 +6,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 import base_cli
+from base_projects.command_helpers import github_repo_spec
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
@@ -244,25 +244,3 @@ def git_config_origin_url(root: Path) -> str | None:
     if not parser.has_option(section, "url"):
         return None
     return parser.get(section, "url").strip()
-
-
-def github_repo_spec(url: str) -> str | None:
-    parsed = urlparse(url)
-    if parsed.scheme and parsed.hostname == "github.com":
-        return github_repo_spec_from_path(parsed.path)
-
-    git_ssh_prefix = "git@github.com:"
-    if url.startswith(git_ssh_prefix):
-        return github_repo_spec_from_path(url[len(git_ssh_prefix) :])
-
-    return None
-
-
-def github_repo_spec_from_path(path: str) -> str | None:
-    normalized = path.strip("/")
-    if normalized.endswith(".git"):
-        normalized = normalized[:-4]
-    parts = normalized.split("/")
-    if len(parts) != 2 or not all(parts):
-        return None
-    return f"{parts[0]}/{parts[1]}"
