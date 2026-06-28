@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -339,6 +340,10 @@ def doctor_manifest(
     *,
     user_config: UserConfig | None = None,
 ) -> int:
+    if output_format not in {"json", "text"}:
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
+        return 2
+
     checks = manifest_checks(
         default_manifest,
         manifest,
@@ -348,9 +353,6 @@ def doctor_manifest(
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
-    if output_format != "text":
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
-        return 2
 
     error_count = 0
     print(f"\nProject doctor: {manifest.project_name}\n")
@@ -369,13 +371,14 @@ def doctor_pre_venv_manifest(
     output_format: str,
     remote_network: bool = False,
 ) -> int:
+    if output_format not in {"json", "text"}:
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
+        return 2
+
     checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
-    if output_format != "text":
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
-        return 2
 
     error_count = 0
     for check in checks:
