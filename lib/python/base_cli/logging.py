@@ -34,8 +34,7 @@ def configure_logger(
     logger.addHandler(user_handler)
 
     if log_file is not None:
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        secure_log_file_permissions(log_file)
+        file_handler = SecureLogFileHandler(log_file, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(_handler_formatter(formatter))
         logger.addHandler(file_handler)
@@ -58,6 +57,26 @@ def _handler_formatter(formatter: logging.Formatter | None) -> logging.Formatter
 
 def secure_log_file_permissions(log_file: Path) -> None:
     log_file.chmod(0o600)
+
+
+class SecureLogFileHandler(logging.FileHandler):
+    def _open(self) -> TextIO:
+        fd = os.open(self.baseFilename, _secure_log_file_open_flags(self.mode), 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+            return open(fd, self.mode, encoding=self.encoding, errors=self.errors, closefd=True)
+        except BaseException:
+            os.close(fd)
+            raise
+
+
+def _secure_log_file_open_flags(mode: str) -> int:
+    flags = os.O_CREAT
+    if "x" in mode:
+        return flags | os.O_EXCL | os.O_WRONLY
+    if "w" in mode:
+        return flags | os.O_TRUNC | os.O_WRONLY
+    return flags | os.O_APPEND | os.O_WRONLY
 
 
 class BaseCliFormatter(logging.Formatter):

@@ -34,6 +34,7 @@ run_step() {
 }
 
 run_step "$PYTHON_BIN" -m pytest tests/test_github_workflows.py
+run_step "$PYTHON_BIN" -m pytest lib/python/base_cli/tests/test_logging.py
 run_step "$PYTHON_BIN" -m pytest cli/python/base_projects/tests/test_workspace_manifest.py
 run_step "$PYTHON_BIN" -m pytest cli/python/base_projects/tests/test_workspace_pull.py
 run_step bats --filter "project installer template" cli/bash/commands/basectl/tests/repo.bats
