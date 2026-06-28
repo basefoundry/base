@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import sys
 import tempfile
 import unittest
@@ -64,3 +65,36 @@ class ConfigureLoggerTests(unittest.TestCase):
 
         self.assertEqual(user_stream.getvalue().strip(), "INFO:hello file")
         self.assertEqual(log_text.strip(), "INFO:hello file")
+
+    def test_configure_logger_creates_log_file_restrictively_before_post_create_chmod(self) -> None:
+        user_stream = io.StringIO()
+        observed_modes = []
+
+        def observe_pre_chmod_mode(log_file: Path) -> None:
+            observed_modes.append(log_file.stat().st_mode & 0o777)
+            log_file.chmod(0o600)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = Path(tmpdir) / "atomic.log"
+            original_umask = os.umask(0)
+            try:
+                with mock.patch(
+                    "base_cli.logging.secure_log_file_permissions",
+                    side_effect=observe_pre_chmod_mode,
+                ):
+                    logger = base_cli.configure_logger(
+                        "atomic-log-file-mode",
+                        log_file,
+                        debug=False,
+                        stream=user_stream,
+                    )
+                    logger.info("hello atomic log")
+                    for handler in logger.handlers:
+                        handler.flush()
+            finally:
+                os.umask(original_umask)
+
+            final_mode = log_file.stat().st_mode & 0o777
+
+        self.assertTrue(all(mode == 0o600 for mode in observed_modes), observed_modes)
+        self.assertEqual(final_mode, 0o600)

@@ -14,6 +14,7 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
         "Workspace manifest repository URL policy": "cli/python/base_projects/tests/test_workspace_manifest.py",
         "Project installer template integrity": "cli/bash/commands/basectl/tests/repo.bats",
         "CLI docs, help, and completion drift": "cli/bash/commands/basectl/tests/completions.bats",
+        "CLI local log file privacy": "lib/python/base_cli/tests/test_logging.py",
     }
     for contract, enforcement in expected_entries.items():
         assert contract in text
@@ -30,6 +31,7 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
     expected_commands = [
         "tests/test_github_workflows.py",
         "cli/python/base_projects/tests/test_workspace_manifest.py",
+        "lib/python/base_cli/tests/test_logging.py",
         'bats --filter "project installer template"',
         "cli/bash/commands/basectl/tests/docs.bats",
         "cli/bash/commands/basectl/tests/help.bats",
