@@ -618,6 +618,14 @@ EOF
     fi
 }
 
+@test "Base shell defaults abbreviate detached HEAD without command substitution" {
+    run grep -F 'branch="$(printf' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh" "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
+    [ "$status" -eq 1 ]
+
+    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh"
+    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
+}
+
 @test "basectl update-profile preserves an existing defaults preference" {
     run_base_command update-profile --defaults
     [ "$status" -eq 0 ]

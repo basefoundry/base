@@ -91,7 +91,7 @@ _base_zsh_defaults_git_prompt() {
     case "$head" in
         "ref: refs/heads/"*) branch="${head#ref: refs/heads/}" ;;
         "ref: "*) branch="${head#ref: }"; branch="${branch##*/}" ;;
-        *) branch="$(printf '%.7s' "$head")" ;;
+        *) branch="${head:0:7}" ;;
     esac
     [[ -n "$branch" ]] || return 0
 
