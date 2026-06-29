@@ -660,6 +660,72 @@ EOF
     [ "$(git -C "$repo" branch --show-current)" = "master" ]
 }
 
+@test "basectl gh issue start gets branch date without date command" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+
+    cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
+printf 'date should not run: %s\n' "$*" >&2
+exit 42
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 --category enhancement --title "Prune merged branches"
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "${lines[0]}" == "enhancement/117-"*"-prune-merged-branches" ]]
+    [[ "$output" != *"date should not run"* ]]
+}
+
+@test "basectl gh issue start truncates worktree slug without cut or sed" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+
+    for tool in cut sed; do
+        cat > "$TEST_MOCKBIN/$tool" <<'EOF'
+#!/usr/bin/env bash
+printf '%s should not run\n' "$(basename "$0")" >&2
+exit 42
+EOF
+        chmod +x "$TEST_MOCKBIN/$tool"
+    done
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 --category enhancement \
+                --title "Alpha beta gamma delta epsilon zeta eta theta iota kappa"
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"/repo-worktrees/117-alpha-beta-gamma-delta-epsilon-zeta-eta origin/"* ]]
+    [[ "$output" != *"cut should not run"* ]]
+    [[ "$output" != *"sed should not run"* ]]
+}
+
 @test "basectl gh branch prune falls back to main when default branch is unknown" {
     local repo
 
@@ -850,6 +916,35 @@ if [[ "$*" == "+%s" ]]; then
     printf '2000000000\n'
     exit 0
 fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch stale --days 0
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\tunknown\tmaster'* ]]
+}
+
+@test "basectl gh branch stale gets current time without date command" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+
+cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/date"

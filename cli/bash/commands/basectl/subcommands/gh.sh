@@ -337,7 +337,10 @@ base_gh_issue_worktree_path() {
     repo_root="$(git rev-parse --show-toplevel)" || return 1
     repo_name="$(basename "$repo_root")"
     repo_parent="$(dirname "$repo_root")"
-    slug_short="$(printf '%s\n' "$slug" | cut -c1-40 | sed -E 's/-+$//')"
+    slug_short="${slug:0:40}"
+    while [[ "$slug_short" == *- ]]; do
+        slug_short="${slug_short%-}"
+    done
     [[ -n "$slug_short" ]] || slug_short="work"
 
     printf '%s/%s-worktrees/%s-%s\n' "$repo_parent" "$repo_name" "$issue" "$slug_short"
@@ -875,7 +878,7 @@ base_gh_issue_start() {
     fi
 
     slug="$(base_gh_slug "$title")"
-    today="$(date +%Y%m%d)"
+    printf -v today '%(%Y%m%d)T' -1
     branch="$category/$issue-$today-$slug"
     default_branch="$(base_gh_default_branch)"
     worktree_path="$(base_gh_issue_worktree_path "$issue" "$slug")" || return 1
@@ -963,7 +966,7 @@ base_gh_branch_stale() {
     }
     base_gh_require_git_repo || return 1
 
-    now="$(date +%s)"
+    printf -v now '%(%s)T' -1
     printf 'age_days\tlast_commit\tbranch\n'
     while read -r timestamp ref; do
         age=$(((now - timestamp) / 86400))
