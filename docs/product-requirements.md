@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-06-25
-Base era reviewed: 1.2.0
+Last reviewed: 2026-06-29
+Base era reviewed: 1.3.0
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide
@@ -252,6 +252,12 @@ repositioning, and after meaningful external user feedback.
 
 ## Decision Log
 
+- 2026-06-29: Reviewed for the 1.3.0 release line.
+  The 1.3.0 release hardens Base's command lifecycle, documentation entry
+  point, CI setup output, setup/install trust path, completions, and validation
+  coverage without changing Base's target user, product thesis, or supported
+  platform contract. The PRD remains unchanged aside from review metadata and
+  this decision record.
 - 2026-06-25: Reviewed for the 1.2.0 release line.
   The 1.2.0 release adds workspace initialization, repo-owned prompt rendering,
   local command history, manifest-declared PR policy, Python runtime
