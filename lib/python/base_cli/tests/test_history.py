@@ -87,6 +87,28 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(json.loads(payloads[0]), record)
         self.assertEqual(history_mode, 0o600)
 
+    def test_write_history_record_appends_without_fcntl(self) -> None:
+        record = {
+            "schema_version": 1,
+            "event": "finished",
+            "run_id": "run-1",
+            "command": "check",
+            "status": "ok",
+            "exit_code": 0,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir) / "cache"
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+                with mock.patch("base_cli.history._fcntl", None):
+                    history_helpers.write_history_record(record)
+
+            history_mode = (cache_root / "history" / "runs.jsonl").stat().st_mode & 0o777
+            records = read_history_records(cache_root)
+
+        self.assertEqual(records, [record])
+        self.assertEqual(history_mode, 0o600)
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_successful_command_history_with_redacted_metadata(self) -> None:
         app = base_cli.App(name="history-demo", version="0.1.0")

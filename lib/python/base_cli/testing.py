@@ -3,9 +3,12 @@ from __future__ import annotations
 import inspect
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .paths import use_working_dir
+
+if TYPE_CHECKING:
+    from click.testing import Result
 
 
 # pylint: disable=too-many-arguments
@@ -17,7 +20,7 @@ def invoke(
     env: dict[str, str] | None = None,
     *,
     manifest: Mapping[str, Any] | None = None,
-):
+) -> Result:
     cwd_path = Path(cwd).expanduser().resolve() if cwd is not None else None
     if manifest is not None:
         if cwd_path is None:

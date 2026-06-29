@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,12 @@ from base_cli.testing import invoke
 
 @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
 class InvokeTests(unittest.TestCase):
+    def test_invoke_declares_click_result_return_type(self) -> None:
+        return_annotation = inspect.signature(invoke).return_annotation
+
+        self.assertNotEqual(return_annotation, inspect.Signature.empty)
+        self.assertIn("Result", str(return_annotation))
+
     def test_invoke_writes_manifest_fixture_into_cwd(self) -> None:
         app = base_cli.App(name="testing-manifest", log_to_file=False)
         seen: dict[str, Path | None] = {}

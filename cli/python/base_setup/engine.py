@@ -116,13 +116,13 @@ def run(
             )
     except ManifestError as exc:
         ctx.log.error(str(exc))
-        status = 1
+        status = base_cli.ExitCode.FAILURE
     except ValueError as exc:
         ctx.log.error(str(exc))
-        status = 1
+        status = base_cli.ExitCode.FAILURE
     except ArtifactError as exc:
         ctx.log.error(str(exc))
-        status = 1
+        status = base_cli.ExitCode.FAILURE
     return status
 
 
@@ -174,7 +174,7 @@ def run_manifest_action(
             "route, precheck, or predoctor.",
             action,
         )
-        status = 2
+        status = base_cli.ExitCode.USAGE_ERROR
     return status
 
 
