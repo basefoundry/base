@@ -38,13 +38,18 @@ installs.
 
 | Check | Where it belongs | Notes |
 | --- | --- | --- |
-| `git diff --check` | CI and local PR validation | Required for documentation-only updates to this checklist. |
-| `bin/base-test` | CI and local source checkout validation | Exercises the hermetic test contract without installing real Homebrew packages. |
-| `bootstrap.sh --dry-run` | CI or local source checkout validation | Confirms the planned first-mile route without mutating the machine. |
-| Real Homebrew install or upgrade | Manual macOS validation | Requires the real package manager, network access, and user-owned install state. |
+| `git diff --check` | Automated CI and local PR validation | Required for documentation-only updates to this checklist. |
+| `bin/base-test` | Automated CI and local source checkout validation | Exercises the hermetic test contract without installing real Homebrew packages. |
+| `bootstrap.sh --dry-run --brew` and `bootstrap.sh --dry-run --source` | Automated macOS smoke, CI, and local source checkout validation | Confirms the planned first-mile install routes and setup/profile handoff commands without mutating the machine. |
+| Real Homebrew install or upgrade | Manual or dedicated macOS validation only | Requires the real package manager, network access, and user-owned install state. |
 | Real shell profile update and terminal restart | Manual macOS validation | Requires the user's interactive shell startup files and a fresh login shell. |
 | Real project activation | Manual macOS validation | Requires an interactive runtime shell; record the observed environment contract and exit cleanly. |
 | Reference project setup, test, and demo | Manual today unless a focused automation issue exists | Use `base-demo` as the neutral project smoke test outside a source checkout. |
+
+In this table, "Automated CI" means ordinary pull request or local source
+checkout validation can run the check safely. "Manual" means ordinary CI must
+not run the step because it mutates user-owned package, shell, project, or
+terminal state.
 
 Do not run mutating Homebrew, shell profile, or user-project checks in ordinary
 CI unless the runner is explicitly dedicated to this purpose.
