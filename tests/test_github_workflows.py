@@ -116,6 +116,18 @@ def test_macos_smoke_tests_cover_shell_compatibility_surfaces() -> None:
     assert "lib/shell/completions/tests/completions.bats" in run_commands
 
 
+def test_macos_smoke_tests_cover_bootstrap_dry_run_routes() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
+    macos_job = workflow["jobs"]["macos"]
+    bootstrap_step = workflow_step_by_name(macos_job, "Run bootstrap dry-run install-route checks")
+    run_command = bootstrap_step["run"]
+
+    assert "./bootstrap.sh --dry-run --brew" in run_command
+    assert './bootstrap.sh --dry-run --source --install-dir "$GITHUB_WORKSPACE"' in run_command
+    assert "basectl setup" in run_command
+    assert "basectl update-profile" in run_command
+
+
 def test_project_intake_requires_base_project_token() -> None:
     workflow = load_workflow(WORKFLOW_DIR / "project-intake.yml")
     sync_job = workflow["jobs"]["sync"]

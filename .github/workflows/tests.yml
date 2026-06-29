@@ -101,6 +101,28 @@ jobs:
           brew install bash bats-core
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
 
+      - name: Run bootstrap dry-run install-route checks
+        run: |
+          require_output() {
+            case "$1" in
+              *"$2"*) ;;
+              *)
+                printf "Expected bootstrap output to include: %s\n" "$2" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          brew_output="$(./bootstrap.sh --dry-run --brew)"
+          printf '%s\n' "$brew_output"
+          require_output "$brew_output" "basectl setup"
+          require_output "$brew_output" "basectl update-profile"
+
+          source_output="$(./bootstrap.sh --dry-run --source --install-dir "$GITHUB_WORKSPACE")"
+          printf '%s\n' "$source_output"
+          require_output "$source_output" "basectl setup"
+          require_output "$source_output" "basectl update-profile"
+
       - name: Run Base setup and check smoke tests
         run: |
           ./bin/basectl ci setup base --format json
