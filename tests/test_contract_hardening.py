@@ -77,6 +77,7 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
     expected_commands = [
         "tests/test_github_workflows.py",
         "cli/python/base_projects/tests/test_workspace_manifest.py",
+        "cli/python/base_projects/tests/test_workspace_pull.py",
         "lib/python/base_cli/tests/test_logging.py",
         'bats --filter "project installer template"',
         "cli/bash/commands/basectl/tests/docs.bats",
@@ -91,6 +92,12 @@ def test_contract_runner_supports_base_worktree_library_layout() -> None:
     text = CONTRACT_RUNNER.read_text(encoding="utf-8")
 
     assert "../../base-bash-libs/lib/bash" in text
+
+
+def test_contract_runner_reenters_repo_root_for_each_step() -> None:
+    text = CONTRACT_RUNNER.read_text(encoding="utf-8")
+
+    assert '(\n        cd "$REPO_ROOT"\n        "$@"\n    )' in text
 
 
 def test_contract_runner_is_executable() -> None:

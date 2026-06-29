@@ -30,7 +30,10 @@ run_step() {
     printf '\n==> '
     printf '%q ' "$@"
     printf '\n'
-    "$@"
+    (
+        cd "$REPO_ROOT"
+        "$@"
+    )
 }
 
 run_step "$PYTHON_BIN" -m pytest tests/test_github_workflows.py
