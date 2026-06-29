@@ -255,3 +255,28 @@ run_basectl_separate_stderr() {
     [[ "$output" == *$'base\t'"$TEST_BASE_HOME"* ]]
     [[ "$output" == *$'demo\t'"$TEST_PROJECT_ROOT"* ]]
 }
+
+@test "basectl workspace configure dry-run follows manifest without mutating missing repositories" {
+    local manifest_path="$TEST_TMPDIR/workspace.yaml"
+
+    manifest_path="$(cd "$TEST_TMPDIR" && pwd -P)/workspace.yaml"
+    cat > "$manifest_path" <<'EOF'
+schema_version: 1
+workspace:
+  name: integration-suite
+repos:
+  - name: demo
+    url: git@github.com:basefoundry/demo.git
+  - name: missing
+    url: git@github.com:basefoundry/missing.git
+EOF
+
+    run_basectl workspace configure --workspace "$TEST_WORKSPACE" --manifest "$manifest_path" --dry-run
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Workspace configure: $TEST_WORKSPACE (2 manifest repos)"* ]]
+    [[ "$output" == *"Workspace manifest: $manifest_path (integration-suite)"* ]]
+    [[ "$output" == *"CONFIGURE repository 'demo' at '$TEST_PROJECT_ROOT' for 'basefoundry/demo'."* ]]
+    [[ "$output" == *"SKIP repository 'missing' is missing at '$TEST_WORKSPACE/missing'."* ]]
+    [[ "$output" == *"[DRY-RUN] No repositories were modified."* ]]
+    [[ "$output" == *"Workspace configure completed: configured=1 skipped=1 failed=0."* ]]
+}
