@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-06-25
-Base era reviewed: 1.2.0
+Last reviewed: 2026-06-29
+Base era reviewed: 1.3.0
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
@@ -300,6 +300,51 @@ Current watchlist for the next release line:
   Project engines, and broad BATS files; keep #1072, #1073, #1074, and #1075 as
   issue-backed maintainability work rather than turning this assessment into a
   parallel backlog.
+
+### 2026-06-29 / 1.3.0 Product Review Delta
+
+The 1.3.0 release line is primarily a trust, lifecycle, and maintainability
+release. It does not change Base's product thesis, target user, or supported
+platform contract. Base remains a macOS-first workspace control plane that
+coordinates sibling repositories and delegates language/runtime work to mature
+tools.
+
+The strongest shipped signal is command-surface maturity. `basectl docs` gives
+users a direct documentation entry point, public command lifecycle behavior is
+more consistent, setup/check/doctor/onboard/update-profile usage errors are
+standardized, completions are closer to command parity, and Python-backed
+commands route through the shared `base_cli` lifecycle. Those changes matter
+because Base's product promise depends on predictable command behavior more
+than on any one feature.
+
+The release also improves operational trust. CI setup JSON rendering, the
+CI supply-chain policy, optional pinned Homebrew installer support, structured
+Homebrew trust parsing, bounded GitHub authentication diagnostics, and broader
+coverage for command helpers, source guards, completions, bootstrap, install,
+and command dispatch all reduce the gap between "works on the maintainer's
+machine" and "can be reviewed, repeated, and supported."
+
+The working ratings remain unchanged. 1.3.0 strengthens confidence that Base
+can keep its command lifecycle and validation story coherent, but it still does
+not provide enough external adoption, contributor independence, or
+cross-platform evidence to raise the adoption or organizational-impact
+assessment.
+
+Current watchlist for the next release line:
+
+- Broaden hermetic integration coverage for newer high-level workflows such as
+  workspace onboarding, repo onboarding, prompt/export-context behavior, and
+  release or packaging preflight paths. The current integration tests are real
+  and useful, but they represent only a narrow slice of the user workflow
+  surface.
+- Keep the clean macOS install checklist honest by automating safe repeatable
+  steps where possible and explicitly preserving manual-only boundaries where
+  host mutation or real Homebrew installation is required.
+- Continue Linux work as the largest platform expansion unlock; do not make
+  broader platform claims before #562 or equivalent runtime work is complete.
+- Treat remaining ownership pressure in large shell command modules, Project
+  engines, and broad BATS files as issue-backed maintainability work rather
+  than as a reason to reposition the product.
 
 ## 4. Creator And Engineering Skill Assessment
 
