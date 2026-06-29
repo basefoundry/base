@@ -19,6 +19,7 @@ from base_setup.manifest import read_manifest
 
 app = base_cli.App(name="base_release")
 CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
+GIT_INSPECTION_TIMEOUT_SECONDS = 10
 RELEASE_STEP_TIMEOUT_SECONDS = 120
 
 
@@ -27,7 +28,9 @@ class ReleaseUsageError(RuntimeError):
 
 
 class ReleaseError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, guidance: str = "") -> None:
+        super().__init__(message)
+        self.guidance = guidance
 
 
 @dataclass(frozen=True)
@@ -95,8 +98,17 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return base_cli.ExitCode.USAGE_ERROR
     except (ManifestError, ReleaseError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print_error(exc)
         return base_cli.ExitCode.FAILURE
+
+
+def print_error(exc: ManifestError | ReleaseError) -> None:
+    print(f"ERROR: {exc}", file=sys.stderr)
+    guidance = getattr(exc, "guidance", "")
+    if guidance:
+        print("", file=sys.stderr)
+        print("Recovery guidance:", file=sys.stderr)
+        print(guidance, file=sys.stderr)
 
 
 def parse_release_args(arguments: tuple[str, ...]) -> ReleaseArguments:
@@ -282,7 +294,10 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
             cwd=project_root,
         )
     except ReleaseError as exc:
-        raise ReleaseError(f"{exc}\n\n{release_publish_recovery_guidance(ctx, title)}") from exc
+        raise ReleaseError(
+            str(exc),
+            guidance=release_publish_recovery_guidance(ctx, title),
+        ) from exc
     finally:
         notes_path.unlink(missing_ok=True)
 
@@ -372,7 +387,10 @@ def git_branch_finding(root: Path) -> ReleaseFinding:
 
 
 def local_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
-    if local_tag_exists(root, tag_name):
+    exists = local_tag_exists(root, tag_name)
+    if exists is None:
+        return ReleaseFinding("warn", "local_tag", f"Unable to inspect local tag {tag_name}.")
+    if exists:
         return ReleaseFinding("error", "local_tag", f"Local tag {tag_name} already exists.")
     return ReleaseFinding("ok", "local_tag", f"Local tag {tag_name} is available.")
 
@@ -425,28 +443,36 @@ def extract_changelog_section(path: Path, version: str) -> str:
 
 
 def git_status(root: Path) -> str | None:
-    result = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=root,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     if result.returncode != 0:
         return None
     return result.stdout.strip()
 
 
 def current_git_branch(root: Path) -> str | None:
-    result = subprocess.run(
-        ["git", "branch", "--show-current"],
-        cwd=root,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     if result.returncode != 0:
         return None
     return result.stdout.strip()
@@ -518,7 +544,7 @@ def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) ->
 
 
 def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
-    joined = " ".join(command)
+    joined = shlex.join(command)
     try:
         result = subprocess.run(
             command,
@@ -547,14 +573,18 @@ def write_temp_release_notes(notes: str) -> Path:
         return Path(notes_file.name)
 
 
-def local_tag_exists(root: Path, tag_name: str) -> bool:
-    result = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
-        cwd=root,
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+def local_tag_exists(root: Path, tag_name: str) -> bool | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     return result.returncode == 0
 
 
