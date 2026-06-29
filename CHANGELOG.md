@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Made `basectl check` warn when Homebrew reports installed Xcode Command Line
+  Tools are outdated or incomplete, matching the existing `basectl doctor`
+  finding while keeping the check non-blocking.
+
 ## [1.3.0] - 2026-06-28
 
 ### Added
