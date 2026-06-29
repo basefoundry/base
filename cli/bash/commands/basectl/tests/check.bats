@@ -50,6 +50,27 @@ load ./setup_helpers.bash
     [ "$(grep -c '^click$' "$TEST_STATE_DIR/pip-show.log")" -eq 1 ]
 }
 
+@test "basectl check warns when Homebrew reports outdated Xcode Command Line Tools" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    touch "$TEST_STATE_DIR/xcode-outdated"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete."* ]]
+    [[ "$output" == *"Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'."* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+}
+
 @test "basectl check preserves text order while base probes overlap" {
     local click_line homebrew_line python_line pyyaml_line venv_line xcode_line
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
@@ -592,6 +613,30 @@ load ./setup_helpers.bash
     [[ "$output" != *'"ok":'* ]]
     [[ "$output" == *"Virtual environment Python is broken because home path '$missing_home' no longer provides Python."* ]]
     [[ "$output" == *"Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment."* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --format json warns when Homebrew reports outdated Xcode Command Line Tools" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    touch "$TEST_STATE_DIR/xcode-outdated"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command_separate_stderr check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"id":"BASE-D002","status":"warn","name":"xcode_command_line_tools"'* ]]
+    [[ "$output" == *"Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete."* ]]
+    [[ "$output" == *"Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'."* ]]
+    [[ "$output" != *'"ok":'* ]]
     [ "${stderr:-}" = "" ]
 }
 

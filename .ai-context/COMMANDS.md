@@ -20,7 +20,7 @@ options.
 - `basectl setup [project]` - install and bootstrap the local Base CLI
   environment and optional project artifacts.
 - `basectl check [project]` - verify local Base and optional project artifacts
-  without making changes.
+  without making changes, warning on non-blocking readiness issues.
 - `basectl doctor [project]` - diagnose Base or project readiness and explain
   fixes.
 - `basectl test [project]` - run a project's declared test command.

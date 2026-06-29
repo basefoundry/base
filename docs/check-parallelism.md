@@ -14,7 +14,7 @@ the existing deterministic order.
 The shipped macOS base probes run concurrently for:
 
 - Homebrew presence and path discovery
-- Xcode Command Line Tools presence
+- Xcode Command Line Tools presence and Homebrew-reported freshness
 - Homebrew Python formula presence
 - Base virtual environment integrity
 - Base bootstrap Python package checks

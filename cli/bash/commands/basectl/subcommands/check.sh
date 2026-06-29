@@ -36,7 +36,8 @@ See also:
 
 Check does:
   1. Verify Homebrew is installed.
-  2. Verify Xcode Command Line Tools are installed.
+  2. Verify Xcode Command Line Tools are installed and warn when Homebrew reports
+     them outdated or incomplete.
   3. Verify Python 3.13 is installed via Homebrew.
   4. Verify ~/.base.d/base/.venv is healthy.
   5. Verify prerequisite profiles when --profile is passed.
@@ -127,8 +128,8 @@ base_check_subcommand_main() {
     export BASE_SETUP_REMOTE_NETWORK
     log_debug "Running 'basectl check'."
     if [[ "$output_format" == json ]]; then
-        setup_run_check_json "$remote_network"
+        BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_run_check_json "$remote_network"
     else
-        setup_run_check
+        BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_run_check
     fi
 }

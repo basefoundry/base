@@ -333,6 +333,15 @@ PYEOF
         fi
         exit 1
         ;;
+    doctor)
+        if [[ -f "$state_dir/xcode-outdated" ]]; then
+            printf 'Warning: Your Command Line Tools are too outdated.\n'
+            printf 'Update them from Software Update in System Settings.\n'
+            exit 1
+        fi
+        printf 'Your system is ready to brew.\n'
+        exit 0
+        ;;
     *)
         printf 'unexpected brew args: %s\n' "$*" >&2
         exit 1
