@@ -854,11 +854,19 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: macos-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Validate repository baseline
         run: ./tests/validate.sh
 EOF
@@ -885,10 +893,15 @@ permissions:
   contents: read
   issues: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || inputs.issue_number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   sync:
     name: Sync issue Project fields
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       BASE_PROJECT_OWNER: ${{ github.repository_owner }}
       BASE_PROJECT_TITLE: ${{ github.event.repository.name }}
