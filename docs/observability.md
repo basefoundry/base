@@ -2,9 +2,9 @@
 
 > **STATUS** — `basectl history` and the local history index are implemented as
 > the first slice. `basectl explain last-error`, `basectl report`, and history
-> cleanup integration remain future work.
+> cleanup integration are tracked but not scheduled longer-term future work.
 
-Issue: #396
+Tracker: [#396](https://github.com/basefoundry/base/issues/396)
 
 Base currently exposes raw runtime logs through `basectl logs` and structured
 local command metadata through `basectl history`. This document defines the
@@ -144,7 +144,7 @@ The retention contract should be:
   log path safely, but `basectl history` should mark missing logs clearly.
 - Durable user state under `~/.base.d` is never cleaned by history retention.
 
-## Future Commands
+## Shipped Commands
 
 ### `basectl history`
 
@@ -167,6 +167,8 @@ Expected options:
 
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.
+
+## Planned Commands
 
 ### `basectl explain last-error`
 

@@ -63,6 +63,17 @@ After all probe PIDs exit, the parent shell parses the files, validates required
 fields, adds any parent-owned results, and only then renders text or calls the
 Python JSON renderer.
 
+Python-backed project artifact and IDE diagnostics use bounded subprocess
+probes instead of the shell background result-file collector. The shared
+diagnostic timeout is `process.DIAGNOSTIC_TIMEOUT_SECONDS` (10 seconds), and it
+is passed to Homebrew artifact checks, Brewfile and mise delegate probes, IDE
+extension and app-install probes, Python artifact package probes, and Git remote
+diagnostics. When one of these subprocess probes times out, the Python layer
+returns the normal finding ID for that probe with timeout-specific text, usually
+as a warning when the diagnostic is informational. The parent `check`/`doctor`
+rendering still preserves the same deterministic text and JSON order; the
+timeout changes the finding content, not the ordering contract.
+
 ## Constraints
 
 - Preserve `basectl check --format json` schema and ordering.
