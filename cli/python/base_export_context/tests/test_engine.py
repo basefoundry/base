@@ -201,6 +201,65 @@ class ExportContextTests(unittest.TestCase):
                 for info in archive.infolist():
                     self.assertEqual(info.date_time, (1980, 1, 1, 0, 0, 0))
 
+    def test_zip_output_directory_uses_default_bundle_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            output_dir = Path(tmpdir) / "exports"
+            project_root.mkdir()
+            output_dir.mkdir()
+            expected_zip = output_dir / "demo-ai-context.zip"
+            write_context_file(project_root, "PROJECT.md", "Project\n")
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "--project-name",
+                    "demo",
+                    "--project-root",
+                    str(project_root),
+                    "--format",
+                    "zip",
+                    "--output",
+                    str(output_dir),
+                ],
+                project_root,
+            )
+
+            self.assertEqual(status, 0)
+            self.assertEqual(stderr, "")
+            self.assertEqual(stdout, f"Wrote Zip AI context export for project 'demo' to {expected_zip}\n")
+            self.assertTrue(expected_zip.is_file())
+            with zipfile.ZipFile(expected_zip) as archive:
+                self.assertEqual(archive.namelist(), ["PROJECT.md"])
+
+    def test_zip_output_invalid_destination_reports_error_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            parent_file = Path(tmpdir) / "not-a-directory"
+            project_root.mkdir()
+            parent_file.write_text("not a directory\n", encoding="utf-8")
+            output_path = parent_file / "bundle.zip"
+            write_context_file(project_root, "PROJECT.md", "Project\n")
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "--project-name",
+                    "demo",
+                    "--project-root",
+                    str(project_root),
+                    "--format",
+                    "zip",
+                    "--output",
+                    str(output_path),
+                ],
+                project_root,
+            )
+
+            self.assertEqual(status, 1)
+            self.assertEqual(stdout, "")
+            self.assertIn("Unable to write Zip AI context export", stderr)
+            self.assertIn(str(output_path), stderr)
+            self.assertNotIn("Traceback", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
