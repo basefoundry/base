@@ -205,15 +205,20 @@ should never upload the report.
 
 ## Implementation Split
 
-The commands should ship in separate, reviewable slices:
+The shipped first slice is:
 
 1. Add history recording and `basectl history`. **Shipped.**
-2. Add `basectl explain last-error` after history records exist.
-3. Add `basectl report` after history and explanation have stable local data.
-4. Extend `basectl clean` to compact or prune history records once the history
-   format is stable.
 
-This order keeps the data model and privacy boundary reviewable before Base
+### Unscheduled Future Work
+
+The following items remain tracked but are not scheduled:
+
+- Add `basectl explain last-error` after history records exist.
+- Add `basectl report` after history and explanation have stable local data.
+- Extend `basectl clean` to compact or prune history records once the history
+  format is stable.
+
+That sequence keeps the data model and privacy boundary reviewable before Base
 starts producing summaries or shareable diagnostic artifacts.
 
 ## First Slice Decisions
