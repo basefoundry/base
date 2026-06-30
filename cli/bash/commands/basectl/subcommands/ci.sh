@@ -203,6 +203,7 @@ base_ci_run_setup_json() {
     base_setup_subcommand_main "${args[@]}" > "$stdout_file" 2> "$stderr_file"
     exit_code=$?
 
+    # Keep JSON as stdout-only; replay setup logs to stderr for CI visibility.
     if [[ -s "$stdout_file" ]]; then
         cat "$stdout_file" >&2
     fi

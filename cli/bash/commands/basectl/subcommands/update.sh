@@ -84,17 +84,20 @@ base_update_is_homebrew_install() {
 
 base_update_homebrew_prefix() {
     local package="$1"
+    local candidate
+    local candidates=("base")
     local prefix
 
-    if prefix="$(brew --prefix base 2>/dev/null)" && [[ -n "$prefix" ]]; then
-        printf '%s\n' "$prefix"
-        return 0
+    if [[ -n "$package" && "$package" != "base" ]]; then
+        candidates+=("$package")
     fi
 
-    if prefix="$(brew --prefix "$package" 2>/dev/null)" && [[ -n "$prefix" ]]; then
-        printf '%s\n' "$prefix"
-        return 0
-    fi
+    for candidate in "${candidates[@]}"; do
+        if prefix="$(brew --prefix "$candidate" 2>/dev/null)" && [[ -n "$prefix" ]]; then
+            printf '%s\n' "$prefix"
+            return 0
+        fi
+    done
 
     return 1
 }

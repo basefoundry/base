@@ -214,6 +214,37 @@ EOF
     [ "$status" -eq 0 ]
 }
 
+@test "base_update_homebrew_prefix does not repeat identical base prefix probes" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local brew_log="$TEST_TMPDIR/brew.log"
+
+    mkdir -p "$fake_bin"
+    cat > "$fake_bin/brew" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$brew_log"
+exit 1
+EOF
+    chmod +x "$fake_bin/brew"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_homebrew_prefix base
+        '
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$brew_log")" = "--prefix base" ]
+}
+
 @test "basectl update runs exact Homebrew package upgrade and clears Base env for setup" {
     local fake_bin="$TEST_TMPDIR/bin"
     local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
