@@ -31,6 +31,19 @@ EOF
     chmod +x "$platform_tools_home/bin/caff"
 }
 
+create_minimal_bash_libs_fixture() {
+    local bash_libs_dir="$1"
+
+    mkdir -p "$bash_libs_dir/std"
+    cat > "$bash_libs_dir/std/lib_std.sh" <<'EOF'
+#!/usr/bin/env bash
+add_to_path() { return 0; }
+log_debug() { return 0; }
+print_error() { printf 'ERROR: %s\n' "$*" >&2; }
+fatal_error() { printf 'ERROR: %s\n' "$*" >&2; return 1; }
+EOF
+}
+
 
 @test "basectl update-profile creates Base-managed sections in all shell dotfiles" {
     run_base_command update-profile
@@ -140,6 +153,7 @@ EOF
     local resolved_base="$TEST_TMPDIR/resolved-base"
 
     mkdir -p "$runtime_base" "$resolved_base"
+    create_minimal_bash_libs_fixture "$TEST_TMPDIR/base-bash-libs/lib/bash"
 
     run env \
         HOME="$TEST_HOME" \
