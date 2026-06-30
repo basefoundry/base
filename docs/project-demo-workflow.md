@@ -144,10 +144,12 @@ The public reference repository is
 It is not primarily a test harness. Its tests prove that the walkthrough stays
 executable, but its product role is onboarding and inspection.
 
-Clone it next to Base:
+Assuming Base is already checked out, clone `base-demo` next to that existing
+Base checkout. If your Base checkout is not under `~/work`, use its parent
+directory instead:
 
 ```bash
-git clone https://github.com/basefoundry/base.git
+cd ~/work
 git clone https://github.com/basefoundry/base-demo.git
 ```
 

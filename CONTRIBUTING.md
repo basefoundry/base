@@ -152,8 +152,14 @@ Follow [STANDARDS.md](STANDARDS.md). In particular:
 Base's curated tool artifact registry lives in:
 
 ```text
+lib/base/artifact-registry.yaml
 cli/python/base_setup/registry.py
 ```
+
+`lib/base/artifact-registry.yaml` is the registry data file where built-in tool
+artifact definitions are declared. `cli/python/base_setup/registry.py` is the
+Python loader that validates and exposes that YAML data to setup and check
+code.
 
 Python package artifacts are pass-through PyPI package names; they do not need
 registry entries unless Base needs special handling for them.

@@ -1,10 +1,12 @@
 # Homebrew Upgrade Rehearsal
 
-Use this checklist before Base 1.0.0 to prove the consumer upgrade path from an
-existing Homebrew install to a release candidate or equivalent test formula.
-This is separate from the tap update checklist: the tap checklist proves the
-formula can be published, while this rehearsal proves an existing user can
-upgrade without losing local Base state.
+Use this checklist to prove the consumer upgrade path from an existing Homebrew
+install to a release candidate or equivalent test formula. It remains the
+durable rehearsal for future releases after Base 1.0.0; the historical run
+records below preserve pre-1.0 rehearsal evidence for reference. This is
+separate from the tap update checklist: the tap checklist proves the formula can
+be published, while this rehearsal proves an existing user can upgrade without
+losing local Base state.
 
 ## Preconditions
 
@@ -74,7 +76,7 @@ brew update
 brew upgrade --no-ask basefoundry/base/base
 ```
 
-For a pre-1.0.0 release candidate, use the candidate formula or tap branch that
+For an unreleased candidate, use the candidate formula or tap branch that
 will become the published formula. Record the exact command, tap ref, formula
 path, and archive checksum used for the rehearsal.
 
@@ -126,8 +128,8 @@ Accept the rehearsal only when:
 - `basectl setup`, `check`, `doctor`, and `test` pass for the scratch project.
 
 If any Base-specific breakage appears, fix it or file a blocking follow-up
-before 1.0.0. If a host prerequisite blocks the run, record it and rerun on a
-qualified host; do not close the rehearsal issue.
+before shipping the target release. If a host prerequisite blocks the run,
+record it and rerun on a qualified host; do not close the rehearsal issue.
 
 ## Historical Run Record Notes
 
