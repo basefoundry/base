@@ -50,6 +50,7 @@ PROJECT_VALUE_OPTIONS = (
 ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--size")
 GIT_COMMAND_TIMEOUT_SECONDS = 10
 GITHUB_GRAPHQL_TIMEOUT_SECONDS = 60
+PROJECT_AUTH_EXIT_CODE = 3
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,7 +80,7 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
     except ProjectAuthError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         print("Run `gh auth refresh -h github.com -s project` and retry.", file=sys.stderr)
-        return 3
+        return PROJECT_AUTH_EXIT_CODE
     except ProjectError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return base_cli.ExitCode.FAILURE
@@ -193,14 +194,15 @@ def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_iss
 
 
 def apply_spaced_option(state: OptionState, remaining: list[str], index: int, *, allow_fields: bool) -> int:
+    """Apply a spaced option and return the number of consumed tokens."""
     option = remaining[index]
     if option in PROJECT_VALUE_OPTIONS:
         apply_project_option(state, option, option_value(remaining, index))
-        return base_cli.ExitCode.USAGE_ERROR
+        return 2
     if allow_fields and option in ISSUE_FIELD_OPTIONS:
         state.field_values[option[2:]] = option_value(remaining, index)
-        return base_cli.ExitCode.USAGE_ERROR
-    return base_cli.ExitCode.SUCCESS
+        return 2
+    return 0
 
 
 def option_value(remaining: list[str], index: int) -> str:

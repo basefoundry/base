@@ -7,6 +7,9 @@ from pathlib import Path
 STANDARD_EXIT_VALUES = {0, 1, 2}
 STANDARD_ERROR_EXIT_VALUES = {1, 2}
 EXIT_STATUS_VARIABLES = {"exit_code", "status"}
+NON_EXIT_STATUS_RETURN_FUNCTIONS = {
+    ("cli/python/base_github_projects/engine.py", "apply_spaced_option"),
+}
 
 
 def repository_root() -> Path:
@@ -25,20 +28,40 @@ def iter_production_python_files() -> list[Path]:
 
 def raw_standard_exit_returns(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    relative_path = str(path.relative_to(repository_root()))
+    allowed_functions = {
+        function_name
+        for allowed_path, function_name in NON_EXIT_STATUS_RETURN_FUNCTIONS
+        if allowed_path == relative_path
+    }
     findings: list[str] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Return):
-            continue
-        values: tuple[ast.expr | None, ...]
-        if isinstance(node.value, ast.IfExp):
-            values = (node.value.body, node.value.orelse)
-        else:
-            values = (node.value,)
-        for value in values:
-            if not isinstance(value, ast.Constant) or isinstance(value.value, bool):
-                continue
-            if isinstance(value.value, int) and value.value in STANDARD_EXIT_VALUES:
-                findings.append(f"{path.relative_to(repository_root())}:{node.lineno}: return {value.value}")
+
+    class ReturnVisitor(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.function_stack: list[str] = []
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            self.function_stack.append(node.name)
+            self.generic_visit(node)
+            self.function_stack.pop()
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_Return(self, node: ast.Return) -> None:
+            if self.function_stack and self.function_stack[-1] in allowed_functions:
+                return
+            values: tuple[ast.expr | None, ...]
+            if isinstance(node.value, ast.IfExp):
+                values = (node.value.body, node.value.orelse)
+            else:
+                values = (node.value,)
+            for value in values:
+                if not isinstance(value, ast.Constant) or isinstance(value.value, bool):
+                    continue
+                if isinstance(value.value, int) and value.value in STANDARD_EXIT_VALUES:
+                    findings.append(f"{relative_path}:{node.lineno}: return {value.value}")
+
+    ReturnVisitor().visit(tree)
     return findings
 
 
