@@ -171,6 +171,24 @@ EOF
     [[ "$output" != *"ERROR:"* ]]
 }
 
+@test "baserc guard rejects exported BASE_HOME overrides" {
+    printf '%s\n' 'export BASE_HOME=/tmp/evil' > "$TEST_HOME/.baserc"
+
+    run env -i \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$TEST_BASE_BASH_LIBS_DIR" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "BASE_HOME=%s\n" "$BASE_HOME"; \
+            printf "BASE_SHELL=%s\n" "${BASE_SHELL:-}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ERROR: ~/.baserc must not set Base-owned variable 'BASE_HOME'."* ]]
+    [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
+    [[ "$output" == *"BASE_SHELL=1"* ]]
+}
+
 @test "baserc debug setting enables full runtime trace" {
     printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
 
