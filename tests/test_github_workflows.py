@@ -63,6 +63,12 @@ def test_all_workflows_cancel_superseded_runs() -> None:
     assert not missing, missing
 
 
+def test_all_workflows_declare_top_level_permissions() -> None:
+    missing = [path.name for path in workflow_files() if "permissions" not in load_workflow(path)]
+
+    assert not missing, missing
+
+
 def test_all_workflow_jobs_have_timeouts() -> None:
     missing: list[str] = []
     for path in workflow_files():
