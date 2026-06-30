@@ -86,8 +86,8 @@ of silently leaving the issue unassigned.
 
 ## Issue Project Metadata
 
-When an issue is tracked in the `Base Roadmap` Project, use the standard
-Base roadmap fields:
+When an issue is tracked in the repo-named Project, use the standard Base
+Project fields:
 
 - `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
 - `Priority`: `P0`, `P1`, `P2`, `P3`
@@ -152,7 +152,9 @@ schema repair, or issue field updates.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,
 `Area`, `Initiative`, and `Size` issue item values into the repo Project without
-overwriting values already set there.
+overwriting values already set there. Older Base issues may have been tracked in
+`Base Roadmap`; use that title only as the migration source when copying legacy
+field values into the current repo-named Project.
 
 ```bash
 basectl gh project doctor --project base --owner basefoundry

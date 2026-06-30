@@ -45,10 +45,10 @@ Before modifying files in this repository, classify the request.
 - Assign agent-created Base repository issues to `codeforester` when GitHub
   allows it; `.github/base-project.yml` carries this repo-local default for
   `basectl gh issue create`.
-- For issues tracked in Base Roadmap, set Project `Status` to `In Progress`
-  before implementation starts, move it to `In Review` when the PR opens, and
-  verify `Done` after merge/closure. If Project V2 access or item state
-  prevents an update, mention that in the work summary.
+- For issues tracked in the repo-named Project, set Project `Status` to
+  `In Progress` before implementation starts, move it to `In Review` when the
+  PR opens, and verify `Done` after merge/closure. If Project V2 access or item
+  state prevents an update, mention that in the work summary.
 - When creating issues, choose Project `Size` from actual scope: `T` for tiny
   obvious work, `S` for normal small work or unknown scope, `M` for interacting
   changes, and `L` only for work that should probably be split.

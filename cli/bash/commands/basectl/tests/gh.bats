@@ -90,6 +90,15 @@ run_gh_subcommand() {
     [[ "$output" != *"basectl gh worktree prune"* ]]
 }
 
+@test "basectl gh project configure help lists delegated Python options" {
+    run_basectl gh project --help
+
+    [ "$status" -eq 0 ]
+    for flag in "--schema base-project" "--config <path>" "--copy-fields-from <title>" "--replace-project" "--initiative-option <name>" "--dry-run"; do
+        [[ "$output" == *"$flag"* ]]
+    done
+}
+
 @test "basectl gh project issue set-fields prints concrete help" {
     run_basectl gh project issue set-fields --help
 
