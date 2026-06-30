@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from typing import get_type_hints
+from unittest import mock
 
+from base_setup import python_policy
 from base_setup.manifest import BaseManifest
 from base_setup.manifest import PythonConfig
 from base_setup.python_policy import PythonInterpreter
@@ -108,6 +112,26 @@ class PythonPolicyTests(unittest.TestCase):
         self.assertEqual(check.finding_id, "BASE-P171")
         self.assertEqual(check.details["python"], str(python_path))
         self.assertEqual(check.details["selected_version"], "3.11")
+
+    def test_resolve_interpreter_annotations_allow_none_default(self) -> None:
+        requirement_hints = get_type_hints(python_policy.python_requirement_checks)
+        availability_hints = get_type_hints(python_policy.python_interpreter_availability_check)
+
+        self.assertEqual(
+            requirement_hints["resolve_interpreter"],
+            python_policy.ResolvePythonInterpreter | None,
+        )
+        self.assertEqual(
+            availability_hints["resolve_interpreter"],
+            python_policy.ResolvePythonInterpreter | None,
+        )
+
+    def test_interpreter_availability_uses_explicit_guard_for_missing_selected_version(self) -> None:
+        policy = SimpleNamespace(ok=True, selected_version=None)
+
+        with mock.patch("base_setup.python_policy.evaluate_python_requirement", return_value=policy):
+            with self.assertRaisesRegex(ValueError, "selected Python version"):
+                python_interpreter_availability_check(manifest_with_python_requirement("3.12"))
 
     def test_python_requirement_checks_include_policy_and_interpreter_availability(self) -> None:
         checks = python_requirement_checks(

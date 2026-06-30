@@ -94,6 +94,28 @@ class IdeSettingsTests(unittest.TestCase):
 
         self.assertEqual(settings, {"editor.formatOnSave": True})
 
+    def test_write_json_atomic_removes_temp_file_when_dump_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_dir = Path(tmpdir)
+            settings_file = settings_dir / "settings.json"
+
+            with mock.patch("base_setup.ide.json.dump", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    ide.write_json_atomic(settings_file, {"editor.formatOnSave": True})
+
+            self.assertEqual(list(settings_dir.iterdir()), [])
+
+    def test_write_json_atomic_removes_temp_file_when_replace_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            settings_dir = Path(tmpdir)
+            settings_file = settings_dir / "settings.json"
+
+            with mock.patch.object(Path, "replace", side_effect=OSError("replace failed")):
+                with self.assertRaises(OSError):
+                    ide.write_json_atomic(settings_file, {"editor.formatOnSave": True})
+
+            self.assertEqual(list(settings_dir.iterdir()), [])
+
 
 
     def test_merge_ide_settings_preserves_existing_user_value(self) -> None:

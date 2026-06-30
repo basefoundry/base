@@ -7,9 +7,10 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
-from base_projects import engine
+from base_projects import engine, workspace_init as workspace_init_module
 
 
 def write_workspace_manifest(path: Path) -> None:
@@ -288,3 +289,17 @@ class WorkspaceInitTests(unittest.TestCase):
             state_lines,
             [f"repo clone codeforester/base-workspace --path {source.resolve()} --dry-run"],
         )
+
+    def test_resolve_workspace_config_repo_path_uses_explicit_repo_name_guard(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir) / "workspace"
+            ctx = SimpleNamespace(workspace_root=workspace_root, base_home=None)
+            source = workspace_init_module.WorkspaceInitSource(
+                display="codeforester/base-workspace",
+                repo_spec="codeforester/base-workspace",
+                repo_name=None,
+            )
+            options = SimpleNamespace(workspace=None, workspace_config_path=None)
+
+            with self.assertRaisesRegex(ValueError, "repo_name"):
+                workspace_init_module.resolve_workspace_config_repo_path(ctx, source, options)

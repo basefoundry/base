@@ -398,11 +398,16 @@ def merge_ide_settings(
 
 
 def write_json_atomic(path: Path, data: dict[str, object]) -> None:
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as tmp_file:
-        json.dump(data, tmp_file, indent=2, sort_keys=True)
-        tmp_file.write("\n")
-        tmp_path = Path(tmp_file.name)
-    tmp_path.replace(path)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            json.dump(data, tmp_file, indent=2, sort_keys=True)
+            tmp_file.write("\n")
+        tmp_path.replace(path)
+    finally:
+        if tmp_path is not None and tmp_path.exists():
+            tmp_path.unlink()
 
 
 def check_ide_settings(manifest: BaseManifest) -> list[ArtifactCheck]:

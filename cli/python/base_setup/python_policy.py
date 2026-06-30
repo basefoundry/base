@@ -52,7 +52,7 @@ ResolvePythonInterpreter = Callable[[tuple[int, int]], PythonInterpreter | None]
 
 def python_requirement_checks(
     manifest: BaseManifest,
-    resolve_interpreter: ResolvePythonInterpreter = None,
+    resolve_interpreter: ResolvePythonInterpreter | None = None,
 ) -> tuple[ArtifactCheck, ...]:
     policy_check = python_requirement_policy_check(manifest)
     if policy_check is None:
@@ -104,7 +104,7 @@ def python_requirement_policy_check(manifest: BaseManifest) -> ArtifactCheck | N
 
 def python_interpreter_availability_check(
     manifest: BaseManifest,
-    resolve_interpreter: ResolvePythonInterpreter = None,
+    resolve_interpreter: ResolvePythonInterpreter | None = None,
 ) -> ArtifactCheck | None:
     requested = manifest.python.requires_python
     if requested is None:
@@ -115,7 +115,8 @@ def python_interpreter_availability_check(
         return None
 
     selected_version = policy.selected_version
-    assert selected_version is not None
+    if selected_version is None:
+        raise ValueError("Python requirement policy is ok without a selected Python version.")
     selected_label = version_label(selected_version)
     if resolve_interpreter is None:
         resolve_interpreter = resolve_python_interpreter

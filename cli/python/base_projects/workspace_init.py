@@ -159,7 +159,8 @@ def resolve_workspace_config_repo_path(
     if source.local_path is not None:
         return source.local_path
     workspace_root = resolve_workspace_init_root(ctx, options.workspace, None)
-    assert source.repo_name is not None
+    if source.repo_name is None:
+        raise ValueError("Workspace init source must include repo_name when resolving a repo path.")
     return (workspace_root / source.repo_name).resolve(strict=False)
 
 
