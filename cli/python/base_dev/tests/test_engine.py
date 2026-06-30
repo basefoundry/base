@@ -766,12 +766,14 @@ class DevManifestTests(unittest.TestCase):
             mock.patch("base_dev.engine.run_check", return_value=False),
         ):
             stdout = io.StringIO()
-            with redirect_stdout(stdout):
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
 
         self.assertEqual(status, 3)
-        self.assertIn("error", stdout.getvalue())
-        self.assertIn("Fix: basectl setup --profile dev", stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("error", stderr.getvalue())
+        self.assertIn("Fix: basectl setup --profile dev", stderr.getvalue())
 
     def test_doctor_reports_invalid_github_auth(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
@@ -801,13 +803,26 @@ class DevManifestTests(unittest.TestCase):
             mock.patch("base_setup.process.run_capture", return_value=current),
         ):
             stdout = io.StringIO()
-            with redirect_stdout(stdout):
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
 
         self.assertEqual(status, 1)
-        self.assertIn("gh-auth", stdout.getvalue())
-        self.assertIn("GitHub CLI authentication is not ready.", stdout.getvalue())
-        self.assertIn("Fix: gh auth login -h github.com", stdout.getvalue())
+        self.assertIn("BASE-D104", stdout.getvalue())
+        self.assertNotIn("gh-auth", stdout.getvalue())
+        self.assertIn("gh-auth", stderr.getvalue())
+        self.assertIn("GitHub CLI authentication is not ready.", stderr.getvalue())
+        self.assertIn("Fix: gh auth login -h github.com", stderr.getvalue())
+
+    def test_doctor_reports_unsupported_text_format_to_stderr(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            status = engine.doctor_dev_artifacts((), (), output_format="xml")
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Unsupported doctor output format 'xml'. Expected text or json.", stderr.getvalue())
 
     def test_doctor_supports_json_output(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
@@ -844,11 +859,18 @@ class DevManifestTests(unittest.TestCase):
         definitions = engine.resolve_artifact_definitions(manifest.artifacts)
         with mock.patch("base_dev.engine.check_homebrew_artifact", return_value=check):
             stdout = io.StringIO()
-            with redirect_stdout(stdout):
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.doctor_dev_artifacts(manifest.artifacts, definitions, output_format="text")
 
         self.assertEqual(status, 0)
-        self.assertIn("warn", stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("warn", stderr.getvalue())
+
+    def test_engine_uses_exit_code_constants_for_status_comparisons(self) -> None:
+        source = Path(engine.__file__).read_text(encoding="utf-8")
+
+        self.assertNotIn("status != 0", source)
 
 
 if __name__ == "__main__":

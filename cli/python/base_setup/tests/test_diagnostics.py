@@ -123,12 +123,13 @@ class ProjectCheckTests(unittest.TestCase):
             artifacts=(ArtifactRequest(artifact_type="python-package", name="requests", version="latest"),),
         )
 
-        with redirect_stdout(io.StringIO()) as stdout:
+        with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
             status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         self.assertEqual(status, 1)
-        self.assertIn("Project doctor: demo", stdout.getvalue())
-        self.assertIn("Fix: basectl setup demo", stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Project doctor: demo", stderr.getvalue())
+        self.assertIn("Fix: basectl setup demo", stderr.getvalue())
 
 
 
@@ -198,9 +199,9 @@ class ProjectCheckTests(unittest.TestCase):
                 status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         self.assertEqual(status, 1)
-        self.assertEqual(stderr.getvalue(), "")
-        self.assertIn("error", stdout.getvalue())
-        self.assertIn("BASE-P040", stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("error", stderr.getvalue())
+        self.assertIn("BASE-P040", stderr.getvalue())
 
 
 
@@ -232,11 +233,13 @@ class ProjectCheckTests(unittest.TestCase):
         )
         with mock.patch("base_setup.engine.manifest_checks", return_value=(check,)):
             stdout = io.StringIO()
-            with redirect_stdout(stdout):
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         self.assertEqual(status, 0)
-        self.assertIn("warn", stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("warn", stderr.getvalue())
 
     def test_artifact_check_requires_explicit_finding_id(self) -> None:
         kwargs = {
@@ -436,19 +439,21 @@ class ProjectCheckTests(unittest.TestCase):
 
         with mock.patch.dict(os.environ, {"BASE_TEST_DOCTOR_PRESENT": "another-secret-value"}, clear=False):
             os.environ.pop("BASE_TEST_DOCTOR_MISSING", None)
-            with redirect_stdout(io.StringIO()) as stdout:
+            with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
                 status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         output = stdout.getvalue()
+        error_output = stderr.getvalue()
         self.assertEqual(status, 1)
         self.assertIn("ok", output)
         self.assertIn("BASE_TEST_DOCTOR_PRESENT", output)
         self.assertIn("Environment variable 'BASE_TEST_DOCTOR_PRESENT' is set.", output)
-        self.assertIn("error", output)
-        self.assertIn("BASE_TEST_DOCTOR_MISSING", output)
-        self.assertIn("Environment variable 'BASE_TEST_DOCTOR_MISSING' is not set or is empty.", output)
-        self.assertIn("Fix: Set BASE_TEST_DOCTOR_MISSING in your shell, .env, or secrets manager.", output)
+        self.assertIn("error", error_output)
+        self.assertIn("BASE_TEST_DOCTOR_MISSING", error_output)
+        self.assertIn("Environment variable 'BASE_TEST_DOCTOR_MISSING' is not set or is empty.", error_output)
+        self.assertIn("Fix: Set BASE_TEST_DOCTOR_MISSING in your shell, .env, or secrets manager.", error_output)
         self.assertNotIn("another-secret-value", output)
+        self.assertNotIn("another-secret-value", error_output)
 
 
     def test_doctor_manifest_reports_required_ports_with_finding_ids(self) -> None:
@@ -763,13 +768,16 @@ class IdeDiagnosticsTests(unittest.TestCase):
                 return_value=False,
             ):
                 stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                stderr = io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
                     status = engine.doctor_manifest(default_manifest, manifest, output_format="text")
 
         output = stdout.getvalue()
+        error_output = stderr.getvalue()
         self.assertGreater(status, 0)
-        self.assertIn("Project doctor: demo", output)
-        self.assertIn("Cursor app", output)
-        self.assertIn("github.copilot", output)
-        self.assertIn("Cursor setting: editor.formatOnSave", output)
-        self.assertIn("Fix:", output)
+        self.assertEqual(output, "")
+        self.assertIn("Project doctor: demo", error_output)
+        self.assertIn("Cursor app", error_output)
+        self.assertIn("github.copilot", error_output)
+        self.assertIn("Cursor setting: editor.formatOnSave", error_output)
+        self.assertIn("Fix:", error_output)

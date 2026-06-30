@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -139,7 +140,7 @@ def setup_profile_manifests(
             profile_manifest.definitions,
             dry_run=dry_run,
         )
-        if status != 0:
+        if status != base_cli.ExitCode.SUCCESS:
             return status
     return base_cli.ExitCode.SUCCESS
 
@@ -165,7 +166,7 @@ def setup_profiles(
                 profile_manifest.definitions,
                 dry_run=dry_run,
             )
-        if status != 0:
+        if status != base_cli.ExitCode.SUCCESS:
             return status
     return base_cli.ExitCode.SUCCESS
 
@@ -321,7 +322,7 @@ def print_doctor_results(checks: tuple[DevCheck, ...], output_format: str) -> in
         print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
     if output_format != "text":
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.")
+        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
         return base_cli.ExitCode.USAGE_ERROR
 
     error_count = 0
