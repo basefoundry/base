@@ -23,7 +23,11 @@ before treating the fix as complete.
 
 ## Contract Check Runner
 
-Run the first contract slice with:
+Default Python validation includes the top-level Python contract tests. That
+means `python -m pytest` in CI and `./bin/base-test` in a source checkout fail
+when GitHub workflow policy or the contract registry drifts.
+
+Run the focused cross-surface contract slice with:
 
 ```bash
 tests/contracts/run.sh

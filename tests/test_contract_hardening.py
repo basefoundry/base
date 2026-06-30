@@ -4,6 +4,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DOC = REPO_ROOT / "docs" / "contracts.md"
 CONTRACT_RUNNER = REPO_ROOT / "tests" / "contracts" / "run.sh"
+PYTEST_CONFIG = REPO_ROOT / "pytest.ini"
 
 
 def contract_registry_rows() -> list[dict[str, str]]:
@@ -31,6 +32,31 @@ def contract_registry_rows() -> list[dict[str, str]]:
             rows.append(dict(zip(headers, cells)))
 
     return rows
+
+
+def pytest_testpaths() -> list[str]:
+    lines = PYTEST_CONFIG.read_text(encoding="utf-8").splitlines()
+    testpaths: list[str] = []
+    in_testpaths = False
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "testpaths =":
+            in_testpaths = True
+            continue
+        if not in_testpaths:
+            continue
+        if line.startswith((" ", "\t")) and stripped:
+            testpaths.append(stripped)
+            continue
+        if stripped:
+            break
+
+    return testpaths
+
+
+def test_default_pytest_discovery_includes_top_level_contract_tests() -> None:
+    assert "tests" in pytest_testpaths()
 
 
 def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> None:
