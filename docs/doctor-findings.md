@@ -145,6 +145,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P161` | Manifest command project script path readiness |
 | `BASE-P170` | Project Python version requirement support window |
 | `BASE-P171` | Selected project Python interpreter availability |
+| `BASE-P172` | Actual inspectable project Python runtime: environment manager, virtualenv path, interpreter path, and Python minor version |
 
 `BASE-P050` is the stable project virtual-environment readiness finding. The
 Bash setup/check path reports detailed venv health messages when a project venv
