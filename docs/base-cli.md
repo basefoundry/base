@@ -28,6 +28,31 @@ when a `base_cli.App` command is invoked.
 - No full caching framework.
 - No automatic initialization on import.
 
+## Future Extraction Boundary
+
+`base_cli` should remain in the Base repository until Base's platform contract is
+stable enough to support an independent Python package. The future extraction
+target is a small Click-compatible runtime package that could move to its own
+repository and later be published to PyPI, but that split should wait until
+Linux support and the intended Windows/WSL support story have both matured.
+
+Until then, treat extraction readiness as a design constraint for new
+`base_cli` work:
+
+- keep imports cheap, side-effect free, and safe on every supported platform;
+- keep the public API explicit through `base_cli.__all__`;
+- avoid putting command-specific `basectl` behavior in the runtime package;
+- keep Base-owned names such as `BASE_HOME`, `BASE_CACHE_DIR`,
+  `base_manifest.yaml`, and `~/.base.d` isolated and easy to adapter-wrap later;
+- document and test platform-sensitive path, cache, subprocess, signal,
+  encoding, and filesystem assumptions before treating them as package-stable;
+- reassess IDE and project-schema helpers before extraction so Base-specific
+  schema ownership does not leak into a general-purpose CLI runtime.
+
+Extraction preparation should not add PyPI metadata, create a second repository,
+or rename public APIs early. The useful work now is to keep the package boundary
+clean while Linux and Windows evidence shapes the eventual public contract.
+
 ## Author Experience
 
 ```python
