@@ -130,9 +130,13 @@ def export_markdown_context(options: ExportContextOptions) -> int:
 
 
 def resolve_output_path(project_name: str, output_path: str | None, extension: str) -> Path:
+    default_filename = f"{project_name}-ai-context.{extension}"
     if output_path:
-        return Path(output_path).expanduser()
-    return Path.cwd() / f"{project_name}-ai-context.{extension}"
+        path = Path(output_path).expanduser()
+        if path.is_dir():
+            return path / default_filename
+        return path
+    return Path.cwd() / default_filename
 
 
 def ordered_context_files(project_name: str, project_root: Path, include_all: bool) -> tuple[ContextFile, ...]:
@@ -240,10 +244,13 @@ def write_text_file(destination: Path, content: str) -> None:
 
 
 def write_zip_file(destination: Path, files: tuple[ContextFile, ...]) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for context_file in files:
-            info = zipfile.ZipInfo(context_file.relative_path.as_posix(), ZIP_TIMESTAMP)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            archive.writestr(info, context_file.path.read_bytes())
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for context_file in files:
+                info = zipfile.ZipInfo(context_file.relative_path.as_posix(), ZIP_TIMESTAMP)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                archive.writestr(info, context_file.path.read_bytes())
+    except OSError as exc:
+        raise ExportContextError(f"Unable to write Zip AI context export to '{destination}': {exc}") from exc
