@@ -323,4 +323,5 @@ def open_log(path: Path) -> int:
     if shutil.which(args[0]) is None:
         print(f"ERROR: {args[0]} was not found on PATH. Log path: {path}", file=sys.stderr)
         return base_cli.ExitCode.FAILURE
+    # Interactive pager/editor path: intentionally block until the user exits.
     return subprocess.call([*args, str(path)])
