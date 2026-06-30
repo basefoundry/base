@@ -139,7 +139,8 @@ class IdeDiagnosticSnapshot:
                 self._extension_error = exc
         if self._extension_error is not None:
             raise self._extension_error
-        assert self._installed_extensions is not None
+        if self._installed_extensions is None:
+            raise RuntimeError(f"{self.definition.label} installed extensions snapshot is unavailable.")
         return self._installed_extensions
 
     def settings_file(self) -> Path:
@@ -155,7 +156,8 @@ class IdeDiagnosticSnapshot:
                 self._settings_error = exc
         if self._settings_error is not None:
             raise self._settings_error
-        assert self._current_settings is not None
+        if self._current_settings is None:
+            raise RuntimeError(f"{self.definition.label} settings snapshot is unavailable.")
         return self._current_settings
 
 

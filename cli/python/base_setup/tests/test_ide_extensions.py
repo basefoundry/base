@@ -157,6 +157,13 @@ class IdeExtensionTests(unittest.TestCase):
             with self.assertRaisesRegex(ArtifactError, "timed out"):
                 ide.list_ide_extensions(definition)
 
+    def test_diagnostic_snapshot_reports_missing_extension_probe_result_explicitly(self) -> None:
+        snapshot = ide.IdeDiagnosticSnapshot(ide.IDE_DEFINITIONS["vscode"])
+
+        with mock.patch("base_setup.ide.list_ide_extensions", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "installed extensions"):
+                snapshot.installed_extensions()
+
 
 
     def test_check_ide_extensions_reuses_probe_for_all_extensions_in_ide(self) -> None:
