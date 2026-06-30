@@ -17,7 +17,7 @@ execution and are rejected by `basectl`.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv` |
+| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create or update Base-managed Bash and Zsh startup snippets. | `--defaults`, `--no-defaults`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
 | `basectl onboard [project]` | Guide first-run setup by orchestrating check, setup, shell profile, doctor, and project discovery. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
@@ -76,10 +76,10 @@ inspect the resolved command contract first.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl repo init <name>` | Create a Base-managed repository baseline, including `.github/base-project.yml`, and optionally create/configure the GitHub repo. | `--path <path>`, `--repo <owner/name>`, `--public`, `--private`, `--pr`, `--copy-project-fields-from <title>`, `--no-project`, `--dry-run` |
+| `basectl repo init <name>` | Create a Base-managed repository baseline, including `.github/base-project.yml`, and optionally create/configure the GitHub repo. | `--path <path>`, `--repo <owner/name>`, `--public`, `--private`, `--pr`, `--copy-project-fields-from <title>`, `--initiative-option <name>`, `--no-configure`, `--no-project`, `--dry-run` |
 | `basectl repo clone <name-or-owner/name>` | Clone one GitHub repository into the configured Base workspace, treating matching existing checkouts as already satisfied. | `--owner <owner>`, `--path <path>`, `--dry-run` |
 | `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance` |
-| `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and repo Project metadata. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--copy-project-fields-from <title>`, `--replace-project`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
+| `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, branch protection, and repo Project metadata. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--copy-project-fields-from <title>`, `--initiative-option <name>`, `--replace-project`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files, optionally through a draft PR. | `--repo <owner/name>`, `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--pr`, `--dry-run` |
 | `basectl repo installer-template [path]` | Write the maintained project installer starter script to a path, defaulting to `./install.sh`, optionally through a draft PR. | `--print`, `--repo <owner/name>`, `--pr`, `--dry-run` |
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |
