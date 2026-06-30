@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -58,6 +59,7 @@ def doctor_status(check: ArtifactCheck) -> str:
 
 
 def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
-    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}")
+    stream = sys.stderr if status in {"error", "warn"} else sys.stdout
+    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}", file=stream)
     if fix:
-        print(f"       Fix: {fix}")
+        print(f"       Fix: {fix}", file=stream)

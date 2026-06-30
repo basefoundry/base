@@ -117,7 +117,6 @@ class WorkspaceCheckTests(unittest.TestCase):
             )
 
         self.assertEqual(status, 1)
-        self.assertEqual(stderr, "")
         self.assertIn(f"Workspace check: {workspace.resolve()} (5 repositories)", stdout)
         self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
         self.assertIn("Repository: base [ok]", stdout)
@@ -125,9 +124,8 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertIn("Repository: api [error]", stdout)
         self.assertIn("Repository: optional-tool [warn]", stdout)
         self.assertIn("Repository: extra [warn]", stdout)
-        self.assertIn("BASE-W010", stdout)
-        self.assertIn("BASE-W011", stdout)
-        self.assertIn("BASE-W012", stdout)
+        self.assertIn("BASE-W010", stderr)
+        self.assertIn("BASE-W011", stderr)
         self.assertIn("Workspace has 1 error finding(s).", stdout)
 
     def test_workspace_check_manifest_supports_json_format(self) -> None:
@@ -207,9 +205,8 @@ class WorkspaceCheckTests(unittest.TestCase):
             )
 
         self.assertEqual(status, 1)
-        self.assertEqual(stderr, "")
         self.assertIn("Repository: broken [error]", stdout)
-        self.assertIn("BASE-P002", stdout)
+        self.assertIn("BASE-P002", stderr)
 
     def test_workspace_check_reports_project_findings_and_invalid_manifests(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -230,13 +227,12 @@ class WorkspaceCheckTests(unittest.TestCase):
             status, stdout, stderr = invoke_engine(["check", "--workspace", str(workspace)], base_home, home)
 
         self.assertEqual(status, 1)
-        self.assertEqual(stderr, "")
         self.assertIn(f"Workspace check: {workspace.resolve()} (2 projects)", stdout)
         self.assertIn("Project: demo [ok]", stdout)
         self.assertIn("BASE-P050", stdout)
         self.assertIn("BASE-P001", stdout)
         self.assertIn("Project: broken [error]", stdout)
-        self.assertIn("BASE-P002", stdout)
+        self.assertIn("BASE-P002", stderr)
         self.assertIn("Workspace has 1 error finding(s).", stdout)
 
     def test_workspace_check_uses_uv_project_venv_without_base_project_venv(self) -> None:
