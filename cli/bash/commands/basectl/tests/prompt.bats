@@ -92,3 +92,27 @@ EOF
     [[ "$output" == *"product-self-review"* ]]
     [[ "$output" == *"Periodic Base product self-review"* ]]
 }
+
+@test "basectl prompt forwards public display command to Python wrapper" {
+    local base_home="$TEST_TMPDIR/base-home"
+
+    mkdir -p "$base_home/bin"
+    cat > "$base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'display=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$base_home/bin/base-wrapper"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/prompt.sh"
+            base_prompt_subcommand_main list
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"display=basectl prompt"* ]]
+    [[ "$output" == *"args=--project base base_prompt list"* ]]
+}

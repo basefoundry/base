@@ -70,3 +70,27 @@ EOF
     [[ "$output" == *"ERROR: Option '--limit' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 }
+
+@test "basectl history forwards public display command to Python wrapper" {
+    local base_home="$TEST_TMPDIR/base-home"
+
+    mkdir -p "$base_home/bin"
+    cat > "$base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'display=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$base_home/bin/base-wrapper"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/history.sh"
+            base_history_subcommand_main --limit 2
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"display=basectl history"* ]]
+    [[ "$output" == *"args=--project base base_history --limit 2"* ]]
+}

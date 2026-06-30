@@ -57,5 +57,5 @@ base_history_subcommand_main() {
     done
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_history "${args[@]}"
+    BASE_CLI_DISPLAY_COMMAND="basectl history" "$wrapper" --project base base_history "${args[@]}"
 }

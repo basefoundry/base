@@ -14,11 +14,12 @@ from base_prompt import engine
 BASE_HOME = Path(__file__).resolve().parents[4]
 
 
-def invoke(args: list[str]) -> tuple[int, str, str]:
+def invoke(args: list[str], env: dict[str, str] | None = None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
     with tempfile.TemporaryDirectory() as home_dir:
-        with mock.patch.dict(os.environ, {"BASE_HOME": str(BASE_HOME), "HOME": home_dir}):
+        patched_env = {"BASE_HOME": str(BASE_HOME), "HOME": home_dir, **(env or {})}
+        with mock.patch.dict(os.environ, patched_env):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
@@ -56,6 +57,18 @@ class BasePromptTests(unittest.TestCase):
         self.assertEqual(stdout, "")
         self.assertIn("Usage:", stderr)
         self.assertIn("ERROR: Unknown prompt 'missing-prompt'.", stderr)
+
+    def test_usage_errors_use_delegated_display_command(self) -> None:
+        status, stdout, stderr = invoke(
+            ["missing-prompt"],
+            env={"BASE_CLI_DISPLAY_COMMAND": "basectl prompt"},
+        )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("basectl prompt list", stderr)
+        self.assertIn("basectl prompt <name>", stderr)
+        self.assertNotIn("base_prompt", stderr)
 
 
 if __name__ == "__main__":

@@ -168,6 +168,21 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual(format_status, 2)
         self.assertIn("Unsupported output format 'yaml'", format_stderr)
 
+    def test_click_usage_errors_use_delegated_display_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stderr = io.StringIO()
+            env = {
+                "BASE_CACHE_DIR": tmpdir,
+                "BASE_CLI_DISPLAY_COMMAND": "basectl history",
+            }
+            with mock.patch.dict(os.environ, env):
+                with redirect_stderr(stderr):
+                    status = engine.main(["unexpected"])
+
+        self.assertEqual(status, 2)
+        self.assertIn("Usage: basectl history", stderr.getvalue())
+        self.assertNotIn("python -m base_history", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
