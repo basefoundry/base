@@ -304,3 +304,10 @@ class IdeSettingsTests(unittest.TestCase):
             ["VS Code setting: editor.formatOnSave", "VS Code setting: editor.rulers"],
         )
         self.assertTrue(all(check.ok for check in checks))
+
+    def test_diagnostic_snapshot_reports_missing_settings_probe_result_explicitly(self) -> None:
+        snapshot = ide.IdeDiagnosticSnapshot(ide.IDE_DEFINITIONS["vscode"])
+
+        with mock.patch("base_setup.ide.read_ide_settings", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "settings"):
+                snapshot.current_settings()
