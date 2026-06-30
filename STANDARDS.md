@@ -235,6 +235,10 @@ in practice.
    practical.
 8. Avoid broad exception catches. Catch the error type that represents the
    expected failure and convert it into a clear user-facing message.
+9. Python production code must not use `assert` or raise `AssertionError` for
+   runtime validation, user input, or recoverable failure paths. Use an explicit
+   exception such as `ValueError`, `RuntimeError`, or a named project exception;
+   test code may still use assertions normally.
 
 ### 4.2 Python CLI Pattern
 
