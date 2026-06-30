@@ -79,7 +79,7 @@ def validate_ai_remote_installer(tool: AITool) -> None:
 
 def ai_tool_installer_command(tool: AITool) -> tuple[str, ...]:
     validate_ai_remote_installer(tool)
-    return ("sh", "-c", f"curl -fsSL {tool.installer_url} | {tool.installer_shell}")
+    return ("sh", "-c", 'curl -fsSL "$1" | "$2"', "--", tool.installer_url, tool.installer_shell)
 
 
 def log_ai_remote_installer_policy(ctx: base_cli.Context, tool: AITool) -> None:

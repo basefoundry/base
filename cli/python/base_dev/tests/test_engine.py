@@ -111,10 +111,30 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(
             [ai_tools.ai_tool_installer_command(tool) for tool in ai_tools.AI_TOOLS],
             [
-                ("sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"),
-                ("sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"),
+                (
+                    "sh",
+                    "-c",
+                    'curl -fsSL "$1" | "$2"',
+                    "--",
+                    "https://chatgpt.com/codex/install.sh",
+                    "sh",
+                ),
+                (
+                    "sh",
+                    "-c",
+                    'curl -fsSL "$1" | "$2"',
+                    "--",
+                    "https://claude.ai/install.sh",
+                    "bash",
+                ),
             ],
         )
+
+    def test_ai_installer_command_does_not_interpolate_url_into_shell_source(self) -> None:
+        command = ai_tools.ai_tool_installer_command(ai_tools.AI_TOOLS[0])
+
+        self.assertNotIn(ai_tools.AI_TOOLS[0].installer_url, command[2])
+        self.assertEqual(command[3:], ("--", ai_tools.AI_TOOLS[0].installer_url, "sh"))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_profile_sre_uses_sre_manifest(self) -> None:
@@ -147,11 +167,13 @@ class DevManifestTests(unittest.TestCase):
             stderr,
         )
         self.assertIn(
-            "[DRY-RUN] Would run: sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'",
+            "[DRY-RUN] Would run: sh -c 'curl -fsSL \"$1\" | \"$2\"' -- "
+            "https://chatgpt.com/codex/install.sh sh",
             stderr,
         )
         self.assertIn(
-            "[DRY-RUN] Would run: sh -c 'curl -fsSL https://claude.ai/install.sh | bash'",
+            "[DRY-RUN] Would run: sh -c 'curl -fsSL \"$1\" | \"$2\"' -- "
+            "https://claude.ai/install.sh bash",
             stderr,
         )
 
@@ -217,8 +239,8 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(
             [call.args[1] for call in run_command.call_args_list],
             [
-                ["sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
-                ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
+                ["sh", "-c", 'curl -fsSL "$1" | "$2"', "--", "https://chatgpt.com/codex/install.sh", "sh"],
+                ["sh", "-c", 'curl -fsSL "$1" | "$2"', "--", "https://claude.ai/install.sh", "bash"],
             ],
         )
 
