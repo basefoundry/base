@@ -77,6 +77,23 @@ class BaseConfigCommandTests(unittest.TestCase):
             self.assertEqual(history_record["raw_command"], "base_config")
             self.assertEqual(history_record["status"], "ok")
 
+    def test_usage_errors_use_delegated_display_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stderr = io.StringIO()
+            env = {
+                "BASE_CLI_DISPLAY_COMMAND": "basectl config",
+                "BASE_CACHE_DIR": str(Path(tmpdir) / ".cache" / "base"),
+                "HOME": tmpdir,
+            }
+            with mock.patch.dict(os.environ, env):
+                with redirect_stderr(stderr):
+                    status = engine.main(["show", "extra"])
+
+        self.assertEqual(status, 2)
+        self.assertIn("basectl config show", stderr.getvalue())
+        self.assertIn("basectl config doctor", stderr.getvalue())
+        self.assertNotIn("base_config", stderr.getvalue())
+
     def test_show_config_prints_parsed_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with mock.patch.dict(os.environ, {"HOME": tmpdir}):

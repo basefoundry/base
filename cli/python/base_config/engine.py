@@ -45,10 +45,11 @@ def run(ctx: base_cli.Context, command: str | None, arguments: tuple[str, ...]) 
 
 
 def print_usage(file=sys.stdout) -> None:
+    command = base_cli.delegated_display_command("base_config")
     print(
-        """Usage:
-  base_config show
-  base_config doctor
+        f"""Usage:
+  {command} show
+  {command} doctor
 
 Purpose:
   Inspect Base's machine-local user config.

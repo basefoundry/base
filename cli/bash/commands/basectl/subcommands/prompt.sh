@@ -67,5 +67,5 @@ base_prompt_subcommand_main() {
     ((debug)) && renderer_args+=(--debug)
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    "$wrapper" --project base base_prompt "${renderer_args[@]}" "${prompt_args[@]}"
+    BASE_CLI_DISPLAY_COMMAND="basectl prompt" "$wrapper" --project base base_prompt "${renderer_args[@]}" "${prompt_args[@]}"
 }

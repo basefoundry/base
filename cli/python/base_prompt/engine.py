@@ -62,10 +62,11 @@ def run(ctx: base_cli.Context, prompt_name: str | None) -> int:
 
 
 def print_usage(file=sys.stdout) -> None:
+    command = base_cli.delegated_display_command("base_prompt")
     print(
-        """Usage:
-  base_prompt list
-  base_prompt <name>
+        f"""Usage:
+  {command} list
+  {command} <name>
 
 Prompts:
   product-self-review  Periodic Base product self-review
