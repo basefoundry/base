@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+STANDARDS_DOC = REPO_ROOT / "STANDARDS.md"
 PYTHON_ROOTS = (
     REPO_ROOT / "cli" / "python",
     REPO_ROOT / "lib" / "python",
@@ -39,3 +40,36 @@ def test_non_empty_python_modules_use_future_annotations() -> None:
                 missing.append(path.relative_to(REPO_ROOT).as_posix())
 
     assert not missing
+
+
+def test_python_standards_document_production_assertionerror_policy() -> None:
+    text = STANDARDS_DOC.read_text(encoding="utf-8")
+
+    assert "production code must not use `assert`" in text
+    assert "`AssertionError`" in text
+    assert "`ValueError`" in text
+    assert "`RuntimeError`" in text
+
+
+def test_production_python_code_avoids_assertionerror_runtime_guards() -> None:
+    findings: list[str] = []
+    for root in PYTHON_ROOTS:
+        for path in sorted(root.rglob("*.py")):
+            if "tests" in path.relative_to(root).parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            relative_path = path.relative_to(REPO_ROOT)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Assert):
+                    findings.append(f"{relative_path}:{node.lineno}: assert")
+                if isinstance(node, ast.Raise) and raises_assertion_error(node):
+                    findings.append(f"{relative_path}:{node.lineno}: raise AssertionError")
+
+    assert not findings, "\n".join(findings)
+
+
+def raises_assertion_error(node: ast.Raise) -> bool:
+    exc = node.exc
+    if isinstance(exc, ast.Call):
+        exc = exc.func
+    return isinstance(exc, ast.Name) and exc.id == "AssertionError"
