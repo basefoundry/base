@@ -211,6 +211,12 @@ For older repositories that predate this workflow, rerun
 `basectl repo configure <path> --repo <owner/name>` to create the missing
 workflow while leaving existing files unchanged.
 
+Generated workflows use Base's shared CI hardening defaults: least-privilege
+workflow permissions, concurrency cancellation, job timeouts, and pinned
+first-party actions where actions are used. Existing workflow files are still
+left unchanged; rerun `repo init` or `repo configure` only creates missing
+baseline workflows.
+
 The generated `.github/base-project.yml` starts with the shared issue defaults
 and empty repo-specific taxonomy lists:
 
