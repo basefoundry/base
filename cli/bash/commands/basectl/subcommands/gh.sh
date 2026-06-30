@@ -980,9 +980,12 @@ base_gh_branch_stale() {
 
 base_gh_format_unix_date() {
     local timestamp="$1"
+    local formatted
 
-    date -r "$timestamp" +%Y-%m-%d 2>/dev/null && return 0
-    date -d "@$timestamp" +%Y-%m-%d 2>/dev/null && return 0
+    if printf -v formatted '%(%Y-%m-%d)T' "$timestamp" 2>/dev/null; then
+        printf '%s\n' "$formatted"
+        return 0
+    fi
     printf 'unknown\n'
 }
 

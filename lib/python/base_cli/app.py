@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
+from .exit_codes import ExitCode
 from .history import utc_now, write_finished_record
 from .logging import configure_logger, log_invocation
 from .paths import (
@@ -135,7 +136,7 @@ class App:
                 raise click.ClickException(str(exc)) from exc
             token = set_current_context(context)
             started_at = utc_now()
-            exit_code = 0
+            exit_code = ExitCode.SUCCESS
             invocation_argv = _current_invocation_argv()
             try:
                 log_invocation(context.log, invocation_argv, sensitive_options)
@@ -144,10 +145,10 @@ class App:
                 if context.manifest_path is not None:
                     context.log.debug("manifest_path=%s", context.manifest_path)
                 result = func(context, **kwargs)
-                exit_code = int(result or 0)
+                exit_code = int(result or ExitCode.SUCCESS)
                 return result
             except Exception:
-                exit_code = 1
+                exit_code = ExitCode.FAILURE
                 raise
             finally:
                 write_finished_record(context, invocation_argv, sensitive_options, started_at, exit_code)
@@ -241,7 +242,7 @@ def run_app(app: App, argv: list[str] | None = None) -> int:
         click = _require_click()
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
+        return ExitCode.FAILURE
 
     explicit_argv = argv is not None
     args = list(sys.argv[1:] if argv is None else argv)

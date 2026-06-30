@@ -1128,6 +1128,27 @@ EOF
     grep -Fq "GNU Affero General Public License as published by" "$repo_dir/LICENSE"
 }
 
+@test "base_repo_baseline_year uses bash time formatting without date command" {
+    cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_baseline_year
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ ^[0-9]{4}$ ]]
+}
+
 @test "basectl repo init leaves existing files unchanged" {
     local repo_dir="$TEST_TMPDIR/custom"
 

@@ -13,12 +13,13 @@ def repository_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def iter_production_cli_python_files() -> list[Path]:
-    cli_root = repository_root() / "cli" / "python"
+def iter_production_python_files() -> list[Path]:
+    roots = (repository_root() / "cli" / "python", repository_root() / "lib" / "python")
     return sorted(
         path
-        for path in cli_root.rglob("*.py")
-        if "tests" not in path.relative_to(cli_root).parts
+        for root in roots
+        for path in root.rglob("*.py")
+        if "tests" not in path.relative_to(root).parts
     )
 
 
@@ -75,7 +76,7 @@ def raw_standard_exit_assignments(path: Path) -> list[str]:
 
 def test_production_cli_code_uses_exit_code_constants_for_standard_returns() -> None:
     findings: list[str] = []
-    for path in iter_production_cli_python_files():
+    for path in iter_production_python_files():
         findings.extend(raw_standard_exit_returns(path))
 
     assert not findings, "\n".join(findings)
@@ -83,7 +84,7 @@ def test_production_cli_code_uses_exit_code_constants_for_standard_returns() -> 
 
 def test_production_cli_code_uses_exit_code_constants_for_standard_status_assignments() -> None:
     findings: list[str] = []
-    for path in iter_production_cli_python_files():
+    for path in iter_production_python_files():
         findings.extend(raw_standard_exit_assignments(path))
 
     assert not findings, "\n".join(findings)

@@ -902,39 +902,6 @@ EOF
     ! git -C "$repo" show-ref --verify --quiet refs/remotes/origin/stale-branch
 }
 
-@test "basectl gh branch stale prints fallback date when date formatting is unavailable" {
-    local repo
-
-    repo="$TEST_TMPDIR/repo"
-    init_git_repo "$repo"
-    printf 'hello\n' > "$repo/README.md"
-    commit_all "$repo" "Initial commit"
-
-    cat > "$TEST_MOCKBIN/date" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "+%s" ]]; then
-    printf '2000000000\n'
-    exit 0
-fi
-exit 1
-EOF
-    chmod +x "$TEST_MOCKBIN/date"
-
-    run env \
-        HOME="$TEST_HOME" \
-        BASE_HOME="$BASE_REPO_ROOT" \
-        PATH="$TEST_MOCKBIN:$PATH" \
-        bash -c '
-            cd "$1"
-            source "$BASE_HOME/base_init.sh"
-            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main branch stale --days 0
-        ' bash "$repo"
-
-    [ "$status" -eq 0 ]
-    [[ "$output" == *$'\tunknown\tmaster'* ]]
-}
-
 @test "basectl gh branch stale gets current time without date command" {
     local repo
 
@@ -961,7 +928,29 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *$'\tunknown\tmaster'* ]]
+    [[ "$output" != *$'\tunknown\tmaster'* ]]
+    [[ "$output" == *$'\tmaster'* ]]
+}
+
+@test "base_gh_format_unix_date formats timestamps without date command" {
+    cat > "$TEST_MOCKBIN/date" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/date"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_format_unix_date 1704110400
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "2024-01-01" ]
 }
 
 @test "basectl gh branch prune --remote previews safe GitHub branch deletion" {

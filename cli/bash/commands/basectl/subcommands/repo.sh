@@ -510,7 +510,10 @@ base_repo_clone_url() {
 }
 
 base_repo_baseline_year() {
-    date +%Y
+    local year
+
+    printf -v year '%(%Y)T' -1 || return 1
+    printf '%s\n' "$year"
 }
 
 base_repo_create_directory() {
