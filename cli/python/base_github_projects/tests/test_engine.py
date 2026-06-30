@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 import pytest
@@ -107,6 +108,24 @@ def test_parse_project_configure_accepts_copy_fields_from_project() -> None:
     )
 
     assert args.copy_fields_from_project == "Base Roadmap"
+
+
+def test_project_auth_exit_code_is_named() -> None:
+    assert engine.PROJECT_AUTH_EXIT_CODE == 3
+    assert "return 3" not in inspect.getsource(engine.run)
+    assert "PROJECT_AUTH_EXIT_CODE" in inspect.getsource(engine.run)
+
+
+def test_apply_spaced_option_returns_token_counts_not_exit_codes() -> None:
+    source = inspect.getsource(engine.apply_spaced_option)
+    state = engine.OptionState(initiative_options=[], field_values={})
+
+    consumed = engine.apply_spaced_option(state, ["--project", "base"], 0, allow_fields=False)
+    skipped = engine.apply_spaced_option(state, ["--unknown"], 0, allow_fields=False)
+
+    assert consumed == 2
+    assert skipped == 0
+    assert "ExitCode" not in source
 
 
 def test_read_project_config_loads_repo_taxonomy(tmp_path: Path) -> None:
