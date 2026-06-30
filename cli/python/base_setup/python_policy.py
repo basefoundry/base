@@ -235,7 +235,7 @@ def specifier_allows_version(specifier: PythonSpecifier, candidate: tuple[int, i
         return candidate <= specifier.version
     if specifier.operator == "<":
         return candidate < specifier.version
-    raise AssertionError(f"unsupported Python specifier operator: {specifier.operator}")
+    raise ValueError(f"unsupported Python specifier operator: {specifier.operator}")
 
 
 def candidate_python_minors() -> tuple[tuple[int, int], ...]:

@@ -10,9 +10,11 @@ from base_setup import python_policy
 from base_setup.manifest import BaseManifest
 from base_setup.manifest import PythonConfig
 from base_setup.python_policy import PythonInterpreter
+from base_setup.python_policy import PythonSpecifier
 from base_setup.python_policy import python_interpreter_availability_check
 from base_setup.python_policy import python_requirement_policy_check
 from base_setup.python_policy import python_requirement_checks
+from base_setup.python_policy import specifier_allows_version
 
 
 def manifest_with_python_requirement(requirement: str | None) -> BaseManifest:
@@ -132,6 +134,12 @@ class PythonPolicyTests(unittest.TestCase):
         with mock.patch("base_setup.python_policy.evaluate_python_requirement", return_value=policy):
             with self.assertRaisesRegex(ValueError, "selected Python version"):
                 python_interpreter_availability_check(manifest_with_python_requirement("3.12"))
+
+    def test_specifier_allows_version_rejects_unsupported_operator_with_value_error(self) -> None:
+        specifier = PythonSpecifier("~=", (3, 11, 0))
+
+        with self.assertRaisesRegex(ValueError, "unsupported Python specifier operator"):
+            specifier_allows_version(specifier, (3, 11, 0))
 
     def test_python_requirement_checks_include_policy_and_interpreter_availability(self) -> None:
         checks = python_requirement_checks(
