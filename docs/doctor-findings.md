@@ -50,6 +50,7 @@ Check commands that return an object include an aggregate `status` and a
 {
   "schema_version": 1,
   "status": "ok",
+  "profiles": [],
   "checks": []
 }
 ```
