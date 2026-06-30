@@ -515,20 +515,24 @@ own its labels, required sections, path-triggered sections, and review policy.
 
 ## Milestones
 
-Milestones represent release intent, not workflow state.
+Milestones represent release intent, not workflow state. Active 1.x release
+planning should live in the repository's
+[GitHub Milestones](https://github.com/basefoundry/base/milestones); the
+examples below are shipped historical milestones kept as a product-roadmap
+record.
 
-Suggested Base milestones:
+Historical shipped Base milestones:
 
-- `v0.1.0 - Public baseline`
+- `SHIPPED - v0.1.0 - Public baseline`
   Current public baseline for Base's first installable product shape.
-- `v0.2.0 - Adoption polish`
+- `SHIPPED - v0.2.0 - Adoption polish`
   Installer, Homebrew, README, changelog, issue templates, and workflow polish.
-- `v0.3.0 - Project orchestration`
+- `SHIPPED - v0.3.0 - Project orchestration`
   Project test execution, mise integration, manifest refinement, and a real
   Base-managed demo project.
-- `v0.4.0 - CI and Linux foundation`
+- `SHIPPED - v0.4.0 - CI and Linux foundation`
   Linux runtime support and CI-oriented `basectl ci` behavior.
-- `v1.0.0 - Stable public release`
+- `SHIPPED - v1.0.0 - Stable public release`
   Stable manifest contracts, compatibility expectations, and upgrade policy.
 
 Every issue does not need a milestone. Use milestones when the issue contributes

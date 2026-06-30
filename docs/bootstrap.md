@@ -68,14 +68,17 @@ Contributors should prefer source mode:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+git clone https://github.com/basefoundry/base-bash-libs.git ~/work/base-bash-libs
 ~/work/base/bin/basectl setup --profile dev
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
 ```
 
-The `dev` profile installs contributor prerequisites such as BATS, the GitHub
-CLI, and ShellCheck. After that, use `basectl test base` for the dogfood test
-contract.
+The sibling `base-bash-libs` checkout gives the source-tree BATS suite the
+reusable Bash libraries it validates against. If that checkout already exists,
+update it before running the full contributor test contract. The `dev` profile
+installs contributor prerequisites such as BATS, the GitHub CLI, and ShellCheck.
+After that, use `basectl test base` for the dogfood test contract.
 
 Named profiles compose when a contributor also wants site-reliability tools:
 

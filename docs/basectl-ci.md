@@ -103,6 +103,11 @@ Full Linux bootstrap can come later through the Linux support plan.
   run: ./bin/basectl ci check base --format json
 ```
 
+This example is a minimal starter for source-checkout CI. Workflows that install
+Python packages or third-party Actions should also follow the
+[CI Supply Chain Policy](ci-supply-chain-policy.md), including pinned
+`requirements-dev.txt` installs for Base-managed CI dependencies.
+
 The Homebrew formula bundles Base's Python runtime environment. A source
 checkout CI job that prepares `~/.base.d/base/.venv` manually must install the
 same bootstrap packages that Base uses to read manifests and run Python command
