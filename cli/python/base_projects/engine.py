@@ -59,6 +59,9 @@ class WorkspaceCommandOptions:
     dry_run: bool = False
 
 
+ProjectCommandHandler = Callable[[base_cli.Context, tuple[str, ...], WorkspaceCommandOptions], int]
+
+
 def main(argv: list[str] | None = None) -> int:
     return base_cli.run_app(app, argv)
 
@@ -120,68 +123,14 @@ def dispatch_projects_command(
 ) -> int:
     command = arguments[0] if arguments else "list"
     command_arguments = arguments[1:] if arguments else ()
-    resolver = resolve_named_project
-    handlers = {
-        "list": lambda: list_projects_from_args(ctx, command_arguments, options.workspace, options.output_format),
-        "status": lambda: workspace_status_from_args(
-            ctx,
-            command_arguments,
-            options,
-        ),
-        "check": lambda: require_no_args_and_run(
-            "check",
-            command_arguments,
-            lambda: workspace_check_command(
-                ctx,
-                options.workspace,
-                options.output_format,
-                options.workspace_manifest,
-            ),
-        ),
-        "doctor": lambda: require_no_args_and_run(
-            "doctor",
-            command_arguments,
-            lambda: workspace_doctor_command(
-                ctx,
-                options.workspace,
-                options.output_format,
-                options.workspace_manifest,
-            ),
-        ),
-        "clone": lambda: require_no_args_and_run(
-            "clone",
-            command_arguments,
-            lambda: workspace_clone_command(ctx, options),
-        ),
-        "pull": lambda: require_no_args_and_run(
-            "pull",
-            command_arguments,
-            lambda: workspace_pull_command(ctx, options),
-        ),
-        "init": lambda: workspace_init_from_args(ctx, command_arguments, options),
-        "configure": lambda: require_no_args_and_run(
-            "configure", command_arguments, lambda: workspace_configure_from_options(ctx, options)
-        ),
-        "current": lambda: current_project_from_args(ctx, command_arguments),
-        "manifest": lambda: manifest_project_from_args(ctx, command_arguments),
-        "resolve": lambda: resolve_project_from_args(ctx, command_arguments, options.workspace),
-        "test-command": lambda: test_command_project_from_args(ctx, command_arguments, options.workspace),
-        "demo-script": lambda: demo_script_project_from_args(ctx, command_arguments, options.workspace),
-        "activation-sources": lambda: activation_sources_project_from_args(ctx, command_arguments, options.workspace),
-        "run-command": lambda: run_command_project_from_args(ctx, command_arguments, options.workspace),
-        "run-commands": lambda: list_run_commands_from_args(ctx, command_arguments, options.workspace),
-        "build-targets": lambda: build_targets_project_from_args(ctx, command_arguments, options.workspace, resolver),
-        "build-target-list": lambda: list_build_targets_from_args(ctx, command_arguments, options.workspace, resolver),
-    }
-    handler = handlers.get(command)
+    handler = PROJECT_COMMAND_HANDLERS.get(command)
     if handler is not None:
-        return handler()
+        return handler(ctx, command_arguments, options)
 
     ctx.log.error(
-        "Unknown projects command '%s'. Supported commands: list, current, manifest, resolve, "
-        "status, check, doctor, clone, configure, init, test-command, demo-script, activation-sources, run-command, "
-        "run-commands, build-targets, build-target-list, pull.",
+        "Unknown projects command '%s'. Supported commands: %s.",
         command,
+        ", ".join(SUPPORTED_PROJECT_COMMANDS),
     )
     return base_cli.ExitCode.USAGE_ERROR
 
@@ -191,11 +140,6 @@ def require_argument_count(command: str, arguments: tuple[str, ...], minimum: in
         raise ProjectUsageError(f"Project command '{command}' requires at least {minimum} argument(s).")
     if len(arguments) > maximum:
         raise ProjectUsageError(f"Project command '{command}' accepts at most {maximum} argument(s).")
-
-
-def require_no_args_and_run(command: str, arguments: tuple[str, ...], callback: Callable[[], int]) -> int:
-    require_argument_count(command, arguments, 0, 0)
-    return callback()
 
 
 def optional_project_argument(command: str, arguments: tuple[str, ...]) -> str | None:
@@ -278,6 +222,135 @@ def workspace_init_from_args(
         options,
         workspace_clone_command=workspace_clone_command,
     )
+
+
+def _handle_list(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return list_projects_from_args(ctx, arguments, options.workspace, options.output_format)
+
+
+def _handle_status(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return workspace_status_from_args(ctx, arguments, options)
+
+
+def _handle_check(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    require_argument_count("check", arguments, 0, 0)
+    return workspace_check_command(ctx, options.workspace, options.output_format, options.workspace_manifest)
+
+
+def _handle_doctor(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    require_argument_count("doctor", arguments, 0, 0)
+    return workspace_doctor_command(ctx, options.workspace, options.output_format, options.workspace_manifest)
+
+
+def _handle_clone(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    require_argument_count("clone", arguments, 0, 0)
+    return workspace_clone_command(ctx, options)
+
+
+def _handle_pull(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    require_argument_count("pull", arguments, 0, 0)
+    return workspace_pull_command(ctx, options)
+
+
+def _handle_init(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return workspace_init_from_args(ctx, arguments, options)
+
+
+def _handle_configure(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    require_argument_count("configure", arguments, 0, 0)
+    return workspace_configure_from_options(ctx, options)
+
+
+def _handle_current(ctx: base_cli.Context, arguments: tuple[str, ...], _options: WorkspaceCommandOptions) -> int:
+    return current_project_from_args(ctx, arguments)
+
+
+def _handle_manifest(ctx: base_cli.Context, arguments: tuple[str, ...], _options: WorkspaceCommandOptions) -> int:
+    return manifest_project_from_args(ctx, arguments)
+
+
+def _handle_resolve(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return resolve_project_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_test_command(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return test_command_project_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_demo_script(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return demo_script_project_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_activation_sources(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    options: WorkspaceCommandOptions,
+) -> int:
+    return activation_sources_project_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_run_command(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return run_command_project_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_run_commands(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return list_run_commands_from_args(ctx, arguments, options.workspace)
+
+
+def _handle_build_targets(ctx: base_cli.Context, arguments: tuple[str, ...], options: WorkspaceCommandOptions) -> int:
+    return build_targets_project_from_args(ctx, arguments, options.workspace, resolve_named_project)
+
+
+def _handle_build_target_list(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    options: WorkspaceCommandOptions,
+) -> int:
+    return list_build_targets_from_args(ctx, arguments, options.workspace, resolve_named_project)
+
+
+SUPPORTED_PROJECT_COMMANDS = (
+    "list",
+    "current",
+    "manifest",
+    "resolve",
+    "status",
+    "check",
+    "doctor",
+    "clone",
+    "configure",
+    "init",
+    "test-command",
+    "demo-script",
+    "activation-sources",
+    "run-command",
+    "run-commands",
+    "build-targets",
+    "build-target-list",
+    "pull",
+)
+
+
+PROJECT_COMMAND_HANDLERS: dict[str, ProjectCommandHandler] = {
+    "list": _handle_list,
+    "status": _handle_status,
+    "check": _handle_check,
+    "doctor": _handle_doctor,
+    "clone": _handle_clone,
+    "pull": _handle_pull,
+    "init": _handle_init,
+    "configure": _handle_configure,
+    "current": _handle_current,
+    "manifest": _handle_manifest,
+    "resolve": _handle_resolve,
+    "test-command": _handle_test_command,
+    "demo-script": _handle_demo_script,
+    "activation-sources": _handle_activation_sources,
+    "run-command": _handle_run_command,
+    "run-commands": _handle_run_commands,
+    "build-targets": _handle_build_targets,
+    "build-target-list": _handle_build_target_list,
+}
 
 
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
