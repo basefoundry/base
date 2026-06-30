@@ -20,9 +20,9 @@ for issue-backed work, validation, and design-only sessions.
    - `ci` for GitHub Actions, tests, release automation, or CI reliability.
    - `security` for security hardening, dependency pinning, static analysis, or
      permission tightening.
-3. When the issue is tracked in Base Roadmap, set its Project `Status` to
-   `In Progress` before branch or worktree work begins. Move it to `In Review`
-   when the PR opens, and verify it is `Done` after merge/closure.
+3. When the issue is tracked in the repo-named Project, set its Project
+   `Status` to `In Progress` before branch or worktree work begins. Move it to
+   `In Review` when the PR opens, and verify it is `Done` after merge/closure.
 4. Create a branch from the issue using this convention:
 
    ```text

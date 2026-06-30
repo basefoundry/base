@@ -5,6 +5,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DOC = REPO_ROOT / "docs" / "contracts.md"
 CONTRACT_RUNNER = REPO_ROOT / "tests" / "contracts" / "run.sh"
 PYTEST_CONFIG = REPO_ROOT / "pytest.ini"
+ACTIVE_WORKFLOW_GUIDANCE_FILES = (
+    REPO_ROOT / ".ai-context" / "WORKFLOWS.md",
+    REPO_ROOT / "AGENTS.md",
+    REPO_ROOT / "CONTRIBUTING.md",
+)
+GITHUB_WORKFLOW_DOC = REPO_ROOT / "docs" / "github-workflow.md"
 
 
 def contract_registry_rows() -> list[dict[str, str]]:
@@ -57,6 +63,20 @@ def pytest_testpaths() -> list[str]:
 
 def test_default_pytest_discovery_includes_top_level_contract_tests() -> None:
     assert "tests" in pytest_testpaths()
+
+
+def test_active_project_guidance_uses_repo_named_project_language() -> None:
+    for path in ACTIVE_WORKFLOW_GUIDANCE_FILES:
+        text = path.read_text(encoding="utf-8")
+        assert "Base Roadmap" not in text
+        assert "repo-named Project" in text
+
+    issue_metadata_section = GITHUB_WORKFLOW_DOC.read_text(encoding="utf-8").split(
+        "## Issue Project Metadata", maxsplit=1
+    )[1].split("\n## ", maxsplit=1)[0]
+    assert "When an issue is tracked in the `Base Roadmap` Project" not in issue_metadata_section
+    assert "repo-named Project" in issue_metadata_section
+    assert "use that title only as the migration source" in issue_metadata_section
 
 
 def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> None:

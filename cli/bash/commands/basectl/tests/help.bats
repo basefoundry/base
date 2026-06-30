@@ -180,6 +180,59 @@ load ./basectl_helpers.bash
     grep -Fqx -- "| \`basectl docs\` | Open the Base documentation home page on GitHub. | \`--show-url\` |" "$command_reference"
 }
 
+@test "command reference documents repo and Project configuration options" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+    local repo_init_row repo_configure_row project_configure_row
+
+    repo_init_row="$(grep -F '| `basectl repo init <name>` |' "$command_reference")"
+    run_basectl repo init --help
+
+    [ "$status" -eq 0 ]
+    for flag in \
+        "--description <text>" \
+        "--copyright-holder <name>" \
+        "--project <title>" \
+        "--project-owner <login>" \
+        "--project-schema <schema>" \
+        "--copy-project-fields-from <title>" \
+        "--initiative-option <name>" \
+        "--no-protect-default-branch"; do
+        [[ "$output" == *"$flag"* ]]
+        [[ "$repo_init_row" == *"$flag"* ]]
+    done
+
+    repo_configure_row="$(grep -F '| `basectl repo configure [path]` |' "$command_reference")"
+    run_basectl repo configure --help
+
+    [ "$status" -eq 0 ]
+    for flag in \
+        "--project <title>" \
+        "--project-owner <login>" \
+        "--project-schema <schema>" \
+        "--copy-project-fields-from <title>" \
+        "--initiative-option <name>" \
+        "--replace-project" \
+        "--no-protect-default-branch"; do
+        [[ "$output" == *"$flag"* ]]
+        [[ "$repo_configure_row" == *"$flag"* ]]
+    done
+
+    project_configure_row="$(grep -F '| `basectl gh project configure` |' "$command_reference")"
+    run_basectl gh project --help
+
+    [ "$status" -eq 0 ]
+    for flag in \
+        "--schema base-project" \
+        "--config <path>" \
+        "--copy-fields-from <title>" \
+        "--replace-project" \
+        "--initiative-option <name>" \
+        "--dry-run"; do
+        [[ "$output" == *"$flag"* ]]
+        [[ "$project_configure_row" == *"$flag"* ]]
+    done
+}
+
 @test "basectl config prints help" {
     run_basectl config --help
 

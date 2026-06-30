@@ -29,10 +29,10 @@ should start from a GitHub issue with one primary category label:
 Do not create new `type:*` labels.
 
 Issues created by automation should be assigned to `codeforester` when GitHub
-allows it. When an issue is tracked in the Base Roadmap Project, move its
-status through `In Progress`, `In Review`, and `Done` as the work advances.
-Base roadmap Project metadata uses five fields: `Status`, `Priority`, `Area`,
-`Size`, and `Initiative`.
+allows it. When an issue is tracked in the repo-named Project, move its status
+through `In Progress`, `In Review`, and `Done` as the work advances. Repo-named
+Project metadata uses five fields: `Status`, `Priority`, `Area`, `Size`, and
+`Initiative`.
 Use the smallest accurate `Size` when creating issues: `T` for tiny obvious
 work, `S` for normal small work or unknown scope, `M` for interacting changes,
 and `L` only for work that should probably be split. The default remains `S`

@@ -159,7 +159,7 @@ Options:
 
 Examples:
   basectl repo configure . --repo codeforester/bankbuddy
-  basectl repo configure . --copy-project-fields-from "Base Roadmap"
+  basectl repo configure . --copy-project-fields-from "Legacy Roadmap"
 
 repo configure applies or repairs GitHub-side repository settings, labels,
 branch protection, Project metadata, and repo-visible Project intake support.

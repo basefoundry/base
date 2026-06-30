@@ -526,7 +526,7 @@ behavior idempotent.
 Start a new Base-managed repository with:
 
 ```bash
-basectl repo init example --repo codeforester/example
+basectl repo init example --repo basefoundry/example
 ```
 
 This creates the local repository baseline: README, version, changelog,
