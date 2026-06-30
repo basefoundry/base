@@ -590,10 +590,12 @@ basectl workspace check
 basectl workspace doctor
 basectl workspace clone
 basectl workspace pull
+basectl workspace init
+basectl workspace configure
 ```
 
-Workspace commands are read-first and mutate only through explicit clone or
-pull commands. `basectl workspace status` reports project manifest state,
+Workspace commands are read-first and mutate only through explicit init, clone,
+pull, or configure commands. `basectl workspace status` reports project manifest state,
 virtual environment state, and Git state across discovered projects, including
 invalid manifests without stopping the whole scan. With `workspace.manifest` or
 `--manifest <path>`, workspace commands also report missing required
@@ -601,10 +603,13 @@ repositories, missing optional repositories, and discovered Base-managed
 projects outside the expected repo set. `basectl workspace check` and `basectl
 workspace doctor` run project checks and diagnostics across discovered
 projects. `basectl workspace clone` materializes missing expected repositories
-only when invoked directly, and `basectl workspace pull` updates only the local
-workspace manifest after validating an explicit or configured source. JSON
-output is part of the status/check/doctor contract so automation and future CI
-smoke checks can use the same data.
+only when invoked directly. `basectl workspace pull` updates only the local
+workspace manifest after validating an explicit or configured source. `basectl
+workspace init` bootstraps a workspace from a workspace configuration repository
+and can materialize member repositories. `basectl workspace configure` applies
+the existing `repo configure` repair path across discovered Base-managed
+workspace repositories. JSON output is part of the status/check/doctor contract
+so automation and future CI smoke checks can use the same data.
 
 Future workspace commands should follow the same principles:
 

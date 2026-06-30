@@ -175,6 +175,10 @@ list is `basectl --help`; this list summarizes the shipped public surface:
 - `repo`
 - `release`
 - `logs`
+- `history`
+- `docs`
+- `export-context`
+- `prompt`
 - `workspace`
 - `onboard`
 - `gh`

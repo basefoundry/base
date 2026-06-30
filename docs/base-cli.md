@@ -366,7 +366,7 @@ override.
 - richer YAML config merging
 - project manifest loading helpers
 - version discovery conventions
-- subcommand groups
+- nested command-group helpers beyond the current `App.subcommand()` API
 - better error formatting and exit code conventions
 
 ### V3
