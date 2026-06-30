@@ -48,6 +48,8 @@ PROJECT_VALUE_OPTIONS = (
     "--initiative-option",
 )
 ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--size")
+GIT_COMMAND_TIMEOUT_SECONDS = 10
+GITHUB_GRAPHQL_TIMEOUT_SECONDS = 60
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -476,12 +478,16 @@ def infer_owner_from_git() -> str | None:
 
 
 def infer_repo_from_git() -> str | None:
-    result = subprocess.run(
-        ["git", "config", "--get", "remote.origin.url"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     if result.returncode != 0:
         return None
     return github_repo_spec(result.stdout)
@@ -489,13 +495,20 @@ def infer_repo_from_git() -> str | None:
 
 def run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
     payload = json.dumps({"query": query, "variables": variables})
-    result = subprocess.run(
-        ["gh", "api", "graphql", "--input", "-"],
-        input=payload,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "--input", "-"],
+            input=payload,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=GITHUB_GRAPHQL_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout = exc.timeout if exc.timeout is not None else GITHUB_GRAPHQL_TIMEOUT_SECONDS
+        raise ProjectError(f"Timed out running GitHub GraphQL request after {timeout} seconds.") from exc
+    except OSError as exc:
+        raise ProjectError(f"Could not run GitHub GraphQL request: {exc}") from exc
     if result.returncode != 0:
         message = (result.stderr or result.stdout).strip()
         if is_project_scope_error(message):

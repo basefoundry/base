@@ -16,6 +16,9 @@ from base_projects.workspace_reports import ProjectDiscoveryError
 from base_projects.workspace_reports import resolve_workspace_manifest
 from base_projects.workspace_reports import workspace_manifest_entries
 
+GIT_CONFIG_TIMEOUT_SECONDS = 10
+WORKSPACE_CONFIGURE_TIMEOUT_SECONDS = 120
+
 
 @dataclass(frozen=True)
 class WorkspaceConfigureTarget:
@@ -143,7 +146,7 @@ def configure_workspace_target(
 
     print(f"CONFIGURE repository '{target.name}' at '{target.root}' for '{target.repo_spec}'.")
     status = configure_workspace_repo(ctx, basectl, target, dry_run=dry_run)
-    if status == 0:
+    if status == base_cli.ExitCode.SUCCESS:
         return WorkspaceConfigureCounts(counts.configured + 1, counts.skipped, counts.failed)
     return WorkspaceConfigureCounts(counts.configured, counts.skipped, counts.failed + 1)
 
@@ -160,7 +163,21 @@ def configure_workspace_repo(
         command.append("--dry-run")
 
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=WORKSPACE_CONFIGURE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout = exc.timeout if exc.timeout is not None else WORKSPACE_CONFIGURE_TIMEOUT_SECONDS
+        ctx.log.error(
+            "Timed out running basectl repo configure for repository '%s' after %s seconds.",
+            target.name,
+            timeout,
+        )
+        return base_cli.ExitCode.FAILURE
     except OSError as exc:
         ctx.log.error("Could not run basectl repo configure for repository '%s': %s", target.name, exc)
         return base_cli.ExitCode.FAILURE
@@ -221,8 +238,9 @@ def github_origin_repo_spec(root: Path) -> str | None:
             check=False,
             capture_output=True,
             text=True,
+            timeout=GIT_CONFIG_TIMEOUT_SECONDS,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         origin_url = git_config_origin_url(root)
         return github_repo_spec(origin_url) if origin_url else None
     if result.returncode != 0:

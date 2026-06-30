@@ -22,6 +22,7 @@ from .python_policy import version_label
 from .registry import ArtifactDefinition, get_artifact_definition
 
 PIP_INSTALL_COMMAND_PREFIX = ("-m", "pip", "install", "--disable-pip-version-check")
+PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS = process.DIAGNOSTIC_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -539,7 +540,17 @@ def python_artifact_installed(python_bin: Path, package: str, version: str) -> b
     if not python_bin.exists():
         return False
     command = [str(python_bin), "-m", "pip", "show", package]
-    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=False)
+    try:
+        completed = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            timeout=PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
     if completed.returncode:
         return False
     if version == "latest":
