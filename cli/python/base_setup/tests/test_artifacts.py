@@ -526,7 +526,6 @@ class ArtifactReconcileTests(unittest.TestCase):
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
 
-
     def test_python_artifact_honors_project_venv_dir_override(self) -> None:
         definition = get_artifact_definition("python-package", "requests")
         self.assertIsNotNone(definition)

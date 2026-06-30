@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import io
 import os
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine
+from base_projects import engine, workspace_configure
 
 
 def write_manifest(project_root: Path, name: str) -> None:
@@ -230,3 +231,76 @@ repos:
                     f"repo configure {(workspace / 'base').resolve()} --repo basefoundry/base --dry-run",
                 ],
             )
+
+    def test_configure_workspace_repo_passes_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            ctx = mock.Mock()
+            basectl = root / "base" / "bin" / "basectl"
+            target = workspace_configure.WorkspaceConfigureTarget(
+                name="base",
+                root=root / "base",
+                repo_spec="basefoundry/base",
+            )
+            completed = subprocess.CompletedProcess(
+                [str(basectl), "repo", "configure", str(target.root), "--repo", "basefoundry/base"],
+                0,
+                stdout="configured\n",
+                stderr="",
+            )
+
+            with mock.patch("base_projects.workspace_configure.subprocess.run", return_value=completed) as run:
+                status = workspace_configure.configure_workspace_repo(ctx, basectl, target, dry_run=False)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(run.call_args.kwargs["timeout"], workspace_configure.WORKSPACE_CONFIGURE_TIMEOUT_SECONDS)
+
+    def test_configure_workspace_repo_reports_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            ctx = mock.Mock()
+            basectl = root / "base" / "bin" / "basectl"
+            target = workspace_configure.WorkspaceConfigureTarget(
+                name="base",
+                root=root / "base",
+                repo_spec="basefoundry/base",
+            )
+            command = [str(basectl), "repo", "configure", str(target.root), "--repo", "basefoundry/base"]
+
+            with mock.patch(
+                "base_projects.workspace_configure.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(command, timeout=120),
+            ):
+                status = workspace_configure.configure_workspace_repo(ctx, basectl, target, dry_run=False)
+
+        self.assertEqual(status, 1)
+        ctx.log.error.assert_called_once()
+        self.assertIn("Timed out running basectl repo configure", ctx.log.error.call_args.args[0])
+
+    def test_github_origin_repo_spec_passes_timeout(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["git", "-C", "/repo", "config", "--get", "remote.origin.url"],
+            0,
+            stdout="https://github.com/basefoundry/base.git\n",
+            stderr="",
+        )
+
+        with mock.patch("base_projects.workspace_configure.subprocess.run", return_value=completed) as run:
+            repo_spec = workspace_configure.github_origin_repo_spec(Path("/repo"))
+
+        self.assertEqual(repo_spec, "basefoundry/base")
+        self.assertEqual(run.call_args.kwargs["timeout"], workspace_configure.GIT_CONFIG_TIMEOUT_SECONDS)
+
+    def test_github_origin_repo_spec_falls_back_to_config_file_on_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo = Path(tmpdir) / "repo"
+            write_git_remote(repo, "git@github.com:basefoundry/base.git")
+            command = ["git", "-C", str(repo), "config", "--get", "remote.origin.url"]
+
+            with mock.patch(
+                "base_projects.workspace_configure.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(command, timeout=10),
+            ):
+                repo_spec = workspace_configure.github_origin_repo_spec(repo)
+
+        self.assertEqual(repo_spec, "basefoundry/base")
