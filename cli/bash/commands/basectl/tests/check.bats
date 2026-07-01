@@ -16,7 +16,7 @@ load ./setup_helpers.bash
     [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
     [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
     [[ "$output" == *"--remote-network"* ]]
-    [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes."* ]]
+    [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on supported platforms without making changes."* ]]
     [[ "$output" == *"Use check for a quick pass/fail result; use doctor for finding IDs and fix hints."* ]]
     [[ "$output" == *"See also:"* ]]
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
@@ -75,9 +75,29 @@ load ./setup_helpers.bash
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-unknown check
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"supports macOS only"* ]]
+    [[ "$output" == *"supports macOS and Ubuntu/Debian Linux only"* ]]
     [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
     [[ "$output" != *"Homebrew is not installed."* ]]
+}
+
+@test "basectl check supports linux-debian without Homebrew or Xcode probes" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Python is available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Virtual environment is healthy at '$venv_dir'."* ]]
+    [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
 }
 
 @test "basectl check preserves text order while base probes overlap" {
@@ -308,7 +328,10 @@ load ./setup_helpers.bash
     grep -Fq '"project": "demo"' "$record_path"
     grep -Fq '"command": "basectl check"' "$record_path"
     grep -Fq '"status": "error"' "$record_path"
-    ! grep -Fq '"status": "ok"' "$record_path"
+    if grep -Fq '"status": "ok"' "$record_path"; then
+        printf 'unexpected ok status in failed check record\n' >&2
+        return 1
+    fi
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/demo/.venv'."* ]]
 }
 
@@ -399,6 +422,29 @@ load ./setup_helpers.bash
     click_line="$(printf '%s\n' "$output" | grep -n '"name":"click"' | cut -d: -f1)"
     [ "$venv_line" -lt "$pyyaml_line" ]
     [ "$pyyaml_line" -lt "$click_line" ]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --format json supports linux-debian readiness findings" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command_separate_stderr BASE_SETUP_TEST_PLATFORM=linux-debian check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    assert_base_check_json_status_for_readiness "$output"
+    [[ "$output" == *'"id":"BASE-D003","status":"ok","name":"python","message":"Python is available for Ubuntu/Debian runtime checks."'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"ok","name":"base_virtualenv"'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    assert_base_bash_libraries_json_finding "$output"
+    [[ "$output" != *'"name":"homebrew"'* ]]
+    [[ "$output" != *'"name":"xcode_command_line_tools"'* ]]
     [ "${stderr:-}" = "" ]
 }
 
