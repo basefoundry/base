@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-01
+
 ### Fixed
 
 - Made `basectl check` warn when Homebrew reports installed Xcode Command Line

@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.3.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.4.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -35,9 +35,9 @@ The current command surface covers:
 
 ## Active Development Direction
 
-The `v1.3.0` release is complete. Future work is tracked in GitHub Issues,
+The `v1.4.0` release is complete. Future work is tracked in GitHub Issues,
 with Linux runtime support, Docker/service artifacts, broader prompt ergonomics,
-and broader setup policy work remaining outside the 1.3 release contract.
+and broader setup policy work remaining outside the 1.4 release contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -68,6 +68,7 @@ Recent released work includes:
 - Homebrew upgrade path preservation for explicit `BASE_HOME` and shell startup
   snippets
 - stale readonly `BASE_HOME` recovery guidance after Homebrew upgrades
+- Homebrew Command Line Tools staleness warnings in `basectl check`
 - Homebrew `basectl update` handoff and package-aware `basectl test base`
 - Base `1.0.1` AGPL license cleanup and release artifacts
 - explicit uv-managed Python setup and command runner support
