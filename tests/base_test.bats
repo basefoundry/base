@@ -51,6 +51,16 @@ EOF
     chmod +x "$TEST_MOCKBIN/bats"
 }
 
+create_bats_env_stub() {
+    cat > "$TEST_MOCKBIN/bats" <<'EOF'
+#!/usr/bin/env bash
+printf 'preserve=%s\n' "${BASE_ACTIVATE_PRESERVE_CWD-__unset__}" >> "${BASE_TEST_STATE_DIR:?}/bats-env.log"
+printf 'shell=%s\n' "${BASE_ACTIVATE_SHELL-__unset__}" >> "${BASE_TEST_STATE_DIR:?}/bats-env.log"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/bats"
+}
+
 @test "base-test skips source-only Bats suite for packaged Base homes" {
     create_packaged_base_home
     create_python_stub
@@ -92,6 +102,26 @@ EOF
 
 @test "base-test includes source guard coverage in the source checkout suite" {
     grep -Fqx "    tests/source_guards.bats \\" "$BASE_REPO_ROOT/bin/base-test"
+}
+
+@test "base-test clears activate override variables before Bats" {
+    create_python_stub
+    create_bats_env_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_PYTHON="$TEST_MOCKBIN/python" \
+        BASE_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_ACTIVATE_PRESERVE_CWD=1 \
+        BASE_ACTIVATE_SHELL="$TEST_TMPDIR/leaked-bash" \
+        "$BASE_REPO_ROOT/bin/base-test"
+
+    [ "$status" -eq 0 ]
+    grep -Fqx 'python -m pytest' "$TEST_STATE_DIR/python.log"
+    grep -Fqx 'preserve=__unset__' "$TEST_STATE_DIR/bats-env.log"
+    grep -Fqx 'shell=__unset__' "$TEST_STATE_DIR/bats-env.log"
 }
 
 @test "base-test uses explicit error handling instead of shell strict mode" {
