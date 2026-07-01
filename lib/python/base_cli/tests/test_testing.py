@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +12,33 @@ from unittest import mock
 
 import base_cli
 from base_cli.testing import invoke
+
+
+class PackageExportTests(unittest.TestCase):
+    def test_package_exports_testing_module_for_documented_access(self) -> None:
+        env = os.environ.copy()
+        pythonpath = str(Path(__file__).resolve().parents[2])
+        existing_pythonpath = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = (
+            pythonpath
+            if not existing_pythonpath
+            else f"{pythonpath}{os.pathsep}{existing_pythonpath}"
+        )
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import base_cli; assert base_cli.testing.invoke",
+            ],
+            check=False,
+            capture_output=True,
+            env=env,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
