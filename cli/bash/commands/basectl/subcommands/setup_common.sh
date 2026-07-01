@@ -378,7 +378,7 @@ setup_platform_supported() {
         platform="$(setup_current_platform)" || return 1
     fi
     case "$platform" in
-        macos)
+        macos|linux-debian)
             return 0
             ;;
         *)
@@ -390,7 +390,13 @@ setup_platform_supported() {
 setup_unsupported_platform_message() {
     local platform="$1"
 
-    printf "The setup/check platform path currently supports macOS only (BASE_PLATFORM='%s').\n" "$platform"
+    printf "The setup/check platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s').\n" "$platform"
+}
+
+setup_unsupported_install_platform_message() {
+    local platform="$1"
+
+    printf "The setup platform path currently supports macOS only (BASE_PLATFORM='%s').\n" "$platform"
 }
 
 setup_allow_test_hooks() {
@@ -438,6 +444,10 @@ setup_recovery_base_bash_libraries() {
 
 setup_recovery_ci_python() {
     printf "%s\n" "Install Python 3.13 or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl ci'."
+}
+
+setup_recovery_linux_python() {
+    printf "%s\n" "Install python3 and python3-venv, or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl check'."
 }
 
 setup_recovery_project_layer() {
@@ -822,6 +832,22 @@ setup_find_python_bin() {
     fi
 
     if setup_allow_system_python && command -v python3 >/dev/null 2>&1; then
+        command -v python3
+        return 0
+    fi
+
+    return 1
+}
+
+setup_find_linux_python_bin() {
+    if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_PYTHON_BIN
+        [[ -x "${BASE_SETUP_PYTHON_BIN}" ]] || return 1
+        printf '%s\n' "${BASE_SETUP_PYTHON_BIN}"
+        return 0
+    fi
+
+    if command -v python3 >/dev/null 2>&1; then
         command -v python3
         return 0
     fi
@@ -1953,6 +1979,70 @@ setup_collect_macos_base_check_results() {
     return "$missing"
 }
 
+setup_collect_linux_debian_base_check_results() {
+    local click_package
+    local missing=0
+    local pyyaml_package
+    local python_bin
+
+    click_package="$(setup_click_package)"
+    pyyaml_package="$(setup_pyyaml_package)"
+    setup_ensure_cached_paths
+
+    setup_add_base_bash_libraries_check_result
+
+    if python_bin="$(setup_find_linux_python_bin)"; then
+        setup_add_check_result \
+            "python" \
+            true \
+            "Python is available for Ubuntu/Debian runtime checks." \
+            "" \
+            "Resolved Python binary: $python_bin"
+    else
+        setup_add_check_result \
+            "python" \
+            false \
+            "Python is not available for Ubuntu/Debian runtime checks." \
+            "$(setup_recovery_linux_python)"
+        missing=1
+    fi
+
+    if setup_virtualenv_healthy; then
+        setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+    else
+        setup_add_check_result \
+            "base_virtualenv" \
+            false \
+            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
+            "$(setup_recovery_venv)"
+        missing=1
+    fi
+
+    if setup_base_python_package_installed "$pyyaml_package"; then
+        setup_add_check_result "pyyaml" true "$(setup_base_python_package_check_message "$pyyaml_package" true)"
+    else
+        setup_add_check_result \
+            "pyyaml" \
+            false \
+            "$(setup_base_python_package_check_message "$pyyaml_package" false)" \
+            "$(setup_recovery_base_python_package)"
+        missing=1
+    fi
+
+    if setup_base_python_package_installed "$click_package"; then
+        setup_add_check_result "click" true "$(setup_base_python_package_check_message "$click_package" true)"
+    else
+        setup_add_check_result \
+            "click" \
+            false \
+            "$(setup_base_python_package_check_message "$click_package" false)" \
+            "$(setup_recovery_base_python_package)"
+        missing=1
+    fi
+
+    return "$missing"
+}
+
 setup_collect_platform_base_check_results() {
     local platform
 
@@ -1960,6 +2050,9 @@ setup_collect_platform_base_check_results() {
     case "$platform" in
         macos)
             setup_collect_macos_base_check_results "$@"
+            ;;
+        linux-debian)
+            setup_collect_linux_debian_base_check_results "$@"
             ;;
         *)
             fatal_error "$(setup_unsupported_platform_message "$platform")"
@@ -2236,7 +2329,7 @@ setup_run_platform_install() {
             setup_run_macos_install
             ;;
         *)
-            fatal_error "$(setup_unsupported_platform_message "$platform")"
+            fatal_error "$(setup_unsupported_install_platform_message "$platform")"
             ;;
     esac
 }

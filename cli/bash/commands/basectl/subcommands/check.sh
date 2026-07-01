@@ -28,17 +28,16 @@ Profiles:
   ai  - AI coding assistant tooling.
 
 Purpose:
-  Verify the local Base CLI environment and, when provided, project artifacts on macOS without making changes.
+  Verify the local Base CLI environment and, when provided, project artifacts on supported platforms without making changes.
   Use check for a quick pass/fail result; use doctor for finding IDs and fix hints.
 
 See also:
   basectl doctor [project] [options]
 
 Check does:
-  1. Verify Homebrew is installed.
-  2. Verify Xcode Command Line Tools are installed and warn when Homebrew reports
-     them outdated or incomplete.
-  3. Verify Python 3.13 is installed via Homebrew.
+  1. Verify platform-specific runtime prerequisites.
+  2. On macOS, verify Homebrew, Xcode Command Line Tools, and Homebrew Python.
+  3. On Ubuntu/Debian Linux, verify system python3 is available.
   4. Verify ~/.base.d/base/.venv is healthy.
   5. Verify prerequisite profiles when --profile is passed.
   6. Verify project manifest artifacts when a project name is passed.

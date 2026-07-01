@@ -257,8 +257,6 @@ base_doctor_subcommand_main() {
         return $?
     fi
 
-    setup_require_macos
-
     if [[ "$output_format" == json ]]; then
         base_doctor_run_json "$project" "$remote_network"
         return $?

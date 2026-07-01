@@ -69,9 +69,10 @@ run_setup_common_script() {
         done
         printf "platform=%s\n" "$(setup_current_platform)"
         setup_platform_supported macos || exit 11
+        setup_platform_supported linux-debian || exit 12
         if setup_platform_supported linux-unknown; then
             printf "linux-unknown should not be supported yet\n" >&2
-            exit 12
+            exit 13
         fi
     '
 

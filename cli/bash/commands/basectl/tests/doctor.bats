@@ -102,6 +102,36 @@ EOF
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 }
 
+create_doctor_linux_success_stubs() {
+    local fake_bin="$1"
+    local venv_python="$2"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/python3" "$venv_python"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+}
+
 write_doctor_tty_script() {
     local script_path="$1"
     local fake_bin="$2"
@@ -293,6 +323,30 @@ EOF
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
 
+@test "basectl doctor supports linux-debian without Homebrew or Xcode probes" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_linux_success_stubs "$fake_bin" "$venv_python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base doctor"* ]]
+    [[ "$output" == *"ok"*"BASE-D003"*"Python"*"Python is available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"ok"*"BASE-D004"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
+}
+
 @test "basectl doctor warns when Homebrew reports outdated Xcode Command Line Tools" {
     local fake_bin="$TEST_TMPDIR/bin"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
@@ -454,6 +508,22 @@ EOF
     [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
 }
 
+@test "basectl doctor rejects unsupported BASE_PLATFORM before Homebrew probes" {
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-unknown \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"supports macOS and Ubuntu/Debian Linux only"* ]]
+    [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
+    [[ "$output" != *"Homebrew is not installed."* ]]
+    [[ "$output" != *"Xcode Command Line Tools are not installed."* ]]
+}
+
 @test "basectl doctor text uses shared base check recovery hints" {
     create_doctor_uname_stub "$TEST_MOCKBIN"
 
@@ -554,6 +624,35 @@ EOF
     [[ "$output" == *'"id":"BASE-D005","status":"error","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"error","name":"click"'* ]]
     [[ "$output" != *"Base doctor"* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl doctor --format json supports linux-debian readiness findings" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_linux_success_stubs "$fake_bin" "$venv_python"
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "ok"'* || "$output" == *'"status": "warn"'* ]]
+    [[ "$output" == *'"findings":'* ]]
+    [[ "$output" == *'"id":"BASE-D003","status":"ok","name":"python","message":"Python is available for Ubuntu/Debian runtime checks."'* ]]
+    [[ "$output" == *'"id":"BASE-D004","status":"ok","name":"base_virtualenv"'* ]]
+    [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
+    [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    assert_base_bash_libraries_json_finding "$output"
+    [[ "$output" != *'"name":"homebrew"'* ]]
+    [[ "$output" != *'"name":"xcode_command_line_tools"'* ]]
     [ "${stderr:-}" = "" ]
 }
 
