@@ -82,11 +82,19 @@ Doctor commands use the same diagnostic item fields. The top-level
 | --- | --- |
 | `BASE-D001` | Homebrew availability and PATH refresh |
 | `BASE-D002` | Xcode Command Line Tools availability and Homebrew freshness |
-| `BASE-D003` | Homebrew Python formula availability |
+| `BASE-D003` | Base Python runtime availability |
 | `BASE-D004` | Base virtual environment integrity |
 | `BASE-D005` | Base `PyYAML` package availability |
 | `BASE-D006` | Base `click` package availability |
 | `BASE-D007` | Base reusable Bash library source readiness |
+| `BASE-D008` | Bash runtime version support |
+| `BASE-D009` | Python `venv` module support |
+| `BASE-D010` | Git CLI availability |
+| `BASE-D011` | GitHub CLI availability on Ubuntu/Debian |
+| `BASE-D012` | BATS availability on Ubuntu/Debian |
+| `BASE-D013` | ShellCheck availability on Ubuntu/Debian |
+| `BASE-D014` | jq availability on Ubuntu/Debian |
+| `BASE-D015` | Go availability on Ubuntu/Debian source checkouts |
 | `BASE-D101` | Unsupported prerequisite profile manager |
 | `BASE-D102` | Unsupported prerequisite profile version |
 | `BASE-D103` | Homebrew unavailable for prerequisite profile checks |

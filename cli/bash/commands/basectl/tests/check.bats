@@ -84,6 +84,7 @@ load ./setup_helpers.bash
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_system_python3_stub
+    create_linux_prerequisite_stubs
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
     create_base_venv_stub "$venv_dir"
@@ -96,6 +97,49 @@ load ./setup_helpers.bash
     [[ "$output" == *"Python package 'PyYAML' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Python package 'click' is installed in the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl check linux-debian reports missing prerequisite apt hints" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    cat > "$TEST_MOCKBIN/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then
+    exit 1
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/python3"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=git,gh,bats,shellcheck,jq,go \
+        check
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Python venv support is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install python3-venv with 'sudo apt-get install python3-venv', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"Git is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install git with 'sudo apt-get install git', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"GitHub CLI 'gh' is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install GitHub CLI 'gh' from the official GitHub CLI apt repository"* ]]
+    [[ "$output" == *"BATS is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install bats with 'sudo apt-get install bats', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"ShellCheck is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install shellcheck with 'sudo apt-get install shellcheck', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"jq is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install jq with 'sudo apt-get install jq', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"Go is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Install Go with 'sudo apt-get install golang-go', then rerun 'basectl check'."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
 }
@@ -429,6 +473,7 @@ load ./setup_helpers.bash
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_system_python3_stub
+    create_linux_prerequisite_stubs
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
     create_base_venv_stub "$venv_dir"
@@ -442,6 +487,14 @@ load ./setup_helpers.bash
     [[ "$output" == *'"id":"BASE-D004","status":"ok","name":"base_virtualenv"'* ]]
     [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    [[ "$output" == *'"id":"BASE-D008","status":"ok","name":"bash"'* ]]
+    [[ "$output" == *'"id":"BASE-D009","status":"ok","name":"python_venv"'* ]]
+    [[ "$output" == *'"id":"BASE-D010","status":"ok","name":"git"'* ]]
+    [[ "$output" == *'"id":"BASE-D011","status":"ok","name":"gh"'* ]]
+    [[ "$output" == *'"id":"BASE-D012","status":"ok","name":"bats"'* ]]
+    [[ "$output" == *'"id":"BASE-D013","status":"ok","name":"shellcheck"'* ]]
+    [[ "$output" == *'"id":"BASE-D014","status":"ok","name":"jq"'* ]]
+    [[ "$output" == *'"id":"BASE-D015","status":"ok","name":"go"'* ]]
     assert_base_bash_libraries_json_finding "$output"
     [[ "$output" != *'"name":"homebrew"'* ]]
     [[ "$output" != *'"name":"xcode_command_line_tools"'* ]]

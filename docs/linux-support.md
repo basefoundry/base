@@ -85,8 +85,13 @@ Initial Ubuntu/Debian mappings:
 | --- | --- | --- |
 | Bash 4.2+ | Homebrew `bash` | `apt install bash` |
 | Python 3.13 | Homebrew `python@3.13` | documented manual install first |
+| Python venv support | Homebrew `python@3.13` | `apt install python3-venv` |
+| Git | Xcode Command Line Tools or Homebrew `git` | `apt install git` |
 | BATS | Homebrew `bats-core` | `apt install bats` when available |
 | GitHub CLI | Homebrew `gh` | GitHub CLI apt repository |
+| ShellCheck | Homebrew `shellcheck` | `apt install shellcheck` |
+| jq | Homebrew `jq` | `apt install jq` |
+| Go for source-checkout tests | Homebrew `go` | `apt install golang-go` |
 
 Python should be the conservative piece. Do not silently use arbitrary system
 Python for Base setup unless Linux support explicitly opts into that behavior.
