@@ -356,6 +356,43 @@ setup_ci_runtime_only() {
     [[ "${BASE_CI:-false}" == true && "$OSTYPE" != darwin* ]]
 }
 
+setup_current_platform() {
+    local platform
+
+    if [[ -n "${BASE_SETUP_TEST_PLATFORM+x}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_PLATFORM
+        platform="$BASE_SETUP_TEST_PLATFORM"
+    else
+        platform="${BASE_PLATFORM:-unsupported}"
+    fi
+    if [[ -z "$platform" ]]; then
+        platform=unsupported
+    fi
+    printf '%s\n' "$platform"
+}
+
+setup_platform_supported() {
+    local platform="${1:-}"
+
+    if [[ -z "$platform" ]]; then
+        platform="$(setup_current_platform)" || return 1
+    fi
+    case "$platform" in
+        macos)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+setup_unsupported_platform_message() {
+    local platform="$1"
+
+    printf "The setup/check platform path currently supports macOS only (BASE_PLATFORM='%s').\n" "$platform"
+}
+
 setup_allow_test_hooks() {
     [[ "${BASE_TEST_MODE:-false}" == true || "${CI:-false}" == true ]]
 }
@@ -1880,8 +1917,6 @@ setup_collect_macos_base_check_results() {
     local refresh_brew_failure_mode="${1:-warn}"
     local tmpdir
 
-    setup_clear_check_results
-    setup_require_macos
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
@@ -1916,6 +1951,20 @@ setup_collect_macos_base_check_results() {
     rm -rf "$tmpdir"
 
     return "$missing"
+}
+
+setup_collect_platform_base_check_results() {
+    local platform
+
+    platform="$(setup_current_platform)" || return 1
+    case "$platform" in
+        macos)
+            setup_collect_macos_base_check_results "$@"
+            ;;
+        *)
+            fatal_error "$(setup_unsupported_platform_message "$platform")"
+            ;;
+    esac
 }
 
 setup_collect_ci_runtime_check_results() {
@@ -1982,12 +2031,13 @@ setup_collect_ci_runtime_check_results() {
 }
 
 setup_collect_base_check_results() {
+    setup_clear_check_results
     if setup_ci_runtime_only; then
         setup_collect_ci_runtime_check_results
         return $?
     fi
 
-    setup_collect_macos_base_check_results "$@"
+    setup_collect_platform_base_check_results "$@"
 }
 
 setup_print_check_text_results() {
@@ -2153,13 +2203,7 @@ setup_run_ci_runtime_install() {
     fi
 }
 
-setup_run_install() {
-    if setup_ci_runtime_only; then
-        setup_run_ci_runtime_install
-        return $?
-    fi
-
-    setup_require_macos
+setup_run_macos_install() {
     setup_install_homebrew
     setup_install_xcode_tools
     setup_install_python
@@ -2181,4 +2225,27 @@ setup_run_install() {
     else
         log_info "Base CLI setup is complete."
     fi
+}
+
+setup_run_platform_install() {
+    local platform
+
+    platform="$(setup_current_platform)" || return 1
+    case "$platform" in
+        macos)
+            setup_run_macos_install
+            ;;
+        *)
+            fatal_error "$(setup_unsupported_platform_message "$platform")"
+            ;;
+    esac
+}
+
+setup_run_install() {
+    if setup_ci_runtime_only; then
+        setup_run_ci_runtime_install
+        return $?
+    fi
+
+    setup_run_platform_install
 }

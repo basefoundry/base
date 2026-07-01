@@ -86,12 +86,11 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup fails on unsupported operating systems" {
-    OSTYPE_OVERRIDE="linux-gnu"
-
-    run_base_command setup
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-unknown setup
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"supports macOS only"* ]]
+    [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
 }
 
 @test "basectl setup is idempotent when brew, xcode tools, python, and the venv already exist" {

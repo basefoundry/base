@@ -13,6 +13,25 @@ setup() {
     unset OSTYPE_OVERRIDE
 
     mkdir -p "$TEST_HOME" "$TEST_MOCKBIN" "$TEST_STATE_DIR"
+    create_uname_stub
+}
+
+create_uname_stub() {
+    cat > "$TEST_MOCKBIN/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    ""|-s)
+        printf 'Darwin\n'
+        exit 0
+        ;;
+esac
+
+if [[ -x /usr/bin/uname ]]; then
+    exec /usr/bin/uname "$@"
+fi
+exec /bin/uname "$@"
+EOF
+    chmod +x "$TEST_MOCKBIN/uname"
 }
 
 create_xcode_stubs() {

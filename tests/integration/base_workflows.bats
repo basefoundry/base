@@ -57,6 +57,22 @@ create_base_runtime() {
 }
 
 create_fake_platform_tools() {
+    cat > "$TEST_MOCKBIN/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    ""|-s)
+        printf 'Darwin\n'
+        exit 0
+        ;;
+esac
+
+if [[ -x /usr/bin/uname ]]; then
+    exec /usr/bin/uname "$@"
+fi
+exec /bin/uname "$@"
+EOF
+    chmod +x "$TEST_MOCKBIN/uname"
+
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/usr/bin/env bash
 case "${1:-}" in
@@ -141,6 +157,7 @@ run_basectl() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE=darwin24 \
+        BASE_TEST_MODE=true \
         BASE_INTEGRATION_BREW_PREFIX="$TEST_TMPDIR/homebrew-prefix" \
         BASE_INTEGRATION_STATE_DIR="$TEST_STATE_DIR" \
         BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
@@ -155,6 +172,7 @@ run_basectl_separate_stderr() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE=darwin24 \
+        BASE_TEST_MODE=true \
         BASE_INTEGRATION_BREW_PREFIX="$TEST_TMPDIR/homebrew-prefix" \
         BASE_INTEGRATION_STATE_DIR="$TEST_STATE_DIR" \
         BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
