@@ -9,11 +9,61 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [1.4.0] - 2026-07-01
 
+### Added
+
+- Added a contract registry and contract check runner, then wired those checks
+  into the default local and CI validation path.
+- Broadened CI coverage for high-level workflows, supported Python minors,
+  macOS shell surfaces, Project Intake behavior, and safe portions of macOS
+  install validation.
+
+### Changed
+
+- Consolidated shared command helpers for project execution, GitHub repository
+  parsing, workspace clone handling, command history, and log display.
+- Reduced subprocess usage in shell prompts, GitHub helpers, update-profile
+  newline checks, setup profile normalization, and timestamp formatting.
+- Continued splitting large Python command surfaces into focused modules while
+  adopting shared `ExitCode` handling across production engines.
+
 ### Fixed
 
 - Made `basectl check` warn when Homebrew reports installed Xcode Command Line
   Tools are outdated or incomplete, matching the existing `basectl doctor`
   finding while keeping the check non-blocking.
+- Fixed `basectl export-context --format zip --output <directory>` so directory
+  outputs resolve to the default archive filename instead of leaking filesystem
+  exceptions.
+- Fixed redirected-stdin prompt handling for onboarding and the self-demo, and
+  made BATS reusable-library fixture resolution portable across source
+  checkouts.
+- Replaced remaining runtime `assert` guards and implicit failures in Python
+  paths with explicit runtime errors, exit codes, or documented policies.
+- Added timeouts to subprocess-heavy release, workspace, setup, Project Intake,
+  and diagnostic paths so failures stay bounded.
+- Aligned setup, doctor, and Python-backed subcommand output streams with the
+  documented stdout/stderr contract.
+
+### Security
+
+- Pinned GitHub Actions and the `base-bash-libs` CI dependency, declared
+  minimal workflow permissions, and hardened generated repository workflows
+  against drift from Base CI policy.
+- Added project installer template integrity verification and surfaced skipped
+  checksum verification clearly.
+- Avoided shell-interpolated AI installer URLs and rejected or warned on
+  cleartext HTTP workspace repository URLs.
+- Created Python CLI log files with restrictive permissions atomically.
+
+### Documentation
+
+- Refreshed command reference, architecture, execution model, bootstrap,
+  contributor setup, GitHub workflow, Project metadata, doctor findings,
+  observability, and Linux-support posture documentation to match the shipped
+  command surface.
+- Documented the future `base_cli` extraction boundary, production
+  `AssertionError` policy, CI setup JSON stderr replay contract, and intentional
+  blocking behavior in `basectl logs`.
 
 ## [1.3.0] - 2026-06-28
 
