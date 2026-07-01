@@ -8,11 +8,14 @@ multiple projects through a single CLI interface. The current implementation sup
 contract is macOS. Linux is a future design target, while Windows support is not in
 scope.
 
-The governing philosophy: **solve your own problem elegantly first**. Base is built for
-a specific workflow — multiple peer GitHub repositories under a shared parent directory,
-each declaring their dependencies through a simple manifest, all managed through a
-unified interface. If it works well for its author, it will work well for others with
-similar constraints.
+The governing philosophy: **solve your own problem elegantly first**. Base is
+built for a specific workflow: multiple peer Git repositories under a shared
+parent directory, each declaring their dependencies through a simple manifest,
+all managed through a unified interface. GitHub is the first-class forge
+automation target today. Non-GitHub Git repositories can still use Base's local
+project loop after they exist locally, but GitHub workflow automation remains
+GitHub-specific. The exact contract lives in
+[Source Control And Forge Support](source-control-and-forge-support.md).
 
 ---
 
@@ -57,8 +60,8 @@ need Base's orchestration model.
 
 ## Repository Structure
 
-Base is a public GitHub repository. All projects managed by Base are also GitHub
-repositories, checked out as peers under a shared parent directory:
+Base is a public GitHub repository. The primary dogfood workspace is a set of
+GitHub repositories checked out as peers under a shared parent directory:
 
 ```
 ~/work/              ← shared workspace root
@@ -68,8 +71,10 @@ repositories, checked out as peers under a shared parent directory:
   banyanlabs/        ← peer project with base_manifest.yaml
 ```
 
-Base discovers peer repositories by scanning the workspace root for repositories
-that contain `base_manifest.yaml`.
+Base discovers peer repositories by scanning the workspace root for Git
+repositories that contain `base_manifest.yaml`. The local project loop does not
+require the remote to be hosted on GitHub. Repository creation, configuration,
+issue, pull-request, Project, and release automation do require GitHub today.
 
 ---
 

@@ -37,6 +37,21 @@ Common first-run and product questions are answered in [FAQ.md](FAQ.md).
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Release notes
 are tracked in [CHANGELOG.md](CHANGELOG.md).
 
+## Source Control And Forge Support
+
+Base assumes Git. Mercurial, Perforce, Subversion, and other non-Git SCMs are
+out of scope.
+
+Base is GitHub-primary rather than forge-independent. GitHub is the only
+first-class forge automation target today for repository creation,
+configuration, Issues, pull requests, Projects, Actions intake, and release
+publishing. A GitLab, Bitbucket, internal Git, or local Git repository can
+still use Base's local project loop once it is checked out locally and declares
+`base_manifest.yaml`.
+
+See [Source Control And Forge Support](docs/source-control-and-forge-support.md)
+for the command-by-command compatibility contract and non-GitHub Git workflow.
+
 ## Start Here
 
 ### Choose An Install Path
@@ -491,11 +506,14 @@ repositories are errors, missing optional repositories are warnings, and
 Base-managed projects outside the manifest stay visible as warnings.
 
 Use `basectl workspace clone --manifest <path>`, or configure
-`workspace.manifest`, to materialize the missing required repositories from that
-manifest. The command keeps existing repositories visible, delegates each
-repository operation to `basectl repo clone`, and supports `--dry-run` for a
-no-write preview. Optional repositories are reported but skipped unless
-`--include-optional` is supplied.
+`workspace.manifest`, to materialize the missing required GitHub repositories
+from that manifest. The command keeps existing repositories visible, delegates
+each repository operation to `basectl repo clone`, and supports `--dry-run` for
+a no-write preview. Optional repositories are reported but skipped unless
+`--include-optional` is supplied. Workspace manifests may list non-GitHub Git
+URLs for reporting, but automatic materialization through `workspace clone` is
+GitHub-only today; clone GitLab, Bitbucket, internal Git, or local repositories
+with ordinary Git first, then let Base discover the local checkout.
 
 Use `basectl workspace init <workspace-source>` for first-run bootstrap from a
 workspace configuration repository. The source can be a local path, GitHub URL,
@@ -554,6 +572,10 @@ Without `--path`, `repo clone` writes to `<workspace.root>/<repo>`, and
 `--dry-run` prints the resolved repository, destination, clone tool, and clone
 URL without touching the filesystem. Existing matching checkouts are treated as
 already satisfied; conflicting destinations fail with guidance.
+
+`repo clone` and `repo configure` are GitHub automation surfaces. For
+non-GitHub Git repositories, use the forge's normal Git clone path and then use
+Base's local project loop from the resulting checkout.
 
 Check and repair the repo baseline with:
 

@@ -55,6 +55,9 @@ reference. The filename should answer "what is this about?"
   manifest contract, command tables, and file locations.
 - [Architecture](architecture.md) describes Base's product direction, command
   model, environment model, manifest shape, and repository conventions.
+- [Source Control And Forge Support](source-control-and-forge-support.md)
+  defines Base's Git-only, GitHub-primary support contract and the expected
+  behavior for non-GitHub Git repositories.
 - [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
   selection, handoff commands, and contributor setup.
 - [Clean macOS Install Validation](macos-install-validation.md) defines the
