@@ -9,5 +9,5 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl setup [options]"* ]]
-    [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
+    [[ "$output" == *"Prepare the local Base CLI environment on supported setup platforms."* ]]
 }

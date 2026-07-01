@@ -30,7 +30,7 @@ Profiles:
   ai  - AI coding assistant tooling.
 
 Purpose:
-  Prepare the local Base CLI environment on macOS.
+  Prepare the local Base CLI environment on supported setup platforms.
 
 Setup does:
   1. Install Homebrew if needed.
@@ -44,6 +44,7 @@ Setup does:
 
 Notes:
   - This command is intentionally idempotent.
+  - On Ubuntu/Debian Linux, setup currently provides dry-run manual prerequisite guidance only.
   - The optional project argument resolves a Base project from the workspace
     unless --manifest is provided explicitly.
   - Use `basectl check` to verify the same requirements without making changes.
