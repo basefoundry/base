@@ -96,42 +96,68 @@ jobs:
             local operation="$1"
             shift
             local output
+            local error_output
+            local diagnostic_output
+            local stderr_file
             local status
             local retry_delay
 
-            if output="$("$@" 2>&1)"; then
+            stderr_file="$(mktemp)"
+            if output="$("$@" 2>"$stderr_file")"; then
+              error_output="$(cat "$stderr_file")"
+              rm -f "$stderr_file"
+              [[ -z "$error_output" ]] || printf '%s\n' "$error_output" >&2
               [[ -z "$output" ]] || printf '%s\n' "$output"
               return 0
             else
               status=$?
+              error_output="$(cat "$stderr_file")"
+              rm -f "$stderr_file"
             fi
 
-            if project_intake_is_auth_failure "$output"; then
+            diagnostic_output="$output"
+            if [[ -n "$error_output" ]]; then
+              [[ -z "$diagnostic_output" ]] || diagnostic_output+=$'\n'
+              diagnostic_output+="$error_output"
+            fi
+
+            if project_intake_is_auth_failure "$diagnostic_output"; then
               echo "::error::GitHub authentication failed during Project Intake: $operation" >&2
               echo "::error::Rotate BASE_PROJECT_TOKEN and rerun this workflow_dispatch for issue #${issue_number:-unknown}." >&2
               echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY" >&2
-              printf '%s\n' "$output" >&2
+              printf '%s\n' "$diagnostic_output" >&2
               return "$status"
             fi
 
-            if project_intake_is_retryable_api_failure "$output"; then
-              retry_delay="$(project_intake_retry_delay_seconds "$output")"
+            if project_intake_is_retryable_api_failure "$diagnostic_output"; then
+              retry_delay="$(project_intake_retry_delay_seconds "$diagnostic_output")"
               echo "::warning::GitHub API pressure during Project Intake: $operation" >&2
               echo "::warning::Waiting ${retry_delay}s and retrying once." >&2
               sleep "$retry_delay"
-              if output="$("$@" 2>&1)"; then
+              stderr_file="$(mktemp)"
+              if output="$("$@" 2>"$stderr_file")"; then
+                error_output="$(cat "$stderr_file")"
+                rm -f "$stderr_file"
+                [[ -z "$error_output" ]] || printf '%s\n' "$error_output" >&2
                 [[ -z "$output" ]] || printf '%s\n' "$output"
                 return 0
               else
                 status=$?
+                error_output="$(cat "$stderr_file")"
+                rm -f "$stderr_file"
+              fi
+              diagnostic_output="$output"
+              if [[ -n "$error_output" ]]; then
+                [[ -z "$diagnostic_output" ]] || diagnostic_output+=$'\n'
+                diagnostic_output+="$error_output"
               fi
               echo "::error::GitHub API retry failed during Project Intake: $operation" >&2
-              printf '%s\n' "$output" >&2
+              printf '%s\n' "$diagnostic_output" >&2
               return "$status"
             fi
 
             echo "::error::GitHub API command failed during Project Intake: $operation" >&2
-            printf '%s\n' "$output" >&2
+            printf '%s\n' "$diagnostic_output" >&2
             return "$status"
           }
 

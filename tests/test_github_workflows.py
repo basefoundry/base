@@ -99,6 +99,10 @@ case "${1:-} ${2:-}" in
       exit 1
     fi
 
+    if [[ "${PROJECT_INTAKE_WARN_ON_SUCCESS:-}" == "1" ]]; then
+      printf 'warning: gh emitted a non-fatal notice\\n' >&2
+    fi
+
     printf '{"state":"OPEN","url":"https://github.com/basefoundry/base/issues/1311"}\\n'
     ;;
   "project list")
@@ -316,6 +320,15 @@ def test_project_intake_retries_rate_limited_operations_once(tmp_path: Path) -> 
     assert "retrying once" in result.stderr
     assert (tmp_path / "sleep.log").read_text(encoding="utf-8") == "7\n"
     assert (tmp_path / "issue-view-count").read_text(encoding="utf-8") == "2\n"
+    assert "Synced issue #1311 into Project base." in result.stdout
+
+
+def test_project_intake_keeps_success_stderr_out_of_json_stdout(tmp_path: Path) -> None:
+    result = run_project_intake_script(tmp_path, PROJECT_INTAKE_WARN_ON_SUCCESS="1")
+
+    assert result.returncode == 0, result.stderr
+    assert "warning: gh emitted a non-fatal notice" in result.stderr
+    assert "warning: gh emitted a non-fatal notice" not in result.stdout
     assert "Synced issue #1311 into Project base." in result.stdout
 
 
