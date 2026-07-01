@@ -2509,6 +2509,22 @@ setup_run_macos_install() {
     fi
 }
 
+setup_linux_debian_apt_prerequisite_command() {
+    printf '%s\n' "sudo apt-get install bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"
+}
+
+setup_run_linux_debian_install() {
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Ubuntu/Debian setup is manual in this release."
+        log_info "Install apt prerequisites with: $(setup_linux_debian_apt_prerequisite_command)"
+        log_info "Install GitHub CLI 'gh' from the official GitHub CLI apt repository."
+        log_info "After installing prerequisites, run 'basectl check' to verify readiness."
+        return 0
+    fi
+
+    fatal_error "Ubuntu/Debian setup is currently manual. Run 'basectl setup --dry-run' for prerequisite guidance, install the listed packages, then rerun 'basectl check'."
+}
+
 setup_run_platform_install() {
     local platform
 
@@ -2516,6 +2532,9 @@ setup_run_platform_install() {
     case "$platform" in
         macos)
             setup_run_macos_install
+            ;;
+        linux-debian)
+            setup_run_linux_debian_install
             ;;
         *)
             fatal_error "$(setup_unsupported_install_platform_message "$platform")"

@@ -18,7 +18,8 @@ load ./setup_helpers.bash
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
-    [[ "$output" == *"Prepare the local Base CLI environment on macOS."* ]]
+    [[ "$output" == *"Prepare the local Base CLI environment on supported setup platforms."* ]]
+    [[ "$output" == *"On Ubuntu/Debian Linux, setup currently provides dry-run manual prerequisite guidance only."* ]]
     [[ "$output" == *"Create ~/.base.d/config.yaml with workspace.root: ~/work if missing."* ]]
 }
 
@@ -91,6 +92,29 @@ load ./setup_helpers.bash
     [ "$status" -eq 1 ]
     [[ "$output" == *"supports macOS only"* ]]
     [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
+}
+
+@test "basectl setup --dry-run gives linux-debian manual prerequisite guidance" {
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Ubuntu/Debian setup is manual in this release."* ]]
+    [[ "$output" == *"sudo apt-get install bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"Install GitHub CLI 'gh' from the official GitHub CLI apt repository"* ]]
+    [[ "$output" == *"After installing prerequisites, run 'basectl check' to verify readiness."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl setup linux-debian fails conservatively with manual guidance" {
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Ubuntu/Debian setup is currently manual."* ]]
+    [[ "$output" == *"Run 'basectl setup --dry-run' for prerequisite guidance"* ]]
+    [[ "$output" == *"then rerun 'basectl check'."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
 }
 
 @test "basectl setup is idempotent when brew, xcode tools, python, and the venv already exist" {
