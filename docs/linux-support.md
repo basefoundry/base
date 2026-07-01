@@ -43,6 +43,40 @@ selection need them. Distribution ID and CPU architecture are separate axes:
 `BASE_PLATFORM` answers "which supported platform family is this?", while a
 future `BASE_ARCH` would answer "which binary/package architecture is this?".
 
+## Platform Policy Boundary
+
+`BASE_PLATFORM` is an input to centralized platform policy, not a general
+branch condition for feature code. `base_init.sh` owns detection and exports
+`BASE_OS` / `BASE_PLATFORM`; it must not decide installer, package-manager, or
+diagnostic behavior.
+
+Setup and check behavior should inspect `BASE_PLATFORM` only through explicit
+platform boundary helpers. The intended shell setup/check shape is:
+
+- `setup_current_platform` resolves the supported platform name from the
+  runtime contract.
+- `setup_platform_supported` reports whether the current platform has a
+  supported setup/check path.
+- `setup_collect_platform_base_check_results` dispatches Base environment
+  checks to platform-specific collectors.
+- `setup_run_platform_install` dispatches setup/install behavior to
+  platform-specific installers.
+
+Leaf helpers should stay platform-specific rather than internally branching on
+every platform. Prefer names such as `setup_collect_macos_base_check_results`,
+`setup_collect_linux_debian_base_check_results`, `setup_run_macos_install`, and
+`setup_run_linux_debian_install`.
+
+Package-manager selection belongs behind this boundary. macOS setup can use
+Homebrew-specific helpers, and Ubuntu/Debian setup can later use apt-specific
+helpers, but ordinary command, diagnostic, and artifact code should call the
+platform boundary instead of checking `BASE_PLATFORM` directly.
+
+Python project artifact management has a separate future seam. If system
+packages become project artifacts on Linux, the Python artifact registry should
+learn platform-aware providers instead of inheriting the shell setup/check
+dispatch directly.
+
 ## Package Manager Mapping
 
 Initial Ubuntu/Debian mappings:

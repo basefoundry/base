@@ -31,7 +31,21 @@ layer boundaries rather than placing logic wherever it is easiest to call.
 | Persistent Base state such as config and project venvs | `~/.base.d` |
 | Ephemeral logs, temp files, and cache | Base cache root, normally `~/Library/Caches/base` on macOS |
 
-### 1.2 Public Command Surface
+### 1.2 Host Platform Policy
+
+Host platform detection belongs to `base_init.sh`; installer, package-manager,
+and diagnostic policy belong behind explicit platform boundary helpers in the
+owning layer. Normal command, runtime, setup, check, doctor, and artifact code
+should not branch directly on `BASE_PLATFORM` unless it is itself part of that
+platform boundary.
+
+Keep platform-specific leaf helpers narrow and named for their platform, such
+as `setup_collect_macos_base_check_results` or
+`setup_collect_linux_debian_base_check_results`. Route platform choice through
+central dispatch helpers so Homebrew, apt, and future platform providers do not
+become scattered call-site decisions.
+
+### 1.3 Public Command Surface
 
 `$BASE_HOME/bin` is the only public command surface that should be added to
 `PATH`.
@@ -64,7 +78,7 @@ exec "$(dirname "$0")/base-wrapper" --project "${BASE_PROJECT:-base}" example_cl
 This keeps direct CLI execution aligned with the same venv and `PYTHONPATH`
 rules that `basectl` uses internally.
 
-### 1.3 `basectl` And `base-wrapper`
+### 1.4 `basectl` And `base-wrapper`
 
 `bin/basectl` is the control plane. It decides whether the user asked to:
 
