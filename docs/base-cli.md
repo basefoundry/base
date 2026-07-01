@@ -127,6 +127,7 @@ ctx.run_id         # str
 ctx.base_home      # Path | None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
+ctx.workspace_root # configured workspace root, or None
 ctx.state_dir      # Base cache root / cli / <cli-name>
 ctx.log_dir        # state_dir/logs
 ctx.cache_dir      # state_dir/cache
@@ -138,6 +139,7 @@ ctx.environment    # str
 ctx.debug          # bool
 ctx.dry_run        # bool
 ctx.keep_temp      # bool
+ctx.quiet          # bool
 ctx.log            # logging.Logger
 ```
 
