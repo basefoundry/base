@@ -4,7 +4,7 @@
 
 - Name: Base
 - Repository: `github.com/basefoundry/base`
-- Current release: `1.3.0`
+- Current release: `1.4.0`
 - Primary platform: macOS
 - Linux posture: active runtime and CI rollout; full Linux bootstrap support
   remains narrower and is tracked in `docs/linux-support.md`.
