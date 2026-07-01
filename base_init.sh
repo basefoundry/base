@@ -16,7 +16,7 @@
 #     - validate that the runtime is Bash 4.2 or newer
 #     - derive or validate BASE_HOME
 #     - export the BASE_* paths that downstream scripts may rely on
-#     - export BASE_OS and BASE_HOST runtime metadata
+#     - export BASE_OS, BASE_PLATFORM, and BASE_HOST runtime metadata
 #     - resolve and source the reusable Bash standard library
 #     - add BASE_BIN_DIR to PATH
 #     - provide import_base_lib for convention-based Base Bash library imports
@@ -73,6 +73,32 @@ base_init_require_bash() {
         base_init_error "Base runtime requires Bash 4.2 or newer; current version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}."
         return 1
     fi
+}
+
+base_init_linux_os_release_path() {
+    printf '%s\n' "${BASE_INIT_TEST_OS_RELEASE_PATH:-/etc/os-release}"
+}
+
+base_init_detect_linux_platform() {
+    local id id_like os_release_path
+    local ID="" ID_LIKE=""
+
+    os_release_path="$(base_init_linux_os_release_path)" || return 1
+    if [[ -r "$os_release_path" ]]; then
+        # shellcheck source=/dev/null
+        source "$os_release_path"
+    fi
+
+    id="${ID,,}"
+    id_like="${ID_LIKE,,}"
+    case " $id $id_like " in
+        *" ubuntu "*|*" debian "*)
+            printf 'linux-debian\n'
+            ;;
+        *)
+            printf 'linux-unknown\n'
+            ;;
+    esac
 }
 
 base_init_resolve_home() {
@@ -166,7 +192,7 @@ base_init_set_bash_libs_contract() {
 }
 
 base_init_export_contract() {
-    local base_home base_os base_host uname_os
+    local base_home base_os base_platform base_host uname_os
 
     base_home="$(base_init_resolve_home)" || return 1
     uname_os="$(uname -s)" || {
@@ -180,12 +206,15 @@ base_init_export_contract() {
     case "$uname_os" in
         Darwin)
             base_os=macos
+            base_platform=macos
             ;;
         Linux)
             base_os=linux
+            base_platform="$(base_init_detect_linux_platform)" || return 1
             ;;
         *)
             base_os="$(printf '%s\n' "$uname_os" | tr '[:upper:]' '[:lower:]')"
+            base_platform="$base_os"
             ;;
     esac
     base_host="$(hostname -s)" || {
@@ -207,12 +236,13 @@ base_init_export_contract() {
     base_init_set_bash_libs_contract || return 1
     BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
     BASE_OS="$base_os"
+    BASE_PLATFORM="$base_platform"
     BASE_HOST="$base_host"
     BASE_SHELL="${BASE_SHELL:-bash}"
     export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST BASE_SHELL
     readonly BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_HOST BASE_SHELL
+    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST BASE_SHELL
 }
 
 base_init_source_stdlib() {

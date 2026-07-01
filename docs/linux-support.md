@@ -18,7 +18,9 @@ Full bootstrap support can come after runtime support is stable.
 
 ## Platform Detection
 
-Use `/etc/os-release` for Linux distribution detection:
+Use `/etc/os-release` for Linux distribution detection and expose the result
+through `BASE_PLATFORM`. Keep `BASE_OS` coarse: `BASE_OS=linux` on Linux, with
+`BASE_PLATFORM` carrying the supported distribution family.
 
 ```bash
 if [[ -r /etc/os-release ]]; then
@@ -35,6 +37,11 @@ The setup layer should classify platforms into:
 
 Unsupported platforms should fail with explicit guidance rather than falling
 through to macOS assumptions.
+
+Do not add public `BASE_DISTRO_ID` or `BASE_ARCH` until diagnostics or package
+selection need them. Distribution ID and CPU architecture are separate axes:
+`BASE_PLATFORM` answers "which supported platform family is this?", while a
+future `BASE_ARCH` would answer "which binary/package architecture is this?".
 
 ## Package Manager Mapping
 

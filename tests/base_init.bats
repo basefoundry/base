@@ -45,9 +45,27 @@ run_base_init_script() {
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
         -u BASE_HOST \
         -u BASE_SHELL \
         bash -c "$script" bash "$TEST_BASE_HOME"
+}
+
+create_uname_stub() {
+    local mockbin="$1"
+    local uname_os="$2"
+
+    mkdir -p "$mockbin"
+    cat > "$mockbin/uname" <<EOF
+#!/usr/bin/env bash
+if [[ "\${1:-}" == "-s" ]]; then
+    printf '%s\n' "$uname_os"
+    exit 0
+fi
+printf 'unexpected uname args: %s\n' "\$*" >&2
+exit 1
+EOF
+    chmod +x "$mockbin/uname"
 }
 
 @test "base_init exports the Base runtime path contract" {
@@ -117,11 +135,12 @@ run_base_init_script() {
     [[ "$output" == *"BASE_BIN_DIR=$opt_base/bin"* ]]
 }
 
-@test "base_init exports host operating system and shell metadata" {
+@test "base_init exports host operating system platform and shell metadata" {
     run_base_init_script '
         base_home="$1"
         source "$base_home/base_init.sh"
         printf "BASE_OS=%s\n" "$BASE_OS"
+        printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
         printf "BASE_HOST=%s\n" "$BASE_HOST"
         printf "BASE_SHELL=%s\n" "$BASE_SHELL"
     '
@@ -130,6 +149,62 @@ run_base_init_script() {
     [[ "$output" == *"BASE_HOST="* ]]
     [[ "$output" == *"BASE_SHELL=bash"* ]]
     [[ "$output" == *"BASE_OS=linux"* || "$output" == *"BASE_OS=macos"* ]]
+    [[ "$output" == *"BASE_PLATFORM=linux-debian"* || "$output" == *"BASE_PLATFORM=linux-unknown"* || "$output" == *"BASE_PLATFORM=macos"* ]]
+}
+
+@test "base_init keeps BASE_OS coarse while classifying Ubuntu as linux-debian" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+    local os_release="$TEST_TMPDIR/os-release"
+
+    create_uname_stub "$mockbin" Linux
+    printf 'ID=ubuntu\nID_LIKE=debian\n' > "$os_release"
+
+    PATH="$mockbin:$PATH" BASE_INIT_TEST_OS_RELEASE_PATH="$os_release" run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+        printf "BASE_OS=%s\n" "$BASE_OS"
+        printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_OS=linux"* ]]
+    [[ "$output" == *"BASE_PLATFORM=linux-debian"* ]]
+}
+
+@test "base_init classifies non-Debian Linux as linux-unknown" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+    local os_release="$TEST_TMPDIR/os-release"
+
+    create_uname_stub "$mockbin" Linux
+    printf 'ID=fedora\nID_LIKE="rhel fedora"\n' > "$os_release"
+
+    PATH="$mockbin:$PATH" BASE_INIT_TEST_OS_RELEASE_PATH="$os_release" run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+        printf "BASE_OS=%s\n" "$BASE_OS"
+        printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_OS=linux"* ]]
+    [[ "$output" == *"BASE_PLATFORM=linux-unknown"* ]]
+}
+
+@test "base_init classifies macOS platform from uname" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+
+    create_uname_stub "$mockbin" Darwin
+
+    PATH="$mockbin:$PATH" run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+        printf "BASE_OS=%s\n" "$BASE_OS"
+        printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_OS=macos"* ]]
+    [[ "$output" == *"BASE_PLATFORM=macos"* ]]
 }
 
 @test "base_init marks the Base runtime contract readonly" {
@@ -150,6 +225,7 @@ run_base_init_script() {
             BASE_BASH_LIBS_SOURCE \
             BASE_SHELL_DIR \
             BASE_OS \
+            BASE_PLATFORM \
             BASE_HOST \
             BASE_SHELL; do
             declare -p "$var"
@@ -169,6 +245,7 @@ run_base_init_script() {
         BASE_BASH_LIBS_SOURCE \
         BASE_SHELL_DIR \
         BASE_OS \
+        BASE_PLATFORM \
         BASE_HOST \
         BASE_SHELL; do
         [[ "$output" == *"declare -rx $var="* ]]
@@ -205,6 +282,7 @@ run_base_init_script() {
         BASE_BASH_LIBS_SOURCE \
         BASE_SHELL_DIR \
         BASE_OS \
+        BASE_PLATFORM \
         BASE_HOST \
         BASE_SHELL; do
         grep -F "| \`$var\` |" "$BASE_REPO_ROOT/docs/runtime-environment.md"

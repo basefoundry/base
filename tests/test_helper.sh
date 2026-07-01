@@ -26,6 +26,7 @@ unset_base_runtime_env() {
         BASE_BASH_LIBS_SOURCE \
         BASE_SHELL_DIR \
         BASE_OS \
+        BASE_PLATFORM \
         BASE_HOST \
         BASE_SHELL \
         BASE_PLATFORM_TOOLS_HOME \
@@ -38,6 +39,7 @@ unset_base_runtime_env() {
         BASE_BASH_COMMAND_DIR \
         BASE_BASH_COMMAND_SCRIPT \
         BASE_BASH_BOOTSTRAP_SOURCE \
+        BASE_INIT_TEST_OS_RELEASE_PATH \
         BASE_PROJECT \
         BASE_PROJECT_ROOT \
         BASE_PROJECT_MANIFEST \
