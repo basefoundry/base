@@ -146,7 +146,12 @@ repo-named Project and set `Status`, `Priority`, `Size`, `Area`, and
 events. `basectl repo configure` verifies that the secret exists when Project
 support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
 the required secret is missing. Without that secret, Project Intake fails before
-running Project operations.
+running Project operations. During Project operations, the workflow classifies
+GitHub API pressure such as rate limits, secondary limits, and retry windows,
+waits for the reported retry/reset delay when available, and retries the failed
+operation once. `401 Unauthorized` / `Bad credentials` errors are treated as
+token configuration failures with `BASE_PROJECT_TOKEN` rotation guidance and can
+be rerun through `workflow_dispatch` after the secret is repaired.
 Use `basectl gh project` directly for lower-level Project inspection,
 schema repair, or issue field updates.
 When migrating from an existing shared Project, pass

@@ -205,7 +205,12 @@ and `Initiative` from the generated defaults. Set a `BASE_PROJECT_TOKEN`
 Actions secret with Project write access. `basectl repo configure` checks for
 `BASE_PROJECT_TOKEN` when Project support is enabled and reports the
 `gh secret set BASE_PROJECT_TOKEN` command if the secret is missing. Without
-that secret, Project Intake fails before running Project operations.
+that secret, Project Intake fails before running Project operations. During
+Project operations, the generated workflow retries retryable GitHub API pressure
+once after the reported `Retry-After` or rate-limit reset delay when available.
+`401 Unauthorized` / `Bad credentials` errors remain clear token configuration
+failures with `BASE_PROJECT_TOKEN` rotation guidance and can be rerun through
+`workflow_dispatch` after the secret is repaired.
 
 For older repositories that predate this workflow, rerun
 `basectl repo configure <path> --repo <owner/name>` to create the missing
