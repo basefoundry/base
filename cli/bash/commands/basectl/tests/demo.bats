@@ -180,13 +180,15 @@ EOF
 }
 
 @test "Base self-demo pause reads from terminal fd when stdin is redirected" {
+    local bash_libs_dir
     local tty_input="$TEST_TMPDIR/demo-tty"
 
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
     printf '\n' > "$tty_input"
 
     run env \
         BASE_HOME="$BASE_REPO_ROOT" \
-        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-/Users/rameshhp/work/base-bash-libs/lib/bash}" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
         BASE_DEMO_TTY_FD=9 \
         bash -c '
             source "$BASE_HOME/demo/demo.sh"

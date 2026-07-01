@@ -140,6 +140,12 @@ def test_contract_runner_supports_base_worktree_library_layout() -> None:
     assert "../../base-bash-libs/lib/bash" in text
 
 
+def test_bats_tests_do_not_embed_personal_base_bash_libs_path() -> None:
+    demo_bats = REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "tests" / "demo.bats"
+
+    assert "/Users/rameshhp/work/base-bash-libs" not in demo_bats.read_text(encoding="utf-8")
+
+
 def test_contract_runner_reenters_repo_root_for_each_step() -> None:
     text = CONTRACT_RUNNER.read_text(encoding="utf-8")
 
