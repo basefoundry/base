@@ -9,6 +9,7 @@ run_setup_common_script() {
     bash_libs_dir="$(base_bash_libs_fixture_dir)"
     run env \
         HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_BASH_LIBS_DIR="$bash_libs_dir" \
         PYTHONPATH="${BASE_SETUP_TEST_PYTHONPATH:-}" \
@@ -52,4 +53,28 @@ run_setup_common_script() {
     [[ "$output" == *"homebrew=BASE-D001/Homebrew"* ]]
     [[ "$output" == *"venv=BASE-D004/Base virtualenv"* ]]
     [[ "$output" == *"unknown=BASE-D000/unexpected"* ]]
+}
+
+@test "setup_common exposes centralized platform policy helpers" {
+    run_setup_common_script '
+        for helper in \
+            setup_current_platform \
+            setup_platform_supported \
+            setup_collect_platform_base_check_results \
+            setup_run_platform_install; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 10
+            }
+        done
+        printf "platform=%s\n" "$(setup_current_platform)"
+        setup_platform_supported macos || exit 11
+        if setup_platform_supported linux-unknown; then
+            printf "linux-unknown should not be supported yet\n" >&2
+            exit 12
+        fi
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"platform=macos"* ]]
 }

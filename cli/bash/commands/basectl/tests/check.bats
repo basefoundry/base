@@ -71,6 +71,15 @@ load ./setup_helpers.bash
     [[ "$output" == *"Base CLI environment check passed."* ]]
 }
 
+@test "basectl check rejects unsupported BASE_PLATFORM before Homebrew probes" {
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-unknown check
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"supports macOS only"* ]]
+    [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
+    [[ "$output" != *"Homebrew is not installed."* ]]
+}
+
 @test "basectl check preserves text order while base probes overlap" {
     local click_line homebrew_line python_line pyyaml_line venv_line xcode_line
     local venv_dir="$TEST_HOME/.base.d/base/.venv"

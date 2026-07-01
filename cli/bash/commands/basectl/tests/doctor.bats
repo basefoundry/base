@@ -10,6 +10,26 @@ normalize_tty_output() {
     printf '%s' "$text"
 }
 
+create_doctor_uname_stub() {
+    local fake_bin="$1"
+
+    cat > "$fake_bin/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    ""|-s)
+        printf 'Darwin\n'
+        exit 0
+        ;;
+esac
+
+if [[ -x /usr/bin/uname ]]; then
+    exec /usr/bin/uname "$@"
+fi
+exec /bin/uname "$@"
+EOF
+    chmod +x "$fake_bin/uname"
+}
+
 run_tty_script() {
     local script_path="$1"
     local command
@@ -30,6 +50,7 @@ create_doctor_success_stubs() {
     local venv_python="$2"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -198,6 +219,7 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -276,6 +298,7 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -339,6 +362,7 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -413,10 +437,12 @@ EOF
 }
 
 @test "basectl doctor reports errors with suggested fixes" {
+    create_doctor_uname_stub "$TEST_MOCKBIN"
+
     run env \
         HOME="$TEST_HOME" \
         OSTYPE="darwin24" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
         "$BASE_REPO_ROOT/bin/basectl" doctor
@@ -429,10 +455,12 @@ EOF
 }
 
 @test "basectl doctor text uses shared base check recovery hints" {
+    create_doctor_uname_stub "$TEST_MOCKBIN"
+
     run env \
         HOME="$TEST_HOME" \
         OSTYPE="darwin24" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
         "$BASE_REPO_ROOT/bin/basectl" doctor
@@ -449,6 +477,7 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -502,10 +531,12 @@ EOF
 }
 
 @test "basectl doctor --format json reports structured findings" {
+    create_doctor_uname_stub "$TEST_MOCKBIN"
+
     run --separate-stderr env \
         HOME="$TEST_HOME" \
         OSTYPE="darwin24" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_SETUP_BREW_BIN="$TEST_TMPDIR/missing-brew" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/missing-xcode-tools" \
         "$BASE_REPO_ROOT/bin/basectl" doctor --format json
@@ -531,6 +562,7 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    create_doctor_uname_stub "$fake_bin"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "list" ]]; then
@@ -596,6 +628,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    create_doctor_uname_stub "$fake_bin"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -683,6 +716,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    create_doctor_uname_stub "$fake_bin"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -768,6 +802,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    create_doctor_uname_stub "$fake_bin"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
@@ -859,6 +894,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
 
     mkdir -p "$fake_bin" "$(dirname "$venv_python")" "$(dirname "$project_python")" "$workspace/demo"
+    create_doctor_uname_stub "$fake_bin"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     cat > "$fake_bin/brew" <<'EOF'
 #!/usr/bin/env bash
