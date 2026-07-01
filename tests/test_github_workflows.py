@@ -1,3 +1,5 @@
+import ast
+import inspect
 import os
 import re
 import subprocess
@@ -182,7 +184,22 @@ def run_project_intake_script(tmp_path: Path, **env_overrides: str) -> subproces
         capture_output=True,
         env=env,
         text=True,
+        timeout=30,
     )
+
+
+def test_project_intake_script_runner_uses_subprocess_timeout() -> None:
+    tree = ast.parse(inspect.getsource(run_project_intake_script))
+    subprocess_run_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "run"
+    ]
+
+    assert len(subprocess_run_calls) == 1
+    assert any(keyword.arg == "timeout" for keyword in subprocess_run_calls[0].keywords)
 
 
 def test_all_workflows_cancel_superseded_runs() -> None:
