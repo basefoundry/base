@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from . import history
+from . import history, testing
 from .app import App, argument, command, delegated_display_command, option, run_app
 from .context import Context, get_current_context
 from .exit_codes import ExitCode
@@ -11,6 +11,7 @@ __all__ = [
     "Context",
     "ExitCode",
     "history",
+    "testing",
     "argument",
     "command",
     "configure_logger",
