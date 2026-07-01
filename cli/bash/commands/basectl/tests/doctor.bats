@@ -113,6 +113,10 @@ if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then
+    printf 'usage: python3 -m venv ENV_DIR\n'
+    exit 0
+fi
 exit 1
 EOF
     cat > "$venv_python" <<'EOF'
@@ -129,6 +133,13 @@ fi
 exit 1
 EOF
     chmod +x "$fake_bin/python3" "$venv_python"
+    for tool in git gh bats shellcheck jq go; do
+        cat > "$fake_bin/$tool" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+        chmod +x "$fake_bin/$tool"
+    done
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
 }
 
@@ -342,7 +353,64 @@ EOF
     [[ "$output" == *"Base doctor"* ]]
     [[ "$output" == *"ok"*"BASE-D003"*"Python"*"Python is available for Ubuntu/Debian runtime checks."* ]]
     [[ "$output" == *"ok"*"BASE-D004"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
+    [[ "$output" == *"ok"*"BASE-D010"*"Git"*"Git is available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"ok"*"BASE-D015"*"Go"*"Go is available for Ubuntu/Debian runtime checks."* ]]
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl doctor linux-debian reports missing prerequisite apt hints" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$fake_bin" "$(dirname "$venv_python")"
+    cat > "$fake_bin/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then
+    exit 1
+fi
+exit 1
+EOF
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+exit 1
+EOF
+    chmod +x "$fake_bin/python3" "$venv_python"
+    touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=git,gh,bats,shellcheck,jq,go \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"error"*"BASE-D009"*"Python venv support"*"Python venv support is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Fix: Install python3-venv with 'sudo apt-get install python3-venv', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"error"*"BASE-D010"*"Git"*"Git is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Fix: Install git with 'sudo apt-get install git', then rerun 'basectl check'."* ]]
+    [[ "$output" == *"error"*"BASE-D011"*"GitHub CLI"*"GitHub CLI 'gh' is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Fix: Install GitHub CLI 'gh' from the official GitHub CLI apt repository"* ]]
+    [[ "$output" == *"error"*"BASE-D015"*"Go"*"Go is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Fix: Install Go with 'sudo apt-get install golang-go', then rerun 'basectl check'."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
 }
@@ -650,6 +718,14 @@ EOF
     [[ "$output" == *'"id":"BASE-D004","status":"ok","name":"base_virtualenv"'* ]]
     [[ "$output" == *'"id":"BASE-D005","status":"ok","name":"pyyaml"'* ]]
     [[ "$output" == *'"id":"BASE-D006","status":"ok","name":"click"'* ]]
+    [[ "$output" == *'"id":"BASE-D008","status":"ok","name":"bash"'* ]]
+    [[ "$output" == *'"id":"BASE-D009","status":"ok","name":"python_venv"'* ]]
+    [[ "$output" == *'"id":"BASE-D010","status":"ok","name":"git"'* ]]
+    [[ "$output" == *'"id":"BASE-D011","status":"ok","name":"gh"'* ]]
+    [[ "$output" == *'"id":"BASE-D012","status":"ok","name":"bats"'* ]]
+    [[ "$output" == *'"id":"BASE-D013","status":"ok","name":"shellcheck"'* ]]
+    [[ "$output" == *'"id":"BASE-D014","status":"ok","name":"jq"'* ]]
+    [[ "$output" == *'"id":"BASE-D015","status":"ok","name":"go"'* ]]
     assert_base_bash_libraries_json_finding "$output"
     [[ "$output" != *'"name":"homebrew"'* ]]
     [[ "$output" != *'"name":"xcode_command_line_tools"'* ]]

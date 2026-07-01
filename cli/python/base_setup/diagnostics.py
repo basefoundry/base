@@ -30,6 +30,14 @@ BASE_CHECK_FINDING_IDS = {
     "pyyaml": "BASE-D005",
     "click": "BASE-D006",
     "base_bash_libraries": "BASE-D007",
+    "bash": "BASE-D008",
+    "python_venv": "BASE-D009",
+    "git": "BASE-D010",
+    "gh": "BASE-D011",
+    "bats": "BASE-D012",
+    "shellcheck": "BASE-D013",
+    "jq": "BASE-D014",
+    "go": "BASE-D015",
 }
 
 

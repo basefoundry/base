@@ -450,6 +450,17 @@ setup_recovery_linux_python() {
     printf "%s\n" "Install python3 and python3-venv, or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl check'."
 }
 
+setup_recovery_linux_apt_package() {
+    local display_name="$1"
+    local package_name="$2"
+
+    printf "Install %s with 'sudo apt-get install %s', then rerun 'basectl check'.\n" "$display_name" "$package_name"
+}
+
+setup_recovery_linux_github_cli() {
+    printf "%s\n" "Install GitHub CLI 'gh' from the official GitHub CLI apt repository, or install apt package 'gh' if that repository is already configured, then rerun 'basectl check'."
+}
+
 setup_recovery_project_layer() {
     printf "%s\n" "Review the Python error above, then rerun 'basectl setup -v' for more detail."
 }
@@ -855,6 +866,43 @@ setup_find_linux_python_bin() {
     return 1
 }
 
+setup_test_linux_tool_forced_missing() {
+    local missing_tools="${BASE_SETUP_TEST_MISSING_LINUX_TOOLS:-}"
+    local tool="$1"
+
+    [[ -n "${BASE_SETUP_TEST_MISSING_LINUX_TOOLS+x}" ]] || return 1
+    setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_MISSING_LINUX_TOOLS
+    case ",$missing_tools," in
+        *,"$tool",*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+setup_linux_command_path() {
+    local command_name="$1"
+
+    setup_test_linux_tool_forced_missing "$command_name" && return 1
+    command -v "$command_name" 2>/dev/null
+}
+
+setup_linux_python_venv_available() {
+    local python_bin="$1"
+
+    [[ -n "$python_bin" ]] || return 1
+    "$python_bin" -m venv --help >/dev/null 2>&1
+}
+
+setup_linux_bash_version_supported() {
+    local major="${BASH_VERSINFO[0]:-0}"
+    local minor="${BASH_VERSINFO[1]:-0}"
+
+    ((major > 4 || (major == 4 && minor >= 2)))
+}
+
 setup_create_virtualenv() {
     local venv_dir python_bin
 
@@ -1015,6 +1063,30 @@ setup_base_check_finding_id() {
         base_bash_libraries)
             printf '%s\n' "BASE-D007"
             ;;
+        bash)
+            printf '%s\n' "BASE-D008"
+            ;;
+        python_venv)
+            printf '%s\n' "BASE-D009"
+            ;;
+        git)
+            printf '%s\n' "BASE-D010"
+            ;;
+        gh)
+            printf '%s\n' "BASE-D011"
+            ;;
+        bats)
+            printf '%s\n' "BASE-D012"
+            ;;
+        shellcheck)
+            printf '%s\n' "BASE-D013"
+            ;;
+        jq)
+            printf '%s\n' "BASE-D014"
+            ;;
+        go)
+            printf '%s\n' "BASE-D015"
+            ;;
         *)
             printf '%s\n' "BASE-D000"
             ;;
@@ -1043,6 +1115,30 @@ setup_base_check_display_name() {
             ;;
         base_bash_libraries)
             printf '%s\n' "Base Bash libraries"
+            ;;
+        bash)
+            printf '%s\n' "Bash"
+            ;;
+        python_venv)
+            printf '%s\n' "Python venv support"
+            ;;
+        git)
+            printf '%s\n' "Git"
+            ;;
+        gh)
+            printf '%s\n' "GitHub CLI"
+            ;;
+        bats)
+            printf '%s\n' "BATS"
+            ;;
+        shellcheck)
+            printf '%s\n' "ShellCheck"
+            ;;
+        jq)
+            printf '%s\n' "jq"
+            ;;
+        go)
+            printf '%s\n' "Go"
             ;;
         *)
             printf '%s\n' "$1"
@@ -1979,6 +2075,66 @@ setup_collect_macos_base_check_results() {
     return "$missing"
 }
 
+setup_add_linux_bash_check_result() {
+    if setup_linux_bash_version_supported; then
+        setup_add_check_result \
+            "bash" \
+            true \
+            "Bash 4.2+ is available for Base shell runtime." \
+            "" \
+            "Resolved Bash version: ${BASH_VERSION:-unknown}"
+    else
+        setup_add_check_result \
+            "bash" \
+            false \
+            "Bash 4.2+ is not available for Base shell runtime." \
+            "$(setup_recovery_linux_apt_package Bash bash)"
+        return 1
+    fi
+}
+
+setup_add_linux_python_venv_check_result() {
+    local python_bin="$1"
+
+    if setup_linux_python_venv_available "$python_bin"; then
+        setup_add_check_result \
+            "python_venv" \
+            true \
+            "Python venv support is available for Ubuntu/Debian runtime checks."
+    else
+        setup_add_check_result \
+            "python_venv" \
+            false \
+            "Python venv support is not available for Ubuntu/Debian runtime checks." \
+            "$(setup_recovery_linux_apt_package python3-venv python3-venv)"
+        return 1
+    fi
+}
+
+setup_add_linux_command_check_result() {
+    local command_name="$1"
+    local finding_name="$2"
+    local display_name="$3"
+    local recovery="$4"
+    local command_path
+
+    if command_path="$(setup_linux_command_path "$command_name")"; then
+        setup_add_check_result \
+            "$finding_name" \
+            true \
+            "$display_name is available for Ubuntu/Debian runtime checks." \
+            "" \
+            "Resolved $display_name binary: $command_path"
+    else
+        setup_add_check_result \
+            "$finding_name" \
+            false \
+            "$display_name is not available for Ubuntu/Debian runtime checks." \
+            "$recovery"
+        return 1
+    fi
+}
+
 setup_collect_linux_debian_base_check_results() {
     local click_package
     local missing=0
@@ -1989,6 +2145,7 @@ setup_collect_linux_debian_base_check_results() {
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
 
+    setup_add_linux_bash_check_result || missing=1
     setup_add_base_bash_libraries_check_result
 
     if python_bin="$(setup_find_linux_python_bin)"; then
@@ -2006,6 +2163,7 @@ setup_collect_linux_debian_base_check_results() {
             "$(setup_recovery_linux_python)"
         missing=1
     fi
+    setup_add_linux_python_venv_check_result "$python_bin" || missing=1
 
     if setup_virtualenv_healthy; then
         setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
@@ -2039,6 +2197,37 @@ setup_collect_linux_debian_base_check_results() {
             "$(setup_recovery_base_python_package)"
         missing=1
     fi
+
+    setup_add_linux_command_check_result \
+        "git" \
+        "git" \
+        "Git" \
+        "$(setup_recovery_linux_apt_package git git)" || missing=1
+    setup_add_linux_command_check_result \
+        "gh" \
+        "gh" \
+        "GitHub CLI 'gh'" \
+        "$(setup_recovery_linux_github_cli)" || missing=1
+    setup_add_linux_command_check_result \
+        "bats" \
+        "bats" \
+        "BATS" \
+        "$(setup_recovery_linux_apt_package bats bats)" || missing=1
+    setup_add_linux_command_check_result \
+        "shellcheck" \
+        "shellcheck" \
+        "ShellCheck" \
+        "$(setup_recovery_linux_apt_package shellcheck shellcheck)" || missing=1
+    setup_add_linux_command_check_result \
+        "jq" \
+        "jq" \
+        "jq" \
+        "$(setup_recovery_linux_apt_package jq jq)" || missing=1
+    setup_add_linux_command_check_result \
+        "go" \
+        "go" \
+        "Go" \
+        "$(setup_recovery_linux_apt_package Go golang-go)" || missing=1
 
     return "$missing"
 }

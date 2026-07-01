@@ -160,6 +160,10 @@ create_system_python3_stub() {
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
 touch "${BASE_SETUP_TEST_STATE_DIR:?}/system-python-ran"
+if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then
+    printf 'usage: python3 -m venv ENV_DIR\n'
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = system-test\n' > "$3/pyvenv.cfg"
@@ -208,6 +212,18 @@ printf 'unexpected system python3 args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/python3"
+}
+
+create_linux_prerequisite_stubs() {
+    local tool
+
+    for tool in git gh bats shellcheck jq go; do
+        cat > "$TEST_MOCKBIN/$tool" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+        chmod +x "$TEST_MOCKBIN/$tool"
+    done
 }
 
 create_brew_stub() {
