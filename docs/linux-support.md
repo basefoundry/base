@@ -96,6 +96,52 @@ Initial Ubuntu/Debian mappings:
 Python should be the conservative piece. Do not silently use arbitrary system
 Python for Base setup unless Linux support explicitly opts into that behavior.
 
+## Manual Ubuntu Bootstrap
+
+For v1.5.0, Ubuntu/Debian support is runtime-first. `basectl setup` does not
+mutate Linux hosts yet; `basectl setup --dry-run` prints the manual
+prerequisite guidance that should be applied outside Base.
+
+Use native Linux filesystem paths for source checkouts. In Parallels, keep Base
+under `~/work`, not under mounted macOS shared folders, so file permissions,
+line endings, symlinks, and test paths behave like a normal Linux checkout.
+
+```bash
+mkdir -p ~/work
+cd ~/work
+git clone https://github.com/basefoundry/base.git
+git clone https://github.com/basefoundry/base-bash-libs.git
+cd base
+
+sudo apt-get update
+sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go
+```
+
+Install GitHub CLI (`gh`) from the official GitHub CLI Debian/Ubuntu apt
+repository instructions. The `gh` package in older distro repositories can lag
+behind GitHub API changes, so prefer the maintained upstream repository for
+developer machines.
+
+Then run:
+
+```bash
+./bin/basectl setup --dry-run
+./bin/basectl ci check base --format text
+./bin/basectl check base --format text
+./bin/basectl doctor base --format text
+env -u BASE_HOME ./bin/base-test
+```
+
+`base-test` expects the sibling `base-bash-libs` checkout when running from a
+source checkout. If it lives somewhere else, export `BASE_BASH_LIBS_DIR` to the
+directory containing its reusable Bash libraries before running the suite.
+
+GitHub Actions hosted Ubuntu runners use the same runtime contract but prepare
+prerequisites in the workflow instead of asking `basectl setup` to mutate the
+machine. Apple Silicon Macs running Ubuntu in Parallels should follow the same
+manual commands; `golang-go`, `bats`, `shellcheck`, and `jq` are available for
+the hosted runner and Ubuntu ARM64 package archives used by Parallels.
+
 ## Shell Startup
 
 Linux shell startup differs from macOS:
@@ -129,22 +175,23 @@ env -u BASE_HOME ./bin/base-test
 ```
 
 The first CI-compatible milestone is live: workflows install their own
-prerequisites before invoking Base, and `basectl ci` runs non-interactive
-runtime checks without requiring Homebrew or Xcode on Linux. The
-`ubuntu-source-checkout` job also runs the full source-checkout suite through
-`bin/base-test` after preparing the Base-managed test virtual environment and
-the sibling `base-bash-libs` checkout expected by source tests.
+prerequisites before invoking Base, and `basectl ci`, `basectl check`, and
+`basectl doctor` run Linux runtime checks without requiring Homebrew or Xcode.
+The `ubuntu-source-checkout` job also runs the full source-checkout suite
+through `bin/base-test` after preparing the Base-managed test virtual
+environment and the sibling `base-bash-libs` checkout expected by source tests.
 
 ## Implementation Phases
 
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Split macOS-only setup checks from portable runtime checks. | Done | Initial support exists through the live `basectl ci` entry point. |
-| 2. Add platform detection and explicit unsupported-platform messages. | Done for macOS setup boundaries | `basectl setup` fails clearly outside the supported macOS setup contract. Linux runtime support remains narrower than setup support. |
-| 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Future | `basectl ci` is the current Linux-friendly read-only path; broader Linux prerequisite reporting still needs implementation. |
+| 2. Add platform detection and explicit unsupported-platform messages. | Done | `BASE_PLATFORM` classifies Ubuntu/Debian as `linux-debian`, keeps `BASE_OS=linux`, and fails unsupported platforms explicitly. |
+| 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Done | `check` and `doctor` report Ubuntu/Debian prerequisite findings with apt-oriented recovery hints. |
 | 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl ci check base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
-| 5. Add apt-backed setup for simple prerequisites. | Future | Keep setup conservative until the first supported Linux distribution contract is finalized. |
-| 6. Revisit Python installation once the desired Linux Python distribution strategy is clear. | Future | Do not silently fall back to arbitrary system Python. |
+| 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` gives manual Ubuntu/Debian prerequisite guidance; non-dry-run Linux setup remains conservative. |
+| 6. Add apt-backed setup for simple prerequisites. | Future | Keep setup mutation conservative until the first supported Linux distribution contract is finalized. |
+| 7. Revisit Python installation once the desired Linux Python distribution strategy is clear. | Future | Do not silently fall back to arbitrary system Python. |
 
 ## Non-Goals
 
