@@ -69,11 +69,14 @@ missing required and optional repositories, and discovered Base-managed
 projects outside the manifest.
 
 `basectl workspace clone --manifest <path>` uses the expected repository list
-as an explicit clone plan. It clones missing required repositories by default,
-reports missing optional repositories without cloning them, and includes
-optional repositories only with `--include-optional`. Existing repositories are
-checked through `basectl repo clone` so matching checkouts are treated as
-already satisfied and conflicts stay visible.
+as an explicit clone plan. It clones missing required GitHub repositories by
+default, reports missing optional repositories without cloning them, and
+includes optional repositories only with `--include-optional`. The current
+materialization path delegates to `basectl repo clone`, so GitLab, Bitbucket,
+internal Git, and local repository URLs are accepted as manifest metadata for
+read-only reports but are not automatically cloned by this command today. Clone
+non-GitHub repositories with ordinary Git first, then let Base discover the
+local checkout.
 
 ## Design Goal
 
@@ -88,8 +91,8 @@ It should let Base answer:
 - which expected repositories are missing
 - which discovered repositories are outside the expected set
 - which repositories are required versus optional
-- what clone URL and default branch should be shown or used by explicit clone
-  commands
+- what clone URL and default branch should be shown in reports, and what
+  GitHub clone target should be used by explicit clone commands
 
 Each repository still owns its own `base_manifest.yaml`. The workspace manifest
 must not duplicate project setup, test, run, activation, demo, or health
@@ -129,12 +132,18 @@ guidance.
 `repos[].name` is the local directory name under the workspace root and the
 stable identifier used in reports.
 
-`repos[].url` is optional v1 metadata for a Git clone URL. The
-`basectl workspace clone` command supports HTTPS, SSH, Git protocol,
-SCP-style SSH, `file://`, and absolute local path repository sources. It
-otherwise falls back to `repos[].name` when no URL is provided. Cleartext
-`http://` repository URLs are rejected by default. Base does not parse
-credentials or manage authentication.
+`repos[].url` is optional v1 metadata for a Git clone URL. Manifest validation
+accepts HTTPS, SSH, Git protocol, SCP-style SSH, `file://`, and absolute local
+path repository sources so workspace reports can describe GitHub, GitLab,
+Bitbucket, internal Git, and local repositories. Cleartext `http://`
+repository URLs are rejected by default. Base does not parse credentials or
+manage authentication.
+
+The current `basectl workspace clone` implementation only materializes GitHub
+repositories because it delegates to `basectl repo clone`. Non-GitHub URLs
+remain useful metadata for status, check, and doctor output, but users should
+clone those repositories with ordinary Git until Base grows provider-specific
+clone support.
 
 `repos[].default_branch` is advisory metadata for reports and future clone
 validation. It should default to the remote's default branch when omitted, but
@@ -194,8 +203,9 @@ they are not workspace manifest source URLs.
 
 ## Trust And Authentication
 
-Base should delegate repository authentication to Git, SSH, and the GitHub CLI.
-It should not store, read, print, or manage credentials.
+Base should delegate repository authentication to Git and SSH. GitHub-specific
+commands also delegate to the GitHub CLI. Base should not store, read, print,
+or manage credentials.
 
 Remote workspace manifest sources should use HTTPS. Cleartext HTTP is rejected
 by default because a workspace manifest controls expected repositories and
@@ -204,7 +214,7 @@ needed, it should use an explicit opt-in rather than making HTTP ordinary
 configuration.
 
 Workspace manifest validation may check that clone URLs are syntactically
-present. Network reachability, SSH key readiness, and GitHub authentication
+present. Network reachability, SSH key readiness, and forge authentication
 belong in explicit check or doctor behavior, not in passive parsing.
 
 ## Existing Repositories

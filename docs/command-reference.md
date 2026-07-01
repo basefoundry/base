@@ -13,6 +13,19 @@ syntax.
 `--config`, `--environment`, and `--keep-temp` are private to Python package
 execution and are rejected by `basectl`.
 
+## Source Control And Forge Boundary
+
+Base assumes Git as the source-control system. Non-Git SCMs such as Mercurial,
+Perforce, and Subversion are out of scope.
+
+Base is GitHub-primary today. Local project commands work for non-GitHub Git
+repositories once they are checked out locally and declare `base_manifest.yaml`.
+Repository creation, cloning, configuration, issue, pull-request, Project, and
+release automation are GitHub-specific unless a command explicitly says
+otherwise. See
+[Source Control And Forge Support](source-control-and-forge-support.md) for the
+full compatibility contract.
+
 ## Install And Bootstrap
 
 | Command | What it does | Important flags |
@@ -67,12 +80,16 @@ inspect the resolved command contract first.
 | `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
 | `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
+| `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Missing-repository materialization is GitHub-only today because this path delegates to `repo clone`. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace pull` | Explicitly fetch and validate a canonical workspace manifest source before updating the local workspace manifest. Uses `workspace.manifest_source` and `workspace.manifest` from user config unless flags are supplied. | `--source <url-or-path>`, `--manifest <path>`, `--dry-run` |
 | `basectl workspace init <workspace-source>` | Initialize a workspace from a workspace configuration repository, update local workspace config, and optionally materialize member repositories. | `--owner <owner>`, `--path <path>`, `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace configure` | Apply the existing `repo configure` repair path across discovered Base-managed workspace repositories or an explicit workspace manifest. Skips missing, non-Base-managed, or non-GitHub repos and continues after per-repo failures. | `--workspace <path>`, `--manifest <path>`, `--dry-run` |
 
 ## Repository And GitHub Workflow
+
+This section is intentionally GitHub-specific except for local baseline
+inspection. Use ordinary Git to clone non-GitHub repositories, then use the
+daily project loop commands from the local checkout.
 
 | Command | What it does | Important flags |
 |---|---|---|
