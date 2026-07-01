@@ -230,7 +230,7 @@ has decided what should run.
 - exported Base environment variables such as `BASE_HOME`, `BASE_BIN_DIR`,
   `BASE_BASH_COMMANDS_DIR`, `BASE_BASH_LIB_DIR`, `BASE_BASH_LIBS_DIR`, and
   `BASE_BASH_LIBS_SOURCE`
-- OS and host metadata such as `BASE_OS` and `BASE_HOST`
+- OS and host metadata such as `BASE_OS`, `BASE_PLATFORM`, and `BASE_HOST`
 - the reusable Bash standard library, resolved from `base-bash-libs`
 - `import_base_lib`, the convention-based helper for sourcing Base Bash
   libraries from the resolved reusable root

@@ -199,7 +199,7 @@ directory.
 Contains:
 - exported Base path contract such as `BASE_HOME`, `BASE_BIN_DIR`,
   `BASE_BASH_LIB_DIR`, `BASE_BASH_LIBS_DIR`, and `BASE_BASH_LIBS_SOURCE`
-- OS and host metadata such as `BASE_OS` and `BASE_HOST`
+- OS and host metadata such as `BASE_OS`, `BASE_PLATFORM`, and `BASE_HOST`
 - Base's Bash standard library
 - `import_base_lib` for convention-based Base Bash library imports from the
   resolved reusable Bash library root
