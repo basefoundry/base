@@ -94,6 +94,51 @@ def test_ci_bats_job_covers_base_test_source_suite() -> None:
         assert test_path in bats_command
 
 
+def test_ci_includes_ubuntu_source_checkout_base_test_job() -> None:
+    tests_workflow = REPO_ROOT / ".github" / "workflows" / "tests.yml"
+    workflow = load_workflow(tests_workflow)
+    ubuntu_job = workflow["jobs"].get("ubuntu-source-checkout")
+
+    assert ubuntu_job is not None, "tests.yml must include an Ubuntu source-checkout job."
+    assert ubuntu_job["runs-on"] == "ubuntu-latest"
+
+    bash_libs_checkouts = [
+        step
+        for step in ubuntu_job["steps"]
+        if step.get("with", {}).get("repository") == "basefoundry/base-bash-libs"
+    ]
+    assert bash_libs_checkouts, "Ubuntu source-checkout CI must fetch base-bash-libs."
+    assert bash_libs_checkouts[0]["with"]["path"] == ".dependencies/base-bash-libs"
+
+    steps = {step.get("name"): step for step in ubuntu_job["steps"]}
+    sibling_command = steps["Expose reusable Bash library checkout as sibling"].get("run", "")
+    assert ".dependencies/base-bash-libs" in sibling_command
+    assert "../base-bash-libs" in sibling_command
+
+    install_command = steps["Install Ubuntu source-checkout prerequisites"].get("run", "")
+    for package in (
+        "git",
+        "curl",
+        "build-essential",
+        "ca-certificates",
+        "python3-venv",
+        "python3-pip",
+        "bats",
+        "shellcheck",
+        "jq",
+        "golang-go",
+    ):
+        assert package in install_command
+
+    venv_command = steps["Prepare Base test virtual environment"].get("run", "")
+    assert "$HOME/.base.d/base/.venv" in venv_command
+    assert "-r requirements-dev.txt" in venv_command
+
+    validation_command = steps["Run Ubuntu source-checkout validation"].get("run", "")
+    assert "./bin/basectl ci check base --format json" in validation_command
+    assert "env -u BASE_HOME ./bin/base-test" in validation_command
+
+
 def test_shellcheck_covers_runtime_bashrc() -> None:
     tests_workflow = REPO_ROOT / ".github" / "workflows" / "tests.yml"
     for step_name in ("Run ShellCheck", "Run ShellCheck warnings"):
