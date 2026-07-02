@@ -101,6 +101,8 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get update"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
+    [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
