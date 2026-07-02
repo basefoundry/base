@@ -226,6 +226,27 @@ EOF
     done
 }
 
+create_linux_dpkg_query_stub() {
+    cat > "$TEST_MOCKBIN/dpkg-query" <<'EOF'
+#!/usr/bin/env bash
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
+missing_packages=" ${BASE_SETUP_TEST_MISSING_APT_PACKAGES:-} "
+package=""
+
+printf '%s\n' "$*" >> "$state_dir/dpkg-query-args"
+for package_arg in "$@"; do
+    package="$package_arg"
+done
+
+if [[ "$missing_packages" == *" $package "* ]]; then
+    exit 1
+fi
+
+printf 'install ok installed\n'
+EOF
+    chmod +x "$TEST_MOCKBIN/dpkg-query"
+}
+
 create_sudo_apt_get_stub() {
     cat > "$TEST_MOCKBIN/sudo" <<'EOF'
 #!/usr/bin/env bash

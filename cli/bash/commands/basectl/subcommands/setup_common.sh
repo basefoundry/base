@@ -2566,6 +2566,18 @@ setup_linux_debian_apt_prerequisite_command() {
     printf 'sudo apt-get install -y %s\n' "$(setup_linux_debian_apt_packages)"
 }
 
+setup_linux_debian_apt_prerequisites_installed() {
+    local package
+    local status
+
+    command -v dpkg-query >/dev/null 2>&1 || return 1
+
+    for package in "$@"; do
+        status="$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null)" || return 1
+        [[ "$status" == "install ok installed" ]] || return 1
+    done
+}
+
 setup_run_linux_debian_apt_prerequisites() {
     local packages
     local package_args=()
@@ -2581,6 +2593,10 @@ setup_run_linux_debian_apt_prerequisites() {
     fi
 
     if ! setup_yes_enabled; then
+        if setup_linux_debian_apt_prerequisites_installed "${package_args[@]}"; then
+            log_info "Ubuntu/Debian apt prerequisites are already installed."
+            return 0
+        fi
         fatal_error "Ubuntu/Debian setup can install apt prerequisites. Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."
     fi
 
