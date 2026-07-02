@@ -18,8 +18,9 @@ load ./setup_helpers.bash
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
+    [[ "$output" == *"--yes"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on supported setup platforms."* ]]
-    [[ "$output" == *"On Ubuntu/Debian Linux, setup currently provides dry-run manual prerequisite guidance only."* ]]
+    [[ "$output" == *"On Ubuntu/Debian Linux, setup can install apt prerequisites when --yes is passed."* ]]
     [[ "$output" == *"Create ~/.base.d/config.yaml with workspace.root: ~/work if missing."* ]]
 }
 
@@ -94,27 +95,61 @@ load ./setup_helpers.bash
     [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
 }
 
-@test "basectl setup --dry-run gives linux-debian manual prerequisite guidance" {
+@test "basectl setup --dry-run gives linux-debian apt setup plan" {
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Ubuntu/Debian setup is manual in this release."* ]]
-    [[ "$output" == *"sudo apt-get install bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
-    [[ "$output" == *"Install GitHub CLI 'gh' from the official GitHub CLI apt repository"* ]]
-    [[ "$output" == *"After installing prerequisites, run 'basectl check' to verify readiness."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get update"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
+    [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
 }
 
-@test "basectl setup linux-debian fails conservatively with manual guidance" {
+@test "basectl setup linux-debian requires --yes before apt mutation" {
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Ubuntu/Debian setup is currently manual."* ]]
-    [[ "$output" == *"Run 'basectl setup --dry-run' for prerequisite guidance"* ]]
-    [[ "$output" == *"then rerun 'basectl check'."* ]]
+    [[ "$output" == *"Ubuntu/Debian setup can install apt prerequisites."* ]]
+    [[ "$output" == *"Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."* ]]
+    [[ "$output" != *"sudo apt-get"* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl setup --yes linux-debian installs apt prerequisites and bootstraps Base" {
+    create_sudo_apt_get_stub
+    create_system_python3_stub
+
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --yes
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
+    [[ "$output" == *"Creating Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
+    [[ "$output" == *"Base CLI setup is complete."* ]]
+    [ -f "$TEST_STATE_DIR/apt-update-ran" ]
+    [ -f "$TEST_STATE_DIR/apt-install-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/apt-install-packages")" = "bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go" ]
+    [ -f "$TEST_STATE_DIR/system-python-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+}
+
+@test "basectl setup --yes linux-debian reports apt prerequisite failures" {
+    create_sudo_apt_get_stub
+    create_system_python3_stub
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_APT_FAIL=true \
+        setup --yes
+
+    [ "$status" -eq 42 ]
+    [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
+    [[ "$output" == *"apt failed"* ]]
+    [ -f "$TEST_STATE_DIR/sudo-args" ]
+    [ ! -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup is idempotent when brew, xcode tools, python, and the venv already exist" {

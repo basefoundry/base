@@ -37,7 +37,7 @@ The current command surface covers:
 ## Active Development Direction
 
 The `v1.5.0` release is complete. Future work is tracked in GitHub Issues,
-with full Linux bootstrap support, GitHub CLI install/auth polish for Ubuntu,
+with Linux bootstrap polish, GitHub CLI install/auth polish for Ubuntu,
 Docker/service artifacts, broader prompt ergonomics, and broader setup policy
 work remaining outside the 1.5 release contract.
 
@@ -48,9 +48,8 @@ source builds treated as fallback validation rather than the normal user path.
 Recent released work includes:
 
 - Ubuntu/Debian runtime support through `BASE_PLATFORM=linux-debian`,
-  platform-aware setup/check/doctor dispatch, and source-checkout CI coverage
-- conservative Ubuntu setup guidance until apt-backed bootstrap support is
-  implemented
+  platform-aware setup/check/doctor dispatch, source-checkout CI coverage, and
+  apt-backed setup behind explicit `--dry-run` / `--yes` confirmation
 - `basectl docs` for opening the GitHub README documentation entrypoint
 - standardized `basectl` help, option, logging, and usage-error behavior
 - Python-backed CI setup JSON rendering and Project issue-default handling

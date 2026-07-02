@@ -1209,7 +1209,7 @@ Intended supported platforms are:
 
 - macOS 14 Sonoma or newer on Apple Silicon
 - macOS 14 Sonoma or newer on Intel Macs
-- Ubuntu/Debian runtime environments with prerequisites installed manually
+- Ubuntu/Debian runtime environments with apt-backed Base setup
 
 The supported macOS version floor is macOS 14 Sonoma. Support means Base is
 tested and expected to work on macOS 14 or newer with Homebrew's supported
@@ -1218,10 +1218,10 @@ Python installed through Base setup. Older macOS releases may work from source,
 but they are outside Base's tested support contract.
 
 Ubuntu/Debian support currently covers runtime checks, project diagnostics,
-source-checkout validation, and clear setup guidance when prerequisites are
-already installed. Full Linux bootstrap support is still narrower than macOS
-setup and should stay behind the platform-policy boundary described in
-[docs/linux-support.md](docs/linux-support.md). Windows is out of scope.
+source-checkout validation, and apt-backed setup for the simple prerequisites
+Base owns. Linux setup remains narrower than macOS setup and should stay behind
+the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
+Windows is out of scope.
 
 The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
 be added for coverage, but the floor job should stay until Base intentionally

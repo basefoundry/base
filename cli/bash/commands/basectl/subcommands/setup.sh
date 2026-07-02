@@ -20,6 +20,7 @@ Options:
   --notify           Force a best-effort macOS notification when setup ends.
   --no-notify        Disable the default best-effort macOS completion notification.
   --recreate-venv    Back up and recreate the project virtual environment.
+  --yes              Apply setup changes that require explicit confirmation.
   -v                 Enable DEBUG logging for this subcommand.
   -h, --help         Show this help text.
 
@@ -44,7 +45,7 @@ Setup does:
 
 Notes:
   - This command is intentionally idempotent.
-  - On Ubuntu/Debian Linux, setup currently provides dry-run manual prerequisite guidance only.
+  - On Ubuntu/Debian Linux, setup can install apt prerequisites when --yes is passed.
   - The optional project argument resolves a Base project from the workspace
     unless --manifest is provided explicitly.
   - Use `basectl check` to verify the same requirements without making changes.
@@ -71,6 +72,9 @@ base_setup_subcommand_main() {
                 ;;
             --dry-run)
                 setup_enable_dry_run
+                ;;
+            --yes)
+                setup_enable_yes
                 ;;
             --profile)
                 shift

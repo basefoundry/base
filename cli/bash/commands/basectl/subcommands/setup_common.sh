@@ -54,7 +54,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_SETUP_YES BASE_PROJECT
     setup_refresh_cached_paths
 }
 
@@ -139,6 +139,7 @@ setup_enable_profile_argument() {
     for profile in "${profiles[@]}"; do
         profile="$(setup_normalize_profile_name "$profile")"
         if ! setup_profile_supported "$profile"; then
+            # shellcheck disable=SC2034 # Consumed by setup.sh after this helper returns.
             BASE_SETUP_PROFILE_ERROR="Unsupported profile '$profile'. Expected one of: $(setup_supported_profiles_display)."
             return 1
         fi
@@ -172,6 +173,14 @@ setup_profiles_csv() {
 
 setup_is_dry_run() {
     [[ "${DRY_RUN-}" == true ]]
+}
+
+setup_enable_yes() {
+    export BASE_SETUP_YES=true
+}
+
+setup_yes_enabled() {
+    [[ "${BASE_SETUP_YES:-false}" == true ]]
 }
 
 setup_enable_recreate_venv() {
@@ -866,6 +875,34 @@ setup_find_linux_python_bin() {
     return 1
 }
 
+setup_find_platform_python_bin() {
+    local platform
+
+    platform="$(setup_current_platform)" || return 1
+    case "$platform" in
+        linux-debian)
+            setup_find_linux_python_bin
+            ;;
+        *)
+            setup_find_python_bin
+            ;;
+    esac
+}
+
+setup_recovery_platform_python() {
+    local platform
+
+    platform="$(setup_current_platform)" || return 1
+    case "$platform" in
+        linux-debian)
+            setup_recovery_linux_python
+            ;;
+        *)
+            setup_recovery_python
+            ;;
+    esac
+}
+
 setup_test_linux_tool_forced_missing() {
     local missing_tools="${BASE_SETUP_TEST_MISSING_LINUX_TOOLS:-}"
     local tool="$1"
@@ -925,7 +962,7 @@ setup_create_virtualenv() {
         return 0
     fi
 
-    python_bin="$(setup_find_python_bin)" || fatal_error "Unable to locate a python3 executable after installation. $(setup_recovery_python)"
+    python_bin="$(setup_find_platform_python_bin)" || fatal_error "Unable to locate a python3 executable after installation. $(setup_recovery_platform_python)"
 
     safe_mkdir -p "$(dirname "$venv_dir")"
     log_info "Creating Python virtual environment at '$venv_dir'."
@@ -2509,20 +2546,60 @@ setup_run_macos_install() {
     fi
 }
 
-setup_linux_debian_apt_prerequisite_command() {
-    printf '%s\n' "sudo apt-get install bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"
+setup_linux_debian_apt_packages() {
+    printf '%s\n' "bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go"
 }
 
-setup_run_linux_debian_install() {
+setup_linux_debian_apt_update_command() {
+    printf '%s\n' "sudo apt-get update"
+}
+
+setup_linux_debian_apt_prerequisite_command() {
+    printf 'sudo apt-get install -y %s\n' "$(setup_linux_debian_apt_packages)"
+}
+
+setup_run_linux_debian_apt_prerequisites() {
+    local packages
+    local package_args=()
+
+    packages="$(setup_linux_debian_apt_packages)"
+    IFS=' ' read -r -a package_args <<<"$packages"
+
     if setup_is_dry_run; then
-        log_info "[DRY-RUN] Ubuntu/Debian setup is manual in this release."
-        log_info "Install apt prerequisites with: $(setup_linux_debian_apt_prerequisite_command)"
-        log_info "Install GitHub CLI 'gh' from the official GitHub CLI apt repository."
-        log_info "After installing prerequisites, run 'basectl check' to verify readiness."
+        log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_update_command)"
+        log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_prerequisite_command)"
         return 0
     fi
 
-    fatal_error "Ubuntu/Debian setup is currently manual. Run 'basectl setup --dry-run' for prerequisite guidance, install the listed packages, then rerun 'basectl check'."
+    if ! setup_yes_enabled; then
+        fatal_error "Ubuntu/Debian setup can install apt prerequisites. Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."
+    fi
+
+    log_info "Installing Ubuntu/Debian apt prerequisites."
+    run sudo apt-get update || return $?
+    run sudo apt-get install -y "${package_args[@]}"
+}
+
+setup_run_linux_debian_install() {
+    setup_run_linux_debian_apt_prerequisites || return $?
+    setup_create_virtualenv
+    setup_install_pyyaml
+    setup_install_click
+    if setup_profiles_enabled; then
+        if setup_is_dry_run; then
+            setup_run_base_dev_layer setup --dry-run || fatal_error "Python prerequisite profile layer failed."
+        else
+            setup_run_base_dev_layer setup || fatal_error "Python prerequisite profile layer failed."
+        fi
+    fi
+    setup_run_project_artifact_setup || return $?
+    setup_seed_user_config
+
+    if setup_is_dry_run; then
+        log_info "[DRY-RUN] Base CLI setup check is complete."
+    else
+        log_info "Base CLI setup is complete."
+    fi
 }
 
 setup_run_platform_install() {

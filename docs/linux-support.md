@@ -12,9 +12,8 @@ Start with Ubuntu/Debian runtime support:
 - `base-wrapper` can select the project venv under `~/.base.d/<project>/.venv`.
 - `basectl projects list`, `check`, `doctor`, and `ci` work when
   prerequisites are already installed.
-- Setup gives clear guidance instead of invoking macOS-only installers.
-
-Full bootstrap support can come after runtime support is stable.
+- Setup installs conservative Ubuntu/Debian apt prerequisites only after the
+  user reviews `--dry-run` output and passes `--yes`.
 
 ## Platform Detection
 
@@ -67,10 +66,10 @@ every platform. Prefer names such as `setup_collect_macos_base_check_results`,
 `setup_collect_linux_debian_base_check_results`, `setup_run_macos_install`, and
 `setup_run_linux_debian_install`.
 
-Package-manager selection belongs behind this boundary. macOS setup can use
-Homebrew-specific helpers, and Ubuntu/Debian setup can later use apt-specific
-helpers, but ordinary command, diagnostic, and artifact code should call the
-platform boundary instead of checking `BASE_PLATFORM` directly.
+Package-manager selection belongs behind this boundary. macOS setup uses
+Homebrew-specific helpers, and Ubuntu/Debian setup uses apt-specific helpers,
+but ordinary command, diagnostic, and artifact code should call the platform
+boundary instead of checking `BASE_PLATFORM` directly.
 
 Python project artifact management has a separate future seam. If system
 packages become project artifacts on Linux, the Python artifact registry should
@@ -84,23 +83,25 @@ Initial Ubuntu/Debian mappings:
 | Base prerequisite | macOS source | Ubuntu/Debian source |
 | --- | --- | --- |
 | Bash 4.2+ | Homebrew `bash` | `apt install bash` |
-| Python 3.13 | Homebrew `python@3.13` | documented manual install first |
+| Python 3 | Homebrew `python@3.13` | `apt install python3` |
 | Python venv support | Homebrew `python@3.13` | `apt install python3-venv` |
 | Git | Xcode Command Line Tools or Homebrew `git` | `apt install git` |
 | BATS | Homebrew `bats-core` | `apt install bats` when available |
-| GitHub CLI | Homebrew `gh` | GitHub CLI apt repository |
+| GitHub CLI | Homebrew `gh` | `apt install gh` when available |
 | ShellCheck | Homebrew `shellcheck` | `apt install shellcheck` |
 | jq | Homebrew `jq` | `apt install jq` |
 | Go for source-checkout tests | Homebrew `go` | `apt install golang-go` |
 
-Python should be the conservative piece. Do not silently use arbitrary system
-Python for Base setup unless Linux support explicitly opts into that behavior.
+Python remains conservative by platform. macOS setup uses Base-managed
+Homebrew Python. Ubuntu/Debian setup uses the platform `python3` package after
+the apt-backed setup path has installed `python3` and `python3-venv`.
 
-## Manual Ubuntu Bootstrap
+## Ubuntu Bootstrap
 
-For v1.5.0, Ubuntu/Debian support is runtime-first. `basectl setup` does not
-mutate Linux hosts yet; `basectl setup --dry-run` prints the manual
-prerequisite guidance that should be applied outside Base.
+For v1.6.0, Ubuntu/Debian setup can install the simple apt prerequisites that
+Base knows how to own. The mutation path is intentionally explicit:
+`basectl setup --dry-run` prints the apt commands, and `basectl setup --yes`
+applies them. Without `--yes`, Linux setup fails before invoking `apt`.
 
 Use native Linux filesystem paths for source checkouts. In Parallels, keep Base
 under `~/work`, not under mounted macOS shared folders, so file permissions,
@@ -113,19 +114,24 @@ git clone https://github.com/basefoundry/base.git
 git clone https://github.com/basefoundry/base-bash-libs.git
 cd base
 
-sudo apt-get update
-sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go
+./bin/basectl setup --dry-run
+./bin/basectl setup --yes
 ```
 
-Install GitHub CLI (`gh`) from the official GitHub CLI Debian/Ubuntu apt
-repository instructions. The `gh` package in older distro repositories can lag
-behind GitHub API changes, so prefer the maintained upstream repository for
-developer machines.
+The Ubuntu/Debian setup path runs:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go
+```
+
+GitHub CLI authentication remains a user-owned step. After `gh` is installed,
+run `gh auth login` when you need GitHub access. Base should check and report
+GitHub CLI readiness, but it should not handle tokens or credentials.
 
 Then run:
 
 ```bash
-./bin/basectl setup --dry-run
 ./bin/basectl ci check base --format text
 ./bin/basectl check base --format text
 ./bin/basectl doctor base --format text
@@ -139,8 +145,10 @@ directory containing its reusable Bash libraries before running the suite.
 GitHub Actions hosted Ubuntu runners use the same runtime contract but prepare
 prerequisites in the workflow instead of asking `basectl setup` to mutate the
 machine. Apple Silicon Macs running Ubuntu in Parallels should follow the same
-manual commands; `golang-go`, `bats`, `shellcheck`, and `jq` are available for
-the hosted runner and Ubuntu ARM64 package archives used by Parallels.
+`basectl setup --dry-run` / `basectl setup --yes` flow; `golang-go`, `bats`,
+`shellcheck`, `jq`, and `gh` are available from the hosted runner and Ubuntu
+ARM64 package archives used by Parallels when the configured apt repositories
+provide them.
 
 ## Shell Startup
 
@@ -189,13 +197,13 @@ environment and the sibling `base-bash-libs` checkout expected by source tests.
 | 2. Add platform detection and explicit unsupported-platform messages. | Done | `BASE_PLATFORM` classifies Ubuntu/Debian as `linux-debian`, keeps `BASE_OS=linux`, and fails unsupported platforms explicitly. |
 | 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Done | `check` and `doctor` report Ubuntu/Debian prerequisite findings with apt-oriented recovery hints. |
 | 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl ci check base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
-| 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` gives manual Ubuntu/Debian prerequisite guidance; non-dry-run Linux setup remains conservative. |
-| 6. Add apt-backed setup for simple prerequisites. | Future | Keep setup mutation conservative until the first supported Linux distribution contract is finalized. |
-| 7. Revisit Python installation once the desired Linux Python distribution strategy is clear. | Future | Do not silently fall back to arbitrary system Python. |
+| 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` previews Ubuntu/Debian apt prerequisites before mutation. |
+| 6. Add apt-backed setup for simple prerequisites. | Done | `basectl setup --yes` runs `apt-get update`, installs the supported apt package list, creates the Base virtual environment, installs Base Python bootstrap packages, invokes the project setup layer, and seeds user config. |
+| 7. Polish GitHub CLI install/auth guidance. | Future | Keep token handling user-owned; add clearer setup/check/docs guidance for official `gh` install sources and login/keyring recovery. |
 
 ## Non-Goals
 
 - Do not support every Linux distribution in the first pass.
 - Do not add a second manifest format for Linux.
-- Do not use arbitrary `python3` silently to create Base-managed venvs.
+- Do not use arbitrary `python3` silently on macOS to create Base-managed venvs.
 - Do not attempt GUI IDE installation on Linux until a real project needs it.
