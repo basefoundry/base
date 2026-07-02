@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
+from base_setup import process
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.artifacts import homebrew_package_outdated, reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
@@ -34,8 +36,27 @@ class ProfileManifest:
     definitions: tuple[ArtifactDefinition, ...]
 
 
+@dataclass(frozen=True)
+class LinuxDebianDevTool:
+    apt_package: str
+    command: str
+
+
+@dataclass(frozen=True)
+class ProfileRuntime:
+    profile: str
+    project: str
+
+
 class ProfileError(ValueError):
     pass
+
+
+LINUX_DEBIAN_DEV_TOOLS = {
+    "bats-core": LinuxDebianDevTool(apt_package="bats", command="bats"),
+    "gh": LinuxDebianDevTool(apt_package="gh", command="gh"),
+    "shellcheck": LinuxDebianDevTool(apt_package="shellcheck", command="shellcheck"),
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -195,8 +216,15 @@ def setup_profile_artifacts(
         ctx.log.info("Setting up Base '%s' prerequisites.", profile)
 
     try:
+        runtime = ProfileRuntime(profile=profile, project=manifest.project_name)
         for artifact, definition in zip(manifest.artifacts, definitions, strict=True):
-            reconcile_artifact(ctx, definition, artifact.version, manifest.project_name, dry_run=dry_run)
+            reconcile_profile_artifact(
+                ctx,
+                artifact,
+                definition,
+                runtime,
+                dry_run=dry_run,
+            )
     except ArtifactError as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
@@ -366,7 +394,7 @@ def dev_checks(
 ) -> tuple[DevCheck, ...]:
     checks: list[DevCheck] = []
     for artifact, definition in zip(artifacts, definitions):
-        check = check_homebrew_artifact(artifact, definition, profile=profile)
+        check = check_profile_artifact(artifact, definition, profile=profile)
         checks.append(check)
         if artifact.name == "gh" and check.ok:
             checks.append(check_github_cli_auth())
@@ -375,6 +403,60 @@ def dev_checks(
 
 def profile_setup_fix(profile: str) -> str:
     return f"basectl setup --profile {profile}"
+
+
+def current_base_platform() -> str:
+    return os.environ.get("BASE_PLATFORM", "")
+
+
+def linux_debian_dev_tool(artifact: ArtifactRequest, profile: str) -> LinuxDebianDevTool | None:
+    if profile != "dev" or current_base_platform() != "linux-debian":
+        return None
+    if artifact.artifact_type != "tool":
+        return None
+    return LINUX_DEBIAN_DEV_TOOLS.get(artifact.name)
+
+
+def check_profile_artifact(
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+    profile: str = "dev",
+) -> DevCheck:
+    linux_debian_tool = linux_debian_dev_tool(artifact, profile)
+    if linux_debian_tool is not None:
+        return check_linux_debian_apt_artifact(artifact, linux_debian_tool, profile=profile)
+    return check_homebrew_artifact(artifact, definition, profile=profile)
+
+
+def check_linux_debian_apt_artifact(
+    artifact: ArtifactRequest,
+    tool: LinuxDebianDevTool,
+    profile: str = "dev",
+) -> DevCheck:
+    if artifact.version != "latest":
+        return DevCheck(
+            name=artifact.name,
+            ok=False,
+            message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
+            fix="Use version 'latest' for apt-backed developer prerequisites.",
+            finding_id="BASE-D102",
+        )
+
+    if command_exists(tool.command):
+        return DevCheck(
+            name=artifact.name,
+            ok=True,
+            message=f"Artifact '{artifact.name}' is installed via apt package '{tool.apt_package}'.",
+            fix="",
+            finding_id="BASE-D104",
+        )
+    return DevCheck(
+        name=artifact.name,
+        ok=False,
+        message=f"Artifact '{artifact.name}' is not installed via apt package '{tool.apt_package}'.",
+        fix=profile_setup_fix(profile),
+        finding_id="BASE-D104",
+    )
 
 
 def check_homebrew_artifact(  # pylint: disable=too-many-return-statements
@@ -458,6 +540,61 @@ def check_homebrew_artifact(  # pylint: disable=too-many-return-statements
         fix=profile_setup_fix(profile),
         finding_id="BASE-D104",
     )
+
+
+def reconcile_profile_artifact(
+    ctx: base_cli.Context,
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+    runtime: ProfileRuntime,
+    dry_run: bool,
+) -> None:
+    linux_debian_tool = linux_debian_dev_tool(artifact, runtime.profile)
+    if linux_debian_tool is not None:
+        reconcile_linux_debian_apt_artifact(ctx, artifact, linux_debian_tool, profile=runtime.profile, dry_run=dry_run)
+        return
+    reconcile_artifact(ctx, definition, artifact.version, runtime.project, dry_run=dry_run)
+
+
+def reconcile_linux_debian_apt_artifact(
+    ctx: base_cli.Context,
+    artifact: ArtifactRequest,
+    tool: LinuxDebianDevTool,
+    profile: str,
+    dry_run: bool,
+) -> None:
+    if artifact.version != "latest":
+        raise ArtifactError(
+            f"Apt-backed developer prerequisite '{artifact.name}' specifies version '{artifact.version}', "
+            "but Base only supports apt-backed developer prerequisite version 'latest' right now."
+        )
+
+    install_command = ["sudo", "apt-get", "install", "-y", tool.apt_package]
+    if command_exists(tool.command):
+        ctx.log.info(
+            "Artifact '%s' is already installed via apt package '%s'.",
+            artifact.name,
+            tool.apt_package,
+        )
+        return
+
+    if dry_run:
+        process.dry_run_command(ctx, install_command)
+        return
+
+    if not command_exists("apt-get"):
+        raise ArtifactError(
+            f"apt-get is required to install developer prerequisite '{artifact.name}' "
+            f"for profile '{profile}'."
+        )
+
+    ctx.log.info(
+        "Installing artifact '%s' via apt package '%s' (%s).",
+        artifact.name,
+        tool.apt_package,
+        artifact.version,
+    )
+    process.run_command(ctx, install_command)
 
 
 def check_github_cli_auth() -> DevCheck:

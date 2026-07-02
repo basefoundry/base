@@ -184,6 +184,17 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
     exit 0
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    shift 2
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
+    printf '%s\n' "${BASE_PLATFORM:-}" > "${BASE_SETUP_TEST_STATE_DIR:?}/base-dev-platform"
+    case "${1:-}" in
+        setup)
+            touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+            exit 0
+            ;;
+    esac
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" == "$pyyaml_package" ]]; then
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/pyyaml-installed" ]]
     exit $?
