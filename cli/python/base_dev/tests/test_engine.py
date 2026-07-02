@@ -25,7 +25,7 @@ def run_engine(args: list[str], extra_env: dict[str, str] | None = None) -> tupl
     stdout = io.StringIO()
     stderr = io.StringIO()
     with tempfile.TemporaryDirectory() as home_dir:
-        env = {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])}
+        env = {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4]), "BASE_PLATFORM": ""}
         if extra_env:
             env.update(extra_env)
         with mock.patch.dict(os.environ, env):
@@ -40,6 +40,11 @@ def write_executable(path: Path, content: str) -> None:
 
 
 class DevManifestTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.platform_patcher = mock.patch.dict(os.environ, {"BASE_PLATFORM": ""})
+        self.platform_patcher.start()
+        self.addCleanup(self.platform_patcher.stop)
+
     def test_importing_main_module_does_not_execute_main(self) -> None:
         sys.modules.pop("base_dev.__main__", None)
 
@@ -480,6 +485,55 @@ class DevManifestTests(unittest.TestCase):
         )
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_dev_linux_debian_reports_missing_apt_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "dev", "--format", "json"],
+                extra_env={"BASE_PLATFORM": "linux-debian", "PATH": bin_dir},
+            )
+
+        payload = json.loads(stdout)
+        findings = payload["checks"]
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["dev"])
+        self.assertIn(
+            {
+                "id": "BASE-D104",
+                "status": "error",
+                "name": "bats-core",
+                "message": "Artifact 'bats-core' is not installed via apt package 'bats'.",
+                "fix": "basectl setup --profile dev",
+            },
+            findings,
+        )
+        self.assertTrue(all("Homebrew" not in finding["message"] for finding in findings))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_dev_linux_debian_reports_installed_apt_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            bin_path = Path(bin_dir)
+            write_executable(bin_path / "bats", "#!/bin/sh\nexit 0\n")
+            write_executable(bin_path / "gh", "#!/bin/sh\nexit 0\n")
+            write_executable(bin_path / "shellcheck", "#!/bin/sh\nexit 0\n")
+
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "dev", "--format", "json"],
+                extra_env={"BASE_PLATFORM": "linux-debian", "PATH": bin_dir},
+            )
+
+        payload = json.loads(stdout)
+        findings = payload["checks"]
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["profiles"], ["dev"])
+        self.assertIn("gh-auth", [finding["name"] for finding in findings])
+        self.assertTrue(all(finding["status"] == "ok" for finding in findings))
+        self.assertTrue(all("Homebrew" not in finding["message"] for finding in findings))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_outdated_homebrew_artifact(self) -> None:
         def fake_run_capture(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
             output = "gh\n" if command == ["brew", "outdated", "gh"] else ""
@@ -512,6 +566,41 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install bats-core", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install gh", stderr)
         self.assertIn("[DRY-RUN] Would run: brew install shellcheck", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_dry_run_linux_debian_uses_apt_registry_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, _stdout, stderr = run_engine(
+                ["setup", "--profile", "dev", "--dry-run"],
+                extra_env={"BASE_PLATFORM": "linux-debian", "PATH": bin_dir},
+            )
+
+        self.assertEqual(status, 0)
+        self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y bats", stderr)
+        self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y gh", stderr)
+        self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y shellcheck", stderr)
+        self.assertNotIn("brew install", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_linux_debian_skips_installed_apt_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            bin_path = Path(bin_dir)
+            write_executable(bin_path / "bats", "#!/bin/sh\nexit 0\n")
+            write_executable(bin_path / "gh", "#!/bin/sh\nexit 0\n")
+            write_executable(bin_path / "shellcheck", "#!/bin/sh\nexit 0\n")
+
+            with mock.patch("base_setup.process.run_command") as run_command:
+                status, _stdout, stderr = run_engine(
+                    ["setup", "--profile", "dev"],
+                    extra_env={"BASE_PLATFORM": "linux-debian", "PATH": bin_dir},
+                )
+
+        self.assertEqual(status, 0)
+        self.assertIn("Artifact 'bats-core' is already installed via apt package 'bats'.", stderr)
+        self.assertIn("Artifact 'gh' is already installed via apt package 'gh'.", stderr)
+        self.assertIn("Artifact 'shellcheck' is already installed via apt package 'shellcheck'.", stderr)
+        self.assertNotIn("Homebrew is required", stderr)
+        run_command.assert_not_called()
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_setup_dry_run_upgrades_outdated_homebrew_artifact(self) -> None:

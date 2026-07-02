@@ -116,6 +116,8 @@ cd base
 
 ./bin/basectl setup --dry-run
 ./bin/basectl setup --yes
+./bin/basectl setup --profile dev --dry-run
+./bin/basectl setup --profile dev
 ```
 
 The Ubuntu/Debian setup path runs:
@@ -130,6 +132,12 @@ signed apt repository/keyring when the configured distro repositories do not
 provide a current package. Follow the current official instructions at
 https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, then rerun
 `./bin/basectl setup --yes`.
+
+On Ubuntu/Debian, the `dev` prerequisite profile uses apt-backed developer
+tools for the initial supported set: `bats-core` maps to `bats`, `gh` maps to
+`gh`, and `shellcheck` maps to `shellcheck`. Once the apt-backed setup path has
+installed those tools, `./bin/basectl setup --profile dev` is idempotent and
+does not require Homebrew.
 
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run the browser-backed flow when you need GitHub access:
@@ -225,7 +233,8 @@ environment and the sibling `base-bash-libs` checkout expected by source tests.
 | 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl ci check base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
 | 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` previews Ubuntu/Debian apt prerequisites before mutation. |
 | 6. Add apt-backed setup for simple prerequisites. | Done | `basectl setup --yes` runs `apt-get update`, installs the supported apt package list, creates the Base virtual environment, installs Base Python bootstrap packages, invokes the project setup layer, and seeds user config. |
-| 7. Polish GitHub CLI install/auth guidance. | Future | Keep token handling user-owned; add clearer setup/check/docs guidance for official `gh` install sources and login/keyring recovery. |
+| 7. Make `basectl setup --profile dev` use apt-backed developer tools on Ubuntu/Debian. | Done | The dev profile maps `bats-core`, `gh`, and `shellcheck` to apt-backed tools and skips them when already installed. |
+| 8. Polish GitHub CLI install/auth guidance. | Future | Keep token handling user-owned; add clearer setup/check/docs guidance for official `gh` install sources and login/keyring recovery. |
 
 ## Non-Goals
 

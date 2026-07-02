@@ -12,6 +12,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Allowed repeated Ubuntu/Debian `basectl setup` runs without `--yes` when all
   apt prerequisites are already installed, while still requiring `--yes` before
   Base mutates apt-managed system packages.
+- Made `basectl setup --profile dev`, `check --profile dev`, and
+  `doctor --profile dev` use apt-backed BATS, GitHub CLI, and ShellCheck
+  handling on Ubuntu/Debian instead of requiring Homebrew.
 
 ## [1.5.0] - 2026-07-02
 

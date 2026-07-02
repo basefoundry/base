@@ -1763,6 +1763,7 @@ setup_run_project_artifact_doctor_json() {
 
 setup_run_base_dev_layer() {
     local args=("$@")
+    local platform
     local profile_args=()
     local venv_dir
 
@@ -1782,8 +1783,9 @@ setup_run_base_dev_layer() {
     fi
 
     profile_args=(--profile "$(setup_profiles_csv)")
+    platform="$(setup_current_platform)" || return 1
 
-    "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}" "${profile_args[@]}"
+    env BASE_PLATFORM="$platform" "$BASE_HOME/bin/base-wrapper" --project base base_dev "${args[@]}" "${profile_args[@]}"
 }
 
 setup_clear_check_results() {

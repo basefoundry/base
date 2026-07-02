@@ -141,6 +141,19 @@ load ./setup_helpers.bash
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
+@test "basectl setup linux-debian passes effective platform to dev profile layer" {
+    create_linux_dpkg_query_stub
+    create_system_python3_stub
+
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --profile dev
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Ubuntu/Debian apt prerequisites are already installed."* ]]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/base-dev-platform")" = "linux-debian" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev)" ]
+}
+
 @test "basectl setup --yes linux-debian installs apt prerequisites and bootstraps Base" {
     create_sudo_apt_get_stub
     create_system_python3_stub
