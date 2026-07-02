@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.4.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.5.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -32,12 +32,14 @@ The current command surface covers:
 - repo-owned prompt rendering through `basectl prompt`
 - documentation entrypoint opening through `basectl docs`
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
+- Ubuntu/Debian runtime checks, diagnostics, and source-checkout validation
 
 ## Active Development Direction
 
-The `v1.4.0` release is complete. Future work is tracked in GitHub Issues,
-with Linux runtime support, Docker/service artifacts, broader prompt ergonomics,
-and broader setup policy work remaining outside the 1.4 release contract.
+The `v1.5.0` release is complete. Future work is tracked in GitHub Issues,
+with full Linux bootstrap support, GitHub CLI install/auth polish for Ubuntu,
+Docker/service artifacts, broader prompt ergonomics, and broader setup policy
+work remaining outside the 1.5 release contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -45,6 +47,10 @@ source builds treated as fallback validation rather than the normal user path.
 
 Recent released work includes:
 
+- Ubuntu/Debian runtime support through `BASE_PLATFORM=linux-debian`,
+  platform-aware setup/check/doctor dispatch, and source-checkout CI coverage
+- conservative Ubuntu setup guidance until apt-backed bootstrap support is
+  implemented
 - `basectl docs` for opening the GitHub README documentation entrypoint
 - standardized `basectl` help, option, logging, and usage-error behavior
 - Python-backed CI setup JSON rendering and Project issue-default handling

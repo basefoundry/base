@@ -7,6 +7,33 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-02
+
+### Added
+
+- Added `BASE_PLATFORM` runtime metadata so Linux distribution-family support
+  can be represented without overloading the coarse `BASE_OS=linux` contract.
+- Added Ubuntu/Debian source-checkout CI validation and documented the
+  accepted Ubuntu 24.04 ARM64 Parallels validation path.
+- Added Linux-aware `basectl check` and `basectl doctor` prerequisite
+  diagnostics for Python venv support, Git, GitHub CLI, BATS, ShellCheck, jq,
+  and Go on Ubuntu/Debian.
+
+### Changed
+
+- Centralized setup/check platform dispatch so macOS, Ubuntu/Debian, unknown
+  Linux, and unsupported platforms are routed through explicit platform-policy
+  helpers instead of scattered command conditionals.
+- Changed Ubuntu/Debian setup behavior to fail conservatively with manual
+  prerequisite guidance until full apt-backed bootstrap support is implemented.
+- Updated compatibility, Linux-support, IDE-boundary, and forge-boundary docs
+  to reflect Ubuntu/Debian runtime support and the remaining non-goals.
+
+### Fixed
+
+- Scrubbed activate override variables in the source-checkout test harness so
+  local shell state does not leak into BATS validation on Ubuntu or macOS.
+
 ## [1.4.0] - 2026-07-01
 
 ### Added
