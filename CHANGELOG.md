@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Allowed repeated Ubuntu/Debian `basectl setup` runs without `--yes` when all
+  apt prerequisites are already installed, while still requiring `--yes` before
+  Base mutates apt-managed system packages.
+
 ## [1.5.0] - 2026-07-02
 
 ### Added

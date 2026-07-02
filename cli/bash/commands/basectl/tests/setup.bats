@@ -111,7 +111,12 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup linux-debian requires --yes before apt mutation" {
-    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup
+    create_linux_dpkg_query_stub
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=gh \
+        setup
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Ubuntu/Debian setup can install apt prerequisites."* ]]
@@ -119,6 +124,21 @@ load ./setup_helpers.bash
     [[ "$output" != *"sudo apt-get"* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl setup linux-debian skips apt without yes when prerequisites are installed" {
+    create_linux_dpkg_query_stub
+    create_system_python3_stub
+
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Ubuntu/Debian apt prerequisites are already installed."* ]]
+    [[ "$output" == *"Base CLI setup is complete."* ]]
+    [[ "$output" != *"Ubuntu/Debian setup can install apt prerequisites."* ]]
+    [ ! -f "$TEST_STATE_DIR/apt-update-ran" ]
+    [ ! -f "$TEST_STATE_DIR/apt-install-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup --yes linux-debian installs apt prerequisites and bootstraps Base" {
