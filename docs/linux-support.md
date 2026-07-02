@@ -132,8 +132,28 @@ https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, then rerun
 `./bin/basectl setup --yes`.
 
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
-run `gh auth login` when you need GitHub access. Base should check and report
-GitHub CLI readiness, but it should not handle tokens or credentials.
+run the browser-backed flow when you need GitHub access:
+
+```bash
+gh auth login --web --git-protocol https
+```
+
+Base should check and report GitHub CLI readiness, but it should not handle
+tokens or credentials. Base does not store GitHub tokens in Base-managed config.
+
+Ubuntu desktop VMs can surface a GNOME keyring prompt such as "The password you
+use to log in to your computer no longer matches that of your login keyring."
+If the keyring cannot be unlocked and the VM is disposable or otherwise
+acceptable for lower-security local storage, `gh` can use its documented
+plain text fallback explicitly:
+
+```bash
+gh auth login --web --git-protocol https --insecure-storage
+```
+
+Use that fallback only when you accept the tradeoff: the credential is written
+outside the system credential store and should be treated as a local secret.
+Prefer fixing or unlocking the desktop keyring for long-lived machines.
 
 Then run:
 
