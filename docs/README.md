@@ -64,8 +64,8 @@ reference. The filename should answer "what is this about?"
   repeatable Homebrew and source checkout validation checklist.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
   dispatch order, public launchers, and runtime shell behavior.
-- [Linux Support](linux-support.md) defines the first Ubuntu/Debian runtime
-  support plan and bootstrap boundaries.
+- [Linux Support](linux-support.md) defines the Ubuntu/Debian runtime support,
+  apt-backed setup path, and bootstrap boundaries.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
 - [Base Bash Libraries](base-bash-libs.md) documents the standalone

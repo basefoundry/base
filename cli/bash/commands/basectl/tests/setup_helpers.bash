@@ -226,6 +226,30 @@ EOF
     done
 }
 
+create_sudo_apt_get_stub() {
+    cat > "$TEST_MOCKBIN/sudo" <<'EOF'
+#!/usr/bin/env bash
+state_dir="${BASE_SETUP_TEST_STATE_DIR:?}"
+printf '%s\n' "$*" >> "$state_dir/sudo-args"
+if [[ "${BASE_SETUP_TEST_APT_FAIL:-}" == true ]]; then
+    printf 'apt failed\n' >&2
+    exit 42
+fi
+if [[ "${1:-}" == "apt-get" && "${2:-}" == "update" ]]; then
+    touch "$state_dir/apt-update-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "apt-get" && "${2:-}" == "install" && "${3:-}" == "-y" ]]; then
+    touch "$state_dir/apt-install-ran"
+    printf '%s\n' "${*:4}" > "$state_dir/apt-install-packages"
+    exit 0
+fi
+printf 'unexpected sudo args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/sudo"
+}
+
 create_brew_stub() {
     cat > "$TEST_MOCKBIN/brew" <<'EOF'
 #!/usr/bin/env bash

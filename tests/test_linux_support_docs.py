@@ -9,13 +9,14 @@ def linux_support_text() -> str:
     return LINUX_SUPPORT_DOC.read_text(encoding="utf-8")
 
 
-def test_linux_support_docs_include_manual_ubuntu_bootstrap() -> None:
+def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
     text = linux_support_text()
 
-    assert "## Manual Ubuntu Bootstrap" in text
+    assert "## Ubuntu Bootstrap" in text
     assert "basectl setup --dry-run" in text
-    assert "sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go" in text
-    assert "GitHub CLI Debian/Ubuntu apt" in text
+    assert "basectl setup --yes" in text
+    assert "sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go" in text
+    assert "GitHub CLI authentication" in text
     assert "under `~/work`, not under mounted macOS shared folders" in text
 
 
