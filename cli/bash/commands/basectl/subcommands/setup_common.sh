@@ -466,8 +466,16 @@ setup_recovery_linux_apt_package() {
     printf "Install %s with 'sudo apt-get install %s', then rerun 'basectl check'.\n" "$display_name" "$package_name"
 }
 
+setup_linux_debian_github_cli_install_url() {
+    printf '%s\n' "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
+}
+
+setup_linux_debian_github_cli_install_guidance() {
+    printf "Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': %s.\n" "$(setup_linux_debian_github_cli_install_url)"
+}
+
 setup_recovery_linux_github_cli() {
-    printf "%s\n" "Install GitHub CLI 'gh' from the official GitHub CLI apt repository, or install apt package 'gh' if that repository is already configured, then rerun 'basectl check'."
+    printf "%s Run 'sudo apt update' and 'sudo apt install gh -y', then rerun 'basectl check'.\n" "$(setup_linux_debian_github_cli_install_guidance)"
 }
 
 setup_recovery_project_layer() {
@@ -2568,6 +2576,7 @@ setup_run_linux_debian_apt_prerequisites() {
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_update_command)"
         log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_prerequisite_command)"
+        log_info "$(setup_linux_debian_github_cli_install_guidance)"
         return 0
     fi
 

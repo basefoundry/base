@@ -87,7 +87,7 @@ Initial Ubuntu/Debian mappings:
 | Python venv support | Homebrew `python@3.13` | `apt install python3-venv` |
 | Git | Xcode Command Line Tools or Homebrew `git` | `apt install git` |
 | BATS | Homebrew `bats-core` | `apt install bats` when available |
-| GitHub CLI | Homebrew `gh` | `apt install gh` when available |
+| GitHub CLI | Homebrew `gh` | official GitHub CLI Debian/Ubuntu apt repository |
 | ShellCheck | Homebrew `shellcheck` | `apt install shellcheck` |
 | jq | Homebrew `jq` | `apt install jq` |
 | Go for source-checkout tests | Homebrew `go` | `apt install golang-go` |
@@ -124,6 +124,12 @@ The Ubuntu/Debian setup path runs:
 sudo apt-get update
 sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go
 ```
+
+The `gh` package should come from GitHub CLI's official Debian/Ubuntu
+signed apt repository/keyring when the configured distro repositories do not
+provide a current package. Follow the current official instructions at
+https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, then rerun
+`./bin/basectl setup --yes`.
 
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run `gh auth login` when you need GitHub access. Base should check and report
