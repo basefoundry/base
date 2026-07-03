@@ -18,6 +18,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made explicit project setup/check routing ignore active-project virtualenv
   overrides from a different shell project, so commands such as
   `basectl setup base-demo` cannot accidentally reuse the `base` venv.
+- Made project Brewfile delegates platform-aware: macOS still runs Homebrew
+  `brew bundle`, while Ubuntu/Debian skips Brewfile setup/check as a warning so
+  uv-managed projects can proceed through `uv sync`.
 
 ## [1.5.0] - 2026-07-02
 

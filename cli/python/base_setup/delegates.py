@@ -12,6 +12,7 @@ from . import process
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
+from .platform_policy import brewfile_delegates_supported, platform_label
 
 
 def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
@@ -24,6 +25,19 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             message=str(exc),
             fix=f"Update '{manifest.path}' or run 'basectl setup {manifest.project_name}'.",
             finding_id="BASE-P010",
+        )
+
+    if not brewfile_delegates_supported():
+        return ArtifactCheck(
+            name="brewfile",
+            ok=False,
+            message=(
+                f"Brewfile delegates are macOS/Homebrew-only; skipping '{brewfile_path}' "
+                f"on BASE_PLATFORM='{platform_label()}'."
+            ),
+            fix="Use a platform-native project setup path; for uv projects, install uv and rerun basectl setup/check.",
+            finding_id="BASE-P011",
+            status="warn",
         )
 
     if not process.command_exists("brew"):
@@ -254,6 +268,14 @@ def reconcile_brewfile(ctx: base_cli.Context, manifest: BaseManifest, dry_run: b
     brewfile_path = resolve_brewfile_path(manifest)
     command = ["brew", "bundle", f"--file={brewfile_path}"]
     check_command = ["brew", "bundle", "check", f"--file={brewfile_path}"]
+
+    if not brewfile_delegates_supported():
+        ctx.log.info(
+            "Skipping Brewfile '%s' on BASE_PLATFORM='%s'; Brewfile delegates are macOS/Homebrew-only.",
+            brewfile_path,
+            platform_label(),
+        )
+        return
 
     if dry_run:
         process.dry_run_command(ctx, command)

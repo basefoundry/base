@@ -110,7 +110,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P001` | Empty project manifest artifact set |
 | `BASE-P002` | Project manifest validity |
 | `BASE-P010` | Brewfile path validity |
-| `BASE-P011` | Homebrew unavailable for Brewfile checks |
+| `BASE-P011` | Brewfile platform or Homebrew availability |
 | `BASE-P012` | Brewfile dependency status |
 | `BASE-P020` | mise config path validity |
 | `BASE-P021` | mise CLI availability |

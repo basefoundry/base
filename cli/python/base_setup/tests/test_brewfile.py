@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import unittest
@@ -96,6 +97,33 @@ class BrewfileTests(unittest.TestCase):
             timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
 
+    def test_brewfile_check_warns_and_skips_homebrew_off_macos(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            brewfile = project_root / "Brewfile"
+            brewfile.write_text('brew "uv"\n', encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.process.command_exists") as command_exists,
+                mock.patch("base_setup.process.run_check") as run_check,
+            ):
+                check = delegates.check_brewfile(manifest)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P011")
+        self.assertIn("Brewfile delegates are macOS/Homebrew-only", check.message)
+        self.assertIn("linux-debian", check.message)
+        command_exists.assert_not_called()
+        run_check.assert_not_called()
+
     def test_brewfile_skips_brew_bundle_when_dependencies_are_satisfied(self) -> None:
         ctx = fake_context()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -154,6 +182,38 @@ class BrewfileTests(unittest.TestCase):
             env=mock.ANY,
         )
         self.assertEqual(run_command.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
+
+    def test_brewfile_setup_skips_homebrew_off_macos(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            brewfile = project_root / "Brewfile"
+            brewfile.write_text('brew "uv"\n', encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile="Brewfile",
+                artifacts=(),
+            )
+            expected_brewfile = brewfile.resolve()
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.process.command_exists") as command_exists,
+                mock.patch("base_setup.process.run_check") as run_check,
+                mock.patch("base_setup.process.run_command") as run_command,
+            ):
+                delegates.reconcile_brewfile(ctx, manifest, dry_run=False)
+
+        command_exists.assert_not_called()
+        run_check.assert_not_called()
+        run_command.assert_not_called()
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(
+            f"Skipping Brewfile '{expected_brewfile}' on BASE_PLATFORM='linux-debian'; "
+            "Brewfile delegates are macOS/Homebrew-only.",
+            info_messages,
+        )
 
     def test_brewfile_missing_file_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
