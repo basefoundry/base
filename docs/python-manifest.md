@@ -110,6 +110,11 @@ Base does not infer uv ownership from `pyproject.toml` or `uv.lock` alone. The
 manifest opt-in is what lets Base choose the repo-local `.venv` and report uv
 diagnostics.
 
+On Ubuntu/Debian, the same manifest opt-in also lets Base bootstrap the `uv`
+tool when it is missing: review the planned installer with
+`basectl setup <project> --dry-run`, then rerun with `--yes` to allow the
+mutation before Base delegates to `uv sync`.
+
 ## Command Runners
 
 Command execution is independent from the project-level Python manager. Any

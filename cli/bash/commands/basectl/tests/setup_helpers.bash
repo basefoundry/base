@@ -784,6 +784,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     printf '%s\n' "${BASE_CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-base-ci"
     printf '%s\n' "${CI:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-ci"
     printf '%s\n' "${BASE_SETUP_NOTIFY:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-notify"
+    printf '%s\n' "${BASE_SETUP_YES:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-yes"
+    printf '%s\n' "${BASE_PLATFORM:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-setup-platform"
     touch "$BASE_SETUP_TEST_STATE_DIR/project-setup-ran"
     if [[ "$action" == "bootstrap" ]]; then
         printf '%s\n' "${BASE_SETUP_RECREATE_PROJECT_VENV:-}" > "$BASE_SETUP_TEST_STATE_DIR/project-bootstrap-recreate-venv"

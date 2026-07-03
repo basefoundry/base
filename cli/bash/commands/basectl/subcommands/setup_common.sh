@@ -1589,7 +1589,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output route_output venv_dir
+    local exit_code manifest_path platform precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output route_output venv_dir
     local args=()
     local project_env_args=()
     local resolve_fields=()
@@ -1664,6 +1664,7 @@ setup_run_project_artifact_layer() {
         remote_network=true
     fi
     args+=("$project")
+    platform="$(setup_current_platform)" || return 1
 
     if [[ "$output_format" != json ]]; then
         if [[ "$action" == setup ]]; then
@@ -1729,6 +1730,7 @@ setup_run_project_artifact_layer() {
     if [[ "$project_uses_uv_manager" == true ]]; then
         env "${project_env_args[@]}" \
             BASE_HOME="$BASE_HOME" \
+            BASE_PLATFORM="$platform" \
             BASE_PROJECT="$project" \
             BASE_PROJECT_ROOT="$resolved_root" \
             BASE_PROJECT_MANIFEST="$manifest_path" \
@@ -1737,6 +1739,7 @@ setup_run_project_artifact_layer() {
             "$python_bin" -m base_setup "${args[@]}"
     else
         env "${project_env_args[@]}" \
+            BASE_PLATFORM="$platform" \
             BASE_PROJECT="$project" \
             BASE_PROJECT_ROOT="$resolved_root" \
             BASE_PROJECT_MANIFEST="$manifest_path" \

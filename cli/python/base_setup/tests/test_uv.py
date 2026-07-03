@@ -9,7 +9,7 @@ from unittest import mock
 from base_setup import engine
 from base_setup.manifest import ArtifactRequest, BaseManifest, read_manifest
 from base_setup.tests.helpers import fake_context
-from base_setup.uv import check_uv, reconcile_uv_project
+from base_setup.uv import UV_INSTALL_COMMAND_TEXT, check_uv, reconcile_uv_project
 
 
 def write_manifest(root: Path, content: str) -> BaseManifest:
@@ -37,9 +37,123 @@ class UvProjectTests(unittest.TestCase):
             )
             ctx = fake_context()
 
-            reconcile_uv_project(ctx, manifest, dry_run=True)
+            with mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")):
+                reconcile_uv_project(ctx, manifest, dry_run=True)
 
         ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", root, "uv sync")
+
+    def test_reconcile_uv_project_dry_run_plans_linux_debian_uv_bootstrap_when_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.uv.uv_executable", return_value=None),
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=True)
+
+        ctx.log.info.assert_any_call("[DRY-RUN] Would bootstrap uv: %s", UV_INSTALL_COMMAND_TEXT)
+        ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", root, "uv sync")
+
+    def test_reconcile_uv_project_bootstraps_uv_on_linux_debian_with_yes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+            uv_path = Path(tmpdir) / ".local" / "bin" / "uv"
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
+                mock.patch("base_setup.uv.uv_executable", side_effect=[None, uv_path, uv_path]),
+                mock.patch("base_setup.uv.process.run_command") as run_command,
+                mock.patch("base_setup.uv.process.run_check", return_value=False),
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=False)
+
+        self.assertEqual(
+            run_command.call_args_list[0].args[1],
+            ["sh", "-c", UV_INSTALL_COMMAND_TEXT],
+        )
+        self.assertEqual(run_command.call_args_list[1].args[1], [str(uv_path), "sync"])
+        self.assertEqual(run_command.call_args_list[1].kwargs["cwd"], root)
+
+    def test_reconcile_uv_project_requires_yes_before_linux_debian_uv_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = write_manifest(
+                Path(tmpdir),
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}, clear=False),
+                mock.patch("base_setup.uv.uv_executable", return_value=None),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "Run 'basectl setup demo --dry-run'.*'--yes'"):
+                    reconcile_uv_project(ctx, manifest, dry_run=False)
+
+    def test_reconcile_uv_runner_project_bootstraps_uv_without_sync_on_linux_debian(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "commands:",
+                        "  audit:",
+                        "    command: pytest tests",
+                        "    runner: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+            uv_path = Path(tmpdir) / ".local" / "bin" / "uv"
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
+                mock.patch("base_setup.uv.uv_executable", side_effect=[None, uv_path]),
+                mock.patch("base_setup.uv.process.run_command") as run_command,
+                mock.patch("base_setup.uv.process.run_check") as run_check,
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=False)
+
+        run_command.assert_called_once_with(ctx, ["sh", "-c", UV_INSTALL_COMMAND_TEXT])
+        run_check.assert_not_called()
 
     def test_reconcile_uv_project_requires_uv_for_real_setup(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -57,7 +171,7 @@ class UvProjectTests(unittest.TestCase):
             )
             ctx = fake_context()
 
-            with mock.patch("base_setup.uv.process.command_exists", return_value=False):
+            with mock.patch("base_setup.uv.uv_executable", return_value=None):
                 with self.assertRaisesRegex(RuntimeError, "uv is required"):
                     reconcile_uv_project(ctx, manifest, dry_run=False)
 
@@ -79,7 +193,7 @@ class UvProjectTests(unittest.TestCase):
             ctx = fake_context()
 
             with (
-                mock.patch("base_setup.uv.process.command_exists", return_value=True),
+                mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")),
                 mock.patch("base_setup.uv.process.run_check", return_value=True) as run_check,
                 mock.patch("base_setup.uv.process.run_command") as run_command,
             ):
@@ -107,7 +221,7 @@ class UvProjectTests(unittest.TestCase):
             ctx = fake_context()
 
             with (
-                mock.patch("base_setup.uv.process.command_exists", return_value=True),
+                mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")),
                 mock.patch("base_setup.uv.process.run_check", return_value=False),
                 mock.patch("base_setup.uv.process.run_command") as run_command,
             ):
@@ -131,13 +245,15 @@ class UvProjectTests(unittest.TestCase):
                 ),
             )
 
-            with mock.patch("base_setup.uv.process.command_exists", return_value=False):
+            with mock.patch("base_setup.uv.uv_executable", return_value=None):
                 checks = check_uv(manifest)
 
         missing_uv = [check for check in checks if check.finding_id == "BASE-P150"]
         self.assertEqual(len(missing_uv), 1)
         self.assertEqual(missing_uv[0].status, "warn")
         self.assertIn("uv is not available", missing_uv[0].message)
+        self.assertIn("basectl setup demo --dry-run", missing_uv[0].fix)
+        self.assertIn("--yes", missing_uv[0].fix)
 
     def test_check_uv_warns_for_runner_without_python_manager(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -157,12 +273,13 @@ class UvProjectTests(unittest.TestCase):
                 ),
             )
 
-            with mock.patch("base_setup.uv.process.command_exists", return_value=False):
+            with mock.patch("base_setup.uv.uv_executable", return_value=None):
                 checks = check_uv(manifest)
 
         missing_uv = [check for check in checks if check.finding_id == "BASE-P150"]
         self.assertEqual(len(missing_uv), 1)
         self.assertIn("uv runner", missing_uv[0].message)
+        self.assertIn("basectl setup demo --dry-run", missing_uv[0].fix)
 
     def test_check_uv_reports_project_files_and_stale_base_venv(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -185,8 +302,8 @@ class UvProjectTests(unittest.TestCase):
             (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
 
             with mock.patch.dict("os.environ", {"HOME": str(home)}), mock.patch(
-                "base_setup.uv.process.command_exists",
-                return_value=True,
+                "base_setup.uv.uv_executable",
+                return_value=Path("uv"),
             ):
                 checks = check_uv(manifest)
 
@@ -220,7 +337,7 @@ class UvProjectTests(unittest.TestCase):
             python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
             python_bin.chmod(0o755)
 
-            with mock.patch("base_setup.uv.process.command_exists", return_value=True):
+            with mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")):
                 checks = check_uv(manifest)
 
         findings = {check.finding_id: check for check in checks}

@@ -147,8 +147,11 @@ Project-level `brewfile` delegates remain macOS/Homebrew-only. On
 Ubuntu/Debian, Base validates the Brewfile path but skips `brew bundle` setup and
 reports a warning from check/doctor instead of asking users to install Homebrew.
 Linux project prerequisites should use a platform-native project path. For
-projects that declare `python.manager: uv`, install or make `uv` available and
-let Base delegate Python setup to `uv sync`.
+projects that declare `python.manager: uv` or command-level `runner: uv`,
+`basectl setup <project> --dry-run` shows the planned `uv` bootstrap when `uv`
+is missing, and `basectl setup <project> --yes` installs `uv` before delegating
+Python setup to `uv sync`. Base does not install `uv` for projects that have not
+opted into the uv contract.
 
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run the browser-backed flow when you need GitHub access:
