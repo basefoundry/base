@@ -52,6 +52,15 @@ def write_fake_mise(bin_dir: Path, log_path: Path, trust_output: str, missing_ou
     mise.chmod(0o755)
 
 
+def trusted_mise_check(project_root: Path, mise_bin: Path = Path("mise")) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(
+        [str(mise_bin), "trust", "--show"],
+        0,
+        stdout=f"{project_root.resolve()}: trusted",
+        stderr="",
+    )
+
+
 class MiseTests(unittest.TestCase):
 
     def test_mise_dry_run_invokes_mise_install_in_project_root(self) -> None:
@@ -103,6 +112,7 @@ class MiseTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
                 mock.patch("base_setup.delegates.mise_executable", side_effect=[None, mise_path]),
+                mock.patch("base_setup.delegates.process.run_capture", return_value=trusted_mise_check(project_root)),
                 mock.patch("base_setup.delegates.process.run_command") as run_command,
             ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
@@ -141,10 +151,40 @@ class MiseTests(unittest.TestCase):
 
             with mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")), mock.patch(
                 "base_setup.process.run_command"
-            ) as run_command:
+            ) as run_command, mock.patch(
+                "base_setup.delegates.process.run_capture",
+                return_value=trusted_mise_check(project_root),
+            ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
         run_command.assert_called_once_with(ctx, ["mise", "install"], cwd=project_root.resolve())
+
+    def test_mise_setup_refuses_untrusted_project_config_before_install(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+            mise_bin = Path("mise")
+            trust_check = subprocess.CompletedProcess(
+                [str(mise_bin), "trust", "--show"],
+                0,
+                stdout=f"{project_root.resolve()}: untrusted",
+                stderr="",
+            )
+
+            with (
+                mock.patch("base_setup.delegates.mise_executable", return_value=mise_bin),
+                mock.patch("base_setup.delegates.process.run_capture", return_value=trust_check),
+                mock.patch("base_setup.delegates.process.run_command") as run_command,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    f"mise config '{project_root.resolve() / '.mise.toml'}' is not trusted by mise",
+                ):
+                    delegates.reconcile_mise(ctx, manifest, dry_run=False)
+
+        run_command.assert_not_called()
 
 
     def test_mise_check_passes_when_trusted_and_no_tools_missing(self) -> None:

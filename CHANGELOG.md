@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Preflighted `mise` trust before `basectl setup` runs `mise install`, so
+  untrusted project configs fail with a Base recovery message instead of raw
+  lower-level `mise install` output.
 - Bootstrapped `mise` during Ubuntu/Debian project setup when a manifest
   declares a project-owned mise config, while keeping the mutation guarded by
   `--dry-run` review and `--yes`.
