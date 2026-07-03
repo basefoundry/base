@@ -164,7 +164,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `brew upgrade basefoundry/base/base`.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
-  project names and paths.
+  project names and paths. Source checkouts can run this read-only command
+  before `basectl setup` when ambient `python3` has Base's bootstrap Python
+  dependencies available; otherwise the command prints a targeted setup
+  diagnostic.
 - `basectl workspace status` reports a read-only workspace summary across
   discovered projects, or across expected repositories when
   `workspace.manifest` is configured or `--manifest <path>` is supplied. When
