@@ -188,8 +188,10 @@ model for a project that declares `python.manager: uv`.
 
 When `python.manager: uv` is present, Base skips Base-managed
 `python-package` reconciliation, including Base's default project Python
-artifacts. Non-Python artifacts such as Homebrew-managed tools still reconcile
-normally.
+artifacts. Non-Python delegates keep their own platform policy: for example,
+project Brewfiles still run through Homebrew on macOS, but Base skips `brew
+bundle` on Ubuntu/Debian and lets uv-owned Python setup proceed through
+`uv sync`.
 
 ## Activation
 

@@ -20,7 +20,7 @@ hooks:
 
 Instead, use the typed contracts Base already understands:
 
-- `brewfile` for ordinary Homebrew packages and casks
+- `brewfile` for ordinary macOS/Homebrew packages and casks
 - `mise` for language runtimes, tool versions, environment variables, and tasks
 - `ide` for supported IDE app, extension, and settings bootstrap
 - `artifacts` for Base-managed artifacts
@@ -34,6 +34,10 @@ shell state that must affect the activated interactive subshell.
 See the `activate.source` field in [Architecture - Project Manifest](architecture.md#project-manifest)
 for the full shell activation contract, including when it runs and its scope
 relative to setup.
+
+The `brewfile` delegate is platform-aware. Base runs `brew bundle` on macOS, but
+on Ubuntu/Debian it treats Brewfiles as unsupported macOS package declarations
+and continues through platform-native project setup such as `python.manager: uv`.
 
 When a project needs a product-specific guided installer or imperative
 bootstrap, that logic should live in the project repository, for example:

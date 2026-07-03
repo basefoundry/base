@@ -434,16 +434,20 @@ What Base should not do:
 
 - invent a parallel macOS package manifest when `Brewfile` already fits the job
 - replace Homebrew's own package management behavior
+- require Linux users to install Homebrew just because a project has a Brewfile
 
 How Base should coexist:
 
-- `basectl setup` should be able to run `brew bundle` where appropriate
+- `basectl setup` should be able to run `brew bundle` on macOS
 - Base manifests can point to one or more `Brewfile`s instead of inventing a
   new package DSL too early
 - `basectl check` can validate that declared Homebrew dependencies are satisfied
+  where Homebrew is a supported platform delegate
+- on Ubuntu/Debian, Base should skip Brewfile setup/check as a warning and let
+  platform-native delegates such as uv continue
 
-Current stance: first-class integration candidate, but still as an orchestrator
-on top of Homebrew.
+Current stance: first-class macOS integration candidate, but still as an
+orchestrator on top of Homebrew.
 
 ### Docker, Docker Compose, And Colima
 

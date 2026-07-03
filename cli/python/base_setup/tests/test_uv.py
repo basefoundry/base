@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -258,4 +259,40 @@ class UvProjectTests(unittest.TestCase):
                 engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=True)
 
         reconcile_uv.assert_called_once_with(ctx, manifest, dry_run=True)
+        reconcile_artifacts.assert_not_called()
+
+    def test_uv_project_with_brewfile_reaches_uv_setup_on_linux_debian(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "Brewfile").write_text('brew "uv"\n', encoding="utf-8")
+            default_manifest = BaseManifest(
+                path=Path("default_manifest.yaml"),
+                project_name="base-defaults",
+                brewfile=None,
+                artifacts=(),
+            )
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "brewfile: Brewfile",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.delegates.process.command_exists", return_value=False),
+                mock.patch("base_setup.engine.reconcile_uv_project") as reconcile_uv,
+                mock.patch("base_setup.engine.reconcile_artifacts") as reconcile_artifacts,
+            ):
+                engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=False)
+
+        reconcile_uv.assert_called_once_with(ctx, manifest, dry_run=False)
         reconcile_artifacts.assert_not_called()
