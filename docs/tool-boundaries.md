@@ -71,6 +71,7 @@ charge of their own domains.
 | Docker / Docker Compose / Colima | containers, Compose-defined local services | Partially, as orchestration only | Yes, strongly | High |
 | `mise` tasks | project-local task running inside `mise` | No | Yes, strongly | Medium |
 | VS Code / Cursor | IDE app, extensions, and user editor settings | Partially, as workstation bootstrap only | Yes, strongly | High |
+| AI agent harnesses | live agent sessions, provider interaction, sandboxing, collaboration | No, support through explicit adapters and context artifacts | Yes, optionally | Medium |
 
 ## Tool-by-Tool Decisions
 
@@ -363,6 +364,60 @@ How Base should coexist:
 Current stance: strong coexistence, Base as IDE-readiness orchestrator rather
 than IDE owner.
 
+### AI Agent Harnesses
+
+This category includes AI coding CLIs, IDE agents, and meta-harnesses such as
+Codex CLI, Claude Code, Cursor agents, Omnigent, Pi-like tools, and future agent
+session managers.
+
+What they do well:
+
+- run live agent sessions against local repositories or hosted workspaces
+- manage provider interaction, model selection, credentials, sandboxing, and
+  approvals
+- compose multiple agents or expose collaborative session views
+- consume files, prompts, and project context prepared by other tools
+
+What Base should borrow:
+
+- the idea that AI work benefits from portable context, explicit policy, and
+  durable handoff artifacts
+- the idea that one workspace may use several agent harnesses over time, so
+  Base-owned context should stay provider-neutral
+- the discipline of making opt-in AI tooling visible through health checks
+  instead of implying that every developer workflow needs it
+
+What Base should not do:
+
+- become a live agent runtime, session server, or multi-agent scheduler
+- manage model/provider accounts, credentials, billing, or organization policy
+- own OS-level sandboxing, approvals, or cost-control enforcement for agent
+  sessions
+- make any agent harness a default developer prerequisite
+- vendor a third-party harness methodology when a smaller Base-native rule is
+  enough
+
+How Base should coexist:
+
+- keep `--profile ai` explicit for AI developer tools, with allowlisted
+  installers and read-only check/doctor diagnostics
+- use `.ai-context/`, `basectl export-context`, and repo-local `AGENTS.md` as
+  the portable context and guidance surfaces that any harness can consume
+- use `basectl prompt` for maintained, repo-visible prompts without sending them
+  to a provider
+- prefer local, redacted handoff/report artifacts over hosted session sharing as
+  Base's own collaboration boundary
+- treat a machine-readable `basectl export-context` descriptor as a separate
+  context-pack enhancement, not as part of any one harness integration
+- evaluate new harnesses through this adapter quality bar before adding install,
+  check, or wrapper behavior
+- split concrete `--profile ai`, `export-context`, and report/handoff work into
+  separate follow-up issues once the desired behavior is clear
+
+Current stance: optional coexistence. Base should support AI harnesses through
+portable context, explicit profile checks, and local handoff artifacts, not by
+becoming a harness itself.
+
 ### `Brewfile` / `brew bundle`
 
 What they do well:
@@ -531,12 +586,15 @@ These are the lines worth defending as Base grows.
 - `devbox`
 - `nix develop`
 - `devenv`
+- optional AI agent harnesses through explicit profile checks and context
+  artifacts
 
 ### Base should stay compatible with, but not absorb
 
 - `direnv`
 - `chezmoi`
 - `dotbot`
+- live AI agent session managers and meta-harnesses
 
 ### Base should explicitly avoid becoming
 
@@ -545,6 +603,8 @@ These are the lines worth defending as Base grows.
 - another general task runner
 - another broad dotfile manager
 - another reproducible package manager or dependency solver
+- an agent runtime, hosted session-sharing service, sandbox, or provider-policy
+  engine
 
 ## What This Means for Future Base Design
 
@@ -584,6 +644,8 @@ looks like any of these:
 - dependency solving or package-resolution logic
 - project topology complexity such as manifest inheritance, project groups,
   or sub-repository manifests
+- live agent-session orchestration, sandboxing, provider credentials, or hosted
+  collaboration
 
 Those are the places where Base is most likely to drift away from its real
 strength. For project topology specifically, the constraints and rationale are
@@ -609,3 +671,4 @@ Official references that informed this boundary note:
 - Docker Compose: <https://docs.docker.com/compose/>
 - Colima: <https://github.com/abiosoft/colima>
 - `mise` tasks: <https://mise.jdx.dev/tasks/>
+- Omnigent: <https://www.databricks.com/blog/introducing-omnigent-meta-harness-combine-control-and-share-your-agents>
