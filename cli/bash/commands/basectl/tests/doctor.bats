@@ -354,10 +354,35 @@ EOF
     [[ "$output" == *"ok"*"BASE-D003"*"Python"*"Python is available for Ubuntu/Debian runtime checks."* ]]
     [[ "$output" == *"ok"*"BASE-D004"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
     [[ "$output" == *"ok"*"BASE-D010"*"Git"*"Git is available for Ubuntu/Debian runtime checks."* ]]
-    [[ "$output" == *"ok"*"BASE-D015"*"Go"*"Go is available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"ok"*"BASE-D015"*"Go"*"Go is available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Base doctor found no blocking issues."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl doctor linux-debian treats missing dev tools as warnings" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    create_doctor_linux_success_stubs "$fake_bin" "$venv_python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh,bats,shellcheck,jq,go \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"warn"*"BASE-D011"*"GitHub CLI"*"GitHub CLI 'gh' is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D012"*"BATS"*"BATS is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D013"*"ShellCheck"*"ShellCheck is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D014"*"jq"*"jq is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D015"*"Go"*"Go is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
 }
 
 @test "basectl doctor linux-debian reports missing prerequisite apt hints" {
@@ -407,11 +432,11 @@ EOF
     [[ "$output" == *"Fix: Install python3-venv with 'sudo apt-get install python3-venv', then rerun 'basectl check'."* ]]
     [[ "$output" == *"error"*"BASE-D010"*"Git"*"Git is not available for Ubuntu/Debian runtime checks."* ]]
     [[ "$output" == *"Fix: Install git with 'sudo apt-get install git', then rerun 'basectl check'."* ]]
-    [[ "$output" == *"error"*"BASE-D011"*"GitHub CLI"*"GitHub CLI 'gh' is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D011"*"GitHub CLI"*"GitHub CLI 'gh' is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Fix: Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
     [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
     [[ "$output" == *"sudo apt install gh -y"* ]]
-    [[ "$output" == *"error"*"BASE-D015"*"Go"*"Go is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"warn"*"BASE-D015"*"Go"*"Go is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Fix: Install Go with 'sudo apt-get install golang-go', then rerun 'basectl check'."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]

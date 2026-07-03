@@ -2185,21 +2185,32 @@ setup_add_linux_command_check_result() {
     local finding_name="$2"
     local display_name="$3"
     local recovery="$4"
+    local missing_status="${5:-error}"
+    local check_context="${6:-runtime checks}"
     local command_path
+
+    case "$missing_status" in
+        warn|error)
+            ;;
+        *)
+            fatal_error "Invalid Linux command check missing status '$missing_status'."
+            ;;
+    esac
 
     if command_path="$(setup_linux_command_path "$command_name")"; then
         setup_add_check_result \
             "$finding_name" \
             true \
-            "$display_name is available for Ubuntu/Debian runtime checks." \
+            "$display_name is available for Ubuntu/Debian $check_context." \
             "" \
             "Resolved $display_name binary: $command_path"
     else
-        setup_add_check_result \
+        setup_add_check_result_with_status \
             "$finding_name" \
-            false \
-            "$display_name is not available for Ubuntu/Debian runtime checks." \
+            "$missing_status" \
+            "$display_name is not available for Ubuntu/Debian $check_context." \
             "$recovery"
+        [[ "$missing_status" != error ]] && return 0
         return 1
     fi
 }
@@ -2276,27 +2287,37 @@ setup_collect_linux_debian_base_check_results() {
         "gh" \
         "gh" \
         "GitHub CLI 'gh'" \
-        "$(setup_recovery_linux_github_cli)" || missing=1
+        "$(setup_recovery_linux_github_cli)" \
+        warn \
+        "developer tooling checks" || missing=1
     setup_add_linux_command_check_result \
         "bats" \
         "bats" \
         "BATS" \
-        "$(setup_recovery_linux_apt_package bats bats)" || missing=1
+        "$(setup_recovery_linux_apt_package bats bats)" \
+        warn \
+        "developer tooling checks" || missing=1
     setup_add_linux_command_check_result \
         "shellcheck" \
         "shellcheck" \
         "ShellCheck" \
-        "$(setup_recovery_linux_apt_package shellcheck shellcheck)" || missing=1
+        "$(setup_recovery_linux_apt_package shellcheck shellcheck)" \
+        warn \
+        "developer tooling checks" || missing=1
     setup_add_linux_command_check_result \
         "jq" \
         "jq" \
         "jq" \
-        "$(setup_recovery_linux_apt_package jq jq)" || missing=1
+        "$(setup_recovery_linux_apt_package jq jq)" \
+        warn \
+        "developer tooling checks" || missing=1
     setup_add_linux_command_check_result \
         "go" \
         "go" \
         "Go" \
-        "$(setup_recovery_linux_apt_package Go golang-go)" || missing=1
+        "$(setup_recovery_linux_apt_package Go golang-go)" \
+        warn \
+        "developer tooling checks" || missing=1
 
     return "$missing"
 }

@@ -127,6 +127,10 @@ sudo apt-get update
 sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go
 ```
 
+`basectl check` and `basectl doctor` keep the basic Ubuntu/Debian runtime path
+separate from contributor tooling. Missing `gh`, BATS, ShellCheck, `jq`, or Go
+are advisory warnings unless another runtime prerequisite is also failing.
+
 The `gh` package should come from GitHub CLI's official Debian/Ubuntu
 signed apt repository/keyring when the configured distro repositories do not
 provide a current package. Follow the current official instructions at
