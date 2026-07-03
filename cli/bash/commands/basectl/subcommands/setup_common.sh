@@ -54,7 +54,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_SETUP_YES BASE_PROJECT
+    unset dry_run DRY_RUN BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_SETUP_YES
     setup_refresh_cached_paths
 }
 
@@ -1278,7 +1278,7 @@ setup_resolve_project_manifest() {
 setup_project_venv_dir() {
     local project="$1"
 
-    if [[ "$project" != base && -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+    if [[ "$project" != base && -n "${BASE_PROJECT_VENV_DIR:-}" && ( -z "${BASE_PROJECT:-}" || "${BASE_PROJECT:-}" == "$project" ) ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
@@ -1297,7 +1297,7 @@ setup_resolve_project_route() {
     local python_bin="$3"
 
     setup_ensure_cached_paths
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
         "$python_bin" -m base_setup --manifest "$manifest_path" --action route "$project"
 }
 
@@ -1495,7 +1495,9 @@ setup_run_project_pre_venv_layer() {
     local output_format="$2"
     local manifest_path="$3"
     local project="$4"
-    local remote_network="${5:-${BASE_SETUP_REMOTE_NETWORK:-}}"
+    local project_root="$5"
+    local project_venv_dir="$6"
+    local remote_network="${7:-${BASE_SETUP_REMOTE_NETWORK:-}}"
     local python_bin venv_dir
     local args=()
 
@@ -1511,7 +1513,14 @@ setup_run_project_pre_venv_layer() {
     fi
     args+=("$project")
 
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT="$project" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" "$python_bin" -m base_setup "${args[@]}"
+    env \
+        BASE_HOME="$BASE_HOME" \
+        BASE_PROJECT="$project" \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$manifest_path" \
+        BASE_PROJECT_VENV_DIR="$project_venv_dir" \
+        PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -m base_setup "${args[@]}"
 }
 
 setup_run_project_artifact_setup() {
@@ -1522,6 +1531,8 @@ setup_run_project_bootstrap_layer() {
     local manifest_path="$1"
     local project="$2"
     local output_format="$3"
+    local project_root="$4"
+    local project_venv_dir="$5"
     local python_bin venv_dir
     local args=()
     local project_env_args=()
@@ -1557,6 +1568,9 @@ setup_run_project_bootstrap_layer() {
         env "${project_env_args[@]}" \
             BASE_HOME="$BASE_HOME" \
             BASE_PROJECT="$project" \
+            BASE_PROJECT_ROOT="$project_root" \
+            BASE_PROJECT_MANIFEST="$manifest_path" \
+            BASE_PROJECT_VENV_DIR="$project_venv_dir" \
             BASE_SETUP_RECREATE_PROJECT_VENV=true \
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
             "$python_bin" -m base_setup "${args[@]}"
@@ -1564,6 +1578,9 @@ setup_run_project_bootstrap_layer() {
         env "${project_env_args[@]}" \
             BASE_HOME="$BASE_HOME" \
             BASE_PROJECT="$project" \
+            BASE_PROJECT_ROOT="$project_root" \
+            BASE_PROJECT_MANIFEST="$manifest_path" \
+            BASE_PROJECT_VENV_DIR="$project_venv_dir" \
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
             "$python_bin" -m base_setup "${args[@]}"
     fi
@@ -1657,7 +1674,7 @@ setup_run_project_artifact_layer() {
     fi
 
     if [[ "$action" == setup && "$project_uses_uv_manager" != true ]]; then
-        setup_run_project_bootstrap_layer "$manifest_path" "$project" "$output_format"
+        setup_run_project_bootstrap_layer "$manifest_path" "$project" "$output_format" "$resolved_root" "$project_venv_dir"
         exit_code=$?
         if ((exit_code)); then
             log_error "$(setup_recovery_project_layer)"
@@ -1673,7 +1690,7 @@ setup_run_project_artifact_layer() {
         fi
         if [[ "$output_format" == json ]]; then
             if [[ "$action" == doctor ]]; then
-                precheck_json="$(setup_run_project_pre_venv_layer predoctor json "$manifest_path" "$project" "$remote_network")" || true
+                precheck_json="$(setup_run_project_pre_venv_layer predoctor json "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network")" || true
                 [[ -n "$precheck_json" ]] || precheck_json="[]"
                 setup_print_project_venv_doctor_json \
                     "$precheck_json" \
@@ -1681,7 +1698,7 @@ setup_run_project_artifact_layer() {
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
                     "$(setup_recovery_project_venv "$project")"
             else
-                precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project" "$remote_network")" || true
+                precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network")" || true
                 [[ -n "$precheck_json" ]] || precheck_json="[]"
                 setup_print_project_check_json_with_venv \
                     "$precheck_json" \
@@ -1691,7 +1708,7 @@ setup_run_project_artifact_layer() {
                     "$project"
             fi
         elif [[ "$action" == doctor ]]; then
-            setup_run_project_pre_venv_layer predoctor text "$manifest_path" "$project" "$remote_network" || true
+            setup_run_project_pre_venv_layer predoctor text "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network" || true
             setup_print_doctor_finding \
                 "error" \
                 "BASE-P050" \
@@ -1699,7 +1716,7 @@ setup_run_project_artifact_layer() {
                 "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
                 "$(setup_recovery_project_venv "$project")"
         elif [[ "$action" == check ]]; then
-            setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" "$remote_network" || true
+            setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network" || true
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             log_warn "$(setup_recovery_project_venv "$project")"
         else
@@ -1719,7 +1736,12 @@ setup_run_project_artifact_layer() {
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
             "$python_bin" -m base_setup "${args[@]}"
     else
-        env "${project_env_args[@]}" "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
+        env "${project_env_args[@]}" \
+            BASE_PROJECT="$project" \
+            BASE_PROJECT_ROOT="$resolved_root" \
+            BASE_PROJECT_MANIFEST="$manifest_path" \
+            BASE_PROJECT_VENV_DIR="$project_venv_dir" \
+            "$BASE_HOME/bin/base-wrapper" --project "$project" base_setup "${args[@]}"
     fi
     exit_code=$?
 

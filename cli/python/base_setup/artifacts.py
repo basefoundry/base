@@ -19,6 +19,7 @@ from .python_policy import inspect_python_interpreter
 from .python_policy import PythonInterpreter
 from .python_policy import resolve_python_interpreter
 from .python_policy import version_label
+from .project_environment import project_venv_dir_override
 from .registry import ArtifactDefinition, get_artifact_definition
 
 PIP_INSTALL_COMMAND_PREFIX = ("-m", "pip", "install", "--disable-pip-version-check")
@@ -530,9 +531,9 @@ def pip_install_command(python_bin: Path, requirements: Iterable[str]) -> list[s
 
 
 def project_venv_dir(project: str) -> Path:
-    override = os.environ.get("BASE_PROJECT_VENV_DIR")
-    if override:
-        return Path(override).expanduser()
+    override = project_venv_dir_override(project)
+    if override is not None:
+        return override
     return Path.home() / ".base.d" / project / ".venv"
 
 

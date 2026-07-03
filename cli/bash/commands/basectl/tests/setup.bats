@@ -280,6 +280,39 @@ EOF
     [[ "$(cat "$TEST_STATE_DIR/project-setup-python")" != *"$inherited_venv/bin/python"* ]]
 }
 
+@test "basectl setup explicit project ignores different active project virtualenv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local inherited_venv="$TEST_TMPDIR/active-base-venv"
+    local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    create_project_setup_venv_stub "$demo_venv_dir"
+    create_project_setup_venv_stub "$inherited_venv"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command \
+        BASE_PROJECT=base \
+        BASE_PROJECT_VENV_DIR="$inherited_venv" \
+        setup --dry-run --manifest "$manifest_path" demo
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/project-setup-python" ]
+    actual_python="$(cat "$TEST_STATE_DIR/project-setup-python")"
+    [[ "$actual_python" == *"$demo_venv_dir/bin/python"* ]] || {
+        printf 'actual project setup python: %s\n' "$actual_python" >&3
+        false
+    }
+    [[ "$actual_python" != *"$inherited_venv/bin/python"* ]]
+}
+
 @test "setup installs Base Python packages without pip self-version notices" {
     local bash_libs_dir
     local venv_dir="$TEST_HOME/.base.d/base/.venv"

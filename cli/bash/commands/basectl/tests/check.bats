@@ -325,6 +325,41 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format text demo)" ]
 }
 
+@test "basectl check explicit project ignores different active project virtualenv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local inherited_venv="$TEST_TMPDIR/active-base-venv"
+    local actual_python
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$base_venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$demo_venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$inherited_venv"
+
+    run_base_command \
+        BASE_SETUP_TEST_WORKSPACE="$workspace" \
+        BASE_PROJECT=base \
+        BASE_PROJECT_VENV_DIR="$inherited_venv" \
+        check demo
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/project-setup-python" ]
+    actual_python="$(cat "$TEST_STATE_DIR/project-setup-python")"
+    [[ "$actual_python" == *"$demo_venv_dir/bin/python"* ]] || {
+        printf 'actual project check python: %s\n' "$actual_python" >&3
+        false
+    }
+    [[ "$actual_python" != *"$inherited_venv/bin/python"* ]]
+}
+
 @test "basectl check project records last check status" {
     local record_path="$TEST_HOME/.base.d/demo/checks/last.json"
     local venv_dir="$TEST_HOME/.base.d/base/.venv"

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from .manifest import BaseManifest
+from .project_environment import project_venv_dir_override
 from .uv import manifest_uses_uv_project_manager
 
 
@@ -58,9 +58,9 @@ def route_for_manifest(manifest: BaseManifest) -> ProjectRoute:
 
 
 def project_venv_dir(project: str, project_root: Path | None = None, uses_uv_manager: bool = False) -> Path:
-    override = os.environ.get("BASE_PROJECT_VENV_DIR")
-    if project != "base" and override:
-        return Path(override).expanduser()
+    override = project_venv_dir_override(project)
+    if project != "base" and override is not None:
+        return override
     if project != "base" and uses_uv_manager and project_root is not None:
         return project_root / ".venv"
     return Path.home() / ".base.d" / project / ".venv"
