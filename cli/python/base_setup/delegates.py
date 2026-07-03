@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,12 @@ from . import process
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
-from .platform_policy import brewfile_delegates_supported, platform_label
+from .platform_policy import brewfile_delegates_supported, current_base_platform, platform_label
+from .user_paths import prepend_user_local_bin_to_path
+from .user_paths import user_local_bin
+
+
+MISE_INSTALL_COMMAND_TEXT = "curl https://mise.run | sh"
 
 
 def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
@@ -96,23 +102,28 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P020",
         )
 
-    if not process.command_exists("mise"):
+    mise_bin = mise_executable()
+    if mise_bin is None:
         return ArtifactCheck(
             name="mise",
             ok=False,
-            message=f"mise is required for project config '{mise_path}'.",
-            fix="Install mise, then run 'basectl setup'.",
+            message=f"mise is not available, but the manifest declares project config '{mise_path}'.",
+            fix=(
+                f"Run 'basectl setup {manifest.project_name} --dry-run' to review the mise bootstrap, "
+                "then rerun with '--yes', or install mise manually."
+            ),
             finding_id="BASE-P021",
+            status="warn",
         )
 
     project_root = manifest.path.parent.resolve()
     details = mise_details(project_root, mise_path)
-    trust_problem = check_mise_trust(project_root, mise_path, details)
+    trust_problem = check_mise_trust(project_root, mise_path, mise_bin, details)
     if trust_problem is not None:
         return trust_problem
 
     verified_details = details | {"trusted": True, "missing_tools_checked": True}
-    missing_problem = check_mise_missing_tools(manifest, project_root, mise_path, verified_details)
+    missing_problem = check_mise_missing_tools(manifest, project_root, mise_path, mise_bin, verified_details)
     if missing_problem is not None:
         return missing_problem
 
@@ -126,10 +137,15 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
     )
 
 
-def check_mise_trust(project_root: Path, mise_path: Path, details: dict[str, object]) -> ArtifactCheck | None:
+def check_mise_trust(
+    project_root: Path,
+    mise_path: Path,
+    mise_bin: Path,
+    details: dict[str, object],
+) -> ArtifactCheck | None:
     try:
         trust_check = process.run_capture(
-            ["mise", "trust", "--show"],
+            [str(mise_bin), "trust", "--show"],
             cwd=project_root,
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
@@ -183,11 +199,12 @@ def check_mise_missing_tools(
     manifest: BaseManifest,
     project_root: Path,
     mise_path: Path,
+    mise_bin: Path,
     details: dict[str, object],
 ) -> ArtifactCheck | None:
     try:
         missing_check = process.run_capture(
-            ["mise", "ls", "--missing", "--json"],
+            [str(mise_bin), "ls", "--missing", "--json"],
             cwd=project_root,
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
@@ -303,16 +320,45 @@ def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool)
 
     mise_path = resolve_mise_path(manifest)
     project_root = manifest.path.parent.resolve()
-    command = ["mise", "install"]
+    mise_bin = ensure_mise_available(ctx, manifest, dry_run=dry_run)
+    command = ["mise", "install"] if dry_run else [str(mise_bin), "install"]
     if dry_run:
         process.dry_run_command(ctx, command, cwd=project_root)
         return
 
-    if not process.command_exists("mise"):
-        raise ArtifactError(f"mise is required to install project tool versions from '{mise_path}'.")
-
     ctx.log.info("Installing mise-managed tools from '%s'.", mise_path)
     process.run_command(ctx, command, cwd=project_root)
+
+
+def ensure_mise_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> Path:
+    mise_bin = mise_executable()
+    if mise_bin is not None:
+        return mise_bin
+
+    if current_base_platform() != "linux-debian":
+        raise ArtifactError("mise is required to set up this project. Install mise and rerun basectl setup.")
+
+    if dry_run:
+        ctx.log.info("[DRY-RUN] Would bootstrap mise: %s", MISE_INSTALL_COMMAND_TEXT)
+        return Path("mise")
+
+    if os.environ.get("BASE_SETUP_YES") != "true":
+        raise ArtifactError(
+            f"mise is required to set up project '{manifest.project_name}'. "
+            f"Run 'basectl setup {manifest.project_name} --dry-run' to review the mise bootstrap, "
+            "then rerun with '--yes' to apply it."
+        )
+
+    ctx.log.info("Bootstrapping mise for project '%s'.", manifest.project_name)
+    process.run_command(ctx, ["sh", "-c", MISE_INSTALL_COMMAND_TEXT])
+    prepend_user_local_bin_to_path()
+    mise_bin = mise_executable()
+    if mise_bin is None:
+        raise ArtifactError(
+            "mise bootstrap completed, but mise was not found. "
+            "Add '$HOME/.local/bin' to PATH or install mise, then rerun basectl setup."
+        )
+    return mise_bin
 
 
 def resolve_brewfile_path(manifest: BaseManifest) -> Path:
@@ -352,6 +398,17 @@ def missing_tool_names(payload: Any) -> list[str]:
         return ["unknown"] if payload else []
     names = [str(name) for name, value in payload.items() if value]
     return sorted(names)
+
+
+def mise_executable() -> Path | None:
+    resolved = shutil.which("mise")
+    if resolved:
+        return Path(resolved)
+
+    candidate = user_local_bin() / "mise"
+    if candidate.is_file() and os.access(candidate, os.X_OK):
+        return candidate
+    return None
 
 
 def resolve_mise_path(manifest: BaseManifest) -> Path:

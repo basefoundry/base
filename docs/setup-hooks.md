@@ -37,7 +37,8 @@ relative to setup.
 
 The `brewfile` delegate is platform-aware. Base runs `brew bundle` on macOS, but
 on Ubuntu/Debian it treats Brewfiles as unsupported macOS package declarations
-and continues through platform-native project setup such as `python.manager: uv`.
+and continues through platform-native project setup such as `python.manager: uv`
+or `mise: .mise.toml`.
 
 When a project needs a product-specific guided installer or imperative
 bootstrap, that logic should live in the project repository, for example:

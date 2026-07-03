@@ -153,6 +153,13 @@ is missing, and `basectl setup <project> --yes` installs `uv` before delegating
 Python setup to `uv sync`. Base does not install `uv` for projects that have not
 opted into the uv contract.
 
+Projects that declare a `mise` config use the same Ubuntu/Debian review gate:
+`basectl setup <project> --dry-run` shows the planned `mise` bootstrap when
+`mise` is missing, and `basectl setup <project> --yes` installs `mise` before
+delegating project tool setup to `mise install`. Base does not automatically
+trust project-owned mise configs; if mise reports an untrusted config, review it
+and run `mise trust <path-to-mise-config>` before retrying setup.
+
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run the browser-backed flow when you need GitHub access:
 

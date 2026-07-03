@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Bootstrapped `mise` during Ubuntu/Debian project setup when a manifest
+  declares a project-owned mise config, while keeping the mutation guarded by
+  `--dry-run` review and `--yes`.
 - Bootstrapped `uv` during Ubuntu/Debian project setup when a manifest
   explicitly opts into `python.manager: uv` or `runner: uv`, while keeping the
   mutation guarded by `--dry-run` review and `--yes`.

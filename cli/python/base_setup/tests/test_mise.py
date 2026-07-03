@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_setup import delegates, engine
+from base_setup.delegates import MISE_INSTALL_COMMAND_TEXT
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest
 from base_setup.tests.helpers import fake_context
@@ -67,12 +68,62 @@ class MiseTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            delegates.reconcile_mise(ctx, manifest, dry_run=True)
+            with mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")):
+                delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn(f"[DRY-RUN] Would run in '{project_root.resolve()}': mise install", info_messages)
 
 
+
+    def test_mise_dry_run_plans_linux_debian_bootstrap_when_missing(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.delegates.mise_executable", return_value=None),
+            ):
+                delegates.reconcile_mise(ctx, manifest, dry_run=True)
+
+        ctx.log.info.assert_any_call("[DRY-RUN] Would bootstrap mise: %s", MISE_INSTALL_COMMAND_TEXT)
+        ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", project_root.resolve(), "mise install")
+
+    def test_mise_bootstraps_on_linux_debian_with_yes(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+            mise_path = Path(tmpdir) / ".local" / "bin" / "mise"
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
+                mock.patch("base_setup.delegates.mise_executable", side_effect=[None, mise_path]),
+                mock.patch("base_setup.delegates.process.run_command") as run_command,
+            ):
+                delegates.reconcile_mise(ctx, manifest, dry_run=False)
+
+        self.assertEqual(run_command.call_args_list[0].args[1], ["sh", "-c", MISE_INSTALL_COMMAND_TEXT])
+        self.assertEqual(run_command.call_args_list[1].args[1], [str(mise_path), "install"])
+        self.assertEqual(run_command.call_args_list[1].kwargs["cwd"], project_root.resolve())
+
+    def test_mise_requires_yes_before_linux_debian_bootstrap(self) -> None:
+        ctx = fake_context()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}, clear=False),
+                mock.patch("base_setup.delegates.mise_executable", return_value=None),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "Run 'basectl setup demo --dry-run'.*'--yes'"):
+                    delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
     def test_mise_invokes_install_in_project_root(self) -> None:
         ctx = fake_context()
@@ -88,7 +139,7 @@ class MiseTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+            with mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")), mock.patch(
                 "base_setup.process.run_command"
             ) as run_command:
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
@@ -123,6 +174,22 @@ class MiseTests(unittest.TestCase):
             ],
         )
 
+    def test_mise_check_warns_when_tool_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            manifest = make_manifest(project_root)
+
+            with mock.patch("base_setup.delegates.mise_executable", return_value=None):
+                check = delegates.check_mise(manifest)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.status, "warn")
+        self.assertEqual(check.finding_id, "BASE-P021")
+        self.assertIn("mise is not available", check.message)
+        self.assertIn("basectl setup demo --dry-run", check.fix)
+        self.assertIn("--yes", check.fix)
+
 
     def test_mise_check_reports_untrusted_project_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -152,7 +219,7 @@ class MiseTests(unittest.TestCase):
             manifest = make_manifest(project_root)
 
             with (
-                mock.patch("base_setup.process.command_exists", return_value=True),
+                mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")),
                 mock.patch(
                     "base_setup.process.run_capture",
                     side_effect=subprocess.TimeoutExpired(
@@ -228,7 +295,7 @@ class MiseTests(unittest.TestCase):
             )
 
             with (
-                mock.patch("base_setup.process.command_exists", return_value=True),
+                mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")),
                 mock.patch(
                     "base_setup.process.run_capture",
                     side_effect=[

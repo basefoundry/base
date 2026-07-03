@@ -11,6 +11,8 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
+from .user_paths import prepend_user_local_bin_to_path
+from .user_paths import user_local_bin
 
 
 UV_INSTALL_COMMAND_TEXT = "curl -LsSf https://astral.sh/uv/install.sh | sh"
@@ -142,18 +144,6 @@ def uv_executable() -> Path | None:
     if candidate.is_file() and os.access(candidate, os.X_OK):
         return candidate
     return None
-
-
-def user_local_bin() -> Path:
-    return Path.home() / ".local" / "bin"
-
-
-def prepend_user_local_bin_to_path() -> None:
-    bin_dir = str(user_local_bin())
-    current_path = os.environ.get("PATH", "")
-    path_entries = current_path.split(os.pathsep) if current_path else []
-    if bin_dir not in path_entries:
-        os.environ["PATH"] = os.pathsep.join([bin_dir, *path_entries]) if path_entries else bin_dir
 
 
 def pyproject_check(pyproject_path: Path) -> ArtifactCheck:
