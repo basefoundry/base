@@ -19,16 +19,20 @@ PROJECT_RUNTIME_ENV_VARS = (
 )
 
 
-def run_engine(args: list[str]) -> tuple[int, str, str]:
+def run_engine(args: list[str], extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
     with tempfile.TemporaryDirectory() as home_dir:
+        env = {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])}
+        if extra_env:
+            env.update(extra_env)
         with mock.patch.dict(
             os.environ,
-            {"HOME": home_dir, "BASE_HOME": str(Path(__file__).resolve().parents[4])},
+            env,
         ):
             for name in PROJECT_RUNTIME_ENV_VARS:
-                os.environ.pop(name, None)
+                if extra_env is None or name not in extra_env:
+                    os.environ.pop(name, None)
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()

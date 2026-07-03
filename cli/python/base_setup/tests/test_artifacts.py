@@ -535,7 +535,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             venv_dir = Path(tmpdir) / "custom-venv"
             with mock.patch.dict(
                 os.environ,
-                {"BASE_PROJECT": "wrong-project", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
+                {"BASE_PROJECT": "demo", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
             ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
@@ -548,8 +548,6 @@ class ArtifactReconcileTests(unittest.TestCase):
             f"[DRY-RUN] Would run: {venv_dir}/bin/python -m pip install --disable-pip-version-check requests",
             info_messages,
         )
-
-
 
     def test_python_artifact_uses_manifest_project_not_environment(self) -> None:
         definition = get_artifact_definition("python-package", "requests")

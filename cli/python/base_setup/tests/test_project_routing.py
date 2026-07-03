@@ -16,6 +16,59 @@ def write_manifest(root: Path, content: str) -> Path:
 
 
 class ProjectRoutingTests(unittest.TestCase):
+    def test_route_ignores_different_active_project_venv_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "demo"
+            active_venv = Path(tmpdir) / "base" / ".venv"
+            manifest_path = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "route", "--format", "json", "demo"],
+                extra_env={"BASE_PROJECT": "base", "BASE_PROJECT_VENV_DIR": str(active_venv)},
+            )
+
+        self.assertEqual(status, 0, stderr)
+        route = json.loads(stdout)
+        self.assertEqual(route["project_venv_dir"], str(root.resolve() / ".venv"))
+        self.assertNotEqual(route["project_venv_dir"], str(active_venv))
+
+    def test_route_honors_same_project_venv_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "demo"
+            override_venv = Path(tmpdir) / "custom-venv"
+            manifest_path = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "route", "--format", "json", "demo"],
+                extra_env={"BASE_PROJECT": "demo", "BASE_PROJECT_VENV_DIR": str(override_venv)},
+            )
+
+        self.assertEqual(status, 0, stderr)
+        route = json.loads(stdout)
+        self.assertEqual(route["project_venv_dir"], str(override_venv))
+
     def test_route_json_reports_uv_project_venv(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir) / "demo"

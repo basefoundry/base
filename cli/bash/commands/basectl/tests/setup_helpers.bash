@@ -763,7 +763,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         else
             uses_uv_manager=false
         fi
-        if [[ "$project_arg" != base && -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+        if [[ "$project_arg" != base && -n "${BASE_PROJECT_VENV_DIR:-}" && ( -z "${BASE_PROJECT:-}" || "${BASE_PROJECT:-}" == "$project_arg" ) ]]; then
             route_venv_dir="$BASE_PROJECT_VENV_DIR"
         elif [[ "$project_arg" != base && "$uses_uv_manager" == true ]]; then
             route_venv_dir="$project_root/.venv"

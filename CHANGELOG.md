@@ -15,6 +15,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made `basectl setup --profile dev`, `check --profile dev`, and
   `doctor --profile dev` use apt-backed BATS, GitHub CLI, and ShellCheck
   handling on Ubuntu/Debian instead of requiring Homebrew.
+- Made explicit project setup/check routing ignore active-project virtualenv
+  overrides from a different shell project, so commands such as
+  `basectl setup base-demo` cannot accidentally reuse the `base` venv.
 
 ## [1.5.0] - 2026-07-02
 
