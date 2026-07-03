@@ -85,7 +85,8 @@ From a source checkout, run the full command/library suite through:
 env -u BASE_HOME ./bin/base-test
 ```
 
-The full suite expects Base to resolve external reusable Bash libraries. A
+`bin/base-test` preflights this dependency before starting the source-checkout
+BATS suite. The full suite expects Base to resolve external reusable Bash libraries. A
 normal `~/work/base` checkout uses sibling `~/work/base-bash-libs`
 automatically. A linked issue worktree under `~/work/base-worktrees/<slug>` is a
 nonstandard layout because the sibling lookup would search
