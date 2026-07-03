@@ -10,6 +10,8 @@ from pathlib import Path
 from base_setup import build, engine
 from base_setup.manifest import BaseManifest, BuildConfig, BuildTargetConfig
 
+PATH_INDEPENDENT_BUILD_COMMAND = "true"
+
 
 def default_manifest(path: Path) -> BaseManifest:
     return BaseManifest(
@@ -50,7 +52,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             (project_root / "services" / "api").mkdir(parents=True)
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="services/api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="services/api")},
             )
 
             check = build.check_build(manifest)[0]
@@ -65,7 +67,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             project_root = Path(tmpdir)
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="services/api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="services/api")},
             )
 
             check = build.check_build(manifest)[0]
@@ -82,7 +84,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             (project_root / "services" / "api").write_text("not a directory\n", encoding="utf-8")
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="services/api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="services/api")},
             )
 
             check = build.check_build(manifest)[0]
@@ -95,7 +97,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             project_root = Path(tmpdir)
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir=str(project_root))},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir=str(project_root))},
             )
 
             check = build.check_build(manifest)[0]
@@ -109,7 +111,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             project_root.mkdir()
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="../api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="../api")},
             )
 
             check = build.check_build(manifest)[0]
@@ -123,7 +125,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             (project_root / "services" / "api").mkdir(parents=True)
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="services/api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="services/api")},
             )
 
             checks = engine.manifest_checks(default_manifest(Path(tmpdir) / "default.yaml"), manifest)
@@ -136,7 +138,7 @@ class BuildDiagnosticsTests(unittest.TestCase):
             project_root = Path(tmpdir)
             manifest = build_manifest(
                 project_root / "base_manifest.yaml",
-                {"api": BuildTargetConfig(command="go build ./cmd/api", working_dir="services/api")},
+                {"api": BuildTargetConfig(command=PATH_INDEPENDENT_BUILD_COMMAND, working_dir="services/api")},
             )
             stdout = StringIO()
             with redirect_stdout(stdout):
