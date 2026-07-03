@@ -101,6 +101,30 @@ load ./setup_helpers.bash
     [[ "$output" != *"Xcode"* ]]
 }
 
+@test "basectl check linux-debian treats missing dev tools as warnings" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_system_python3_stub
+    create_linux_prerequisite_stubs
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh,bats,shellcheck,jq,go \
+        check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub CLI 'gh' is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"BATS is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"ShellCheck is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"jq is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"Go is not available for Ubuntu/Debian developer tooling checks."* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+    [[ "$output" != *"found missing requirements"* ]]
+}
+
 @test "basectl check linux-debian reports missing prerequisite apt hints" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
@@ -130,17 +154,17 @@ EOF
     [[ "$output" == *"Install python3-venv with 'sudo apt-get install python3-venv', then rerun 'basectl check'."* ]]
     [[ "$output" == *"Git is not available for Ubuntu/Debian runtime checks."* ]]
     [[ "$output" == *"Install git with 'sudo apt-get install git', then rerun 'basectl check'."* ]]
-    [[ "$output" == *"GitHub CLI 'gh' is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"GitHub CLI 'gh' is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
     [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
     [[ "$output" == *"sudo apt install gh -y"* ]]
-    [[ "$output" == *"BATS is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"BATS is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Install bats with 'sudo apt-get install bats', then rerun 'basectl check'."* ]]
-    [[ "$output" == *"ShellCheck is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"ShellCheck is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Install shellcheck with 'sudo apt-get install shellcheck', then rerun 'basectl check'."* ]]
-    [[ "$output" == *"jq is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"jq is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Install jq with 'sudo apt-get install jq', then rerun 'basectl check'."* ]]
-    [[ "$output" == *"Go is not available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"Go is not available for Ubuntu/Debian developer tooling checks."* ]]
     [[ "$output" == *"Install Go with 'sudo apt-get install golang-go', then rerun 'basectl check'."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
@@ -535,6 +559,32 @@ EOF
     assert_base_bash_libraries_json_finding "$output"
     [[ "$output" != *'"name":"homebrew"'* ]]
     [[ "$output" != *'"name":"xcode_command_line_tools"'* ]]
+    [ "${stderr:-}" = "" ]
+}
+
+@test "basectl check --format json reports missing linux dev tools as warnings" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_system_python3_stub
+    create_linux_prerequisite_stubs
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command_separate_stderr \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh,bats,shellcheck,jq,go \
+        check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"status": "warn"'* ]]
+    [[ "$output" == *'"id":"BASE-D010","status":"ok","name":"git"'* ]]
+    [[ "$output" == *'"id":"BASE-D011","status":"warn","name":"gh"'* ]]
+    [[ "$output" == *'"id":"BASE-D012","status":"warn","name":"bats"'* ]]
+    [[ "$output" == *'"id":"BASE-D013","status":"warn","name":"shellcheck"'* ]]
+    [[ "$output" == *'"id":"BASE-D014","status":"warn","name":"jq"'* ]]
+    [[ "$output" == *'"id":"BASE-D015","status":"warn","name":"go"'* ]]
     [ "${stderr:-}" = "" ]
 }
 
