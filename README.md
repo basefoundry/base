@@ -1253,7 +1253,19 @@ By default it updates all four startup files:
 - `~/.zshrc`
 
 Missing files are created. Existing files keep their non-Base content; Base only
-adds or replaces its marked section.
+adds or replaces its marked section. Before changing an existing startup file,
+`basectl update-profile` writes a timestamped sibling backup such as
+`~/.bashrc.backup.YYYYMMDDTHHMMSS`.
+
+To remove Base from shell startup files without hand-editing dotfiles, run:
+
+```bash
+basectl update-profile --remove
+```
+
+This removes only Base-managed marked sections from Bash and Zsh startup files.
+Use `basectl update-profile --remove --dry-run` to preview the planned backups
+and removals.
 
 `basectl update-profile` also creates `~/.base.d/profile.conf`, which records
 whether the user has opted into Base's optional shell defaults. The managed

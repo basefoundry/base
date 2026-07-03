@@ -335,7 +335,7 @@ _base_basectl_completion() {
                 "--profile --dry-run --yes --no-profile -v -h --help"
             ;;
         update-profile)
-            _base_basectl_completion_compgen "--defaults --no-defaults --dry-run -v -h --help" "$cur"
+            _base_basectl_completion_compgen "--defaults --no-defaults --remove --dry-run -v -h --help" "$cur"
             ;;
         update)
             _base_basectl_completion_project_or_options "--dry-run -v -h --help" "$cur"
