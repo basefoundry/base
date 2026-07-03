@@ -239,7 +239,7 @@ class CommandLintDiagnosticsTests(unittest.TestCase):
                 },
             )
 
-            with mock.patch("base_setup.uv.process.command_exists", return_value=False):
+            with mock.patch("base_setup.uv.uv_executable", return_value=None):
                 checks = engine.manifest_checks(default_manifest(project_root / "default.yaml"), manifest)
 
         self.assertIn("BASE-P150", [check.finding_id for check in checks])

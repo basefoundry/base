@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 import base_cli
@@ -9,6 +10,10 @@ from . import process
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
+from .platform_policy import current_base_platform
+
+
+UV_INSTALL_COMMAND_TEXT = "curl -LsSf https://astral.sh/uv/install.sh | sh"
 
 
 def manifest_uses_uv_project_manager(manifest: BaseManifest) -> bool:
@@ -30,17 +35,21 @@ def manifest_declares_uv_runner(manifest: BaseManifest) -> bool:
 
 
 def reconcile_uv_project(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
-    if not manifest_uses_uv_project_manager(manifest):
+    uses_uv_manager = manifest_uses_uv_project_manager(manifest)
+    uses_uv_runner = manifest_declares_uv_runner(manifest)
+    if not uses_uv_manager and not uses_uv_runner:
+        return
+
+    uv_bin = ensure_uv_available(ctx, manifest, dry_run=dry_run)
+    if not uses_uv_manager:
         return
 
     project_root = manifest.path.parent
-    command = ["uv", "sync"]
+    command = ["uv", "sync"] if dry_run else [str(uv_bin), "sync"]
     if dry_run:
         process.dry_run_command(ctx, command, cwd=project_root)
         return
-    if not process.command_exists("uv"):
-        raise ArtifactError("uv is required to set up this project. Install uv and rerun basectl setup.")
-    if process.run_check(["uv", "sync", "--check"], cwd=project_root):
+    if process.run_check([str(uv_bin), "sync", "--check"], cwd=project_root):
         ctx.log.info("uv project environment is already synchronized for '%s'.", project_root)
         return
     process.run_command(ctx, command, cwd=project_root)
@@ -53,8 +62,8 @@ def check_uv(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
         return ()
 
     checks: list[ArtifactCheck] = []
-    uv_available = process.command_exists("uv")
-    checks.append(uv_tool_check(uv_available, uses_uv_manager, uses_uv_runner))
+    uv_available = uv_executable() is not None
+    checks.append(uv_tool_check(manifest.project_name, uv_available, uses_uv_manager, uses_uv_runner))
 
     if uses_uv_manager:
         checks.append(pyproject_check(manifest.path.parent / "pyproject.toml"))
@@ -67,7 +76,7 @@ def check_uv(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
     return tuple(checks)
 
 
-def uv_tool_check(uv_available: bool, uses_uv_manager: bool, uses_uv_runner: bool) -> ArtifactCheck:
+def uv_tool_check(project_name: str, uv_available: bool, uses_uv_manager: bool, uses_uv_runner: bool) -> ArtifactCheck:
     if uv_available:
         return ArtifactCheck(
             name="uv",
@@ -84,10 +93,67 @@ def uv_tool_check(uv_available: bool, uses_uv_manager: bool, uses_uv_runner: boo
         name="uv",
         ok=False,
         message=f"uv is not available, but the manifest declares {reason} support.",
-        fix="Install uv, then rerun basectl setup/check.",
+        fix=(
+            f"Run 'basectl setup {project_name} --dry-run' to review the uv bootstrap, "
+            "then rerun with '--yes', or install uv manually."
+        ),
         finding_id="BASE-P150",
         status="warn",
     )
+
+
+def ensure_uv_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> Path:
+    uv_bin = uv_executable()
+    if uv_bin is not None:
+        return uv_bin
+
+    if current_base_platform() != "linux-debian":
+        raise ArtifactError("uv is required to set up this project. Install uv and rerun basectl setup.")
+
+    if dry_run:
+        ctx.log.info("[DRY-RUN] Would bootstrap uv: %s", UV_INSTALL_COMMAND_TEXT)
+        return Path("uv")
+
+    if os.environ.get("BASE_SETUP_YES") != "true":
+        raise ArtifactError(
+            f"uv is required to set up project '{manifest.project_name}'. "
+            f"Run 'basectl setup {manifest.project_name} --dry-run' to review the uv bootstrap, "
+            "then rerun with '--yes' to apply it."
+        )
+
+    ctx.log.info("Bootstrapping uv for project '%s'.", manifest.project_name)
+    process.run_command(ctx, ["sh", "-c", UV_INSTALL_COMMAND_TEXT])
+    prepend_user_local_bin_to_path()
+    uv_bin = uv_executable()
+    if uv_bin is None:
+        raise ArtifactError(
+            "uv bootstrap completed, but uv was not found. "
+            "Add '$HOME/.local/bin' to PATH or install uv, then rerun basectl setup."
+        )
+    return uv_bin
+
+
+def uv_executable() -> Path | None:
+    resolved = shutil.which("uv")
+    if resolved:
+        return Path(resolved)
+
+    candidate = user_local_bin() / "uv"
+    if candidate.is_file() and os.access(candidate, os.X_OK):
+        return candidate
+    return None
+
+
+def user_local_bin() -> Path:
+    return Path.home() / ".local" / "bin"
+
+
+def prepend_user_local_bin_to_path() -> None:
+    bin_dir = str(user_local_bin())
+    current_path = os.environ.get("PATH", "")
+    path_entries = current_path.split(os.pathsep) if current_path else []
+    if bin_dir not in path_entries:
+        os.environ["PATH"] = os.pathsep.join([bin_dir, *path_entries]) if path_entries else bin_dir
 
 
 def pyproject_check(pyproject_path: Path) -> ArtifactCheck:

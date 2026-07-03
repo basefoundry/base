@@ -148,6 +148,9 @@ How Base should coexist:
 - report missing uv, missing `.venv`, or needed `uv sync` steps through
   Base-native check and doctor output when the project has opted into that
   contract
+- on Ubuntu/Debian, bootstrap the `uv` tool during `basectl setup <project>`
+  only after the manifest has explicitly opted into uv and the caller has
+  reviewed `--dry-run` output and passed `--yes`
 - invoke uv transparently, so dry-run output, logs, and diagnostics show the
   underlying `uv sync` or `uv run -- ...` command instead of hiding it behind
   Base

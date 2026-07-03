@@ -700,6 +700,24 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
 }
 
+@test "basectl setup --yes linux-debian forwards consent to uv-managed project setup" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/demo"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    mkdir -p "$project_root"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\npython:\n  manager: uv\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --yes --dry-run --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-yes")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-platform")" = "linux-debian" ]
+}
+
 @test "project setup resolves named project manifests from the workspace" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"

@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Bootstrapped `uv` during Ubuntu/Debian project setup when a manifest
+  explicitly opts into `python.manager: uv` or `runner: uv`, while keeping the
+  mutation guarded by `--dry-run` review and `--yes`.
 - Allowed repeated Ubuntu/Debian `basectl setup` runs without `--yes` when all
   apt prerequisites are already installed, while still requiring `--yes` before
   Base mutates apt-managed system packages.

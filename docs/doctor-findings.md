@@ -174,7 +174,9 @@ without failing the Base manifest check by themselves.
 when uv tooling or expected uv project files are missing, because check/doctor
 should explain readiness without performing dependency resolution. Command
 invocation still fails hard when a command declares `runner: uv` and the `uv`
-executable is unavailable.
+executable is unavailable. On Ubuntu/Debian, `BASE-P150` recovery should point
+users to `basectl setup <project> --dry-run` followed by `--yes` when the
+manifest has explicitly opted into uv.
 For the full uv manifest contract, migration paths, and runner configuration,
 see [Python Manifest](python-manifest.md).
 
