@@ -6,6 +6,7 @@ import time
 import venv
 from collections.abc import Iterable
 from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 
 import base_cli
@@ -14,6 +15,7 @@ from . import process
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import ArtifactRequest
+from .platform_policy import current_base_platform
 from .python_policy import evaluate_python_requirement
 from .python_policy import inspect_python_interpreter
 from .python_policy import PythonInterpreter
@@ -24,6 +26,9 @@ from .registry import ArtifactDefinition, get_artifact_definition
 
 PIP_INSTALL_COMMAND_PREFIX = ("-m", "pip", "install", "--disable-pip-version-check")
 PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS = process.DIAGNOSTIC_TIMEOUT_SECONDS
+LINUX_DEBIAN_SYSTEM_TOOL_PACKAGES = {
+    ("tool", "bats-core"): "bats",
+}
 
 
 @dataclass(frozen=True)
@@ -65,8 +70,24 @@ def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tupl
                 f"'{artifact.name}' of type '{artifact.artifact_type}'. "
                 "Base does not know how to manage this artifact yet."
             )
-        definitions.append(definition)
+        definitions.append(platform_artifact_definition(definition))
     return tuple(definitions)
+
+
+def platform_artifact_definition(definition: ArtifactDefinition) -> ArtifactDefinition:
+    if current_base_platform() != "linux-debian":
+        return definition
+
+    system_package = LINUX_DEBIAN_SYSTEM_TOOL_PACKAGES.get((definition.artifact_type, definition.name))
+    if system_package is None:
+        return definition
+
+    return replace(
+        definition,
+        manager="system-package",
+        package=system_package,
+        check_kind="system_command",
+    )
 
 
 def merge_artifacts(
@@ -106,6 +127,8 @@ def check_artifact(
 ) -> ArtifactCheck:
     if definition.manager == "homebrew":
         return check_homebrew_artifact(project, artifact, definition)
+    if definition.manager == "system-package":
+        return check_system_package_artifact(project, artifact, definition)
     if definition.manager == "pip":
         return check_python_artifact(project, artifact, definition)
     return ArtifactCheck(
@@ -237,6 +260,44 @@ def check_python_artifact(
     )
 
 
+def check_system_package_artifact(
+    _project: str,
+    artifact: ArtifactRequest,
+    definition: ArtifactDefinition,
+) -> ArtifactCheck:
+    if artifact.version != "latest":
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=False,
+            message=(
+                f"System package artifact '{artifact.name}' specifies version '{artifact.version}', "
+                "but Base only supports system package artifact version 'latest' right now."
+            ),
+            fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
+            finding_id="BASE-P034",
+            details=artifact_details(definition),
+        )
+
+    if process.command_exists(definition.package):
+        return ArtifactCheck(
+            name=artifact.name,
+            ok=True,
+            message=f"Artifact '{artifact.name}' is available through system package '{definition.package}'.",
+            fix="",
+            finding_id="BASE-P034",
+            details=artifact_details(definition),
+        )
+
+    return ArtifactCheck(
+        name=artifact.name,
+        ok=False,
+        message=f"Artifact '{artifact.name}' is missing system package '{definition.package}'.",
+        fix=f"Run 'basectl setup --yes' or install Ubuntu/Debian package '{definition.package}'.",
+        finding_id="BASE-P034",
+        details=artifact_details(definition),
+    )
+
+
 def reconcile_artifact(
     ctx: base_cli.Context,
     definition: ArtifactDefinition,
@@ -247,6 +308,9 @@ def reconcile_artifact(
     runtime_config = project_runtime_config(project)
     if definition.manager == "homebrew":
         reconcile_homebrew_artifact(ctx, definition, version, dry_run=dry_run)
+        return
+    if definition.manager == "system-package":
+        reconcile_system_package_artifact(ctx, definition, version, dry_run=dry_run)
         return
     if definition.manager == "pip":
         reconcile_python_artifact(ctx, definition, version, runtime_config, dry_run=dry_run)
@@ -346,6 +410,41 @@ def reconcile_homebrew_artifact(
         version,
     )
     process.run_command(ctx, install_command)
+
+
+def reconcile_system_package_artifact(
+    ctx: base_cli.Context,
+    definition: ArtifactDefinition,
+    version: str,
+    dry_run: bool,
+) -> None:
+    if version != "latest":
+        raise ArtifactError(
+            "System package artifact "
+            f"'{definition.name}' specifies version '{version}', but Base only supports "
+            "system package artifact version 'latest' right now."
+        )
+
+    if process.command_exists(definition.package):
+        ctx.log.info(
+            "Artifact '%s' is already available through system package '%s'.",
+            definition.name,
+            definition.package,
+        )
+        return
+
+    if dry_run:
+        ctx.log.info(
+            "[DRY-RUN] Would require system package '%s' for artifact '%s'.",
+            definition.package,
+            definition.name,
+        )
+        return
+
+    raise ArtifactError(
+        f"System package '{definition.package}' is required for artifact '{definition.name}'. "
+        "Run 'basectl setup --yes' or install the package manually, then rerun setup."
+    )
 
 
 def reconcile_python_artifact(

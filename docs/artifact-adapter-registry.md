@@ -15,6 +15,11 @@ Today, Base has two artifact behaviors backed by the bundled registry:
   Base-managed project virtual environment.
 - `tool` artifacts resolve to Homebrew packages installed on the host system.
 
+On Ubuntu/Debian, the provider layer may adapt a small supported subset of
+portable `tool` artifacts to system packages. The initial mapping is
+`tool:bats-core` to system package `bats`; macOS keeps using the Homebrew
+`bats-core` package for the same manifest artifact.
+
 That behavior is useful but too implicit. The supported artifact list, manager
 selection, package name, install target, and diagnostics are encoded in Python.
 Adding another artifact family would require changing command code before Base
