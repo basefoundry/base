@@ -326,8 +326,25 @@ def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool)
         process.dry_run_command(ctx, command, cwd=project_root)
         return
 
+    require_mise_trusted_for_setup(manifest, project_root, mise_path, mise_bin)
     ctx.log.info("Installing mise-managed tools from '%s'.", mise_path)
     process.run_command(ctx, command, cwd=project_root)
+
+
+def require_mise_trusted_for_setup(
+    manifest: BaseManifest,
+    project_root: Path,
+    mise_path: Path,
+    mise_bin: Path,
+) -> None:
+    trust_problem = check_mise_trust(project_root, mise_path, mise_bin, mise_details(project_root, mise_path))
+    if trust_problem is None:
+        return
+
+    raise ArtifactError(
+        f"{trust_problem.message} "
+        f"Run '{trust_problem.fix}', then rerun 'basectl setup {manifest.project_name} --yes'."
+    )
 
 
 def ensure_mise_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> Path:
