@@ -81,6 +81,11 @@ Base orchestrates mature tools instead of replacing them:
   additively.
 - Docker, `just`, Taskfile, Devbox, Nix, and similar tools can be project-level
   substrates when a project chooses them.
+- AI agent harnesses own live agent sessions, provider interaction, credentials,
+  sandboxing, approvals, collaboration UI, and multi-agent scheduling. Base
+  should support them only through provider-neutral context packs, repo-local
+  guidance, maintained prompts, local handoff/report artifacts, and explicit
+  opt-in health checks.
 
 Adapters should detect relevance, check health, invoke the underlying tool
 without hiding it, report failures in Base-native diagnostics, and avoid taking

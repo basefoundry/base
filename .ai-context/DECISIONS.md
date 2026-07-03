@@ -60,6 +60,12 @@ architecture discussion.
   hardcoded inside `basectl build`.
 - New tool families such as AI developer tools should stay explicit and
   opt-in.
+- AI agent harnesses such as Codex CLI, Claude Code, Cursor agents, Omnigent,
+  and Pi-like tools are optional adjacent tools. Base may help install or check
+  explicit AI prerequisites, export portable context, render repo-owned prompts,
+  and produce local handoff/report artifacts, but it should not become a live
+  agent runtime, session server, sandbox, provider/account manager, or
+  cost-policy engine.
 
 ## Repository Workflow
 
