@@ -516,6 +516,7 @@ _base_basectl_completion() {
             ;;
         update-profile)
             _arguments '--defaults[Enable shell defaults]' '--no-defaults[Disable shell defaults]' \
+                '--remove[Remove Base-managed shell startup sections]' \
                 '--dry-run[Log without changing files]' '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;

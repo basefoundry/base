@@ -77,6 +77,53 @@ EOF
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
 }
 
+@test "basectl update-profile backs up existing dotfiles before changing them" {
+    local backup_path
+
+    printf '%s\n' 'user bashrc line' > "$TEST_HOME/.bashrc"
+
+    run_base_command update-profile
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Backing up '$TEST_HOME/.bashrc' to '$TEST_HOME/.bashrc.backup."* ]]
+    backup_path="$(find "$TEST_HOME" -maxdepth 1 -type f -name '.bashrc.backup.*' -print)"
+    [[ -n "$backup_path" ]]
+    [ "$(cat "$backup_path")" = "user bashrc line" ]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"user bashrc line"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# >>> base: bashrc managed >>>"* ]]
+    [ -z "$(find "$TEST_HOME" -maxdepth 1 -type f -name '.bash_profile.backup.*' -print)" ]
+}
+
+@test "basectl update-profile --remove removes only Base-managed sections" {
+    printf '%s\n' 'user line before' > "$TEST_HOME/.bashrc"
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+    printf '%s\n' 'user line after' >> "$TEST_HOME/.bashrc"
+
+    run_base_command update-profile --remove
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Backing up '$TEST_HOME/.bashrc' to '$TEST_HOME/.bashrc.backup."* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line before"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"user line after"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"# >>> base: bashrc managed >>>"* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" != *"# <<< base: bashrc managed <<<"* ]]
+    [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_PROFILE_VERSION=1"* ]]
+}
+
+@test "basectl update-profile --remove --dry-run reports backups and removals without writing" {
+    run_base_command update-profile
+    [ "$status" -eq 0 ]
+
+    run_base_command update-profile --remove --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would back up '$TEST_HOME/.bashrc' to '$TEST_HOME/.bashrc.backup."* ]]
+    [[ "$output" == *"[DRY-RUN] Would remove section 'bashrc' from '$TEST_HOME/.bashrc'."* ]]
+    [[ "$(cat "$TEST_HOME/.bashrc")" == *"# >>> base: bashrc managed >>>"* ]]
+    [ -z "$(find "$TEST_HOME" -maxdepth 1 -type f -name '.bashrc.backup.*' -print)" ]
+}
+
 @test "basectl update-profile writes stable Homebrew opt-style paths" {
     local cellar_parent="$TEST_TMPDIR/homebrew/Cellar/base/0.4.0"
     local opt_dir="$TEST_TMPDIR/homebrew/opt"
@@ -562,6 +609,18 @@ EOF
     [ ! -e "$TEST_HOME/.zshrc" ]
 }
 
+@test "basectl update-profile --dry-run reports backups before existing dotfile updates" {
+    printf '%s\n' 'user bash profile line' > "$TEST_HOME/.bash_profile"
+
+    run_base_command update-profile --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would back up '$TEST_HOME/.bash_profile' to '$TEST_HOME/.bash_profile.backup."* ]]
+    [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.bash_profile' with section 'bash_profile'."* ]]
+    [ "$(cat "$TEST_HOME/.bash_profile")" = "user bash profile line" ]
+    [ -z "$(find "$TEST_HOME" -maxdepth 1 -type f -name '.bash_profile.backup.*' -print)" ]
+}
+
 @test "basectl update-profile --defaults enables defaults through profile config" {
     run_base_command update-profile --defaults
 
@@ -670,5 +729,14 @@ EOF
     [[ "$output" == *"Options '--defaults' and '--no-defaults' cannot be used together."* ]]
     [[ "$output" == *"Run 'basectl update-profile --help' for usage."* ]]
     [[ "$output" != *"Usage:"* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
+}
+
+@test "basectl update-profile rejects remove with defaults options" {
+    run_base_command update-profile --remove --defaults
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--remove' cannot be combined with '--defaults' or '--no-defaults'."* ]]
+    [[ "$output" == *"Run 'basectl update-profile --help' for usage."* ]]
     [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
 }

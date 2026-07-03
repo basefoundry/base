@@ -17,6 +17,7 @@ Options:
   --defaults  Enable Base's optional Bash/Zsh shell defaults.
   --no-defaults
               Disable Base's optional Bash/Zsh shell defaults.
+  --remove    Remove Base-managed sections from Bash/Zsh startup files.
   --dry-run   Show what would be updated without changing files.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
@@ -115,24 +116,203 @@ base_update_profile_prepare_section_spacing() {
     printf '\n' >> "$target_file"
 }
 
+base_update_profile_start_marker() {
+    local snippet_name="$1"
+
+    printf '# >>> base: %s managed >>>\n' "$snippet_name"
+}
+
+base_update_profile_end_marker() {
+    local snippet_name="$1"
+
+    printf '# <<< base: %s managed <<<\n' "$snippet_name"
+}
+
+base_update_profile_backup_path() {
+    local target_file="$1"
+    local timestamp="$2"
+    local backup_path="${target_file}.backup.${timestamp}"
+    local suffix=1
+
+    while [[ -e "$backup_path" ]]; do
+        backup_path="${target_file}.backup.${timestamp}.${suffix}"
+        suffix=$((suffix + 1))
+    done
+
+    printf '%s\n' "$backup_path"
+}
+
+base_update_profile_backup_existing_file() {
+    local target_file="$1"
+    local timestamp="$2"
+    local dry_run="$3"
+    local backup_path
+
+    [[ -f "$target_file" ]] || return 0
+
+    backup_path="$(base_update_profile_backup_path "$target_file" "$timestamp")" ||
+        fatal_error "Unable to resolve backup path for '$target_file'."
+
+    if ((dry_run)); then
+        log_info "[DRY-RUN] Would back up '$target_file' to '$backup_path'."
+        return 0
+    fi
+
+    log_info "Backing up '$target_file' to '$backup_path'."
+    cp -p "$target_file" "$backup_path" || fatal_error "Unable to back up '$target_file' to '$backup_path'."
+}
+
+base_update_profile_write_section_content() {
+    local snippet_name="$1"
+    local output_file="$2"
+    local lines=()
+
+    mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
+    printf '%s\n' "${lines[@]}" > "$output_file"
+}
+
+base_update_profile_existing_section_content() {
+    local target_file="$1"
+    local start_marker="$2"
+    local end_marker="$3"
+    local output_file="$4"
+
+    awk -v START_M="$start_marker" -v END_M="$end_marker" '
+    BEGIN {
+        in_section = 0
+        processed = 0
+    }
+    $0 == START_M && processed == 0 {
+        in_section = 1
+        next
+    }
+    $0 == END_M && in_section == 1 {
+        processed = 1
+        exit
+    }
+    in_section == 1 {
+        print $0
+    }
+    END {
+        if (processed == 0) {
+            exit 1
+        }
+    }
+    ' "$target_file" > "$output_file"
+}
+
+base_update_profile_update_file_needs_change() {
+    local target_file="$1"
+    local snippet_name="$2"
+    local start_marker="$3"
+    local end_marker="$4"
+    local current_content_file
+    local desired_content_file
+    local start_count
+    local end_count
+
+    [[ -f "$target_file" ]] || return 0
+
+    start_count="$(grep -cxF -- "$start_marker" "$target_file" || true)"
+    end_count="$(grep -cxF -- "$end_marker" "$target_file" || true)"
+    if ((start_count == 0 && end_count == 0)); then
+        return 0
+    fi
+    if ((start_count != end_count)); then
+        return 0
+    fi
+
+    current_content_file="$(mktemp "${TMPDIR:-/tmp}/base-profile-current.XXXXXX")" ||
+        fatal_error "Unable to create temporary section content file for '$target_file'."
+    desired_content_file="$(mktemp "${TMPDIR:-/tmp}/base-profile-desired.XXXXXX")" || {
+        rm -f "$current_content_file"
+        fatal_error "Unable to create temporary desired content file for '$target_file'."
+    }
+
+    if ! base_update_profile_existing_section_content "$target_file" "$start_marker" "$end_marker" "$current_content_file"; then
+        rm -f "$current_content_file" "$desired_content_file"
+        return 0
+    fi
+    base_update_profile_write_section_content "$snippet_name" "$desired_content_file" || {
+        rm -f "$current_content_file" "$desired_content_file"
+        return 1
+    }
+
+    if cmp -s "$current_content_file" "$desired_content_file"; then
+        rm -f "$current_content_file" "$desired_content_file"
+        return 1
+    fi
+
+    rm -f "$current_content_file" "$desired_content_file"
+    return 0
+}
+
+base_update_profile_remove_file_needs_change() {
+    local target_file="$1"
+    local start_marker="$2"
+    local end_marker="$3"
+    local start_count
+    local end_count
+
+    [[ -f "$target_file" ]] || return 1
+
+    start_count="$(grep -cxF -- "$start_marker" "$target_file" || true)"
+    end_count="$(grep -cxF -- "$end_marker" "$target_file" || true)"
+    ((start_count > 0 || end_count > 0))
+}
+
 base_update_profile_update_file() {
     local target_file="$1"
     local snippet_name="$2"
     local dry_run="$3"
-    local start_marker="# >>> base: ${snippet_name} managed >>>"
-    local end_marker="# <<< base: ${snippet_name} managed <<<"
+    local backup_timestamp="$4"
+    local start_marker
+    local end_marker
     local lines=()
 
+    start_marker="$(base_update_profile_start_marker "$snippet_name")" || return 1
+    end_marker="$(base_update_profile_end_marker "$snippet_name")" || return 1
     mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
 
+    if ! base_update_profile_update_file_needs_change "$target_file" "$snippet_name" "$start_marker" "$end_marker"; then
+        return 0
+    fi
+
     if ((dry_run)); then
+        base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1
         log_info "[DRY-RUN] Would update '$target_file' with section '$snippet_name'."
         return 0
     fi
 
+    base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1
     safe_touch "$target_file"
     base_update_profile_prepare_section_spacing "$target_file" "$start_marker" || return 1
     update_file_section "$target_file" "$start_marker" "$end_marker" "${lines[@]}"
+}
+
+base_update_profile_remove_file() {
+    local target_file="$1"
+    local snippet_name="$2"
+    local dry_run="$3"
+    local backup_timestamp="$4"
+    local start_marker
+    local end_marker
+
+    start_marker="$(base_update_profile_start_marker "$snippet_name")" || return 1
+    end_marker="$(base_update_profile_end_marker "$snippet_name")" || return 1
+
+    if ! base_update_profile_remove_file_needs_change "$target_file" "$start_marker" "$end_marker"; then
+        return 0
+    fi
+
+    if ((dry_run)); then
+        base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1
+        log_info "[DRY-RUN] Would remove section '$snippet_name' from '$target_file'."
+        return 0
+    fi
+
+    base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1
+    update_file_section -r "$target_file" "$start_marker" "$end_marker"
 }
 
 base_update_profile_state_dir() {
@@ -198,8 +378,10 @@ base_update_profile_write_profile_conf() {
 base_update_profile_subcommand_main() {
     local enable_defaults=0
     local disable_defaults=0
+    local remove_sections=0
     local dry_run=0
     local base_home
+    local backup_timestamp
 
     while (($#)); do
         case "$1" in
@@ -208,6 +390,9 @@ base_update_profile_subcommand_main() {
                 ;;
             --no-defaults)
                 disable_defaults=1
+                ;;
+            --remove)
+                remove_sections=1
                 ;;
             --dry-run)
                 dry_run=1
@@ -231,6 +416,10 @@ base_update_profile_subcommand_main() {
         base_update_profile_usage_error "Options '--defaults' and '--no-defaults' cannot be used together."
         return $?
     fi
+    if ((remove_sections && (enable_defaults || disable_defaults))); then
+        base_update_profile_usage_error "Option '--remove' cannot be combined with '--defaults' or '--no-defaults'."
+        return $?
+    fi
 
     log_debug "Running 'basectl update-profile'."
 
@@ -247,10 +436,20 @@ base_update_profile_subcommand_main() {
     export BASE_HOME
 
     base_update_profile_source_file_library || return 1
+    backup_timestamp="$(setup_backup_timestamp)" || fatal_error "Unable to generate update-profile backup timestamp."
+
+    if ((remove_sections)); then
+        base_update_profile_remove_file "$HOME/.bash_profile" bash_profile "$dry_run" "$backup_timestamp" || return 1
+        base_update_profile_remove_file "$HOME/.bashrc" bashrc "$dry_run" "$backup_timestamp" || return 1
+        base_update_profile_remove_file "$HOME/.zprofile" zprofile "$dry_run" "$backup_timestamp" || return 1
+        base_update_profile_remove_file "$HOME/.zshrc" zshrc "$dry_run" "$backup_timestamp" || return 1
+        return 0
+    fi
+
     base_update_profile_write_profile_conf "$enable_defaults" "$disable_defaults" "$dry_run" || return 1
 
-    base_update_profile_update_file "$HOME/.bash_profile" bash_profile "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.bashrc" bashrc "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.zprofile" zprofile "$dry_run" || return 1
-    base_update_profile_update_file "$HOME/.zshrc" zshrc "$dry_run" || return 1
+    base_update_profile_update_file "$HOME/.bash_profile" bash_profile "$dry_run" "$backup_timestamp" || return 1
+    base_update_profile_update_file "$HOME/.bashrc" bashrc "$dry_run" "$backup_timestamp" || return 1
+    base_update_profile_update_file "$HOME/.zprofile" zprofile "$dry_run" "$backup_timestamp" || return 1
+    base_update_profile_update_file "$HOME/.zshrc" zshrc "$dry_run" "$backup_timestamp" || return 1
 }

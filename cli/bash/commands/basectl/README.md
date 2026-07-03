@@ -157,7 +157,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   for AI-assisted workflows. `basectl prompt product-self-review` prints the
   periodic Base product self-review prompt with current Base metadata. Base
   renders the prompt only; an AI tool performs the review.
-- `basectl update-profile` creates or refreshes managed sections in Bash and Zsh dotfiles.
+- `basectl update-profile` creates, refreshes, or removes managed sections in
+  Bash and Zsh dotfiles, backing up existing dotfiles before changes.
 - `basectl update [project]` updates the selected project checkout through Git
   and then runs `basectl setup <project>`. Omitting the project selects `base`;
   Homebrew-managed Base installs still hand off only the Base package to
