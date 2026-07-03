@@ -54,6 +54,57 @@ for the command-by-command compatibility contract and non-GitHub Git workflow.
 
 ## Start Here
 
+### 90-Second Proof, No Dotfile Changes
+
+The fastest trust-conscious evaluation path is a source checkout. It lets you
+inspect the code, run setup explicitly, and prove the local project loop before
+Base touches shell startup files:
+
+```bash
+git clone https://github.com/basefoundry/base.git ~/work/base
+~/work/base/bin/basectl setup --dry-run
+~/work/base/bin/basectl setup
+~/work/base/bin/basectl projects list --workspace ~/work
+~/work/base/bin/basectl demo base -- --non-interactive
+```
+
+That sequence creates Base's local runtime state under `~/.base.d`, but it does
+not edit `~/.bash_profile`, `~/.bashrc`, `~/.zprofile`, or `~/.zshrc`. Use the
+same explicit path, `~/work/base/bin/basectl`, until you decide to add Base to
+future interactive shells.
+
+To inspect a small, real Base-managed project, clone
+[`basefoundry/base-demo`](https://github.com/basefoundry/base-demo) next to
+Base and run its walkthrough:
+
+```bash
+git clone https://github.com/basefoundry/base-demo.git ~/work/base-demo
+~/work/base/bin/basectl setup base-demo
+~/work/base/bin/basectl demo base-demo
+```
+
+Success looks like a workspace where each participating project has a
+`base_manifest.yaml`, appears in `basectl projects list`, can be checked with
+`basectl check <project>`, and can run its declared test command through
+`basectl test <project>` or named project commands through
+`basectl run <project> <command>`.
+
+### Shell Startup Is Explicit
+
+Run `update-profile` only after you want `basectl` on `PATH`, shell
+completions, and `basectl activate <project>` available in new interactive
+shells:
+
+```bash
+~/work/base/bin/basectl update-profile --dry-run
+~/work/base/bin/basectl update-profile
+exec "$SHELL" -l
+```
+
+`update-profile` manages only marked Base sections in Bash and Zsh startup
+files and preserves non-Base content. See [Shell Startup Files](#shell-startup-files)
+for the full dotfile boundary.
+
 ### Choose An Install Path
 
 If your Mac already has Homebrew, Git, and a supported Bash, choose one of the
@@ -68,41 +119,13 @@ normal Base install paths:
 brew trust basefoundry/base
 brew install basefoundry/base/base
 basectl setup
-basectl update-profile
-exec "$SHELL" -l
 ```
 
 ```bash
 # Source checkout install
 git clone https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup
-~/work/base/bin/basectl update-profile
-exec "$SHELL" -l
 ```
-
-### New Or Uncertain macOS Machine?
-
-On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
-may be missing, start with the first-mile bootstrap script:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
-```
-
-The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
-chooses an existing Base install when one is present, otherwise defaults to a
-source checkout at `~/work/base`, and prints the exact `basectl setup` and
-`basectl update-profile` commands to finish the installation.
-
-Choose an install mode explicitly when needed:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
-```
-
-For mode selection, dry-run behavior, and contributor setup details, see
-[First-Mile Bootstrap](docs/bootstrap.md).
 
 For Homebrew installs, Base itself lives under Homebrew's prefix rather than in
 your project workspace. For source checkout installs, Base lives at the clone
@@ -129,6 +152,45 @@ When `workspace.manifest` is set, workspace commands use it unless
 `workspace.manifest_source` is set, `basectl workspace pull` can explicitly
 refresh the local manifest from that canonical source.
 
+### New Or Uncertain macOS Machine?
+
+On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
+may be missing, start with the first-mile bootstrap script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
+```
+
+The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
+chooses an existing Base install when one is present, otherwise defaults to a
+source checkout at `~/work/base`, and prints the exact `basectl setup` and
+`basectl update-profile` commands to finish the installation. It does not edit
+shell startup files automatically.
+
+Choose an install mode explicitly when needed:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --brew
+```
+
+For mode selection, dry-run behavior, and contributor setup details, see
+[First-Mile Bootstrap](docs/bootstrap.md).
+
+### Team Or Security-Conscious Rollout
+
+Use `--dry-run` before first-mile setup when you need to review planned
+installer actions. Managed workstations can pin or mirror Homebrew installer
+content by setting `BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL` and
+`BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256`; Base fails closed if either half of
+that pair is missing or the digest does not match.
+
+Project-owned installers should pin `BASE_INSTALL_URL` to a tag, commit, or
+owned copy and set `BASE_INSTALL_SHA256` before executing Base's installer. See
+[Remote Installer Policy](docs/remote-installer-policy.md) and
+[Project Installers](docs/project-installers.md) for the maintained trust
+contracts.
+
 After Base is installed, the common development loop is:
 
 ```bash
@@ -150,22 +212,6 @@ For Base itself, run the self-demo or the dogfood test contract:
 basectl demo base -- --non-interactive
 basectl test base
 ```
-
-To inspect a small, real Base-managed project, clone
-[`basefoundry/base-demo`](https://github.com/basefoundry/base-demo) next to
-Base and run its walkthrough:
-
-```bash
-git clone https://github.com/basefoundry/base-demo.git
-basectl setup base-demo
-basectl demo base-demo
-```
-
-Success looks like a workspace where each participating project has a
-`base_manifest.yaml`, appears in `basectl projects list`, can be checked with
-`basectl check <project>`, and can run its declared test command through
-`basectl test <project>` or named project commands through
-`basectl run <project> <command>`.
 
 ## How Base Fits
 
