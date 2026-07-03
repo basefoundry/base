@@ -487,6 +487,9 @@ value is configured. If it is not configured, Base falls back to the parent
 directory of `BASE_HOME`, which matches the source-checkout sibling-repo layout.
 Use `--workspace <path>` to inspect a different workspace root for one command.
 Project list output is tab-separated as `<project-name><TAB><path>`.
+In a source checkout, `basectl projects list` can run before `basectl setup`
+when the ambient `python3` has Base's bootstrap Python dependencies available;
+otherwise it reports a targeted setup diagnostic.
 `basectl projects list` and the read-only workspace status, check, and doctor
 commands support `--format json` for machine-readable output. Workspace clone,
 pull, init, and configure use text output only. Workspace status, check, and

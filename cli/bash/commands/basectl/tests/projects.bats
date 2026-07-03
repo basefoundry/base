@@ -67,6 +67,75 @@ EOF
     [ "$(cat "$TEST_TMPDIR/projects-list-state")" = "-m base_projects list --workspace $workspace --format json" ]
 }
 
+@test "basectl projects list falls back to source python before setup" {
+    local workspace="$TEST_TMPDIR/workspace"
+    local state_file="$TEST_TMPDIR/projects-list-state"
+
+    mkdir -p "$workspace/base" "$workspace/demo"
+    cat > "$TEST_MOCKBIN/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" && "${4:-}" == "--workspace" ]]; then
+    {
+        printf 'BASE_PROJECT=%s\n' "${BASE_PROJECT:-}"
+        printf 'PYTHONPATH=%s\n' "${PYTHONPATH:-}"
+        printf 'ARGS=%s\n' "$*"
+    } > "${BASE_TEST_PROJECTS_LIST_STATE:?}"
+    printf '%s\t%s\n' base "$5/base"
+    printf '%s\t%s\n' demo "$5/demo"
+    exit 0
+fi
+printf 'unexpected source python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/python3"
+    printf 'project:\n  name: base\nartifacts: []\n' > "$workspace/base/base_manifest.yaml"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECTS_LIST_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" projects list --workspace "$workspace"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'base\t'"$workspace/base"* ]]
+    [[ "$output" == *$'demo\t'"$workspace/demo"* ]]
+    grep -Fqx "BASE_PROJECT=base" "$state_file"
+    grep -Fqx "PYTHONPATH=$BASE_REPO_ROOT/lib/python:$BASE_REPO_ROOT/cli/python" "$state_file"
+    grep -Fqx "ARGS=-m base_projects list --workspace $workspace" "$state_file"
+}
+
+@test "basectl projects list reports a targeted pre-setup diagnostic without source python dependencies" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$workspace/base"
+    cat > "$TEST_MOCKBIN/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+    exit 1
+fi
+printf 'unexpected source python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/python3"
+    printf 'project:\n  name: base\nartifacts: []\n' > "$workspace/base/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" projects list --workspace "$workspace"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"basectl projects list needs either the Base project virtualenv or a Python 3 with Click and PyYAML available."* ]]
+    [[ "$output" == *"Run 'basectl setup' to create the Base project virtualenv."* ]]
+    [[ "$output" != *"Project virtual environment Python was not found"* ]]
+}
+
 @test "basectl projects list prints help without requiring the Base Python venv" {
     run_basectl projects list --help
 
