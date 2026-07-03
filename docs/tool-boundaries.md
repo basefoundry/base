@@ -98,6 +98,9 @@ How Base should coexist:
 - allow a Base-managed project to declare that it uses `mise.toml`
 - let `basectl setup` or `basectl check` invoke `mise install`, `mise doctor`, or
   `mise run ...` when that is the project's chosen substrate
+- on Ubuntu/Debian, bootstrap the `mise` CLI during `basectl setup <project>`
+  only after the manifest declares a mise config and the caller has reviewed
+  `--dry-run` output and passed `--yes`
 - support Go, Java, and other language runtimes through project-owned
   `.mise.toml` files instead of adding Base-owned package types for each
   language ecosystem
