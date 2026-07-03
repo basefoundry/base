@@ -46,23 +46,53 @@ base_test_is_source_checkout() {
     git -C "$base_test_home" rev-parse --is-inside-work-tree >/dev/null 2>&1
 }
 
+base_test_bash_libs_available() {
+    local candidate
+
+    for candidate in \
+        "${BASE_BASH_LIBS_DIR:-}" \
+        "$base_test_home/../base-bash-libs/lib/bash"; do
+        [[ -n "$candidate" ]] || continue
+        [[ -f "$candidate/std/lib_std.sh" ]] && return 0
+    done
+
+    return 1
+}
+
+base_test_preflight_source_checkout() {
+    base_test_bash_libs_available && return 0
+
+    printf 'ERROR: Base source-checkout Bats tests require base-bash-libs.\n' >&2
+    printf 'Fix: Clone basefoundry/base-bash-libs next to Base or set BASE_BASH_LIBS_DIR.\n' >&2
+    printf 'Docs: docs/testing.md#bash-command-and-runtime-tests\n' >&2
+    return 1
+}
+
 base_test_run_python_suite() {
     env "${base_test_unset_env[@]}" \
         PYTHONPATH="$base_test_home/lib/python:$base_test_home/cli/python${PYTHONPATH:+:$PYTHONPATH}" \
         "$base_test_python" -m pytest
 }
 
-base_test_run_python_suite
-base_test_python_status=$?
-if ((base_test_python_status != 0)); then
-    exit "$base_test_python_status"
-fi
-
 if ! base_test_is_source_checkout; then
+    base_test_run_python_suite
+    base_test_python_status=$?
+    if ((base_test_python_status != 0)); then
+        exit "$base_test_python_status"
+    fi
+
     printf "INFO: Base source checkout not detected at '%s'.\n" "$base_test_home" >&2
     printf 'INFO: Skipping source-checkout-only Bats tests for packaged Base.\n' >&2
     printf "INFO: Run 'env -u BASE_HOME ./bin/base-test' from a Base source checkout for the full developer suite.\n" >&2
     exit 0
+fi
+
+base_test_preflight_source_checkout || exit $?
+
+base_test_run_python_suite
+base_test_python_status=$?
+if ((base_test_python_status != 0)); then
+    exit "$base_test_python_status"
 fi
 
 env "${base_test_unset_env[@]}" \
