@@ -160,6 +160,11 @@ delegating project tool setup to `mise install`. Base does not automatically
 trust project-owned mise configs; if mise reports an untrusted config, review it
 and run `mise trust <path-to-mise-config>` before retrying setup.
 
+Project tool artifacts are still intentionally conservative on Linux. The first
+platform-aware mapping is `tool:bats-core`: the manifest keeps the portable
+artifact name, macOS continues to use Homebrew package `bats-core`, and
+Ubuntu/Debian treats the artifact as satisfied by system package `bats`.
+
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run the browser-backed flow when you need GitHub access:
 

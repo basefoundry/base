@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import io
 import importlib.util
 import os
@@ -120,6 +122,18 @@ class ArtifactRegistryTests(unittest.TestCase):
         self.assertIsNotNone(get_artifact_definition("tool", "bats-core"))
         self.assertIsNotNone(get_artifact_definition("tool", "gh"))
         self.assertIsNotNone(get_artifact_definition("tool", "shellcheck"))
+
+    def test_bats_core_uses_system_package_on_linux_debian(self) -> None:
+        artifact = ArtifactRequest("tool", "bats-core", "latest")
+
+        with mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}):
+            definition = artifacts.resolve_artifact_definitions((artifact,))[0]
+
+        self.assertEqual(definition.name, "bats-core")
+        self.assertEqual(definition.manager, "system-package")
+        self.assertEqual(definition.package, "bats")
+        self.assertEqual(definition.target, "system")
+        self.assertEqual(definition.check_kind, "system_command")
 
 
 
@@ -375,6 +389,37 @@ class ArtifactReconcileTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install terraform", stderr)
         run_check.assert_not_called()
 
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_bats_core_artifact_dry_run_uses_system_package_on_linux_debian(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "",
+                        "artifacts:",
+                        "  - type: tool",
+                        "    name: bats-core",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+                mock.patch("base_setup.process.command_exists", return_value=False),
+                mock.patch("base_setup.process.run_check") as run_check,
+            ):
+                status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertNotIn("brew install bats-core", stderr)
+        self.assertIn("system package 'bats'", stderr)
+        run_check.assert_not_called()
+
 
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -410,6 +455,40 @@ class ArtifactReconcileTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install colima", stderr)
         run_check.assert_not_called()
 
+
+    def test_bats_core_artifact_setup_accepts_installed_system_command_on_linux_debian(self) -> None:
+        artifact = ArtifactRequest("tool", "bats-core", "latest")
+        ctx = fake_context()
+
+        with (
+            mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+            mock.patch("base_setup.process.command_exists", return_value=True),
+            mock.patch("base_setup.process.run_command") as run_command,
+        ):
+            definition = artifacts.resolve_artifact_definitions((artifact,))[0]
+            artifacts.reconcile_artifact(ctx, definition, artifact.version, "demo", dry_run=False)
+
+        run_command.assert_not_called()
+        info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(
+            "Artifact 'bats-core' is already available through system package 'bats'.",
+            info_messages,
+        )
+
+    def test_bats_core_artifact_check_reports_missing_system_package_on_linux_debian(self) -> None:
+        artifact = ArtifactRequest("tool", "bats-core", "latest")
+
+        with (
+            mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
+            mock.patch("base_setup.process.command_exists", return_value=False),
+        ):
+            definition = artifacts.resolve_artifact_definitions((artifact,))[0]
+            check = artifacts.check_artifact("demo", artifact, definition)
+
+        self.assertFalse(check.ok)
+        self.assertEqual(check.finding_id, "BASE-P034")
+        self.assertIn("system package 'bats'", check.message)
+        self.assertEqual(check.fix, "Run 'basectl setup --yes' or install Ubuntu/Debian package 'bats'.")
 
 
     def test_homebrew_artifact_rejects_non_latest_version(self) -> None:

@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made the `tool:bats-core` project artifact platform-aware on Ubuntu/Debian,
+  mapping it to the system `bats` package instead of planning a Homebrew
+  `brew install bats-core` command.
 - Preflighted `mise` trust before `basectl setup` runs `mise install`, so
   untrusted project configs fail with a Base recovery message instead of raw
   lower-level `mise install` output.

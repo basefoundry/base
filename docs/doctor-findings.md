@@ -119,6 +119,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-P031` | Unsupported Homebrew artifact version |
 | `BASE-P032` | Homebrew unavailable for artifact checks |
 | `BASE-P033` | Homebrew artifact package presence and freshness |
+| `BASE-P034` | Platform system-package artifact presence |
 | `BASE-P040` | Python package artifact status in the project virtual environment |
 | `BASE-P050` | Project virtual environment readiness |
 | `BASE-P060` | Project demo declaration |
