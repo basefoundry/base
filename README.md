@@ -329,7 +329,9 @@ manifests from unfamiliar repositories before running `basectl test`,
 only want to inspect the resolved command contract. `basectl check <project>`
 and `basectl doctor <project>` include advisory command-lint warnings for
 obvious missing executables or project scripts; those warnings do not make an
-untrusted manifest safe to run.
+untrusted manifest safe to run. See
+[Manifest Command Trust](docs/manifest-command-trust.md) for the planned local
+allow flow before first execution of unfamiliar manifest commands.
 
 The optional top-level `brewfile` field points to a Homebrew `Brewfile` relative
 to the project root. When present, `basectl setup` runs
