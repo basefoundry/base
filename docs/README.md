@@ -120,6 +120,9 @@ reference. The filename should answer "what is this about?"
 - [Remote Installer Policy](remote-installer-policy.md) defines the allowed
   remote shell installer URLs, opt-in boundaries, dry-run behavior, and logging
   expectations for setup paths.
+- [Manifest Command Trust](manifest-command-trust.md) defines the local allow
+  model for executing project-owned manifest commands from unfamiliar
+  repositories.
 - [Workspace Manifest](workspace-manifest.md) defines the local team-shared
   repo-set contract and `basectl workspace --manifest` reporting behavior.
 - [Setup Hooks Boundary](setup-hooks.md) records why Base does not support
