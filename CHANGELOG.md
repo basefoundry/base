@@ -15,6 +15,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
   `demo`, and `activate` execute project-owned manifest code, while preserving
   dry-run and list inspection paths before approval.
 
+### Changed
+
+- Surfaced pinned Homebrew installer variables in the default first-mile
+  bootstrap path so security-conscious users can choose a verified installer
+  before running the mutable official Homebrew installer.
+
 ## [1.6.0] - 2026-07-04
 
 ### Added

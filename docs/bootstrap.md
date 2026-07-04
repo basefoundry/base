@@ -18,6 +18,18 @@ Run the bootstrapper from GitHub:
 curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
+For a verified first run, pin reviewed Homebrew installer content before
+executing the bootstrapper:
+
+```bash
+BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL=file:///path/to/homebrew-install.sh \
+BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256=<sha256> \
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
+```
+
+Use `BASE_HOMEBREW_INSTALLER_URL` and `BASE_HOMEBREW_INSTALLER_SHA256` instead
+when the same pin should apply to all Base Homebrew entry points.
+
 On macOS, the bootstrapper verifies macOS, installs missing first-mile
 prerequisites, and then prints the exact commands needed to finish setup. For
 the default source checkout path, the handoff usually looks like:

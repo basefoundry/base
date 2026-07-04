@@ -272,7 +272,8 @@ bootstrap_homebrew_installer_sha256() {
 
 bootstrap_log_homebrew_mutable_policy() {
     bootstrap_log "Homebrew installer trust policy: using Homebrew's official mutable installer without checksum verification."
-    bootstrap_log "Set BASE_HOMEBREW_INSTALLER_URL and BASE_HOMEBREW_INSTALLER_SHA256 to use a pinned verified installer."
+    bootstrap_log "Set BASE_HOMEBREW_INSTALLER_URL and BASE_HOMEBREW_INSTALLER_SHA256 to use a pinned verified installer for all Homebrew entry points."
+    bootstrap_log "For bootstrap.sh only, set BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL and BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256."
 }
 
 bootstrap_fetch_homebrew_installer() {

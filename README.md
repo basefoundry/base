@@ -161,6 +161,18 @@ may be missing, start with the first-mile bootstrap script:
 curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
+For a verified first run, pin reviewed Homebrew installer content before
+executing the bootstrapper. Use the bootstrap-specific variables for this
+script, or the `BASE_HOMEBREW_INSTALLER_URL` and
+`BASE_HOMEBREW_INSTALLER_SHA256` pair when the same pin should apply to all
+Base Homebrew entry points:
+
+```bash
+BASE_BOOTSTRAP_HOMEBREW_INSTALLER_URL=file:///path/to/homebrew-install.sh \
+BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256=<sha256> \
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
+```
+
 The bootstrapper installs Homebrew, Git, and a supported Bash when needed,
 chooses an existing Base install when one is present, otherwise defaults to a
 source checkout at `~/work/base`, and prints the exact `basectl setup` and
