@@ -3,7 +3,7 @@
 ![Tests](https://github.com/basefoundry/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/basefoundry/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS + Ubuntu/Debian](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu%2FDebian-lightgrey)
-![Version](https://img.shields.io/badge/version-1.5.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
@@ -916,11 +916,11 @@ See [docs/local-config.md](docs/local-config.md).
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.5.0
-basectl release plan --version 1.5.0
-basectl release notes --version 1.5.0
-basectl release publish --version 1.5.0 --dry-run
-basectl release publish --version 1.5.0 --yes
+basectl release check --version 1.6.0
+basectl release plan --version 1.6.0
+basectl release notes --version 1.6.0
+basectl release publish --version 1.6.0 --dry-run
+basectl release publish --version 1.6.0 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
@@ -1620,7 +1620,7 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `1.5.0` is the current release. The implemented command surface covers
+Base `1.6.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
@@ -1628,10 +1628,11 @@ guarded GitHub release publishing, GitHub workflow helpers, workspace
 status/check/doctor/init/clone/pull/configure flows, local AI context exports,
 repo-owned prompt rendering, the `basectl docs` documentation shortcut,
 external reusable Bash library consumption, and explicit prerequisite profiles
-for developer, SRE, and AI tooling. The `basectl check` and `basectl doctor`
-diagnostics are platform-aware for macOS and Ubuntu/Debian; macOS diagnostics
-also warn when Homebrew reports outdated or incomplete Xcode Command Line
-Tools.
+for developer, SRE, AI tooling, and local Linux lab setup. The `basectl setup`,
+`basectl check`, and `basectl doctor` flows are platform-aware for macOS and
+Ubuntu/Debian, including apt-backed prerequisite handling on Ubuntu/Debian;
+macOS diagnostics also warn when Homebrew reports outdated or incomplete Xcode
+Command Line Tools.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For accepted product requirements, see

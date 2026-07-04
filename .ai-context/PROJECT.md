@@ -4,11 +4,11 @@
 
 - Name: Base
 - Repository: `github.com/basefoundry/base`
-- Current release: `1.5.0`
+- Current release: `1.6.0`
 - Primary platform: macOS
-- Linux posture: Ubuntu/Debian runtime support is implemented and tested; full
-  Linux bootstrap support remains narrower than macOS setup and is tracked in
-  `docs/linux-support.md`.
+- Linux posture: Ubuntu/Debian runtime support, source-checkout validation, and
+  apt-backed setup are implemented and tested; broader Linux distribution
+  support remains tracked in `docs/linux-support.md`.
 - Windows support is not currently in scope.
 
 Base is a workspace control plane for developers who keep multiple repositories
