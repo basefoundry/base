@@ -19,6 +19,8 @@ def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
     assert "sudo apt-get install -y bash git gh python3" not in text
     assert "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian" in text
     assert "signed apt repository/keyring" in text
+    assert "`basectl setup --profile dev` does not install `gh` from default apt repositories" in text
+    assert "`gh` maps to" not in text
     assert "GitHub CLI authentication" in text
     assert "gh auth login --web --git-protocol https" in text
     assert "gh auth login --web --git-protocol https --insecure-storage" in text

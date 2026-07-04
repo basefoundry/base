@@ -89,6 +89,29 @@ class GitRemoteCheckTests(unittest.TestCase):
             timeout_seconds=git_remote_module.REMOTE_REACHABILITY_TIMEOUT_SECONDS,
         )
 
+    def test_reports_missing_github_cli_with_linux_install_guidance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            git(project_root, "init")
+            git(project_root, "remote", "add", "origin", "git@github.com:codeforester/base.git")
+            manifest = manifest_for(project_root)
+
+            def command_exists(name: str) -> bool:
+                return name == "git"
+
+            with (
+                mock.patch("base_setup.git_remote.process.command_exists", side_effect=command_exists),
+                mock.patch.dict("os.environ", {"BASE_PLATFORM": "linux-debian"}, clear=False),
+            ):
+                checks = check_git_remote(manifest)
+
+        self.assertEqual([check.finding_id for check in checks], ["BASE-P080", "BASE-P081", "BASE-P082"])
+        self.assertFalse(checks[2].ok)
+        self.assertEqual(doctor_status(checks[2]), "warn")
+        self.assertIn("official Debian/Ubuntu apt repository", checks[2].fix)
+        self.assertIn("github.com/cli/cli/blob/trunk/docs/install_linux.md#debian", checks[2].fix)
+        self.assertNotIn("basectl setup --profile dev", checks[2].fix)
+
     def test_reports_github_auth_timeout_as_warning(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)

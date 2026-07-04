@@ -216,7 +216,7 @@ base_onboard_subcommand_main() {
     fi
 
     base_onboard_print_heading "Setup"
-    printf '%s\n' "This installs or verifies Homebrew, Xcode Command Line Tools, Base Python, and Base-managed artifacts."
+    printf '%s\n' "This installs or verifies Base platform prerequisites, Base Python, and Base-managed artifacts."
     if ((dry_run)); then
         base_onboard_execute "$dry_run" "${setup_args[@]}" || return $?
     elif base_onboard_confirm "$yes" "Proceed with setup?"; then

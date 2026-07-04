@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from .manifest import BaseManifest
 
 
 GITHUB_HOST = "github.com"
+GITHUB_CLI_LINUX_INSTALL_URL = "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
 REMOTE_REACHABILITY_TIMEOUT_SECONDS = 5
 SCP_REMOTE_RE = re.compile(r"^(?:(?P<user>[^@\s]+)@)?(?P<host>[^:\s/]+):(?P<path>.+)$")
 
@@ -177,11 +179,17 @@ def check_github_cli_auth(remote_info: RemoteInfo) -> ArtifactCheck:
         "gh_auth_checked": True,
     }
     if not process.command_exists("gh"):
+        fix = "Install GitHub CLI or run 'basectl setup --profile dev'."
+        if os.environ.get("BASE_PLATFORM") == "linux-debian":
+            fix = (
+                "Install GitHub CLI from GitHub CLI's official Debian/Ubuntu apt repository: "
+                f"{GITHUB_CLI_LINUX_INSTALL_URL}."
+            )
         return ArtifactCheck(
             name="github_cli_auth",
             ok=False,
             message="GitHub CLI 'gh' was not found; GitHub authentication for origin was not checked.",
-            fix="Install GitHub CLI or run 'basectl setup --profile dev'.",
+            fix=fix,
             finding_id="BASE-P082",
             status="warn",
             details=details | {"gh_available": False},

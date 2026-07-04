@@ -512,6 +512,22 @@ class DevManifestTests(unittest.TestCase):
             },
             findings,
         )
+        self.assertIn(
+            {
+                "id": "BASE-D107",
+                "status": "error",
+                "name": "gh",
+                "message": (
+                    "GitHub CLI 'gh' is not installed; install it from GitHub CLI's official "
+                    "Debian/Ubuntu apt repository."
+                ),
+                "fix": (
+                    "Follow https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, "
+                    "then rerun 'basectl check --profile dev'."
+                ),
+            },
+            findings,
+        )
         self.assertTrue(all("Homebrew" not in finding["message"] for finding in findings))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -572,7 +588,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install shellcheck", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
-    def test_setup_dry_run_linux_debian_uses_apt_registry_mapping(self) -> None:
+    def test_setup_dry_run_linux_debian_skips_user_managed_github_cli(self) -> None:
         with tempfile.TemporaryDirectory() as bin_dir:
             status, _stdout, stderr = run_engine(
                 ["setup", "--profile", "dev", "--dry-run"],
@@ -581,8 +597,10 @@ class DevManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y bats", stderr)
-        self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y gh", stderr)
         self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y shellcheck", stderr)
+        self.assertNotIn("apt-get install -y gh", stderr)
+        self.assertIn("GitHub CLI 'gh' is user-managed on Ubuntu/Debian.", stderr)
+        self.assertIn("github.com/cli/cli/blob/trunk/docs/install_linux.md#debian", stderr)
         self.assertNotIn("brew install", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -601,7 +619,8 @@ class DevManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("Artifact 'bats-core' is already installed via apt package 'bats'.", stderr)
-        self.assertIn("Artifact 'gh' is already installed via apt package 'gh'.", stderr)
+        self.assertIn("GitHub CLI 'gh' is already installed; authentication remains user-owned.", stderr)
+        self.assertNotIn("Artifact 'gh' is already installed via apt package 'gh'.", stderr)
         self.assertIn("Artifact 'shellcheck' is already installed via apt package 'shellcheck'.", stderr)
         self.assertNotIn("Homebrew is required", stderr)
         run_command.assert_not_called()

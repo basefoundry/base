@@ -190,6 +190,8 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Proceed with setup? [yes]"* ]]
+    [[ "$output" == *"This installs or verifies Base platform prerequisites, Base Python, and Base-managed artifacts."* ]]
+    [[ "$output" != *"This installs or verifies Homebrew, Xcode Command Line Tools"* ]]
     [[ "$output" == *"RUN:setup base"* ]]
     [[ "$output" == *"Shell profile updates skipped because --no-profile was set."* ]]
     [[ "$output" != *"RUN:update-profile"* ]]

@@ -1078,14 +1078,16 @@ artifact setup, Base first seeds the target project venv with `bootstrap: true`
 default artifacts and then invokes the Python project setup layer through
 `base-wrapper --project <project>`.
 Prerequisite profiles are opt-in. Use `--profile dev` to install Base
-contributor tools such as BATS, the GitHub CLI, and ShellCheck from
-`lib/base/dev_manifest.yaml`. Use `--profile sre` for the initial
-site-reliability profile in `lib/base/sre_manifest.yaml`, which installs local
-diagnostic tools such as `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`,
-`yq`, `nmap`, and `mtr`. Use `--profile ai` for optional AI coding tools:
-Codex CLI and Claude Code. Use `--profile linux-lab` on a macOS host to install
-and check Multipass for local Ubuntu lab VMs. Profiles compose with a
-comma-separated list.
+contributor tools from `lib/base/dev_manifest.yaml`. On macOS that includes
+Homebrew-managed BATS, GitHub CLI, and ShellCheck. On Ubuntu/Debian it installs
+Base-owned apt-backed tools such as BATS and ShellCheck, while GitHub CLI
+remains user-managed through GitHub CLI's official Debian/Ubuntu repository
+guidance. Use `--profile sre` for the initial site-reliability profile in
+`lib/base/sre_manifest.yaml`, which installs local diagnostic tools such as
+`kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`, `yq`, `nmap`, and `mtr`.
+Use `--profile ai` for optional AI coding tools: Codex CLI and Claude Code.
+Use `--profile linux-lab` on a macOS host to install and check Multipass for
+local Ubuntu lab VMs. Profiles compose with a comma-separated list.
 
 ```bash
 basectl setup --profile dev

@@ -405,7 +405,7 @@ setup_unsupported_platform_message() {
 setup_unsupported_install_platform_message() {
     local platform="$1"
 
-    printf "The setup platform path currently supports macOS only (BASE_PLATFORM='%s').\n" "$platform"
+    printf "The setup platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s').\n" "$platform"
 }
 
 setup_allow_test_hooks() {
