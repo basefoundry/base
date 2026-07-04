@@ -2359,7 +2359,7 @@ setup_collect_ci_runtime_check_results() {
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
 
-    if python_bin="$(setup_find_python_bin)"; then
+    if python_bin="$(setup_find_platform_python_bin)"; then
         setup_add_check_result \
             "python" \
             true \

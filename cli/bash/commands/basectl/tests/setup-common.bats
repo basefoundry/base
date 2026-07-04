@@ -79,3 +79,20 @@ run_setup_common_script() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"platform=macos"* ]]
 }
+
+@test "setup_common CI runtime checks use the Linux platform Python finder" {
+    create_system_python3_stub
+    create_project_setup_venv_stub "$TEST_HOME/.base.d/base/.venv"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+
+    run_setup_common_script '
+        BASE_TEST_MODE=true
+        BASE_SETUP_TEST_PLATFORM=linux-debian
+        setup_collect_ci_runtime_check_results
+        setup_print_check_text_results
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Python is available for CI runtime checks."* ]]
+}
