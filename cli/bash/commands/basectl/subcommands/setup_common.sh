@@ -2609,7 +2609,7 @@ setup_run_macos_install() {
 }
 
 setup_linux_debian_apt_packages() {
-    printf '%s\n' "bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go"
+    printf '%s\n' "bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"
 }
 
 setup_linux_debian_apt_update_command() {
@@ -2656,7 +2656,8 @@ setup_run_linux_debian_apt_prerequisites() {
 
     log_info "Installing Ubuntu/Debian apt prerequisites."
     sudo apt-get update || return $?
-    sudo apt-get install -y "${package_args[@]}"
+    sudo apt-get install -y "${package_args[@]}" || return $?
+    log_info "$(setup_linux_debian_github_cli_install_guidance)"
 }
 
 setup_run_linux_debian_install() {

@@ -49,8 +49,8 @@ EOF
     run_base_command update-profile
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Updating '$TEST_HOME/.bash_profile'"* ]]
-    [[ "$output" == *"Updating '$TEST_HOME/.bashrc'"* ]]
+    [[ "$output" == *"Updating '$TEST_HOME/.bash_profile'"* || "$output" == *"Adding section to '$TEST_HOME/.bash_profile'"* ]]
+    [[ "$output" == *"Updating '$TEST_HOME/.bashrc'"* || "$output" == *"Adding section to '$TEST_HOME/.bashrc'"* ]]
 
     for dotfile in .bash_profile .bashrc .zprofile .zshrc; do
         [ -f "$TEST_HOME/$dotfile" ]

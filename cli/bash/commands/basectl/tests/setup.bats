@@ -101,7 +101,7 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get update"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
     [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
     [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
@@ -116,7 +116,7 @@ load ./setup_helpers.bash
 
     run_base_command \
         BASE_SETUP_TEST_PLATFORM=linux-debian \
-        BASE_SETUP_TEST_MISSING_APT_PACKAGES=gh \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
         setup
 
     [ "$status" -eq 1 ]
@@ -163,11 +163,12 @@ load ./setup_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
+    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
     [[ "$output" == *"Creating Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI setup is complete."* ]]
     [ -f "$TEST_STATE_DIR/apt-update-ran" ]
     [ -f "$TEST_STATE_DIR/apt-install-ran" ]
-    [ "$(cat "$TEST_STATE_DIR/apt-install-packages")" = "bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go" ]
+    [ "$(cat "$TEST_STATE_DIR/apt-install-packages")" = "bash git python3 python3-venv python3-pip bats shellcheck jq golang-go" ]
     [ -f "$TEST_STATE_DIR/system-python-ran" ]
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
