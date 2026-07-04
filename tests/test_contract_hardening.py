@@ -1,3 +1,4 @@
+from configparser import ConfigParser
 from pathlib import Path
 
 
@@ -40,29 +41,18 @@ def contract_registry_rows() -> list[dict[str, str]]:
     return rows
 
 
-def pytest_testpaths() -> list[str]:
-    lines = PYTEST_CONFIG.read_text(encoding="utf-8").splitlines()
-    testpaths: list[str] = []
-    in_testpaths = False
-
-    for line in lines:
-        stripped = line.strip()
-        if stripped == "testpaths =":
-            in_testpaths = True
-            continue
-        if not in_testpaths:
-            continue
-        if line.startswith((" ", "\t")) and stripped:
-            testpaths.append(stripped)
-            continue
-        if stripped:
-            break
-
-    return testpaths
+def pytest_config_list(option: str) -> list[str]:
+    parser = ConfigParser()
+    parser.read(PYTEST_CONFIG, encoding="utf-8")
+    return [line.strip() for line in parser.get("pytest", option).splitlines() if line.strip()]
 
 
 def test_default_pytest_discovery_includes_top_level_contract_tests() -> None:
-    assert "tests" in pytest_testpaths()
+    assert "tests" in pytest_config_list("testpaths")
+
+
+def test_default_pytest_pythonpath_includes_base_package_roots() -> None:
+    assert pytest_config_list("pythonpath") == ["lib/python", "cli/python"]
 
 
 def test_active_project_guidance_uses_repo_named_project_language() -> None:
