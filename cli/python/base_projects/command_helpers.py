@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from base_setup import process
 from base_cli.redaction import redact_text_value
 
 
@@ -63,12 +64,9 @@ def run_project_command(
     timeout_seconds: int = PROJECT_COMMAND_TIMEOUT_SECONDS,
 ) -> ProjectCommandResult:
     try:
-        result = subprocess.run(
+        result = process.run_capture(
             command,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
+            timeout_seconds=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
         timeout = exc.timeout if exc.timeout is not None else timeout_seconds
@@ -83,7 +81,7 @@ def run_project_command(
     return ProjectCommandResult(
         returncode=result.returncode,
         stdout=result.stdout,
-        stderr=result.stderr,
+        stderr=result.stderr or "",
     )
 
 

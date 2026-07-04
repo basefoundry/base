@@ -82,13 +82,14 @@ def run_capture(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     timeout_seconds: int | None = None,
+    stderr: int | None = subprocess.PIPE,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         cwd=cwd,
         env=env,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=stderr,
         text=True,
         check=False,
         timeout=timeout_seconds,
