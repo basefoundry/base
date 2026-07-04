@@ -274,12 +274,65 @@ fi
 if [[ "${1:-}" == "apt-get" && "${2:-}" == "install" && "${3:-}" == "-y" ]]; then
     touch "$state_dir/apt-install-ran"
     printf '%s\n' "${*:4}" > "$state_dir/apt-install-packages"
+    if [[ "${4:-}" == "gh" ]]; then
+        touch "$state_dir/gh-apt-install-ran"
+    fi
     exit 0
+fi
+if [[ "${1:-}" == "install" && "${2:-}" == "-d" && "${3:-}" == "-m" && "${4:-}" == "0755" ]]; then
+    case "${5:-}" in
+        /etc/apt/keyrings)
+            touch "$state_dir/github-cli-keyrings-dir-created"
+            exit 0
+            ;;
+        /etc/apt/sources.list.d)
+            touch "$state_dir/github-cli-sources-dir-created"
+            exit 0
+            ;;
+    esac
+fi
+if [[ "${1:-}" == "install" && "${2:-}" == "-m" && "${3:-}" == "0644" ]]; then
+    case "${5:-}" in
+        /etc/apt/keyrings/githubcli-archive-keyring.gpg)
+            cp "${4:-}" "$state_dir/github-cli-keyring"
+            touch "$state_dir/github-cli-keyring-installed"
+            exit 0
+            ;;
+        /etc/apt/sources.list.d/github-cli.list)
+            cp "${4:-}" "$state_dir/github-cli-source-list"
+            touch "$state_dir/github-cli-source-installed"
+            exit 0
+            ;;
+    esac
 fi
 printf 'unexpected sudo args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$TEST_MOCKBIN/sudo"
+}
+
+create_github_cli_repo_stubs() {
+    cat > "$TEST_MOCKBIN/curl" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-fsSL" && "${2:-}" == "-o" && -n "${3:-}" && "${4:-}" == "https://cli.github.com/packages/githubcli-archive-keyring.gpg" ]]; then
+    printf 'test github cli keyring\n' > "$3"
+    exit 0
+fi
+printf 'unexpected curl args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/curl"
+
+    cat > "$TEST_MOCKBIN/dpkg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--print-architecture" ]]; then
+    printf 'amd64\n'
+    exit 0
+fi
+printf 'unexpected dpkg args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/dpkg"
 }
 
 create_brew_stub() {

@@ -36,7 +36,7 @@ Purpose:
 
 Setup does:
   1. Install or verify macOS prerequisites on macOS.
-  2. Install or verify apt prerequisites on Ubuntu/Debian Linux when --yes is passed.
+  2. Install or verify apt prerequisites on Ubuntu/Debian Linux with interactive consent or --yes.
   3. Install prerequisite profiles when --profile is passed.
   4. Create ~/.base.d/base/.venv if it does not already exist.
   5. Install Base Python bootstrap packages into the Base virtual environment.
@@ -45,7 +45,8 @@ Setup does:
 
 Notes:
   - This command is intentionally idempotent.
-  - On Ubuntu/Debian Linux, setup can install apt prerequisites when --yes is passed.
+  - On Ubuntu/Debian Linux, setup can install apt prerequisites with
+    interactive consent or --yes.
   - The optional project argument resolves a Base project from the workspace
     unless --manifest is provided explicitly.
   - Use `basectl check` to verify the same requirements without making changes.

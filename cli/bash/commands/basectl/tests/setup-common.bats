@@ -117,7 +117,9 @@ run_setup_common_script() {
     [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh':"* ]]
 }
 
-@test "setup_common logs GitHub CLI guidance after Ubuntu apt prerequisite install" {
+@test "setup_common keeps GitHub CLI guidance out of bulk Ubuntu apt prerequisite install" {
+    create_linux_dpkg_query_stub
+
     cat > "$TEST_MOCKBIN/sudo" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$TEST_STATE_DIR/sudo-args"
@@ -127,11 +129,12 @@ EOF
 
     run_setup_common_script '
         setup_enable_yes
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv
         setup_run_linux_debian_apt_prerequisites
     '
 
     [ "$status" -eq 0 ]
     [ "$(sed -n '1p' "$TEST_STATE_DIR/sudo-args")" = "apt-get update" ]
     [ "$(sed -n '2p' "$TEST_STATE_DIR/sudo-args")" = "apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go" ]
-    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh':"* ]]
+    [[ "$output" != *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh':"* ]]
 }

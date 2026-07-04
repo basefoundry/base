@@ -518,13 +518,10 @@ class DevManifestTests(unittest.TestCase):
                 "status": "error",
                 "name": "gh",
                 "message": (
-                    "GitHub CLI 'gh' is not installed; install it from GitHub CLI's official "
+                    "GitHub CLI 'gh' is not installed; Base setup installs it from GitHub CLI's official "
                     "Debian/Ubuntu apt repository."
                 ),
-                "fix": (
-                    "Follow https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, "
-                    "then rerun 'basectl check --profile dev'."
-                ),
+                "fix": "basectl setup --profile dev",
             },
             findings,
         )
@@ -588,7 +585,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: brew install shellcheck", stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
-    def test_setup_dry_run_linux_debian_skips_user_managed_github_cli(self) -> None:
+    def test_setup_dry_run_linux_debian_delegates_github_cli_to_platform_setup(self) -> None:
         with tempfile.TemporaryDirectory() as bin_dir:
             status, _stdout, stderr = run_engine(
                 ["setup", "--profile", "dev", "--dry-run"],
@@ -599,7 +596,7 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y bats", stderr)
         self.assertIn("[DRY-RUN] Would run: sudo apt-get install -y shellcheck", stderr)
         self.assertNotIn("apt-get install -y gh", stderr)
-        self.assertIn("GitHub CLI 'gh' is user-managed on Ubuntu/Debian.", stderr)
+        self.assertIn("GitHub CLI 'gh' is installed by basectl setup's Ubuntu/Debian platform layer.", stderr)
         self.assertIn("github.com/cli/cli/blob/trunk/docs/install_linux.md#debian", stderr)
         self.assertNotIn("brew install", stderr)
 

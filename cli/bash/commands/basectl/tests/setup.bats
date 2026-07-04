@@ -21,7 +21,8 @@ load ./setup_helpers.bash
     [[ "$output" == *"--recreate-venv"* ]]
     [[ "$output" == *"--yes"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on supported setup platforms."* ]]
-    [[ "$output" == *"On Ubuntu/Debian Linux, setup can install apt prerequisites when --yes is passed."* ]]
+    [[ "$output" == *"On Ubuntu/Debian Linux, setup can install apt prerequisites with"* ]]
+    [[ "$output" == *"interactive consent or --yes."* ]]
     [[ "$output" == *"Create ~/.base.d/config.yaml with workspace.root: ~/work if missing."* ]]
 }
 
@@ -102,16 +103,15 @@ load ./setup_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get update"* ]]
     [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
-    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
-    [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
     [[ "$output" == *"[DRY-RUN] Would create Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"[DRY-RUN] Would install Python package 'PyYAML' in the Base virtual environment."* ]]
     [[ "$output" == *"[DRY-RUN] Base CLI setup check is complete."* ]]
+    [[ "$output" != *"github-cli.list"* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
 }
 
-@test "basectl setup linux-debian requires --yes before apt mutation" {
+@test "basectl setup linux-debian non-interactive requires --yes before apt mutation" {
     create_linux_dpkg_query_stub
 
     run_base_command \
@@ -120,11 +120,51 @@ load ./setup_helpers.bash
         setup
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Ubuntu/Debian setup can install apt prerequisites."* ]]
+    [[ "$output" == *"Ubuntu/Debian setup can install apt packages, configure package repositories, and run platform bootstraps."* ]]
     [[ "$output" == *"Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."* ]]
     [[ "$output" != *"sudo apt-get"* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl setup linux-debian interactive prompt can approve apt mutation" {
+    create_linux_dpkg_query_stub
+    create_sudo_apt_get_stub
+    create_system_python3_stub
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
+        BASE_SETUP_TEST_ASSUME_INTERACTIVE=true \
+        BASE_SETUP_TEST_CONFIRM_RESPONSE=yes \
+        setup
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Ubuntu/Debian setup can install apt packages, configure package repositories, and run platform bootstraps."* ]]
+    [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
+    [[ "$output" == *"Base CLI setup is complete."* ]]
+    [ -f "$TEST_STATE_DIR/linux-consent-prompted" ]
+    [ -f "$TEST_STATE_DIR/apt-update-ran" ]
+    [ -f "$TEST_STATE_DIR/apt-install-ran" ]
+    [ -f "$TEST_STATE_DIR/project-setup-ran" ]
+}
+
+@test "basectl setup linux-debian interactive prompt can decline apt mutation" {
+    create_linux_dpkg_query_stub
+    create_sudo_apt_get_stub
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
+        BASE_SETUP_TEST_ASSUME_INTERACTIVE=true \
+        BASE_SETUP_TEST_CONFIRM_RESPONSE=no \
+        setup
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Ubuntu/Debian setup was not approved."* ]]
+    [ -f "$TEST_STATE_DIR/linux-consent-prompted" ]
+    [ ! -f "$TEST_STATE_DIR/apt-update-ran" ]
+    [ ! -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
 @test "basectl setup linux-debian skips apt without yes when prerequisites are installed" {
@@ -144,6 +184,7 @@ load ./setup_helpers.bash
 
 @test "basectl setup linux-debian passes effective platform to dev profile layer" {
     create_linux_dpkg_query_stub
+    create_linux_prerequisite_stubs
     create_system_python3_stub
 
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --profile dev
@@ -155,15 +196,53 @@ load ./setup_helpers.bash
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev)" ]
 }
 
+@test "basectl setup --profile dev linux-debian dry-run shows official GitHub CLI apt repo setup" {
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh \
+        setup --profile dev --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo install -d -m 0755 /etc/apt/keyrings"* ]]
+    [[ "$output" == *"[DRY-RUN] Would fetch: https://cli.github.com/packages/githubcli-archive-keyring.gpg"* ]]
+    [[ "$output" == *"[DRY-RUN] Would write apt source: deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y gh"* ]]
+    [[ "$output" == *"https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"* ]]
+}
+
+@test "basectl setup --profile dev linux-debian installs GitHub CLI through official apt repository" {
+    create_linux_dpkg_query_stub
+    create_sudo_apt_get_stub
+    create_github_cli_repo_stubs
+    create_system_python3_stub
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh \
+        setup --yes --profile dev
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installing GitHub CLI 'gh' from GitHub CLI's official Debian/Ubuntu apt repository."* ]]
+    [[ "$output" == *"Base CLI setup is complete."* ]]
+    [ -f "$TEST_STATE_DIR/github-cli-keyring-installed" ]
+    [ -f "$TEST_STATE_DIR/github-cli-source-installed" ]
+    [ -f "$TEST_STATE_DIR/gh-apt-install-ran" ]
+    grep -Fxq "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" "$TEST_STATE_DIR/github-cli-source-list"
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+}
+
 @test "basectl setup --yes linux-debian installs apt prerequisites and bootstraps Base" {
+    create_linux_dpkg_query_stub
     create_sudo_apt_get_stub
     create_system_python3_stub
 
-    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --yes
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
+        setup --yes
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
-    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
     [[ "$output" == *"Creating Python virtual environment at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Base CLI setup is complete."* ]]
     [ -f "$TEST_STATE_DIR/apt-update-ran" ]
@@ -174,11 +253,13 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup --yes linux-debian reports apt prerequisite failures" {
+    create_linux_dpkg_query_stub
     create_sudo_apt_get_stub
     create_system_python3_stub
 
     run_base_command \
         BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
         BASE_SETUP_TEST_APT_FAIL=true \
         setup --yes
 
@@ -720,6 +801,31 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/project-setup-platform")" = "linux-debian" ]
 }
 
+@test "basectl setup interactive linux-debian forwards consent to uv-managed project setup" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/demo"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    mkdir -p "$project_root"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_linux_dpkg_query_stub
+    create_sudo_apt_get_stub
+    create_project_setup_venv_stub "$base_venv_dir"
+    printf 'project:\n  name: demo\npython:\n  manager: uv\nartifacts: []\n' > "$manifest_path"
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
+        BASE_SETUP_TEST_ASSUME_INTERACTIVE=true \
+        BASE_SETUP_TEST_CONFIRM_RESPONSE=yes \
+        setup --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-yes")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-platform")" = "linux-debian" ]
+}
+
 @test "project setup resolves named project manifests from the workspace" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"
@@ -888,6 +994,7 @@ EOF
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_linux_dpkg_query_stub
+    create_linux_prerequisite_stubs
     create_system_python3_stub
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
@@ -906,6 +1013,7 @@ EOF
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
     create_linux_dpkg_query_stub
+    create_linux_prerequisite_stubs
     create_system_python3_stub
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"

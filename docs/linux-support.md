@@ -12,8 +12,26 @@ Start with Ubuntu/Debian runtime support:
 - `base-wrapper` can select the project venv under `~/.base.d/<project>/.venv`.
 - `basectl projects list`, `check`, `doctor`, and `ci` work when
   prerequisites are already installed.
-- Setup installs conservative Ubuntu/Debian apt prerequisites only after the
-  user reviews `--dry-run` output and passes `--yes`.
+- Setup installs conservative Ubuntu/Debian apt prerequisites after dry-run
+  review plus either interactive consent or `--yes` for unattended runs.
+
+## Setup Contract
+
+Setup behavior should stay platform-invariant as Base adds more operating
+systems:
+
+- `basectl check` inspects and reports readiness without changing the machine.
+- `basectl setup --dry-run` previews planned changes without changing the
+  machine.
+- `basectl setup` and `basectl setup --profile <name>` apply setup on supported
+  platforms.
+- `--yes` means non-interactive consent for unattended setup. It is not the
+  switch that turns setup from dry-run to apply.
+
+Platform-specific package manager work belongs behind this contract. macOS can
+use Homebrew, Ubuntu/Debian can use apt, and future Red Hat, CentOS, Windows, or
+other platform families should add their own installer/check adapters without
+changing what these user-facing commands mean.
 
 ## Platform Detection
 
@@ -108,12 +126,16 @@ curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh 
 
 The printed path includes apt prerequisites, cloning Base and
 `base-bash-libs`, `basectl setup --dry-run`, `basectl setup --yes`, and
-`basectl update-profile`.
+`basectl update-profile`. The printed `setup --yes` handoff is for users who
+want to paste the reviewed command sequence into an unattended shell; an
+interactive user can run `basectl setup` after reviewing `--dry-run` and confirm
+the Ubuntu/Debian system-change prompt.
 
 Ubuntu/Debian setup can install the simple apt prerequisites that Base knows
 how to own. The mutation path is intentionally explicit: `basectl setup
---dry-run` prints the apt commands, and `basectl setup --yes` applies them.
-Without `--yes`, Linux setup fails before invoking `apt`.
+--dry-run` prints the apt commands, interactive `basectl setup` prompts before
+system changes, and non-interactive setup requires `--yes` before invoking
+`apt`, writing keyrings/source lists, or running remote installer bootstraps.
 
 Use native Linux filesystem paths for source checkouts. In Parallels, keep Base
 under `~/work`, not under mounted macOS shared folders, so file permissions,
@@ -144,20 +166,18 @@ separate from contributor tooling. Missing `gh`, BATS, ShellCheck, `jq`, or Go
 are advisory warnings unless another runtime prerequisite is also failing.
 
 The `gh` package should come from GitHub CLI's official Debian/Ubuntu
-signed apt repository/keyring when the configured distro repositories do not
-provide a current package. Follow the current official instructions at
-https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian, then rerun
-`./bin/basectl check --profile dev`.
+signed apt repository/keyring, not the default distro package. Base setup uses
+the current official repository shape documented at
+https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian.
 
 On Ubuntu/Debian, the `dev` prerequisite profile uses apt-backed developer
-tools for the initial supported set Base can install from default apt
-repositories: `bats-core` maps to `bats`, and `shellcheck` maps to
-`shellcheck`.
-`basectl setup --profile dev` does not install `gh` from default apt repositories;
-it reports GitHub CLI's official Debian/Ubuntu repository
-guidance and leaves installation/authentication user-owned. Once the apt-backed
-setup path has installed the Base-owned tools, `./bin/basectl setup --profile
-dev` is idempotent and does not require Homebrew.
+tools. `bats-core` maps to default apt package `bats`, and `shellcheck` maps to
+default apt package `shellcheck`. `basectl setup --profile dev` does not install
+`gh` from default apt repositories; it configures GitHub CLI's official
+Debian/Ubuntu signed apt repository/keyring and then installs `gh` from that
+source. Authentication remains user-owned. Once the apt-backed setup path has
+installed the Base-owned tools, `./bin/basectl setup --profile dev` is
+idempotent and does not require Homebrew.
 
 Project-level `brewfile` delegates remain macOS/Homebrew-only. On
 Ubuntu/Debian, Base validates the Brewfile path but skips `brew bundle` setup and

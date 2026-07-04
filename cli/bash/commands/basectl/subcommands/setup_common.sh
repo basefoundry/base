@@ -183,6 +183,66 @@ setup_yes_enabled() {
     [[ "${BASE_SETUP_YES:-false}" == true ]]
 }
 
+setup_test_assume_interactive() {
+    [[ -n "${BASE_SETUP_TEST_ASSUME_INTERACTIVE+x}" ]] || return 1
+    setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_ASSUME_INTERACTIVE
+    [[ "${BASE_SETUP_TEST_ASSUME_INTERACTIVE:-false}" == true ]]
+}
+
+setup_test_confirm_response() {
+    [[ -n "${BASE_SETUP_TEST_CONFIRM_RESPONSE+x}" ]] || return 1
+    setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_CONFIRM_RESPONSE
+    printf '%s\n' "$BASE_SETUP_TEST_CONFIRM_RESPONSE"
+}
+
+setup_interactive_consent_available() {
+    setup_test_assume_interactive && return 0
+    is_interactive
+}
+
+setup_read_confirmation_response() {
+    local response
+
+    if response="$(setup_test_confirm_response)"; then
+        printf '%s\n' "$response"
+        return 0
+    fi
+
+    if [[ -r /dev/tty ]]; then
+        IFS= read -r response </dev/tty || return 1
+    else
+        IFS= read -r response || return 1
+    fi
+    printf '%s\n' "$response"
+}
+
+setup_require_linux_debian_system_consent() {
+    local reason="$1"
+    local response
+
+    setup_yes_enabled && return 0
+
+    if ! setup_interactive_consent_available; then
+        fatal_error "$reason Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."
+    fi
+
+    log_info "$reason"
+    if [[ -n "${BASE_SETUP_TEST_STATE_DIR:-}" ]]; then
+        setup_allow_test_hooks && touch "$BASE_SETUP_TEST_STATE_DIR/linux-consent-prompted"
+    fi
+    printf "Proceed with Ubuntu/Debian setup changes? [y/N] " >&2
+    response="$(setup_read_confirmation_response)" || fatal_error "Ubuntu/Debian setup was not approved."
+    case "${response,,}" in
+        y|yes)
+            setup_enable_yes
+            return 0
+            ;;
+        *)
+            fatal_error "Ubuntu/Debian setup was not approved."
+            ;;
+    esac
+}
+
 setup_enable_recreate_venv() {
     export BASE_SETUP_RECREATE_VENV=true
 }
@@ -468,6 +528,26 @@ setup_recovery_linux_apt_package() {
 
 setup_linux_debian_github_cli_install_url() {
     printf '%s\n' "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
+}
+
+setup_linux_debian_github_cli_keyring_url() {
+    printf '%s\n' "https://cli.github.com/packages/githubcli-archive-keyring.gpg"
+}
+
+setup_linux_debian_github_cli_keyring_path() {
+    printf '%s\n' "/etc/apt/keyrings/githubcli-archive-keyring.gpg"
+}
+
+setup_linux_debian_github_cli_source_path() {
+    printf '%s\n' "/etc/apt/sources.list.d/github-cli.list"
+}
+
+setup_linux_debian_github_cli_source_line() {
+    local arch="${1:-\$(dpkg --print-architecture)}"
+
+    printf 'deb [arch=%s signed-by=%s] https://cli.github.com/packages stable main\n' \
+        "$arch" \
+        "$(setup_linux_debian_github_cli_keyring_path)"
 }
 
 setup_linux_debian_github_cli_install_guidance() {
@@ -2642,26 +2722,94 @@ setup_run_linux_debian_apt_prerequisites() {
     if setup_is_dry_run; then
         log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_update_command)"
         log_info "[DRY-RUN] Would run: $(setup_linux_debian_apt_prerequisite_command)"
-        log_info "$(setup_linux_debian_github_cli_install_guidance)"
         return 0
     fi
 
-    if ! setup_yes_enabled; then
-        if setup_linux_debian_apt_prerequisites_installed "${package_args[@]}"; then
-            log_info "Ubuntu/Debian apt prerequisites are already installed."
-            return 0
-        fi
-        fatal_error "Ubuntu/Debian setup can install apt prerequisites. Run 'basectl setup --dry-run' to review the apt commands, then rerun with '--yes' to apply them."
+    if setup_linux_debian_apt_prerequisites_installed "${package_args[@]}"; then
+        log_info "Ubuntu/Debian apt prerequisites are already installed."
+        return 0
     fi
+
+    setup_require_linux_debian_system_consent \
+        "Ubuntu/Debian setup can install apt packages, configure package repositories, and run platform bootstraps." || return $?
 
     log_info "Installing Ubuntu/Debian apt prerequisites."
     sudo apt-get update || return $?
     sudo apt-get install -y "${package_args[@]}" || return $?
-    log_info "$(setup_linux_debian_github_cli_install_guidance)"
+}
+
+setup_run_linux_debian_github_cli_prerequisite() {
+    local arch
+    local keyring_tmp
+    local source_tmp
+
+    if setup_linux_command_path gh >/dev/null 2>&1; then
+        log_info "GitHub CLI 'gh' is already installed; authentication remains user-owned."
+        return 0
+    fi
+
+    if setup_is_dry_run; then
+        log_info "$(setup_linux_debian_github_cli_install_guidance)"
+        log_info "[DRY-RUN] Would run: sudo install -d -m 0755 /etc/apt/keyrings"
+        log_info "[DRY-RUN] Would fetch: $(setup_linux_debian_github_cli_keyring_url)"
+        log_info "[DRY-RUN] Would run: sudo install -m 0644 <downloaded GitHub CLI keyring> $(setup_linux_debian_github_cli_keyring_path)"
+        log_info "[DRY-RUN] Would run: sudo install -d -m 0755 /etc/apt/sources.list.d"
+        log_info "[DRY-RUN] Would write apt source: $(setup_linux_debian_github_cli_source_line)"
+        log_info "[DRY-RUN] Would run: sudo apt-get update"
+        log_info "[DRY-RUN] Would run: sudo apt-get install -y gh"
+        return 0
+    fi
+
+    setup_require_linux_debian_system_consent \
+        "Ubuntu/Debian setup can install apt packages, configure package repositories, and run platform bootstraps." || return $?
+
+    command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install GitHub CLI 'gh' from its official Debian/Ubuntu apt repository."
+    command -v dpkg >/dev/null 2>&1 || fatal_error "dpkg is required to configure GitHub CLI's official Debian/Ubuntu apt repository."
+    arch="$(dpkg --print-architecture)" || fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
+    [[ -n "$arch" ]] || fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
+
+    keyring_tmp="$(mktemp "${TMPDIR:-/tmp}/base-github-cli-keyring.XXXXXX")" || fatal_error "Failed to create a temporary GitHub CLI keyring file."
+    source_tmp="$(mktemp "${TMPDIR:-/tmp}/base-github-cli-source.XXXXXX")" || {
+        rm -f "$keyring_tmp"
+        fatal_error "Failed to create a temporary GitHub CLI apt source file."
+    }
+
+    if ! curl -fsSL -o "$keyring_tmp" "$(setup_linux_debian_github_cli_keyring_url)"; then
+        rm -f "$keyring_tmp" "$source_tmp"
+        fatal_error "Failed to download GitHub CLI's official Debian/Ubuntu apt keyring."
+    fi
+    setup_linux_debian_github_cli_source_line "$arch" >"$source_tmp" || {
+        rm -f "$keyring_tmp" "$source_tmp"
+        fatal_error "Failed to prepare GitHub CLI apt source configuration."
+    }
+
+    log_info "Installing GitHub CLI 'gh' from GitHub CLI's official Debian/Ubuntu apt repository."
+    sudo install -d -m 0755 /etc/apt/keyrings || {
+        rm -f "$keyring_tmp" "$source_tmp"
+        return 1
+    }
+    sudo install -m 0644 "$keyring_tmp" "$(setup_linux_debian_github_cli_keyring_path)" || {
+        rm -f "$keyring_tmp" "$source_tmp"
+        return 1
+    }
+    sudo install -d -m 0755 /etc/apt/sources.list.d || {
+        rm -f "$keyring_tmp" "$source_tmp"
+        return 1
+    }
+    sudo install -m 0644 "$source_tmp" "$(setup_linux_debian_github_cli_source_path)" || {
+        rm -f "$keyring_tmp" "$source_tmp"
+        return 1
+    }
+    rm -f "$keyring_tmp" "$source_tmp"
+    sudo apt-get update || return $?
+    sudo apt-get install -y gh || return $?
 }
 
 setup_run_linux_debian_install() {
     setup_run_linux_debian_apt_prerequisites || return $?
+    if setup_profile_enabled dev; then
+        setup_run_linux_debian_github_cli_prerequisite || return $?
+    fi
     setup_create_virtualenv
     setup_install_pyyaml
     setup_install_click
