@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `basectl trust status|allow|revoke` to inspect and manage local
+  manifest-command approval records under Base-managed state.
+
 ## [1.6.0] - 2026-07-04
 
 ### Added

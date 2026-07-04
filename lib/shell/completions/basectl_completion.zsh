@@ -97,6 +97,7 @@ _base_basectl_completion() {
         'logs:List and open recent Base CLI runtime logs'
         'history:List recent Base command history records'
         'config:Inspect Base machine-local user config'
+        'trust:Manage manifest command trust approvals'
         'doctor:Diagnose the local Base environment'
         'gh:Manage GitHub issues, pull requests, branches, and hygiene'
         'onboard:Guide a user through first Base setup'
@@ -129,6 +130,36 @@ _base_basectl_completion() {
                 '--workspace[Workspace directory to scan]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        trust)
+            case "${words[3]:-}" in
+                status)
+                    _arguments '1:trust command:(status allow revoke)' \
+                        '2:Base project:->projects' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '--format[Output format]:format:(text json)' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                allow)
+                    _arguments '1:trust command:(status allow revoke)' \
+                        '2:Base project:->projects' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '--manifest-sha256[Expected manifest SHA-256]:sha256:' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                revoke)
+                    _arguments '1:trust command:(status allow revoke)' \
+                        '2:Base project:->projects' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '1:trust command:(status allow revoke)'
+                    ;;
+            esac
+            if [[ "$state" == projects ]]; then
+                _base_basectl_completion_describe_projects
+            fi
             ;;
         workspace)
             case "${words[3]:-}" in

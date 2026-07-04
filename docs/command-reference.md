@@ -48,6 +48,9 @@ full compatibility contract.
 | `basectl build <project> [target...]` | Run declared build targets, or `build.default` when no target is provided. | `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl build <project> --list` | List build targets declared by a project manifest. | `--workspace <path>` |
 | `basectl demo [project]` | Run a project-owned demo script. | `--workspace <path>`, `--dry-run`, `-- <args>` |
+| `basectl trust status <project>` | Show local manifest command trust status. | `--workspace <path>`, `--format <text\|json>` |
+| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>` |
+| `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |
 
 Manifest-declared `test`, `run`, and `build` commands are project-owned shell
 command strings executed from the project root. Review manifests from

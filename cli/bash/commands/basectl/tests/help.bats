@@ -23,6 +23,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"logs [options]"* ]]
     [[ "$output" == *"history [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
+    [[ "$output" == *"trust <status|allow|revoke> <project> [options]"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"gh <area> <command> [options]"* ]]
     [[ "$output" == *"onboard [project] [options]"* ]]
@@ -65,6 +66,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  history [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor|clone|pull|init|configure> [options]' <<<"$output"
+    grep -Fqx '  trust <status|allow|revoke> <project> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
@@ -154,6 +156,7 @@ load ./basectl_helpers.bash
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
     grep -Fqx -- "- \`basectl docs\` - open the Base documentation home page on GitHub." "$commands_file"
+    grep -Fqx -- "- \`basectl trust <status|allow|revoke> <project>\` - inspect, allow, or" "$commands_file"
 }
 
 @test "command reference documents workspace init help surface" {
@@ -178,6 +181,14 @@ load ./basectl_helpers.bash
     local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
 
     grep -Fqx -- "| \`basectl docs\` | Open the Base documentation home page on GitHub. | \`--show-url\` |" "$command_reference"
+}
+
+@test "command reference documents trust commands" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+
+    grep -Fqx -- "| \`basectl trust status <project>\` | Show local manifest command trust status. | \`--workspace <path>\`, \`--format <text\\|json>\` |" "$command_reference"
+    grep -Fqx -- "| \`basectl trust allow <project>\` | Approve the current manifest command contract on this machine. | \`--workspace <path>\`, \`--manifest-sha256 <sha256>\` |" "$command_reference"
+    grep -Fqx -- "| \`basectl trust revoke <project>\` | Remove local manifest command approval. | \`--workspace <path>\` |" "$command_reference"
 }
 
 @test "command reference documents repo and Project configuration options" {

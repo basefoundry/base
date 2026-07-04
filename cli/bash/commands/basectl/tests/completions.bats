@@ -95,6 +95,26 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "projects_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl trust ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "trust_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl trust status ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "trust_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl trust status demo --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "trust_status_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl trust allow demo --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "trust_allow_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl trust revoke demo --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "trust_revoke_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl workspace ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -250,6 +270,11 @@ EOF
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"history_options=--project --command --status --limit --format"* ]]
+    [[ "$output" == *"trust_commands=status allow revoke"* ]]
+    [[ "$output" == *"trust_projects=base demo"* ]]
+    [[ "$output" == *"trust_status_options=--workspace --format"* ]]
+    [[ "$output" == *"trust_allow_options=--workspace --manifest-sha256"* ]]
+    [[ "$output" == *"trust_revoke_options=--workspace"* ]]
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --pr --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]
     [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]
