@@ -414,13 +414,15 @@ def profile_setup_fix(profile: str) -> str:
 
 
 def github_cli_linux_install_fix(rerun_command: str) -> str:
-    return f"Follow {GITHUB_CLI_LINUX_INSTALL_URL}, then rerun '{rerun_command}'."
+    if rerun_command.startswith("basectl setup"):
+        return rerun_command
+    return "basectl setup --profile dev"
 
 
 def github_cli_linux_install_guidance() -> str:
     return (
-        "GitHub CLI 'gh' is user-managed on Ubuntu/Debian. "
-        "Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': "
+        "GitHub CLI 'gh' is installed by basectl setup's Ubuntu/Debian platform layer. "
+        "Base configures GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': "
         f"{GITHUB_CLI_LINUX_INSTALL_URL}."
     )
 
@@ -484,10 +486,10 @@ def check_linux_debian_github_cli_artifact(
         name=artifact.name,
         ok=False,
         message=(
-            "GitHub CLI 'gh' is not installed; install it from GitHub CLI's official "
+            "GitHub CLI 'gh' is not installed; Base setup installs it from GitHub CLI's official "
             "Debian/Ubuntu apt repository."
         ),
-        fix=github_cli_linux_install_fix(f"basectl check --profile {profile}"),
+        fix=profile_setup_fix(profile),
         finding_id="BASE-D107",
     )
 

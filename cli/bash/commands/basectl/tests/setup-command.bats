@@ -11,6 +11,6 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl setup [options]"* ]]
     [[ "$output" == *"Prepare the local Base CLI environment on supported setup platforms."* ]]
     [[ "$output" == *"Install or verify macOS prerequisites on macOS."* ]]
-    [[ "$output" == *"Install or verify apt prerequisites on Ubuntu/Debian Linux when --yes is passed."* ]]
+    [[ "$output" == *"Install or verify apt prerequisites on Ubuntu/Debian Linux with interactive consent or --yes."* ]]
     [[ "$output" != *"Install Homebrew if needed."* ]]
 }

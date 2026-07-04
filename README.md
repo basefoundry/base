@@ -197,7 +197,9 @@ curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh 
 ```
 
 Review the printed apt, clone, `basectl setup --yes`, and `update-profile`
-commands, then run them in the Ubuntu shell.
+commands, then run them in the Ubuntu shell. The printed `--yes` handoff is for
+unattended pasted commands; interactive `basectl setup` still applies setup
+after prompting for Ubuntu/Debian system changes.
 
 ### Team Or Security-Conscious Rollout
 
@@ -1080,9 +1082,10 @@ default artifacts and then invokes the Python project setup layer through
 Prerequisite profiles are opt-in. Use `--profile dev` to install Base
 contributor tools from `lib/base/dev_manifest.yaml`. On macOS that includes
 Homebrew-managed BATS, GitHub CLI, and ShellCheck. On Ubuntu/Debian it installs
-Base-owned apt-backed tools such as BATS and ShellCheck, while GitHub CLI
-remains user-managed through GitHub CLI's official Debian/Ubuntu repository
-guidance. Use `--profile sre` for the initial site-reliability profile in
+Base-owned apt-backed tools such as BATS and ShellCheck. It installs GitHub CLI
+from GitHub CLI's official Debian/Ubuntu apt repository/keyring instead of the
+default distro package; authentication remains user-owned. Use `--profile sre`
+for the initial site-reliability profile in
 `lib/base/sre_manifest.yaml`, which installs local diagnostic tools such as
 `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`, `yq`, `nmap`, and `mtr`.
 Use `--profile ai` for optional AI coding tools: Codex CLI and Claude Code.

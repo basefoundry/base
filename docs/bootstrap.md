@@ -8,7 +8,7 @@ installation of Base.
 On Ubuntu/Debian Linux, `bootstrap.sh` stays conservative: it does not run
 `sudo apt` from a piped script. Instead, it detects the platform and prints the
 manual source-checkout commands, including apt prerequisites and the
-`basectl setup --yes` handoff.
+`basectl setup --yes` handoff for unattended paste-and-run flows.
 
 ## Quick Start
 
@@ -52,7 +52,10 @@ curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh 
 
 The output includes `sudo apt-get update`, the supported apt prerequisite list,
 the sibling `base-bash-libs` clone, and the source checkout `setup --dry-run`,
-`setup --yes`, and `update-profile` commands.
+`setup --yes`, and `update-profile` commands. Interactive users can run plain
+`setup` after reviewing `setup --dry-run`; Ubuntu/Debian setup prompts before
+apt, keyring, repository, or remote-installer changes, while non-interactive
+runs use `--yes`.
 
 ## Install Mode
 
@@ -105,10 +108,10 @@ exec "$SHELL" -l
 The sibling `base-bash-libs` checkout gives the source-tree BATS suite the
 reusable Bash libraries it validates against. If that checkout already exists,
 update it before running the full contributor test contract. The `dev` profile
-installs contributor prerequisites such as BATS and ShellCheck. On
-Ubuntu/Debian, GitHub CLI remains user-managed through GitHub CLI's official
-Debian/Ubuntu repository guidance. After that, use `basectl test base` for the
-dogfood test contract.
+installs contributor prerequisites such as BATS, ShellCheck, and GitHub CLI. On
+Ubuntu/Debian, GitHub CLI is installed through GitHub CLI's official
+Debian/Ubuntu apt repository/keyring, while authentication remains user-owned.
+After that, use `basectl test base` for the dogfood test contract.
 
 Named profiles compose when a contributor also wants site-reliability tools:
 
