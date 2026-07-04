@@ -15,6 +15,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Stopped `basectl` from continuing under Rosetta when it resolves native
+  Apple Silicon Homebrew at `/opt/homebrew`, so setup fails early with Bash
+  recovery guidance instead of breaking during a later `brew install`.
 - Replaced stray shell `run` calls in setup's virtualenv and apt install paths
   with direct command execution so spawned `basectl setup` runs do not depend on
   a test-harness helper.

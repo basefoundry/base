@@ -114,6 +114,46 @@ EOF
     [[ "$output" == *"args=$BASE_REPO_ROOT/bin/basectl --version"* ]]
 }
 
+@test "basectl re-execs through native Bash when translated under ARM Homebrew" {
+    local fake_bash="$TEST_TMPDIR/fake-arm-bash"
+
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'fake_arm_bash=%s\n' "$0"
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$fake_bash"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_BASH_VERSION=50 \
+        BASE_TEST_PROC_TRANSLATED=1 \
+        BASE_TEST_HOMEBREW_PREFIX=/opt/homebrew \
+        BASE_TEST_BASH_CANDIDATES="$fake_bash" \
+        "$BASE_REPO_ROOT/bin/basectl" --version
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"fake_arm_bash=$fake_bash"* ]]
+    [[ "$output" == *"args=$BASE_REPO_ROOT/bin/basectl --version"* ]]
+}
+
+@test "basectl rejects translated Bash when ARM Homebrew is active and no native Bash is available" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_BASH_VERSION=50 \
+        BASE_TEST_PROC_TRANSLATED=1 \
+        BASE_TEST_HOMEBREW_PREFIX=/opt/homebrew \
+        BASE_TEST_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        "$BASE_REPO_ROOT/bin/basectl" --version
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base is running under Rosetta while Homebrew resolves to /opt/homebrew."* ]]
+    [[ "$output" == *"Install native Homebrew Bash with:"* ]]
+    [[ "$output" == *"arch -arm64 /opt/homebrew/bin/brew install bash"* ]]
+}
+
 @test "basectl gives setup guidance when current Bash is too old and no supported Bash is installed" {
     run env \
         HOME="$TEST_HOME" \
