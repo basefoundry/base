@@ -197,7 +197,10 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup --profile dev linux-debian dry-run shows official GitHub CLI apt repo setup" {
-    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --profile dev --dry-run
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh \
+        setup --profile dev --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would run: sudo install -d -m 0755 /etc/apt/keyrings"* ]]
@@ -213,7 +216,10 @@ load ./setup_helpers.bash
     create_github_cli_repo_stubs
     create_system_python3_stub
 
-    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --yes --profile dev
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_LINUX_TOOLS=gh \
+        setup --yes --profile dev
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing GitHub CLI 'gh' from GitHub CLI's official Debian/Ubuntu apt repository."* ]]
@@ -226,10 +232,14 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup --yes linux-debian installs apt prerequisites and bootstraps Base" {
+    create_linux_dpkg_query_stub
     create_sudo_apt_get_stub
     create_system_python3_stub
 
-    run_base_command BASE_SETUP_TEST_PLATFORM=linux-debian setup --yes
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
+        setup --yes
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installing Ubuntu/Debian apt prerequisites."* ]]
@@ -243,11 +253,13 @@ load ./setup_helpers.bash
 }
 
 @test "basectl setup --yes linux-debian reports apt prerequisite failures" {
+    create_linux_dpkg_query_stub
     create_sudo_apt_get_stub
     create_system_python3_stub
 
     run_base_command \
         BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv \
         BASE_SETUP_TEST_APT_FAIL=true \
         setup --yes
 

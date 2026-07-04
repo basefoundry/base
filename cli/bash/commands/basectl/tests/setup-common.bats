@@ -127,6 +127,7 @@ EOF
 
     run_setup_common_script '
         setup_enable_yes
+        BASE_SETUP_TEST_MISSING_APT_PACKAGES=python3-venv
         setup_run_linux_debian_apt_prerequisites
     '
 
