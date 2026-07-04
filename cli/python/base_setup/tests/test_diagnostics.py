@@ -718,7 +718,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
             ), mock.patch(
                 "base_setup.ide.list_ide_extensions",
                 return_value={"ms-python.python"},
-            ), mock.patch.dict(os.environ, {"HOME": tmpdir, "XDG_CONFIG_HOME": ""}):
+            ), mock.patch.dict(os.environ, {"HOME": tmpdir, "XDG_CONFIG_HOME": "", "BASE_SETUP_PROFILES": "dev"}):
                 settings_file = ide.ide_settings_file(ide.IDE_DEFINITIONS["vscode"])
                 settings_file.parent.mkdir(parents=True)
                 settings_file.write_text(json.dumps({"editor.formatOnSave": True}), encoding="utf-8")
@@ -763,7 +763,10 @@ class IdeDiagnosticsTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as home_dir:
-            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}), mock.patch(
+            with mock.patch.dict(
+                os.environ,
+                {"HOME": home_dir, "XDG_CONFIG_HOME": "", "BASE_SETUP_PROFILES": "dev"},
+            ), mock.patch(
                 "base_setup.process.command_exists",
                 return_value=False,
             ):

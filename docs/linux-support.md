@@ -165,6 +165,12 @@ platform-aware mapping is `tool:bats-core`: the manifest keeps the portable
 artifact name, macOS continues to use Homebrew package `bats-core`, and
 Ubuntu/Debian treats the artifact as satisfied by system package `bats`.
 
+IDE extension checks are developer-workstation polish, not part of the default
+Ubuntu/Debian runtime acceptance path. Default `basectl check` and
+`basectl ci check` runs do not fail solely because editor CLIs such as `code`
+are absent; run with `--profile dev` when you want Base to validate declared IDE
+extensions.
+
 GitHub CLI authentication remains a user-owned step. After `gh` is installed,
 run the browser-backed flow when you need GitHub access:
 

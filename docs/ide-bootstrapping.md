@@ -134,9 +134,15 @@ Use:
 ```bash
 basectl check <project>
 basectl doctor <project>
+basectl check <project> --profile dev
+basectl doctor <project> --profile dev
 ```
 
-IDE checks include:
+Default project checks keep IDE extension CLI probes out of the core runtime
+acceptance path. IDE extension diagnostics run when the developer prerequisite
+profile is active, for example with `--profile dev`.
+
+IDE checks can include:
 
 - requested IDE app installed through Homebrew cask
 - IDE CLI available on `PATH`
