@@ -35,14 +35,13 @@ Purpose:
   Prepare the local Base CLI environment on supported setup platforms.
 
 Setup does:
-  1. Install Homebrew if needed.
-  2. Install Xcode Command Line Tools if needed.
-  3. Install Python 3.13 via Homebrew if needed.
-  4. Install prerequisite profiles when --profile is passed.
-  5. Create ~/.base.d/base/.venv if it does not already exist.
-  6. Install Base Python bootstrap packages into the Base virtual environment.
-  7. Invoke the Python project setup layer for base_manifest.yaml artifacts.
-  8. Create ~/.base.d/config.yaml with workspace.root: ~/work if missing.
+  1. Install or verify macOS prerequisites on macOS.
+  2. Install or verify apt prerequisites on Ubuntu/Debian Linux when --yes is passed.
+  3. Install prerequisite profiles when --profile is passed.
+  4. Create ~/.base.d/base/.venv if it does not already exist.
+  5. Install Base Python bootstrap packages into the Base virtual environment.
+  6. Invoke the Python project setup layer for base_manifest.yaml artifacts.
+  7. Create ~/.base.d/config.yaml with workspace.root: ~/work if missing.
 
 Notes:
   - This command is intentionally idempotent.

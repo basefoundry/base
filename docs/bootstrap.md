@@ -105,8 +105,10 @@ exec "$SHELL" -l
 The sibling `base-bash-libs` checkout gives the source-tree BATS suite the
 reusable Bash libraries it validates against. If that checkout already exists,
 update it before running the full contributor test contract. The `dev` profile
-installs contributor prerequisites such as BATS, the GitHub CLI, and ShellCheck.
-After that, use `basectl test base` for the dogfood test contract.
+installs contributor prerequisites such as BATS and ShellCheck. On
+Ubuntu/Debian, GitHub CLI remains user-managed through GitHub CLI's official
+Debian/Ubuntu repository guidance. After that, use `basectl test base` for the
+dogfood test contract.
 
 Named profiles compose when a contributor also wants site-reliability tools:
 

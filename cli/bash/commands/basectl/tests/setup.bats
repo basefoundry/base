@@ -92,7 +92,7 @@ load ./setup_helpers.bash
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-unknown setup
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"supports macOS only"* ]]
+    [[ "$output" == *"supports macOS and Ubuntu/Debian Linux only"* ]]
     [[ "$output" == *"BASE_PLATFORM='linux-unknown'"* ]]
 }
 

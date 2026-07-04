@@ -56,9 +56,10 @@ class ProfileError(ValueError):
 
 LINUX_DEBIAN_DEV_TOOLS = {
     "bats-core": LinuxDebianDevTool(apt_package="bats", command="bats"),
-    "gh": LinuxDebianDevTool(apt_package="gh", command="gh"),
     "shellcheck": LinuxDebianDevTool(apt_package="shellcheck", command="shellcheck"),
 }
+
+GITHUB_CLI_LINUX_INSTALL_URL = "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -412,8 +413,29 @@ def profile_setup_fix(profile: str) -> str:
     return f"basectl setup --profile {profile}"
 
 
+def github_cli_linux_install_fix(rerun_command: str) -> str:
+    return f"Follow {GITHUB_CLI_LINUX_INSTALL_URL}, then rerun '{rerun_command}'."
+
+
+def github_cli_linux_install_guidance() -> str:
+    return (
+        "GitHub CLI 'gh' is user-managed on Ubuntu/Debian. "
+        "Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': "
+        f"{GITHUB_CLI_LINUX_INSTALL_URL}."
+    )
+
+
 def current_base_platform() -> str:
     return os.environ.get("BASE_PLATFORM", "")
+
+
+def linux_debian_github_cli_artifact(artifact: ArtifactRequest, profile: str) -> bool:
+    return (
+        profile == "dev"
+        and current_base_platform() == "linux-debian"
+        and artifact.artifact_type == "tool"
+        and artifact.name == "gh"
+    )
 
 
 def linux_debian_dev_tool(artifact: ArtifactRequest, profile: str) -> LinuxDebianDevTool | None:
@@ -429,10 +451,45 @@ def check_profile_artifact(
     definition: ArtifactDefinition,
     profile: str = "dev",
 ) -> DevCheck:
+    if linux_debian_github_cli_artifact(artifact, profile):
+        return check_linux_debian_github_cli_artifact(artifact, profile=profile)
     linux_debian_tool = linux_debian_dev_tool(artifact, profile)
     if linux_debian_tool is not None:
         return check_linux_debian_apt_artifact(artifact, linux_debian_tool, profile=profile)
     return check_homebrew_artifact(artifact, definition, profile=profile)
+
+
+def check_linux_debian_github_cli_artifact(
+    artifact: ArtifactRequest,
+    profile: str = "dev",
+) -> DevCheck:
+    if artifact.version != "latest":
+        return DevCheck(
+            name=artifact.name,
+            ok=False,
+            message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
+            fix="Use version 'latest' for GitHub CLI developer prerequisite checks.",
+            finding_id="BASE-D102",
+        )
+
+    if command_exists("gh"):
+        return DevCheck(
+            name=artifact.name,
+            ok=True,
+            message="GitHub CLI 'gh' is installed; authentication remains user-owned.",
+            fix="",
+            finding_id="BASE-D107",
+        )
+    return DevCheck(
+        name=artifact.name,
+        ok=False,
+        message=(
+            "GitHub CLI 'gh' is not installed; install it from GitHub CLI's official "
+            "Debian/Ubuntu apt repository."
+        ),
+        fix=github_cli_linux_install_fix(f"basectl check --profile {profile}"),
+        finding_id="BASE-D107",
+    )
 
 
 def check_linux_debian_apt_artifact(
@@ -556,11 +613,31 @@ def reconcile_profile_artifact(
     runtime: ProfileRuntime,
     dry_run: bool,
 ) -> None:
+    if linux_debian_github_cli_artifact(artifact, runtime.profile):
+        reconcile_linux_debian_github_cli_artifact(ctx, artifact)
+        return
     linux_debian_tool = linux_debian_dev_tool(artifact, runtime.profile)
     if linux_debian_tool is not None:
         reconcile_linux_debian_apt_artifact(ctx, artifact, linux_debian_tool, profile=runtime.profile, dry_run=dry_run)
         return
     reconcile_artifact(ctx, definition, artifact.version, runtime.project, dry_run=dry_run)
+
+
+def reconcile_linux_debian_github_cli_artifact(
+    ctx: base_cli.Context,
+    artifact: ArtifactRequest,
+) -> None:
+    if artifact.version != "latest":
+        raise ArtifactError(
+            f"GitHub CLI developer prerequisite '{artifact.name}' specifies version '{artifact.version}', "
+            "but Base only supports GitHub CLI developer prerequisite version 'latest' right now."
+        )
+
+    if command_exists("gh"):
+        ctx.log.info("GitHub CLI 'gh' is already installed; authentication remains user-owned.")
+        return
+
+    ctx.log.info(github_cli_linux_install_guidance())
 
 
 def reconcile_linux_debian_apt_artifact(
@@ -606,11 +683,16 @@ def reconcile_linux_debian_apt_artifact(
 
 def check_github_cli_auth() -> DevCheck:
     if not command_exists("gh"):
+        fix = (
+            github_cli_linux_install_fix("basectl check --profile dev")
+            if current_base_platform() == "linux-debian"
+            else "basectl setup --profile dev"
+        )
         return DevCheck(
             name="gh-auth",
             ok=False,
             message="GitHub CLI 'gh' was not found.",
-            fix="basectl setup --profile dev",
+            fix=fix,
             finding_id="BASE-D105",
         )
 
