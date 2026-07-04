@@ -98,10 +98,22 @@ the apt-backed setup path has installed `python3` and `python3-venv`.
 
 ## Ubuntu Bootstrap
 
-For v1.6.0, Ubuntu/Debian setup can install the simple apt prerequisites that
-Base knows how to own. The mutation path is intentionally explicit:
-`basectl setup --dry-run` prints the apt commands, and `basectl setup --yes`
-applies them. Without `--yes`, Linux setup fails before invoking `apt`.
+Ubuntu/Debian bootstrap is intentionally conservative. The first-mile
+`bootstrap.sh` entry point detects Ubuntu/Debian Linux and prints the manual
+source-checkout path instead of running `sudo apt` from a piped script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source --dry-run
+```
+
+The printed path includes apt prerequisites, cloning Base and
+`base-bash-libs`, `basectl setup --dry-run`, `basectl setup --yes`, and
+`basectl update-profile`.
+
+Ubuntu/Debian setup can install the simple apt prerequisites that Base knows
+how to own. The mutation path is intentionally explicit: `basectl setup
+--dry-run` prints the apt commands, and `basectl setup --yes` applies them.
+Without `--yes`, Linux setup fails before invoking `apt`.
 
 Use native Linux filesystem paths for source checkouts. In Parallels, keep Base
 under `~/work`, not under mounted macOS shared folders, so file permissions,
@@ -124,7 +136,7 @@ The Ubuntu/Debian setup path runs:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go
+sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go
 ```
 
 `basectl check` and `basectl doctor` keep the basic Ubuntu/Debian runtime path

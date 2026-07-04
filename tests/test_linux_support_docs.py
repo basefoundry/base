@@ -15,7 +15,8 @@ def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
     assert "## Ubuntu Bootstrap" in text
     assert "basectl setup --dry-run" in text
     assert "basectl setup --yes" in text
-    assert "sudo apt-get install -y bash git gh python3 python3-venv python3-pip bats shellcheck jq golang-go" in text
+    assert "sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go" in text
+    assert "sudo apt-get install -y bash git gh python3" not in text
     assert "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian" in text
     assert "signed apt repository/keyring" in text
     assert "GitHub CLI authentication" in text

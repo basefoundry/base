@@ -5,6 +5,11 @@ machine. It handles the minimum prerequisites needed before `basectl` can take
 over: Homebrew, Git, Bash 4.2+, and either a source checkout or Homebrew
 installation of Base.
 
+On Ubuntu/Debian Linux, `bootstrap.sh` stays conservative: it does not run
+`sudo apt` from a piped script. Instead, it detects the platform and prints the
+manual source-checkout commands, including apt prerequisites and the
+`basectl setup --yes` handoff.
+
 ## Quick Start
 
 Run the bootstrapper from GitHub:
@@ -13,9 +18,9 @@ Run the bootstrapper from GitHub:
 curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash
 ```
 
-The bootstrapper verifies macOS, installs missing first-mile prerequisites, and
-then prints the exact commands needed to finish setup. For the default source
-checkout path, the handoff usually looks like:
+On macOS, the bootstrapper verifies macOS, installs missing first-mile
+prerequisites, and then prints the exact commands needed to finish setup. For
+the default source checkout path, the handoff usually looks like:
 
 ```bash
 ~/work/base/bin/basectl setup
@@ -26,6 +31,16 @@ exec "$SHELL" -l
 `bootstrap.sh` does not edit shell startup files automatically. Shell profile
 integration remains an explicit `basectl update-profile` step so the user can
 see what was installed before Base changes future interactive shells.
+
+On Ubuntu/Debian, inspect the manual path first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source --dry-run
+```
+
+The output includes `sudo apt-get update`, the supported apt prerequisite list,
+the sibling `base-bash-libs` clone, and the source checkout `setup --dry-run`,
+`setup --yes`, and `update-profile` commands.
 
 ## Install Mode
 
@@ -60,7 +75,8 @@ bootstrap.sh --dry-run
 ```
 
 Use `--dry-run` to inspect the planned prerequisite installs and Base install
-route without changing the machine.
+route without changing the machine. On Ubuntu/Debian, the bootstrapper always
+prints manual commands rather than mutating apt state itself.
 
 ## Contributor Path
 

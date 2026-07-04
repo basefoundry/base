@@ -80,6 +80,113 @@ bootstrap_require_macos() {
     [[ "$os_name" == "Darwin" ]] || bootstrap_die "bootstrap.sh currently supports macOS only."
 }
 
+bootstrap_linux_os_release_path() {
+    printf '%s\n' "${BASE_BOOTSTRAP_TEST_OS_RELEASE_PATH:-/etc/os-release}"
+}
+
+bootstrap_detect_linux_platform() {
+    local ID="" ID_LIKE=""
+    local id id_like
+    local os_release_path
+
+    os_release_path="$(bootstrap_linux_os_release_path)"
+    if [[ -r "$os_release_path" ]]; then
+        # shellcheck source=/dev/null
+        source "$os_release_path"
+    fi
+
+    id="${ID,,}"
+    id_like="${ID_LIKE,,}"
+    case " $id $id_like " in
+        *" ubuntu "*|*" debian "*)
+            printf 'linux-debian\n'
+            ;;
+        *)
+            printf 'linux-unknown\n'
+            ;;
+    esac
+}
+
+bootstrap_current_platform() {
+    local os_name
+
+    if [[ -n "${BASE_BOOTSTRAP_TEST_PLATFORM:-}" ]]; then
+        printf '%s\n' "$BASE_BOOTSTRAP_TEST_PLATFORM"
+        return 0
+    fi
+
+    os_name="$(bootstrap_uname)"
+    case "$os_name" in
+        Darwin)
+            printf 'macos\n'
+            ;;
+        Linux)
+            bootstrap_detect_linux_platform
+            ;;
+        *)
+            printf 'unsupported\n'
+            ;;
+    esac
+}
+
+bootstrap_linux_debian_apt_packages() {
+    printf '%s\n' "bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"
+}
+
+bootstrap_linux_debian_github_cli_install_url() {
+    printf '%s\n' "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
+}
+
+bootstrap_linux_debian_github_cli_install_guidance() {
+    printf "Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': %s.\n" "$(bootstrap_linux_debian_github_cli_install_url)"
+}
+
+bootstrap_print_linux_debian_source_path() {
+    local base_bash_libs_dir
+    local branch="$3"
+    local install_dir="$2"
+    local parent_dir
+    local repo_url="$1"
+
+    parent_dir="$(bootstrap_parent_dir "$install_dir")"
+    base_bash_libs_dir="$parent_dir/base-bash-libs"
+
+    bootstrap_log "Ubuntu/Debian Linux bootstrap path"
+    bootstrap_log "Install mode: source"
+    bootstrap_log ""
+    bootstrap_log "Review and run these commands on Ubuntu/Debian Linux:"
+    bootstrap_log "  sudo apt-get update"
+    bootstrap_log "  sudo apt-get install -y $(bootstrap_linux_debian_apt_packages)"
+    bootstrap_log "  $(bootstrap_linux_debian_github_cli_install_guidance)"
+    bootstrap_log "  mkdir -p $parent_dir"
+    if [[ -n "$branch" ]]; then
+        bootstrap_log "  git clone --branch $branch $repo_url $install_dir"
+    else
+        bootstrap_log "  git clone $repo_url $install_dir"
+    fi
+    bootstrap_log "  git clone https://github.com/basefoundry/base-bash-libs.git $base_bash_libs_dir"
+    bootstrap_log "  $install_dir/bin/basectl setup --dry-run"
+    bootstrap_log "  $install_dir/bin/basectl setup --yes"
+    bootstrap_log "  $install_dir/bin/basectl update-profile"
+    bootstrap_log "  exec \"\$SHELL\" -l"
+}
+
+bootstrap_run_linux_debian_bootstrap() {
+    local branch="$4"
+    local install_dir="$3"
+    local mode="$1"
+    local repo_url="$2"
+
+    case "$mode" in
+        ""|source)
+            bootstrap_print_linux_debian_source_path "$repo_url" "$install_dir" "$branch"
+            ;;
+        brew)
+            bootstrap_die "Homebrew bootstrap mode is macOS-only; use --source on Ubuntu/Debian Linux."
+            ;;
+    esac
+}
+
 bootstrap_find_brew() {
     local candidate
     local candidates="${BASE_BOOTSTRAP_BREW_CANDIDATES:-/opt/homebrew/bin/brew:/usr/local/bin/brew}"
@@ -540,6 +647,7 @@ bootstrap_main() {
     local formula="${BASE_BOOTSTRAP_BREW_FORMULA:-basefoundry/base/base}"
     local install_dir="${BASE_BOOTSTRAP_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local mode="${BASE_BOOTSTRAP_MODE:-}"
+    local platform
     local repo_url="${BASE_BOOTSTRAP_REPO_URL:-https://github.com/basefoundry/base.git}"
 
     BASE_BOOTSTRAP_DRY_RUN="${BASE_BOOTSTRAP_DRY_RUN:-false}"
@@ -592,7 +700,18 @@ bootstrap_main() {
     install_dir="$(bootstrap_expand_path "$install_dir")" || return $?
 
     bootstrap_log "Base bootstrap"
-    bootstrap_require_macos || return $?
+    platform="$(bootstrap_current_platform)" || return $?
+    case "$platform" in
+        macos)
+            ;;
+        linux-debian)
+            bootstrap_run_linux_debian_bootstrap "$mode" "$repo_url" "$install_dir" "$branch"
+            return $?
+            ;;
+        *)
+            bootstrap_die "bootstrap.sh currently supports macOS and Ubuntu/Debian Linux only."
+            ;;
+    esac
     bootstrap_ensure_homebrew "$allow_homebrew_install" brew_bin || return $?
     bootstrap_ensure_git "$brew_bin" || return $?
     bootstrap_ensure_supported_bash "$brew_bin" || return $?
