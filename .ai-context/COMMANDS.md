@@ -29,6 +29,8 @@ options.
 - `basectl run <project> <command>` - run a declared project command.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
   Zip bundle for manual upload or copy/paste into AI tools.
+- `basectl trust <status|allow|revoke> <project>` - inspect, allow, or
+  remove local approval for manifest-declared project commands.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata; Base does not send the

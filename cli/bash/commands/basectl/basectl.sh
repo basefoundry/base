@@ -63,6 +63,8 @@ Commands:
     List recent Base command history records.
   config <path|show|doctor>
     Inspect Base's machine-local user config.
+  trust <status|allow|revoke> <project> [options]
+    Manage local approval for manifest-declared project commands.
   doctor [project] [options]
     Diagnose the local Base CLI environment and optional project artifacts.
   gh <area> <command> [options]
@@ -337,6 +339,11 @@ basectl_do_config() {
     base_config_subcommand_main "$@"
 }
 
+basectl_do_trust() {
+    basectl_source_subcommand_module trust || return 1
+    base_trust_subcommand_main "$@"
+}
+
 basectl_do_doctor() {
     basectl_source_subcommand_module doctor || return 1
     base_doctor_subcommand_main "$@"
@@ -504,6 +511,7 @@ basectl_main() {
         logs)             basectl_do_logs "$@" ;;
         history)          basectl_do_history "$@" ;;
         config)           basectl_do_config "$@" ;;
+        trust)            basectl_do_trust "$@" ;;
         doctor)           basectl_do_doctor "$@" ;;
         gh)               basectl_do_gh "$@" ;;
         onboard)          basectl_do_onboard "$@" ;;
