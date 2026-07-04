@@ -66,7 +66,14 @@ def build_targets_project_command(
         return base_cli.ExitCode.FAILURE
 
     for target_name, target_config, working_dir in targets:
-        print_build_target(project, manifest, target_name, target_config, working_dir)
+        print_build_target(
+            project,
+            manifest,
+            target_name,
+            target_config,
+            working_dir,
+            manifest_command_trust_required=True,
+        )
     return base_cli.ExitCode.SUCCESS
 
 
@@ -89,16 +96,25 @@ def list_build_targets_command(
         return base_cli.ExitCode.FAILURE
 
     for target_name, target_config, working_dir in targets:
-        print_build_target(project, manifest, target_name, target_config, working_dir)
+        print_build_target(
+            project,
+            manifest,
+            target_name,
+            target_config,
+            working_dir,
+            manifest_command_trust_required=False,
+        )
     return base_cli.ExitCode.SUCCESS
 
 
-def print_build_target(
+def print_build_target(  # pylint: disable=too-many-arguments
     project: ProjectLike,
     manifest: BaseManifest,
     target_name: str,
     target_config: BuildTargetConfig,
     working_dir: Path,
+    *,
+    manifest_command_trust_required: bool,
 ) -> None:
     fields = [
         project.name,
@@ -111,16 +127,23 @@ def print_build_target(
     ]
     if target_config.runner is not None:
         fields.append(target_config.runner)
-    fields.extend(route_metadata_fields(manifest))
+    fields.extend(
+        route_metadata_fields(
+            manifest,
+            manifest_command_trust_required=manifest_command_trust_required,
+        )
+    )
     print("\t".join(fields))
 
 
-def route_metadata_fields(manifest: BaseManifest) -> list[str]:
+def route_metadata_fields(manifest: BaseManifest, *, manifest_command_trust_required: bool = False) -> list[str]:
     route = route_for_manifest(manifest)
     uses_uv = "true" if route.uses_uv_manager else "false"
+    trust_required = "true" if manifest_command_trust_required else "false"
     return [
         f"__base_project_venv_dir={route.project_venv_dir}",
         f"__base_uses_uv_manager={uses_uv}",
+        f"__base_manifest_command_trust_required={trust_required}",
     ]
 
 

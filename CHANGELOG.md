@@ -11,6 +11,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Added `basectl trust status|allow|revoke` to inspect and manage local
   manifest-command approval records under Base-managed state.
+- Enforced manifest-command trust before `basectl test`, `run`, `build`,
+  `demo`, and `activate` execute project-owned manifest code, while preserving
+  dry-run and list inspection paths before approval.
 
 ## [1.6.0] - 2026-07-04
 

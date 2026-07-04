@@ -27,6 +27,10 @@ base_project_route_uses_uv_manager() {
     [[ "$(base_project_route_value "__base_uses_uv_manager=" "$@" || true)" == "true" ]]
 }
 
+base_project_route_manifest_command_trust_required() {
+    [[ "$(base_project_route_value "__base_manifest_command_trust_required=" "$@" || true)" == "true" ]]
+}
+
 base_project_command_runner_from_field() {
     local candidate="${1:-}"
 
@@ -54,6 +58,18 @@ base_project_venv_dir() {
     fi
 
     printf '%s\n' "$HOME/.base.d/$project/.venv"
+}
+
+base_project_require_manifest_command_trust() {
+    local project="$1"
+    local manifest_path="$2"
+    local wrapper="$BASE_HOME/bin/base-wrapper"
+    shift 2
+
+    base_project_route_manifest_command_trust_required "$@" || return 0
+    [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+
+    "$wrapper" --project base base_trust require "$project" --manifest "$manifest_path"
 }
 
 base_project_activate_environment() {

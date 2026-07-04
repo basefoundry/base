@@ -57,16 +57,26 @@ def write_versioned_python_bin(python_bin: Path, version: str) -> None:
 _engine_homes: list[Path] = []
 
 
-def base_route_fields(base_home: Path, project: str) -> str:
+def base_route_fields(base_home: Path, project: str, *, trust_required: bool = True) -> str:
     del base_home
     if not _engine_homes:
         raise AssertionError("run_engine must be called before base_route_fields")
     venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
-    return f"\t__base_project_venv_dir={venv_dir}\t__base_uses_uv_manager=false"
+    trust_value = "true" if trust_required else "false"
+    return (
+        f"\t__base_project_venv_dir={venv_dir}"
+        "\t__base_uses_uv_manager=false"
+        f"\t__base_manifest_command_trust_required={trust_value}"
+    )
 
 
-def uv_route_fields(project_root: Path) -> str:
-    return f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}\t__base_uses_uv_manager=true"
+def uv_route_fields(project_root: Path, *, trust_required: bool = True) -> str:
+    trust_value = "true" if trust_required else "false"
+    return (
+        f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
+        "\t__base_uses_uv_manager=true"
+        f"\t__base_manifest_command_trust_required={trust_value}"
+    )
 
 
 def write_last_check(home: Path, project: str, checked_at: str, status: str = "ok") -> None:
@@ -559,7 +569,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo')}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
         )
 
     def test_projects_resolve_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
@@ -577,7 +587,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"{uv_route_fields(project_root)}\n",
+            f"{uv_route_fields(project_root, trust_required=False)}\n",
         )
 
     def test_projects_resolve_uses_active_project_manifest_without_workspace_scan(self) -> None:
@@ -606,7 +616,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
-            f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}{base_route_fields(base_home, 'demo')}\n",
+            f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}"
+            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
         )
 
     def test_projects_resolve_explicit_workspace_wins_over_active_project(self) -> None:
@@ -634,7 +645,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo')}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
         )
 
     def test_projects_resolve_rejects_active_project_manifest_mismatch(self) -> None:
@@ -677,7 +688,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo')}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
         )
 
     def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:
@@ -695,7 +706,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'base')}\n",
+            f"{base_route_fields(base_home, 'base', trust_required=False)}\n",
         )
 
     def test_projects_resolve_base_uses_base_home_with_configured_workspace(self) -> None:
@@ -718,7 +729,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"base\t{base_home.resolve()}\t{(base_home / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'base')}\n",
+            f"{base_route_fields(base_home, 'base', trust_required=False)}\n",
         )
 
     def test_projects_test_command_prints_project_details_and_command(self) -> None:
@@ -738,6 +749,20 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}\tpytest tests/"
             f"{base_route_fields(base_home, 'demo')}\n",
         )
+
+    def test_projects_test_command_marks_manifest_command_trust_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_test_manifest(project_root, "demo", "pytest tests/")
+
+            status, stdout, stderr = run_engine(["test-command", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("__base_manifest_command_trust_required=true", stdout)
 
     def test_projects_test_command_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -768,7 +793,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tpytest tests/\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
-            "\t__base_uses_uv_manager=true\n",
+            "\t__base_uses_uv_manager=true"
+            "\t__base_manifest_command_trust_required=true\n",
         )
 
     def test_projects_test_command_for_base_uses_base_home_without_workspace_scan(self) -> None:
@@ -867,6 +893,35 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(stdout, "")
+
+    def test_projects_resolve_marks_activation_trust_required_only_when_sources_declared(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            activation_script = project_root / ".base" / "activate.sh"
+            write_activation_manifest(project_root, "demo", [".base/activate.sh"])
+            activation_script.parent.mkdir()
+            activation_script.write_text("export DEMO=1\n", encoding="utf-8")
+
+            status, stdout, stderr = run_engine(["resolve", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("__base_manifest_command_trust_required=true", stdout)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(["resolve", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("__base_manifest_command_trust_required=false", stdout)
 
     def test_projects_activation_sources_rejects_unsafe_paths(self) -> None:
         cases = {
@@ -989,7 +1044,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\tuvicorn app:app --reload\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
-            "\t__base_uses_uv_manager=true\n",
+            "\t__base_uses_uv_manager=true"
+            "\t__base_manifest_command_trust_required=true\n",
         )
 
     def test_projects_run_command_test_delegates_to_test_contract(self) -> None:
@@ -1113,7 +1169,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"\t{script.resolve()}\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
-            "\t__base_uses_uv_manager=true\n",
+            "\t__base_uses_uv_manager=true"
+            "\t__base_manifest_command_trust_required=true\n",
         )
 
     def test_projects_demo_script_prints_runner_when_declared(self) -> None:

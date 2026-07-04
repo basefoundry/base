@@ -187,6 +187,28 @@ def status_command(ctx: base_cli.Context, project: str, workspace: str | None, o
     return base_cli.ExitCode.SUCCESS
 
 
+@app.subcommand("require", context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.argument("project")
+@base_cli.option(
+    "--workspace",
+    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+)
+@base_cli.option("--manifest", "manifest_path", help="Resolved base_manifest.yaml path to verify.")
+def require_command(ctx: base_cli.Context, project: str, workspace: str | None, manifest_path: str | None) -> int:
+    try:
+        identity = resolve_trust_identity_for_require(ctx, project, workspace, manifest_path)
+    except (ProjectDiscoveryError, ManifestError, TrustError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    trust_status = ManifestCommandTrustStore().status(identity)
+    if trust_status.is_allowed:
+        return base_cli.ExitCode.SUCCESS
+
+    print_blocked_command_text(trust_status, stream=sys.stderr)
+    return base_cli.ExitCode.FAILURE
+
+
 @app.subcommand("allow", context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.argument("project")
 @base_cli.option(
@@ -247,6 +269,24 @@ def resolve_trust_identity(
 ) -> ManifestCommandTrustIdentity:
     project = project_engine.resolve_named_project(ctx, project_name, workspace)
     return compute_trust_identity_for_manifest(project.manifest_path)
+
+
+def resolve_trust_identity_for_require(
+    ctx: base_cli.Context,
+    project_name: str,
+    workspace: str | None,
+    manifest_path: str | None,
+) -> ManifestCommandTrustIdentity:
+    if manifest_path is None:
+        return resolve_trust_identity(ctx, project_name, workspace)
+
+    identity = compute_trust_identity_for_manifest(Path(manifest_path))
+    if identity.project_name != project_name:
+        raise TrustError(
+            f"Resolved manifest '{identity.manifest_path}' declares project '{identity.project_name}', "
+            f"not '{project_name}'."
+        )
+    return identity
 
 
 def compute_trust_identity_for_manifest(manifest_path: Path) -> ManifestCommandTrustIdentity:
@@ -375,6 +415,39 @@ def print_status_text(trust_status: TrustStatus) -> None:
         print(f"Manifest command trust is blocked for project '{identity.project_name}'.")
     print_identity("Current identity", identity)
     print(f"Allow after review: {allow_command_text(identity)}")
+
+
+def print_blocked_command_text(trust_status: TrustStatus, *, stream: Any) -> None:
+    identity = trust_status.identity
+    if trust_status.reason == "manifest_changed":
+        print(
+            f"ERROR: Manifest command trust is blocked for project '{identity.project_name}': "
+            "manifest command contract changed.",
+            file=stream,
+        )
+    else:
+        print(
+            f"ERROR: Manifest-declared commands are not allowed for project "
+            f"'{identity.project_name}' on this machine.",
+            file=stream,
+        )
+    print(f"Project root: {identity.project_root}", file=stream)
+    print(f"Manifest: {identity.manifest_path}", file=stream)
+    if trust_status.reason == "manifest_changed":
+        changed_project = (trust_status.changed_record or {}).get("project", {})
+        if isinstance(changed_project, dict) and changed_project.get("manifest_sha256"):
+            print(f"Recorded Manifest SHA-256: {changed_project['manifest_sha256']}", file=stream)
+    print(f"Manifest SHA-256: {identity.manifest_sha256}", file=stream)
+    if identity.origin is not None:
+        print(f"Origin: {identity.origin}", file=stream)
+    print(file=stream)
+    print("Review first:", file=stream)
+    print(f"  basectl run {identity.project_name} --list", file=stream)
+    print(f"  basectl build {identity.project_name} --list", file=stream)
+    print(f"  basectl test {identity.project_name} --dry-run", file=stream)
+    print(file=stream)
+    print("Allow after review:", file=stream)
+    print(f"  {allow_command_text(identity)}", file=stream)
 
 
 def print_identity(title: str, identity: ManifestCommandTrustIdentity) -> None:

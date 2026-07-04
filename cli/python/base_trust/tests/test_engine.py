@@ -147,6 +147,60 @@ class ManifestCommandTrustTests(unittest.TestCase):
             f"basectl trust allow demo --manifest-sha256 {expected_digest}",
         )
 
+    def test_require_blocks_unapproved_manifest_with_review_guidance(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = write_manifest(workspace / "demo")
+            expected_digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "HOME": str(home),
+                    "BASE_CACHE_DIR": str(home / ".cache" / "base"),
+                    "BASE_HOME": str(workspace / "base"),
+                },
+            ):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    status = engine.main(["require", "demo", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 1, stderr.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Manifest-declared commands are not allowed for project 'demo'", stderr.getvalue())
+        self.assertIn(f"Manifest SHA-256: {expected_digest}", stderr.getvalue())
+        self.assertIn("Review first:", stderr.getvalue())
+        self.assertIn("  basectl run demo --list", stderr.getvalue())
+        self.assertIn("Allow after review:", stderr.getvalue())
+        self.assertIn(f"  basectl trust allow demo --manifest-sha256 {expected_digest}", stderr.getvalue())
+
+    def test_require_allows_matching_trust_record_for_manifest_path(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = write_manifest(workspace / "demo")
+            identity = engine.compute_trust_identity_for_manifest(manifest_path)
+            engine.ManifestCommandTrustStore(home=home).allow(identity, base_version="9.9.9")
+
+            result = invoke(
+                engine.app,
+                ["require", "demo", "--manifest", str(manifest_path)],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+
     def test_allow_rejects_manifest_sha256_mismatch_without_writing_record(self) -> None:
         from base_trust import engine
 
