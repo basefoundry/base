@@ -345,6 +345,60 @@ sha256_file() {
     [[ "$output" != *"Formula: basefoundry/base/base"* ]]
 }
 
+@test "bootstrap linux-debian dry-run prints manual source checkout path" {
+    local install_dir="$TEST_HOME/work/base"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=linux-debian \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source --install-dir "$install_dir" --repo-url https://example.test/base.git
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base bootstrap"* ]]
+    [[ "$output" == *"Ubuntu/Debian Linux bootstrap path"* ]]
+    [[ "$output" == *"sudo apt-get update"* ]]
+    [[ "$output" == *"sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh'"* ]]
+    [[ "$output" == *"git clone https://example.test/base.git $install_dir"* ]]
+    [[ "$output" == *"git clone https://github.com/basefoundry/base-bash-libs.git $TEST_HOME/work/base-bash-libs"* ]]
+    [[ "$output" == *"$install_dir/bin/basectl setup --dry-run"* ]]
+    [[ "$output" == *"$install_dir/bin/basectl setup --yes"* ]]
+    [[ "$output" == *"$install_dir/bin/basectl update-profile"* ]]
+    [[ "$output" == *"exec \"\$SHELL\" -l"* ]]
+    [[ "$output" != *"Homebrew"* ]]
+    [[ "$output" != *"Xcode"* ]]
+}
+
+@test "bootstrap linux-debian rejects Homebrew mode" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=linux-debian \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --brew
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Homebrew bootstrap mode is macOS-only; use --source on Ubuntu/Debian Linux."* ]]
+}
+
+@test "bootstrap detects Ubuntu from os-release" {
+    local install_dir="$TEST_HOME/work/base"
+    local os_release="$TEST_TMPDIR/os-release"
+
+    printf 'ID=ubuntu\nID_LIKE=debian\n' > "$os_release"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Linux \
+        BASE_BOOTSTRAP_TEST_OS_RELEASE_PATH="$os_release" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source --install-dir "$install_dir" --repo-url https://example.test/base.git
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Ubuntu/Debian Linux bootstrap path"* ]]
+    [[ "$output" == *"git clone https://example.test/base.git $install_dir"* ]]
+}
+
 @test "bootstrap can refuse to install missing Homebrew" {
     run_bootstrap --no-homebrew-install
 
@@ -353,13 +407,18 @@ sha256_file() {
     [[ "$output" == *"Homebrew is required"* ]]
 }
 
-@test "bootstrap rejects non-macOS systems" {
+@test "bootstrap rejects unsupported Linux systems" {
+    local os_release="$TEST_TMPDIR/os-release"
+
+    printf 'ID=fedora\nID_LIKE="rhel fedora"\n' > "$os_release"
+
     run env \
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Linux \
+        BASE_BOOTSTRAP_TEST_OS_RELEASE_PATH="$os_release" \
         "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"bootstrap.sh currently supports macOS only"* ]]
+    [[ "$output" == *"bootstrap.sh currently supports macOS and Ubuntu/Debian Linux only"* ]]
 }

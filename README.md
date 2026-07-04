@@ -152,7 +152,7 @@ When `workspace.manifest` is set, workspace commands use it unless
 `workspace.manifest_source` is set, `basectl workspace pull` can explicitly
 refresh the local manifest from that canonical source.
 
-### New Or Uncertain macOS Machine?
+### New Or Uncertain Machine?
 
 On a new macOS machine, or any machine where Homebrew, Git, or a supported Bash
 may be missing, start with the first-mile bootstrap script:
@@ -176,6 +176,16 @@ curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh 
 
 For mode selection, dry-run behavior, and contributor setup details, see
 [First-Mile Bootstrap](docs/bootstrap.md).
+
+On Ubuntu/Debian Linux, the same bootstrap script prints the manual
+source-checkout path instead of running apt itself:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --source --dry-run
+```
+
+Review the printed apt, clone, `basectl setup --yes`, and `update-profile`
+commands, then run them in the Ubuntu shell.
 
 ### Team Or Security-Conscious Rollout
 
@@ -1133,6 +1143,11 @@ Pass `--source` or `--brew` with `bash -s --` to choose the route explicitly.
 Without an explicit choice, the bootstrapper preserves an existing Homebrew Base
 install, then an existing source checkout, and otherwise defaults to source mode.
 See [First-Mile Bootstrap](docs/bootstrap.md) for the full bootstrap contract.
+
+On Ubuntu/Debian Linux, `bootstrap.sh` does not run `sudo apt` automatically.
+It prints the manual source-checkout path, including the supported apt
+prerequisites, a sibling `base-bash-libs` checkout, `basectl setup --dry-run`,
+`basectl setup --yes`, and `basectl update-profile`.
 
 Base can be installed through its Homebrew tap:
 
