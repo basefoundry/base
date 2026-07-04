@@ -192,7 +192,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl repo init <name> [--repo owner/name]` | Create new Base-managed GitHub repo |
+| `basectl repo init <name> [--repo owner/name]` | Create a Base-managed repo baseline; use `--path .` for the current checkout and `--pr` when baseline changes should be pushed through a PR |
 | `basectl repo check [path]` | Validate repo baseline |
 | `basectl repo configure [path]` | Repair / standardize repo settings |
 | `basectl repo agent-guidance [path]` | Seed AI guidance for a repo |

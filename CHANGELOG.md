@@ -21,6 +21,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
   bootstrap path so security-conscious users can choose a verified installer
   before running the mutable official Homebrew installer.
 
+### Fixed
+
+- Clarified `basectl repo init` help and docs so current-checkout usage,
+  GitHub setup, local commits, pushes, and the `--pr` workflow are no longer
+  conflated.
+
 ## [1.6.0] - 2026-07-04
 
 ### Added
