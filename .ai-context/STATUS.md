@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.5.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.6.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -38,10 +38,10 @@ The current command surface covers:
 
 ## Active Development Direction
 
-The `v1.5.0` release is complete. Future work is tracked in GitHub Issues,
-with Linux bootstrap polish, GitHub CLI install/auth polish for Ubuntu,
-Docker/service artifacts, broader prompt ergonomics, and broader setup policy
-work remaining outside the 1.5 release contract.
+The `v1.6.0` release is complete. Future work is tracked in GitHub Issues,
+with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
+broader prompt ergonomics, broader Linux distribution support, and broader
+setup policy work remaining outside the 1.6 release contract.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -50,8 +50,9 @@ source builds treated as fallback validation rather than the normal user path.
 Recent released work includes:
 
 - Ubuntu/Debian runtime support through `BASE_PLATFORM=linux-debian`,
-  platform-aware setup/check/doctor dispatch, source-checkout CI coverage, and
-  apt-backed setup behind explicit `--dry-run` / `--yes` confirmation
+  platform-aware setup/check/doctor dispatch, source-checkout CI coverage,
+  apt-backed setup behind explicit `--dry-run` / `--yes` confirmation, and
+  uv/mise bootstrap for opted-in project manifests
 - `basectl docs` for opening the GitHub README documentation entrypoint
 - standardized `basectl` help, option, logging, and usage-error behavior
 - Python-backed CI setup JSON rendering and Project issue-default handling

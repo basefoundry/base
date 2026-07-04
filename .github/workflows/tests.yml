@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 34a71d08decf715f5767ab064197f7e63f418448
+          ref: 6ce8af02031fad2c0071880b00eb6f526ae2d779
           path: .dependencies/base-bash-libs
 
       - name: Install BATS
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 34a71d08decf715f5767ab064197f7e63f418448
+          ref: 6ce8af02031fad2c0071880b00eb6f526ae2d779
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
@@ -167,7 +167,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 34a71d08decf715f5767ab064197f7e63f418448
+          ref: 6ce8af02031fad2c0071880b00eb6f526ae2d779
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
@@ -210,7 +210,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 34a71d08decf715f5767ab064197f7e63f418448
+          ref: 6ce8af02031fad2c0071880b00eb6f526ae2d779
           path: .dependencies/base-bash-libs
 
       - name: Expose reusable Bash library checkout as sibling

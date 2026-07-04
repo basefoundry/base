@@ -7,11 +7,18 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-04
+
 ### Added
 
 - Added an explicit `linux-lab` prerequisite profile that checks and installs
   Multipass via Homebrew cask for local Ubuntu lab VMs without creating VM
   instances during Base setup.
+
+### Changed
+
+- Bound Base CI source-checkout jobs to the published `base-bash-libs` v1.1.0
+  release commit.
 
 ### Fixed
 
