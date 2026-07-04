@@ -257,7 +257,9 @@ class IdeExtensionTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
+        with mock.patch.dict("os.environ", {"BASE_SETUP_PROFILES": "dev"}), mock.patch(
+            "base_setup.process.command_exists", return_value=True
+        ), mock.patch(
             "base_setup.ide.list_ide_extensions",
             return_value={"ms-python.python"},
         ):
@@ -266,3 +268,34 @@ class IdeExtensionTests(unittest.TestCase):
         self.assertEqual(len(checks), 1)
         self.assertEqual(checks[0].name, "ms-python.python")
         self.assertTrue(checks[0].ok)
+
+
+    def test_manifest_checks_skip_ide_extensions_without_dev_profile(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            ide={
+                "vscode": IdeConfig(
+                    install=False,
+                    extensions=("ms-python.python",),
+                    settings={},
+                )
+            },
+        )
+
+        with mock.patch.dict("os.environ", {"BASE_SETUP_PROFILES": ""}), mock.patch(
+            "base_setup.process.command_exists", return_value=False
+        ) as command_exists, mock.patch("base_setup.ide.list_ide_extensions") as list_extensions:
+            checks = engine.manifest_checks(default_manifest, manifest)
+
+        command_exists.assert_not_called()
+        list_extensions.assert_not_called()
+        self.assertNotIn("ms-python.python", [check.name for check in checks])

@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Stopped default project checks from failing Ubuntu/Linux acceptance solely
+  because manifest-declared IDE extension CLIs such as `code` are not on `PATH`;
+  IDE extension diagnostics now run with the developer profile.
 - Made the `tool:bats-core` project artifact platform-aware on Ubuntu/Debian,
   mapping it to the system `bats` package instead of planning a Homebrew
   `brew install bats-core` command.

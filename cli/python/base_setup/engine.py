@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,7 @@ from .uv import reconcile_uv_project
 
 
 app = base_cli.App(name="base_setup")
+IDE_EXTENSION_PROFILE = "dev"
 
 
 @dataclass(frozen=True)
@@ -430,7 +432,8 @@ def manifest_checks(
     checks.extend(check_demo(effective_manifest))
     checks.extend(check_manifest_commands(effective_manifest))
     checks.extend(check_ide_installs(effective_manifest))
-    checks.extend(check_ide_extensions(effective_manifest))
+    if setup_profile_enabled(IDE_EXTENSION_PROFILE):
+        checks.extend(check_ide_extensions(effective_manifest))
     checks.extend(check_ide_settings(effective_manifest))
     checks.extend(check_uv(effective_manifest))
     checks.extend(check_pyproject(effective_manifest))
@@ -450,6 +453,10 @@ def manifest_checks(
             )
         )
     return tuple(pre_venv_checks + checks)
+
+
+def setup_profile_enabled(profile: str) -> bool:
+    return profile in os.environ.get("BASE_SETUP_PROFILES", "").split()
 
 
 def empty_user_config() -> UserConfig:
