@@ -9,6 +9,7 @@ from unittest import mock
 
 from base_cli.config import UserConfig, UserIdeConfig, UserIdePreference
 from base_setup import engine, ide
+from base_setup.github_manifest import GithubConfig, GithubPrConfig
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
 
@@ -55,6 +56,21 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
                 "python.defaultInterpreterPath": "auto",
             },
         )
+
+    def test_effective_manifest_preserves_github_config(self) -> None:
+        github = GithubConfig(pr=GithubPrConfig(template=".github/pull_request_template.md"))
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            github=github,
+        )
+        user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=None, preferences={}))
+
+        effective = engine.effective_manifest_with_user_config(manifest, user_config)
+
+        self.assertIs(effective.github, github)
 
 
 

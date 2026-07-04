@@ -477,6 +477,7 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
         commands=manifest.commands,
         activate=manifest.activate,
         python=manifest.python,
+        github=manifest.github,
         demo=manifest.demo,
         build=manifest.build,
         release=manifest.release,
