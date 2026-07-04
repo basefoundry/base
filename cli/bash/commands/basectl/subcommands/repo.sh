@@ -74,8 +74,8 @@ Options:
   -h, --help                    Show this help text.
 
 Examples:
-  # Create a new public GitHub repo and open a baseline PR.
-  basectl repo init base-demo --repo basefoundry/base-demo --public --pr
+  # Create a new public GitHub repo and configure it.
+  basectl repo init base-demo --repo basefoundry/base-demo --public
 
   # Add or refresh the Base baseline in an existing checkout.
   basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
@@ -95,6 +95,10 @@ Unless --no-configure is set, repo init also applies the GitHub-side settings
 handled by repo configure. With --pr, the first run opens a baseline PR when
 files change; rerun the same command after merge to continue GitHub-side
 configuration.
+
+For the current checkout, pass its repository name and --path .
+Plain repo init writes local baseline files but does not commit or push them.
+With --pr, repo init commits baseline changes on a branch, pushes that branch to origin, and opens a pull request.
 EOF
 }
 

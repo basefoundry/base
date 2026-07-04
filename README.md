@@ -628,12 +628,16 @@ contributing guide, AGPL-3.0-or-later license, `.gitignore`, `base_manifest.yaml
 By default, `repo init` creates the repository under `workspace.root` from
 `~/.base.d/config.yaml`; if that is not configured, it falls back to the parent
 directory of `BASE_HOME`. Use `--path <path>` for an explicit location.
-`repo init` also creates the GitHub repository when needed and then
-standardizes its settings when `--repo <owner/name>` is provided or when an
-existing `origin` remote can be inferred. Newly created GitHub repositories are
-private by default; pass `--public` when a public repository is intentional. Use
-`--no-configure` to skip the GitHub step, or rerun it later with
-`basectl repo configure`.
+When refreshing the current checkout, pass the repository name plus `--path .`;
+`.` is a path value, not the `repo init` name. `repo init` also creates the
+GitHub repository when needed and then standardizes its settings when
+`--repo <owner/name>` is provided or when an existing `origin` remote can be
+inferred. Newly created GitHub repositories are private by default; pass
+`--public` when a public repository is intentional. Plain `repo init` writes the
+local baseline but does not commit or push local files. Use `--pr` on an
+existing clean Git worktree to commit baseline changes on a branch, push that
+branch to `origin`, and open a pull request. Use `--no-configure` to skip the
+GitHub step, or rerun it later with `basectl repo configure`.
 
 Clone an existing GitHub repository into the configured workspace with:
 

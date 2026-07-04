@@ -103,7 +103,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   it creates the GitHub repository only if it is missing, then applies the same
   GitHub-side configuration handled by `repo configure`. Without `--path`, it
   creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
-  then falls back to the parent directory of `BASE_HOME`.
+  then falls back to the parent directory of `BASE_HOME`. For the current
+  checkout, pass the repository name plus `--path .`; plain `repo init` does not
+  commit or push local files. Use `--pr` on an existing clean Git worktree to
+  commit baseline changes on a branch, push that branch to `origin`, and open a
+  pull request.
   `basectl repo clone <name-or-owner/name>` clones one existing GitHub
   repository into the configured workspace, supports `--owner <owner>` for
   short names, and treats matching existing checkouts as already satisfied.
