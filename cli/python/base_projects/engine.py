@@ -843,17 +843,29 @@ def project_command(manifest: BaseManifest, command_name: str) -> CommandConfig:
         ) from exc
 
 
-def _route_metadata_fields(manifest: BaseManifest) -> list[str]:
+def _route_metadata_fields(manifest: BaseManifest, *, manifest_command_trust_required: bool = False) -> list[str]:
     route = route_for_manifest(manifest)
     uses_uv = "true" if route.uses_uv_manager else "false"
+    trust_required = "true" if manifest_command_trust_required else "false"
     return [
         f"__base_project_venv_dir={route.project_venv_dir}",
         f"__base_uses_uv_manager={uses_uv}",
+        f"__base_manifest_command_trust_required={trust_required}",
     ]
 
 
 def _project_output(project_name: str, project_root: Path, manifest_path: Path, manifest: BaseManifest) -> str:
-    return "\t".join([project_name, str(project_root), str(manifest_path), *_route_metadata_fields(manifest)])
+    return "\t".join(
+        [
+            project_name,
+            str(project_root),
+            str(manifest_path),
+            *_route_metadata_fields(
+                manifest,
+                manifest_command_trust_required=bool(manifest.activate.source),
+            ),
+        ]
+    )
 
 
 def _command_output(
@@ -866,7 +878,7 @@ def _command_output(
     fields = [project_name, str(project_root), str(manifest_path), command.command]
     if command.runner is not None:
         fields.append(command.runner)
-    fields.extend(_route_metadata_fields(manifest))
+    fields.extend(_route_metadata_fields(manifest, manifest_command_trust_required=True))
     return "\t".join(fields)
 
 
@@ -893,7 +905,7 @@ def _demo_output(
     fields = [project_name, str(project_root), str(manifest_path), str(demo_script)]
     if manifest.demo.runner is not None:
         fields.append(manifest.demo.runner)
-    fields.extend(_route_metadata_fields(manifest))
+    fields.extend(_route_metadata_fields(manifest, manifest_command_trust_required=True))
     return "\t".join(fields)
 
 

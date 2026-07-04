@@ -180,11 +180,6 @@ base_build_subcommand_main() {
             fatal_error "Unable to parse build target '$target_name' for project '$project'."
         }
 
-        if ((environment_prepared == 0)); then
-            base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${target_fields[@]:7}" >/dev/null
-            environment_prepared=1
-        fi
-
         command_runner="${command_runner:-}"
         command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
         display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
@@ -193,6 +188,12 @@ base_build_subcommand_main() {
             printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \
                 "$target_name" "$resolved_name" "$working_dir" "$display_command"
             continue
+        fi
+
+        if ((environment_prepared == 0)); then
+            base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${target_fields[@]:7}" || return $?
+            base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${target_fields[@]:7}" >/dev/null
+            environment_prepared=1
         fi
 
         log_info "Building target '$target_name' for project '$resolved_name': $display_command"

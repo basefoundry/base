@@ -6,7 +6,6 @@ but they also create a local trust boundary: cloning or pulling a repository
 should not by itself imply consent to execute that repository's commands.
 
 This document defines the allow model for manifest-declared command execution.
-It is a design contract for the implementation that should follow.
 
 ## Goals
 
@@ -26,8 +25,8 @@ It is a design contract for the implementation that should follow.
 
 ## Commands Covered
 
-The first implementation should require an allow record before commands that
-execute manifest-declared project code:
+Base requires an allow record before commands that execute manifest-declared
+project code:
 
 - `basectl test [project]`
 - `basectl run <project> <command>`
@@ -55,8 +54,8 @@ command allow flow unless a later issue explicitly expands the scope.
 
 ## Trust Identity
 
-An allow record should bind approval to both repository identity and the manifest
-command contract. The identity should include:
+An allow record binds approval to both repository identity and the manifest
+command contract. The identity includes:
 
 - canonical project root path
 - canonical manifest path
@@ -66,10 +65,10 @@ command contract. The identity should include:
 - sanitized `origin` remote URL when available
 - current Git HEAD when available, for display and audit metadata
 
-The enforcement key should include the canonical project root, manifest path,
-and manifest digest. The remote URL and Git HEAD are stored for display and
-audit, but the manifest digest is the signal that forces re-approval after
-command declarations change.
+The enforcement key includes the canonical project root, manifest path, and
+manifest digest. The remote URL and Git HEAD are stored for display and audit,
+but the manifest digest is the signal that forces re-approval after command
+declarations change.
 
 This intentionally resembles `direnv allow`: approval is local to the machine
 and is invalidated by a content change in the trusted file. It does not try to
@@ -77,14 +76,14 @@ prove that every script reachable from the manifest is unchanged.
 
 ## Local State
 
-Store allow records under Base-managed local state:
+Base stores allow records under Base-managed local state:
 
 ```text
 ~/.base.d/trust/manifest-commands/
   <identity-key>.json
 ```
 
-Each record should use schema version `1`:
+Each record uses schema version `1`:
 
 ```json
 {
@@ -111,7 +110,7 @@ repositories.
 
 ## User-Facing Flow
 
-Add a focused trust command:
+Use the focused trust command to inspect, allow, or revoke approval:
 
 ```bash
 basectl trust status <project> [--workspace <path>] [--format text|json]
@@ -119,12 +118,12 @@ basectl trust allow <project> [--workspace <path>] [--manifest-sha256 <sha256>]
 basectl trust revoke <project> [--workspace <path>]
 ```
 
-`basectl trust allow` should print the exact identity being approved and require
-the supplied `--manifest-sha256` to match when that option is present. That flag
-is useful for scripted, non-interactive approval after a prior review step.
+`basectl trust allow` prints the exact identity being approved and requires the
+supplied `--manifest-sha256` to match when that option is present. That flag is
+useful for scripted, non-interactive approval after a prior review step.
 
-When execution is blocked, commands should fail before project environment
-activation and before changing into project directories:
+When execution is blocked, commands fail before project environment activation
+and before changing into project directories:
 
 ```text
 ERROR: Manifest-declared commands are not allowed for project 'demo' on this machine.
@@ -143,8 +142,8 @@ Allow after review:
 ```
 
 If a record exists for the same project root but a different manifest digest,
-the error should say the manifest command contract changed and show both the
-recorded and current digest.
+the error says the manifest command contract changed and shows both the recorded
+and current digest.
 
 ## Non-Interactive And CI Behavior
 
@@ -183,8 +182,8 @@ step, and then call `trust allow` with that digest.
 }
 ```
 
-Execution commands do not need to grow JSON output in the first slice; they can
-print the text block above and exit non-zero.
+Execution commands print the text block above and exit non-zero; JSON remains on
+`basectl trust status --format json`.
 
 ## Implementation Slices
 

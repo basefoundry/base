@@ -107,8 +107,6 @@ base_test_subcommand_main() {
         fatal_error "Unable to resolve test command for project '$project'."
     }
 
-    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
-
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
@@ -117,6 +115,9 @@ base_test_subcommand_main() {
         printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$display_command"
         return 0
     fi
+
+    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:4}" || return $?
+    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
 
     log_info "Running tests for project '$resolved_name': $display_command"
     base_validate_command_runner "$command_runner"

@@ -107,8 +107,6 @@ base_demo_subcommand_main() {
         fatal_error "Unable to resolve demo script for project '${project:-current project}'."
     }
 
-    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
-
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
     command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
@@ -119,6 +117,9 @@ base_demo_subcommand_main() {
             "$resolved_name" "$project_root" "$display_command"
         return 0
     fi
+
+    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:4}" || return $?
+    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
 
     log_info "Running demo for project '$resolved_name': $display_command"
     if [[ -z "$command_runner" ]]; then

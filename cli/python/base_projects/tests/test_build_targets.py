@@ -136,16 +136,26 @@ def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
     return status, stdout.getvalue(), stderr.getvalue()
 
 
-def base_route_fields(base_home: Path, project: str) -> str:
+def base_route_fields(base_home: Path, project: str, *, trust_required: bool = True) -> str:
     del base_home
     if not _engine_homes:
         raise AssertionError("run_engine must be called before base_route_fields")
     venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
-    return f"\t__base_project_venv_dir={venv_dir}\t__base_uses_uv_manager=false"
+    trust_value = "true" if trust_required else "false"
+    return (
+        f"\t__base_project_venv_dir={venv_dir}"
+        "\t__base_uses_uv_manager=false"
+        f"\t__base_manifest_command_trust_required={trust_value}"
+    )
 
 
-def uv_route_fields(project_root: Path) -> str:
-    return f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}\t__base_uses_uv_manager=true"
+def uv_route_fields(project_root: Path, *, trust_required: bool = True) -> str:
+    trust_value = "true" if trust_required else "false"
+    return (
+        f"\t__base_project_venv_dir={(project_root / '.venv').resolve()}"
+        "\t__base_uses_uv_manager=true"
+        f"\t__base_manifest_command_trust_required={trust_value}"
+    )
 
 
 class BuildTargetTests(unittest.TestCase):
@@ -221,6 +231,20 @@ class BuildTargetTests(unittest.TestCase):
             f"\tworker\t{(project_root / 'services' / 'worker').resolve()}\tgo build ./cmd/worker"
             f"\tBuild the worker service.{base_route_fields(base_home, 'demo')}\n",
         )
+
+    def test_projects_build_targets_mark_manifest_command_trust_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_build_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(["build-targets", "demo"], base_home)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("__base_manifest_command_trust_required=true", stdout)
 
     def test_projects_build_targets_prints_explicit_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

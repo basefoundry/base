@@ -236,6 +236,10 @@ run_basectl_separate_stderr() {
 }
 
 @test "basectl test delegates from the project root with project environment" {
+    run_basectl trust allow demo
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Allowed manifest commands for project 'demo'."* ]]
+
     run_basectl test demo -- -k "focused case"
     [ "$status" -eq 0 ]
 
