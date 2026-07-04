@@ -60,6 +60,9 @@ architecture discussion.
   hardcoded inside `basectl build`.
 - New tool families such as AI developer tools should stay explicit and
   opt-in.
+- Host VM tooling should stay explicit and opt-in. The `linux-lab` profile may
+  install and check Multipass on macOS hosts, but Base setup should not create
+  or mutate VM instances automatically.
 - AI agent harnesses such as Codex CLI, Claude Code, Cursor agents, Omnigent,
   and Pi-like tools are optional adjacent tools. Base may help install or check
   explicit AI prerequisites, export portable context, render repo-owned prompts,

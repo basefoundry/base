@@ -19,16 +19,17 @@ Usage:
 Options:
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path.
-  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai.
+  --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --recreate-venv       Back up and recreate the project virtual environment during setup.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
 Profiles:
   Profile lists are comma-separated, for example: --profile dev,sre.
-  dev - Base development tooling for this repository.
-  sre - production/SRE prerequisite tooling.
-  ai  - AI coding assistant tooling.
+  dev       - Base development tooling for this repository.
+  sre       - production/SRE prerequisite tooling.
+  ai        - AI coding assistant tooling.
+  linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts.
 
 Purpose:
   Run Base setup, checks, and diagnostics in a non-interactive CI environment.

@@ -96,6 +96,10 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(engine.normalize_profiles(()), ("dev",))
         self.assertEqual(engine.normalize_profiles(("dev", "sre", "dev")), ("dev", "sre"))
         self.assertEqual(engine.normalize_profiles(("dev,SRE,AI",)), ("dev", "sre", "ai"))
+        self.assertEqual(
+            engine.normalize_profiles(("dev,LINUX-LAB,ai",)),
+            ("dev", "linux-lab", "ai"),
+        )
 
     def test_normalize_profiles_rejects_unknown_profile(self) -> None:
         with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ops'"):
@@ -383,6 +387,61 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(findings[1]["status"], "ok")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_check_profile_linux_lab_reports_missing_multipass(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, stdout, stderr = run_engine(
+                ["check", "--profile", "linux-lab", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        payload = json.loads(stdout)
+        findings = payload["checks"]
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["profiles"], ["linux-lab"])
+        self.assertEqual(
+            findings,
+            [
+                {
+                    "id": "BASE-D108",
+                    "status": "error",
+                    "name": "multipass",
+                    "message": "Multipass 'multipass' was not found.",
+                    "fix": "basectl setup --profile linux-lab",
+                }
+            ],
+        )
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_profile_linux_lab_dry_run_prints_multipass_install_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, _stdout, stderr = run_engine(
+                ["setup", "--profile", "linux-lab", "--dry-run"],
+                extra_env={"BASE_PLATFORM": "macos", "PATH": bin_dir},
+            )
+
+        self.assertEqual(status, 0)
+        self.assertIn("Setting up Base 'linux-lab' prerequisites.", stderr)
+        self.assertIn("[DRY-RUN] Would run: brew install --cask multipass", stderr)
+        self.assertIn("Base 'linux-lab' prerequisite setup dry-run is complete.", stderr)
+        self.assertIn("Multipass creates host-managed Ubuntu VMs; Base does not create VM instances during setup.", stderr)
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_setup_profile_linux_lab_missing_multipass_is_macos_homebrew_only(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, _stdout, stderr = run_engine(
+                ["setup", "--profile", "linux-lab"],
+                extra_env={"BASE_PLATFORM": "linux-debian", "PATH": bin_dir},
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn(
+            "The 'linux-lab' setup profile installs Multipass via Homebrew cask and is supported only on macOS hosts.",
+            stderr,
+        )
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_multiple_profiles_combines_results_once_per_profile(self) -> None:
         with (
             mock.patch("base_dev.engine.command_exists", return_value=True),
@@ -420,6 +479,20 @@ class DevManifestTests(unittest.TestCase):
             [finding["fix"] for finding in findings],
             ["basectl setup --profile ai", "basectl setup --profile ai"],
         )
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_doctor_profile_linux_lab_json_uses_stable_finding_id(self) -> None:
+        with tempfile.TemporaryDirectory() as bin_dir:
+            status, stdout, stderr = run_engine(
+                ["doctor", "--profile", "linux-lab", "--format", "json"],
+                extra_env={"PATH": bin_dir},
+            )
+
+        findings = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(findings[0]["id"], "BASE-D108")
+        self.assertEqual(findings[0]["fix"], "basectl setup --profile linux-lab")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_check_json_reports_manifest_artifacts(self) -> None:

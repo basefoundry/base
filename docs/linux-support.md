@@ -216,6 +216,38 @@ machine. Apple Silicon Macs running Ubuntu in Parallels should follow the same
 ARM64 package archives used by Parallels when the configured apt repositories
 provide them.
 
+## macOS Linux Lab
+
+Mac developers can use the optional `linux-lab` prerequisite profile to prepare
+a local Ubuntu VM host without making Linux support part of the default
+developer profile:
+
+```bash
+basectl setup --profile linux-lab --dry-run
+basectl setup --profile linux-lab
+basectl check --profile linux-lab
+basectl doctor --profile linux-lab
+```
+
+The profile checks the `multipass` CLI and installs Multipass on macOS through
+the Homebrew cask path when setup is run without `--dry-run`. It does not create
+or mutate VM instances. After Multipass is installed, create a lab instance
+explicitly:
+
+```bash
+multipass launch 24.04 \
+  --name ubuntu-dev \
+  --cpus 8 \
+  --memory 16G \
+  --disk 120G \
+  --mount "$HOME/work:/home/ubuntu/work"
+multipass shell ubuntu-dev
+```
+
+Apple Silicon Macs normally run ARM64 Ubuntu guests. That is useful for local
+Linux preflight work, but hosted `ubuntu-latest` GitHub Actions runners remain
+a separate validation target.
+
 ## Shell Startup
 
 Linux shell startup differs from macOS:

@@ -132,7 +132,8 @@ Important Python packages include:
 - `base_logs` - runtime log inspection.
 - `base_clean` - runtime cache/log/temp cleanup.
 - `base_release` - release check/plan/notes/publish support.
-- `base_dev` - developer profile setup/check/doctor/onboard support.
+- `base_dev` - prerequisite profile setup/check/doctor/onboard support,
+  including dev, sre, ai, and linux-lab.
 - `base_export_context` - deterministic local Markdown and Zip exports from a
   project's `.ai-context/` directory. Provider uploads are intentionally out of
   scope.

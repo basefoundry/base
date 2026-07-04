@@ -102,6 +102,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-D105` | GitHub CLI availability |
 | `BASE-D106` | GitHub CLI authentication status |
 | `BASE-D107` | AI developer tool availability and version status |
+| `BASE-D108` | Multipass availability and version status for the `linux-lab` profile |
 
 ## Project Findings
 

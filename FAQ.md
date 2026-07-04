@@ -248,10 +248,12 @@ to operate.
 
 ### Why can setup fail on a Homebrew `brew link` conflict?
 
-Prerequisite profiles install ordinary Homebrew tools. A tool can pull a
-Homebrew dependency that needs to be linked into Homebrew's prefix. If files such
-as `/usr/local/bin/python3`, `/usr/local/bin/pip3`, or `/usr/local/bin/idle3`
-already point at another Python installation, Homebrew may stop with:
+Prerequisite profiles can install ordinary Homebrew tools and, for explicitly
+selected host profiles, Homebrew casks such as Multipass. A tool can pull a
+Homebrew dependency that needs to be linked into Homebrew's prefix. If files
+such as `/usr/local/bin/python3`, `/usr/local/bin/pip3`, or
+`/usr/local/bin/idle3` already point at another Python installation, Homebrew
+may stop with:
 
 ```text
 Error: The `brew link` step did not complete successfully
