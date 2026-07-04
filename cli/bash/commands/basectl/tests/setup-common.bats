@@ -118,6 +118,8 @@ run_setup_common_script() {
 }
 
 @test "setup_common keeps GitHub CLI guidance out of bulk Ubuntu apt prerequisite install" {
+    create_linux_dpkg_query_stub
+
     cat > "$TEST_MOCKBIN/sudo" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$TEST_STATE_DIR/sudo-args"
