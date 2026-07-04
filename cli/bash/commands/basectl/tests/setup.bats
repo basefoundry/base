@@ -12,9 +12,10 @@ load ./setup_helpers.bash
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
-    [[ "$output" == *"dev - Base development tooling for this repository."* ]]
-    [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
-    [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
+    [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
+    [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
+    [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
+    [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
     [[ "$output" == *"--notify"* ]]
     [[ "$output" == *"--no-notify"* ]]
     [[ "$output" == *"--recreate-venv"* ]]
@@ -882,27 +883,47 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile ai)" ]
 }
 
-@test "basectl setup accepts comma separated profile lists case-insensitively" {
-    local installer
+@test "basectl setup --profile linux-lab runs the Python prerequisite profile layer" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
 
-    create_xcode_stubs
-    installer="$(create_homebrew_installer_stub)"
+    create_linux_dpkg_query_stub
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
 
     run_base_command \
-        BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true \
-        BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT="$installer" \
-        setup --profile dev,SRE,AI
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        setup --profile linux-lab
 
     [ "$status" -eq 0 ]
     [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
-    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev,sre,ai)" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile linux-lab)" ]
+}
+
+@test "basectl setup accepts comma separated profile lists case-insensitively" {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_linux_dpkg_query_stub
+    create_system_python3_stub
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        setup --profile dev,SRE,AI,LINUX-LAB
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/dev-setup-ran" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' setup --profile dev,sre,ai,linux-lab)" ]
 }
 
 @test "basectl setup rejects unknown profiles" {
     run_base_command setup --profile ops
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai, linux-lab."* ]]
 }
 
 @test "basectl setup rejects empty profile list entries" {

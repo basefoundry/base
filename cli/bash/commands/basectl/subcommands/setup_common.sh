@@ -68,11 +68,11 @@ setup_enable_debug_logging() {
 }
 
 setup_supported_profiles() {
-    printf '%s\n' "dev sre ai"
+    printf '%s\n' "dev sre ai linux-lab"
 }
 
 setup_supported_profiles_display() {
-    printf '%s\n' "dev, sre, ai"
+    printf '%s\n' "dev, sre, ai, linux-lab"
 }
 
 setup_epoch_seconds() {
@@ -87,7 +87,7 @@ setup_profile_supported() {
     local profile="$1"
 
     case "$profile" in
-        dev|sre|ai)
+        dev|sre|ai|linux-lab)
             return 0
             ;;
         *)
@@ -326,7 +326,7 @@ setup_backup_existing_venv_path() {
     fi
 
     log_info "Moving $description '$venv_dir' to '$backup_path'."
-    run mv "$venv_dir" "$backup_path"
+    mv "$venv_dir" "$backup_path" || fatal_error "Unable to move $description '$venv_dir' to '$backup_path'."
 }
 
 setup_python_formula() {
@@ -727,7 +727,12 @@ setup_install_homebrew() {
 
     if [[ -n "${BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT:-}" ]]; then
         setup_reject_test_hook_if_disallowed BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT
-        run "$BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT"
+        "$BASE_SETUP_HOMEBREW_INSTALLER_SCRIPT"
+        exit_code=$?
+        if ((exit_code)); then
+            log_error "$(setup_recovery_homebrew)"
+        fi
+        exit_if_error "$exit_code" "Homebrew installation failed."
     else
         command -v curl >/dev/null 2>&1 || fatal_error "curl is required to install Homebrew. Install curl or install Homebrew manually from https://brew.sh/, then rerun 'basectl setup'."
         /bin/bash -c "$(curl -fsSL "$installer_url")"
@@ -772,7 +777,7 @@ setup_install_xcode_tools() {
     fi
 
     log_info "Installing Xcode Command Line Tools."
-    run --no-exit xcode-select --install
+    xcode-select --install || true
 
     timeout="$(setup_xcode_wait_timeout_seconds)"
     interval="$(setup_xcode_wait_interval_seconds)"
@@ -815,7 +820,7 @@ setup_install_python() {
     brew_bin="$(setup_find_brew_bin)" || fatal_error "Homebrew is required to install Python formula '$formula'. $(setup_recovery_homebrew)"
 
     log_info "Installing Python formula '$formula' via Homebrew."
-    run "$brew_bin" install "$formula"
+    "$brew_bin" install "$formula" || fatal_error "Homebrew failed to install Python formula '$formula'."
 }
 
 setup_find_python_bin() {
@@ -974,7 +979,7 @@ setup_create_virtualenv() {
 
     safe_mkdir -p "$(dirname "$venv_dir")"
     log_info "Creating Python virtual environment at '$venv_dir'."
-    run "$python_bin" -m venv "$venv_dir"
+    "$python_bin" -m venv "$venv_dir"
 }
 
 setup_base_venv_python_bin() {
@@ -1019,7 +1024,8 @@ setup_install_base_python_package() {
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
     log_info "Installing Python package '$package' in the Base virtual environment."
-    run "$python_bin" -m pip install --disable-pip-version-check "$package"
+    "$python_bin" -m pip install --disable-pip-version-check "$package" ||
+        fatal_error "Unable to install Python package '$package' in the Base virtual environment."
 }
 
 setup_install_pyyaml() {
@@ -2649,8 +2655,8 @@ setup_run_linux_debian_apt_prerequisites() {
     fi
 
     log_info "Installing Ubuntu/Debian apt prerequisites."
-    run sudo apt-get update || return $?
-    run sudo apt-get install -y "${package_args[@]}"
+    sudo apt-get update || return $?
+    sudo apt-get install -y "${package_args[@]}"
 }
 
 setup_run_linux_debian_install() {

@@ -678,10 +678,22 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
     [[ -f "${BASE_SETUP_TEST_STATE_DIR:?}/click-installed" ]]
     exit $?
 fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
     shift 2
     printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/dev-args"
     case "${1:-}" in
+        setup)
+            touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+            exit 0
+            ;;
         check)
             if [[ "${2:-}" == "--format" && "${3:-}" == "json" ]]; then
                 printf '{"schema_version":1,"status":"error","profiles":["dev"],"checks":[{"id":"BASE-D104","status":"error","name":"bats-core","message":"Artifact '\''bats-core'\'' is not installed via Homebrew package '\''bats-core'\''.","fix":"basectl setup --profile dev"},{"id":"BASE-D104","status":"error","name":"gh","message":"Artifact '\''gh'\'' is not installed via Homebrew package '\''gh'\''.","fix":"basectl setup --profile dev"}]}\n'

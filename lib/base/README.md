@@ -27,6 +27,10 @@ defaults and opt-in profiles. Project repositories should declare their own
 tools, commands, tests, demos, activation hooks, and project-specific artifacts
 in their own `base_manifest.yaml`.
 
+The `ai` and `linux-lab` prerequisite profiles are code-backed because they
+manage special host tool policies rather than manifest-declared Homebrew
+artifacts.
+
 Keep schema and behavior details in the canonical documentation instead of
 duplicating them here:
 

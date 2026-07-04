@@ -149,7 +149,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl setup [project] [--profile dev\|sre\|ai]` | Install / reconcile prerequisites |
+| `basectl setup [project] [--profile dev\|sre\|ai\|linux-lab]` | Install / reconcile prerequisites |
 | `basectl update-profile [--defaults]` | Wire shell startup files |
 | `basectl update [project] [--dry-run]` | Upgrade Base or a Base-managed project checkout |
 | `basectl onboard [project]` | Guided first-run checklist |
@@ -204,13 +204,14 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 |---|---|
 | `basectl ci setup\|check\|doctor [--format json]` | Non-interactive CI entry point |
 
-**Prerequisite profiles** (compose with commas: `--profile dev,ai`):
+**Prerequisite profiles** (compose with commas: `--profile dev,linux-lab`):
 
 | Profile | Installs |
 |---|---|
 | `dev` | BATS, GitHub CLI, ShellCheck |
 | `sre` | kubectl, helm, k9s, jq, yq, httpie, nmap, mtr |
 | `ai` | Codex CLI, Claude Code |
+| `linux-lab` | Multipass for local Ubuntu lab VMs on macOS hosts |
 
 ## Installation Paths
 

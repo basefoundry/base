@@ -7,8 +7,17 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added an explicit `linux-lab` prerequisite profile that checks and installs
+  Multipass via Homebrew cask for local Ubuntu lab VMs without creating VM
+  instances during Base setup.
+
 ### Fixed
 
+- Replaced stray shell `run` calls in setup's virtualenv and apt install paths
+  with direct command execution so spawned `basectl setup` runs do not depend on
+  a test-harness helper.
 - Stopped default project checks from failing Ubuntu/Linux acceptance solely
   because manifest-declared IDE extension CLIs such as `code` are not on `PATH`;
   IDE extension diagnostics now run with the developer profile.

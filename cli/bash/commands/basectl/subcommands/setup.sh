@@ -14,7 +14,7 @@ Usage:
   basectl setup [options] [project]
 
 Options:
-  --profile <list>  Install named prerequisite profiles. Known profiles: dev, sre, ai.
+  --profile <list>  Install named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --dry-run          Log what would happen without making changes.
   --manifest <path>  Use a specific base_manifest.yaml path.
   --notify           Force a best-effort macOS notification when setup ends.
@@ -26,9 +26,10 @@ Options:
 
 Profiles:
   Profile lists are comma-separated, for example: --profile dev,sre.
-  dev - Base development tooling for this repository.
-  sre - production/SRE prerequisite tooling.
-  ai  - AI coding assistant tooling.
+  dev       - Base development tooling for this repository.
+  sre       - production/SRE prerequisite tooling.
+  ai        - AI coding assistant tooling.
+  linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts.
 
 Purpose:
   Prepare the local Base CLI environment on supported setup platforms.

@@ -1055,24 +1055,31 @@ installs Base bootstrap Python packages into that environment. For project
 artifact setup, Base first seeds the target project venv with `bootstrap: true`
 default artifacts and then invokes the Python project setup layer through
 `base-wrapper --project <project>`.
-Prerequisite profiles are opt-in and manifest-driven. Use `--profile dev` to
-install Base contributor tools such as BATS, the GitHub CLI, and ShellCheck from
+Prerequisite profiles are opt-in. Use `--profile dev` to install Base
+contributor tools such as BATS, the GitHub CLI, and ShellCheck from
 `lib/base/dev_manifest.yaml`. Use `--profile sre` for the initial
 site-reliability profile in `lib/base/sre_manifest.yaml`, which installs local
 diagnostic tools such as `kubectl`, `helm`, `k9s`, `httpie`, `grpcurl`, `jq`,
 `yq`, `nmap`, and `mtr`. Use `--profile ai` for optional AI coding tools:
-Codex CLI and Claude Code. Profiles compose with a comma-separated list.
+Codex CLI and Claude Code. Use `--profile linux-lab` on a macOS host to install
+and check Multipass for local Ubuntu lab VMs. Profiles compose with a
+comma-separated list.
 
 ```bash
 basectl setup --profile dev
 basectl setup --profile sre
 basectl setup --profile ai
+basectl setup --profile linux-lab --dry-run
+basectl setup --profile linux-lab
 basectl setup --profile dev,sre
 basectl setup --profile dev,ai
+basectl setup --profile dev,linux-lab
 basectl check --profile sre
 basectl check --profile ai
+basectl check --profile linux-lab
 basectl doctor --profile sre
 basectl doctor --profile ai
+basectl doctor --profile linux-lab
 ```
 
 AI coding tools are intentionally not part of the plain `dev` or `sre` profile.
@@ -1080,6 +1087,12 @@ AI coding tools are intentionally not part of the plain `dev` or `sre` profile.
 profile is explicitly requested. Base checks tool presence and version output,
 but it does not manage accounts, credentials, model access, or organization
 policy.
+
+The `linux-lab` profile is intentionally host-scoped. It installs or checks the
+Multipass CLI on macOS through `brew install --cask multipass`, but Base does
+not create, start, mount, or delete Multipass instances during setup. Review
+the planned install with `--dry-run`, then create lab VMs with
+`multipass launch` when you are ready.
 
 For the allowed Homebrew, Codex CLI, and Claude Code installer URLs, dry-run
 behavior, non-interactive behavior, and managed-device guidance, see

@@ -176,9 +176,10 @@ EOF
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
-    [[ "$output" == *"dev - Base development tooling for this repository."* ]]
-    [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
-    [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
+    [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
+    [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
+    [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
+    [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
     [[ "$output" == *"--remote-network"* ]]
     [[ "$output" == *"--no-color"* ]]
     [[ "$output" != *"--dev"* ]]
@@ -582,7 +583,7 @@ EOF
     run_basectl doctor --profile ops
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai, linux-lab."* ]]
 }
 
 @test "basectl doctor reports errors with suggested fixes" {

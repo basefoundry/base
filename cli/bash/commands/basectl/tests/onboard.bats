@@ -102,7 +102,7 @@ load ./basectl_helpers.bash
     '
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai, linux-lab."* ]]
 }
 
 @test "basectl onboard declines setup conservatively" {

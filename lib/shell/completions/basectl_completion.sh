@@ -92,7 +92,7 @@ _base_basectl_completion_compgen() {
 }
 
 _base_basectl_completion_profiles() {
-    printf '%s\n' "dev sre ai dev,sre dev,ai sre,ai dev,sre,ai"
+    printf '%s\n' "dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab"
 }
 
 _base_basectl_completion_project_or_options() {

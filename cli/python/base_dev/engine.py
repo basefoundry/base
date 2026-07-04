@@ -23,10 +23,12 @@ from .checks import check_to_json
 from .checks import checks_status
 from .checks import doctor_status
 from .checks import print_doctor_finding
+from .linux_lab import linux_lab_checks
+from .linux_lab import setup_linux_lab
 
 
 app = base_cli.App(name="base_dev")
-SUPPORTED_PROFILES = ("dev", "sre", "ai")
+SUPPORTED_PROFILES = ("dev", "sre", "ai", "linux-lab")
 
 
 @dataclass(frozen=True)
@@ -118,7 +120,7 @@ def normalize_profiles(profiles: tuple[str, ...]) -> tuple[str, ...]:
 def read_profile_manifests(ctx: base_cli.Context, profiles: tuple[str, ...]) -> tuple[ProfileManifest, ...]:
     profile_manifests: list[ProfileManifest] = []
     for profile in profiles:
-        if profile == "ai":
+        if profile in {"ai", "linux-lab"}:
             continue
         manifest = read_profile_manifest(ctx, profile)
         definitions = resolve_artifact_definitions(manifest.artifacts)
@@ -178,6 +180,8 @@ def setup_profiles(
     for profile in profiles:
         if profile == "ai":
             status = setup_ai_tools(ctx, dry_run=dry_run)
+        elif profile == "linux-lab":
+            status = setup_linux_lab(ctx, dry_run=dry_run)
         else:
             profile_manifest = profile_manifest_by_name[profile]
             status = setup_profile_artifacts(
@@ -375,6 +379,9 @@ def collect_profile_checks(
     for profile in profiles:
         if profile == "ai":
             checks.extend(ai_tool_checks())
+            continue
+        if profile == "linux-lab":
+            checks.extend(linux_lab_checks())
             continue
         profile_manifest = profile_manifest_by_name[profile]
         checks.extend(

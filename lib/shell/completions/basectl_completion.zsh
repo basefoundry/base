@@ -178,7 +178,7 @@ _base_basectl_completion() {
             esac
             ;;
         setup)
-            _arguments '--profile[Install prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+            _arguments '--profile[Install prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--dry-run[Log without making changes]' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--notify[Force a setup completion notification]' \
@@ -187,7 +187,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         check)
-            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--remote-network[Opt in to bounded project Git origin reachability checks]' \
@@ -346,7 +346,7 @@ _base_basectl_completion() {
                     _arguments '1:ci command:(setup check doctor)' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
-                        '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+                        '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                         '--recreate-venv[Recreate the project virtual environment]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
@@ -356,7 +356,7 @@ _base_basectl_completion() {
                     _arguments '1:ci command:(setup check doctor)' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
-                        '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+                        '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
                         '2:Base project:->projects'
@@ -404,7 +404,7 @@ _base_basectl_completion() {
             _arguments '1:config command:(path show doctor)'
             ;;
         doctor)
-            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
@@ -503,7 +503,7 @@ _base_basectl_completion() {
             esac
             ;;
         onboard)
-            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai dev,sre dev,ai sre,ai dev,sre,ai)' \
+            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--dry-run[Explain planned onboarding steps without making changes]' \
                 '--yes[Accept default answers for setup and shell profile prompts]' \
                 '--no-profile[Skip shell profile updates]' \

@@ -12,9 +12,10 @@ load ./setup_helpers.bash
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
-    [[ "$output" == *"dev - Base development tooling for this repository."* ]]
-    [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
-    [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
+    [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
+    [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
+    [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
+    [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
     [[ "$output" == *"--remote-network"* ]]
     [[ "$output" == *"Verify the local Base CLI environment and, when provided, project artifacts on supported platforms without making changes."* ]]
     [[ "$output" == *"Use check for a quick pass/fail result; use doctor for finding IDs and fix hints."* ]]
@@ -302,10 +303,10 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     create_base_venv_stub "$venv_dir"
 
-    run_base_command check --profile dev,SRE,AI
+    run_base_command check --profile dev,SRE,AI,LINUX-LAB
 
     [ "$status" -eq 1 ]
-    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile dev,sre,ai)" ]
+    [ "$(cat "$TEST_STATE_DIR/dev-args")" = "$(printf '%s\n' check --profile dev,sre,ai,linux-lab)" ]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
 }
 
@@ -313,7 +314,7 @@ EOF
     run_base_command check --profile ops
 
     [ "$status" -eq 2 ]
-    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai."* ]]
+    [[ "$output" == *"Unsupported profile 'ops'. Expected one of: dev, sre, ai, linux-lab."* ]]
 }
 
 @test "basectl check rejects empty profile list entries" {

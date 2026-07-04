@@ -32,6 +32,8 @@ The current command surface covers:
 - repo-owned prompt rendering through `basectl prompt`
 - documentation entrypoint opening through `basectl docs`
 - explicit `ai` prerequisite profile for Codex CLI and Claude Code
+- explicit `linux-lab` prerequisite profile for host-side Multipass checks and
+  setup
 - Ubuntu/Debian runtime checks, diagnostics, and source-checkout validation
 
 ## Active Development Direction
@@ -69,6 +71,8 @@ Recent released work includes:
 - newcomer orientation presentation docs
 - optional project Git remote reachability diagnostics
 - explicit `ai` prerequisite profile
+- explicit host-scoped `linux-lab` prerequisite profile for Multipass checks
+  and setup
 - portable project Git workflow guidance from `basectl repo init`
 - Homebrew upgrade path preservation for explicit `BASE_HOME` and shell startup
   snippets

@@ -96,6 +96,10 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(engine.normalize_profiles(()), ("dev",))
         self.assertEqual(engine.normalize_profiles(("dev", "sre", "dev")), ("dev", "sre"))
         self.assertEqual(engine.normalize_profiles(("dev,SRE,AI",)), ("dev", "sre", "ai"))
+        self.assertEqual(
+            engine.normalize_profiles(("dev,LINUX-LAB,ai",)),
+            ("dev", "linux-lab", "ai"),
+        )
 
     def test_normalize_profiles_rejects_unknown_profile(self) -> None:
         with self.assertRaisesRegex(engine.ProfileError, "Unsupported profile 'ops'"):

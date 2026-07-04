@@ -42,9 +42,10 @@ prepare_ci_runtime() {
     [[ "$output" == *"--format <text|json>"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
-    [[ "$output" == *"dev - Base development tooling for this repository."* ]]
-    [[ "$output" == *"sre - production/SRE prerequisite tooling."* ]]
-    [[ "$output" == *"ai  - AI coding assistant tooling."* ]]
+    [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
+    [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
+    [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
+    [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
     [[ "$output" == *"BASE_CI=true"* ]]
 }
 
