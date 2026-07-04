@@ -71,6 +71,74 @@ basectl_print_version() {
     printf 'basectl %s\n' "$(base_read_version "$base_home")"
 }
 
+basectl_proc_translated() {
+    local translated
+
+    if [[ -n "${BASE_TEST_PROC_TRANSLATED+x}" ]]; then
+        [[ "$BASE_TEST_PROC_TRANSLATED" == 1 ]]
+        return $?
+    fi
+
+    translated="$(sysctl -in sysctl.proc_translated 2>/dev/null || true)"
+    [[ "$translated" == 1 ]]
+}
+
+basectl_homebrew_prefix() {
+    local brew_bin
+
+    if [[ -n "${BASE_TEST_HOMEBREW_PREFIX+x}" ]]; then
+        [[ -n "$BASE_TEST_HOMEBREW_PREFIX" ]] || return 1
+        printf '%s\n' "$BASE_TEST_HOMEBREW_PREFIX"
+        return 0
+    fi
+
+    if [[ -n "${HOMEBREW_PREFIX:-}" ]]; then
+        printf '%s\n' "$HOMEBREW_PREFIX"
+        return 0
+    fi
+
+    brew_bin="$(command -v brew 2>/dev/null || true)"
+    case "$brew_bin" in
+        /opt/homebrew/bin/brew)
+            printf '%s\n' "/opt/homebrew"
+            return 0
+            ;;
+        /usr/local/bin/brew)
+            printf '%s\n' "/usr/local"
+            return 0
+            ;;
+    esac
+
+    [[ -n "$brew_bin" ]] || return 1
+    "$brew_bin" --prefix 2>/dev/null
+}
+
+basectl_rosetta_arm_homebrew_active() {
+    local prefix
+
+    basectl_proc_translated || return 1
+    prefix="$(basectl_homebrew_prefix)" || return 1
+    [[ "$prefix" == "/opt/homebrew" ]]
+}
+
+basectl_rosetta_bash_candidate_allowed() {
+    local candidate="$1"
+
+    [[ "$candidate" != "/usr/local/bin/bash" ]]
+}
+
+basectl_print_rosetta_arm_homebrew_error() {
+    {
+        printf 'ERROR: Base is running under Rosetta while Homebrew resolves to /opt/homebrew.\n'
+        printf 'This can happen when /usr/local/bin/bash appears before native Bash on PATH.\n'
+        printf '\n'
+        printf 'Install native Homebrew Bash with:\n'
+        printf '  arch -arm64 /opt/homebrew/bin/brew install bash\n'
+        printf '\n'
+        printf 'Then start Base from /opt/homebrew/bin/bash or move /usr/local/bin behind /opt/homebrew/bin on PATH.\n'
+    } >&2
+}
+
 basectl_ensure_supported_bash() {
     local candidate
     local candidates=()
@@ -78,13 +146,26 @@ basectl_ensure_supported_bash() {
     local display_version
 
     current_version="${BASE_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
-    ((current_version >= 42)) && return 0
 
     if [[ -n "${BASE_TEST_BASH_CANDIDATES:-}" ]]; then
         IFS=: read -r -a candidates <<<"$BASE_TEST_BASH_CANDIDATES"
     else
         candidates=(/opt/homebrew/bin/bash /usr/local/bin/bash)
     fi
+
+    if basectl_rosetta_arm_homebrew_active; then
+        for candidate in "${candidates[@]}"; do
+            [[ -x "$candidate" ]] || continue
+            [[ "$candidate" == "${BASH:-}" ]] && continue
+            basectl_rosetta_bash_candidate_allowed "$candidate" || continue
+            exec "$candidate" "$0" "$@"
+        done
+
+        basectl_print_rosetta_arm_homebrew_error
+        exit 1
+    fi
+
+    ((current_version >= 42)) && return 0
 
     for candidate in "${candidates[@]}"; do
         [[ -x "$candidate" ]] || continue
