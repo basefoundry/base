@@ -9,6 +9,8 @@ from typing import Any
 
 import base_cli
 from base_cli.paths import base_state_root
+from base_projects.workspace_scanner import ManifestEntry
+from base_projects.workspace_scanner import workspace_manifest_entries
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import read_workspace_manifest
@@ -25,17 +27,6 @@ from base_setup.manifest import BaseManifest, ManifestError, read_manifest
 from base_setup.python_runtime import ProjectPythonRuntime
 from base_setup.python_runtime import project_python_runtime
 from base_setup.uv import manifest_uses_uv_project_manager
-
-
-class ProjectDiscoveryError(RuntimeError):
-    pass
-
-
-@dataclass(frozen=True)
-class ManifestEntry:
-    path: Path
-    mtime_ns: int
-    size: int
 
 
 @dataclass(frozen=True)
@@ -828,29 +819,6 @@ def print_workspace_check_results(
 
 def yes_no(value: bool) -> str:
     return "yes" if value else "no"
-
-
-def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...]:
-    if not workspace_root.is_dir():
-        raise ProjectDiscoveryError(f"Workspace '{workspace_root}' is not a directory.")
-
-    entries: list[ManifestEntry] = []
-    for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
-        if not candidate.is_dir():
-            continue
-        manifest_path = candidate / "base_manifest.yaml"
-        if not manifest_path.is_file():
-            continue
-        stat_result = manifest_path.stat()
-        entries.append(
-            ManifestEntry(
-                path=manifest_path,
-                mtime_ns=stat_result.st_mtime_ns,
-                size=stat_result.st_size,
-            )
-        )
-
-    return tuple(entries)
 
 
 def dumps_json(payload: dict[str, Any]) -> str:

@@ -26,7 +26,6 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_configure import workspace_configure_from_options
 from base_projects.workspace_init import workspace_init_command
 from base_projects.workspace_pull import pull_workspace_manifest
-from base_projects.workspace_reports import ProjectDiscoveryError
 from base_projects.workspace_reports import dumps_json
 from base_projects.workspace_reports import print_workspace_check
 from base_projects.workspace_reports import print_workspace_doctor
@@ -38,6 +37,7 @@ from base_projects.workspace_reports import workspace_error_count
 from base_projects.workspace_reports import workspace_project_check_results
 from base_projects.workspace_reports import workspace_project_statuses
 from base_projects.workspace_reports import workspace_status_to_json
+from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, CommandConfig, ManifestError, TestConfig, read_manifest
