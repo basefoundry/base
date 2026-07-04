@@ -96,3 +96,42 @@ run_setup_common_script() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Python is available for CI runtime checks."* ]]
 }
+
+@test "setup_common keeps GitHub CLI out of bulk Ubuntu apt prerequisites" {
+    run_setup_common_script '
+        packages="$(setup_linux_debian_apt_packages)"
+        printf "packages=%s\n" "$packages"
+        printf "command=%s\n" "$(setup_linux_debian_apt_prerequisite_command)"
+        setup_linux_debian_github_cli_install_guidance
+        case " $packages " in
+            *" gh "*)
+                printf "gh must use official GitHub CLI apt repository guidance, not the bulk apt list\n" >&2
+                exit 20
+                ;;
+        esac
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"packages=bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"command=sudo apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go"* ]]
+    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh':"* ]]
+}
+
+@test "setup_common logs GitHub CLI guidance after Ubuntu apt prerequisite install" {
+    cat > "$TEST_MOCKBIN/sudo" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$TEST_STATE_DIR/sudo-args"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/sudo"
+
+    run_setup_common_script '
+        setup_enable_yes
+        setup_run_linux_debian_apt_prerequisites
+    '
+
+    [ "$status" -eq 0 ]
+    [ "$(sed -n '1p' "$TEST_STATE_DIR/sudo-args")" = "apt-get update" ]
+    [ "$(sed -n '2p' "$TEST_STATE_DIR/sudo-args")" = "apt-get install -y bash git python3 python3-venv python3-pip bats shellcheck jq golang-go" ]
+    [[ "$output" == *"Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh':"* ]]
+}
