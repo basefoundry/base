@@ -167,7 +167,16 @@ class ManifestCommandTrustTests(unittest.TestCase):
                 },
             ):
                 with redirect_stdout(stdout), redirect_stderr(stderr):
-                    status = engine.main(["allow", "demo", "--workspace", str(workspace), "--manifest-sha256", "0" * 64])
+                    status = engine.main(
+                        [
+                            "allow",
+                            "demo",
+                            "--workspace",
+                            str(workspace),
+                            "--manifest-sha256",
+                            "0" * 64,
+                        ]
+                    )
 
             trust_root = home / ".base.d" / "trust" / "manifest-commands"
 
