@@ -41,15 +41,14 @@ def setup_linux_lab(ctx: base_cli.Context, dry_run: bool) -> int:
             process.dry_run_command(ctx, list(MULTIPASS_INSTALL_COMMAND))
             ctx.log.info("Base 'linux-lab' prerequisite setup dry-run is complete.")
             return base_cli.ExitCode.SUCCESS
-        else:
-            if not process.command_exists("brew"):
-                raise ArtifactError(
-                    "Homebrew is required to install Multipass for the 'linux-lab' profile. "
-                    "Install Multipass from https://canonical.com/multipass/install or run "
-                    "'brew install --cask multipass' after Homebrew is available."
-                )
-            ctx.log.info("Installing Multipass via Homebrew cask.")
-            process.run_command(ctx, list(MULTIPASS_INSTALL_COMMAND))
+        if not process.command_exists("brew"):
+            raise ArtifactError(
+                "Homebrew is required to install Multipass for the 'linux-lab' profile. "
+                "Install Multipass from https://canonical.com/multipass/install or run "
+                "'brew install --cask multipass' after Homebrew is available."
+            )
+        ctx.log.info("Installing Multipass via Homebrew cask.")
+        process.run_command(ctx, list(MULTIPASS_INSTALL_COMMAND))
     except ArtifactError as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
