@@ -10,9 +10,9 @@ from typing import Any
 
 import base_cli
 from base_cli.paths import base_cache_root, discover_manifest
-from base_projects.workspace_reports import ManifestEntry
-from base_projects.workspace_reports import ProjectDiscoveryError
-from base_projects.workspace_reports import workspace_manifest_entries
+from base_projects.workspace_scanner import ManifestEntry
+from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_projects.workspace_scanner import workspace_manifest_entries
 from base_setup.manifest import ManifestError, read_manifest
 
 

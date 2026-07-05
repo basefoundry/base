@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
 from base_setup import process
+from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
-from base_setup.artifacts import homebrew_package_outdated, reconcile_artifact, resolve_artifact_definitions
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
+from base_setup.prerequisites import GitHubCliAuthCheckRequest
+from base_setup.prerequisites import HomebrewPackageCheckRequest
+from base_setup.prerequisites import PrerequisiteCheck
+from base_setup.prerequisites import check_github_cli_auth as check_github_cli_auth_prerequisite
+from base_setup.prerequisites import check_homebrew_package
+from base_setup.prerequisites import homebrew_package_outdated
 from base_setup.process import DIAGNOSTIC_TIMEOUT_SECONDS, command_exists, run_check
 from base_setup.registry import ArtifactDefinition
 
@@ -530,81 +535,63 @@ def check_homebrew_artifact(  # pylint: disable=too-many-return-statements
     definition: ArtifactDefinition,
     profile: str = "dev",
 ) -> DevCheck:
-    if definition.manager != "homebrew":
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=(
-                f"Artifact '{artifact.name}' uses unsupported developer prerequisite manager '{definition.manager}'."
-            ),
-            fix=f"Update {profile_manifest_path(Path('lib/base'), profile).name} to use a Homebrew-managed tool.",
-            finding_id="BASE-D101",
-        )
-    if artifact.version != "latest":
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
-            fix="Use version 'latest' for Homebrew-managed developer prerequisites.",
-            finding_id="BASE-D102",
-        )
-
-    if not command_exists("brew"):
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=f"Homebrew is required to check developer prerequisite '{artifact.name}'.",
-            fix="basectl setup",
-            finding_id="BASE-D103",
-        )
-
-    try:
-        installed = run_check(
-            ["brew", "list", definition.package],
-            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
-        )
-        outdated = installed and homebrew_package_outdated(
-            definition.package,
-            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=(
-                f"Homebrew check for artifact '{artifact.name}' timed out after "
-                f"{DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
-            ),
-            fix=f"Retry 'basectl doctor --profile {profile}' or inspect Homebrew with 'brew doctor'.",
-            status="warn",
-            finding_id="BASE-D104",
-        )
-
-    if installed:
-        if outdated:
-            return DevCheck(
-                name=artifact.name,
-                ok=False,
-                message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
-                fix=profile_setup_fix(profile),
-                finding_id="BASE-D104",
-            )
-        return DevCheck(
-            name=artifact.name,
-            ok=True,
-            message=(
-                f"Artifact '{artifact.name}' is installed via Homebrew package "
-                f"'{definition.package}' and is current."
-            ),
-            fix="",
-            finding_id="BASE-D104",
-        )
-    return DevCheck(
+    request = HomebrewPackageCheckRequest(
         name=artifact.name,
-        ok=False,
-        message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
-        fix=profile_setup_fix(profile),
-        finding_id="BASE-D104",
+        manager=definition.manager,
+        version=artifact.version,
+        package=definition.package,
+        timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
+        unsupported_manager_message=(
+            f"Artifact '{artifact.name}' uses unsupported developer prerequisite manager '{definition.manager}'."
+        ),
+        unsupported_manager_fix=(
+            f"Update {profile_manifest_path(Path('lib/base'), profile).name} to use a Homebrew-managed tool."
+        ),
+        unsupported_manager_finding_id="BASE-D101",
+        unsupported_version_message=(
+            f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'."
+        ),
+        unsupported_version_fix="Use version 'latest' for Homebrew-managed developer prerequisites.",
+        unsupported_version_finding_id="BASE-D102",
+        missing_homebrew_message=f"Homebrew is required to check developer prerequisite '{artifact.name}'.",
+        missing_homebrew_fix="basectl setup",
+        missing_homebrew_finding_id="BASE-D103",
+        timeout_message=(
+            f"Homebrew check for artifact '{artifact.name}' timed out after "
+            f"{DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+        ),
+        timeout_fix=f"Retry 'basectl doctor --profile {profile}' or inspect Homebrew with 'brew doctor'.",
+        timeout_finding_id="BASE-D104",
+        outdated_message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
+        outdated_fix=profile_setup_fix(profile),
+        package_finding_id="BASE-D104",
+        installed_message=(
+            f"Artifact '{artifact.name}' is installed via Homebrew package "
+            f"'{definition.package}' and is current."
+        ),
+        missing_package_message=(
+            f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'."
+        ),
+        missing_package_fix=profile_setup_fix(profile),
+    )
+    return dev_check_from_prerequisite(
+        check_homebrew_package(
+            request,
+            command_exists=command_exists,
+            run_check=run_check,
+            package_outdated=homebrew_package_outdated,
+        )
+    )
+
+
+def dev_check_from_prerequisite(check: PrerequisiteCheck) -> DevCheck:
+    return DevCheck(
+        name=check.name,
+        ok=check.ok,
+        message=check.message,
+        fix=check.fix,
+        status=check.status,
+        finding_id=check.finding_id,
     )
 
 
@@ -684,46 +671,19 @@ def reconcile_linux_debian_apt_artifact(
 
 
 def check_github_cli_auth() -> DevCheck:
-    if not command_exists("gh"):
-        fix = (
-            github_cli_linux_install_fix("basectl check --profile dev")
-            if current_base_platform() == "linux-debian"
-            else "basectl setup --profile dev"
+    missing_gh_fix = (
+        github_cli_linux_install_fix("basectl check --profile dev")
+        if current_base_platform() == "linux-debian"
+        else "basectl setup --profile dev"
+    )
+    request = GitHubCliAuthCheckRequest(
+        timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
+        missing_gh_fix=missing_gh_fix,
+    )
+    return dev_check_from_prerequisite(
+        check_github_cli_auth_prerequisite(
+            request,
+            command_exists=command_exists,
+            run_check=run_check,
         )
-        return DevCheck(
-            name="gh-auth",
-            ok=False,
-            message="GitHub CLI 'gh' was not found.",
-            fix=fix,
-            finding_id="BASE-D105",
-        )
-
-    try:
-        ok = run_check(
-            ["gh", "auth", "status", "-h", "github.com"],
-            timeout_seconds=DIAGNOSTIC_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        return DevCheck(
-            name="gh-auth",
-            ok=False,
-            message=f"GitHub CLI authentication check timed out after {DIAGNOSTIC_TIMEOUT_SECONDS} seconds.",
-            fix="Retry 'gh auth status -h github.com' or run 'gh auth login -h github.com'.",
-            status="warn",
-            finding_id="BASE-D106",
-        )
-    if ok:
-        return DevCheck(
-            name="gh-auth",
-            ok=True,
-            message="GitHub CLI authentication is ready.",
-            fix="",
-            finding_id="BASE-D106",
-        )
-    return DevCheck(
-        name="gh-auth",
-        ok=False,
-        message="GitHub CLI authentication is not ready.",
-        fix="gh auth login -h github.com",
-        finding_id="BASE-D106",
     )

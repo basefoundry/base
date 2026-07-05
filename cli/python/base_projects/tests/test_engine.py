@@ -241,6 +241,11 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertIn("def workspace_pull_command", pull_command_path.read_text(encoding="utf-8"))
         self.assertNotIn("def workspace_pull_command", engine_path.read_text(encoding="utf-8"))
 
+    def test_project_discovery_does_not_import_workspace_reports(self) -> None:
+        discovery_path = Path(project_discovery.__file__)
+
+        self.assertNotIn("workspace_reports", discovery_path.read_text(encoding="utf-8"))
+
     def test_main_reports_config_errors_without_traceback(self) -> None:
         status, _stdout, stderr = run_engine(
             ["list"],
