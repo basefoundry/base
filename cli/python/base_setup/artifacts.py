@@ -174,41 +174,13 @@ def check_homebrew_artifact(
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
 ) -> ArtifactCheck:
-    request = HomebrewPackageCheckRequest(
+    request = HomebrewPackageCheckRequest.for_artifact(
+        project=project,
         name=artifact.name,
         manager=definition.manager,
         version=artifact.version,
         package=definition.package,
         timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
-        unsupported_manager_message=f"Artifact manager '{definition.manager}' is not implemented.",
-        unsupported_manager_fix=f"basectl setup {project}",
-        unsupported_manager_finding_id="BASE-P030",
-        unsupported_version_message=(
-            f"Homebrew artifact '{artifact.name}' specifies version '{artifact.version}', "
-            "but Base only supports Homebrew artifact version 'latest' right now."
-        ),
-        unsupported_version_fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
-        unsupported_version_finding_id="BASE-P031",
-        missing_homebrew_message=f"Homebrew is required to check artifact '{artifact.name}'.",
-        missing_homebrew_fix="basectl setup",
-        missing_homebrew_finding_id="BASE-P032",
-        timeout_message=(
-            f"Homebrew check for artifact '{artifact.name}' timed out after "
-            f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
-        ),
-        timeout_fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
-        timeout_finding_id="BASE-P033",
-        outdated_message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
-        outdated_fix=f"basectl setup {project}",
-        package_finding_id="BASE-P033",
-        installed_message=(
-            f"Artifact '{artifact.name}' is installed via Homebrew package "
-            f"'{definition.package}' and is current."
-        ),
-        missing_package_message=(
-            f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'."
-        ),
-        missing_package_fix=f"basectl setup {project}",
         details=artifact_details(definition),
     )
     return artifact_check_from_prerequisite(
