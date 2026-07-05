@@ -733,7 +733,7 @@ setup_run_verified_homebrew_installer() {
     local actual_sha256
     local exit_code
 
-    installer_file="$(mktemp "${TMPDIR:-/tmp}/base-homebrew-installer.XXXXXX")" || fatal_error "Failed to create a temporary Homebrew installer file."
+    std_make_temp_file installer_file base-homebrew-installer || fatal_error "Failed to create a temporary Homebrew installer file."
     setup_fetch_homebrew_installer "$installer_url" "$installer_file" || {
         rm -f "$installer_file"
         fatal_error "Failed to read pinned Homebrew installer content from '$installer_url'."
@@ -2201,7 +2201,7 @@ setup_collect_macos_base_check_results() {
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
 
-    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/base-check.XXXXXX")" ||
+    std_make_temp_dir tmpdir base-check ||
         fatal_error "Unable to create temporary directory for Base check probes."
 
     setup_write_homebrew_check_probe "$tmpdir/homebrew" &
@@ -2768,9 +2768,8 @@ setup_run_linux_debian_github_cli_prerequisite() {
     arch="$(dpkg --print-architecture)" || fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
     [[ -n "$arch" ]] || fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
 
-    keyring_tmp="$(mktemp "${TMPDIR:-/tmp}/base-github-cli-keyring.XXXXXX")" || fatal_error "Failed to create a temporary GitHub CLI keyring file."
-    source_tmp="$(mktemp "${TMPDIR:-/tmp}/base-github-cli-source.XXXXXX")" || {
-        rm -f "$keyring_tmp"
+    std_make_temp_file keyring_tmp base-github-cli-keyring || fatal_error "Failed to create a temporary GitHub CLI keyring file."
+    std_make_temp_file source_tmp base-github-cli-source || {
         fatal_error "Failed to create a temporary GitHub CLI apt source file."
     }
 

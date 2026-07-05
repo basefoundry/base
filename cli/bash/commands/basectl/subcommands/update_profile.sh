@@ -222,10 +222,9 @@ base_update_profile_update_file_needs_change() {
         return 0
     fi
 
-    current_content_file="$(mktemp "${TMPDIR:-/tmp}/base-profile-current.XXXXXX")" ||
+    std_make_temp_file current_content_file base-profile-current ||
         fatal_error "Unable to create temporary section content file for '$target_file'."
-    desired_content_file="$(mktemp "${TMPDIR:-/tmp}/base-profile-desired.XXXXXX")" || {
-        rm -f "$current_content_file"
+    std_make_temp_file desired_content_file base-profile-desired || {
         fatal_error "Unable to create temporary desired content file for '$target_file'."
     }
 

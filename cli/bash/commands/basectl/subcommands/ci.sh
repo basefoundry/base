@@ -195,11 +195,8 @@ base_ci_run_setup_json() {
     local exit_code
     local render_status
 
-    stdout_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stdout.XXXXXX")" || return 1
-    stderr_file="$(mktemp "${TMPDIR:-/tmp}/base-ci-setup-stderr.XXXXXX")" || {
-        rm -f "$stdout_file"
-        return 1
-    }
+    std_make_temp_file stdout_file base-ci-setup-stdout || return 1
+    std_make_temp_file stderr_file base-ci-setup-stderr || return 1
 
     base_setup_subcommand_main "${args[@]}" > "$stdout_file" 2> "$stderr_file"
     exit_code=$?

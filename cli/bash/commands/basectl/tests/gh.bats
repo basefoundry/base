@@ -1376,6 +1376,46 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/body")" = "Fixes #117" ]
 }
 
+@test "basectl gh pr create uses reusable temp helper for PR body" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            eval "$(declare -f std_make_temp_file | sed "1s/std_make_temp_file/__orig_std_make_temp_file/")"
+            std_make_temp_file() {
+                printf "%s\n" "$*" >> "${BASE_GH_TEST_STATE_DIR:?}/temp-helper"
+                __orig_std_make_temp_file "$@"
+            }
+            base_gh_subcommand_main pr create
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/temp-helper")" = "body_file basectl-gh-pr" ]
+}
+
 @test "basectl gh pr create renders project PR policy body" {
     local repo repo_root
 

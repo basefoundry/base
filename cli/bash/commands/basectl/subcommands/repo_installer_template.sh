@@ -103,7 +103,7 @@ base_repo_finish_installer_template_pr() {
         return $?
     fi
 
-    body_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-installer-template-pr.XXXXXX")" || {
+    std_make_temp_file body_file base-repo-installer-template-pr || {
         log_error "Failed to create a temporary pull request body file."
         return 1
     }
