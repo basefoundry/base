@@ -16,6 +16,10 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import ArtifactRequest
 from .platform_policy import current_base_platform
+from .prerequisites import HomebrewPackageCheckRequest
+from .prerequisites import PrerequisiteCheck
+from .prerequisites import check_homebrew_package
+from .prerequisites import homebrew_package_outdated
 from .python_policy import evaluate_python_requirement
 from .python_policy import inspect_python_interpreter
 from .python_policy import PythonInterpreter
@@ -35,29 +39,6 @@ LINUX_DEBIAN_SYSTEM_TOOL_PACKAGES = {
 class ProjectRuntimeConfig:
     name: str
     python_requirement: str | None = None
-
-
-def homebrew_no_auto_update_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
-    return env
-
-
-def homebrew_package_outdated(package: str, timeout_seconds: int | None = None) -> bool:
-    completed = process.run_capture(
-        ["brew", "outdated", package],
-        env=homebrew_no_auto_update_env(),
-        timeout_seconds=timeout_seconds,
-    )
-    return homebrew_outdated_output_contains_package(completed.stdout, package)
-
-
-def homebrew_outdated_output_contains_package(output: str, package: str) -> bool:
-    for line in output.splitlines():
-        fields = line.split()
-        if fields and fields[0] == package:
-            return True
-    return False
 
 
 def resolve_artifact_definitions(artifacts: tuple[ArtifactRequest, ...]) -> tuple[ArtifactDefinition, ...]:
@@ -159,78 +140,62 @@ def check_homebrew_artifact(
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
 ) -> ArtifactCheck:
-    if artifact.version != "latest":
-        return ArtifactCheck(
-            name=artifact.name,
-            ok=False,
-            message=(
-                f"Homebrew artifact '{artifact.name}' specifies version '{artifact.version}', "
-                "but Base only supports Homebrew artifact version 'latest' right now."
-            ),
-            fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
-            finding_id="BASE-P031",
-            details=artifact_details(definition),
-        )
-    if not process.command_exists("brew"):
-        return ArtifactCheck(
-            name=artifact.name,
-            ok=False,
-            message=f"Homebrew is required to check artifact '{artifact.name}'.",
-            fix="basectl setup",
-            finding_id="BASE-P032",
-            details=artifact_details(definition),
-        )
-    try:
-        installed = process.run_check(
-            ["brew", "list", definition.package],
-            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
-        )
-        outdated = installed and homebrew_package_outdated(
-            definition.package,
-            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        return ArtifactCheck(
-            name=artifact.name,
-            ok=False,
-            message=(
-                f"Homebrew check for artifact '{artifact.name}' timed out after "
-                f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
-            ),
-            fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
-            finding_id="BASE-P033",
-            status="warn",
-            details=artifact_details(definition),
-        )
-
-    if installed:
-        if outdated:
-            return ArtifactCheck(
-                name=artifact.name,
-                ok=False,
-                message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
-                fix=f"basectl setup {project}",
-                finding_id="BASE-P033",
-                details=artifact_details(definition),
-            )
-        return ArtifactCheck(
-            name=artifact.name,
-            ok=True,
-            message=(
-                f"Artifact '{artifact.name}' is installed via Homebrew package "
-                f"'{definition.package}' and is current."
-            ),
-            fix="",
-            finding_id="BASE-P033",
-            details=artifact_details(definition),
-        )
-    return ArtifactCheck(
+    request = HomebrewPackageCheckRequest(
         name=artifact.name,
-        ok=False,
-        message=f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'.",
-        fix=f"basectl setup {project}",
-        finding_id="BASE-P033",
+        manager=definition.manager,
+        version=artifact.version,
+        package=definition.package,
+        timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        unsupported_manager_message=f"Artifact manager '{definition.manager}' is not implemented.",
+        unsupported_manager_fix=f"basectl setup {project}",
+        unsupported_manager_finding_id="BASE-P030",
+        unsupported_version_message=(
+            f"Homebrew artifact '{artifact.name}' specifies version '{artifact.version}', "
+            "but Base only supports Homebrew artifact version 'latest' right now."
+        ),
+        unsupported_version_fix=f"Update '{artifact.name}' in the project manifest to use version 'latest'.",
+        unsupported_version_finding_id="BASE-P031",
+        missing_homebrew_message=f"Homebrew is required to check artifact '{artifact.name}'.",
+        missing_homebrew_fix="basectl setup",
+        missing_homebrew_finding_id="BASE-P032",
+        timeout_message=(
+            f"Homebrew check for artifact '{artifact.name}' timed out after "
+            f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
+        ),
+        timeout_fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
+        timeout_finding_id="BASE-P033",
+        outdated_message=f"Artifact '{artifact.name}' is outdated via Homebrew package '{definition.package}'.",
+        outdated_fix=f"basectl setup {project}",
+        package_finding_id="BASE-P033",
+        installed_message=(
+            f"Artifact '{artifact.name}' is installed via Homebrew package "
+            f"'{definition.package}' and is current."
+        ),
+        missing_package_message=(
+            f"Artifact '{artifact.name}' is not installed via Homebrew package '{definition.package}'."
+        ),
+        missing_package_fix=f"basectl setup {project}",
         details=artifact_details(definition),
+    )
+    return artifact_check_from_prerequisite(
+        check_homebrew_package(
+            request,
+            command_exists=process.command_exists,
+            run_check=process.run_check,
+            package_outdated=homebrew_package_outdated,
+        )
+    )
+
+
+def artifact_check_from_prerequisite(check: PrerequisiteCheck) -> ArtifactCheck:
+    return ArtifactCheck(
+        name=check.name,
+        ok=check.ok,
+        message=check.message,
+        fix=check.fix,
+        finding_id=check.finding_id,
+        status=check.status,
+        details=check.details,
     )
 
 

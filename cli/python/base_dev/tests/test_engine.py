@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines,too-many-public-methods
 
 import io
 import importlib
@@ -19,6 +19,7 @@ from unittest import mock
 from base_dev import ai_tools
 from base_dev import engine
 from base_dev.engine import main
+from base_setup.prerequisites import PrerequisiteCheck
 
 
 def run_engine(args: list[str], extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
@@ -665,6 +666,29 @@ class DevManifestTests(unittest.TestCase):
             timeout_seconds=engine.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
 
+    def test_check_homebrew_artifact_uses_shared_prerequisite_core(self) -> None:
+        artifact = engine.ArtifactRequest("tool", "gh", "latest")
+        definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
+        expected = PrerequisiteCheck(
+            name="gh",
+            ok=True,
+            message="shared Homebrew check",
+            fix="",
+            finding_id="BASE-D104",
+        )
+
+        with mock.patch("base_dev.engine.check_homebrew_package", return_value=expected) as check_homebrew_package:
+            check = engine.check_homebrew_artifact(artifact, definition)
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.message, "shared Homebrew check")
+        self.assertEqual(check.finding_id, "BASE-D104")
+        request = check_homebrew_package.call_args.args[0]
+        self.assertEqual(request.name, "gh")
+        self.assertEqual(request.package, "gh")
+        self.assertEqual(request.version, "latest")
+        self.assertEqual(request.manager, "homebrew")
+
     def test_check_homebrew_artifact_reports_outdated_formula(self) -> None:
         artifact = engine.ArtifactRequest("tool", "gh", "latest")
         definition = engine.ArtifactDefinition("gh", "tool", "homebrew", "gh", "system")
@@ -813,6 +837,25 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(check.fix, "basectl setup --profile dev")
         command_exists.assert_called_once_with("gh")
         run_check.assert_not_called()
+
+    def test_check_github_cli_auth_uses_shared_prerequisite_core(self) -> None:
+        expected = PrerequisiteCheck(
+            name="gh-auth",
+            ok=True,
+            message="shared GitHub auth check",
+            fix="",
+            finding_id="BASE-D106",
+        )
+
+        with mock.patch("base_dev.engine.check_github_cli_auth_prerequisite", return_value=expected) as check_auth:
+            check = engine.check_github_cli_auth()
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.message, "shared GitHub auth check")
+        self.assertEqual(check.finding_id, "BASE-D106")
+        request = check_auth.call_args.args[0]
+        self.assertEqual(request.timeout_seconds, engine.DIAGNOSTIC_TIMEOUT_SECONDS)
+        self.assertEqual(request.command, ("gh", "auth", "status", "-h", "github.com"))
 
     def test_check_github_cli_auth_reports_unauthenticated_gh(self) -> None:
         with (
