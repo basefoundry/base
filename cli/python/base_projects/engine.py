@@ -25,7 +25,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_configure import workspace_configure_from_options
 from base_projects.workspace_init import workspace_init_command
-from base_projects.workspace_pull import pull_workspace_manifest
+from base_projects.workspace_pull_command import workspace_pull_command
 from base_projects.workspace_reports import ProjectDiscoveryError
 from base_projects.workspace_reports import dumps_json
 from base_projects.workspace_reports import print_workspace_check
@@ -503,42 +503,6 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOpti
     return base_cli.ExitCode.SUCCESS
 
 
-def workspace_pull_command(ctx: base_cli.Context, options: WorkspaceCommandOptions) -> int:
-    if options.output_format != "text":
-        raise ProjectUsageError(f"Unsupported output format '{options.output_format}'. Expected: text.")
-
-    source = effective_workspace_manifest_source(ctx, options.workspace_manifest_source)
-    if source is None:
-        raise ProjectUsageError("workspace pull requires --source <url-or-path> or workspace.manifest_source.")
-
-    target = effective_workspace_manifest_path(ctx, options.workspace_manifest)
-    if target is None:
-        raise ProjectUsageError("workspace pull requires --manifest <path> or workspace.manifest.")
-
-    try:
-        result = pull_workspace_manifest(source, target, dry_run=options.dry_run)
-    except WorkspaceManifestError as exc:
-        ctx.log.error(str(exc))
-        return base_cli.ExitCode.FAILURE
-
-    print("Workspace manifest pull")
-    print(f"Source: {result.source}")
-    print(f"Target: {result.target}")
-    print(f"Manifest: {result.manifest.name} ({len(result.manifest.repos)} repositories)")
-    print(f"Status: {result.status}")
-
-    if options.dry_run:
-        print("[DRY-RUN] No files changed.")
-        return base_cli.ExitCode.SUCCESS
-
-    if not result.changed:
-        print("Workspace manifest already up to date.")
-        return base_cli.ExitCode.SUCCESS
-
-    print(f"Updated workspace manifest: {result.target}")
-    return base_cli.ExitCode.SUCCESS
-
-
 def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
     if workspace_manifest is not None:
         return workspace_manifest
@@ -546,15 +510,6 @@ def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str 
     if configured_manifest is None:
         return None
     return str(configured_manifest)
-
-
-def effective_workspace_manifest_path(ctx: base_cli.Context, workspace_manifest: str | None) -> Path | None:
-    if workspace_manifest is not None:
-        return Path(workspace_manifest).expanduser().resolve(strict=False)
-    configured_manifest = ctx.user_config.workspace.manifest
-    if configured_manifest is None:
-        return None
-    return configured_manifest
 
 
 def log_workspace_status_discovery(
@@ -597,12 +552,6 @@ def workspace_manifest_source_label(ctx: base_cli.Context, workspace_manifest: s
     if ctx.user_config.workspace.manifest is not None:
         return "workspace.manifest"
     return "none"
-
-
-def effective_workspace_manifest_source(ctx: base_cli.Context, workspace_manifest_source: str | None) -> str | None:
-    if workspace_manifest_source is not None:
-        return workspace_manifest_source
-    return ctx.user_config.workspace.manifest_source
 
 
 def require_workspace_clone_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> WorkspaceManifest:
