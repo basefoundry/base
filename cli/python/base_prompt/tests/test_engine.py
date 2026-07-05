@@ -25,6 +25,16 @@ def invoke(args: list[str], env: dict[str, str] | None = None) -> tuple[int, str
     return status, stdout.getvalue(), stderr.getvalue()
 
 
+def invoke_without_base_home(args: list[str]) -> tuple[int, str, str]:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with tempfile.TemporaryDirectory() as home_dir:
+        with mock.patch.dict(os.environ, {"HOME": home_dir}, clear=True):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                status = engine.main(args)
+    return status, stdout.getvalue(), stderr.getvalue()
+
+
 class BasePromptTests(unittest.TestCase):
     def test_list_includes_product_self_review_prompt(self) -> None:
         status, stdout, stderr = invoke(["list"])
@@ -63,6 +73,14 @@ class BasePromptTests(unittest.TestCase):
             self.assertIn("# Base Product Self-Review", written)
             self.assertIn("Project: base", written)
             self.assertIn("Do not update files unless explicitly asked.", written)
+
+    def test_product_self_review_prompt_requires_base_home(self) -> None:
+        status, stdout, stderr = invoke_without_base_home(["product-self-review"])
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("ERROR: Base home is unavailable.", stderr)
+        self.assertIn("basectl prompt", stderr)
 
     def test_unknown_prompt_reports_usage_error(self) -> None:
         status, stdout, stderr = invoke(["missing-prompt"])

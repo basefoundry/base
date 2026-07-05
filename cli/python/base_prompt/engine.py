@@ -53,7 +53,7 @@ def run(ctx: base_cli.Context, output_path: str | None, prompt_name: str | None)
         if not prompt_name:
             raise PromptUsageError("The 'prompt' command requires 'list' or a prompt name.")
         prompt = prompt_definition(prompt_name)
-        content = render_prompt(ctx.base_home, prompt)
+        content = render_prompt(require_base_home(ctx), prompt)
         if output_path:
             destination = Path(output_path).expanduser()
             write_prompt(destination, content)
@@ -101,6 +101,12 @@ def prompt_definition(name: str) -> PromptDefinition:
         if prompt.name == name:
             return prompt
     raise PromptUsageError(f"Unknown prompt '{name}'.")
+
+
+def require_base_home(ctx: base_cli.Context) -> Path:
+    if ctx.base_home is None:
+        raise PromptError("Base home is unavailable. Run this command through 'basectl prompt'.")
+    return ctx.base_home
 
 
 def render_prompt(base_home: Path, prompt: PromptDefinition) -> str:
