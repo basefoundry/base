@@ -17,7 +17,7 @@ def test_python_artifact_installed_passes_timeout_to_pip_show(tmp_path: Path) ->
         stderr="",
     )
 
-    with mock.patch("base_setup.artifacts.subprocess.run", return_value=completed) as run:
+    with mock.patch("base_setup.python_artifacts.subprocess.run", return_value=completed) as run:
         assert artifacts.python_artifact_installed(python_bin, "requests", "2.32.4")
 
     assert run.call_args.kwargs["timeout"] == artifacts.PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS
@@ -29,7 +29,7 @@ def test_python_artifact_installed_returns_false_on_timeout(tmp_path: Path) -> N
     command = [str(python_bin), "-m", "pip", "show", "requests"]
 
     with mock.patch(
-        "base_setup.artifacts.subprocess.run",
+        "base_setup.python_artifacts.subprocess.run",
         side_effect=subprocess.TimeoutExpired(command, timeout=10),
     ):
         assert not artifacts.python_artifact_installed(python_bin, "requests", "latest")
