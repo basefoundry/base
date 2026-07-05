@@ -4,7 +4,7 @@
 
 - Name: Base
 - Repository: `github.com/basefoundry/base`
-- Current release: `1.6.0`
+- Current release: `1.6.1`
 - Primary platform: macOS
 - Linux posture: Ubuntu/Debian runtime support, source-checkout validation, and
   apt-backed setup are implemented and tested; broader Linux distribution
