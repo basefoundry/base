@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from base_projects.workspace_manifest import WorkspaceManifest
+from base_setup.checks import doctor_status
+from base_setup.checks import print_doctor_finding
+
+
+def last_check_display(last_check: Any) -> str:
+    if last_check is None:
+        return "-"
+    if len(last_check.checked_at) >= 10:
+        return last_check.checked_at[:10]
+    return last_check.checked_at
+
+
+def print_workspace_status(
+    workspace_root: Path,
+    statuses: tuple[Any, ...],
+    workspace_manifest: WorkspaceManifest | None = None,
+) -> None:
+    if workspace_manifest is not None:
+        print_manifest_workspace_status(workspace_root, statuses, workspace_manifest)
+        return
+
+    print(f"Workspace: {workspace_root} ({len(statuses)} projects)")
+    print()
+    if not statuses:
+        print("No Base-managed projects discovered.")
+        return
+
+    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<8} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
+    for status in statuses:
+        print(
+            f"{status.name:<20} "
+            f"{status.status:<6} "
+            f"{status.venv:<8} "
+            f"{status.manifest:<8} "
+            f"{last_check_display(status.last_check):<10} "
+            f"{status.root}"
+        )
+
+    attention_count = sum(1 for status in statuses if status.status != "ok")
+    if attention_count:
+        print(f"\n{attention_count} project(s) need attention. Run 'basectl doctor <project>' for details.")
+    else:
+        print("\nAll discovered projects look ok.")
+
+
+def print_manifest_workspace_status(
+    workspace_root: Path,
+    statuses: tuple[Any, ...],
+    workspace_manifest: WorkspaceManifest,
+) -> None:
+    print(f"Workspace: {workspace_root} ({len(statuses)} repositories)")
+    print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
+    print()
+    if not statuses:
+        print("No repositories reported by the workspace manifest.")
+        return
+
+    print(
+        f"{'REPOSITORY':<20} {'STATUS':<6} {'REQUIRED':<8} {'REPO':<8} "
+        f"{'VENV':<14} {'MANIFEST':<8} {'LAST CHECK':<10} PATH"
+    )
+    for status in statuses:
+        print(
+            f"{status.repository or status.root.name:<20} "
+            f"{status.status:<6} "
+            f"{yes_no(status.required):<8} "
+            f"{status.repo:<8} "
+            f"{status.venv:<14} "
+            f"{status.manifest:<8} "
+            f"{last_check_display(status.last_check):<10} "
+            f"{status.root}"
+        )
+
+    attention_count = sum(1 for status in statuses if status.status != "ok")
+    if attention_count:
+        print(f"\n{attention_count} repositories need attention. Run 'basectl workspace doctor' for details.")
+    else:
+        print("\nAll workspace repositories look ok.")
+
+
+def print_workspace_check(
+    workspace_root: Path,
+    results: tuple[Any, ...],
+    workspace_manifest: WorkspaceManifest | None = None,
+) -> None:
+    item_name = "repositories" if workspace_manifest is not None else "projects"
+    print(f"Workspace check: {workspace_root} ({len(results)} {item_name})")
+    if workspace_manifest is not None:
+        print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
+    print_workspace_check_results(results, workspace_manifest)
+
+
+def print_workspace_doctor(
+    workspace_root: Path,
+    results: tuple[Any, ...],
+    workspace_manifest: WorkspaceManifest | None = None,
+) -> None:
+    item_name = "repositories" if workspace_manifest is not None else "projects"
+    print(f"\nWorkspace doctor: {workspace_root} ({len(results)} {item_name})")
+    if workspace_manifest is not None:
+        print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
+    print_workspace_check_results(results, workspace_manifest)
+
+
+def print_workspace_check_results(
+    results: tuple[Any, ...],
+    workspace_manifest: WorkspaceManifest | None = None,
+) -> None:
+    if not results:
+        if workspace_manifest is None:
+            print("\nNo Base-managed projects discovered.")
+        else:
+            print("\nNo repositories reported by the workspace manifest.")
+        return
+
+    label = "Repository" if workspace_manifest is not None else "Project"
+    for result in results:
+        name = result.repository or result.name
+        print(f"\n{label}: {name} [{result.status}]")
+        print(f"Path: {result.root}")
+        for check in result.checks:
+            print_doctor_finding(doctor_status(check), check.finding_id, check.name, check.message, check.fix)
+
+    error_count = workspace_error_count(results)
+    if error_count:
+        print(f"\nWorkspace has {error_count} error finding(s).")
+        return
+
+    warn_count = sum(1 for result in results for check in result.checks if doctor_status(check) == "warn")
+    if warn_count:
+        print(f"\nWorkspace has {warn_count} warning finding(s).")
+    elif workspace_manifest is not None:
+        print("\nAll workspace repositories passed.")
+    else:
+        print("\nAll discovered projects passed.")
+
+
+def workspace_error_count(results: tuple[Any, ...]) -> int:
+    return sum(1 for result in results for check in result.checks if doctor_status(check) == "error")
+
+
+def yes_no(value: bool) -> str:
+    return "yes" if value else "no"
