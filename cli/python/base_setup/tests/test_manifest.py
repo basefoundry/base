@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from base_setup.manifest import BaseManifest, ManifestError, read_manifest
 
@@ -18,6 +19,18 @@ class ManifestParsingTests(unittest.TestCase):
             manifest_path.write_text("\n".join(lines), encoding="utf-8")
 
             return read_manifest(manifest_path)
+
+    def test_read_manifest_uses_mapping_loader(self) -> None:
+        manifest_path = Path("base_manifest.yaml")
+
+        with mock.patch(
+            "base_setup.manifest.read_manifest_mapping",
+            return_value={"project": {"name": "demo"}, "artifacts": []},
+        ) as read_manifest_mapping:
+            manifest = read_manifest(manifest_path)
+
+        read_manifest_mapping.assert_called_once_with(manifest_path)
+        self.assertEqual(manifest.project_name, "demo")
 
     def test_reads_basic_manifest(self) -> None:
         manifest = self.read_manifest_lines(
