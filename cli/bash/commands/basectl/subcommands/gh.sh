@@ -804,7 +804,7 @@ base_gh_pr_create() {
     base_gh_require_git_repo || return 1
     issue="$(base_gh_current_issue_from_branch || true)"
     if [[ -n "$issue" && "$no_fixes" -eq 0 ]]; then
-        body_file="$(mktemp "${TMPDIR:-/tmp}/basectl-gh-pr.XXXXXX")" || return 1
+        std_make_temp_file body_file basectl-gh-pr || return 1
         base_gh_pr_policy_body "$issue" > "$body_file" || {
             status=$?
             rm -f "$body_file"

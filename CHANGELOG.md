@@ -23,6 +23,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Reused the external `base-bash-libs` GitHub CLI helpers in `basectl gh` and
   `basectl repo`, and updated the pinned CI dependency to the helper-library
   commit that provides them.
+- Reused `base-bash-libs` temp-file cleanup helpers in post-bootstrap Bash
+  commands that create pull request bodies, CI capture files, setup probes, and
+  profile comparison files.
 
 ### Fixed
 

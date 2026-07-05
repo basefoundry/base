@@ -2003,12 +2003,11 @@ base_repo_finish_pr_baseline() {
         return 1
     }
 
-    body_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-init-pr.XXXXXX")" || {
+    std_make_temp_file body_file base-repo-init-pr || {
         log_error "Failed to create a temporary pull request body file."
         return 1
     }
-    output_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-init-pr-output.XXXXXX")" || {
-        rm -f "$body_file"
+    std_make_temp_file output_file base-repo-init-pr-output || {
         log_error "Failed to create a temporary pull request output file."
         return 1
     }

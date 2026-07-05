@@ -299,7 +299,7 @@ base_repo_finish_agent_guidance_pr() {
         return $?
     fi
 
-    body_file="$(mktemp "${TMPDIR:-/tmp}/base-repo-agent-guidance-pr.XXXXXX")" || {
+    std_make_temp_file body_file base-repo-agent-guidance-pr || {
         log_error "Failed to create a temporary pull request body file."
         return 1
     }
