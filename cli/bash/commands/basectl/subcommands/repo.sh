@@ -4,6 +4,8 @@
 _base_repo_subcommand_sourced=1
 readonly _base_repo_subcommand_sourced
 
+import_base_lib gh/lib_gh.sh
+
 BASE_REPO_BASELINE_FILES=(
     README.md
     VERSION
@@ -1201,15 +1203,8 @@ base_repo_infer_github_repo() {
 }
 
 base_repo_require_gh() {
-    command -v gh >/dev/null 2>&1 || {
-        log_error "GitHub CLI 'gh' is required for repository configuration."
-        return 1
-    }
-    gh auth status -h github.com >/dev/null 2>&1 || {
-        log_error "GitHub CLI authentication is not ready."
-        log_error "Run 'gh auth login -h github.com' and retry."
-        return 1
-    }
+    gh_require_cli "GitHub CLI 'gh' is required for repository configuration." || return 1
+    gh_auth_status_diagnostics "Run 'gh auth login -h github.com' and retry."
 }
 
 base_repo_homebrew_gh_outdated() {
