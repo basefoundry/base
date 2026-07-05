@@ -716,7 +716,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
                 "base_setup.process.run_check",
                 return_value=True,
             ), mock.patch(
-                "base_setup.ide.list_ide_extensions",
+                "base_setup.ide_extensions.list_ide_extensions",
                 return_value={"ms-python.python"},
             ), mock.patch.dict(os.environ, {"HOME": tmpdir, "XDG_CONFIG_HOME": "", "BASE_SETUP_PROFILES": "dev"}):
                 settings_file = ide.ide_settings_file(ide.IDE_DEFINITIONS["vscode"])

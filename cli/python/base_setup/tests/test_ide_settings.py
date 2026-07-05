@@ -35,7 +35,7 @@ class IdeSettingsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir}, clear=False), mock.patch(
-                "base_setup.ide.sys.platform", "darwin"
+                "base_setup.ide_settings.sys.platform", "darwin"
             ):
                 settings_file = ide.ide_settings_file(definition)
 
@@ -57,7 +57,7 @@ class IdeSettingsTests(unittest.TestCase):
                 os.environ,
                 {"HOME": str(home_dir), "XDG_CONFIG_HOME": str(config_home)},
                 clear=False,
-            ), mock.patch("base_setup.ide.sys.platform", "linux"):
+            ), mock.patch("base_setup.ide_settings.sys.platform", "linux"):
                 settings_file = ide.ide_settings_file(definition)
 
         self.assertEqual(settings_file, config_home / "Cursor" / "User" / "settings.json")
@@ -69,7 +69,7 @@ class IdeSettingsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as home_dir:
             with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}, clear=False), mock.patch(
-                "base_setup.ide.sys.platform", "linux"
+                "base_setup.ide_settings.sys.platform", "linux"
             ):
                 settings_file = ide.ide_settings_file(definition)
 
@@ -99,7 +99,7 @@ class IdeSettingsTests(unittest.TestCase):
             settings_dir = Path(tmpdir)
             settings_file = settings_dir / "settings.json"
 
-            with mock.patch("base_setup.ide.json.dump", side_effect=OSError("disk full")):
+            with mock.patch("base_setup.ide_settings.json.dump", side_effect=OSError("disk full")):
                 with self.assertRaises(OSError):
                     ide.write_json_atomic(settings_file, {"editor.formatOnSave": True})
 
@@ -185,7 +185,7 @@ class IdeSettingsTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.ide.merge_ide_settings") as merge_settings:
+        with mock.patch("base_setup.ide_settings.merge_ide_settings") as merge_settings:
             ide.reconcile_ide_settings(ctx, manifest, dry_run=True)
 
         merge_settings.assert_called_once_with(
@@ -288,8 +288,11 @@ class IdeSettingsTests(unittest.TestCase):
             },
         )
 
-        with mock.patch("base_setup.ide.ide_settings_file", return_value=settings_file) as settings_path, mock.patch(
-            "base_setup.ide.read_ide_settings",
+        with mock.patch(
+            "base_setup.ide_settings.ide_settings_file",
+            return_value=settings_file,
+        ) as settings_path, mock.patch(
+            "base_setup.ide_settings.read_ide_settings",
             return_value={
                 "editor.formatOnSave": True,
                 "editor.rulers": [100],
@@ -308,6 +311,6 @@ class IdeSettingsTests(unittest.TestCase):
     def test_diagnostic_snapshot_reports_missing_settings_probe_result_explicitly(self) -> None:
         snapshot = ide.IdeDiagnosticSnapshot(ide.IDE_DEFINITIONS["vscode"])
 
-        with mock.patch("base_setup.ide.read_ide_settings", return_value=None):
+        with mock.patch("base_setup.ide_settings.read_ide_settings", return_value=None):
             with self.assertRaisesRegex(RuntimeError, "settings"):
                 snapshot.current_settings()

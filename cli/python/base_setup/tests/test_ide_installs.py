@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from base_setup import engine, ide
+from base_setup import engine, ide, process
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
 
@@ -105,7 +105,7 @@ class IdeInstallTests(unittest.TestCase):
             "base_setup.process.run_check",
             side_effect=subprocess.TimeoutExpired(
                 ["brew", "list", "--cask", "visual-studio-code"],
-                ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                process.DIAGNOSTIC_TIMEOUT_SECONDS,
             ),
         ) as run_check:
             check = ide.check_ide_install("demo", definition)
@@ -116,7 +116,7 @@ class IdeInstallTests(unittest.TestCase):
         self.assertEqual(check.fix, "Retry 'basectl doctor demo' or inspect Homebrew with 'brew doctor'.")
         run_check.assert_called_once_with(
             ["brew", "list", "--cask", "visual-studio-code"],
-            timeout_seconds=ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
 
 
