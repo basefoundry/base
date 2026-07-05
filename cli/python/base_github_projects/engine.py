@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
 import click
 from base_projects.command_helpers import ProjectUsageError, github_repo_spec
 
+from . import project_parser
 from . import graphql_queries as queries
+# pylint: disable=unused-import
+from .project_parser import HELP_OPTIONS, ISSUE_FIELD_OPTIONS, PROJECT_VALUE_OPTIONS
+from .project_parser import OptionState, apply_project_option, apply_spaced_option, option_value
+from .project_parser import parse_project_options, print_usage, require_project_title, state_to_args
+# pylint: enable=unused-import
 from .project_configure import standard_template_view_errors
 from .project_item_fields import FieldCopySummary
 from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
@@ -21,15 +25,10 @@ from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectS
 from .project_model import SelectFieldSpec, SelectOption
 from .project_config import ProjectConfig, ProjectConfigError
 from .project_config import read_project_config as _read_project_config
-from .project_errors import missing_issue_field_option_message
-
-
-class ProjectError(RuntimeError):
-    pass
-
-
-class ProjectAuthError(ProjectError):
-    pass
+from .project_errors import ProjectAuthError, ProjectError, missing_issue_field_option_message
+# pylint: disable=unused-import
+from .project_graphql import GITHUB_GRAPHQL_TIMEOUT_SECONDS, is_project_scope_error, run_graphql
+# pylint: enable=unused-import
 
 
 app = base_cli.App(
@@ -37,19 +36,7 @@ app = base_cli.App(
     help="Configure GitHub Projects for Base-managed repositories.",
 )
 
-HELP_OPTIONS = ("-h", "--help", "help")
-PROJECT_VALUE_OPTIONS = (
-    "--project",
-    "--owner",
-    "--repo",
-    "--schema",
-    "--config",
-    "--copy-fields-from",
-    "--initiative-option",
-)
-ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--size")
 GIT_COMMAND_TIMEOUT_SECONDS = 10
-GITHUB_GRAPHQL_TIMEOUT_SECONDS = 60
 PROJECT_AUTH_EXIT_CODE = 3
 
 
@@ -86,169 +73,11 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
         return base_cli.ExitCode.FAILURE
 
 
-def print_usage(file=sys.stdout) -> None:
-    command = base_cli.delegated_display_command("base_github_projects")
-    print(
-        "\n".join(
-            (
-                "Usage:",
-                f"  {command} project doctor --project <title> "
-                "[--owner <login>] [--schema base-project]",
-                f"  {command} project configure --project <title> "
-                "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
-                "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",
-                f"  {command} project issue set-fields <number> "
-                "--repo <owner/name> --project <title> [--config <path>] [field options...]",
-                f"  {command} project issue defaults --config <path>",
-            )
-        ),
-        file=file,
-    )
-
-
 def parse_args(arguments: tuple[str, ...]) -> ProjectArguments:
-    if not arguments or arguments[0] in HELP_OPTIONS:
-        print_usage()
-        raise SystemExit(0)
-    if arguments[0] != "project":
-        raise ProjectUsageError(f"Unknown area '{arguments[0]}'.")
-    if len(arguments) < 2:
-        raise ProjectUsageError("The 'project' area requires a command.")
-
-    command = arguments[1]
-    remaining = list(arguments[2:])
-    if command == "doctor":
-        state = parse_project_options(remaining, allow_fields=False, allow_issue=False)
-        require_project_title(state)
-        return state_to_args("doctor", state)
-    if command == "configure":
-        state = parse_project_options(remaining, allow_fields=False, allow_issue=False)
-        require_project_title(state)
-        return state_to_args("configure", state)
-    if command == "issue":
-        if remaining and remaining[0] == "defaults":
-            state = parse_project_options(remaining[1:], allow_fields=False, allow_issue=False)
-            if not state.config_path:
-                raise ProjectUsageError("The 'project issue defaults' command requires --config.")
-            return state_to_args("issue-defaults", state)
-        if len(remaining) < 2 or remaining[0] != "set-fields":
-            raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
-        try:
-            issue_number = int(remaining[1])
-        except ValueError as exc:
-            raise ProjectUsageError(f"Invalid issue number '{remaining[1]}'.") from exc
-        state = parse_project_options(remaining[2:], allow_fields=True, allow_issue=True)
-        require_project_title(state)
-        if not state.repo:
-            state.repo = infer_repo_from_git()
-        if not state.repo:
-            raise ProjectUsageError("The 'project issue set-fields' command requires --repo.")
-        return state_to_args("issue-set-fields", state, issue_number=issue_number)
-    raise ProjectUsageError(f"Unknown project command '{command}'.")
-
-
-@dataclass
-class OptionState:
-    project_title: str | None = None
-    owner: str | None = None
-    repo: str | None = None
-    schema: str = "base-project"
-    config_path: str | None = None
-    copy_fields_from_project: str | None = None
-    initiative_options: list[str] | None = None
-    replace_project: bool = False
-    dry_run: bool = False
-    field_values: dict[str, str] | None = None
-
-
-def parse_project_options(remaining: list[str], *, allow_fields: bool, allow_issue: bool) -> OptionState:
-    state = OptionState(initiative_options=[], field_values={})
-    index = 0
-    while index < len(remaining):
-        arg = remaining[index]
-        if arg in HELP_OPTIONS:
-            print_usage()
-            raise SystemExit(0)
-        if arg == "--dry-run":
-            state.dry_run = True
-            index += 1
-            continue
-        if arg == "--replace-project":
-            state.replace_project = True
-            index += 1
-            continue
-        consumed = apply_spaced_option(state, remaining, index, allow_fields=allow_fields)
-        if consumed:
-            index += consumed
-            continue
-        if allow_issue:
-            raise ProjectUsageError(f"Unknown issue field option '{arg}'.")
-        raise ProjectUsageError(f"Unknown option '{arg}'.")
-    if state.schema != "base-project":
-        raise ProjectUsageError("Only project schema 'base-project' is supported.")
-    if not state.owner and state.repo:
-        state.owner = state.repo.split("/", 1)[0]
-    if not state.owner:
-        state.owner = infer_owner_from_git()
-    return state
-
-
-def apply_spaced_option(state: OptionState, remaining: list[str], index: int, *, allow_fields: bool) -> int:
-    """Apply a spaced option and return the number of consumed tokens."""
-    option = remaining[index]
-    if option in PROJECT_VALUE_OPTIONS:
-        apply_project_option(state, option, option_value(remaining, index))
-        return 2
-    if allow_fields and option in ISSUE_FIELD_OPTIONS:
-        state.field_values[option[2:]] = option_value(remaining, index)
-        return 2
-    return 0
-
-
-def option_value(remaining: list[str], index: int) -> str:
-    option = remaining[index]
-    if index + 1 >= len(remaining):
-        raise ProjectUsageError(f"Option '{option}' requires an argument.")
-    return remaining[index + 1]
-
-
-def apply_project_option(state: OptionState, option: str, value: str) -> None:
-    if option == "--project":
-        state.project_title = value
-    elif option == "--owner":
-        state.owner = value
-    elif option == "--repo":
-        state.repo = value
-    elif option == "--schema":
-        state.schema = value
-    elif option == "--config":
-        state.config_path = value
-    elif option == "--copy-fields-from":
-        state.copy_fields_from_project = value
-    elif option == "--initiative-option":
-        state.initiative_options.append(value)
-
-
-def require_project_title(state: OptionState) -> None:
-    if not state.project_title:
-        raise ProjectUsageError("The project command requires --project.")
-
-
-def state_to_args(command: str, state: OptionState, issue_number: int | None = None) -> ProjectArguments:
-    return ProjectArguments(
-        area="project",
-        command=command,
-        project_title=state.project_title,
-        owner=state.owner,
-        repo=state.repo,
-        schema=state.schema,
-        config_path=state.config_path,
-        copy_fields_from_project=state.copy_fields_from_project,
-        initiative_options=tuple(state.initiative_options or ()),
-        replace_project=state.replace_project,
-        dry_run=state.dry_run,
-        issue_number=issue_number,
-        field_values=dict(state.field_values or {}),
+    return project_parser.parse_args(
+        arguments,
+        infer_owner_from_git=infer_owner_from_git,
+        infer_repo_from_git=infer_repo_from_git,
     )
 
 
@@ -493,47 +322,6 @@ def infer_repo_from_git() -> str | None:
     if result.returncode != 0:
         return None
     return github_repo_spec(result.stdout)
-
-
-def run_graphql(query: str, variables: dict[str, object]) -> dict[str, object]:
-    payload = json.dumps({"query": query, "variables": variables})
-    try:
-        result = subprocess.run(
-            ["gh", "api", "graphql", "--input", "-"],
-            input=payload,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=GITHUB_GRAPHQL_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired as exc:
-        timeout = exc.timeout if exc.timeout is not None else GITHUB_GRAPHQL_TIMEOUT_SECONDS
-        raise ProjectError(f"Timed out running GitHub GraphQL request after {timeout} seconds.") from exc
-    except OSError as exc:
-        raise ProjectError(f"Could not run GitHub GraphQL request: {exc}") from exc
-    if result.returncode != 0:
-        message = (result.stderr or result.stdout).strip()
-        if is_project_scope_error(message):
-            raise ProjectAuthError(message or "GitHub Project access requires the project scope.")
-        raise ProjectError(message or "GitHub GraphQL request failed.")
-    try:
-        data = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise ProjectError("GitHub GraphQL returned invalid JSON.") from exc
-    if data.get("errors"):
-        message = "; ".join(str(error.get("message", error)) for error in data["errors"])
-        if is_project_scope_error(message):
-            raise ProjectAuthError(message)
-        raise ProjectError(message)
-    return data
-
-
-def is_project_scope_error(message: str) -> bool:
-    lowered = message.lower()
-    return (
-        "project" in lowered
-        and ("scope" in lowered or "resource not accessible" in lowered or "forbidden" in lowered)
-    ) or "projectv2" in lowered and "not accessible" in lowered
 
 
 def find_owner_and_project(owner: str, title: str) -> OwnerInfo:

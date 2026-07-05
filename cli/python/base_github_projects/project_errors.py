@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 
+class ProjectError(RuntimeError):
+    pass
+
+
+class ProjectAuthError(ProjectError):
+    pass
+
+
 def missing_issue_field_option_message(field_name: str, option_name: str, project_title: str) -> str:
     if field_name == "Initiative":
         return (
