@@ -49,6 +49,48 @@ class HomebrewPackageCheckRequest:
     missing_package_fix: str
     details: Mapping[str, Any] = field(default_factory=dict)
 
+    @classmethod
+    def for_artifact(  # pylint: disable=too-many-arguments
+        cls,
+        *,
+        project: str,
+        name: str,
+        manager: str,
+        version: str,
+        package: str,
+        timeout_seconds: int,
+        details: Mapping[str, Any] | None = None,
+    ) -> HomebrewPackageCheckRequest:
+        return cls(
+            name=name,
+            manager=manager,
+            version=version,
+            package=package,
+            timeout_seconds=timeout_seconds,
+            unsupported_manager_message=f"Artifact manager '{manager}' is not implemented.",
+            unsupported_manager_fix=f"basectl setup {project}",
+            unsupported_manager_finding_id="BASE-P030",
+            unsupported_version_message=(
+                f"Homebrew artifact '{name}' specifies version '{version}', "
+                "but Base only supports Homebrew artifact version 'latest' right now."
+            ),
+            unsupported_version_fix=f"Update '{name}' in the project manifest to use version 'latest'.",
+            unsupported_version_finding_id="BASE-P031",
+            missing_homebrew_message=f"Homebrew is required to check artifact '{name}'.",
+            missing_homebrew_fix="basectl setup",
+            missing_homebrew_finding_id="BASE-P032",
+            timeout_message=f"Homebrew check for artifact '{name}' timed out after {timeout_seconds} seconds.",
+            timeout_fix=f"Retry 'basectl doctor {project}' or inspect Homebrew with 'brew doctor'.",
+            timeout_finding_id="BASE-P033",
+            outdated_message=f"Artifact '{name}' is outdated via Homebrew package '{package}'.",
+            outdated_fix=f"basectl setup {project}",
+            package_finding_id="BASE-P033",
+            installed_message=f"Artifact '{name}' is installed via Homebrew package '{package}' and is current.",
+            missing_package_message=f"Artifact '{name}' is not installed via Homebrew package '{package}'.",
+            missing_package_fix=f"basectl setup {project}",
+            details={} if details is None else details,
+        )
+
 
 @dataclass(frozen=True)
 class GitHubCliAuthCheckRequest:
