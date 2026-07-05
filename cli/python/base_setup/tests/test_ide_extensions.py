@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from base_setup import engine, ide
+from base_setup import engine, ide, process
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
@@ -58,7 +58,7 @@ class IdeExtensionTests(unittest.TestCase):
         )
 
         with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value={"ms-python.python", "github.copilot"},
         ), mock.patch("base_setup.process.run_command") as run_command:
             ide.reconcile_ide_extensions(ctx, manifest, dry_run=False)
@@ -84,7 +84,7 @@ class IdeExtensionTests(unittest.TestCase):
         )
 
         with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value={"ms-python.python"},
         ), mock.patch("base_setup.process.run_command") as run_command:
             ide.reconcile_ide_extensions(ctx, manifest, dry_run=False)
@@ -121,7 +121,7 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch(
-            "base_setup.ide.process.run_capture",
+            "base_setup.ide_extensions.process.run_capture",
             return_value=mock.Mock(returncode=0, stdout="ms-python.python\n\ngithub.copilot\n", stderr=""),
         ) as run_capture:
             extensions = ide.list_ide_extensions(definition)
@@ -129,7 +129,7 @@ class IdeExtensionTests(unittest.TestCase):
         self.assertEqual(extensions, {"ms-python.python", "github.copilot"})
         run_capture.assert_called_once_with(
             ["code", "--list-extensions"],
-            timeout_seconds=ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+            timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
 
 
@@ -138,7 +138,7 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["cursor"]
 
         with mock.patch(
-            "base_setup.ide.process.run_capture",
+            "base_setup.ide_extensions.process.run_capture",
             return_value=mock.Mock(returncode=1, stdout="", stderr="extensions unavailable\n"),
         ):
             with self.assertRaisesRegex(ArtifactError, "extensions unavailable"):
@@ -148,10 +148,10 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch(
-            "base_setup.ide.process.run_capture",
+            "base_setup.ide_extensions.process.run_capture",
             side_effect=subprocess.TimeoutExpired(
                 ["code", "--list-extensions"],
-                ide.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+                process.DIAGNOSTIC_TIMEOUT_SECONDS,
             ),
         ):
             with self.assertRaisesRegex(ArtifactError, "timed out"):
@@ -160,7 +160,7 @@ class IdeExtensionTests(unittest.TestCase):
     def test_diagnostic_snapshot_reports_missing_extension_probe_result_explicitly(self) -> None:
         snapshot = ide.IdeDiagnosticSnapshot(ide.IDE_DEFINITIONS["vscode"])
 
-        with mock.patch("base_setup.ide.list_ide_extensions", return_value=None):
+        with mock.patch("base_setup.ide_extensions.list_ide_extensions", return_value=None):
             with self.assertRaisesRegex(RuntimeError, "installed extensions"):
                 snapshot.installed_extensions()
 
@@ -182,7 +182,7 @@ class IdeExtensionTests(unittest.TestCase):
         )
 
         with mock.patch("base_setup.process.command_exists", return_value=True) as command_exists, mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value={"ms-python.python"},
         ) as list_extensions:
             checks = ide.check_ide_extensions(manifest)
@@ -198,7 +198,7 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value={"ms-python.python"},
         ):
             check = ide.check_ide_extension("demo", definition, "ms-python.python")
@@ -213,7 +213,7 @@ class IdeExtensionTests(unittest.TestCase):
         definition = ide.IDE_DEFINITIONS["vscode"]
 
         with mock.patch("base_setup.process.command_exists", return_value=True), mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value=set(),
         ):
             check = ide.check_ide_extension("demo", definition, "ms-python.python")
@@ -260,7 +260,7 @@ class IdeExtensionTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"BASE_SETUP_PROFILES": "dev"}), mock.patch(
             "base_setup.process.command_exists", return_value=True
         ), mock.patch(
-            "base_setup.ide.list_ide_extensions",
+            "base_setup.ide_extensions.list_ide_extensions",
             return_value={"ms-python.python"},
         ):
             checks = engine.manifest_checks(default_manifest, manifest)
@@ -293,7 +293,7 @@ class IdeExtensionTests(unittest.TestCase):
 
         with mock.patch.dict("os.environ", {"BASE_SETUP_PROFILES": ""}), mock.patch(
             "base_setup.process.command_exists", return_value=False
-        ) as command_exists, mock.patch("base_setup.ide.list_ide_extensions") as list_extensions:
+        ) as command_exists, mock.patch("base_setup.ide_extensions.list_ide_extensions") as list_extensions:
             checks = engine.manifest_checks(default_manifest, manifest)
 
         command_exists.assert_not_called()
