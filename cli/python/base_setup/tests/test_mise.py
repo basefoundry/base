@@ -62,6 +62,28 @@ def trusted_mise_check(project_root: Path, mise_bin: Path = Path("mise")) -> sub
 
 
 class MiseTests(unittest.TestCase):
+    def test_delegates_reexports_mise_helpers(self) -> None:
+        from base_setup import mise_delegate
+
+        expected_names = (
+            "MISE_INSTALL_COMMAND_TEXT",
+            "check_mise",
+            "check_mise_missing_tools",
+            "check_mise_trust",
+            "command_text",
+            "ensure_mise_available",
+            "mise_config_untrusted",
+            "mise_details",
+            "mise_executable",
+            "missing_tool_names",
+            "reconcile_mise",
+            "require_mise_trusted_for_setup",
+            "resolve_mise_path",
+        )
+
+        for name in expected_names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(delegates, name), getattr(mise_delegate, name))
 
     def test_mise_dry_run_invokes_mise_install_in_project_root(self) -> None:
         ctx = fake_context()
@@ -77,7 +99,7 @@ class MiseTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            with mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")):
+            with mock.patch("base_setup.mise_delegate.mise_executable", return_value=Path("mise")):
                 delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
@@ -94,7 +116,7 @@ class MiseTests(unittest.TestCase):
 
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
-                mock.patch("base_setup.delegates.mise_executable", return_value=None),
+                mock.patch("base_setup.mise_delegate.mise_executable", return_value=None),
             ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
@@ -111,7 +133,7 @@ class MiseTests(unittest.TestCase):
 
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
-                mock.patch("base_setup.delegates.mise_executable", side_effect=[None, mise_path]),
+                mock.patch("base_setup.mise_delegate.mise_executable", side_effect=[None, mise_path]),
                 mock.patch("base_setup.delegates.process.run_capture", return_value=trusted_mise_check(project_root)),
                 mock.patch("base_setup.delegates.process.run_command") as run_command,
             ):
@@ -130,7 +152,7 @@ class MiseTests(unittest.TestCase):
 
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}, clear=False),
-                mock.patch("base_setup.delegates.mise_executable", return_value=None),
+                mock.patch("base_setup.mise_delegate.mise_executable", return_value=None),
             ):
                 with self.assertRaisesRegex(RuntimeError, "Run 'basectl setup demo --dry-run'.*'--yes'"):
                     delegates.reconcile_mise(ctx, manifest, dry_run=False)
@@ -149,7 +171,7 @@ class MiseTests(unittest.TestCase):
                 artifacts=(),
             )
 
-            with mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")), mock.patch(
+            with mock.patch("base_setup.mise_delegate.mise_executable", return_value=Path("mise")), mock.patch(
                 "base_setup.process.run_command"
             ) as run_command, mock.patch(
                 "base_setup.delegates.process.run_capture",
@@ -174,7 +196,7 @@ class MiseTests(unittest.TestCase):
             )
 
             with (
-                mock.patch("base_setup.delegates.mise_executable", return_value=mise_bin),
+                mock.patch("base_setup.mise_delegate.mise_executable", return_value=mise_bin),
                 mock.patch("base_setup.delegates.process.run_capture", return_value=trust_check),
                 mock.patch("base_setup.delegates.process.run_command") as run_command,
             ):
@@ -220,7 +242,7 @@ class MiseTests(unittest.TestCase):
             project_root.mkdir()
             manifest = make_manifest(project_root)
 
-            with mock.patch("base_setup.delegates.mise_executable", return_value=None):
+            with mock.patch("base_setup.mise_delegate.mise_executable", return_value=None):
                 check = delegates.check_mise(manifest)
 
         self.assertFalse(check.ok)
@@ -259,7 +281,7 @@ class MiseTests(unittest.TestCase):
             manifest = make_manifest(project_root)
 
             with (
-                mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")),
+                mock.patch("base_setup.mise_delegate.mise_executable", return_value=Path("mise")),
                 mock.patch(
                     "base_setup.process.run_capture",
                     side_effect=subprocess.TimeoutExpired(
@@ -335,7 +357,7 @@ class MiseTests(unittest.TestCase):
             )
 
             with (
-                mock.patch("base_setup.delegates.mise_executable", return_value=Path("mise")),
+                mock.patch("base_setup.mise_delegate.mise_executable", return_value=Path("mise")),
                 mock.patch(
                     "base_setup.process.run_capture",
                     side_effect=[
