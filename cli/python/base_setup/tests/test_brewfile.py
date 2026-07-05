@@ -14,6 +14,19 @@ from base_setup.tests.helpers import fake_context
 
 
 class BrewfileTests(unittest.TestCase):
+    def test_delegates_reexports_brewfile_helpers(self) -> None:
+        from base_setup import brewfile_delegate
+
+        expected_names = (
+            "check_brewfile",
+            "homebrew_no_auto_update_env",
+            "reconcile_brewfile",
+            "resolve_brewfile_path",
+        )
+
+        for name in expected_names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(delegates, name), getattr(brewfile_delegate, name))
 
     def test_brewfile_dry_run_invokes_brew_bundle(self) -> None:
         ctx = fake_context()
