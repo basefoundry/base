@@ -26,8 +26,8 @@ class ProjectEnvironmentTests(unittest.TestCase):
                     os.environ,
                     {"BASE_PROJECT": "base", "BASE_PROJECT_VENV_DIR": str(inherited_venv)},
                 ),
-                mock.patch("base_setup.artifacts.Path.home", return_value=home_dir),
-                mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False),
+                mock.patch("base_setup.python_artifacts.Path.home", return_value=home_dir),
+                mock.patch("base_setup.python_artifacts.python_artifact_installed", return_value=False),
             ):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 

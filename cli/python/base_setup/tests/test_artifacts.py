@@ -642,7 +642,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             with mock.patch.dict(
                 os.environ,
                 {"BASE_PROJECT": "demo", "BASE_PROJECT_VENV_DIR": str(venv_dir)},
-            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+            ), mock.patch("base_setup.python_artifacts.python_artifact_installed", return_value=False):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
@@ -663,9 +663,12 @@ class ArtifactReconcileTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             venv_dir = Path(tmpdir) / "demo" / ".venv"
             with mock.patch.dict(os.environ, {"BASE_PROJECT": "wrong-project"}), mock.patch(
-                "base_setup.artifacts.project_venv_dir",
+                "base_setup.python_artifacts.project_venv_dir",
                 return_value=venv_dir,
-            ) as project_venv_dir, mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False):
+            ) as project_venv_dir, mock.patch(
+                "base_setup.python_artifacts.python_artifact_installed",
+                return_value=False,
+            ):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=True)
 
         project_venv_dir.assert_called_once_with("demo")
@@ -688,8 +691,8 @@ class ArtifactReconcileTests(unittest.TestCase):
 
             with (
                 mock.patch.dict(os.environ, {"BASE_SETUP_RECREATE_PROJECT_VENV": "true"}),
-                mock.patch("base_setup.artifacts.project_venv_dir", return_value=venv_dir),
-                mock.patch("base_setup.artifacts.venv.create") as create_venv,
+                mock.patch("base_setup.python_artifacts.project_venv_dir", return_value=venv_dir),
+                mock.patch("base_setup.python_artifacts.venv.create") as create_venv,
                 mock.patch("base_setup.process.run_command") as run_command,
             ):
                 artifacts.reconcile_python_artifact(ctx, definition, "latest", "demo", dry_run=False)
@@ -726,9 +729,9 @@ class ArtifactReconcileTests(unittest.TestCase):
             python_bin.parent.mkdir(parents=True)
             python_bin.touch()
             with mock.patch(
-                "base_setup.artifacts.project_venv_dir",
+                "base_setup.python_artifacts.project_venv_dir",
                 return_value=venv_dir,
-            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False), mock.patch(
+            ), mock.patch("base_setup.python_artifacts.python_artifact_installed", return_value=False), mock.patch(
                 "base_setup.process.run_command"
             ) as run_command:
                 artifacts.reconcile_artifacts(
@@ -768,9 +771,9 @@ class ArtifactReconcileTests(unittest.TestCase):
             python_bin.parent.mkdir(parents=True)
             python_bin.touch()
             with mock.patch(
-                "base_setup.artifacts.project_venv_dir",
+                "base_setup.python_artifacts.project_venv_dir",
                 return_value=venv_dir,
-            ), mock.patch("base_setup.artifacts.python_artifact_installed", return_value=False), mock.patch(
+            ), mock.patch("base_setup.python_artifacts.python_artifact_installed", return_value=False), mock.patch(
                 "base_setup.process.run_command",
                 side_effect=[ArtifactError("batch failed"), None, None],
             ) as run_command:
