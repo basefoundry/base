@@ -51,6 +51,26 @@ run_gh_subcommand() {
     [ "$status" -eq 0 ]
 }
 
+@test "basectl gh joins CSV output through reusable string helper" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            str_join() {
+                printf "%s\n" "$*" > "${BASE_GH_TEST_STATE_DIR:?}/str-join"
+                printf -v "$1" "%s" "joined-by-helper"
+            }
+            base_gh_join_csv Status Priority Area
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "joined-by-helper" ]
+    [ "$(cat "$TEST_STATE_DIR/str-join")" = "joined ,  values" ]
+}
+
 @test "basectl gh prints help" {
     run_basectl gh --help
 

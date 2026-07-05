@@ -5,6 +5,7 @@ _base_gh_subcommand_sourced=1
 readonly _base_gh_subcommand_sourced
 
 import_base_lib gh/lib_gh.sh
+import_base_lib str/lib_str.sh
 
 base_gh_usage() {
     cat <<'EOF'
@@ -477,14 +478,10 @@ base_gh_issue_default_assignee_from_config() {
 }
 
 base_gh_join_csv() {
-    local joined="" value
+    local joined=""
+    local values=("$@")
 
-    for value in "$@"; do
-        if [[ -n "$joined" ]]; then
-            joined+=", "
-        fi
-        joined+="$value"
-    done
+    str_join joined ", " values
     printf '%s\n' "$joined"
 }
 

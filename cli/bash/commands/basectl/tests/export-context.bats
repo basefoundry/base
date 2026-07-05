@@ -13,6 +13,28 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--list-files"* ]]
 }
 
+@test "basectl export-context parses options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/export_context.sh"
+            arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_export_context_subcommand_main demo --format zip
+        '
+
+    [ "$status" -eq 2 ]
+    [[ "$(cat "$state_file")" == "parsed_options positionals option_specs -- demo --format zip" ]]
+}
+
 @test "basectl export-context resolves current project when omitted" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

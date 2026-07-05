@@ -17,6 +17,8 @@
 _base_setup_common_sourced=1
 readonly _base_setup_common_sourced
 
+import_base_lib str/lib_str.sh
+
 _BASE_SETUP_VENV_DIR_CACHE=""
 _BASE_SETUP_PYTHONPATH_CACHE=""
 _BASE_SETUP_CHECK_NAMES=()
@@ -135,7 +137,7 @@ setup_enable_profile_argument() {
         return 1
     fi
 
-    IFS=',' read -r -a profiles <<<"$compact"
+    str_split profiles "$compact" ","
     for profile in "${profiles[@]}"; do
         profile="$(setup_normalize_profile_name "$profile")"
         if ! setup_profile_supported "$profile"; then
