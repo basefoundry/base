@@ -280,6 +280,7 @@ _base_basectl_completion() {
             ;;
         prompt)
             _arguments '1:prompt:(list product-self-review)' \
+                '--output[Write rendered prompt Markdown to this path]:path:_files' \
                 '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;

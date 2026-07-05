@@ -124,4 +124,4 @@ daily project loop commands from the local checkout.
 | `basectl docs` | Open the Base documentation home page on GitHub. | `--show-url` |
 | `basectl export-context [project]` | Export a project's `.ai-context/` directory as Markdown or Zip. | `--workspace <path>`, `--format <markdown\|zip>`, `--output <path>`, `--print`, `--list-files` |
 | `basectl prompt list` | List repo-owned Markdown prompts that Base can render for AI-assisted workflows. | none |
-| `basectl prompt product-self-review` | Print the periodic Base product self-review prompt with current Base metadata. | none |
+| `basectl prompt product-self-review` | Print the periodic Base product self-review prompt with current Base metadata. | `--output <path>` |

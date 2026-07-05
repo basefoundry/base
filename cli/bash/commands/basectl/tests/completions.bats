@@ -265,7 +265,7 @@ EOF
     [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab"* ]]
     [[ "$output" == *"prompt_names=list product-self-review"* ]]
-    [[ "$output" == *"prompt_options=--help"* ]]
+    [[ "$output" == *"prompt_options=--output --help"* ]]
     [[ "$output" == *"docs_options=--show-url"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]

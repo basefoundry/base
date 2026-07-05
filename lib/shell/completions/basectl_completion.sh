@@ -272,7 +272,7 @@ _base_basectl_completion() {
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "list product-self-review" "$cur"
             else
-                _base_basectl_completion_compgen "-v -h --help" "$cur"
+                _base_basectl_completion_compgen "--output -v -h --help" "$cur"
             fi
             ;;
         docs)
