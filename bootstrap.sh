@@ -73,13 +73,6 @@ bootstrap_uname() {
     uname -s
 }
 
-bootstrap_require_macos() {
-    local os_name
-
-    os_name="$(bootstrap_uname)"
-    [[ "$os_name" == "Darwin" ]] || bootstrap_die "bootstrap.sh currently supports macOS only."
-}
-
 bootstrap_linux_os_release_path() {
     printf '%s\n' "${BASE_BOOTSTRAP_TEST_OS_RELEASE_PATH:-/etc/os-release}"
 }

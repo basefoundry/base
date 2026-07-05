@@ -145,6 +145,13 @@ sha256_file() {
     [ "$output" = "" ]
 }
 
+@test "bootstrap has no stale macOS-only guard" {
+    run grep -n 'bootstrap_require_macos' "$BASE_REPO_ROOT/bootstrap.sh"
+
+    [ "$status" -eq 1 ]
+    [ "$output" = "" ]
+}
+
 @test "bootstrap source dry-run installs first-mile prerequisites and prints handoff commands" {
     local install_dir="$TEST_HOME/work/base"
 
