@@ -233,6 +233,14 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertIn("def discover_projects_cached", discovery_path.read_text(encoding="utf-8"))
         self.assertNotIn("def discover_projects_cached", engine_path.read_text(encoding="utf-8"))
 
+    def test_workspace_pull_command_is_split_from_engine(self) -> None:
+        engine_path = Path(engine.__file__)
+        pull_command_path = engine_path.with_name("workspace_pull_command.py")
+
+        self.assertTrue(pull_command_path.exists())
+        self.assertIn("def workspace_pull_command", pull_command_path.read_text(encoding="utf-8"))
+        self.assertNotIn("def workspace_pull_command", engine_path.read_text(encoding="utf-8"))
+
     def test_project_discovery_does_not_import_workspace_reports(self) -> None:
         discovery_path = Path(project_discovery.__file__)
 
