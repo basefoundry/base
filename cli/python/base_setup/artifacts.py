@@ -13,6 +13,7 @@ from .prerequisites import HomebrewPackageCheckRequest
 from .prerequisites import PrerequisiteCheck
 from .prerequisites import check_homebrew_package
 from .prerequisites import homebrew_package_outdated
+# Keep these re-exports until downstream callers move to base_setup.python_artifacts.
 from .python_artifacts import PIP_INSTALL_COMMAND_PREFIX  # pylint: disable=unused-import
 from .python_artifacts import backup_existing_project_venv  # pylint: disable=unused-import
 from .python_artifacts import create_project_virtualenv  # pylint: disable=unused-import
@@ -30,6 +31,44 @@ from .python_artifacts import reconcile_python_artifact
 from .python_artifacts import reconcile_python_artifacts
 from .python_artifacts import reconcile_python_artifacts_sequential  # pylint: disable=unused-import
 from .registry import ArtifactDefinition, get_artifact_definition
+
+PYTHON_ARTIFACT_COMPAT_EXPORTS = (
+    "PIP_INSTALL_COMMAND_PREFIX",
+    "ProjectRuntimeConfig",
+    "PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS",
+    "backup_existing_project_venv",
+    "create_project_virtualenv",
+    "ensure_existing_project_venv_matches_requirement",
+    "pip_install_command",
+    "project_python_interpreter",
+    "project_runtime_config",
+    "project_venv_dir",
+    "project_venv_recreate_enabled",
+    "python_artifact_installed",
+    "python_package_requirement",
+    "reconcile_python_artifact",
+    "reconcile_python_artifacts",
+    "reconcile_python_artifacts_sequential",
+)
+
+__all__ = (
+    "LINUX_DEBIAN_SYSTEM_TOOL_PACKAGES",
+    "PYTHON_ARTIFACT_COMPAT_EXPORTS",
+    "artifact_check_from_prerequisite",
+    "artifact_details",
+    "check_artifact",
+    "check_homebrew_artifact",
+    "check_python_artifact",
+    "check_system_package_artifact",
+    "merge_artifacts",
+    "platform_artifact_definition",
+    "reconcile_artifact",
+    "reconcile_artifacts",
+    "reconcile_homebrew_artifact",
+    "reconcile_system_package_artifact",
+    "resolve_artifact_definitions",
+    *PYTHON_ARTIFACT_COMPAT_EXPORTS,
+)
 
 LINUX_DEBIAN_SYSTEM_TOOL_PACKAGES = {
     ("tool", "bats-core"): "bats",

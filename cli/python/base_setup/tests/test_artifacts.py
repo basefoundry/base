@@ -13,7 +13,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_setup import artifacts, process
+from base_setup import artifacts, process, python_artifacts
 from base_setup.artifacts import merge_artifacts
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, read_manifest
@@ -21,6 +21,33 @@ from base_setup.process import format_command
 from base_setup.prerequisites import PrerequisiteCheck
 from base_setup.registry import get_artifact_definition, load_artifact_definitions
 from base_setup.tests.helpers import fake_context, run_engine
+
+
+class ArtifactFacadeTests(unittest.TestCase):
+    def test_artifacts_declares_python_artifact_compatibility_exports(self) -> None:
+        expected_names = {
+            "PIP_INSTALL_COMMAND_PREFIX",
+            "ProjectRuntimeConfig",
+            "PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS",
+            "backup_existing_project_venv",
+            "create_project_virtualenv",
+            "ensure_existing_project_venv_matches_requirement",
+            "pip_install_command",
+            "project_python_interpreter",
+            "project_runtime_config",
+            "project_venv_dir",
+            "project_venv_recreate_enabled",
+            "python_artifact_installed",
+            "python_package_requirement",
+            "reconcile_python_artifact",
+            "reconcile_python_artifacts",
+            "reconcile_python_artifacts_sequential",
+        }
+
+        self.assertLessEqual(expected_names, set(artifacts.__all__))
+        for name in expected_names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(artifacts, name), getattr(python_artifacts, name))
 
 
 class BaseSetupMainTests(unittest.TestCase):
