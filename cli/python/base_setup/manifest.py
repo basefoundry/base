@@ -13,15 +13,10 @@ from base_cli.ide_schema import parse_ide_settings
 from base_setup.github_manifest import GithubConfig
 from base_setup.github_manifest import GithubManifestError
 from base_setup.github_manifest import read_github_config
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_loader import read_manifest_mapping
+from base_setup.manifest_loader import yaml  # pylint: disable=unused-import
 from base_setup.release_title import release_title_template_error
-
-try:
-    import yaml
-except ImportError as exc:
-    yaml = None
-    _yaml_import_error = exc
-else:
-    _yaml_import_error = None
 
 
 CURRENT_MANIFEST_SCHEMA_VERSION = 1
@@ -32,10 +27,6 @@ HOMEBREW_PACKAGE_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/[A-Za-z0-9_.
 PORT_HEALTH_STATES = {"free", "listening"}
 SUPPORTED_PYTHON_MANAGERS = {"uv"}
 SUPPORTED_COMMAND_RUNNERS = {"uv"}
-
-
-class ManifestError(ValueError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -157,45 +148,7 @@ class BaseManifest:
 
 
 def read_manifest(path: Path) -> BaseManifest:
-    if yaml is None:
-        raise ManifestError(
-            "PyYAML is required to read base_manifest.yaml. "
-            "Run 'basectl setup' to install Base Python bootstrap dependencies."
-        ) from _yaml_import_error
-
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ManifestError(f"{path}: unable to read manifest: {exc}") from exc
-    except yaml.YAMLError as exc:
-        raise ManifestError(f"{path}: invalid YAML: {exc}") from exc
-
-    if data is None:
-        data = {}
-    if not isinstance(data, dict):
-        raise ManifestError(f"{path}: manifest must be a YAML mapping.")
-
-    allowed_top_level = {
-        "schema_version",
-        "project",
-        "brewfile",
-        "mise",
-        "ide",
-        "artifacts",
-        "test",
-        "health",
-        "commands",
-        "activate",
-        "python",
-        "github",
-        "demo",
-        "build",
-        "release",
-    }
-    unknown_top_level = sorted(set(data) - allowed_top_level)
-    if unknown_top_level:
-        raise ManifestError(f"{path}: unsupported top-level keys: {', '.join(unknown_top_level)}.")
-
+    data = read_manifest_mapping(path)
     schema_version = _read_schema_version(path, data.get("schema_version"))
     project_name = _read_project_name(path, data.get("project"))
     brewfile = _read_brewfile(path, data.get("brewfile"))

@@ -31,6 +31,26 @@ run_gh_subcommand() {
         ' bash "$@"
 }
 
+@test "basectl gh imports reusable GitHub CLI helpers" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            [[ "$(type -t gh_require_cli)" == "function" ]]
+            [[ "$(type -t gh_auth_status_diagnostics)" == "function" ]]
+            [[ "$(type -t gh_run)" == "function" ]]
+        '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "basectl gh prints help" {
     run_basectl gh --help
 

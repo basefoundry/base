@@ -18,6 +18,7 @@ from base_setup.artifacts import merge_artifacts
 from base_setup.errors import ArtifactError
 from base_setup.manifest import ArtifactRequest, read_manifest
 from base_setup.process import format_command
+from base_setup.prerequisites import PrerequisiteCheck
 from base_setup.registry import get_artifact_definition, load_artifact_definitions
 from base_setup.tests.helpers import fake_context, run_engine
 
@@ -577,6 +578,32 @@ class ArtifactReconcileTests(unittest.TestCase):
             ["brew", "outdated", "terraform"],
         )
         self.assertEqual(run_capture.call_args.kwargs["env"]["HOMEBREW_NO_AUTO_UPDATE"], "1")
+
+    def test_check_homebrew_artifact_uses_shared_prerequisite_core(self) -> None:
+        definition = get_artifact_definition("tool", "terraform")
+        self.assertIsNotNone(definition)
+        artifact = ArtifactRequest("tool", "terraform", "latest")
+        expected = PrerequisiteCheck(
+            name="terraform",
+            ok=True,
+            message="shared Homebrew check",
+            fix="",
+            finding_id="BASE-P033",
+            details={"source": "shared"},
+        )
+
+        with mock.patch("base_setup.artifacts.check_homebrew_package", return_value=expected) as check_homebrew_package:
+            check = artifacts.check_homebrew_artifact("demo", artifact, definition)
+
+        self.assertTrue(check.ok)
+        self.assertEqual(check.message, "shared Homebrew check")
+        self.assertEqual(check.finding_id, "BASE-P033")
+        self.assertEqual(check.details, {"source": "shared"})
+        request = check_homebrew_package.call_args.args[0]
+        self.assertEqual(request.name, "terraform")
+        self.assertEqual(request.package, "terraform")
+        self.assertEqual(request.version, "latest")
+        self.assertEqual(request.manager, "homebrew")
 
     def test_check_homebrew_artifact_warns_when_probe_times_out(self) -> None:
         definition = get_artifact_definition("tool", "terraform")

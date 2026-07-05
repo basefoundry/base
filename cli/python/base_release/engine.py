@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TextIO
 
 import base_cli
+from base_setup import process  # pylint: disable=unused-import
 from base_setup.manifest import ManifestError
 from base_setup.manifest import read_manifest
 

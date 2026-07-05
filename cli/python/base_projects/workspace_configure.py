@@ -12,9 +12,9 @@ from base_projects.command_helpers import github_repo_spec
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
-from base_projects.workspace_reports import ProjectDiscoveryError
 from base_projects.workspace_reports import resolve_workspace_manifest
-from base_projects.workspace_reports import workspace_manifest_entries
+from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_projects.workspace_scanner import workspace_manifest_entries
 
 GIT_CONFIG_TIMEOUT_SECONDS = 10
 WORKSPACE_CONFIGURE_TIMEOUT_SECONDS = 120

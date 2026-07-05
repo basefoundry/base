@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import base_cli
+from base_setup import process
 
 from .release_model import ReleaseContext, ReleaseError
 from .release_readiness import last_non_empty_line
@@ -53,14 +54,11 @@ def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) ->
 def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
     joined = shlex.join(command)
     try:
-        result = subprocess.run(
+        result = process.run_capture(
             command,
             cwd=cwd,
-            check=False,
-            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
-            timeout=RELEASE_STEP_TIMEOUT_SECONDS,
+            timeout_seconds=RELEASE_STEP_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as exc:
         raise ReleaseError(f"Release command timed out after {exc.timeout} seconds: {joined}") from exc

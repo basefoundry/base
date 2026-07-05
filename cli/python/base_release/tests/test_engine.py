@@ -552,6 +552,19 @@ class ReleaseHelperTests(unittest.TestCase):
 
         self.assertEqual(run.call_args.kwargs["timeout"], engine.RELEASE_STEP_TIMEOUT_SECONDS)
 
+    def test_run_release_step_uses_shared_capture_helper(self) -> None:
+        completed = subprocess.CompletedProcess(["git", "tag"], 0, stdout="")
+
+        with mock.patch("base_release.engine.process.run_capture", return_value=completed) as run_capture:
+            engine.run_release_step(["git", "tag"], cwd=Path("/repo"))
+
+        run_capture.assert_called_once_with(
+            ["git", "tag"],
+            cwd=Path("/repo"),
+            timeout_seconds=engine.RELEASE_STEP_TIMEOUT_SECONDS,
+            stderr=subprocess.STDOUT,
+        )
+
     def test_run_release_step_reports_timeout_as_release_error(self) -> None:
         command = ["git", "push", "origin", "v1.2.3"]
 

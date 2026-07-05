@@ -4,6 +4,8 @@
 _base_gh_subcommand_sourced=1
 readonly _base_gh_subcommand_sourced
 
+import_base_lib gh/lib_gh.sh
+
 base_gh_usage() {
     cat <<'EOF'
 Usage:
@@ -200,6 +202,11 @@ base_gh_usage_error() {
 base_gh_require_command() {
     local command="$1"
 
+    if [[ "$command" == "gh" ]]; then
+        gh_require_cli
+        return $?
+    fi
+
     command -v "$command" >/dev/null 2>&1 || {
         base_gh_error "Required command '$command' was not found on PATH."
         return 1
@@ -207,37 +214,18 @@ base_gh_require_command() {
 }
 
 base_gh_auth_status_diagnostics() {
-    local auth_output line
-
-    base_gh_require_command gh || return 1
-
-    auth_output="$(gh auth status -h github.com 2>&1)" || {
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            [[ -n "$line" ]] && base_gh_error "gh auth status: $line"
-        done <<<"$auth_output"
-        base_gh_error "Run 'gh auth login -h github.com' and retry."
-        return 1
-    }
+    gh_auth_status_diagnostics
 }
 
 base_gh_report_command_failure() {
     local status="$1"
     shift
 
-    base_gh_error "GitHub command failed: gh $*"
-    base_gh_auth_status_diagnostics || true
-    return "$status"
+    gh_report_command_failure "$status" "$@"
 }
 
 base_gh_run() {
-    local status
-
-    base_gh_require_command gh || return 1
-    gh "$@"
-    status=$?
-    ((status == 0)) && return 0
-    base_gh_report_command_failure "$status" "$@"
-    return "$status"
+    gh_run "$@"
 }
 
 base_gh_args_request_help() {
