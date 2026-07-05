@@ -26,6 +26,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Reused `base-bash-libs` temp-file cleanup helpers in post-bootstrap Bash
   commands that create pull request bodies, CI capture files, setup probes, and
   profile comparison files.
+- Reused `base-bash-libs` argument and string helpers in focused Bash
+  subcommands, including export-context option parsing, CSV joins, and setup
+  profile splitting.
 
 ### Fixed
 

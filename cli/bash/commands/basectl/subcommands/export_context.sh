@@ -4,6 +4,8 @@
 _base_export_context_subcommand_sourced=1
 readonly _base_export_context_subcommand_sourced
 
+import_base_lib arg/lib_arg.sh
+
 base_export_context_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -34,77 +36,54 @@ base_export_context_subcommand_main() {
     local output_format="markdown" output_path="" print_bundle=0 list_files=0 workspace_requested=0
     local resolve_args=() exporter_args=()
     local resolve_fields=()
+    local arg
+    local -a option_specs=(
+        "debug|flag|-v"
+        "workspace|value|--workspace"
+        "format|value|--format"
+        "output|value|--output"
+        "print|flag|--print"
+        "list_files|flag|--list-files"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
-    while (($#)); do
-        case "$1" in
+    for arg in "$@"; do
+        case "$arg" in
             -h|--help|help)
                 base_export_context_subcommand_usage
                 return 0
                 ;;
-            -v)
-                exporter_args+=(--debug)
-                shift
-                ;;
-            --workspace)
-                [[ -n "${2:-}" ]] || {
-                    base_export_context_usage_error "Option '--workspace' requires an argument."
-                    return $?
-                }
-                workspace_requested=1
-                resolve_args+=(--workspace "$2")
-                shift 2
-                ;;
-            --workspace=*)
-                workspace_requested=1
-                resolve_args+=("$1")
-                shift
-                ;;
-            --format)
-                [[ -n "${2:-}" ]] || {
-                    base_export_context_usage_error "Option '--format' requires an argument."
-                    return $?
-                }
-                output_format="$2"
-                shift 2
-                ;;
-            --format=*)
-                output_format="${1#--format=}"
-                shift
-                ;;
-            --output)
-                [[ -n "${2:-}" ]] || {
-                    base_export_context_usage_error "Option '--output' requires an argument."
-                    return $?
-                }
-                output_path="$2"
-                shift 2
-                ;;
-            --output=*)
-                output_path="${1#--output=}"
-                shift
-                ;;
-            --print)
-                print_bundle=1
-                shift
-                ;;
-            --list-files)
-                list_files=1
-                shift
-                ;;
-            -*)
-                base_export_context_usage_error "Unknown export-context option '$1'."
-                return $?
-                ;;
-            *)
-                if [[ -n "$project" ]]; then
-                    base_export_context_usage_error "The 'export-context' command accepts exactly one project name."
-                    return $?
-                fi
-                project="$1"
-                shift
-                ;;
         esac
     done
+
+    if ! arg_parse parsed_options positionals option_specs -- "$@"; then
+        base_export_context_subcommand_usage >&2
+        return 2
+    fi
+
+    if ((${#positionals[@]} > 1)); then
+        base_export_context_usage_error "The 'export-context' command accepts exactly one project name."
+        return $?
+    fi
+    if ((${#positionals[@]} == 1)); then
+        project="${positionals[0]}"
+    fi
+    if [[ "${parsed_options[debug]:-}" == "1" ]]; then
+        exporter_args+=(--debug)
+    fi
+    if [[ -n "${parsed_options[workspace]+set}" ]]; then
+        workspace_requested=1
+        resolve_args+=(--workspace "${parsed_options[workspace]}")
+    fi
+    if [[ -n "${parsed_options[format]+set}" ]]; then
+        output_format="${parsed_options[format]}"
+    fi
+    if [[ -n "${parsed_options[output]+set}" ]]; then
+        output_path="${parsed_options[output]}"
+    fi
+    print_bundle="${parsed_options[print]:-0}"
+    list_files="${parsed_options[list_files]:-0}"
 
     case "$output_format" in
         markdown|zip) ;;

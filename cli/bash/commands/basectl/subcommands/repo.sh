@@ -5,6 +5,7 @@ _base_repo_subcommand_sourced=1
 readonly _base_repo_subcommand_sourced
 
 import_base_lib gh/lib_gh.sh
+import_base_lib str/lib_str.sh
 
 BASE_REPO_BASELINE_FILES=(
     README.md
@@ -1258,17 +1259,11 @@ base_repo_pretty_command() {
 }
 
 base_repo_join_csv() {
-    local first=1
-    local item
+    local joined=""
+    local values=("$@")
 
-    for item in "$@"; do
-        if ((first)); then
-            first=0
-        else
-            printf ', '
-        fi
-        printf '%s' "$item"
-    done
+    str_join joined ", " values
+    printf '%s' "$joined"
 }
 
 base_repo_configure_label() {
