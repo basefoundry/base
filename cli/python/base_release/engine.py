@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TextIO
 
 import base_cli
+from base_setup import process
 from base_setup.manifest import BaseManifest
 from base_setup.manifest import ManifestError
 from base_setup.manifest import ReleaseConfig
@@ -546,14 +547,11 @@ def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) ->
 def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
     joined = shlex.join(command)
     try:
-        result = subprocess.run(
+        result = process.run_capture(
             command,
             cwd=cwd,
-            check=False,
-            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
-            timeout=RELEASE_STEP_TIMEOUT_SECONDS,
+            timeout_seconds=RELEASE_STEP_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as exc:
         raise ReleaseError(f"Release command timed out after {exc.timeout} seconds: {joined}") from exc

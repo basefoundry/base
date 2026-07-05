@@ -66,22 +66,38 @@ class ProjectCommandHelperTests(unittest.TestCase):
             stderr="",
         )
 
-        with mock.patch("base_projects.command_helpers.subprocess.run", return_value=completed) as run:
+        with mock.patch("base_projects.command_helpers.process.run_capture", return_value=completed) as run_capture:
             result = run_project_command(
                 ["basectl", "repo", "clone"],
                 error_context="basectl repo clone for repository 'base'",
             )
 
-        run.assert_called_once_with(
+        run_capture.assert_called_once_with(
             ["basectl", "repo", "clone"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=PROJECT_COMMAND_TIMEOUT_SECONDS,
+            timeout_seconds=PROJECT_COMMAND_TIMEOUT_SECONDS,
         )
         self.assertEqual(result.stdout, "cloned\n")
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.returncode, 0)
+
+    def test_run_project_command_uses_shared_capture_helper(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["basectl", "repo", "clone"],
+            0,
+            stdout="cloned\n",
+            stderr="",
+        )
+
+        with mock.patch("base_projects.command_helpers.process.run_capture", return_value=completed) as run_capture:
+            run_project_command(
+                ["basectl", "repo", "clone"],
+                error_context="basectl repo clone for repository 'base'",
+            )
+
+        run_capture.assert_called_once_with(
+            ["basectl", "repo", "clone"],
+            timeout_seconds=PROJECT_COMMAND_TIMEOUT_SECONDS,
+        )
 
     def test_run_project_command_reports_os_error_with_redacted_command(self) -> None:
         command = [
