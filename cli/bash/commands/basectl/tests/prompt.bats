@@ -11,6 +11,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl prompt list"* ]]
     [[ "$output" == *"basectl prompt <name>"* ]]
     [[ "$output" == *"product-self-review"* ]]
+    [[ "$output" == *"--output <path>"* ]]
 }
 
 @test "basectl prompt forwards prompt names to the Python prompt renderer" {
@@ -69,6 +70,37 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"# rendered prompt"* ]]
     [ "$(cat "$state_file")" = "--debug product-self-review" ]
+}
+
+@test "basectl prompt forwards output path to the Python prompt renderer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local state_file="$TEST_TMPDIR/prompt-output-state"
+    local output_path="$TEST_TMPDIR/product-self-review.md"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
+    shift 2
+    printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
+    printf "Wrote prompt 'product-self-review' to %s\n" "${BASE_TEST_PROMPT_OUTPUT:?}"
+    exit 0
+fi
+printf 'unexpected prompt python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROMPT_STATE="$state_file" \
+        BASE_TEST_PROMPT_OUTPUT="$output_path" \
+        "$BASE_REPO_ROOT/bin/basectl" prompt product-self-review --output "$output_path"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Wrote prompt 'product-self-review' to $output_path"* ]]
+    [ "$(cat "$state_file")" = "product-self-review --output $output_path" ]
 }
 
 @test "basectl prompt list delegates to the Python prompt renderer" {

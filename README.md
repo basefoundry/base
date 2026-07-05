@@ -845,11 +845,13 @@ Print repo-owned AI workflow prompts with:
 ```bash
 basectl prompt list
 basectl prompt product-self-review
+basectl prompt product-self-review --output /tmp/base-product-self-review.md
 ```
 
 `basectl prompt` renders maintained Markdown prompts from Base's repo-visible
-prompt library. The command prints prompts to stdout for manual use with AI
-tools; Base does not run the review or send the prompt to any provider. The
+prompt library. The command prints prompts to stdout by default and can write
+rendered Markdown to a path with `--output`; Base does not run the review or
+send the prompt to any provider. The
 first built-in prompt, `product-self-review`, is the periodic product
 assessment ritual for revisiting Base's originality, usefulness, adoption
 potential, creator-skill evidence, risks, and next directions.

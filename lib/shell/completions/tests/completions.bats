@@ -246,6 +246,20 @@ assert_bash_completion_options_match_help() {
     [[ "$block" == *"--replace-project"* ]]
 }
 
+@test "Zsh prompt completion includes output option" {
+    local block
+
+    block="$(
+        awk '
+            /^[[:space:]]*prompt\)/ { in_block = 1 }
+            in_block && /^[[:space:]]*;;/ { exit }
+            in_block { print }
+        ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+    )"
+
+    [[ "$block" == *"--output"* ]]
+}
+
 @test "Bash project-name completions reuse shell-session project cache" {
     local base_home="$TEST_TMPDIR/base"
     local wrapper="$base_home/bin/base-wrapper"

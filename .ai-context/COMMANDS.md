@@ -33,8 +33,8 @@ options.
   remove local approval for manifest-declared project commands.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
-  product assessment prompt with current Base metadata; Base does not send the
-  prompt to an AI provider.
+  product assessment prompt with current Base metadata, and `--output <path>`
+  writes the rendered Markdown; Base does not send the prompt to an AI provider.
 - `basectl docs` - open the Base documentation home page on GitHub.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.

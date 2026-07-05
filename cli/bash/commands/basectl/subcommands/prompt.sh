@@ -8,14 +8,15 @@ base_prompt_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl prompt list
-  basectl prompt <name>
+  basectl prompt <name> [--output <path>]
 
 Prompts:
   product-self-review  Periodic Base product self-review
 
 Options:
-  -v          Enable DEBUG logging for this subcommand.
-  -h, --help  Show this help text.
+  --output <path>  Write the rendered prompt Markdown to this path.
+  -v               Enable DEBUG logging for this subcommand.
+  -h, --help       Show this help text.
 
 Print repo-owned Markdown prompts for AI-assisted Base workflows. Base renders
 the prompt; an AI tool performs the review.
@@ -31,8 +32,10 @@ base_prompt_usage_error() {
 base_prompt_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local debug=0
+    local output_path=""
     local prompt_args=()
     local renderer_args=()
+    local output_args=()
 
     while (($#)); do
         case "$1" in
@@ -42,6 +45,15 @@ base_prompt_subcommand_main() {
                 ;;
             -v)
                 debug=1
+                shift
+                ;;
+            --output)
+                shift
+                if (($# == 0)); then
+                    base_prompt_usage_error "Option '--output' requires a path."
+                    return $?
+                fi
+                output_path="$1"
                 shift
                 ;;
             -*)
@@ -65,7 +77,10 @@ base_prompt_subcommand_main() {
     fi
 
     ((debug)) && renderer_args+=(--debug)
+    [[ -z "$output_path" ]] || output_args+=(--output "$output_path")
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    BASE_CLI_DISPLAY_COMMAND="basectl prompt" "$wrapper" --project base base_prompt "${renderer_args[@]}" "${prompt_args[@]}"
+    BASE_CLI_DISPLAY_COMMAND="basectl prompt" \
+        "$wrapper" --project base base_prompt \
+        "${renderer_args[@]}" "${prompt_args[@]}" "${output_args[@]}"
 }

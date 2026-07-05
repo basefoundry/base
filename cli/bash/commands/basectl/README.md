@@ -162,8 +162,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `--show-url` to print the URL without opening a browser.
 - `basectl prompt list` lists repo-owned Markdown prompts that Base can render
   for AI-assisted workflows. `basectl prompt product-self-review` prints the
-  periodic Base product self-review prompt with current Base metadata. Base
-  renders the prompt only; an AI tool performs the review.
+  periodic Base product self-review prompt with current Base metadata, or writes
+  the rendered Markdown with `--output <path>`. Base renders the prompt only;
+  an AI tool performs the review.
 - `basectl update-profile` creates, refreshes, or removes managed sections in
   Bash and Zsh dotfiles, backing up existing dotfiles before changes.
 - `basectl update [project]` updates the selected project checkout through Git

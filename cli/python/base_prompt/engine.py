@@ -42,15 +42,24 @@ def main(argv: list[str] | None = None) -> int:
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
+@base_cli.option("--output", "output_path", help="Output path for the rendered prompt Markdown.")
 @base_cli.argument("prompt_name", required=False)
-def run(ctx: base_cli.Context, prompt_name: str | None) -> int:
+def run(ctx: base_cli.Context, output_path: str | None, prompt_name: str | None) -> int:
     try:
         if prompt_name == "list":
+            if output_path:
+                raise PromptUsageError("Option '--output' can only be used with a prompt name.")
             return list_prompts()
         if not prompt_name:
             raise PromptUsageError("The 'prompt' command requires 'list' or a prompt name.")
         prompt = prompt_definition(prompt_name)
-        print(render_prompt(ctx.base_home, prompt), end="")
+        content = render_prompt(ctx.base_home, prompt)
+        if output_path:
+            destination = Path(output_path).expanduser()
+            write_prompt(destination, content)
+            print(f"Wrote prompt '{prompt.name}' to {destination}")
+        else:
+            print(content, end="")
         return base_cli.ExitCode.SUCCESS
     except PromptUsageError as exc:
         print_usage(file=sys.stderr)
@@ -66,10 +75,13 @@ def print_usage(file=sys.stdout) -> None:
     print(
         f"""Usage:
   {command} list
-  {command} <name>
+  {command} <name> [--output <path>]
 
 Prompts:
   product-self-review  Periodic Base product self-review
+
+Options:
+  --output <path>  Write the rendered prompt Markdown to this path.
 
 Purpose:
   Print repo-owned Markdown prompts for AI-assisted Base workflows. Base
@@ -106,6 +118,14 @@ def render_prompt(base_home: Path, prompt: PromptDefinition) -> str:
         "version": read_version(base_home),
     }
     return render_template(template, values)
+
+
+def write_prompt(destination: Path, content: str) -> None:
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        raise PromptError(f"Unable to write prompt to '{destination}': {exc}") from exc
 
 
 def read_version(base_home: Path) -> str:
