@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-07-04
+
 ### Added
 
 - Added `basectl trust status|allow|revoke` to inspect and manage local

@@ -3,7 +3,7 @@
 ![Tests](https://github.com/basefoundry/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/basefoundry/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS + Ubuntu/Debian](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu%2FDebian-lightgrey)
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.1-blue)
 
 Base is a workspace control plane for developers who keep multiple repositories
 checked out side by side.
@@ -944,11 +944,11 @@ See [docs/local-config.md](docs/local-config.md).
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.6.0
-basectl release plan --version 1.6.0
-basectl release notes --version 1.6.0
-basectl release publish --version 1.6.0 --dry-run
-basectl release publish --version 1.6.0 --yes
+basectl release check --version 1.6.1
+basectl release plan --version 1.6.1
+basectl release notes --version 1.6.1
+basectl release publish --version 1.6.1 --dry-run
+basectl release publish --version 1.6.1 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
@@ -1656,7 +1656,7 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `1.6.0` is the current release. The implemented command surface covers
+Base `1.6.1` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
