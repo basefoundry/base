@@ -370,8 +370,8 @@ class UvProjectTests(unittest.TestCase):
             )
             ctx = fake_context()
 
-            with mock.patch("base_setup.engine.reconcile_uv_project") as reconcile_uv, mock.patch(
-                "base_setup.engine.reconcile_artifacts"
+            with mock.patch("base_setup.setup_reconcile.reconcile_uv_project") as reconcile_uv, mock.patch(
+                "base_setup.setup_reconcile.reconcile_artifacts"
             ) as reconcile_artifacts:
                 engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=True)
 
@@ -406,8 +406,8 @@ class UvProjectTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
                 mock.patch("base_setup.delegates.process.command_exists", return_value=False),
-                mock.patch("base_setup.engine.reconcile_uv_project") as reconcile_uv,
-                mock.patch("base_setup.engine.reconcile_artifacts") as reconcile_artifacts,
+                mock.patch("base_setup.setup_reconcile.reconcile_uv_project") as reconcile_uv,
+                mock.patch("base_setup.setup_reconcile.reconcile_artifacts") as reconcile_artifacts,
             ):
                 engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=False)
 

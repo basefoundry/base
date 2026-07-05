@@ -169,12 +169,12 @@ class UserIdePreferenceMergeTests(unittest.TestCase):
         ctx.user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=False, preferences={}))
 
         with (
-            mock.patch("base_setup.engine.reconcile_brewfile"),
-            mock.patch("base_setup.engine.reconcile_mise"),
-            mock.patch("base_setup.engine.reconcile_ide_installs") as reconcile_ide_installs,
-            mock.patch("base_setup.engine.reconcile_ide_extensions"),
-            mock.patch("base_setup.engine.reconcile_ide_settings"),
-            mock.patch("base_setup.engine.reconcile_uv_project"),
+            mock.patch("base_setup.setup_reconcile.reconcile_brewfile"),
+            mock.patch("base_setup.setup_reconcile.reconcile_mise"),
+            mock.patch("base_setup.setup_reconcile.reconcile_ide_installs") as reconcile_ide_installs,
+            mock.patch("base_setup.setup_reconcile.reconcile_ide_extensions"),
+            mock.patch("base_setup.setup_reconcile.reconcile_ide_settings"),
+            mock.patch("base_setup.setup_reconcile.reconcile_uv_project"),
         ):
             engine.reconcile_manifest(ctx, default_manifest, manifest, dry_run=True)
 

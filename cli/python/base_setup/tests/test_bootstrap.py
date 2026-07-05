@@ -30,7 +30,7 @@ class BootstrapManifestTests(unittest.TestCase):
             artifacts=(),
         )
 
-        with mock.patch("base_setup.engine.reconcile_artifacts") as reconcile_artifacts:
+        with mock.patch("base_setup.setup_reconcile.reconcile_artifacts") as reconcile_artifacts:
             engine.reconcile_bootstrap_artifacts(ctx, default_manifest, manifest, dry_run=True)
 
         reconcile_artifacts.assert_called_once()
