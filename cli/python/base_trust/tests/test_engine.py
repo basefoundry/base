@@ -70,6 +70,30 @@ def init_git_repo(project_root: Path, origin: str) -> str:
 
 
 class ManifestCommandTrustTests(unittest.TestCase):
+    def test_engine_reexports_trust_store_helpers(self) -> None:
+        from base_trust import engine, trust_store
+
+        expected_names = (
+            "ALLOWED_COMMANDS",
+            "ManifestCommandTrustIdentity",
+            "ManifestCommandTrustStore",
+            "SCHEMA_VERSION",
+            "TRUST_RELATIVE_ROOT",
+            "TrustStatus",
+            "compute_identity_key",
+            "compute_trust_identity_for_manifest",
+            "git_head",
+            "git_origin",
+            "git_repository_root",
+            "identity_key_from_record",
+            "sha256_file",
+            "write_json_atomic",
+        )
+
+        for name in expected_names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(engine, name), getattr(trust_store, name))
+
     def test_compute_trust_identity_includes_manifest_digest_and_sanitized_git_metadata(self) -> None:
         from base_trust import engine
 
