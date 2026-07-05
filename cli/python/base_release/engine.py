@@ -1,37 +1,38 @@
 from __future__ import annotations
 
-import re
-import shlex
-import shutil
-import subprocess
+import subprocess  # pylint: disable=unused-import
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
 import base_cli
-from base_setup import process
-from base_setup.manifest import BaseManifest
+from base_setup import process  # pylint: disable=unused-import
 from base_setup.manifest import ManifestError
-from base_setup.manifest import ReleaseConfig
 from base_setup.manifest import read_manifest
 
+from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
+# pylint: disable=unused-import
+from .release_publish import RELEASE_STEP_TIMEOUT_SECONDS
+from .release_publish import release_publish_recovery_guidance, require_interactive_publish_confirmation
+from .release_publish import run_release_step, write_temp_release_notes
+from .release_readiness import CHANGELOG_HEADER_RE, GIT_INSPECTION_TIMEOUT_SECONDS
+from .release_readiness import changelog_finding, current_git_branch, extract_changelog_section
+from .release_readiness import gh_cli_finding, git_branch_finding, git_status, git_worktree_finding
+from .release_readiness import github_release_finding, last_non_empty_line, local_tag_exists, local_tag_finding
+from .release_readiness import read_version_file, release_findings as _release_findings
+from .release_readiness import remote_tag_finding, version_file_finding
+# pylint: enable=unused-import
 
 app = base_cli.App(name="base_release")
-CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
-GIT_INSPECTION_TIMEOUT_SECONDS = 10
-RELEASE_STEP_TIMEOUT_SECONDS = 120
+release_findings = lambda ctx: _release_findings(  # pylint: disable=unnecessary-lambda-assignment
+    ctx,
+    gh_cli_finding_func=gh_cli_finding,
+)
 
 
 class ReleaseUsageError(RuntimeError):
     pass
-
-
-class ReleaseError(RuntimeError):
-    def __init__(self, message: str, *, guidance: str = "") -> None:
-        super().__init__(message)
-        self.guidance = guidance
 
 
 @dataclass(frozen=True)
@@ -49,24 +50,6 @@ class ReleaseOptionState:
     manifest_path: Path | None = None
     dry_run: bool = False
     yes: bool = False
-
-
-@dataclass(frozen=True)
-class ReleaseContext:
-    manifest_path: Path
-    manifest: BaseManifest
-    release: ReleaseConfig
-    version: str
-    tag_name: str
-    version_file: Path
-    changelog: Path
-
-
-@dataclass(frozen=True)
-class ReleaseFinding:
-    status: str
-    name: str
-    message: str
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -309,313 +292,9 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     return base_cli.ExitCode.SUCCESS
 
 
-def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
-    display_command = base_cli.delegated_display_command("basectl release") or "basectl release"
-    notes_file = f"{ctx.tag_name}-notes.md"
-    notes_command = (
-        f"{display_command} notes --version {shlex.quote(ctx.version)} "
-        f"--manifest {shlex.quote(str(ctx.manifest_path))}"
-    )
-    create_release_command = (
-        f"gh release create {shlex.quote(ctx.tag_name)} "
-        f"--repo {shlex.quote(ctx.release.github.repository)} "
-        f"--title {shlex.quote(title)} "
-        f"--notes-file {shlex.quote(notes_file)}"
-    )
-    return (
-        f"Release publish already created and pushed tag {ctx.tag_name}, "
-        "but GitHub Release creation failed.\n"
-        "To complete the release after fixing GitHub access, create the GitHub Release from the pushed tag:\n"
-        f"  {notes_command} > {shlex.quote(notes_file)}\n"
-        f"  {create_release_command}\n"
-        "To abandon this release attempt, remove the local and remote tag after confirming no one else is using it:\n"
-        f"  git tag -d {shlex.quote(ctx.tag_name)}\n"
-        f"  git push origin :refs/tags/{shlex.quote(ctx.tag_name)}"
-    )
-
-
-def release_findings(ctx: ReleaseContext) -> tuple[ReleaseFinding, ...]:
-    findings: list[ReleaseFinding] = [
-        ReleaseFinding("ok", "manifest", f"Release metadata found in {ctx.manifest_path}."),
-        version_file_finding(ctx),
-        changelog_finding(ctx),
-        git_worktree_finding(ctx.manifest_path.parent),
-        git_branch_finding(ctx.manifest_path.parent),
-        gh_cli_finding(),
-        local_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
-        remote_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
-    ]
-    return tuple(findings)
-
-
-def version_file_finding(ctx: ReleaseContext) -> ReleaseFinding:
-    version = read_version_file(ctx.version_file)
-    if version is None:
-        return ReleaseFinding("error", "version_file", f"{ctx.release.version_file} is missing or empty.")
-    if version != ctx.version:
-        return ReleaseFinding(
-            "error",
-            "version_file",
-            f"{ctx.release.version_file} contains {version}, expected {ctx.version}.",
-        )
-    return ReleaseFinding("ok", "version_file", f"{ctx.release.version_file} matches {ctx.version}.")
-
-
-def changelog_finding(ctx: ReleaseContext) -> ReleaseFinding:
-    try:
-        extract_changelog_section(ctx.changelog, ctx.version)
-    except ReleaseError as exc:
-        return ReleaseFinding("error", "changelog", str(exc))
-    return ReleaseFinding("ok", "changelog", f"{ctx.release.changelog} has a section for {ctx.version}.")
-
-
-def git_worktree_finding(root: Path) -> ReleaseFinding:
-    status = git_status(root)
-    if status is None:
-        return ReleaseFinding("warn", "git", "Unable to inspect Git worktree status.")
-    if status:
-        return ReleaseFinding("error", "git", "Git worktree has tracked or untracked changes.")
-    return ReleaseFinding("ok", "git", "Git worktree is clean.")
-
-
-def git_branch_finding(root: Path) -> ReleaseFinding:
-    branch = current_git_branch(root)
-    if branch is None:
-        return ReleaseFinding("warn", "branch", "Unable to inspect current Git branch.")
-    if not branch:
-        return ReleaseFinding("warn", "branch", "Git worktree is detached from a branch.")
-    return ReleaseFinding("ok", "branch", f"Current branch is {branch}.")
-
-
-def local_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
-    exists = local_tag_exists(root, tag_name)
-    if exists is None:
-        return ReleaseFinding("warn", "local_tag", f"Unable to inspect local tag {tag_name}.")
-    if exists:
-        return ReleaseFinding("error", "local_tag", f"Local tag {tag_name} already exists.")
-    return ReleaseFinding("ok", "local_tag", f"Local tag {tag_name} is available.")
-
-
 def print_findings(findings: tuple[ReleaseFinding, ...]) -> None:
     for finding in findings:
         print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")
-
-
-def read_version_file(path: Path) -> str | None:
-    try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            value = line.strip()
-            if value:
-                return value
-    except OSError:
-        return None
-    return None
-
-
-def extract_changelog_section(path: Path, version: str) -> str:
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        raise ReleaseError(f"{path.name} could not be read: {exc}") from exc
-
-    start: int | None = None
-    for index, line in enumerate(lines):
-        match = CHANGELOG_HEADER_RE.match(line)
-        if match and version in (match.group("bracket"), match.group("plain")):
-            start = index + 1
-            break
-    if start is None:
-        raise ReleaseError(f"{path.name} has no section for {version}.")
-
-    end = len(lines)
-    for index in range(start, len(lines)):
-        if lines[index].startswith("## "):
-            end = index
-            break
-
-    section_lines = lines[start:end]
-    while section_lines and not section_lines[0].strip():
-        section_lines.pop(0)
-    while section_lines and not section_lines[-1].strip():
-        section_lines.pop()
-    if not section_lines:
-        raise ReleaseError(f"{path.name} section for {version} is empty.")
-    return "\n".join(section_lines)
-
-
-def git_status(root: Path) -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
-
-
-def current_git_branch(root: Path) -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "branch", "--show-current"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
-
-
-def gh_cli_finding() -> ReleaseFinding:
-    if shutil.which("gh") is None:
-        return ReleaseFinding("error", "gh", "GitHub CLI 'gh' was not found.")
-
-    try:
-        result = subprocess.run(
-            ["gh", "auth", "status", "-h", "github.com"],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return ReleaseFinding("error", "gh", f"Unable to run GitHub CLI auth check: {exc}.")
-    if result.returncode == 0:
-        return ReleaseFinding("ok", "gh", "GitHub CLI is authenticated for github.com.")
-
-    detail = last_non_empty_line(result.stdout)
-    if detail:
-        return ReleaseFinding("error", "gh", f"GitHub CLI auth check failed: {detail}")
-    return ReleaseFinding("error", "gh", "GitHub CLI is not authenticated for github.com.")
-
-
-def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
-    try:
-        result = subprocess.run(
-            ["gh", "release", "view", ctx.tag_name, "--repo", ctx.release.github.repository],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}: {exc}.")
-
-    if result.returncode == 0:
-        return ReleaseFinding("error", "github_release", f"GitHub Release {ctx.tag_name} already exists.")
-
-    detail = result.stdout.lower()
-    if "release not found" in detail or "could not resolve to a release" in detail:
-        return ReleaseFinding("ok", "github_release", f"GitHub Release {ctx.tag_name} is available.")
-
-    error_detail = last_non_empty_line(result.stdout)
-    if error_detail:
-        return ReleaseFinding(
-            "error",
-            "github_release",
-            f"Unable to inspect GitHub Release {ctx.tag_name}: {error_detail}",
-        )
-    return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}.")
-
-
-def require_interactive_publish_confirmation(ctx: ReleaseContext, title: str) -> None:
-    if not sys.stdin.isatty():
-        raise ReleaseError("release publish requires --yes when stdin is not interactive.")
-
-    response = input(
-        f"Publish {ctx.tag_name} to {ctx.release.github.repository} with title '{title}'? [y/N] "
-    )
-    if response.strip().lower() not in ("y", "yes"):
-        raise ReleaseError("release publish cancelled.")
-
-
-def run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
-    joined = shlex.join(command)
-    try:
-        result = process.run_capture(
-            command,
-            cwd=cwd,
-            stderr=subprocess.STDOUT,
-            timeout_seconds=RELEASE_STEP_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise ReleaseError(f"Release command timed out after {exc.timeout} seconds: {joined}") from exc
-    except OSError as exc:
-        raise ReleaseError(f"Unable to run release command: {joined}: {exc}") from exc
-    if result.returncode != 0:
-        detail = last_non_empty_line(result.stdout)
-        if detail:
-            raise ReleaseError(f"Release command failed: {joined}: {detail}")
-        raise ReleaseError(f"Release command failed: {joined}")
-
-
-def write_temp_release_notes(notes: str) -> Path:
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as notes_file:
-        notes_file.write(notes)
-        notes_file.write("\n")
-        return Path(notes_file.name)
-
-
-def local_tag_exists(root: Path, tag_name: str) -> bool | None:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=GIT_INSPECTION_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return result.returncode == 0
-
-
-def remote_tag_finding(root: Path, tag_name: str) -> ReleaseFinding:
-    try:
-        result = subprocess.run(
-            ["git", "ls-remote", "--tags", "origin", f"refs/tags/{tag_name}"],
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin: {exc}.")
-
-    if result.returncode != 0:
-        detail = last_non_empty_line(result.stderr)
-        if detail:
-            return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin: {detail}")
-        return ReleaseFinding("error", "remote_tag", f"Unable to inspect remote tag {tag_name} on origin.")
-    if result.stdout.strip():
-        return ReleaseFinding("error", "remote_tag", f"Remote tag {tag_name} already exists on origin.")
-    return ReleaseFinding("ok", "remote_tag", f"Remote tag {tag_name} is available on origin.")
-
-
-def last_non_empty_line(value: str) -> str | None:
-    for line in reversed(value.splitlines()):
-        stripped = line.strip()
-        if stripped:
-            return stripped
-    return None
 
 
 def render_release_title(ctx: ReleaseContext) -> str:
