@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import base_cli
-from base_setup import process
 from base_setup.artifacts import reconcile_artifact, resolve_artifact_definitions
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.errors import ArtifactError
@@ -30,6 +28,16 @@ from .checks import doctor_status
 from .checks import print_doctor_finding
 from .linux_lab import linux_lab_checks
 from .linux_lab import setup_linux_lab
+from .linux_profile import check_linux_debian_apt_artifact
+from .linux_profile import check_linux_debian_github_cli_artifact
+from .linux_profile import current_base_platform
+from .linux_profile import github_cli_linux_install_fix
+from .linux_profile import linux_debian_dev_tool
+from .linux_profile import linux_debian_github_cli_artifact
+from .linux_profile import LinuxDebianDevTool  # pylint: disable=unused-import
+from .linux_profile import profile_setup_fix
+from .linux_profile import reconcile_linux_debian_apt_artifact
+from .linux_profile import reconcile_linux_debian_github_cli_artifact
 
 
 app = base_cli.App(name="base_dev")
@@ -44,12 +52,6 @@ class ProfileManifest:
 
 
 @dataclass(frozen=True)
-class LinuxDebianDevTool:
-    apt_package: str
-    command: str
-
-
-@dataclass(frozen=True)
 class ProfileRuntime:
     profile: str
     project: str
@@ -57,14 +59,6 @@ class ProfileRuntime:
 
 class ProfileError(ValueError):
     pass
-
-
-LINUX_DEBIAN_DEV_TOOLS = {
-    "bats-core": LinuxDebianDevTool(apt_package="bats", command="bats"),
-    "shellcheck": LinuxDebianDevTool(apt_package="shellcheck", command="shellcheck"),
-}
-
-GITHUB_CLI_LINUX_INSTALL_URL = "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -414,45 +408,6 @@ def dev_checks(
     return tuple(checks)
 
 
-def profile_setup_fix(profile: str) -> str:
-    return f"basectl setup --profile {profile}"
-
-
-def github_cli_linux_install_fix(rerun_command: str) -> str:
-    if rerun_command.startswith("basectl setup"):
-        return rerun_command
-    return "basectl setup --profile dev"
-
-
-def github_cli_linux_install_guidance() -> str:
-    return (
-        "GitHub CLI 'gh' is installed by basectl setup's Ubuntu/Debian platform layer. "
-        "Base configures GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': "
-        f"{GITHUB_CLI_LINUX_INSTALL_URL}."
-    )
-
-
-def current_base_platform() -> str:
-    return os.environ.get("BASE_PLATFORM", "")
-
-
-def linux_debian_github_cli_artifact(artifact: ArtifactRequest, profile: str) -> bool:
-    return (
-        profile == "dev"
-        and current_base_platform() == "linux-debian"
-        and artifact.artifact_type == "tool"
-        and artifact.name == "gh"
-    )
-
-
-def linux_debian_dev_tool(artifact: ArtifactRequest, profile: str) -> LinuxDebianDevTool | None:
-    if profile != "dev" or current_base_platform() != "linux-debian":
-        return None
-    if artifact.artifact_type != "tool":
-        return None
-    return LINUX_DEBIAN_DEV_TOOLS.get(artifact.name)
-
-
 def check_profile_artifact(
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
@@ -464,70 +419,6 @@ def check_profile_artifact(
     if linux_debian_tool is not None:
         return check_linux_debian_apt_artifact(artifact, linux_debian_tool, profile=profile)
     return check_homebrew_artifact(artifact, definition, profile=profile)
-
-
-def check_linux_debian_github_cli_artifact(
-    artifact: ArtifactRequest,
-    profile: str = "dev",
-) -> DevCheck:
-    if artifact.version != "latest":
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
-            fix="Use version 'latest' for GitHub CLI developer prerequisite checks.",
-            finding_id="BASE-D102",
-        )
-
-    if command_exists("gh"):
-        return DevCheck(
-            name=artifact.name,
-            ok=True,
-            message="GitHub CLI 'gh' is installed; authentication remains user-owned.",
-            fix="",
-            finding_id="BASE-D107",
-        )
-    return DevCheck(
-        name=artifact.name,
-        ok=False,
-        message=(
-            "GitHub CLI 'gh' is not installed; Base setup installs it from GitHub CLI's official "
-            "Debian/Ubuntu apt repository."
-        ),
-        fix=profile_setup_fix(profile),
-        finding_id="BASE-D107",
-    )
-
-
-def check_linux_debian_apt_artifact(
-    artifact: ArtifactRequest,
-    tool: LinuxDebianDevTool,
-    profile: str = "dev",
-) -> DevCheck:
-    if artifact.version != "latest":
-        return DevCheck(
-            name=artifact.name,
-            ok=False,
-            message=f"Artifact '{artifact.name}' uses unsupported developer prerequisite version '{artifact.version}'.",
-            fix="Use version 'latest' for apt-backed developer prerequisites.",
-            finding_id="BASE-D102",
-        )
-
-    if command_exists(tool.command):
-        return DevCheck(
-            name=artifact.name,
-            ok=True,
-            message=f"Artifact '{artifact.name}' is installed via apt package '{tool.apt_package}'.",
-            fix="",
-            finding_id="BASE-D104",
-        )
-    return DevCheck(
-        name=artifact.name,
-        ok=False,
-        message=f"Artifact '{artifact.name}' is not installed via apt package '{tool.apt_package}'.",
-        fix=profile_setup_fix(profile),
-        finding_id="BASE-D104",
-    )
 
 
 def check_homebrew_artifact(  # pylint: disable=too-many-return-statements
@@ -610,64 +501,6 @@ def reconcile_profile_artifact(
         reconcile_linux_debian_apt_artifact(ctx, artifact, linux_debian_tool, profile=runtime.profile, dry_run=dry_run)
         return
     reconcile_artifact(ctx, definition, artifact.version, runtime.project, dry_run=dry_run)
-
-
-def reconcile_linux_debian_github_cli_artifact(
-    ctx: base_cli.Context,
-    artifact: ArtifactRequest,
-) -> None:
-    if artifact.version != "latest":
-        raise ArtifactError(
-            f"GitHub CLI developer prerequisite '{artifact.name}' specifies version '{artifact.version}', "
-            "but Base only supports GitHub CLI developer prerequisite version 'latest' right now."
-        )
-
-    if command_exists("gh"):
-        ctx.log.info("GitHub CLI 'gh' is already installed; authentication remains user-owned.")
-        return
-
-    ctx.log.info(github_cli_linux_install_guidance())
-
-
-def reconcile_linux_debian_apt_artifact(
-    ctx: base_cli.Context,
-    artifact: ArtifactRequest,
-    tool: LinuxDebianDevTool,
-    profile: str,
-    dry_run: bool,
-) -> None:
-    if artifact.version != "latest":
-        raise ArtifactError(
-            f"Apt-backed developer prerequisite '{artifact.name}' specifies version '{artifact.version}', "
-            "but Base only supports apt-backed developer prerequisite version 'latest' right now."
-        )
-
-    install_command = ["sudo", "apt-get", "install", "-y", tool.apt_package]
-    if command_exists(tool.command):
-        ctx.log.info(
-            "Artifact '%s' is already installed via apt package '%s'.",
-            artifact.name,
-            tool.apt_package,
-        )
-        return
-
-    if dry_run:
-        process.dry_run_command(ctx, install_command)
-        return
-
-    if not command_exists("apt-get"):
-        raise ArtifactError(
-            f"apt-get is required to install developer prerequisite '{artifact.name}' "
-            f"for profile '{profile}'."
-        )
-
-    ctx.log.info(
-        "Installing artifact '%s' via apt package '%s' (%s).",
-        artifact.name,
-        tool.apt_package,
-        artifact.version,
-    )
-    process.run_command(ctx, install_command)
 
 
 def check_github_cli_auth() -> DevCheck:
