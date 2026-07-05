@@ -13,7 +13,7 @@ from base_cli.history import base_version as read_base_version
 from base_cli.history import format_timestamp, utc_now
 from base_cli.paths import base_state_root
 from base_projects import engine as project_engine
-from base_projects.workspace_reports import ProjectDiscoveryError
+from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_setup import git_remote
 from base_setup.manifest import ManifestError, read_manifest
 
