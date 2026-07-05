@@ -20,6 +20,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Surfaced pinned Homebrew installer variables in the default first-mile
   bootstrap path so security-conscious users can choose a verified installer
   before running the mutable official Homebrew installer.
+- Reused the external `base-bash-libs` GitHub CLI helpers in `basectl gh` and
+  `basectl repo`, and updated the pinned CI dependency to the helper-library
+  commit that provides them.
 
 ### Fixed
 
