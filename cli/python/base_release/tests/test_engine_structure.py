@@ -21,3 +21,12 @@ def test_release_publish_helpers_are_split_from_engine() -> None:
     assert publish_path.exists()
     assert "def run_release_step" in publish_path.read_text(encoding="utf-8")
     assert "def run_release_step" not in engine_path.read_text(encoding="utf-8")
+
+
+def test_release_parser_helpers_are_split_from_engine() -> None:
+    engine_path = Path(engine.__file__)
+    parser_path = engine_path.with_name("release_parser.py")
+
+    assert parser_path.exists()
+    assert "def parse_release_args" in parser_path.read_text(encoding="utf-8")
+    assert "def parse_release_args" not in engine_path.read_text(encoding="utf-8")
