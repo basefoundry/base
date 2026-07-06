@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # bash_profile
 #     Base-managed login-shell snippet for Bash.

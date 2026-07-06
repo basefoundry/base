@@ -1260,6 +1260,7 @@ base_repo_pretty_command() {
 
 base_repo_join_csv() {
     local joined=""
+    # shellcheck disable=SC2034 # Passed by name to str_join.
     local values=("$@")
 
     str_join joined ", " values

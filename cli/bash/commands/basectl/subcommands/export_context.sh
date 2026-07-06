@@ -37,6 +37,7 @@ base_export_context_subcommand_main() {
     local resolve_args=() exporter_args=()
     local resolve_fields=()
     local arg
+    # shellcheck disable=SC2034 # Passed by name to cli_parse_options.
     local -a option_specs=(
         "debug|flag|-v"
         "workspace|value|--workspace"

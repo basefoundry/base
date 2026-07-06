@@ -124,4 +124,5 @@ setopt no_beep
 setopt prompt_subst
 setopt share_history
 
+# shellcheck disable=SC2034 # Consumed by zsh as the interactive prompt.
 PROMPT='%* %m $(_base_zsh_defaults_git_prompt)%1~: '

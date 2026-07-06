@@ -33,8 +33,8 @@ install_die() {
 install_expand_path() {
     local path="$1"
     case "$path" in
-        "~") printf '%s\n' "$HOME" ;;
-        "~/"*) printf '%s/%s\n' "$HOME" "${path#"~/"}" ;;
+        \~) printf '%s\n' "$HOME" ;;
+        \~/*) printf '%s/%s\n' "$HOME" "${path#\~/}" ;;
         *) printf '%s\n' "$path" ;;
     esac
 }

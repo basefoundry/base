@@ -479,6 +479,7 @@ base_gh_issue_default_assignee_from_config() {
 
 base_gh_join_csv() {
     local joined=""
+    # shellcheck disable=SC2034 # Passed by name to str_join.
     local values=("$@")
 
     str_join joined ", " values

@@ -89,22 +89,23 @@ base_platform_tools_set_ordered_path() {
     local base_bin="${1:-}"
     local platform_tools_bin="${2:-}"
     local project_bin="${3:-}"
+    local new_path=""
     local rest_path
 
     rest_path="$(base_platform_tools_path_without_entries "$base_bin" "$platform_tools_bin" "$project_bin" "${PATH:-}")"
 
-    PATH=""
     if [[ -n "$base_bin" && -d "$base_bin" ]]; then
-        PATH="$base_bin"
+        new_path="$base_bin"
     fi
     if [[ -n "$platform_tools_bin" && -d "$platform_tools_bin" ]]; then
-        PATH="${PATH:+$PATH:}$platform_tools_bin"
+        new_path="${new_path:+$new_path:}$platform_tools_bin"
     fi
     if [[ -n "$project_bin" && -d "$project_bin" ]]; then
-        PATH="${PATH:+$PATH:}$project_bin"
+        new_path="${new_path:+$new_path:}$project_bin"
     fi
     if [[ -n "$rest_path" ]]; then
-        PATH="${PATH:+$PATH:}$rest_path"
+        new_path="${new_path:+$new_path:}$rest_path"
     fi
+    PATH="$new_path"
     export PATH
 }
