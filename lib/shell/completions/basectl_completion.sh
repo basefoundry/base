@@ -335,13 +335,13 @@ _base_basectl_completion() {
                             _base_basectl_completion_compgen "--project --owner --schema -h --help" "$cur"
                             ;;
                         configure)
-                            _base_basectl_completion_compgen "--project --owner --schema --initiative-option --repo --replace-project --dry-run -h --help" "$cur"
+                            _base_basectl_completion_compgen "--project --owner --schema --config --copy-fields-from --initiative-option --repo --replace-project --dry-run -h --help" "$cur"
                             ;;
                         issue)
                             if ((COMP_CWORD == 4)); then
                                 _base_basectl_completion_compgen "set-fields" "$cur"
                             else
-                                _base_basectl_completion_compgen "--repo --project --owner --status --priority --area --initiative --size --dry-run -h --help" "$cur"
+                                _base_basectl_completion_compgen "--repo --project --owner --config --status --priority --area --initiative --size --dry-run -h --help" "$cur"
                             fi
                             ;;
                     esac

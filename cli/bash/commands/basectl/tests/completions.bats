@@ -286,8 +286,8 @@ EOF
     [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
     [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
-    [[ "$output" == *"gh_project_configure_options=--project --owner --schema --initiative-option --repo --replace-project --dry-run"* ]]
-    [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --status --priority --area --initiative --size --dry-run"* ]]
+    [[ "$output" == *"gh_project_configure_options=--project --owner --schema --config --copy-fields-from --initiative-option --repo --replace-project --dry-run"* ]]
+    [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --config --status --priority --area --initiative --size --dry-run"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
 }
