@@ -209,6 +209,7 @@ basectl_verify_home() {
     local file missing=()
 
     if [[ ! -d "$base_home" ]]; then
+        # shellcheck disable=SC2034 # Read by the caller after this helper returns non-zero.
         BASE_CLI_ERROR_MESSAGE="Base home '$base_home' is not a directory."
         return 1
     fi
@@ -220,6 +221,7 @@ basectl_verify_home() {
     done
 
     if (( ${#missing[@]} > 0 )); then
+        # shellcheck disable=SC2034 # Read by the caller after this helper returns non-zero.
         BASE_CLI_ERROR_MESSAGE="Files missing in Base home '$base_home': ${missing[*]}"
         return 1
     fi

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 #
 # bashrc
 #     Base-managed interactive-shell integration for Bash dotfiles.
