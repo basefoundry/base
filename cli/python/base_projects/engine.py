@@ -8,11 +8,7 @@ from pathlib import Path
 import base_cli
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
-from base_projects.command_helpers import ProjectCommandError as ProjectRunnerError
 from base_projects.command_helpers import ProjectUsageError
-from base_projects.command_helpers import github_repo_spec
-from base_projects.command_helpers import run_project_command
-from base_projects.command_helpers import write_project_command_output
 from base_projects.project_discovery import Project
 from base_projects.project_discovery import discover_projects_cached
 from base_projects.project_discovery import find_project_in_projects
@@ -31,10 +27,16 @@ from base_projects.project_commands import project_commands
 from base_projects.project_commands import project_output as _project_output
 from base_projects.project_commands import resolve_activation_source_path  # pylint: disable=unused-import
 from base_projects.project_commands import test_command
-from base_projects.workspace_manifest import WorkspaceManifest
-from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_clone_command import clone_workspace_repo  # pylint: disable=unused-import
+from base_projects.workspace_clone_command import print_optional_clone_skip  # pylint: disable=unused-import
+from base_projects.workspace_clone_command import require_workspace_clone_manifest  # pylint: disable=unused-import
+from base_projects.workspace_clone_command import should_skip_optional_clone  # pylint: disable=unused-import
+from base_projects.workspace_clone_command import workspace_clone_command
+from base_projects.workspace_clone_command import workspace_clone_repo_spec  # pylint: disable=unused-import
 from base_projects.workspace_configure import workspace_configure_from_options
+from base_projects.workspace_context import effective_workspace_manifest
+from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_init import workspace_init_command
 from base_projects.workspace_pull_command import workspace_pull_command
 from base_projects.workspace_reports import dumps_json
@@ -473,55 +475,6 @@ def workspace_doctor_command(
     return min(workspace_error_count(results), 125)
 
 
-def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCommandOptions) -> int:
-    if options.output_format != "text":
-        raise ProjectUsageError(f"Unsupported output format '{options.output_format}'. Expected: text.")
-
-    try:
-        workspace_root = resolve_workspace_root(ctx, options.workspace)
-        manifest = require_workspace_clone_manifest(ctx, options.workspace_manifest)
-    except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
-        ctx.log.error(str(exc))
-        return base_cli.ExitCode.FAILURE
-
-    if ctx.base_home is None:
-        ctx.log.error("BASE_HOME is required to clone workspace repositories.")
-        return base_cli.ExitCode.FAILURE
-
-    basectl = ctx.base_home / "bin" / "basectl"
-    print(f"Workspace clone: {workspace_root} ({len(manifest.repos)} repositories)")
-    print(f"Workspace manifest: {manifest.path} ({manifest.name})")
-
-    errors = 0
-    for repo in manifest.repos:
-        target = (workspace_root / repo.name).resolve()
-        required_label = "required" if repo.required else "optional"
-        if should_skip_optional_clone(repo, target, options.include_optional):
-            print_optional_clone_skip(repo, target)
-            continue
-
-        verb = "CHECK" if target.exists() else "CLONE"
-        preposition = "at" if target.exists() else "into"
-        print(f"{verb} {required_label} repository '{repo.name}' {preposition} '{target}'.")
-        errors += clone_workspace_repo(ctx, basectl, repo, target, dry_run=options.dry_run)
-
-    if errors:
-        print(f"Workspace clone completed with {errors} error(s).")
-        return base_cli.ExitCode.FAILURE
-
-    print("Workspace clone completed.")
-    return base_cli.ExitCode.SUCCESS
-
-
-def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
-    if workspace_manifest is not None:
-        return workspace_manifest
-    configured_manifest = ctx.user_config.workspace.manifest
-    if configured_manifest is None:
-        return None
-    return str(configured_manifest)
-
-
 def log_workspace_status_discovery(
     ctx: base_cli.Context,
     workspace: str | None,
@@ -562,72 +515,6 @@ def workspace_manifest_source_label(ctx: base_cli.Context, workspace_manifest: s
     if ctx.user_config.workspace.manifest is not None:
         return "workspace.manifest"
     return "none"
-
-
-def require_workspace_clone_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> WorkspaceManifest:
-    effective_manifest = effective_workspace_manifest(ctx, workspace_manifest)
-    if effective_manifest is None:
-        raise ProjectUsageError("workspace clone requires --manifest <path>.")
-    manifest = resolve_workspace_manifest(effective_manifest)
-    if manifest is None:
-        raise ProjectUsageError("workspace clone requires --manifest <path>.")
-    return manifest
-
-
-def should_skip_optional_clone(repo: WorkspaceManifestRepo, target: Path, include_optional: bool) -> bool:
-    return not repo.required and not include_optional and not target.exists()
-
-
-def print_optional_clone_skip(repo: WorkspaceManifestRepo, target: Path) -> None:
-    print(
-        f"SKIP optional repository '{repo.name}' is missing at '{target}'. "
-        "Pass --include-optional to clone it."
-    )
-
-
-def clone_workspace_repo(
-    ctx: base_cli.Context,
-    basectl: Path,
-    repo: WorkspaceManifestRepo,
-    target: Path,
-    *,
-    dry_run: bool,
-) -> int:
-    repo_spec = workspace_clone_repo_spec(repo)
-    if repo_spec is None:
-        ctx.log.error(
-            "Repository '%s' has unsupported clone URL '%s'. Only github.com repository URLs are supported.",
-            repo.name,
-            repo.url,
-        )
-        return base_cli.ExitCode.FAILURE
-
-    command = [str(basectl), "repo", "clone", repo_spec, "--path", str(target)]
-    if dry_run:
-        command.append("--dry-run")
-
-    try:
-        result = run_project_command(
-            command,
-            error_context=f"basectl repo clone for repository '{repo.name}'",
-        )
-    except ProjectRunnerError as exc:
-        ctx.log.error(str(exc))
-        return base_cli.ExitCode.FAILURE
-
-    write_project_command_output(result)
-    if result.returncode == 0:
-        return base_cli.ExitCode.SUCCESS
-
-    ctx.log.error("Clone failed for repository '%s'.", repo.name)
-    return base_cli.ExitCode.FAILURE
-
-
-def workspace_clone_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
-    if repo.url is None:
-        return repo.name
-
-    return github_repo_spec(repo.url)
 
 
 def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
@@ -781,16 +668,6 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int
 
     print(f"{project.name}\t{project.root}\t{project.manifest_path}")
     return base_cli.ExitCode.SUCCESS
-
-
-def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
-    if workspace:
-        return Path(workspace).expanduser().resolve()
-    if ctx.workspace_root is not None:
-        return ctx.workspace_root
-    if ctx.base_home is None:
-        raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
-    return ctx.base_home.parent.resolve()
 
 
 def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project:
