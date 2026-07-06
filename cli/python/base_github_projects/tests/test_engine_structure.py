@@ -39,3 +39,12 @@ def test_project_git_helpers_are_split_from_engine() -> None:
     assert git_path.exists()
     assert "def infer_repo_from_git" in git_path.read_text(encoding="utf-8")
     assert "def infer_repo_from_git" not in engine_path.read_text(encoding="utf-8")
+
+
+def test_project_operations_are_explicit_instead_of_module_ops() -> None:
+    engine_path = Path(engine.__file__)
+    operations_path = engine_path.with_name("project_operations.py")
+
+    assert operations_path.exists()
+    assert "class ProjectOperations" in operations_path.read_text(encoding="utf-8")
+    assert "sys.modules[__name__]" not in engine_path.read_text(encoding="utf-8")

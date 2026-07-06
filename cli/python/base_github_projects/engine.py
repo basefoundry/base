@@ -28,6 +28,7 @@ from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT
 from .project_model import ConfigureAction, FieldUpdate, Finding, OwnerInfo
 from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
+from .project_operations import ProjectOperations
 from .project_schema import ISSUE_DEFAULT_OUTPUT_ORDER  # pylint: disable=unused-import
 from .project_schema import compare_schema
 from .project_schema import configuration_plan
@@ -113,22 +114,57 @@ def run_command(args: ProjectArguments) -> int:
     raise ProjectUsageError(f"Unknown project command '{args.command}'.")
 
 
+def project_operations() -> ProjectOperations:
+    return ProjectOperations(
+        ProjectError=ProjectError,
+        ProjectUsageError=ProjectUsageError,
+        add_project_item=add_project_item,
+        apply_missing_project_item_defaults=apply_missing_project_item_defaults,
+        backfill_repository_issues=backfill_repository_issues,
+        compare_schema=compare_schema,
+        configuration_plan=configuration_plan,
+        copy_missing_project_item_fields=copy_missing_project_item_fields,
+        copy_template_project=copy_template_project,
+        create_project=create_project,
+        create_single_select_field=create_single_select_field,
+        fetch_issue_id=fetch_issue_id,
+        fetch_project_fields=fetch_project_fields,
+        fetch_project_views=fetch_project_views,
+        find_owner_and_project=find_owner_and_project,
+        find_project_item_id=find_project_item_id,
+        issue_field_values_for_args=issue_field_values_for_args,
+        link_project_to_repository=link_project_to_repository,
+        missing_option_names=missing_option_names,
+        project_config_for_args=project_config_for_args,
+        project_field_defaults_for_config=project_field_defaults_for_config,
+        require_owner=require_owner,
+        require_repo=require_repo,
+        resolve_issue_field_updates=resolve_issue_field_updates,
+        schema_for_args=schema_for_args,
+        split_repo=split_repo,
+        update_item_field=update_item_field,
+        update_project=update_project,
+        update_single_select_field=update_single_select_field,
+        verify_standard_template_views=verify_standard_template_views,
+    )
+
+
 def doctor_command(args: ProjectArguments) -> int:
     from .project_doctor_command import doctor_command as command
 
-    return command(args, ops=sys.modules[__name__])
+    return command(args, ops=project_operations())
 
 
 def configure_command(args: ProjectArguments) -> int:
     from .project_configure_command import configure_command as command
 
-    return command(args, ops=sys.modules[__name__])
+    return command(args, ops=project_operations())
 
 
 def issue_set_fields_command(args: ProjectArguments) -> int:
     from .project_issue_fields_command import issue_set_fields_command as command
 
-    return command(args, ops=sys.modules[__name__])
+    return command(args, ops=project_operations())
 
 
 def find_owner_and_project(owner: str, title: str) -> OwnerInfo:
