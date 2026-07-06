@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import functools
-import logging
 import os
 import sys
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Callable
 
+from ._runtime import create_runtime_directory, prune_log_files, runtime_layout
 from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
 from .exit_codes import ExitCode
@@ -178,26 +178,23 @@ class App:
         keep_temp = bool(standard.get("keep_temp") or config.get("keep_temp"))
 
         cache_root = base_cache_root()
-        state_dir = cache_root / "cli" / self.name
-        log_dir = state_dir / "logs"
-        cache_dir = state_dir / "cache"
-        temp_dir = state_dir / "tmp" / run_id
+        layout = runtime_layout(cache_root, self.name, run_id)
 
         log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else None
         uses_default_log_file = log_file is None
         if dry_run or not self.log_to_file:
             if log_file is not None:
-                _create_runtime_directory(log_file.parent, cache_root)
+                create_runtime_directory(log_file.parent, cache_root)
         else:
-            for directory in (log_dir, cache_dir, temp_dir):
-                _create_runtime_directory(directory, cache_root)
+            for directory in (layout.log_dir, layout.cache_dir, layout.temp_dir):
+                create_runtime_directory(directory, cache_root)
             if log_file is None:
-                log_file = log_dir / f"{run_id}.log"
-            _create_runtime_directory(log_file.parent, cache_root)
+                log_file = layout.log_dir / f"{run_id}.log"
+            create_runtime_directory(log_file.parent, cache_root)
         logger = configure_logger(self.name, log_file, debug, quiet=quiet)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
         if self.max_log_files is not None and uses_default_log_file and log_file is not None:
-            _prune_log_files(log_dir, log_file, self.max_log_files, logger)
+            prune_log_files(layout.log_dir, log_file, self.max_log_files, logger)
 
         return Context(
             cli_name=self.name,
@@ -206,10 +203,10 @@ class App:
             project_root=project_root,
             workspace_root=user_config.workspace.root,
             manifest_path=manifest_path,
-            state_dir=state_dir,
-            log_dir=log_dir,
-            cache_dir=cache_dir,
-            temp_dir=temp_dir,
+            state_dir=layout.state_dir,
+            log_dir=layout.log_dir,
+            cache_dir=layout.cache_dir,
+            temp_dir=layout.temp_dir,
             log_file=log_file,
             config=config,
             environment=environment,
@@ -220,21 +217,6 @@ class App:
             user_config=user_config,
             dry_run=dry_run,
         )
-
-
-def _create_runtime_directory(path: Path, cache_root: Path) -> None:
-    try:
-        path.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise RuntimeError(_runtime_directory_error(path, cache_root, exc)) from exc
-
-
-def _runtime_directory_error(path: Path, cache_root: Path, exc: OSError) -> str:
-    return (
-        f"Unable to create Base runtime directory '{path}': {exc}. "
-        f"Check permissions on that directory. If the Base cache root '{cache_root}' is unusable, "
-        "set BASE_CACHE_DIR to a writable directory."
-    )
 
 
 def run_app(app: App, argv: list[str] | None = None) -> int:
@@ -401,33 +383,3 @@ def _build_group_wrapper(click: Any) -> Callable[..., None]:
         context.obj = obj
 
     return group_wrapper
-
-
-def _prune_log_files(
-    log_dir: Path,
-    current_log_file: Path,
-    max_log_files: int,
-    logger: logging.Logger,
-) -> None:
-    candidates: list[tuple[str, Path]] = []
-    for path in log_dir.glob("*.log"):
-        if _same_path(path, current_log_file):
-            continue
-        candidates.append((path.name, path))
-
-    excess_count = len(candidates) + 1 - max_log_files
-    if excess_count <= 0:
-        return
-
-    for _, path in sorted(candidates)[:excess_count]:
-        try:
-            path.unlink()
-        except OSError as exc:
-            logger.warning("Could not prune log file '%s': %s", path, exc)
-
-
-def _same_path(left: Path, right: Path) -> bool:
-    try:
-        return left.resolve() == right.resolve()
-    except OSError:
-        return left.absolute() == right.absolute()
