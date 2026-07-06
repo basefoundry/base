@@ -71,6 +71,26 @@ class DevManifestTests(unittest.TestCase):
         self.assertIn("Missing argument", stderr)
         self.assertNotIn("Traceback", stderr)
 
+    def test_engine_reexports_profile_helpers(self) -> None:
+        from base_dev import profiles
+
+        expected_names = (
+            "ProfileError",
+            "ProfileManifest",
+            "ProfileRuntime",
+            "SUPPORTED_PROFILES",
+            "dev_manifest_path",
+            "normalize_profiles",
+            "profile_manifest_path",
+            "read_dev_manifest",
+            "read_profile_manifest",
+            "read_profile_manifests",
+        )
+
+        for name in expected_names:
+            with self.subTest(name=name):
+                self.assertIs(getattr(engine, name), getattr(profiles, name))
+
     def test_dev_manifest_declares_supported_developer_tools(self) -> None:
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")
         artifacts = {(artifact.artifact_type, artifact.name, artifact.version) for artifact in manifest.artifacts}
