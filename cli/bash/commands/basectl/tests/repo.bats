@@ -432,6 +432,19 @@ EOF
     ! grep -Eq '^base_repo_installer_template\(\)' "$dispatcher"
 }
 
+@test "basectl repo project-intake workflow is maintained as a template asset" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local template="$BASE_REPO_ROOT/templates/project-intake.yml"
+
+    [ -f "$template" ]
+    grep -Fq "templates/project-intake.yml" "$dispatcher"
+    grep -Fq "name: Project Intake" "$template"
+    grep -Fq "project_intake_gh()" "$template"
+    if grep -Fq "project_intake_gh()" "$dispatcher"; then
+        fail "repo dispatcher should not embed the Project Intake workflow program"
+    fi
+}
+
 @test "basectl repo agent-guidance implementation is split from repo dispatcher" {
     local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
     local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_agent_guidance.sh"

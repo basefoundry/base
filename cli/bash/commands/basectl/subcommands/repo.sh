@@ -879,241 +879,27 @@ jobs:
 EOF
 }
 
+base_repo_project_intake_workflow_template_path() {
+    [[ -n "${BASE_HOME:-}" ]] || {
+        log_error "BASE_HOME is required to locate the Project Intake workflow template."
+        return 1
+    }
+
+    printf '%s/templates/project-intake.yml\n' "$BASE_HOME"
+}
+
 base_repo_write_project_intake_workflow() {
     local dry_run="$1"
     local root="$2"
+    local template
 
-    base_repo_write_stream "$dry_run" "$root/.github/workflows/project-intake.yml" <<'EOF'
-name: Project Intake
+    template="$(base_repo_project_intake_workflow_template_path)" || return 1
+    [[ -f "$template" ]] || {
+        log_error "Project Intake workflow template was not found at '$template'."
+        return 1
+    }
 
-on:
-  issues:
-    types: [opened, reopened, closed]
-  workflow_dispatch:
-    inputs:
-      issue_number:
-        description: Issue number to reconcile into the repo Project.
-        required: true
-        type: string
-
-permissions:
-  contents: read
-  issues: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number || inputs.issue_number || github.run_id }}
-  cancel-in-progress: true
-
-jobs:
-  sync:
-    name: Sync issue Project fields
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      BASE_PROJECT_OWNER: ${{ github.repository_owner }}
-      BASE_PROJECT_TITLE: ${{ github.event.repository.name }}
-      BASE_PROJECT_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-      BASE_PROJECT_DEFAULT_OPEN_STATUS: Backlog
-      BASE_PROJECT_DEFAULT_CLOSED_STATUS: Done
-      BASE_PROJECT_DEFAULT_PRIORITY: P2
-      BASE_PROJECT_DEFAULT_SIZE: S
-      BASE_PROJECT_DEFAULT_AREA: Product
-      BASE_PROJECT_DEFAULT_INITIATIVE: Adoption Polish
-      GH_TOKEN: ${{ secrets.BASE_PROJECT_TOKEN }}
-    steps:
-      - name: Reconcile Project item
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "::error::BASE_PROJECT_TOKEN secret is required for Project Intake."
-            echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY"
-            exit 1
-          fi
-
-          issue_number="${BASE_PROJECT_ISSUE_NUMBER:-}"
-          if [[ -z "$issue_number" ]]; then
-            echo "::error::Issue number was not provided by the event or workflow_dispatch input."
-            exit 1
-          fi
-
-          project_intake_is_auth_failure() {
-            local output="$1"
-
-            printf '%s\n' "$output" | grep -Eiq 'Bad credentials|401 Unauthorized|HTTP 401|authentication failed'
-          }
-
-          project_intake_is_retryable_api_failure() {
-            local output="$1"
-
-            printf '%s\n' "$output" | grep -Eiq 'rate limit|secondary rate limit|abuse detection|Retry-After|x-ratelimit-reset'
-          }
-
-          project_intake_retry_delay_seconds() {
-            local output="$1"
-            local reset_epoch
-            local now
-            local delay
-
-            if [[ "$output" =~ Retry-After:?[[:space:]]*([0-9]+) ]]; then
-              printf '%s\n' "${BASH_REMATCH[1]}"
-              return 0
-            fi
-
-            if [[ "$output" =~ (x-ratelimit-reset|X-RateLimit-Reset):?[[:space:]]*([0-9]+) ]]; then
-              reset_epoch="${BASH_REMATCH[2]}"
-              now="$(date +%s)"
-              delay=$(( reset_epoch - now + 5 ))
-              if (( delay < 5 )); then
-                delay=5
-              fi
-              if (( delay > 300 )); then
-                delay=300
-              fi
-              printf '%s\n' "$delay"
-              return 0
-            fi
-
-            printf '60\n'
-          }
-
-          project_intake_gh() {
-            local operation="$1"
-            shift
-            local output
-            local status
-            local retry_delay
-
-            if output="$("$@" 2>&1)"; then
-              [[ -z "$output" ]] || printf '%s\n' "$output"
-              return 0
-            else
-              status=$?
-            fi
-
-            if project_intake_is_auth_failure "$output"; then
-              echo "::error::GitHub authentication failed during Project Intake: $operation" >&2
-              echo "::error::Rotate BASE_PROJECT_TOKEN and rerun this workflow_dispatch for issue #${issue_number:-unknown}." >&2
-              echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY" >&2
-              printf '%s\n' "$output" >&2
-              return "$status"
-            fi
-
-            if project_intake_is_retryable_api_failure "$output"; then
-              retry_delay="$(project_intake_retry_delay_seconds "$output")"
-              echo "::warning::GitHub API pressure during Project Intake: $operation" >&2
-              echo "::warning::Waiting ${retry_delay}s and retrying once." >&2
-              sleep "$retry_delay"
-              if output="$("$@" 2>&1)"; then
-                [[ -z "$output" ]] || printf '%s\n' "$output"
-                return 0
-              else
-                status=$?
-              fi
-              echo "::error::GitHub API retry failed during Project Intake: $operation" >&2
-              printf '%s\n' "$output" >&2
-              return "$status"
-            fi
-
-            echo "::error::GitHub API command failed during Project Intake: $operation" >&2
-            printf '%s\n' "$output" >&2
-            return "$status"
-          }
-
-          issue_json="$(project_intake_gh "view issue" gh issue view "$issue_number" --repo "$GITHUB_REPOSITORY" --json state,url)"
-          issue_state="$(jq -r '.state' <<<"$issue_json")"
-          issue_url="$(jq -r '.url' <<<"$issue_json")"
-
-          project_number="$(
-            project_intake_gh "list Projects" gh project list --owner "$BASE_PROJECT_OWNER" --format json --limit 100 |
-              jq -r --arg title "$BASE_PROJECT_TITLE" \
-                '.projects[] | select(.title == $title) | .number' |
-              head -n 1
-          )"
-          if [[ -z "$project_number" ]]; then
-            echo "::error::GitHub Project '$BASE_PROJECT_TITLE' was not found for owner '$BASE_PROJECT_OWNER'."
-            echo "::error::If this Project exists, set BASE_PROJECT_TOKEN with user Project read/write access."
-            echo "::error::Fix: gh auth token | gh secret set BASE_PROJECT_TOKEN --repo $GITHUB_REPOSITORY"
-            exit 1
-          fi
-
-          project_id="$(project_intake_gh "view Project" gh project view "$project_number" --owner "$BASE_PROJECT_OWNER" --format json --jq '.id')"
-          item_id="$(project_intake_gh "add Project item" gh project item-add "$project_number" --owner "$BASE_PROJECT_OWNER" --url "$issue_url" --format json --jq '.id')"
-          item_json="$(
-            project_intake_gh "list Project items" gh project item-list "$project_number" --owner "$BASE_PROJECT_OWNER" --format json --limit 1000 |
-              jq --arg id "$item_id" '.items[] | select(.id == $id)'
-          )"
-          fields_json="$(project_intake_gh "list Project fields" gh project field-list "$project_number" --owner "$BASE_PROJECT_OWNER" --format json)"
-
-          field_id_for() {
-            local field_name="$1"
-
-            jq -r --arg name "$field_name" \
-              '.fields[] | select(.name == $name) | .id' <<<"$fields_json" |
-              head -n 1
-          }
-
-          option_id_for() {
-            local field_name="$1"
-            local option_name="$2"
-
-            jq -r --arg name "$field_name" --arg option "$option_name" \
-              '.fields[] | select(.name == $name) | .options[]? | select(.name == $option) | .id' \
-              <<<"$fields_json" |
-              head -n 1
-          }
-
-          set_single_select() {
-            local field_name="$1"
-            local option_name="$2"
-            local field_id
-            local option_id
-
-            [[ -n "$option_name" ]] || return 0
-
-            field_id="$(field_id_for "$field_name")"
-            option_id="$(option_id_for "$field_name" "$option_name")"
-            if [[ -z "$field_id" || -z "$option_id" ]]; then
-              echo "::error::Project field '$field_name' option '$option_name' was not found."
-              exit 1
-            fi
-
-            project_intake_gh "set Project field $field_name" gh project item-edit \
-              --id "$item_id" \
-              --project-id "$project_id" \
-              --field-id "$field_id" \
-              --single-select-option-id "$option_id" \
-              >/dev/null
-          }
-
-          set_single_select_if_missing() {
-            local field_name="$1"
-            local item_key="$2"
-            local option_name="$3"
-            local current_value
-
-            current_value="$(jq -r --arg key "$item_key" '.[$key] // ""' <<<"$item_json")"
-            if [[ -n "$current_value" ]]; then
-              return 0
-            fi
-
-            set_single_select "$field_name" "$option_name"
-          }
-
-          status_value="$BASE_PROJECT_DEFAULT_OPEN_STATUS"
-          if [[ "$issue_state" == "CLOSED" ]]; then
-            status_value="$BASE_PROJECT_DEFAULT_CLOSED_STATUS"
-          fi
-
-          set_single_select Status "$status_value"
-          set_single_select_if_missing Priority priority "$BASE_PROJECT_DEFAULT_PRIORITY"
-          set_single_select_if_missing Size size "$BASE_PROJECT_DEFAULT_SIZE"
-          set_single_select_if_missing Area area "$BASE_PROJECT_DEFAULT_AREA"
-          set_single_select_if_missing Initiative initiative "$BASE_PROJECT_DEFAULT_INITIATIVE"
-
-          printf 'Synced issue #%s into Project %s.\n' "$issue_number" "$BASE_PROJECT_TITLE"
-EOF
+    base_repo_write_stream "$dry_run" "$root/.github/workflows/project-intake.yml" < "$template"
 }
 
 base_repo_write_project_config() {

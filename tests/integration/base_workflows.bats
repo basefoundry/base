@@ -42,6 +42,7 @@ create_base_runtime() {
     cp -R "$BASE_REPO_ROOT/bin" "$base_home/bin"
     cp -R "$BASE_REPO_ROOT/cli" "$base_home/cli"
     cp -R "$BASE_REPO_ROOT/lib" "$base_home/lib"
+    cp -R "$BASE_REPO_ROOT/templates" "$base_home/templates"
     cp "$BASE_REPO_ROOT/base_init.sh" "$base_home/base_init.sh"
     cp "$BASE_REPO_ROOT/base_manifest.yaml" "$base_home/base_manifest.yaml"
     cp "$BASE_REPO_ROOT/VERSION" "$base_home/VERSION"
