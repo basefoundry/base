@@ -1174,33 +1174,11 @@ base_repo_write_baseline() {
 
 base_repo_infer_github_repo() {
     local path="$1"
-    local remote_url
+    local github_repo
 
-    remote_url="$(git -C "$path" remote get-url origin 2>/dev/null || true)"
-    [[ -n "$remote_url" ]] || return 1
+    gh_infer_repo_from_origin "$path" github_repo || return 1
 
-    case "$remote_url" in
-        git@github.com:*.git)
-            remote_url="${remote_url#git@github.com:}"
-            remote_url="${remote_url%.git}"
-            ;;
-        git@github.com:*)
-            remote_url="${remote_url#git@github.com:}"
-            ;;
-        https://github.com/*.git)
-            remote_url="${remote_url#https://github.com/}"
-            remote_url="${remote_url%.git}"
-            ;;
-        https://github.com/*)
-            remote_url="${remote_url#https://github.com/}"
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-
-    [[ "$remote_url" == */* ]] || return 1
-    printf '%s\n' "$remote_url"
+    printf '%s\n' "$github_repo"
 }
 
 base_repo_require_gh() {
@@ -1688,41 +1666,24 @@ base_repo_require_pr_worktree() {
 }
 
 base_repo_default_branch_for_pr() {
-    local default_branch
+    local base_remote_default_branch
     local repo="$1"
 
     base_repo_require_gh || return 1
-    default_branch="$(gh repo view "$repo" --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null)" || {
+    if ! gh_repo_default_branch "$repo" base_remote_default_branch; then
         log_error "Unable to determine the default branch for GitHub repository '$repo'."
         return 1
-    }
-    [[ -n "$default_branch" ]] || {
-        log_error "GitHub repository '$repo' does not report a default branch."
-        return 1
-    }
+    fi
 
-    printf '%s\n' "$default_branch"
+    printf '%s\n' "$base_remote_default_branch"
 }
 
 base_repo_detect_default_branch() {
-    local default_branch
+    local base_default_branch
     local root="$1"
 
-    if default_branch="$(git -C "$root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
-        default_branch="${default_branch#origin/}"
-        if [[ -n "$default_branch" ]]; then
-            printf '%s\n' "$default_branch"
-            return 0
-        fi
-    fi
-
-    if git -C "$root" show-ref --verify --quiet refs/heads/main; then
-        printf '%s\n' main
-        return 0
-    fi
-
-    if git -C "$root" show-ref --verify --quiet refs/heads/master; then
-        printf '%s\n' master
+    if gh_detect_default_branch "$root" base_default_branch; then
+        printf '%s\n' "$base_default_branch"
         return 0
     fi
 

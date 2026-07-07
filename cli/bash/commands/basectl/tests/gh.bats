@@ -46,9 +46,74 @@ run_gh_subcommand() {
             [[ "$(type -t gh_require_cli)" == "function" ]]
             [[ "$(type -t gh_auth_status_diagnostics)" == "function" ]]
             [[ "$(type -t gh_run)" == "function" ]]
+            [[ "$(type -t gh_detect_default_branch)" == "function" ]]
+            [[ "$(type -t gh_infer_repo_from_origin)" == "function" ]]
+            [[ "$(type -t gh_worktree_path_for_branch)" == "function" ]]
+            [[ "$(type -t gh_branch_merged_to_ref)" == "function" ]]
         '
 
     [ "$status" -eq 0 ]
+}
+
+@test "basectl gh default branch and repo inference delegate to reusable gh helpers" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            gh_detect_default_branch() {
+                printf -v "$2" "%s" "develop"
+            }
+            gh_infer_repo_from_origin() {
+                printf -v "$2" "%s" "owner/repo"
+            }
+            printf "default=%s\n" "$(base_gh_default_branch)"
+            printf "repo=%s\n" "$(base_gh_infer_github_repo)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"default=develop"* ]]
+    [[ "$output" == *"repo=owner/repo"* ]]
+}
+
+@test "basectl gh branch and worktree primitives delegate to reusable gh helpers" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            gh_worktree_path_for_branch() {
+                printf "%s\n" "/tmp/shared-worktree"
+            }
+            gh_branch_upstream() {
+                printf "%s\n" "origin/feature"
+            }
+            gh_branch_merged_to_ref() {
+                [[ "$2" == "feature" && "$3" == "main" ]]
+            }
+            gh_list_remote_branches() {
+                printf "%s\n" "main" "feature"
+            }
+            gh_list_worktree_branches() {
+                printf "%s\t%s\n" "/tmp/shared-worktree" "feature"
+            }
+            remote_branches="$(base_gh_list_remote_branches)"
+            printf "worktree=%s\n" "$(base_gh_worktree_path_for_branch feature)"
+            printf "upstream=%s\n" "$(base_gh_branch_upstream feature)"
+            base_gh_branch_merged_to_ref feature main
+            printf "merged=$?\n"
+            printf "remote=%s\n" "${remote_branches//$'\''\n'\''/,}"
+            printf "worktrees=%s\n" "$(base_gh_list_worktree_branches)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"worktree=/tmp/shared-worktree"* ]]
+    [[ "$output" == *"upstream=origin/feature"* ]]
+    [[ "$output" == *"merged=0"* ]]
+    [[ "$output" == *"remote=main,feature"* ]]
+    [[ "$output" == *$'worktrees=/tmp/shared-worktree\tfeature'* ]]
 }
 
 @test "basectl gh joins CSV output through reusable string helper" {
