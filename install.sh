@@ -33,11 +33,70 @@ install_die() {
 install_expand_path() {
     local path="$1"
     case "$path" in
-        \~) printf '%s\n' "$HOME" ;;
-        \~/*) printf '%s/%s\n' "$HOME" "${path#\~/}" ;;
+        "~") printf '%s\n' "$HOME" ;;
+        "~"/*) printf '%s/%s\n' "$HOME" "${path#"~/"}" ;;
         *) printf '%s\n' "$path" ;;
     esac
 }
+
+# BEGIN shared first-mile Homebrew helpers
+# This block is duplicated in install.sh and bootstrap.sh because both scripts
+# must run before Base runtime libraries are available. Keep copies identical.
+base_first_mile_fetch_homebrew_installer() {
+    local installer_url="$1"
+    local target="$2"
+    local installer_path
+
+    case "$installer_url" in
+        file://*)
+            installer_path="${installer_url#file://}"
+            cp "$installer_path" "$target"
+            ;;
+        /*|./*|../*)
+            cp "$installer_url" "$target"
+            ;;
+        *)
+            command -v curl >/dev/null 2>&1 || return 127
+            curl -fsSL "$installer_url" -o "$target"
+            ;;
+    esac
+}
+
+base_first_mile_run_verified_homebrew_installer() {
+    local installer_url="$1"
+    local expected_sha256="$2"
+    local die_fn="$3"
+    local installer_file
+    local checksum
+    local actual_sha256
+    local exit_code
+
+    installer_file="$(mktemp "${TMPDIR:-/tmp}/base-homebrew-installer.XXXXXX")" || "$die_fn" "Failed to create a temporary Homebrew installer file."
+    base_first_mile_fetch_homebrew_installer "$installer_url" "$installer_file" || {
+        rm -f "$installer_file"
+        "$die_fn" "Failed to read pinned Homebrew installer content from '$installer_url'."
+    }
+
+    command -v shasum >/dev/null 2>&1 || {
+        rm -f "$installer_file"
+        "$die_fn" "shasum is required to verify pinned Homebrew installer content."
+    }
+    checksum="$(shasum -a 256 "$installer_file")" || {
+        rm -f "$installer_file"
+        "$die_fn" "Failed to compute Homebrew installer checksum."
+    }
+    actual_sha256="${checksum%% *}"
+    if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+        rm -f "$installer_file"
+        "$die_fn" "Homebrew installer checksum mismatch (expected $expected_sha256, got $actual_sha256)."
+    fi
+
+    /bin/bash "$installer_file"
+    exit_code=$?
+    rm -f "$installer_file"
+    [[ "$exit_code" -eq 0 ]] || "$die_fn" "Homebrew installer failed."
+}
+# END shared first-mile Homebrew helpers
 
 install_run() {
     if [[ "${BASE_INSTALL_DRY_RUN:-false}" == "true" ]]; then
@@ -148,57 +207,11 @@ install_log_homebrew_mutable_policy() {
 }
 
 install_fetch_homebrew_installer() {
-    local installer_url="$1"
-    local target="$2"
-    local installer_path
-
-    case "$installer_url" in
-        file://*)
-            installer_path="${installer_url#file://}"
-            cp "$installer_path" "$target"
-            ;;
-        /*|./*|../*)
-            cp "$installer_url" "$target"
-            ;;
-        *)
-            command -v curl >/dev/null 2>&1 || return 127
-            curl -fsSL "$installer_url" -o "$target"
-            ;;
-    esac
+    base_first_mile_fetch_homebrew_installer "$@"
 }
 
 install_run_verified_homebrew_installer() {
-    local installer_url="$1"
-    local expected_sha256="$2"
-    local installer_file
-    local checksum
-    local actual_sha256
-    local exit_code
-
-    installer_file="$(mktemp "${TMPDIR:-/tmp}/base-homebrew-installer.XXXXXX")" || install_die "Failed to create a temporary Homebrew installer file."
-    install_fetch_homebrew_installer "$installer_url" "$installer_file" || {
-        rm -f "$installer_file"
-        install_die "Failed to read pinned Homebrew installer content from '$installer_url'."
-    }
-
-    command -v shasum >/dev/null 2>&1 || {
-        rm -f "$installer_file"
-        install_die "shasum is required to verify pinned Homebrew installer content."
-    }
-    checksum="$(shasum -a 256 "$installer_file")" || {
-        rm -f "$installer_file"
-        install_die "Failed to compute Homebrew installer checksum."
-    }
-    actual_sha256="${checksum%% *}"
-    if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-        rm -f "$installer_file"
-        install_die "Homebrew installer checksum mismatch (expected $expected_sha256, got $actual_sha256)."
-    fi
-
-    /bin/bash "$installer_file"
-    exit_code=$?
-    rm -f "$installer_file"
-    [[ "$exit_code" -eq 0 ]] || install_die "Homebrew installer failed."
+    base_first_mile_run_verified_homebrew_installer "$1" "$2" install_die
 }
 
 install_homebrew() {
