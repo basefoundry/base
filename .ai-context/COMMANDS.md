@@ -63,9 +63,10 @@ options.
   checkout. Plain `repo init` writes local baseline files without committing or
   pushing them; `repo init --pr` commits baseline changes on a branch, pushes to
   `origin`, and opens a PR.
-- `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor in
-  non-interactive CI. `ci setup --format json` uses `output` for the compact
-  final status and adds `output_lines` on failures for intermediate context.
+- `basectl ci <setup|check|doctor> <project>` - run Base setup/check/doctor
+  with CI-safe defaults. It does not run project tests or create CI runners/VMs.
+  `ci setup --format json` uses `output` for the compact final status and adds
+  `output_lines` on failures for intermediate context.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
   print plans/notes, and publish guarded GitHub-side release artifacts.
 - `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, repo

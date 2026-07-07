@@ -1,9 +1,13 @@
 # basectl ci
 
-`basectl ci` is the non-interactive entry point for running Base in CI systems.
-It reuses the same setup, check, doctor, and project manifest logic as local
-development, while avoiding user-facing prompts and macOS-specific UI
-behaviors.
+`basectl ci` is the CI-safe entry point for Base setup, readiness checks, and
+diagnostics. It reuses the same setup, check, doctor, and project manifest
+logic as local development, while avoiding user-facing prompts and macOS-specific
+UI behaviors.
+
+It is not a CI runner. It does not run project tests, launch GitHub Actions
+locally, or create Ubuntu or Multipass virtual machines. CI systems compose it
+with their own runners and test commands.
 
 ## Goals
 
@@ -61,6 +65,13 @@ path that can allow system Python when Homebrew bootstrap is not available.
 - support `--format json`
 - keep warning and error severity distinct
 
+## Relationship To Tests
+
+`basectl ci check <project>` verifies readiness for a CI environment. It does
+not execute the project's declared test command. Use `basectl test <project>` to
+run the manifest-declared test command, or `bin/base-test` in the Base
+repository when the job needs the full source-checkout validation suite.
+
 ## Linux Relationship
 
 The first useful version supports "runtime-only Linux":
@@ -73,9 +84,15 @@ The first useful version supports "runtime-only Linux":
 
 Full Linux bootstrap can come later through the Linux support plan.
 
+The optional `linux-lab` profile prepares or checks local Multipass tooling for
+manual Ubuntu lab work on macOS. It does not create or mutate VM instances.
+
 ## Non-Goals
 
 - Do not invent a second manifest format for CI.
+- Do not run project tests or replace `basectl test`.
+- Do not launch GitHub Actions locally.
+- Do not create or mutate Ubuntu or Multipass VM instances.
 - Do not make CI mutate user dotfiles.
 - Do not start GUI installers or display notifications.
 - Do not hide missing prerequisites behind best-effort behavior.
@@ -101,10 +118,15 @@ Full Linux bootstrap can come later through the Linux support plan.
 
 - name: Check Base project
   run: ./bin/basectl ci check base --format json
+
+- name: Run Base source-checkout tests
+  run: env -u BASE_HOME ./bin/base-test
 ```
 
-This example is a minimal starter for source-checkout CI. Workflows that install
-Python packages or third-party Actions should also follow the
+This example is a minimal starter for source-checkout CI. The `ci check` step
+validates Base readiness; the separate `bin/base-test` step runs the repository's
+full validation suite. Workflows that install Python packages or third-party
+Actions should also follow the
 [CI Supply Chain Policy](ci-supply-chain-policy.md), including pinned
 `requirements-dev.txt` installs for Base-managed CI dependencies.
 

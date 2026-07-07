@@ -283,6 +283,27 @@ def test_macos_smoke_tests_cover_bootstrap_dry_run_routes() -> None:
     assert "basectl update-profile" in run_command
 
 
+def test_ubuntu_apt_jobs_remove_flaky_runner_third_party_sources() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
+    jobs = workflow["jobs"]
+
+    for job_name in ("bats", "integration", "ubuntu-source-checkout", "security"):
+        steps = jobs[job_name]["steps"]
+        first_apt_update_index = next(
+            index
+            for index, step in enumerate(steps)
+            if isinstance(step, dict) and "sudo apt-get update" in step.get("run", "")
+        )
+        setup_commands = "\n".join(
+            step.get("run", "")
+            for step in steps[:first_apt_update_index]
+            if isinstance(step, dict)
+        )
+
+        assert "/etc/apt/sources.list.d/azure-cli.sources" in setup_commands
+        assert "/etc/apt/sources.list.d/microsoft-prod.list" in setup_commands
+
+
 def test_project_intake_requires_base_project_token() -> None:
     workflow = load_workflow(WORKFLOW_DIR / "project-intake.yml")
     sync_job = workflow["jobs"]["sync"]

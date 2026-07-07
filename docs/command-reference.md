@@ -63,9 +63,9 @@ inspect the resolved command contract first.
 |---|---|---|
 | `basectl check [project]` | Verify Base and optional project readiness without making changes. Project checks record the latest result under `~/.base.d/<project>/checks/last.json`. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
-| `basectl ci setup <project>` | Run setup in non-interactive CI mode. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
-| `basectl ci check <project>` | Run readiness checks in non-interactive CI mode. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
-| `basectl ci doctor <project>` | Run diagnostics in non-interactive CI mode. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
+| `basectl ci setup <project>` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
+| `basectl ci check <project>` | Run readiness checks with CI-safe defaults. Does not run the project test command. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
+| `basectl ci doctor <project>` | Run diagnostics with CI-safe defaults. Does not launch GitHub Actions or Ubuntu VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
