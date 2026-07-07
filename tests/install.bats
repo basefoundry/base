@@ -109,7 +109,12 @@ assert_base_init_loads() {
 }
 
 @test "installer expands tilde install paths" {
-    run_installer --dry-run --dir "~/custom/base" --no-profile
+    local install_dir
+    local tilde="~"
+
+    install_dir="${tilde}/custom/base"
+
+    run_installer --dry-run --dir "$install_dir" --no-profile
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Install path: $TEST_HOME/custom/base"* ]]
@@ -149,6 +154,27 @@ assert_base_init_loads() {
     run grep -c 'IFS=: read -ra' "$BASE_REPO_ROOT/install.sh"
     [ "$status" -eq 0 ]
     [ "$output" -eq 2 ]
+}
+
+@test "installer and bootstrap share first-mile Homebrew helper snippet" {
+    local bootstrap_block="$TEST_TMPDIR/bootstrap-first-mile.txt"
+    local install_block="$TEST_TMPDIR/install-first-mile.txt"
+
+    awk '
+        /# BEGIN shared first-mile Homebrew helpers/ { capture = 1 }
+        capture { print }
+        /# END shared first-mile Homebrew helpers/ { capture = 0 }
+    ' "$BASE_REPO_ROOT/bootstrap.sh" > "$bootstrap_block"
+    awk '
+        /# BEGIN shared first-mile Homebrew helpers/ { capture = 1 }
+        capture { print }
+        /# END shared first-mile Homebrew helpers/ { capture = 0 }
+    ' "$BASE_REPO_ROOT/install.sh" > "$install_block"
+
+    [ -s "$bootstrap_block" ]
+    [ -s "$install_block" ]
+    run cmp -s "$install_block" "$bootstrap_block"
+    [ "$status" -eq 0 ]
 }
 
 @test "installer bootstraps Homebrew Bash before setup when system Bash is too old" {
