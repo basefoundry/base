@@ -116,9 +116,42 @@ run_repo_command_with_mocks() {
             [[ "$(type -t gh_require_cli)" == "function" ]]
             [[ "$(type -t gh_auth_status_diagnostics)" == "function" ]]
             [[ "$(type -t gh_run)" == "function" ]]
+            [[ "$(type -t gh_infer_repo_from_origin)" == "function" ]]
+            [[ "$(type -t gh_detect_default_branch)" == "function" ]]
+            [[ "$(type -t gh_repo_default_branch)" == "function" ]]
         '
 
     [ "$status" -eq 0 ]
+}
+
+@test "basectl repo GitHub helpers delegate to reusable gh helpers" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_require_gh() {
+                return 0
+            }
+            gh_infer_repo_from_origin() {
+                printf -v "$2" "%s" "owner/repo"
+            }
+            gh_detect_default_branch() {
+                printf -v "$2" "%s" "develop"
+            }
+            gh_repo_default_branch() {
+                printf -v "$2" "%s" "trunk"
+            }
+            printf "repo=%s\n" "$(base_repo_infer_github_repo /tmp/repo)"
+            printf "detected=%s\n" "$(base_repo_detect_default_branch /tmp/repo)"
+            printf "remote=%s\n" "$(base_repo_default_branch_for_pr owner/repo)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"repo=owner/repo"* ]]
+    [[ "$output" == *"detected=develop"* ]]
+    [[ "$output" == *"remote=trunk"* ]]
 }
 
 @test "basectl repo prints help" {

@@ -249,23 +249,11 @@ base_gh_require_git_repo() {
 }
 
 base_gh_default_branch() {
-    local default_branch
+    local base_default_branch repo_root
 
-    if default_branch="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
-        default_branch="${default_branch#origin/}"
-        [[ -n "$default_branch" ]] && {
-            printf '%s\n' "$default_branch"
-            return 0
-        }
-    fi
-
-    if git show-ref --verify --quiet refs/heads/main; then
-        printf '%s\n' main
-        return 0
-    fi
-
-    if git show-ref --verify --quiet refs/heads/master; then
-        printf '%s\n' master
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '.')"
+    if gh_detect_default_branch "$repo_root" base_default_branch; then
+        printf '%s\n' "$base_default_branch"
         return 0
     fi
 
@@ -373,30 +361,12 @@ base_gh_pr_changed_paths() {
 }
 
 base_gh_infer_github_repo() {
-    local remote_url
+    local github_repo repo_root
 
-    remote_url="$(git remote get-url origin 2>/dev/null || true)"
-    [[ -n "$remote_url" ]] || return 1
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '.')"
+    gh_infer_repo_from_origin "$repo_root" github_repo || return 1
 
-    case "$remote_url" in
-        git@github.com:*.git)
-            remote_url="${remote_url#git@github.com:}"
-            remote_url="${remote_url%.git}"
-            ;;
-        https://github.com/*.git)
-            remote_url="${remote_url#https://github.com/}"
-            remote_url="${remote_url%.git}"
-            ;;
-        https://github.com/*)
-            remote_url="${remote_url#https://github.com/}"
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-
-    [[ "$remote_url" == */* ]] || return 1
-    printf '%s\n' "$remote_url"
+    printf '%s\n' "$github_repo"
 }
 
 base_gh_default_project_title() {
@@ -977,37 +947,21 @@ base_gh_format_unix_date() {
 
 base_gh_worktree_path_for_branch() {
     local branch="$1"
-    local target_ref="refs/heads/$branch"
-    local line path="" ref
 
-    while IFS= read -r line; do
-        case "$line" in
-            "worktree "*)
-                path="${line#worktree }"
-                ;;
-            "branch "*)
-                ref="${line#branch }"
-                if [[ "$ref" == "$target_ref" ]]; then
-                    printf '%s\n' "$path"
-                    return 0
-                fi
-                ;;
-        esac
-    done < <(git worktree list --porcelain)
-
-    return 1
+    gh_worktree_path_for_branch "$branch"
 }
 
 base_gh_branch_upstream() {
     local branch="$1"
-    git for-each-ref --format='%(upstream:short)' "refs/heads/$branch"
+
+    gh_branch_upstream . "$branch"
 }
 
 base_gh_branch_merged_to_ref() {
     local branch="$1"
     local ref="$2"
 
-    git merge-base --is-ancestor "refs/heads/$branch" "$ref" >/dev/null 2>&1
+    gh_branch_merged_to_ref . "$branch" "$ref"
 }
 
 base_gh_prune_github_ready() {
@@ -1066,13 +1020,7 @@ base_gh_branch_delete() {
 }
 
 base_gh_list_remote_branches() {
-    local output ref
-
-    output="$(git ls-remote --heads origin)" || return 1
-    while read -r _sha ref; do
-        [[ "$ref" == refs/heads/* ]] || continue
-        printf '%s\n' "${ref#refs/heads/}"
-    done <<< "$output"
+    gh_list_remote_branches .
 }
 
 base_gh_branch_delete_remote() {
@@ -1291,27 +1239,7 @@ base_gh_resolve_physical_path() {
 }
 
 base_gh_list_worktree_branches() {
-    local line path="" branch=""
-
-    while IFS= read -r line; do
-        if [[ -z "$line" ]]; then
-            if [[ -n "$path" && -n "$branch" ]]; then
-                branch="${branch#refs/heads/}"
-                printf '%s\t%s\n' "$path" "$branch"
-            fi
-            path=""
-            branch=""
-            continue
-        fi
-        case "$line" in
-            "worktree "*)
-                path="${line#worktree }"
-                ;;
-            "branch "*)
-                branch="${line#branch }"
-                ;;
-        esac
-    done < <(git worktree list --porcelain; printf '\n')
+    gh_list_worktree_branches .
 }
 
 base_gh_worktree_dirty() {
