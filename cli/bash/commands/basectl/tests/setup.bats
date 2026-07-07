@@ -89,6 +89,16 @@ load ./setup_helpers.bash
     [ "$comment_count" -eq 2 ]
 }
 
+@test "setup_common relies on shared cleanup for registered temp files" {
+    local setup_common="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/setup_common.sh"
+
+    run grep -F 'rm -f "$installer_file"' "$setup_common"
+    [ "$status" -eq 1 ]
+
+    run grep -F 'rm -f "$keyring_tmp" "$source_tmp"' "$setup_common"
+    [ "$status" -eq 1 ]
+}
+
 @test "basectl setup fails on unsupported operating systems" {
     run_base_command BASE_SETUP_TEST_PLATFORM=linux-unknown setup
 

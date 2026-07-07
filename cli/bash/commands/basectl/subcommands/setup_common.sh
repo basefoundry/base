@@ -737,27 +737,22 @@ setup_run_verified_homebrew_installer() {
 
     std_make_temp_file installer_file base-homebrew-installer || fatal_error "Failed to create a temporary Homebrew installer file."
     setup_fetch_homebrew_installer "$installer_url" "$installer_file" || {
-        rm -f "$installer_file"
         fatal_error "Failed to read pinned Homebrew installer content from '$installer_url'."
     }
 
     command -v shasum >/dev/null 2>&1 || {
-        rm -f "$installer_file"
         fatal_error "shasum is required to verify pinned Homebrew installer content."
     }
     checksum="$(shasum -a 256 "$installer_file")" || {
-        rm -f "$installer_file"
         fatal_error "Failed to compute Homebrew installer checksum."
     }
     actual_sha256="${checksum%% *}"
     if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-        rm -f "$installer_file"
         fatal_error "Homebrew installer checksum mismatch (expected $expected_sha256, got $actual_sha256)."
     fi
 
     /bin/bash "$installer_file"
     exit_code=$?
-    rm -f "$installer_file"
     if ((exit_code)); then
         log_error "$(setup_recovery_homebrew)"
     fi
@@ -2776,32 +2771,25 @@ setup_run_linux_debian_github_cli_prerequisite() {
     }
 
     if ! curl -fsSL -o "$keyring_tmp" "$(setup_linux_debian_github_cli_keyring_url)"; then
-        rm -f "$keyring_tmp" "$source_tmp"
         fatal_error "Failed to download GitHub CLI's official Debian/Ubuntu apt keyring."
     fi
     setup_linux_debian_github_cli_source_line "$arch" >"$source_tmp" || {
-        rm -f "$keyring_tmp" "$source_tmp"
         fatal_error "Failed to prepare GitHub CLI apt source configuration."
     }
 
     log_info "Installing GitHub CLI 'gh' from GitHub CLI's official Debian/Ubuntu apt repository."
     sudo install -d -m 0755 /etc/apt/keyrings || {
-        rm -f "$keyring_tmp" "$source_tmp"
         return 1
     }
     sudo install -m 0644 "$keyring_tmp" "$(setup_linux_debian_github_cli_keyring_path)" || {
-        rm -f "$keyring_tmp" "$source_tmp"
         return 1
     }
     sudo install -d -m 0755 /etc/apt/sources.list.d || {
-        rm -f "$keyring_tmp" "$source_tmp"
         return 1
     }
     sudo install -m 0644 "$source_tmp" "$(setup_linux_debian_github_cli_source_path)" || {
-        rm -f "$keyring_tmp" "$source_tmp"
         return 1
     }
-    rm -f "$keyring_tmp" "$source_tmp"
     sudo apt-get update || return $?
     sudo apt-get install -y gh || return $?
 }
