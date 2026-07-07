@@ -42,6 +42,7 @@ base_update_profile_usage_error() {
 
 base_update_profile_source_file_library() {
     import_base_lib file/lib_file.sh
+    assert_function_exists file_section_exists file_section_needs_update
 }
 
 base_update_profile_shell_double_quote() {
@@ -162,102 +163,25 @@ base_update_profile_backup_existing_file() {
     cp -p "$target_file" "$backup_path" || fatal_error "Unable to back up '$target_file' to '$backup_path'."
 }
 
-base_update_profile_write_section_content() {
-    local snippet_name="$1"
-    local output_file="$2"
-    local lines=()
-
-    mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
-    printf '%s\n' "${lines[@]}" > "$output_file"
-}
-
-base_update_profile_existing_section_content() {
-    local target_file="$1"
-    local start_marker="$2"
-    local end_marker="$3"
-    local output_file="$4"
-
-    awk -v START_M="$start_marker" -v END_M="$end_marker" '
-    BEGIN {
-        in_section = 0
-        processed = 0
-    }
-    $0 == START_M && processed == 0 {
-        in_section = 1
-        next
-    }
-    $0 == END_M && in_section == 1 {
-        processed = 1
-        exit
-    }
-    in_section == 1 {
-        print $0
-    }
-    END {
-        if (processed == 0) {
-            exit 1
-        }
-    }
-    ' "$target_file" > "$output_file"
-}
-
 base_update_profile_update_file_needs_change() {
     local target_file="$1"
     local snippet_name="$2"
     local start_marker="$3"
     local end_marker="$4"
-    local current_content_file
-    local desired_content_file
-    local start_count
-    local end_count
+    local lines=()
 
     [[ -f "$target_file" ]] || return 0
 
-    start_count="$(grep -cxF -- "$start_marker" "$target_file" || true)"
-    end_count="$(grep -cxF -- "$end_marker" "$target_file" || true)"
-    if ((start_count == 0 && end_count == 0)); then
-        return 0
-    fi
-    if ((start_count != end_count)); then
-        return 0
-    fi
-
-    std_make_temp_file current_content_file base-profile-current ||
-        fatal_error "Unable to create temporary section content file for '$target_file'."
-    std_make_temp_file desired_content_file base-profile-desired || {
-        fatal_error "Unable to create temporary desired content file for '$target_file'."
-    }
-
-    if ! base_update_profile_existing_section_content "$target_file" "$start_marker" "$end_marker" "$current_content_file"; then
-        rm -f "$current_content_file" "$desired_content_file"
-        return 0
-    fi
-    base_update_profile_write_section_content "$snippet_name" "$desired_content_file" || {
-        rm -f "$current_content_file" "$desired_content_file"
-        return 1
-    }
-
-    if cmp -s "$current_content_file" "$desired_content_file"; then
-        rm -f "$current_content_file" "$desired_content_file"
-        return 1
-    fi
-
-    rm -f "$current_content_file" "$desired_content_file"
-    return 0
+    mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 2
+    file_section_needs_update "$target_file" "$start_marker" "$end_marker" "${lines[@]}"
 }
 
 base_update_profile_remove_file_needs_change() {
     local target_file="$1"
     local start_marker="$2"
     local end_marker="$3"
-    local start_count
-    local end_count
 
-    [[ -f "$target_file" ]] || return 1
-
-    start_count="$(grep -cxF -- "$start_marker" "$target_file" || true)"
-    end_count="$(grep -cxF -- "$end_marker" "$target_file" || true)"
-    ((start_count > 0 || end_count > 0))
+    file_section_exists "$target_file" "$start_marker" "$end_marker"
 }
 
 base_update_profile_update_file() {
@@ -273,9 +197,17 @@ base_update_profile_update_file() {
     end_marker="$(base_update_profile_end_marker "$snippet_name")" || return 1
     mapfile -t lines < <(base_update_profile_section_lines "$snippet_name") || return 1
 
-    if ! base_update_profile_update_file_needs_change "$target_file" "$snippet_name" "$start_marker" "$end_marker"; then
-        return 0
-    fi
+    base_update_profile_update_file_needs_change "$target_file" "$snippet_name" "$start_marker" "$end_marker"
+    case $? in
+        0)
+            ;;
+        1)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 
     if ((dry_run)); then
         base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1
@@ -300,9 +232,17 @@ base_update_profile_remove_file() {
     start_marker="$(base_update_profile_start_marker "$snippet_name")" || return 1
     end_marker="$(base_update_profile_end_marker "$snippet_name")" || return 1
 
-    if ! base_update_profile_remove_file_needs_change "$target_file" "$start_marker" "$end_marker"; then
-        return 0
-    fi
+    base_update_profile_remove_file_needs_change "$target_file" "$start_marker" "$end_marker"
+    case $? in
+        0)
+            ;;
+        1)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 
     if ((dry_run)); then
         base_update_profile_backup_existing_file "$target_file" "$backup_timestamp" "$dry_run" || return 1

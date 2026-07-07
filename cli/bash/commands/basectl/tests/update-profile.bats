@@ -195,6 +195,71 @@ EOF
     [[ "$(cat "$TEST_HOME/.zprofile"; printf marker)" == "marker" ]]
 }
 
+@test "update-profile update detection delegates to shared file section helper" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    touch "$TEST_HOME/.bashrc"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_source_file_library
+            file_section_needs_update() {
+                printf "helper_target=%s\n" "$1"
+                printf "helper_start=%s\n" "$2"
+                printf "helper_end=%s\n" "$3"
+                shift 3
+                printf "helper_content=%s\n" "$*"
+                return 1
+            }
+            base_update_profile_update_file_needs_change "$HOME/.bashrc" bashrc "# >>> base: bashrc managed >>>" "# <<< base: bashrc managed <<<"
+            printf "change_status=%s\n" "$?"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"helper_target=$TEST_HOME/.bashrc"* ]]
+    [[ "$output" == *"helper_start=# >>> base: bashrc managed >>>"* ]]
+    [[ "$output" == *"helper_end=# <<< base: bashrc managed <<<"* ]]
+    [[ "$output" == *"source \"$BASE_REPO_ROOT/lib/shell/bashrc\""* ]]
+    [[ "$output" == *"change_status=1"* ]]
+}
+
+@test "update-profile remove detection delegates to shared file section helper" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    touch "$TEST_HOME/.bashrc"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_source_file_library
+            file_section_exists() {
+                printf "helper_target=%s\n" "$1"
+                printf "helper_start=%s\n" "$2"
+                printf "helper_end=%s\n" "$3"
+                return 0
+            }
+            base_update_profile_remove_file_needs_change "$HOME/.bashrc" "# >>> base: bashrc managed >>>" "# <<< base: bashrc managed <<<"
+            printf "change_status=%s\n" "$?"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"helper_target=$TEST_HOME/.bashrc"* ]]
+    [[ "$output" == *"helper_start=# >>> base: bashrc managed >>>"* ]]
+    [[ "$output" == *"helper_end=# <<< base: bashrc managed <<<"* ]]
+    [[ "$output" == *"change_status=0"* ]]
+}
+
 @test "basectl update-profile explains BASE_HOME mismatch recovery" {
     local runtime_base="$TEST_TMPDIR/runtime-base"
     local resolved_base="$TEST_TMPDIR/resolved-base"
