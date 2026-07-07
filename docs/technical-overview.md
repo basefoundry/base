@@ -202,7 +202,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl ci setup\|check\|doctor [--format json]` | Non-interactive CI entry point |
+| `basectl ci setup\|check\|doctor [--format json]` | CI-safe setup/readiness/diagnostics |
 
 **Prerequisite profiles** (compose with commas: `--profile dev,linux-lab`):
 

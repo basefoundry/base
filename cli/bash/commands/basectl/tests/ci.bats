@@ -47,6 +47,7 @@ prepare_ci_runtime() {
     [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
     [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
     [[ "$output" == *"BASE_CI=true"* ]]
+    [[ "$output" == *"Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs."* ]]
 }
 
 @test "basectl ci requires a command and project" {

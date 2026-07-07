@@ -32,8 +32,9 @@ Profiles:
   linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts.
 
 Purpose:
-  Run Base setup, checks, and diagnostics in a non-interactive CI environment.
+  Run Base setup, checks, and diagnostics with CI-safe defaults.
   Sets BASE_CI=true so setup and diagnostic paths can choose CI-safe behavior.
+  Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs.
 EOF
 }
 

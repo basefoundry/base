@@ -60,6 +60,14 @@ jobs:
           ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
           path: .dependencies/base-bash-libs
 
+      - name: Remove flaky hosted-runner apt sources
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources \
+            /etc/apt/sources.list.d/microsoft-prod.list
+
       - name: Install BATS
         run: |
           sudo apt-get update
@@ -175,6 +183,14 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Remove flaky hosted-runner apt sources
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources \
+            /etc/apt/sources.list.d/microsoft-prod.list
+
       - name: Install dependencies
         run: |
           python -m venv .integration-venv
@@ -217,6 +233,14 @@ jobs:
         run: |
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"
 
+      - name: Remove flaky hosted-runner apt sources
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources \
+            /etc/apt/sources.list.d/microsoft-prod.list
+
       - name: Install Ubuntu source-checkout prerequisites
         run: |
           sudo apt-get update
@@ -256,6 +280,14 @@ jobs:
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.13"
+
+      - name: Remove flaky hosted-runner apt sources
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources \
+            /etc/apt/sources.list.d/microsoft-prod.list
 
       - name: Install dependencies
         run: |

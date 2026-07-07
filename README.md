@@ -313,7 +313,10 @@ Current implemented commands include:
 - `basectl version`
 
 `basectl ci` wraps setup, check, and doctor with CI-safe defaults such as
-non-interactive behavior and JSON-capable output. See
+non-interactive behavior and JSON-capable output. It does not run project tests,
+launch GitHub Actions locally, or create Ubuntu/Multipass VMs. Use
+`basectl test` for a project's declared test command and `bin/base-test` for
+Base's full source-checkout validation suite. See
 [basectl ci](docs/basectl-ci.md) for the CI contract, and
 [Command Quick Reference](docs/command-reference.md) for a scannable command
 lookup table.

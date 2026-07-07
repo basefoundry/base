@@ -135,8 +135,8 @@ reference. The filename should answer "what is this about?"
   path for reducing Bash ownership without adding shell fragments by topic.
 - [`basectl onboard`](basectl-onboard.md) captures the guided setup experience
   and its relationship to project installers.
-- [`basectl ci`](basectl-ci.md) defines the non-interactive CI entry point and
-  its relationship to Linux runtime support.
+- [`basectl ci`](basectl-ci.md) defines CI-safe setup/readiness/diagnostic
+  behavior and its relationship to Linux runtime support.
 - [`basectl check` parallelism](check-parallelism.md) documents the shipped
   base-probe concurrency model and its deterministic rendering constraints.
 - [Doctor Finding IDs](doctor-findings.md) is the stable reference for

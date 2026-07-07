@@ -7,6 +7,17 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Clarified `basectl ci` help and docs so CI-safe setup/readiness/diagnostics
+  are not confused with running tests, launching GitHub Actions, or creating
+  Ubuntu/Multipass VMs.
+
+### Fixed
+
+- Hardened Ubuntu GitHub Actions package installs against hosted-runner
+  third-party apt source failures before Base test jobs install their tools.
+
 ## [1.6.1] - 2026-07-04
 
 ### Added

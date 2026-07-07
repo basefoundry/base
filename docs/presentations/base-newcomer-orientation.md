@@ -227,7 +227,7 @@ Read more: [Base-managed demo project](../base-managed-demo-project.md)
 
 ## CI Posture
 
-`basectl ci` is the non-interactive CI entry point.
+`basectl ci` is the CI-safe setup, readiness, and diagnostics entry point.
 
 ```bash
 basectl ci setup <project> --format json
@@ -236,7 +236,8 @@ basectl ci doctor <project> --format json
 ```
 
 It sets CI-safe defaults, avoids prompts, and reuses the same manifest and
-diagnostic paths as local development.
+diagnostic paths as local development. It does not run project tests, launch
+GitHub Actions locally, or create Ubuntu/Multipass VMs.
 
 Read more: [`basectl ci`](../basectl-ci.md)
 
