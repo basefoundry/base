@@ -10,10 +10,10 @@ from typing import Any
 import base_cli
 from base_projects import workspace_context
 from base_projects.command_helpers import github_repo_spec
+from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
-from base_projects.workspace_reports import resolve_workspace_manifest
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_scanner import workspace_manifest_entries
 

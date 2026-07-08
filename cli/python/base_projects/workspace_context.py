@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import base_cli
+from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_manifest import read_workspace_manifest
 from base_projects.workspace_scanner import ProjectDiscoveryError
 
 
@@ -23,3 +25,9 @@ def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str 
     if configured_manifest is None:
         return None
     return str(configured_manifest)
+
+
+def resolve_workspace_manifest(workspace_manifest: str | None) -> WorkspaceManifest | None:
+    if workspace_manifest is None:
+        return None
+    return read_workspace_manifest(Path(workspace_manifest))

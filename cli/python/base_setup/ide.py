@@ -2,30 +2,59 @@ from __future__ import annotations
 
 import base_cli
 from base_cli.config import UserConfig
-from base_cli.ide_schema import IDE_DEFINITIONS  # pylint: disable=unused-import
-from base_cli.ide_schema import IdeDefinition  # pylint: disable=unused-import
+from base_cli.ide_schema import IDE_DEFINITIONS
+from base_cli.ide_schema import IdeDefinition
 
 from .checks import ArtifactCheck
-# pylint: disable=unused-import
-from .ide_diagnostics import IdeDiagnosticSnapshot  # pylint: disable=unused-import
-from .ide_extensions import check_ide_extension  # pylint: disable=unused-import
+from .ide_diagnostics import IdeDiagnosticSnapshot
+from .ide_extensions import check_ide_extension
 from .ide_extensions import check_ide_extensions
-from .ide_extensions import list_ide_extensions  # pylint: disable=unused-import
+from .ide_extensions import list_ide_extensions
 from .ide_extensions import reconcile_ide_extensions
-from .ide_installs import check_ide_install  # pylint: disable=unused-import
+from .ide_installs import check_ide_install
 from .ide_installs import check_ide_installs
-from .ide_installs import reconcile_ide_install  # pylint: disable=unused-import
+from .ide_installs import reconcile_ide_install
 from .ide_installs import reconcile_ide_installs
-from .ide_settings import check_ide_setting  # pylint: disable=unused-import
+from .ide_settings import check_ide_setting
 from .ide_settings import check_ide_settings
-from .ide_settings import ide_settings_file  # pylint: disable=unused-import
-from .ide_settings import merge_ide_settings  # pylint: disable=unused-import
-from .ide_settings import read_ide_settings  # pylint: disable=unused-import
+from .ide_settings import ide_settings_file
+from .ide_settings import merge_ide_settings
+from .ide_settings import read_ide_settings
 from .ide_settings import reconcile_ide_settings
-from .ide_settings import resolve_ide_settings  # pylint: disable=unused-import
-from .ide_settings import write_json_atomic  # pylint: disable=unused-import
-# pylint: enable=unused-import
+from .ide_settings import resolve_ide_settings
+from .ide_settings import write_json_atomic
 from .manifest import BaseManifest, IdeConfig
+
+# Compatibility exports for callers that imported IDE install, extension, and
+# settings helpers from this module before the focused IDE modules existed.
+__all__ = (
+    "IDE_DEFINITIONS",
+    "ArtifactCheck",
+    "BaseManifest",
+    "IdeConfig",
+    "IdeDefinition",
+    "IdeDiagnosticSnapshot",
+    "UserConfig",
+    "check_ide_extension",
+    "check_ide_extensions",
+    "check_ide_install",
+    "check_ide_installs",
+    "check_ide_setting",
+    "check_ide_settings",
+    "effective_ide_config",
+    "ide_preference_warning_checks",
+    "ide_settings_file",
+    "list_ide_extensions",
+    "log_ide_preference_warnings",
+    "merge_ide_settings",
+    "read_ide_settings",
+    "reconcile_ide_extensions",
+    "reconcile_ide_install",
+    "reconcile_ide_installs",
+    "reconcile_ide_settings",
+    "resolve_ide_settings",
+    "write_json_atomic",
+)
 
 
 def effective_ide_config(project_ide: dict[str, IdeConfig], user_config: UserConfig) -> dict[str, IdeConfig]:

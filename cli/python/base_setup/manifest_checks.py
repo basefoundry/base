@@ -15,10 +15,10 @@ from .delegates import check_mise
 from .git_remote import check_git_remote
 from .health import check_required_env
 from .health import check_required_ports
-from .ide import check_ide_extensions
-from .ide import check_ide_installs
-from .ide import check_ide_settings
 from .ide import ide_preference_warning_checks
+from .ide_extensions import check_ide_extensions
+from .ide_installs import check_ide_installs
+from .ide_settings import check_ide_settings
 from .manifest import BaseManifest
 from .pyproject import check_pyproject
 from .python_policy import python_requirement_checks

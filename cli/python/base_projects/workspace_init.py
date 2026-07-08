@@ -14,8 +14,8 @@ from base_projects.command_helpers import ProjectUsageError
 from base_projects.command_helpers import github_repo_spec
 from base_projects.command_helpers import run_project_command
 from base_projects.command_helpers import write_project_command_output
+from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifestError
-from base_projects.workspace_reports import resolve_workspace_manifest
 from base_projects.workspace_scanner import ProjectDiscoveryError
 
 
