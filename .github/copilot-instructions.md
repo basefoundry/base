@@ -31,8 +31,11 @@ Use the narrowest relevant validation first:
 - Bash command changes: run the focused BATS tests;
 - general Base changes: run `env -u BASE_HOME ./bin/base-test` when practical.
 
+Copilot cloud-agent sessions may run `.github/workflows/copilot-setup-steps.yml`
+before work starts. That workflow is only a lightweight environment guardrail;
+pull requests still need the focused validation above and normal CI review.
+
 Do not require GitHub Copilot for Base development, add personal Copilot or
 Codex settings, store credentials, or introduce third-party agent methodology as
 a repo requirement. Translate useful external workflow ideas into smaller
 Base-native guidance.
-
