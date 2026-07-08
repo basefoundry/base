@@ -11,7 +11,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_release import engine
+from base_release import release_publish
+from base_release import release_readiness
 from base_release.engine import ReleaseError
 from base_release.engine import ReleaseFinding
 from base_release.engine import main
@@ -547,21 +548,24 @@ class ReleaseHelperTests(unittest.TestCase):
     def test_run_release_step_uses_bounded_timeout(self) -> None:
         completed = subprocess.CompletedProcess(["git", "tag"], 0, stdout="")
 
-        with mock.patch("base_release.engine.subprocess.run", return_value=completed) as run:
-            engine.run_release_step(["git", "tag"], cwd=Path("/repo"))
+        with mock.patch("base_release.release_publish.process.run_capture", return_value=completed) as run_capture:
+            release_publish.run_release_step(["git", "tag"], cwd=Path("/repo"))
 
-        self.assertEqual(run.call_args.kwargs["timeout"], engine.RELEASE_STEP_TIMEOUT_SECONDS)
+        self.assertEqual(
+            run_capture.call_args.kwargs["timeout_seconds"],
+            release_publish.RELEASE_STEP_TIMEOUT_SECONDS,
+        )
 
     def test_run_release_step_uses_shared_capture_helper(self) -> None:
         completed = subprocess.CompletedProcess(["git", "tag"], 0, stdout="")
 
-        with mock.patch("base_release.engine.process.run_capture", return_value=completed) as run_capture:
-            engine.run_release_step(["git", "tag"], cwd=Path("/repo"))
+        with mock.patch("base_release.release_publish.process.run_capture", return_value=completed) as run_capture:
+            release_publish.run_release_step(["git", "tag"], cwd=Path("/repo"))
 
         run_capture.assert_called_once_with(
             ["git", "tag"],
             cwd=Path("/repo"),
-            timeout_seconds=engine.RELEASE_STEP_TIMEOUT_SECONDS,
+            timeout_seconds=release_publish.RELEASE_STEP_TIMEOUT_SECONDS,
             stderr=subprocess.STDOUT,
         )
 
@@ -569,59 +573,62 @@ class ReleaseHelperTests(unittest.TestCase):
         command = ["git", "push", "origin", "v1.2.3"]
 
         with mock.patch(
-            "base_release.engine.subprocess.run",
+            "base_release.release_publish.process.run_capture",
             side_effect=subprocess.TimeoutExpired(command, timeout=30),
         ):
             with self.assertRaisesRegex(ReleaseError, "timed out"):
-                engine.run_release_step(command)
+                release_publish.run_release_step(command)
 
     def test_run_release_step_reports_os_error_as_release_error(self) -> None:
         command = ["gh", "release", "create", "v1.2.3"]
 
-        with mock.patch("base_release.engine.subprocess.run", side_effect=OSError("network unavailable")):
+        with mock.patch(
+            "base_release.release_publish.process.run_capture",
+            side_effect=OSError("network unavailable"),
+        ):
             with self.assertRaisesRegex(ReleaseError, "Unable to run release command"):
-                engine.run_release_step(command)
+                release_publish.run_release_step(command)
 
     def test_run_release_step_quotes_spaced_arguments_in_errors(self) -> None:
         command = ["gh", "release", "create", "v1.2.3", "--title", "Demo Release"]
         completed = subprocess.CompletedProcess(command, 1, stdout="release failed\n")
 
-        with mock.patch("base_release.engine.subprocess.run", return_value=completed):
+        with mock.patch("base_release.release_publish.process.run_capture", return_value=completed):
             with self.assertRaisesRegex(
                 ReleaseError,
                 "gh release create v1.2.3 --title 'Demo Release'",
             ):
-                engine.run_release_step(command)
+                release_publish.run_release_step(command)
 
     def test_git_worktree_finding_warns_when_status_times_out(self) -> None:
         with mock.patch(
-            "base_release.engine.subprocess.run",
+            "base_release.release_readiness.subprocess.run",
             side_effect=subprocess.TimeoutExpired(["git", "status", "--porcelain"], timeout=10),
         ):
-            finding = engine.git_worktree_finding(Path("/repo"))
+            finding = release_readiness.git_worktree_finding(Path("/repo"))
 
         self.assertEqual(finding.status, "warn")
         self.assertIn("Unable to inspect Git worktree status", finding.message)
 
     def test_git_branch_finding_warns_when_branch_check_times_out(self) -> None:
         with mock.patch(
-            "base_release.engine.subprocess.run",
+            "base_release.release_readiness.subprocess.run",
             side_effect=subprocess.TimeoutExpired(["git", "branch", "--show-current"], timeout=10),
         ):
-            finding = engine.git_branch_finding(Path("/repo"))
+            finding = release_readiness.git_branch_finding(Path("/repo"))
 
         self.assertEqual(finding.status, "warn")
         self.assertIn("Unable to inspect current Git branch", finding.message)
 
     def test_local_tag_finding_warns_when_tag_check_times_out(self) -> None:
         with mock.patch(
-            "base_release.engine.subprocess.run",
+            "base_release.release_readiness.subprocess.run",
             side_effect=subprocess.TimeoutExpired(
                 ["git", "rev-parse", "--verify", "--quiet", "refs/tags/v1.2.3"],
                 timeout=10,
             ),
         ):
-            finding = engine.local_tag_finding(Path("/repo"), "v1.2.3")
+            finding = release_readiness.local_tag_finding(Path("/repo"), "v1.2.3")
 
         self.assertEqual(finding.status, "warn")
         self.assertIn("Unable to inspect local tag v1.2.3", finding.message)
