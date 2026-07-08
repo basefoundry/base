@@ -11,6 +11,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
+BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
+IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
@@ -19,6 +21,12 @@ def workflow_files() -> list[Path]:
 
 
 def load_workflow(path: Path) -> dict:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict), f"{path} did not parse as a YAML mapping"
+    return payload
+
+
+def load_yaml_mapping(path: Path) -> dict:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(payload, dict), f"{path} did not parse as a YAML mapping"
     return payload
@@ -248,6 +256,26 @@ def test_copilot_repository_instructions_stay_anchored_to_base_guidance() -> Non
     assert "issue-backed" in text
     assert "Base focused as the shared developer workspace control plane" in text
     assert "Do not require GitHub Copilot" in text
+
+
+def test_implementation_issue_template_is_copilot_ready_and_project_aligned() -> None:
+    template = load_yaml_mapping(IMPLEMENTATION_ISSUE_TEMPLATE)
+    project_config = load_yaml_mapping(BASE_PROJECT_CONFIG)["project"]
+    fields = {
+        field["id"]: field
+        for field in template["body"]
+        if isinstance(field, dict) and "id" in field
+    }
+
+    assert template["name"] == "Implementation issue"
+    assert template["labels"] == ["enhancement"]
+    assert template["assignees"] == ["codeforester"]
+    assert {"goal", "background", "scope", "acceptance_criteria", "validation", "non_goals"} <= fields.keys()
+    assert fields["priority"]["attributes"]["options"] == ["P0", "P1", "P2", "P3"]
+    assert fields["size"]["attributes"]["options"] == ["T", "S", "M", "L"]
+    assert fields["area"]["attributes"]["options"] == project_config["areas"]
+    assert fields["initiative"]["attributes"]["options"] == project_config["initiatives"]
+    assert "assign this issue to Copilot" in fields["agent_assignment"]["attributes"]["description"]
 
 
 def test_python_tests_run_on_supported_minor_versions() -> None:

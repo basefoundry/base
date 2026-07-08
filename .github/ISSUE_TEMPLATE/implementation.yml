@@ -1,0 +1,132 @@
+name: Implementation issue
+description: Create a scoped Base implementation issue for humans or GitHub-hosted agents.
+title: "[Implementation]: "
+labels:
+  - enhancement
+assignees:
+  - codeforester
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when the issue should be directly implementable. Keep
+        the issue body complete before assigning it to a human or GitHub
+        Copilot coding agent.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: State the concrete outcome this issue should produce.
+      placeholder: Add a concise implementation goal.
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: Give the minimum context needed to make the right change.
+      placeholder: Link prior issues, docs, or product decisions.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List the files, commands, docs, or behavior expected to change.
+      placeholder: Use bullets for the intended implementation scope.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Define observable requirements that prove the issue is complete.
+      placeholder: Use checkable bullets.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Name the narrowest tests or commands that should be run.
+      placeholder: Include commands such as git diff --check, focused pytest, BATS, or base-test.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-Goals
+      description: State what the implementation should not change.
+      placeholder: Use bullets to prevent scope creep.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Select the intended Base Project Priority field value.
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      description: Select the intended Base Project Size field value.
+      options:
+        - T
+        - S
+        - M
+        - L
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the intended Base Project Area field value.
+      options:
+        - CLI
+        - Setup
+        - Workspace
+        - Manifest
+        - Runtime
+        - Shell
+        - Python
+        - Docs
+        - CI
+        - Packaging
+        - Security
+        - Product
+    validations:
+      required: true
+  - type: dropdown
+    id: initiative
+    attributes:
+      label: Initiative
+      description: Select the intended Base Project Initiative field value.
+      options:
+        - BanyanLabs Dogfood
+        - BanyanLabs Dogfooding
+        - Workspace Handling
+        - pyproject/uv
+        - v1.0 Readiness
+        - Adoption Polish
+        - Contract Hardening
+    validations:
+      required: true
+  - type: dropdown
+    id: agent_assignment
+    attributes:
+      label: Agent Assignment
+      description: Choose whether to assign this issue to Copilot after the issue body is complete.
+      options:
+        - Human first
+        - Copilot candidate after triage
+        - Not suitable for Copilot
+    validations:
+      required: true
