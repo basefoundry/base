@@ -84,7 +84,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure> [options]"* ]]
     [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
 
     run_basectl help release

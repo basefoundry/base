@@ -86,6 +86,34 @@ EOF
     [ "$output" = "ARGS=--workspace $workspace --format json" ]
 }
 
+@test "basectl workspace onboarding delegates to the Python projects layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local manifest="$TEST_TMPDIR/workspace.yaml"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/base"
+    touch "$manifest"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "onboarding" ]]; then
+    printf 'ARGS=%s\n' "${*:4}"
+    exit 0
+fi
+printf 'unexpected workspace onboarding python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace onboarding --workspace "$workspace" --manifest "$manifest" --format json
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ARGS=--workspace $workspace --manifest $manifest --format json" ]
+}
+
 @test "basectl workspace clone delegates to the Python projects layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
@@ -221,6 +249,14 @@ EOF
     [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
     [[ "$output" == *"--format <format>"* ]]
 
+    run_basectl workspace onboarding --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace onboarding [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--format <format>"* ]]
+
     run_basectl workspace clone --help
 
     [ "$status" -eq 0 ]
@@ -264,7 +300,7 @@ EOF
     run_basectl workspace help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure> [options]"* ]]
     [[ "$output" != *"Project virtual environment Python was not found"* ]]
 }
 

@@ -15,6 +15,9 @@ from base_projects.workspace_checks import workspace_project_check_results
 from base_projects.workspace_checks import workspace_repo_presence_check
 from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
+from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
+from base_projects.workspace_onboarding import workspace_onboarding_summary
 from base_projects.workspace_report_common import ProjectLastCheck
 from base_projects.workspace_report_common import missing_repo_fix
 from base_projects.workspace_report_common import missing_repo_message
@@ -26,9 +29,11 @@ from base_projects.workspace_report_common import workspace_repo_check_details
 from base_projects.workspace_report_json import dumps_json
 from base_projects.workspace_report_json import workspace_check_to_json
 from base_projects.workspace_report_json import workspace_doctor_to_json
+from base_projects.workspace_report_json import workspace_onboarding_to_json
 from base_projects.workspace_report_json import workspace_status_to_json
 from base_projects.workspace_report_text import print_workspace_check
 from base_projects.workspace_report_text import print_workspace_doctor
+from base_projects.workspace_report_text import print_workspace_onboarding
 from base_projects.workspace_report_text import print_workspace_status
 from base_projects.workspace_statuses import WorkspaceProjectStatus
 from base_projects.workspace_statuses import attach_status_repo_metadata
@@ -43,6 +48,8 @@ from base_projects.workspace_statuses import workspace_project_statuses
 __all__ = (
     "ProjectLastCheck",
     "WorkspaceManifest",
+    "WorkspaceOnboardingRepository",
+    "WorkspaceOnboardingSummary",
     "WorkspaceProjectCheckResult",
     "WorkspaceProjectStatus",
     "attach_check_result_repo_metadata",
@@ -54,6 +61,7 @@ __all__ = (
     "most_severe_status",
     "print_workspace_check",
     "print_workspace_doctor",
+    "print_workspace_onboarding",
     "print_workspace_status",
     "project_last_check",
     "project_venv_check",
@@ -71,6 +79,8 @@ __all__ = (
     "workspace_manifest_project_check_results",
     "workspace_manifest_project_statuses",
     "workspace_non_base_repo_check",
+    "workspace_onboarding_summary",
+    "workspace_onboarding_to_json",
     "workspace_project_check_result",
     "workspace_project_check_results",
     "workspace_project_status",

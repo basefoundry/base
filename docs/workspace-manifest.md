@@ -68,6 +68,23 @@ With `--manifest <path>`, the same commands also report expected repositories,
 missing required and optional repositories, and discovered Base-managed
 projects outside the manifest.
 
+`basectl workspace onboarding --manifest <path>` is the first-day summary for a
+new teammate. It reads the same manifest and local repository state, then shows
+each expected repository, the expected local path, whether it is present,
+whether Base can read `base_manifest.yaml`, and the next action. JSON output is
+available for onboarding scripts or docs generators:
+
+```bash
+basectl workspace onboarding --manifest ~/work/base-workspace/workspace.yaml
+basectl workspace onboarding --manifest ~/work/base-workspace/workspace.yaml --format json
+```
+
+The onboarding report is read-only. It prints clone commands for missing
+repositories when the manifest provides `repos[].url`, and it prints the
+standard Base setup and validation commands for repositories with valid project
+manifests. It does not clone repositories, run setup, create virtual
+environments, or execute project tests.
+
 `basectl workspace clone --manifest <path>` uses the expected repository list
 as an explicit clone plan. It clones missing required GitHub repositories by
 default, reports missing optional repositories without cloning them, and
@@ -89,6 +106,7 @@ It should let Base answer:
 - which repositories are expected in this workspace
 - which expected repositories are already present
 - which expected repositories are missing
+- what a new teammate should do next for each expected repository
 - which discovered repositories are outside the expected set
 - which repositories are required versus optional
 - what clone URL and default branch should be shown in reports, and what
