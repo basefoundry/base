@@ -10,6 +10,10 @@ On Ubuntu/Debian Linux, `bootstrap.sh` stays conservative: it does not run
 manual source-checkout commands, including apt prerequisites and the
 `basectl setup --yes` handoff for unattended paste-and-run flows.
 
+When only the supported Bash prerequisite is missing, use the focused
+`--ensure-bash` path instead of the full install bootstrap. It verifies Bash
+4.2+ and installs only the platform Bash package when needed.
+
 ## Quick Start
 
 Run the bootstrapper from GitHub:
@@ -43,6 +47,16 @@ exec "$SHELL" -l
 `bootstrap.sh` does not edit shell startup files automatically. Shell profile
 integration remains an explicit `basectl update-profile` step so the user can
 see what was installed before Base changes future interactive shells.
+
+If `basectl` reports that the current Bash is too old, repair just that first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --dry-run
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --yes
+```
+
+On macOS this path uses Homebrew Bash. On Ubuntu/Debian it previews and then
+runs only `sudo apt-get update` and `sudo apt-get install -y bash`.
 
 On Ubuntu/Debian, inspect the manual path first:
 
@@ -86,12 +100,15 @@ bootstrap.sh --install-dir ~/work/base
 bootstrap.sh --repo-url https://github.com/basefoundry/base.git
 bootstrap.sh --branch <name>
 bootstrap.sh --no-homebrew-install
+bootstrap.sh --ensure-bash
 bootstrap.sh --dry-run
+bootstrap.sh --yes
 ```
 
 Use `--dry-run` to inspect the planned prerequisite installs and Base install
 route without changing the machine. On Ubuntu/Debian, the bootstrapper always
-prints manual commands rather than mutating apt state itself.
+prints manual commands rather than mutating apt state itself, except for the
+focused `--ensure-bash --yes` path that installs only Bash.
 
 ## Contributor Path
 

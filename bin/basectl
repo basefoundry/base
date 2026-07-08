@@ -185,11 +185,13 @@ basectl_ensure_supported_bash() {
         printf 'ERROR: Base requires Bash 4.2 or newer; current version is %s.\n' "$display_version"
         printf 'A supported Bash was not found at /opt/homebrew/bin/bash or /usr/local/bin/bash.\n'
         printf '\n'
-        printf 'Run:\n'
-        printf '  basectl setup\n'
+        printf 'Run Base first-mile Bash setup:\n'
+        printf '  bootstrap.sh --ensure-bash --dry-run\n'
+        printf '  bootstrap.sh --ensure-bash --yes\n'
         printf '\n'
         printf 'Or install Bash manually:\n'
         printf '  brew install bash\n'
+        printf '  sudo apt-get install -y bash\n'
     } >&2
     exit 1
 }

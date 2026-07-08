@@ -14,6 +14,17 @@ The bootstrapper verifies macOS, ensures Homebrew is available, installs Git and
 a supported Bash when needed, installs or updates Base, and then prints the
 exact `basectl` commands needed to finish setup.
 
+If Base is already present but `basectl` cannot start because the current Bash
+is too old, use the narrower Bash repair path:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --dry-run
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --yes
+```
+
+On macOS this installs Homebrew Bash when needed. On Ubuntu/Debian it previews
+and then installs only the `bash` apt package.
+
 ### Why does bootstrap print commands instead of changing my shell automatically?
 
 `bootstrap.sh` is the first-mile handoff into Base. It intentionally avoids
@@ -35,6 +46,10 @@ bootstrap prints, typically:
 
 Use `bootstrap.sh` on a new or uncertain macOS machine. It handles missing
 first-mile prerequisites and then hands off to Base.
+
+Use `bootstrap.sh --ensure-bash` when the machine only needs a supported Bash
+before Base can continue. It does not clone Base, install Python, create virtual
+environments, or run project setup.
 
 Use Homebrew when you already have Homebrew and Bash and want Base managed like
 an ordinary installed tool:
