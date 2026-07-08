@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
+from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
 from base_setup.checks import ArtifactCheck
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.checks import check_to_json
@@ -60,6 +62,43 @@ def workspace_doctor_to_json(
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> dict[str, Any]:
     return workspace_checks_to_json(workspace_root, results, workspace_manifest=workspace_manifest)
+
+
+def workspace_onboarding_to_json(summary: WorkspaceOnboardingSummary) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "workspace": str(summary.workspace_root),
+        "workspace_manifest": {
+            "path": str(summary.workspace_manifest.path),
+            "name": summary.workspace_manifest.name,
+            "schema_version": summary.workspace_manifest.schema_version,
+        },
+        "repository_count": len(summary.repositories),
+        "repositories": [workspace_onboarding_item_to_json(repository) for repository in summary.repositories],
+    }
+
+
+def workspace_onboarding_item_to_json(repository: WorkspaceOnboardingRepository) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "repository": repository.repository,
+        "required": repository.required,
+        "status": repository.status,
+        "discovery_status": repository.discovery_status,
+        "path": str(repository.path),
+        "manifest_path": str(repository.manifest_path) if repository.manifest_path is not None else None,
+        "manifest": repository.manifest,
+        "venv": repository.venv,
+        "next_action": repository.next_action,
+        "setup_command": repository.setup_command,
+        "validation_command": repository.validation_command,
+        "test_command": repository.test_command,
+        "clone_command": repository.clone_command,
+    }
+    if repository.url is not None:
+        payload["url"] = repository.url
+    if repository.default_branch is not None:
+        payload["default_branch"] = repository.default_branch
+    return payload
 
 
 def workspace_checks_to_json(

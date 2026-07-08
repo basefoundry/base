@@ -25,6 +25,7 @@ class ProjectCommandActions:
     workspace_status: Callable[[base_cli.Context, str | None, str, str | None], int]
     workspace_check: Callable[[base_cli.Context, str | None, str, str | None], int]
     workspace_doctor: Callable[[base_cli.Context, str | None, str, str | None], int]
+    workspace_onboarding: Callable[[base_cli.Context, str | None, str, str | None], int]
     workspace_clone: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
     workspace_pull: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
     workspace_init: Callable[[base_cli.Context, str, WorkspaceCommandOptions], int]
@@ -117,6 +118,16 @@ def _handle_doctor(
 ) -> int:
     require_argument_count("doctor", arguments, 0, 0)
     return actions.workspace_doctor(ctx, options.workspace, options.output_format, options.workspace_manifest)
+
+
+def _handle_onboarding(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    options: WorkspaceCommandOptions,
+    actions: ProjectCommandActions,
+) -> int:
+    require_argument_count("onboarding", arguments, 0, 0)
+    return actions.workspace_onboarding(ctx, options.workspace, options.output_format, options.workspace_manifest)
 
 
 def _handle_clone(
@@ -265,6 +276,7 @@ SUPPORTED_PROJECT_COMMANDS = (
     "status",
     "check",
     "doctor",
+    "onboarding",
     "clone",
     "configure",
     "init",
@@ -284,6 +296,7 @@ PROJECT_COMMAND_HANDLERS: dict[str, ProjectCommandHandler] = {
     "status": _handle_status,
     "check": _handle_check,
     "doctor": _handle_doctor,
+    "onboarding": _handle_onboarding,
     "clone": _handle_clone,
     "pull": _handle_pull,
     "init": _handle_init,

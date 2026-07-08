@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
+from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
 from base_setup.checks import doctor_status
 from base_setup.checks import print_doctor_finding
 
@@ -94,6 +96,40 @@ def print_workspace_check(
     if workspace_manifest is not None:
         print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
     print_workspace_check_results(results, workspace_manifest)
+
+
+def print_workspace_onboarding(summary: WorkspaceOnboardingSummary) -> None:
+    print(f"Workspace onboarding: {summary.workspace_root} ({summary.workspace_manifest.name})")
+    print(f"Workspace manifest: {summary.workspace_manifest.path}")
+    print()
+    if not summary.repositories:
+        print("No repositories reported by the workspace manifest.")
+        return
+
+    print(f"{'REPOSITORY':<20} {'REQUIRED':<8} {'STATUS':<24} PATH")
+    for repository in summary.repositories:
+        print(
+            f"{repository.repository:<20} "
+            f"{yes_no(repository.required):<8} "
+            f"{repository.status:<24} "
+            f"{repository.path}"
+        )
+
+    print("\nNext actions:")
+    for repository in summary.repositories:
+        print_workspace_onboarding_action(repository)
+
+
+def print_workspace_onboarding_action(repository: WorkspaceOnboardingRepository) -> None:
+    print(f"- {repository.repository}: {repository.next_action}")
+    if repository.clone_command is not None:
+        print(f"  clone: {repository.clone_command}")
+    if repository.setup_command is not None:
+        print(f"  setup: {repository.setup_command}")
+    if repository.validation_command is not None:
+        print(f"  validate: {repository.validation_command}")
+    if repository.test_command is not None:
+        print(f"  test: {repository.test_command}")
 
 
 def print_workspace_doctor(

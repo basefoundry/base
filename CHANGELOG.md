@@ -12,6 +12,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `bootstrap.sh --ensure-bash` to verify or install only the Bash 4.2+
   prerequisite on macOS and Ubuntu/Debian before the full Base setup path is
   available.
+- Added `basectl workspace onboarding` to summarize first-day repository
+  readiness, missing clone actions, and project setup/check/test commands from
+  a workspace manifest without mutating repositories.
 
 ### Changed
 

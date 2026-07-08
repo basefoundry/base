@@ -255,7 +255,7 @@ EOF
     [[ "$output" == *"run_options=--workspace --dry-run --list"* ]]
     [[ "$output" == *"export_context_options=--workspace --format --output --print --list-files"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
-    [[ "$output" == *"workspace_commands=status check doctor clone pull init configure"* ]]
+    [[ "$output" == *"workspace_commands=status check doctor onboarding clone pull init configure"* ]]
     [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
     [[ "$output" == *"workspace_clone_options=--workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_pull_options=--source --manifest --dry-run"* ]]
@@ -342,6 +342,6 @@ EOF
             printf "options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"commands=status check doctor clone pull init configure"* ]]
+    [[ "$output" == *"commands=status check doctor onboarding clone pull init configure"* ]]
     [[ "$output" == *"options=--workspace --manifest --dry-run"* ]]
 }

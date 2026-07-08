@@ -41,12 +41,15 @@ from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_init import workspace_init_command
 from base_projects.workspace_pull_command import workspace_pull_command
+from base_projects.workspace_onboarding import workspace_onboarding_summary
 from base_projects.workspace_report_json import dumps_json
 from base_projects.workspace_report_json import workspace_check_to_json
 from base_projects.workspace_report_json import workspace_doctor_to_json
+from base_projects.workspace_report_json import workspace_onboarding_to_json
 from base_projects.workspace_report_json import workspace_status_to_json
 from base_projects.workspace_report_text import print_workspace_check
 from base_projects.workspace_report_text import print_workspace_doctor
+from base_projects.workspace_report_text import print_workspace_onboarding
 from base_projects.workspace_report_text import print_workspace_status
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_checks import workspace_error_count
@@ -122,6 +125,7 @@ def project_command_actions() -> ProjectCommandActions:
         workspace_status=workspace_status_command,
         workspace_check=workspace_check_command,
         workspace_doctor=workspace_doctor_command,
+        workspace_onboarding=workspace_onboarding_command,
         workspace_clone=workspace_clone_command,
         workspace_pull=workspace_pull_command,
         workspace_init=workspace_init_project_command,
@@ -276,6 +280,34 @@ def workspace_doctor_command(
         print_workspace_doctor(workspace_root, results, manifest)
 
     return min(workspace_error_count(results), 125)
+
+
+def workspace_onboarding_command(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    output_format: str = "text",
+    workspace_manifest: str | None = None,
+) -> int:
+    if output_format not in ("text", "json"):
+        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
+
+    try:
+        workspace_root = resolve_workspace_root(ctx, workspace)
+        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
+        if manifest is None:
+            ctx.log.error("Workspace onboarding requires a workspace manifest. Use --manifest or workspace.manifest.")
+            return base_cli.ExitCode.USAGE_ERROR
+        summary = workspace_onboarding_summary(workspace_root, manifest)
+    except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    if output_format == "json":
+        print(dumps_json(workspace_onboarding_to_json(summary)))
+    else:
+        print_workspace_onboarding(summary)
+    return base_cli.ExitCode.SUCCESS
 
 
 def log_workspace_status_discovery(

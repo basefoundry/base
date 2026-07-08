@@ -57,6 +57,23 @@ Fetch and validate a canonical workspace manifest before updating the local mani
 EOF
 }
 
+base_workspace_onboarding_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace onboarding [options]
+
+Options:
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --format <format>   Output format for the onboarding summary: text or json.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Summarize first-day workspace onboarding from a workspace manifest without cloning or setup.
+EOF
+}
+
 base_workspace_init_usage() {
     cat <<'EOF'
 Usage:
@@ -98,6 +115,9 @@ base_workspace_subcommand_usage() {
         status|check|doctor)
             base_workspace_report_usage
             ;;
+        onboarding)
+            base_workspace_onboarding_usage
+            ;;
         clone)
             base_workspace_clone_usage
             ;;
@@ -113,12 +133,13 @@ base_workspace_subcommand_usage() {
         *)
             cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|clone|pull|init|configure> [options]
+  basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure> [options]
 
 Commands:
   status     Show workspace status. Supports --format text|json.
   check      Run workspace checks. Supports --format text|json.
   doctor     Run workspace diagnostics. Supports --format text|json.
+  onboarding Show first-day onboarding summary. Supports --format text|json.
   clone      Clone or validate expected repositories from a workspace manifest.
   pull       Fetch and validate a canonical workspace manifest source.
   init       Initialize a workspace from a workspace configuration repository.
@@ -146,7 +167,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|clone|pull|init|configure)
+        status|check|doctor|onboarding|clone|pull|init|configure)
             shift
             ;;
         *)
