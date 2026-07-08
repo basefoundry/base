@@ -289,7 +289,7 @@ Current implemented commands include:
 - `basectl setup [project]`
 - `basectl check`
 - `basectl doctor`
-- `basectl ci <setup|check|doctor> <project>`
+- `basectl <setup|check|doctor> --ci <project>`
 - `basectl clean --older-than <age>`
 - `basectl clean --keep-last <count>`
 - `basectl config path`
@@ -322,12 +322,13 @@ Current implemented commands include:
 - `basectl onboard`
 - `basectl version`
 
-`basectl ci` wraps setup, check, and doctor with CI-safe defaults such as
-non-interactive behavior and JSON-capable output. It does not run project tests,
-launch GitHub Actions locally, or create Ubuntu/Multipass VMs. Use
+`--ci` runs setup, check, and doctor with CI-safe defaults such as
+non-interactive behavior and JSON-capable output. The legacy `basectl ci`
+wrapper remains as a compatibility alias. Neither surface runs project tests,
+launches GitHub Actions locally, or creates Ubuntu/Multipass VMs. Use
 `basectl test` for a project's declared test command and `bin/base-test` for
 Base's full source-checkout validation suite. See
-[basectl ci](docs/basectl-ci.md) for the CI contract, and
+[CI-safe mode](docs/basectl-ci.md) for the CI contract, and
 [Command Quick Reference](docs/command-reference.md) for a scannable command
 lookup table.
 

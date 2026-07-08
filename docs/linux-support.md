@@ -10,7 +10,7 @@ This is Base's current Ubuntu/Debian source-checkout support contract:
 
 - `bootstrap.sh --source --dry-run` prints the manual Ubuntu/Debian checkout
   path instead of running `sudo apt` from a piped script.
-- `basectl check`, `basectl doctor`, and `basectl ci` report Ubuntu/Debian
+- `basectl check`, `basectl doctor`, and `--ci` mode report Ubuntu/Debian
   runtime readiness without requiring Homebrew or Xcode.
 - `basectl setup --dry-run` previews supported apt-backed setup work before any
   mutation.
@@ -202,7 +202,7 @@ the setup dry-run:
 ./bin/basectl setup --yes
 ./bin/basectl setup --profile dev --dry-run
 ./bin/basectl setup --profile dev
-./bin/basectl ci check base --format text
+./bin/basectl check --ci base --format text
 ./bin/basectl check base --format text
 ./bin/basectl doctor base --format text
 env -u BASE_HOME ./bin/base-test
@@ -262,7 +262,7 @@ Ubuntu/Debian treats the artifact as satisfied by system package `bats`.
 
 IDE extension checks are developer-workstation polish, not part of the default
 Ubuntu/Debian runtime acceptance path. Default `basectl check` and
-`basectl ci check` runs do not fail solely because editor CLIs such as `code`
+`basectl check --ci` runs do not fail solely because editor CLIs such as `code`
 are absent; run with `--profile dev` when you want Base to validate declared IDE
 extensions.
 
@@ -293,7 +293,7 @@ Prefer fixing or unlocking the desktop keyring for long-lived machines.
 Then run:
 
 ```bash
-./bin/basectl ci check base --format text
+./bin/basectl check --ci base --format text
 ./bin/basectl check base --format text
 ./bin/basectl doctor base --format text
 env -u BASE_HOME ./bin/base-test
@@ -370,14 +370,15 @@ environment overrides.
 Linux support should make GitHub Actions a first-class validation target:
 
 ```bash
-basectl ci check base --format json
-basectl ci doctor base --format json
+basectl check --ci base --format json
+basectl doctor --ci base --format json
 env -u BASE_HOME ./bin/base-test
 ```
 
 The first CI-compatible milestone is live: workflows install their own
-prerequisites before invoking Base, and `basectl ci`, `basectl check`, and
-`basectl doctor` run Linux runtime checks without requiring Homebrew or Xcode.
+prerequisites before invoking Base, and `basectl check --ci`, `basectl check`,
+and `basectl doctor --ci` run Linux runtime checks without requiring Homebrew or
+Xcode.
 The `ubuntu-source-checkout` job also runs the full source-checkout suite
 through `bin/base-test` after preparing the Base-managed test virtual
 environment and the sibling `base-bash-libs` checkout expected by source tests.
@@ -386,10 +387,10 @@ environment and the sibling `base-bash-libs` checkout expected by source tests.
 
 | Phase | Status | Notes |
 |---|---|---|
-| 1. Split macOS-only setup checks from portable runtime checks. | Done | Initial support exists through the live `basectl ci` entry point. |
+| 1. Split macOS-only setup checks from portable runtime checks. | Done | Initial support exists through `--ci` mode on setup/check/doctor, with `basectl ci` retained as a compatibility alias. |
 | 2. Add platform detection and explicit unsupported-platform messages. | Done | `BASE_PLATFORM` classifies Ubuntu/Debian as `linux-debian`, keeps `BASE_OS=linux`, and fails unsupported platforms explicitly. |
 | 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Done | `check` and `doctor` report Ubuntu/Debian prerequisite findings with apt-oriented recovery hints. |
-| 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl ci check base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
+| 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl check --ci base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
 | 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` previews Ubuntu/Debian apt prerequisites before mutation. |
 | 6. Add apt-backed setup for simple prerequisites. | Done | `basectl setup --yes` runs `apt-get update`, installs the supported apt package list, creates the Base virtual environment, installs Base Python bootstrap packages, invokes the project setup layer, and seeds user config. |
 | 7. Make `basectl setup --profile dev` use apt-backed developer tools on Ubuntu/Debian. | Done | The dev profile maps `bats-core` and `shellcheck` to apt-backed tools and skips them when already installed. |

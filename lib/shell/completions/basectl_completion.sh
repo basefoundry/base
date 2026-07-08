@@ -206,10 +206,10 @@ _base_basectl_completion() {
         setup)
             _base_basectl_completion_profiles_or_options \
                 "$cur" \
-                "--profile --dry-run --manifest --notify --no-notify --recreate-venv -v -h --help"
+                "--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --yes -v -h --help"
             ;;
         check)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format --manifest --remote-network -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network -v -h --help"
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
@@ -302,7 +302,7 @@ _base_basectl_completion() {
             fi
             ;;
         doctor)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--profile --format --manifest --remote-network --no-color -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network --no-color -v -h --help"
             ;;
         gh)
             case "${COMP_WORDS[2]:-}" in

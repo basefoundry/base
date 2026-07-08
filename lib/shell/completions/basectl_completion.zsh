@@ -211,16 +211,20 @@ _base_basectl_completion() {
             esac
             ;;
         setup)
-            _arguments '--profile[Install prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
+            _arguments '--ci[Run setup with CI-safe defaults]' \
+                '--format[Output format for --ci]:format:(text json)' \
+                '--profile[Install prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--dry-run[Log without making changes]' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--notify[Force a setup completion notification]' \
                 '--no-notify[Disable setup completion notification]' \
                 '--recreate-venv[Recreate the Base venv]' \
+                '--yes[Apply setup changes that require explicit confirmation]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         check)
-            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
+            _arguments '--ci[Run checks with CI-safe defaults]' \
+                '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--remote-network[Opt in to bounded project Git origin reachability checks]' \
@@ -457,7 +461,8 @@ _base_basectl_completion() {
             _arguments '1:config command:(path show doctor)'
             ;;
         doctor)
-            _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
+            _arguments '--ci[Run diagnostics with CI-safe defaults]' \
+                '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \

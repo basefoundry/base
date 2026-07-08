@@ -85,14 +85,16 @@ post-migration boundary, see
 
 ## CI Runtime Variables
 
-`basectl ci` sets these variables while delegating to setup, check, and doctor
-paths. They are scoped to that command invocation and are not part of the
-readonly `base_init.sh` runtime contract.
+`basectl setup --ci`, `basectl check --ci`, and `basectl doctor --ci` set these
+variables while running the existing setup, check, and doctor paths. They are
+scoped to that command invocation and are not part of the readonly
+`base_init.sh` runtime contract. The legacy `basectl ci` wrapper sets the same
+variables as a compatibility alias.
 
 | Variable | Owner | Meaning and impact | User changes |
 | --- | --- | --- | --- |
-| `BASE_CI` | Base | Set to `true` by `basectl ci` so Base setup and diagnostics can choose non-interactive CI-safe behavior, including the runtime-only Linux system-Python fallback gate. | Do not set directly; use `basectl ci`. |
-| `CI` | Base/tooling convention | Set to `true` by `basectl ci` for compatibility with common CI-aware tools. | CI systems may already set this. Base sets it for delegated commands when using `basectl ci`. |
+| `BASE_CI` | Base | Set to `true` by `--ci` so Base setup and diagnostics can choose non-interactive CI-safe behavior, including the runtime-only Linux system-Python fallback gate. | Do not set directly; use `--ci` on setup, check, or doctor. |
+| `CI` | Base/tooling convention | Set to `true` by `--ci` for compatibility with common CI-aware tools. | CI systems may already set this. Base sets it for delegated commands when using `--ci`. |
 
 ## Command Dispatch Variables
 

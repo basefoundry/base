@@ -32,7 +32,8 @@ Profiles:
   linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts.
 
 Purpose:
-  Run Base setup, checks, and diagnostics with CI-safe defaults.
+  Compatibility alias for setup/check/doctor --ci.
+  Prefer: basectl <setup|check|doctor> --ci <project> [options]
   Sets BASE_CI=true so setup and diagnostic paths can choose CI-safe behavior.
   Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs.
 EOF
@@ -45,11 +46,7 @@ base_ci_usage_error() {
 }
 
 base_ci_apply_environment() {
-    export BASE_CI=true
-    export CI=true
-    export BASE_SETUP_NOTIFY=false
-    export BASE_SETUP_ALLOW_SYSTEM_PYTHON=true
-    export BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=false
+    setup_enable_ci_mode
 }
 
 base_ci_source_subcommand_module() {
@@ -118,7 +115,7 @@ base_ci_parse_args() {
                 ;;
             --recreate-venv)
                 [[ "$command" == setup ]] || {
-                    base_ci_usage_error "Option '--recreate-venv' is only supported for 'ci setup'."
+                    base_ci_usage_error "Option '--recreate-venv' is only supported for setup --ci."
                     return $?
                 }
                 BASE_CI_RECREATE_VENV=1
@@ -148,6 +145,7 @@ base_ci_parse_args() {
 }
 
 base_ci_common_delegate_args() {
+    printf '%s\n' --ci
     if [[ -n "$BASE_CI_PROFILE" ]]; then
         printf '%s\n' --profile "$BASE_CI_PROFILE"
     fi
@@ -161,6 +159,7 @@ base_ci_common_delegate_args() {
 
 base_ci_setup_delegate_args() {
     base_ci_common_delegate_args
+    printf '%s\n' --format "$BASE_CI_FORMAT"
     if ((BASE_CI_RECREATE_VENV)); then
         printf '%s\n' --recreate-venv
     fi
@@ -172,64 +171,11 @@ base_ci_check_or_doctor_delegate_args() {
     printf '%s\n' "$BASE_CI_PROJECT" --format "$BASE_CI_FORMAT"
 }
 
-base_ci_print_setup_json() {
-    local exit_code="$1"
-    local stdout_file="$2"
-    local stderr_file="$3"
-    local python_bin
-
-    python_bin="$(setup_diagnostics_python_bin)" ||
-        fatal_error "Python is required to render Base CI setup JSON."
-    setup_ensure_cached_paths
-    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup.ci_json setup-json \
-        --project "$BASE_CI_PROJECT" \
-        --exit-code "$exit_code" \
-        --stdout-file "$stdout_file" \
-        --stderr-file "$stderr_file"
-}
-
-base_ci_run_setup_json() {
-    local args=("$@")
-    local stdout_file
-    local stderr_file
-    local exit_code
-    local render_status
-
-    std_make_temp_file stdout_file base-ci-setup-stdout || return 1
-    std_make_temp_file stderr_file base-ci-setup-stderr || return 1
-
-    base_setup_subcommand_main "${args[@]}" > "$stdout_file" 2> "$stderr_file"
-    exit_code=$?
-
-    # Keep JSON as stdout-only; replay setup logs to stderr for CI visibility.
-    if [[ -s "$stdout_file" ]]; then
-        cat "$stdout_file" >&2
-    fi
-    if [[ -s "$stderr_file" ]]; then
-        cat "$stderr_file" >&2
-    fi
-
-    base_ci_print_setup_json "$exit_code" "$stdout_file" "$stderr_file"
-    render_status=$?
-    rm -f "$stdout_file" "$stderr_file"
-    if ((render_status)); then
-        return "$render_status"
-    fi
-    return "$exit_code"
-}
-
 base_ci_run_setup() {
     local args=()
 
     mapfile -t args < <(base_ci_setup_delegate_args)
     base_ci_source_subcommand_module setup || return 1
-
-    if [[ "$BASE_CI_FORMAT" == json ]]; then
-        base_ci_run_setup_json "${args[@]}"
-        return $?
-    fi
-
     base_setup_subcommand_main "${args[@]}"
 }
 

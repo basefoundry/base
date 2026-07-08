@@ -136,8 +136,8 @@ jobs:
 
       - name: Run Base setup and check smoke tests
         run: |
-          ./bin/basectl ci setup base --format json
-          ./bin/basectl ci check base --format json
+          ./bin/basectl setup --ci base --format json
+          ./bin/basectl check --ci base --format json
 
       - name: Verify shell profile integration
         run: |
@@ -203,9 +203,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bats
 
-      - name: Run basectl ci smoke check
+      - name: Run basectl --ci smoke check
         run: |
-          ./bin/basectl ci check base --format json
+          ./bin/basectl check --ci base --format json
 
       - name: Run integration tests
         env:
@@ -265,7 +265,7 @@ jobs:
 
       - name: Run Ubuntu source-checkout validation
         run: |
-          ./bin/basectl ci check base --format json
+          ./bin/basectl check --ci base --format json
           env -u BASE_HOME ./bin/base-test
 
   security:

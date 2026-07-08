@@ -30,7 +30,7 @@ full compatibility contract.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv`, `--notify`, `--no-notify` |
+| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
 | `basectl onboard [project]` | Guide first-run setup by orchestrating check, setup, shell profile, doctor, and project discovery. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
@@ -63,11 +63,10 @@ inspect the resolved command contract first.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl check [project]` | Verify Base and optional project readiness without making changes. Project checks record the latest result under `~/.base.d/<project>/checks/last.json`. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
-| `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
-| `basectl ci setup <project>` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
-| `basectl ci check <project>` | Run readiness checks with CI-safe defaults. Does not run the project test command. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
-| `basectl ci doctor <project>` | Run diagnostics with CI-safe defaults. Does not launch GitHub Actions or Ubuntu VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
+| `basectl setup --ci <project>` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
+| `basectl check [project]` | Verify Base and optional project readiness without making changes. Project checks record the latest result under `~/.base.d/<project>/checks/last.json`. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
+| `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
+| `basectl ci setup\|check\|doctor <project>` | Compatibility alias for the corresponding `--ci` mode command. | Same options as the target command. |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
 | `basectl history` | List recent structured Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |

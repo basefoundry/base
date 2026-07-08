@@ -14,6 +14,7 @@ Usage:
   basectl doctor [project] [options]
 
 Options:
+  --ci                  Run diagnostics with CI-safe defaults.
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path for project diagnostics.
@@ -35,6 +36,7 @@ Purpose:
 
 See also:
   basectl check [project] [options]
+  basectl ci doctor <project> [options]  Compatibility alias for doctor --ci.
 EOF
 }
 
@@ -182,6 +184,9 @@ base_doctor_subcommand_main() {
             -h|--help|help)
                 base_doctor_subcommand_usage
                 return 0
+                ;;
+            --ci)
+                setup_enable_ci_mode
                 ;;
             --profile)
                 shift

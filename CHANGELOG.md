@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added `--ci` mode to `basectl setup`, `basectl check`, and `basectl doctor`
+  as the preferred CI-safe command surface while keeping `basectl ci` as a
+  compatibility alias.
 - Added `bootstrap.sh --ensure-bash` to verify or install only the Bash 4.2+
   prerequisite on macOS and Ubuntu/Debian before the full Base setup path is
   available.
@@ -30,8 +33,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
-- Clarified `basectl ci` help and docs so CI-safe setup/readiness/diagnostics
-  are not confused with running tests, launching GitHub Actions, or creating
+- Clarified CI-safe setup/readiness/diagnostics help and docs so `--ci` mode is
+  not confused with running tests, launching GitHub Actions, or creating
   Ubuntu/Multipass VMs.
 
 ### Fixed

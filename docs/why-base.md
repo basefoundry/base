@@ -52,7 +52,7 @@ workflow without relearning every repository from scratch?"
 - A small manifest contract for setup, diagnostics, test, run, demo, build,
   activation, IDE, and release delegation.
 - Human-readable and machine-readable readiness checks through `basectl check`,
-  `basectl doctor`, and `basectl ci`.
+  `basectl doctor`, and `--ci` mode for automation.
 - Explicit project activation that avoids hidden `cd`-driven environment
   changes.
 - A shared shell and Python execution foundation for Base-aware scripts.

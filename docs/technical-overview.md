@@ -205,7 +205,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 
 | Command | What it does |
 |---|---|
-| `basectl ci setup\|check\|doctor [--format json]` | CI-safe setup/readiness/diagnostics |
+| `basectl setup\|check\|doctor --ci [--format json]` | CI-safe setup/readiness/diagnostics |
 
 **Prerequisite profiles** (compose with commas: `--profile dev,linux-lab`):
 
@@ -273,7 +273,7 @@ explicit `python.manager: uv` project support, standalone and source-checkout
 `base-bash-libs` consumption, repository baseline creation, guarded GitHub
 release publishing, AI context export, repo-owned prompt rendering, local
 command history, manifest-declared PR policy, Base-managed artifact
-declarations, `basectl ci` for non-interactive CI, IDE bootstrapping (VS
+declarations, `--ci` mode for non-interactive CI, IDE bootstrapping (VS
 Code/Cursor), release readiness inspection, the `basectl docs` documentation
 shortcut, CI setup JSON output improvements, CI supply-chain policy enforcement,
 and pinned Homebrew installer variables for verified first-mile bootstrap.

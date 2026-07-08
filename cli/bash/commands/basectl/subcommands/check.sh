@@ -14,6 +14,7 @@ Usage:
   basectl check [project] [options]
 
 Options:
+  --ci                  Run checks with CI-safe defaults.
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use a specific base_manifest.yaml path for project checks.
@@ -34,6 +35,7 @@ Purpose:
 
 See also:
   basectl doctor [project] [options]
+  basectl ci check <project> [options]  Compatibility alias for check --ci.
 
 Check does:
   1. Verify platform-specific runtime prerequisites.
@@ -64,6 +66,9 @@ base_check_subcommand_main() {
             -h|--help|help)
                 base_check_subcommand_usage
                 return 0
+                ;;
+            --ci)
+                setup_enable_ci_mode
                 ;;
             --format)
                 shift
