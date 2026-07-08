@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import base_cli
 from base_setup import process
 from base_setup.errors import ArtifactError
-from base_setup.manifest import ArtifactRequest
+from base_setup.manifest_model import ArtifactRequest
 from base_setup.process import command_exists
 
 from .checks import DevCheck

@@ -9,8 +9,9 @@ from base_setup.artifacts import reconcile_artifact
 from base_setup.artifacts import resolve_artifact_definitions  # pylint: disable=unused-import
 from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.errors import ArtifactError
-from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError
 from base_setup.manifest import read_manifest  # pylint: disable=unused-import
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_model import ArtifactRequest, BaseManifest
 from base_setup.prerequisites import GitHubCliAuthCheckRequest
 from base_setup.prerequisites import HomebrewPackageCheckRequest
 from base_setup.prerequisites import PrerequisiteCheck

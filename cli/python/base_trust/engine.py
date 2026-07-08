@@ -9,7 +9,7 @@ import base_cli
 from base_cli.history import base_version as read_base_version
 from base_projects import engine as project_engine
 from base_projects.workspace_scanner import ProjectDiscoveryError
-from base_setup.manifest import ManifestError
+from base_setup.manifest_loader import ManifestError
 from .trust_store import ALLOWED_COMMANDS  # pylint: disable=unused-import
 from .trust_store import SCHEMA_VERSION
 from .trust_store import TRUST_RELATIVE_ROOT  # pylint: disable=unused-import

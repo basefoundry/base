@@ -5,8 +5,8 @@ import sys
 
 import base_cli
 from base_setup import process  # pylint: disable=unused-import
-from base_setup.manifest import ManifestError
 from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
 
 from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
 from .release_parser import ReleaseArguments

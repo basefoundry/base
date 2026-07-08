@@ -5,7 +5,9 @@ from pathlib import Path
 
 import base_cli
 from base_setup.artifacts import resolve_artifact_definitions
-from base_setup.manifest import BaseManifest, ManifestError, read_manifest
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_model import BaseManifest
 from base_setup.registry import ArtifactDefinition
 
 SUPPORTED_PROFILES = ("dev", "sre", "ai", "linux-lab")

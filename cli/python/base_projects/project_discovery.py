@@ -13,7 +13,8 @@ from base_cli.paths import base_cache_root, discover_manifest
 from base_projects.workspace_scanner import ManifestEntry
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_scanner import workspace_manifest_entries
-from base_setup.manifest import ManifestError, read_manifest
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
 
 
 @dataclass(frozen=True, order=True)

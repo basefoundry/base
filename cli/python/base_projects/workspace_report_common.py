@@ -8,7 +8,7 @@ from typing import Any
 
 from base_cli.paths import base_state_root
 from base_projects.workspace_manifest import WorkspaceManifestRepo
-from base_setup.manifest import BaseManifest
+from base_setup.manifest_model import BaseManifest
 from base_setup.uv import manifest_uses_uv_project_manager
 
 

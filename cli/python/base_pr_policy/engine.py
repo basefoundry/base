@@ -9,7 +9,8 @@ from pathlib import Path
 import base_cli
 from base_cli.paths import discover_manifest
 from base_setup.github_manifest import GithubPrConfig
-from base_setup.manifest import ManifestError, read_manifest
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
 
 
 class PrPolicyError(RuntimeError):
