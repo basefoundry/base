@@ -5,9 +5,9 @@ from pathlib import Path
 
 from base_projects.project_discovery import Project
 from base_projects.workspace_scanner import ProjectDiscoveryError
-from base_setup.manifest import BaseManifest
-from base_setup.manifest import CommandConfig
-from base_setup.manifest import TestConfig
+from base_setup.manifest_model import BaseManifest
+from base_setup.manifest_model import CommandConfig
+from base_setup.manifest_model import TestConfig
 from base_setup.project_routing import route_for_manifest
 
 

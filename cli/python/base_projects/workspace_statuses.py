@@ -14,8 +14,8 @@ from base_projects.workspace_report_common import project_venv_dir
 from base_projects.workspace_report_common import project_venv_ready
 from base_projects.workspace_scanner import ManifestEntry
 from base_projects.workspace_scanner import workspace_manifest_entries
-from base_setup.manifest import ManifestError
 from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
 from base_setup.python_runtime import ProjectPythonRuntime
 from base_setup.python_runtime import project_python_runtime
 

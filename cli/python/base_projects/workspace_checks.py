@@ -20,9 +20,9 @@ from base_setup.checks import doctor_status
 from base_setup.engine import manifest_checks
 from base_setup.engine import pre_venv_manifest_checks
 from base_setup.engine import read_default_manifest
-from base_setup.manifest import BaseManifest
-from base_setup.manifest import ManifestError
 from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_model import BaseManifest
 from base_setup.uv import manifest_uses_uv_project_manager
 
 

@@ -53,7 +53,8 @@ from base_projects.workspace_reports import workspace_status_to_json
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
-from base_setup.manifest import ManifestError, read_manifest
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
 
 
 app = base_cli.App(name="base_projects")

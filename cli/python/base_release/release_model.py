@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from base_setup.manifest import BaseManifest, ReleaseConfig
+from base_setup.manifest_model import BaseManifest, ReleaseConfig
 
 
 class ReleaseError(RuntimeError):

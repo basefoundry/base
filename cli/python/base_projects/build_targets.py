@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Protocol
 
 import base_cli
-from base_setup.manifest import BaseManifest, BuildTargetConfig, ManifestError, read_manifest
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_model import BaseManifest, BuildTargetConfig
 from base_setup.project_routing import route_for_manifest
 
 
