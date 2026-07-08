@@ -51,6 +51,11 @@ under a shared workspace root, reads manifests, and orchestrates setup, checks,
 activation, declared test commands, build targets, run commands, demos, and
 workspace reports.
 
+Manifest-declared commands are treated as project-owned code. Base keeps
+read-only inspection paths available, but requires explicit local
+manifest-command trust before executing declared project commands or activation
+sources from an unfamiliar or changed manifest.
+
 ## Peer Projects
 
 - `banyanlabs` - a realistic platform engineering learning environment that

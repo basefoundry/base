@@ -2,11 +2,12 @@
 
 ## Overview
 
-Base is an opinionated Mac-first development orchestrator. It provides a unified,
-declarative foundation for bootstrapping a Mac development environment and managing
-multiple projects through a single CLI interface. The current implementation support
-contract is macOS. Linux is a future design target, while Windows support is not in
-scope.
+Base is an opinionated macOS-primary development orchestrator. It provides a
+unified, declarative foundation for bootstrapping a developer environment and
+managing multiple projects through a single CLI interface. The current
+implementation support contract covers macOS plus narrow Ubuntu/Debian
+source-checkout runtime and apt-backed setup paths. Broader Linux distribution
+support, WSL, and Windows are not in scope today.
 
 The governing philosophy: **solve your own problem elegantly first**. Base is
 built for a specific workflow: multiple peer Git repositories under a shared
@@ -21,7 +22,7 @@ GitHub-specific. The exact contract lives in
 
 ## Product Direction
 
-Base's long-term product shape is a Mac-first control plane for multi-repo
+Base's long-term product shape is a macOS-primary control plane for multi-repo
 developer workspaces. It should make a folder of sibling repositories
 understandable, repeatable, diagnosable, and easy to onboard without becoming a
 replacement for Homebrew, `mise`, Docker, GitHub CLI, IDEs, or project-owned

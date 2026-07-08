@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-06-29
-Base era reviewed: 1.3.0
+Last reviewed: 2026-07-07
+Base era reviewed: 1.6.1
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide
@@ -18,11 +18,13 @@ For execution tracking, use GitHub Issues and the workflow in
 
 ## Product Thesis
 
-Base is a macOS-first local workspace control plane for developers who keep
+Base is a macOS-primary local workspace control plane for developers who keep
 multiple Git repositories checked out side by side. It gives that peer-repo
 workspace one consistent command surface for setup, diagnostics, project
 discovery, activation, tests, demos, builds, repository workflow, release
-support, and local AI context exports.
+support, and local AI context exports. Ubuntu/Debian source-checkout runtime
+and apt-backed setup support are implemented, while broader Linux distribution
+support remains intentionally narrow and Windows is not currently in scope.
 
 Base should make a multi-repo workspace understandable, repeatable,
 diagnosable, and easier to onboard without turning the workspace into a
@@ -194,9 +196,10 @@ Base is succeeding when:
 
 ## Platform Scope
 
-The current support contract is macOS-first. Linux support is a design target
-and should advance through narrow, tested support slices before Base makes
-broader platform claims. Windows support is not currently in scope.
+The current support contract is macOS-primary, with implemented Ubuntu/Debian
+source-checkout runtime support and apt-backed setup for conservative Base
+prerequisites. Broader Linux distribution support, WSL, and Windows are not part
+of the current public support contract.
 
 Any platform expansion must preserve Base's explicit orchestration model and
 must update this PRD, the architecture docs, install docs, tests, and release
