@@ -18,6 +18,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `basectl devcontainer` to preview or write `.devcontainer/devcontainer.json`
   from Base project manifests, with JSON output that reports supported,
   unsupported, and ambiguous manifest fields.
+- Added `basectl devenv-report` to classify Base manifest fields as supported,
+  unsupported, lossy, or project-owned for Nix/devenv adoption planning without
+  generating files or requiring Nix.
 
 ### Changed
 

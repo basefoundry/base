@@ -166,6 +166,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | `basectl demo [project] [--non-interactive]` | Run project demo script |
 | `basectl export-context [project]` | Generate AI context pack from `.ai-context/` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from manifest metadata |
+| `basectl devenv-report [project]` | Classify manifest compatibility for Nix/devenv planning |
 | `basectl prompt <list\|name>` | List or render repo-owned AI workflow prompts |
 
 ### Diagnostics

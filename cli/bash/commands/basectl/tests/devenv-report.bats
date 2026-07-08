@@ -1,0 +1,57 @@
+#!/usr/bin/env bats
+
+load ./basectl_helpers.bash
+
+
+@test "basectl devenv-report delegates resolved manifest to base_setup report action" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local manifest_path="$workspace/demo/base_manifest.yaml"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    printf 'demo\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected devenv-report python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+    workspace="$(cd "$workspace" && pwd -P)"
+    manifest_path="$workspace/demo/base_manifest.yaml"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" devenv-report demo --workspace "$workspace" --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=base"* ]]
+    [[ "$output" == *"ARGS=--manifest $manifest_path --action devenv-report --format json demo"* ]]
+}
+
+@test "basectl devenv-report prints help without requiring the Base Python venv" {
+    run_basectl devenv-report --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl devenv-report [project] [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--format <format>"* ]]
+}
+
+@test "basectl devenv-report requires explicit project with workspace option" {
+    run_basectl devenv-report --workspace "$TEST_TMPDIR"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
+}

@@ -41,6 +41,8 @@ Commands:
     Export a project's .ai-context directory as Markdown or Zip.
   devcontainer [project] [options]
     Preview or write .devcontainer/devcontainer.json from a Base manifest.
+  devenv-report [project] [options]
+    Report Nix/devenv compatibility for a Base manifest.
   build <project> [target...] [options]
     Run a project's declared build targets.
   demo [project] [options]
@@ -288,6 +290,11 @@ basectl_do_devcontainer() {
     base_devcontainer_subcommand_main "$@"
 }
 
+basectl_do_devenv_report() {
+    basectl_source_subcommand_module devenv_report || return 1
+    base_devenv_report_subcommand_main "$@"
+}
+
 basectl_do_build() {
     basectl_source_subcommand_module build || return 1
     base_build_subcommand_main "$@"
@@ -509,6 +516,7 @@ basectl_main() {
         test)             basectl_do_test "$@" ;;
         export-context)   basectl_do_export_context "$@" ;;
         devcontainer)     basectl_do_devcontainer "$@" ;;
+        devenv-report)    basectl_do_devenv_report "$@" ;;
         build)            basectl_do_build "$@" ;;
         demo)             basectl_do_demo "$@" ;;
         run)              basectl_do_run "$@" ;;

@@ -211,6 +211,7 @@ assert_bash_completion_options_match_help() {
     assert_bash_completion_options_match_help check check
     assert_bash_completion_options_match_help doctor doctor
     assert_bash_completion_options_match_help devcontainer devcontainer
+    assert_bash_completion_options_match_help devenv-report devenv-report
     assert_bash_completion_options_match_help repo-init repo init
     assert_bash_completion_options_match_help repo-configure repo configure
     assert_bash_completion_options_match_help repo-installer-template repo installer-template

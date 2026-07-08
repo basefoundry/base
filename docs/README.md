@@ -114,6 +114,8 @@ reference. The filename should answer "what is this about?"
 - [Devcontainer Export](devcontainer-export.md) documents the read-only
   Dev Containers export preview, guarded write path, and unsupported field
   reporting.
+- [Nix/devenv Compatibility Report](devenv-report.md) documents the
+  report-only manifest classification for Nix/devenv planning.
 - [Repository Baseline](repo-baseline.md) documents `basectl repo init`,
   `basectl repo check`, `basectl repo configure`, and the optional
   `basectl repo agent-guidance` layer for standardizing new Base-managed

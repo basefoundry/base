@@ -317,6 +317,7 @@ Current implemented commands include:
 - `basectl run <project> <command>`
 - `basectl export-context [project]`
 - `basectl devcontainer [project]`
+- `basectl devenv-report [project]`
 - `basectl docs`
 - `basectl onboard`
 - `basectl version`
@@ -853,6 +854,17 @@ basectl devcontainer example --write
 ambiguous manifest fields instead of guessing container behavior. `--write`
 creates `.devcontainer/devcontainer.json` only when that file does not already
 exist.
+
+Inspect Nix/devenv compatibility without generating files with:
+
+```bash
+basectl devenv-report example
+basectl devenv-report example --format json
+```
+
+`basectl devenv-report` classifies present manifest fields as supported,
+unsupported, lossy, or project-owned so teams can evaluate Nix/devenv adoption
+without installing or invoking Nix.
 
 Open Base's documentation home page on GitHub with:
 
