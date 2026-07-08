@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-06-29
-Base era reviewed: 1.3.0
+Last reviewed: 2026-07-07
+Base era reviewed: 1.6.1
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
@@ -35,10 +35,13 @@ When revising the assessment, prefer evidence in this order:
 
 ## Current Product Thesis
 
-Base is a macOS-first local workspace control plane for developers who keep
+Base is a macOS-primary local workspace control plane for developers who keep
 multiple repositories checked out side by side. It gives that workspace a common
 command surface for setup, diagnostics, project discovery, shell activation,
-tests, demos, builds, repository workflow, and release support.
+tests, demos, builds, repository workflow, release support, and local AI context
+exports. Ubuntu/Debian source-checkout runtime and apt-backed setup support are
+implemented, while broader Linux distribution support remains deliberately
+narrow and Windows is not currently in scope.
 
 Base is strongest when it stays at the workspace orchestration layer. It should
 discover participating repositories, read their `base_manifest.yaml` contracts,
@@ -346,6 +349,53 @@ Current watchlist for the next release line:
   engines, and broad BATS files as issue-backed maintainability work rather
   than as a reason to reposition the product.
 
+### 2026-07-07 / 1.6.1 Product Review Delta
+
+The 1.4.0 through 1.6.1 release line materially improves Base's trust,
+platform, and contract-hardening story without changing the core product
+identity. Base is still a local workspace control plane for multi-repo
+engineering; the important change is that its support evidence is stronger than
+the older 1.3.0 review snapshot.
+
+The strongest shipped signal is platform follow-through. Ubuntu/Debian is no
+longer only a future design target: Base now has Linux-aware runtime metadata,
+source-checkout validation, apt-backed setup for conservative prerequisites,
+Ubuntu/Debian developer-profile handling, platform-aware project artifact
+behavior, and docs that preserve the same `setup` / `check` / `doctor` contract
+across macOS and Ubuntu/Debian. That expands the adoption wedge, but it should
+not be overstated as broad Linux, WSL, or Windows support.
+
+The release line also improves the trust model. Manifest-declared project
+commands now require explicit local approval before `test`, `run`, `build`,
+`demo`, or activation-source execution. Dry-run and list inspection paths remain
+available before approval, which keeps Base useful for review while recognizing
+that manifest command strings are project-owned code, not sandboxed safe code.
+
+Operational maturity is also better than in the 1.3.0 assessment. Contract
+checks now guard documented workflow, workspace manifest policy, installer
+integrity, CLI docs/help/completion parity, log-file privacy, and Project
+metadata defaults. Homebrew installer pinning, GitHub helper reuse, ShellCheck
+warning cleanup, and focused command-surface hardening reduce the gap between a
+single-author tool and a product another contributor can inspect and maintain.
+
+The working ratings remain unchanged. Base has stronger proof of reliability,
+diagnosability, and platform discipline, but not enough external adoption,
+contributor independence, or support-load evidence to raise the adoption or
+organizational-impact assessment.
+
+Current watchlist for the next release line:
+
+- Keep Ubuntu/Debian claims precise: source-checkout runtime and apt-backed setup
+  are real, but broader Linux families, WSL, and Windows still need separate
+  support contracts before public claims expand.
+- Turn command history and logs into user-facing reports only after the
+  deterministic local data model remains stable and privacy boundaries stay
+  explicit.
+- Continue ownership reduction in `setup_common.sh`, `repo.sh`, `gh.sh`, and the
+  largest BATS suites through issue-backed slices instead of broad rewrites.
+- Keep Dev Container, Nix/devenv, Docker, and AI provider work in adapter or
+  export lanes unless real projects prove Base must own a narrower contract.
+
 ## 4. Creator And Engineering Skill Assessment
 
 Assessment: at least Staff-level; plausibly upper Staff or early Senior
@@ -417,6 +467,9 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-07-07: Updated for the 1.6.1 review delta, including Ubuntu/Debian
+  source-checkout runtime and apt-backed setup support, manifest-command trust,
+  contract checks, and remaining adoption evidence limits.
 - 2026-06-25: Updated for the 1.2.0 review delta, including workspace init,
   repo-owned prompt rendering, command history, manifest PR policy, Python
   runtime requirements, artifact declarations, and post-release hardening
