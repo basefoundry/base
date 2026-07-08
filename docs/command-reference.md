@@ -49,6 +49,7 @@ full compatibility contract.
 | `basectl build <project> --list` | List build targets declared by a project manifest. | `--workspace <path>` |
 | `basectl demo [project]` | Run a project-owned demo script. | `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
+| `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl trust status <project>` | Show local manifest command trust status. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>` |
 | `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |

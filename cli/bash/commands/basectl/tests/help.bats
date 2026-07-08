@@ -14,6 +14,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"test [project] [options]"* ]]
     [[ "$output" == *"export-context [project] [options]"* ]]
     [[ "$output" == *"devcontainer [project] [options]"* ]]
+    [[ "$output" == *"devenv-report [project] [options]"* ]]
     [[ "$output" == *"run <project> <command> [options]"* ]]
     [[ "$output" == *"repo <init|clone|check|configure|agent-guidance|installer-template> [options]"* ]]
     [[ "$output" == *"ci <setup|check|doctor> <project> [options]"* ]]
@@ -60,6 +61,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  run <project> <command> [options]' <<<"$output"
     grep -Fqx '  export-context [project] [options]' <<<"$output"
     grep -Fqx '  devcontainer [project] [options]' <<<"$output"
+    grep -Fqx '  devenv-report [project] [options]' <<<"$output"
     grep -Fqx '  repo <init|clone|check|configure|agent-guidance|installer-template> [options]' <<<"$output"
     grep -Fqx '  ci <setup|check|doctor> <project> [options]' <<<"$output"
     grep -Fqx '  release <check|plan|notes|publish> --version <version> [options]' <<<"$output"

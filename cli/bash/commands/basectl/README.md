@@ -41,6 +41,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `doctor`
 - `docs`
 - `devcontainer`
+- `devenv-report`
 - `export-context`
 - `gh`
 - `onboard`
@@ -164,6 +165,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `.devcontainer/devcontainer.json` from the resolved Base manifest. It is
   dry-run by default, supports `--format json`, and writes only with `--write`,
   refusing to replace an existing project-owned Dev Containers file.
+- `basectl devenv-report [project]` classifies present manifest fields as
+  supported, unsupported, lossy, or project-owned for Nix/devenv planning. It
+  does not generate files, install Nix, or invoke Nix.
 - `basectl docs` opens the Base documentation home page on GitHub. Use
   `--show-url` to print the URL without opening a browser.
 - `basectl prompt list` lists repo-owned Markdown prompts that Base can render

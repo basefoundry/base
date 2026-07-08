@@ -19,6 +19,9 @@ from .devcontainer_export import build_devcontainer_export
 from .devcontainer_export import dumps_export_json
 from .devcontainer_export import print_devcontainer_export_text
 from .devcontainer_export import write_devcontainer_export
+from .devenv_report import build_devenv_report
+from .devenv_report import dumps_devenv_report_json
+from .devenv_report import print_devenv_report_text
 from .errors import ArtifactError
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .manifest_checks import empty_user_config  # pylint: disable=unused-import
@@ -95,6 +98,8 @@ def run(
             status = route_manifest(ctx, manifest_action, base_manifest)
         elif action == "devcontainer":
             status = devcontainer_manifest(ctx, manifest_action, base_manifest)
+        elif action == "devenv-report":
+            status = devenv_report_manifest(ctx, manifest_action, base_manifest)
         else:
             default_manifest = read_default_manifest(ctx)
             status = run_manifest_action(
@@ -163,7 +168,7 @@ def run_manifest_action(
     else:
         ctx.log.error(
             "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, "
-            "route, devcontainer, precheck, or predoctor.",
+            "route, devcontainer, devenv-report, precheck, or predoctor.",
             action,
         )
         status = base_cli.ExitCode.USAGE_ERROR
@@ -191,6 +196,26 @@ def devcontainer_manifest(
         print(dumps_export_json(export), end="")
     else:
         print_devcontainer_export_text(export)
+    return base_cli.ExitCode.SUCCESS
+
+
+def devenv_report_manifest(
+    ctx: base_cli.Context,
+    manifest_action: ManifestAction,
+    manifest: BaseManifest,
+) -> int:
+    if manifest_action.output_format not in ("text", "json"):
+        ctx.log.error(
+            "Unsupported devenv-report output format '%s'. Expected text or json.",
+            manifest_action.output_format,
+        )
+        return base_cli.ExitCode.USAGE_ERROR
+
+    report = build_devenv_report(manifest)
+    if manifest_action.output_format == "json":
+        print(dumps_devenv_report_json(report), end="")
+    else:
+        print_devenv_report_text(report)
     return base_cli.ExitCode.SUCCESS
 
 

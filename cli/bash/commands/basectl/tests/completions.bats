@@ -99,6 +99,14 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "devcontainer_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl devenv-report ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "devenv_report_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl devenv-report demo --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "devenv_report_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl projects list --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -264,6 +272,8 @@ EOF
     [[ "$output" == *"export_context_options=--workspace --format --output --print --list-files"* ]]
     [[ "$output" == *"devcontainer_projects=base demo"* ]]
     [[ "$output" == *"devcontainer_options=--workspace --format --write"* ]]
+    [[ "$output" == *"devenv_report_projects=base demo"* ]]
+    [[ "$output" == *"devenv_report_options=--workspace --format"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
     [[ "$output" == *"workspace_commands=status check doctor onboarding clone pull init configure"* ]]
     [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
