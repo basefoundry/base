@@ -11,6 +11,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
+COPILOT_SETUP_WORKFLOW = WORKFLOW_DIR / "copilot-setup-steps.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
@@ -256,6 +257,35 @@ def test_copilot_repository_instructions_stay_anchored_to_base_guidance() -> Non
     assert "issue-backed" in text
     assert "Base focused as the shared developer workspace control plane" in text
     assert "Do not require GitHub Copilot" in text
+
+
+def test_copilot_setup_steps_are_bounded_to_cloud_agent_setup() -> None:
+    workflow = load_workflow(COPILOT_SETUP_WORKFLOW)
+    triggers = workflow.get("on") or workflow.get(True)
+    jobs = workflow["jobs"]
+    setup_job = jobs["copilot-setup-steps"]
+
+    assert workflow["name"] == "Copilot setup steps"
+    assert triggers == {
+        "workflow_dispatch": None,
+        "push": {"paths": [".github/workflows/copilot-setup-steps.yml"]},
+        "pull_request": {"paths": [".github/workflows/copilot-setup-steps.yml"]},
+    }
+    assert workflow["permissions"] == {"contents": "read"}
+    assert set(jobs) == {"copilot-setup-steps"}
+    assert setup_job["runs-on"] == "ubuntu-latest"
+    assert setup_job["timeout-minutes"] == 15
+
+    run_commands = "\n".join(
+        step.get("run", "")
+        for step in setup_job["steps"]
+        if isinstance(step, dict)
+    )
+    assert "python -m pip install -r requirements-dev.txt" in run_commands
+    assert "python -m compileall -q cli/python lib/python tests" in run_commands
+    assert "python -m pytest tests/test_github_workflows.py tests/test_bootstrap_docs.py -q" in run_commands
+    assert "BASE_BASH_LIBS_DIR" not in run_commands
+    assert "secrets." not in run_commands
 
 
 def test_implementation_issue_template_is_copilot_ready_and_project_aligned() -> None:

@@ -24,6 +24,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `basectl history --report` to generate local Markdown or JSON activity
   summaries from recent command history and log metadata without dumping raw
   logs or uploading telemetry.
+- Added a bounded `copilot-setup-steps` workflow and documentation for optional
+  GitHub Copilot cloud-agent setup without changing normal local development or
+  CI behavior.
 
 ### Changed
 
