@@ -232,6 +232,41 @@ repos:
                 ],
             )
 
+    def test_workspace_configure_from_options_uses_shared_workspace_context(self) -> None:
+        ctx = mock.Mock()
+        options = mock.Mock(
+            output_format="text",
+            workspace="workspace",
+            workspace_manifest="workspace.yaml",
+            dry_run=True,
+        )
+        workspace_root = Path("/tmp/shared-workspace")
+        manifest = mock.Mock()
+
+        with mock.patch(
+            "base_projects.workspace_context.resolve_workspace_root",
+            return_value=workspace_root,
+        ) as resolve_workspace_root:
+            with mock.patch(
+                "base_projects.workspace_context.effective_workspace_manifest",
+                return_value="workspace.yaml",
+            ) as effective_workspace_manifest:
+                with mock.patch(
+                    "base_projects.workspace_configure.resolve_workspace_manifest",
+                    return_value=manifest,
+                ) as resolve_workspace_manifest:
+                    with mock.patch(
+                        "base_projects.workspace_configure.workspace_configure_command",
+                        return_value=0,
+                    ) as configure_command:
+                        status = workspace_configure.workspace_configure_from_options(ctx, options)
+
+        self.assertEqual(status, 0)
+        resolve_workspace_root.assert_called_once_with(ctx, "workspace")
+        effective_workspace_manifest.assert_called_once_with(ctx, "workspace.yaml")
+        resolve_workspace_manifest.assert_called_once_with("workspace.yaml")
+        configure_command.assert_called_once_with(ctx, workspace_root, manifest, dry_run=True)
+
     def test_configure_workspace_repo_passes_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
