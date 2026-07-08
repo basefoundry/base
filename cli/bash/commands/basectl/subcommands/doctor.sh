@@ -104,6 +104,9 @@ base_doctor_run_ci_runtime_text() {
         printf 'Base CI doctor\n\n'
     fi
 
+    setup_print_runtime_chain_summary
+    printf '\n'
+
     base_doctor_print_collected_check_results
     if setup_profiles_enabled; then
         setup_run_base_dev_layer doctor
@@ -273,6 +276,9 @@ base_doctor_subcommand_main() {
     else
         printf 'Base doctor\n\n'
     fi
+
+    setup_print_runtime_chain_summary
+    printf '\n'
 
     BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_collect_base_check_results warn || true
     errors="$(base_doctor_count_check_errors)"

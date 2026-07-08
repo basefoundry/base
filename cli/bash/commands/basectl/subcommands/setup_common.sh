@@ -321,6 +321,47 @@ setup_virtualenv_home_has_python() {
     return 1
 }
 
+setup_python_machine() {
+    local machine python_bin="$1"
+
+    [[ -x "$python_bin" ]] || return 1
+    machine="$("$python_bin" -c 'import platform; print(platform.machine() or "unknown")' 2>/dev/null || true)"
+    [[ -n "$machine" ]] || return 1
+    printf '%s\n' "$machine"
+}
+
+setup_virtualenv_homebrew_architecture_compatible() {
+    local executable_path home_path homebrew_prefix pyvenv_cfg python_bin python_machine venv_dir="$1"
+
+    [[ "$(setup_current_platform)" == macos ]] || return 0
+
+    homebrew_prefix="$(setup_homebrew_prefix 2>/dev/null || true)"
+    [[ "$homebrew_prefix" == "/opt/homebrew" ]] || return 0
+
+    pyvenv_cfg="$venv_dir/pyvenv.cfg"
+    python_bin="$venv_dir/bin/python"
+    python_machine="$(setup_python_machine "$python_bin" || true)"
+    executable_path="$(setup_pyvenv_cfg_value executable "$pyvenv_cfg" || true)"
+    home_path="$(setup_pyvenv_cfg_value home "$pyvenv_cfg" || true)"
+
+    if [[ "$python_machine" == "x86_64" ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Base virtual environment Python is x86_64 but Homebrew prefix is '$homebrew_prefix'."
+        return 1
+    fi
+
+    if [[ "$executable_path" == /usr/local/* ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Base virtual environment Python executable '$executable_path' is under /usr/local but Homebrew prefix is '$homebrew_prefix'."
+        return 1
+    fi
+
+    if [[ "$home_path" == /usr/local/* ]]; then
+        _BASE_SETUP_VENV_HEALTH_MESSAGE="Base virtual environment Python home '$home_path' is under /usr/local but Homebrew prefix is '$homebrew_prefix'."
+        return 1
+    fi
+
+    return 0
+}
+
 setup_virtualenv_healthy_path() {
     local executable_path home_path pyvenv_cfg python_bin venv_dir="$1"
 
@@ -354,6 +395,8 @@ setup_virtualenv_healthy_path() {
         _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment Python is broken because home path '$home_path' no longer provides Python."
         return 1
     fi
+
+    setup_virtualenv_homebrew_architecture_compatible "$venv_dir" || return 1
 
     _BASE_SETUP_VENV_HEALTH_MESSAGE="Virtual environment is healthy at '$venv_dir'."
     return 0
@@ -628,6 +671,137 @@ setup_find_brew_bin() {
     done
 
     return 1
+}
+
+setup_homebrew_prefix() {
+    local brew_bin prefix
+
+    if [[ -n "${BASE_SETUP_TEST_HOMEBREW_PREFIX+x}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_HOMEBREW_PREFIX
+        [[ -n "$BASE_SETUP_TEST_HOMEBREW_PREFIX" ]] || return 1
+        printf '%s\n' "$BASE_SETUP_TEST_HOMEBREW_PREFIX"
+        return 0
+    fi
+
+    if [[ -n "${HOMEBREW_PREFIX:-}" ]]; then
+        printf '%s\n' "$HOMEBREW_PREFIX"
+        return 0
+    fi
+
+    brew_bin="$(setup_find_brew_bin)" || return 1
+    case "$brew_bin" in
+        /opt/homebrew/bin/brew)
+            printf '%s\n' "/opt/homebrew"
+            return 0
+            ;;
+        /usr/local/bin/brew)
+            printf '%s\n' "/usr/local"
+            return 0
+            ;;
+    esac
+
+    prefix="$("$brew_bin" --prefix 2>/dev/null || true)"
+    [[ -n "$prefix" ]] || return 1
+    printf '%s\n' "$prefix"
+}
+
+setup_command_path() {
+    command -v "$1" 2>/dev/null || return 1
+}
+
+setup_current_machine() {
+    uname -m 2>/dev/null || printf 'unknown\n'
+}
+
+setup_executable_architecture() {
+    local output path="$1"
+
+    [[ -n "$path" ]] || return 1
+    command -v file >/dev/null 2>&1 || return 1
+    output="$(file -L "$path" 2>/dev/null || true)"
+    case "$output" in
+        *x86_64*arm64*|*arm64*x86_64*)
+            printf '%s\n' "universal"
+            ;;
+        *arm64*)
+            printf '%s\n' "arm64"
+            ;;
+        *x86_64*)
+            printf '%s\n' "x86_64"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+setup_rosetta_translation_state() {
+    local translated
+
+    [[ "$(setup_current_platform)" == macos ]] || {
+        printf '%s\n' "n/a"
+        return 0
+    }
+
+    translated="$(sysctl -in sysctl.proc_translated 2>/dev/null || true)"
+    case "$translated" in
+        1)
+            printf '%s\n' "yes"
+            ;;
+        0)
+            printf '%s\n' "no"
+            ;;
+        *)
+            printf '%s\n' "unknown"
+            ;;
+    esac
+}
+
+setup_gh_version_line() {
+    local version
+
+    version="$(gh --version 2>/dev/null | head -n 1)" || return 1
+    [[ -n "$version" ]] || return 1
+    printf '%s\n' "$version"
+}
+
+setup_print_runtime_chain_summary() {
+    local brew_bin brew_prefix gh_arch gh_bin gh_version home_path platform pyvenv_cfg python_arch python_bin shell_machine shell_path translated venv_dir
+
+    platform="$(setup_current_platform 2>/dev/null || printf 'unsupported\n')"
+    shell_path="${BASH:-}"
+    [[ -n "$shell_path" ]] || shell_path="$(setup_command_path bash 2>/dev/null || true)"
+    shell_machine="$(setup_current_machine)"
+    translated="$(setup_rosetta_translation_state)"
+    venv_dir="$(setup_venv_dir)"
+    python_bin="$venv_dir/bin/python"
+
+    log_info "Runtime chain: BASE_OS=${BASE_OS:-unknown} BASE_PLATFORM=$platform BASE_HOST=${BASE_HOST:-unknown}"
+    log_info "Shell: path=${shell_path:-unknown} version=${BASH_VERSION:-unknown} machine=${shell_machine:-unknown} translated=${translated:-unknown}"
+
+    if [[ -x "$python_bin" ]]; then
+        pyvenv_cfg="$venv_dir/pyvenv.cfg"
+        python_arch="$(setup_python_machine "$python_bin" 2>/dev/null || setup_executable_architecture "$python_bin" 2>/dev/null || true)"
+        home_path="$(setup_pyvenv_cfg_value home "$pyvenv_cfg" 2>/dev/null || true)"
+        log_info "Python: path=$python_bin machine=${python_arch:-unknown} home=${home_path:-unknown}"
+    else
+        log_info "Python: path=$python_bin status=missing"
+    fi
+
+    if [[ "$platform" == macos ]]; then
+        if brew_bin="$(setup_find_brew_bin 2>/dev/null)"; then
+            brew_prefix="$(setup_homebrew_prefix 2>/dev/null || true)"
+            log_info "Homebrew: path=$brew_bin prefix=${brew_prefix:-unknown}"
+        else
+            log_info "Homebrew: status=missing"
+        fi
+    fi
+
+    if gh_bin="$(setup_command_path gh 2>/dev/null)"; then
+        gh_version="$(setup_gh_version_line 2>/dev/null || true)"
+        gh_arch="$(setup_executable_architecture "$gh_bin" 2>/dev/null || true)"
+        log_info "GitHub CLI: path=$gh_bin version=${gh_version:-unknown} arch=${gh_arch:-unknown}"
+    fi
 }
 
 setup_refresh_brew_path() {
@@ -1036,6 +1210,8 @@ setup_create_virtualenv() {
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
     if setup_virtualenv_exists && ! setup_base_recreate_venv_enabled; then
+        setup_virtualenv_healthy ||
+            fatal_error "$_BASE_SETUP_VENV_HEALTH_MESSAGE $(setup_recovery_venv)"
         log_info "Virtual environment already exists at '$venv_dir'."
         return 0
     fi
