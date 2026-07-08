@@ -1,35 +1,26 @@
 from __future__ import annotations
 
-import subprocess  # pylint: disable=unused-import
 import sys
 
 import base_cli
-from base_setup import process  # pylint: disable=unused-import
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 
+from . import release_readiness
 from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
 from .release_parser import ReleaseArguments
 from .release_parser import ReleaseUsageError
 from .release_parser import parse_release_args
 from .release_parser import print_usage
-# pylint: disable=unused-import
-from .release_publish import RELEASE_STEP_TIMEOUT_SECONDS
 from .release_publish import release_publish_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, write_temp_release_notes
-from .release_readiness import CHANGELOG_HEADER_RE, GIT_INSPECTION_TIMEOUT_SECONDS
-from .release_readiness import changelog_finding, current_git_branch, extract_changelog_section
-from .release_readiness import gh_cli_finding, git_branch_finding, git_status, git_worktree_finding
-from .release_readiness import github_release_finding, last_non_empty_line, local_tag_exists, local_tag_finding
-from .release_readiness import read_version_file, release_findings as _release_findings
-from .release_readiness import remote_tag_finding, version_file_finding
-# pylint: enable=unused-import
+from .release_readiness import extract_changelog_section, gh_cli_finding, github_release_finding
 
 app = base_cli.App(name="base_release")
-release_findings = lambda ctx: _release_findings(  # pylint: disable=unnecessary-lambda-assignment
-    ctx,
-    gh_cli_finding_func=gh_cli_finding,
-)
+
+
+def release_findings(ctx: ReleaseContext) -> tuple[ReleaseFinding, ...]:
+    return release_readiness.release_findings(ctx, gh_cli_finding_func=gh_cli_finding)
 
 
 def main(argv: list[str] | None = None) -> int:
