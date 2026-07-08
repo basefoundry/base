@@ -94,8 +94,13 @@ class WorkspaceInitTests(unittest.TestCase):
     def test_workspace_init_command_is_extracted_from_engine(self) -> None:
         workspace_init = importlib.import_module("base_projects.workspace_init")
 
+        actions = engine.project_command_actions()
         self.assertIs(
-            engine.workspace_init_from_args.__globals__["workspace_init_command"],
+            actions.workspace_init,
+            engine.workspace_init_project_command,
+        )
+        self.assertIs(
+            engine.workspace_init_project_command.__globals__["workspace_init_command"],
             workspace_init.workspace_init_command,
         )
 
