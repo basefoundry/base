@@ -15,6 +15,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `basectl workspace onboarding` to summarize first-day repository
   readiness, missing clone actions, and project setup/check/test commands from
   a workspace manifest without mutating repositories.
+- Added `basectl devcontainer` to preview or write `.devcontainer/devcontainer.json`
+  from Base project manifests, with JSON output that reports supported,
+  unsupported, and ambiguous manifest fields.
 
 ### Changed
 

@@ -14,6 +14,11 @@ from .checks import checks_payload_to_json
 from .checks import checks_status
 from .checks import doctor_status
 from .checks import print_doctor_finding
+from .devcontainer_export import DevcontainerExportError
+from .devcontainer_export import build_devcontainer_export
+from .devcontainer_export import dumps_export_json
+from .devcontainer_export import print_devcontainer_export_text
+from .devcontainer_export import write_devcontainer_export
 from .errors import ArtifactError
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .manifest_checks import empty_user_config  # pylint: disable=unused-import
@@ -37,6 +42,7 @@ class ManifestAction:
     action: str
     dry_run: bool
     output_format: str
+    write: bool = False
     remote_network: bool = False
 
 
@@ -49,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--manifest", help="Path to base_manifest.yaml.")
 @base_cli.option("--start-dir", default=".", help="Directory where manifest discovery should start.")
 @base_cli.option("--dry-run", is_flag=True, help="Log planned changes without making them.")
+@base_cli.option("--write", is_flag=True, help="Write actions that default to dry-run output.")
 @base_cli.option(
     "--action",
     default="setup",
@@ -67,6 +74,7 @@ def run(
     manifest: str | None,
     start_dir: str,
     dry_run: bool,
+    write: bool,
     action: str,
     output_format: str,
     remote_network: bool,
@@ -82,9 +90,11 @@ def run(
     try:
         base_manifest = read_manifest(manifest_path)
         validate_project_name(base_manifest, project)
-        manifest_action = ManifestAction(action, dry_run, output_format, remote_network)
+        manifest_action = ManifestAction(action, dry_run, output_format, write, remote_network)
         if action == "route":
             status = route_manifest(ctx, manifest_action, base_manifest)
+        elif action == "devcontainer":
+            status = devcontainer_manifest(ctx, manifest_action, base_manifest)
         else:
             default_manifest = read_default_manifest(ctx)
             status = run_manifest_action(
@@ -100,6 +110,9 @@ def run(
         ctx.log.error(str(exc))
         status = base_cli.ExitCode.FAILURE
     except ArtifactError as exc:
+        ctx.log.error(str(exc))
+        status = base_cli.ExitCode.FAILURE
+    except DevcontainerExportError as exc:
         ctx.log.error(str(exc))
         status = base_cli.ExitCode.FAILURE
     return status
@@ -150,11 +163,35 @@ def run_manifest_action(
     else:
         ctx.log.error(
             "Unsupported base_setup action '%s'. Expected setup, bootstrap, check, doctor, "
-            "route, precheck, or predoctor.",
+            "route, devcontainer, precheck, or predoctor.",
             action,
         )
         status = base_cli.ExitCode.USAGE_ERROR
     return status
+
+
+def devcontainer_manifest(
+    ctx: base_cli.Context,
+    manifest_action: ManifestAction,
+    manifest: BaseManifest,
+) -> int:
+    if manifest_action.output_format not in ("text", "json"):
+        ctx.log.error(
+            "Unsupported devcontainer output format '%s'. Expected text or json.",
+            manifest_action.output_format,
+        )
+        return base_cli.ExitCode.USAGE_ERROR
+
+    export = build_devcontainer_export(manifest, write=manifest_action.write)
+    if manifest_action.write:
+        write_devcontainer_export(export)
+        export = build_devcontainer_export(manifest, write=True)
+
+    if manifest_action.output_format == "json":
+        print(dumps_export_json(export), end="")
+    else:
+        print_devcontainer_export_text(export)
+    return base_cli.ExitCode.SUCCESS
 
 
 def route_manifest(

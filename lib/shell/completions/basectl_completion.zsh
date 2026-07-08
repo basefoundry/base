@@ -85,6 +85,7 @@ _base_basectl_completion() {
         'check:Verify the local Base CLI environment'
         'test:Run a project test command'
         'export-context:Export a project AI context bundle'
+        'devcontainer:Preview or write a Dev Containers configuration'
         'build:Run project build targets'
         'demo:Run a project interactive demo'
         'run:Run a project command'
@@ -243,6 +244,16 @@ _base_basectl_completion() {
                 '--output[Output path]:path:_files' \
                 '--print[Print the Markdown export to stdout]' \
                 '--list-files[List files in export order]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '1:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                _base_basectl_completion_describe_projects
+            fi
+            ;;
+        devcontainer)
+            _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--format[Output format]:format:(text json)' \
+                '--write[Write .devcontainer/devcontainer.json]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '1:Base project:->projects'
             if [[ "$state" == projects ]]; then
