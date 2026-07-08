@@ -30,6 +30,7 @@ def history_record(
     exit_code: int = 0,
     ended_at: str = "2026-06-10T10:15:00Z",
     log_path: str = "~/logs/run.log",
+    argv: list[str] | None = None,
 ) -> dict:
     return {
         "schema_version": 1,
@@ -37,7 +38,7 @@ def history_record(
         "event": "finished",
         "command": command,
         "raw_command": f"base_{command}",
-        "argv": ["basectl", command],
+        "argv": argv or ["basectl", command],
         "project": project,
         "ended_at": ended_at,
         "exit_code": exit_code,
@@ -157,16 +158,151 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn("No Base command history found", stdout)
 
+    def test_markdown_report_handles_empty_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            status, stdout, stderr = invoke(["--report"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("# Base Local Activity Report", stdout)
+        self.assertIn("History records: 0", stdout)
+        self.assertIn("No command history records found.", stdout)
+        self.assertIn(str(cache_root / "history" / "runs.jsonl"), stdout)
+
+    def test_report_json_summarizes_successful_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            log_path = cache_root / "cli" / "base_setup" / "logs" / "run-ok.log"
+            log_path.parent.mkdir(parents=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-ok",
+                    "check",
+                    status="ok",
+                    exit_code=0,
+                    log_path=str(log_path),
+                ),
+            )
+
+            status, stdout, stderr = invoke(["--report", "--format", "json"], cache_root)
+            payload = json.loads(stdout)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(
+            payload["history_path"],
+            str((cache_root / "history" / "runs.jsonl").resolve(strict=False)),
+        )
+        self.assertEqual(payload["summary"]["record_count"], 1)
+        self.assertEqual(payload["summary"]["failure_count"], 0)
+        self.assertEqual(payload["summary"]["status_counts"], {"error": 0, "ok": 1, "warn": 0})
+        self.assertEqual(payload["command_families"], [{"command": "check", "count": 1, "failures": 0}])
+        self.assertEqual(payload["failures"], [])
+        self.assertEqual(payload["recent"][0]["log_exists"], True)
+
+    def test_markdown_report_lists_failures_and_common_failing_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-error-new",
+                    "check",
+                    status="error",
+                    exit_code=2,
+                    ended_at="2026-06-10T10:20:00Z",
+                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "run-error-new.log"),
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-error-old",
+                    "check",
+                    status="error",
+                    exit_code=1,
+                    ended_at="2026-06-10T10:10:00Z",
+                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "run-error-old.log"),
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-warn",
+                    "setup",
+                    status="warn",
+                    exit_code=0,
+                    ended_at="2026-06-10T10:15:00Z",
+                ),
+            )
+
+            status, stdout, stderr = invoke(["--report"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Failures: 2", stdout)
+        self.assertIn("- `check`: 2 failures across 2 runs", stdout)
+        self.assertIn("run-error-new.log", stdout)
+        self.assertIn("run-error-old.log", stdout)
+        self.assertIn("## Privacy", stdout)
+        self.assertIn("Raw log contents are not included", stdout)
+
+    def test_report_redacts_arguments_and_home_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir) / "cache"
+            home = Path(tmpdir) / "home"
+            home.mkdir()
+            secret = "super-secret-value"
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-secret",
+                    "setup",
+                    status="error",
+                    exit_code=1,
+                    log_path=str(home / ".cache" / "base" / "cli" / "base_setup" / "logs" / "run-secret.log"),
+                    argv=[
+                        "basectl",
+                        "setup",
+                        "--token",
+                        secret,
+                        f"DATABASE_PASSWORD={secret}",
+                        str(home / "work" / "demo"),
+                        f"https://user:{secret}@example.com/private.git",
+                    ],
+                ),
+            )
+
+            with mock.patch.dict(os.environ, {"HOME": str(home)}):
+                status, stdout, stderr = invoke(["--report", "--format", "json"], cache_root)
+            payload = json.loads(stdout)
+            encoded = json.dumps(payload)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertNotIn(secret, encoded)
+        self.assertNotIn(str(home), encoded)
+        self.assertIn("[REDACTED]", encoded)
+        self.assertIn("~/work/demo", encoded)
+        self.assertTrue(payload["recent"][0]["log_path"].startswith("~/.cache/base/cli/base_setup/logs/"))
+
     def test_invalid_options_report_usage_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = invoke(["--limit", "0"], Path(tmpdir))
             format_status, _format_stdout, format_stderr = invoke(["--format", "yaml"], Path(tmpdir))
+            report_status, _report_stdout, report_stderr = invoke(["--report", "--format", "yaml"], Path(tmpdir))
 
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Option '--limit' must be greater than zero", stderr)
         self.assertEqual(format_status, 2)
         self.assertIn("Unsupported output format 'yaml'", format_stderr)
+        self.assertEqual(report_status, 2)
+        self.assertIn("Unsupported report output format 'yaml'", report_stderr)
 
     def test_click_usage_errors_use_delegated_display_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

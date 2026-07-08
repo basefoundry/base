@@ -294,7 +294,7 @@ _base_basectl_completion() {
             _base_basectl_completion_compgen "--command --limit --path --tail --open --lines -v -h --help" "$cur"
             ;;
         history)
-            _base_basectl_completion_compgen "--project --command --status --limit --format -v -h --help" "$cur"
+            _base_basectl_completion_compgen "--project --command --status --limit --format --report -v -h --help" "$cur"
             ;;
         config)
             if ((COMP_CWORD == 2)); then

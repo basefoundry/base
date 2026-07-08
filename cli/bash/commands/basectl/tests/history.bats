@@ -26,6 +26,27 @@ EOF
     [[ "$output" == *"ARGS=--project demo --command check --status error --limit 3 --format json"* ]]
 }
 
+@test "basectl history forwards report mode to the Python history layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_history" ]]; then
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected history python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl history --report --limit 5 --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGS=--report --limit 5 --format json"* ]]
+}
+
 @test "basectl history forwards verbose flag to the Python history layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
 
@@ -54,7 +75,8 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl history [options]"* ]]
     [[ "$output" == *"--project <name>"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--report"* ]]
+    [[ "$output" == *"--format <text|markdown|json>"* ]]
 }
 
 @test "basectl history reports missing option arguments as usage errors" {
