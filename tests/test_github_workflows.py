@@ -10,6 +10,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
+COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 
 
@@ -235,6 +236,18 @@ def test_all_workflow_action_uses_are_pinned_to_full_commit_sha() -> None:
     unpinned = workflow_action_references_without_full_sha()
 
     assert not unpinned, unpinned
+
+
+def test_copilot_repository_instructions_stay_anchored_to_base_guidance() -> None:
+    text = COPILOT_INSTRUCTIONS.read_text(encoding="utf-8")
+
+    assert "AGENTS.md" in text
+    assert "CONTRIBUTING.md" in text
+    assert "STANDARDS.md" in text
+    assert ".ai-context/" in text
+    assert "issue-backed" in text
+    assert "Base focused as the shared developer workspace control plane" in text
+    assert "Do not require GitHub Copilot" in text
 
 
 def test_python_tests_run_on_supported_minor_versions() -> None:
