@@ -12,6 +12,12 @@ def linux_support_text() -> str:
 def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
     text = linux_support_text()
 
+    assert "# Linux support" in text
+    assert "## Supported Ubuntu/Debian Contract" in text
+    assert "source-checkout support contract" in text
+    assert "Base does not ship a Debian package" in text
+    assert "## Source-Checkout Smoke Checklist" in text
+    assert "Expected result:" in text
     assert "## Ubuntu Bootstrap" in text
     assert "basectl setup --dry-run" in text
     assert "basectl setup --yes" in text

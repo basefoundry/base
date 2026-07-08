@@ -1,8 +1,28 @@
-# Linux support plan
+# Linux support
 
-Base is currently Mac-first. Linux support should be added deliberately, with
-Ubuntu/Debian as the first target because it covers GitHub Actions and a large
-share of developer machines.
+Base is macOS-primary with a supported Ubuntu/Debian source-checkout path. Linux
+support should continue to grow deliberately, with Ubuntu/Debian as the first
+target because it covers GitHub Actions and a large share of developer machines.
+
+## Supported Ubuntu/Debian Contract
+
+This is Base's current Ubuntu/Debian source-checkout support contract:
+
+- `bootstrap.sh --source --dry-run` prints the manual Ubuntu/Debian checkout
+  path instead of running `sudo apt` from a piped script.
+- `basectl check`, `basectl doctor`, and `basectl ci` report Ubuntu/Debian
+  runtime readiness without requiring Homebrew or Xcode.
+- `basectl setup --dry-run` previews supported apt-backed setup work before any
+  mutation.
+- `basectl setup` prompts before Ubuntu/Debian system changes, and
+  `basectl setup --yes` is the non-interactive apply mode for reviewed setup.
+- `basectl setup --profile dev` can install the Base-owned developer
+  prerequisites that have explicit Ubuntu/Debian mappings.
+
+Base does not ship a Debian package, own every project runtime dependency, or
+claim support for every Linux distribution. Broader Linux families, WSL, native
+Windows, GUI IDE setup on Linux, and project-specific dependency ownership need
+separate product decisions and platform adapters.
 
 ## Target Scope
 
@@ -153,6 +173,27 @@ cd base
 ./bin/basectl setup --profile dev --dry-run
 ./bin/basectl setup --profile dev
 ```
+
+## Source-Checkout Smoke Checklist
+
+Run this checklist from a fresh Ubuntu/Debian source checkout after reviewing
+the setup dry-run:
+
+```bash
+./bin/basectl setup --dry-run
+./bin/basectl setup --yes
+./bin/basectl setup --profile dev --dry-run
+./bin/basectl setup --profile dev
+./bin/basectl ci check base --format text
+./bin/basectl check base --format text
+./bin/basectl doctor base --format text
+env -u BASE_HOME ./bin/base-test
+```
+
+Expected result: setup reports reviewed Ubuntu/Debian apt-backed changes before
+mutation, the check/doctor commands report runtime readiness or actionable
+warnings, and `base-test` completes when the sibling `base-bash-libs` checkout
+is available.
 
 The Ubuntu/Debian setup path runs:
 
