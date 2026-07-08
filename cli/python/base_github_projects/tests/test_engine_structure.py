@@ -44,7 +44,16 @@ def test_project_git_helpers_are_split_from_engine() -> None:
 def test_project_operations_are_explicit_instead_of_module_ops() -> None:
     engine_path = Path(engine.__file__)
     operations_path = engine_path.with_name("project_operations.py")
+    configure_command_path = engine_path.with_name("project_configure_command.py")
+    issue_fields_command_path = engine_path.with_name("project_issue_fields_command.py")
+    doctor_command_path = engine_path.with_name("project_doctor_command.py")
+    operations_source = operations_path.read_text(encoding="utf-8")
 
     assert operations_path.exists()
-    assert "class ProjectOperations" in operations_path.read_text(encoding="utf-8")
+    assert "class ProjectOperations" in operations_source
+    assert "@dataclass(frozen=True)" in operations_source
+    assert "SimpleNamespace" not in operations_source
+    assert "ops: Any" not in configure_command_path.read_text(encoding="utf-8")
+    assert "ops: Any" not in issue_fields_command_path.read_text(encoding="utf-8")
+    assert "ops: Any" not in doctor_command_path.read_text(encoding="utf-8")
     assert "sys.modules[__name__]" not in engine_path.read_text(encoding="utf-8")

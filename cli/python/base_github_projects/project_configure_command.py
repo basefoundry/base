@@ -2,25 +2,31 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Any
 
 import base_cli
 
+from .project_config import ProjectConfig
 from .project_configure import ConfigureDryRunPlan, ProjectReplacement
 from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
+from .project_model import OwnerInfo
+from .project_model import ProjectArguments
+from .project_model import ProjectField
+from .project_model import ProjectInfo
+from .project_model import ProjectSchema
+from .project_operations import ProjectOperations
 
 
 @dataclass(frozen=True)
 class ConfigureExecution:
     owner: str
-    owner_info: Any
-    args: Any
-    project: Any
+    owner_info: OwnerInfo
+    args: ProjectArguments
+    project: ProjectInfo | None
     replacement: ProjectReplacement | None
-    ops: Any
+    ops: ProjectOperations
 
 
-def configure_command(args: Any, ops: Any) -> int:
+def configure_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     owner = ops.require_owner(args)
     if args.replace_project and not args.repo:
         raise ops.ProjectUsageError("--replace-project requires --repo.")
@@ -74,10 +80,10 @@ def configure_command(args: Any, ops: Any) -> int:
 
 
 def replacement_plan_for_args(
-    args: Any,
+    args: ProjectArguments,
     owner: str,
-    project: Any,
-    ops: Any,
+    project: ProjectInfo | None,
+    ops: ProjectOperations,
 ) -> ProjectReplacement | None:
     if not args.replace_project:
         return None
@@ -99,16 +105,16 @@ def replacement_plan_for_args(
 
 
 def fetch_existing_configure_fields(
-    project: Any,
+    project: ProjectInfo | None,
     replacement: ProjectReplacement | None,
-    ops: Any,
-) -> tuple[Any, ...]:
+    ops: ProjectOperations,
+) -> tuple[ProjectField, ...]:
     if project is None or replacement is not None:
         return ()
     return ops.fetch_project_fields(project.project_id)
 
 
-def prepare_configure_project(execution: ConfigureExecution) -> Any:
+def prepare_configure_project(execution: ConfigureExecution) -> ProjectInfo:
     if execution.replacement is not None:
         execution.ops.update_project(
             execution.replacement.legacy_project.project_id,
@@ -137,9 +143,9 @@ def prepare_configure_project(execution: ConfigureExecution) -> Any:
 
 def ensure_schema_fields(
     project_id: str,
-    fields: tuple[Any, ...],
-    schema: Any,
-    ops: Any,
+    fields: tuple[ProjectField, ...],
+    schema: ProjectSchema,
+    ops: ProjectOperations,
 ) -> None:
     by_name = {field.name: field for field in fields}
     for spec in schema.fields:
@@ -150,7 +156,7 @@ def ensure_schema_fields(
             ops.update_single_select_field(field, spec)
 
 
-def link_and_backfill_project(project_id: str, repo: str | None, ops: Any) -> None:
+def link_and_backfill_project(project_id: str, repo: str | None, ops: ProjectOperations) -> None:
     if not repo:
         return
     ops.link_project_to_repository(project_id, repo)
@@ -161,7 +167,7 @@ def link_and_backfill_project(project_id: str, repo: str | None, ops: Any) -> No
 def copy_replacement_project_fields(
     project_id: str,
     replacement: ProjectReplacement | None,
-    ops: Any,
+    ops: ProjectOperations,
 ) -> None:
     if replacement is None:
         return
@@ -174,7 +180,7 @@ def copy_replacement_project_fields(
         )
 
 
-def close_replacement_project(replacement: ProjectReplacement | None, ops: Any) -> None:
+def close_replacement_project(replacement: ProjectReplacement | None, ops: ProjectOperations) -> None:
     if replacement is None:
         return
     ops.update_project(replacement.legacy_project.project_id, closed=True)
@@ -185,7 +191,7 @@ def copy_project_fields_from_source(
     owner: str,
     target_project_id: str,
     source_project_title: str | None,
-    ops: Any,
+    ops: ProjectOperations,
 ) -> None:
     if not source_project_title:
         return
@@ -203,9 +209,9 @@ def copy_project_fields_from_source(
 
 def apply_project_config_defaults(
     target_project_id: str,
-    target_fields: tuple[Any, ...],
-    project_config: Any,
-    ops: Any,
+    target_fields: tuple[ProjectField, ...],
+    project_config: ProjectConfig,
+    ops: ProjectOperations,
 ) -> None:
     defaults = ops.project_field_defaults_for_config(project_config)
     if not defaults:
