@@ -13,7 +13,9 @@ from .prerequisites import HomebrewPackageCheckRequest
 from .prerequisites import PrerequisiteCheck
 from .prerequisites import check_homebrew_package
 from .prerequisites import homebrew_package_outdated
-# Keep these re-exports until downstream callers move to base_setup.python_artifacts.
+# Public compatibility exports for callers that still import Python artifact
+# helpers through base_setup.artifacts. Internal callers should import the
+# focused base_setup.python_artifacts module directly.
 from .python_artifacts import PIP_INSTALL_COMMAND_PREFIX  # pylint: disable=unused-import
 from .python_artifacts import backup_existing_project_venv  # pylint: disable=unused-import
 from .python_artifacts import create_project_virtualenv  # pylint: disable=unused-import

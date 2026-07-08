@@ -24,7 +24,7 @@ from base_setup.tests.helpers import fake_context, run_engine
 
 
 class ArtifactFacadeTests(unittest.TestCase):
-    def test_artifacts_declares_python_artifact_compatibility_exports(self) -> None:
+    def test_artifacts_declares_public_python_artifact_compatibility_exports(self) -> None:
         expected_names = {
             "PIP_INSTALL_COMMAND_PREFIX",
             "ProjectRuntimeConfig",
