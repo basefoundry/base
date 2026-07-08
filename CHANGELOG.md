@@ -21,6 +21,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `basectl devenv-report` to classify Base manifest fields as supported,
   unsupported, lossy, or project-owned for Nix/devenv adoption planning without
   generating files or requiring Nix.
+- Added `basectl history --report` to generate local Markdown or JSON activity
+  summaries from recent command history and log metadata without dumping raw
+  logs or uploading telemetry.
 
 ### Changed
 

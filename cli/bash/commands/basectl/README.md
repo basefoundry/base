@@ -44,6 +44,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `devenv-report`
 - `export-context`
 - `gh`
+- `history`
+- `logs`
 - `onboard`
 - `prompt`
 - `repo init/clone/check/configure/agent-guidance/installer-template`
@@ -83,7 +85,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl logs` lists recent Base CLI runtime logs and can print, open, or tail
   the newest matching log file.
 - `basectl history` lists recent structured Base command runs from the local
-  history index and supports JSON output for scripts.
+  history index and supports table, JSON, and privacy-conscious report output.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
 - `basectl trust status/allow/revoke <project>` manages local approval for
   manifest-declared project commands under `~/.base.d/trust/manifest-commands/`.

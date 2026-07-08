@@ -1,15 +1,17 @@
 # Local Observability Model
 
-> **STATUS** — `basectl history` and the local history index are implemented as
-> the first slice. `basectl explain last-error`, `basectl report`, and history
+> **STATUS** — `basectl history`, the local history index, and
+> `basectl history --report` are implemented as local-only slices.
+> `basectl explain last-error`, a broader `basectl report` bundle, and history
 > cleanup integration are tracked but not scheduled longer-term future work.
 
 Tracker: [#396](https://github.com/basefoundry/base/issues/396)
 
-Base currently exposes raw runtime logs through `basectl logs` and structured
-local command metadata through `basectl history`. This document defines the
-local observability layer: shipped command history, future last-error
-explanation, and future report generation.
+Base currently exposes raw runtime logs through `basectl logs`, structured
+local command metadata through `basectl history`, and a redacted local activity
+summary through `basectl history --report`. This document defines the local
+observability layer: shipped command history and activity reports, future
+last-error explanation, and broader future report generation.
 
 ## Goals
 
@@ -18,8 +20,10 @@ explanation, and future report generation.
   to scan without opening individual log files.
 - Allow a future `basectl explain last-error` command to summarize the latest
   failed Base run from local evidence.
-- Allow a future `basectl report` command to create a redacted local diagnostic
-  bundle for bug reports or support handoff.
+- Generate redacted local activity reports from history and log metadata for
+  bug reports or support handoff.
+- Allow a future broader `basectl report` command to create an explicit
+  diagnostic bundle when Base has more local evidence surfaces to combine.
 - Keep all data local by default, with no telemetry and no automatic upload.
 
 ## Non-Goals
@@ -164,9 +168,25 @@ Expected options:
 - `--status <ok|warn|error>` filters by status.
 - `--limit <count>` limits the number of rows.
 - `--format json` prints structured records for scripts.
+- `--report` prints a Markdown activity report by default.
+- `--report --format json` prints the same report as deterministic JSON.
 
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.
+
+The report mode summarizes selected recent history records with:
+
+- total records, warnings, and failures
+- status counts
+- common failing command families
+- recent command rows
+- failure details with redacted argv values
+- log file locations and missing-log markers
+
+Report mode does not include raw log contents, upload data, or collect
+background telemetry. It compacts home-directory paths to `~` and re-applies
+secret-looking argument and URL credential redaction defensively before
+rendering Markdown or JSON.
 
 ## Planned Commands
 
@@ -186,10 +206,11 @@ The explanation should be rule-based. It should not call external services.
 If the history record is missing its log file, the command should still report
 the metadata and explain that raw evidence has been cleaned or moved.
 
-### `basectl report`
+### Broader `basectl report`
 
-`basectl report` should generate a local diagnostic artifact, preferably a
-Markdown report by default with an optional JSON format for automation.
+A future broader `basectl report` should generate a local diagnostic artifact,
+preferably a Markdown report by default with an optional JSON format for
+automation.
 
 The report should include:
 
@@ -208,13 +229,16 @@ should never upload the report.
 The shipped first slice is:
 
 1. Add history recording and `basectl history`. **Shipped.**
+2. Add `basectl history --report` for local history/log activity summaries.
+   **Shipped.**
 
 ### Unscheduled Future Work
 
 The following items remain tracked but are not scheduled:
 
 - Add `basectl explain last-error` after history records exist.
-- Add `basectl report` after history and explanation have stable local data.
+- Add broader `basectl report` after history and explanation have stable local
+  data.
 - Extend `basectl clean` to compact or prune history records once the history
   format is stable.
 
@@ -229,5 +253,6 @@ starts producing summaries or shareable diagnostic artifacts.
   same redaction and best-effort guarantees.
 - `basectl history` marks missing log files directly in text output and exposes
   `log_exists` in JSON output.
-- Future report generation should require an explicit option before embedding
+- `basectl history --report` does not include raw log excerpts; any future
+  broader report mode should still require an explicit option before embedding
   raw log excerpts.

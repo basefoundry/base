@@ -289,7 +289,7 @@ EOF
     [[ "$output" == *"docs_options=--show-url"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
-    [[ "$output" == *"history_options=--project --command --status --limit --format"* ]]
+    [[ "$output" == *"history_options=--project --command --status --limit --format --report"* ]]
     [[ "$output" == *"trust_commands=status allow revoke"* ]]
     [[ "$output" == *"trust_projects=base demo"* ]]
     [[ "$output" == *"trust_status_options=--workspace --format"* ]]

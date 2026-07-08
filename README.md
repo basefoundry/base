@@ -957,13 +957,19 @@ basectl history
 basectl history --project base
 basectl history --command check --status error
 basectl history --format json
+basectl history --report
+basectl history --report --format json
 ```
 
 `basectl history` reads the local history index at
 `<base-cache-root>/history/runs.jsonl`. History records are best-effort
 metadata for Python-backed Base commands with persistent logs; they point to raw
 logs instead of replacing them, and malformed history lines are ignored while
-listing recent runs. The broader local diagnostic report model is described in
+listing recent runs. `--report` prints a privacy-conscious local activity
+summary with recent commands, failure counts, common failing command families,
+and log file locations. Reports do not include raw log contents, compact home
+paths to `~`, and redact secret-looking arguments and URL credentials. The
+broader local diagnostic report model is described in
 [docs/observability.md](docs/observability.md).
 
 Inspect machine-local Base config with:

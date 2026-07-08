@@ -70,9 +70,10 @@ inspect the resolved command contract first.
 | `basectl ci doctor <project>` | Run diagnostics with CI-safe defaults. Does not launch GitHub Actions or Ubuntu VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>` |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
+| `basectl history` | List recent structured Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |
+| `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>` |
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name>`, `--lines <count>` |
-| `basectl history` | List recent structured Base command runs. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |
 | `basectl clean` | Remove old Base runtime logs, temp files, and cache entries. | `--older-than <age>`, `--keep-last <count>`, `--dry-run` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |

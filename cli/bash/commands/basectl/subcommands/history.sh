@@ -14,7 +14,9 @@ Options:
   --status <ok|warn|error>
                         Filter by command status.
   --limit <count>       Number of recent history records to list. Defaults to 10.
-  --format <text|json>  Output format. Defaults to text.
+  --format <text|markdown|json>
+                        Output format. Defaults to text, or Markdown with --report.
+  --report              Print a privacy-conscious Markdown or JSON activity report.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -34,6 +36,10 @@ base_history_subcommand_main() {
                 ;;
             -v)
                 args+=(--debug)
+                shift
+                ;;
+            --report)
+                args+=("$1")
                 shift
                 ;;
             --project|--command|--status|--limit|--format)
