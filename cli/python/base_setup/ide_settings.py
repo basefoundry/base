@@ -11,10 +11,10 @@ import base_cli
 from base_cli.ide_schema import IDE_DEFINITIONS
 from base_cli.ide_schema import IdeDefinition
 
-from . import artifacts
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
+from .python_artifacts import project_venv_dir
 
 if TYPE_CHECKING:
     from .ide_diagnostics import IdeDiagnosticSnapshot
@@ -33,7 +33,7 @@ def resolve_ide_settings(project: str, settings: dict[str, object]) -> dict[str,
     resolved: dict[str, object] = {}
     for key, value in settings.items():
         if key == "python.defaultInterpreterPath" and value == "auto":
-            resolved[key] = str(artifacts.project_venv_dir(project) / "bin" / "python")
+            resolved[key] = str(project_venv_dir(project) / "bin" / "python")
         else:
             resolved[key] = value
     return resolved
