@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import base_cli
+from base_projects import workspace_context
 from base_projects.command_helpers import github_repo_spec
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
@@ -44,8 +45,10 @@ def workspace_configure_from_options(
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
-        workspace_root = resolve_workspace_root(ctx, options.workspace)
-        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, options.workspace_manifest))
+        workspace_root = workspace_context.resolve_workspace_root(ctx, options.workspace)
+        manifest = resolve_workspace_manifest(
+            workspace_context.effective_workspace_manifest(ctx, options.workspace_manifest)
+        )
     except (ProjectDiscoveryError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
@@ -204,25 +207,6 @@ def print_workspace_configure_header(
 
     print(f"Workspace configure: {workspace_root} ({target_count} manifest repos)")
     print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
-
-
-def resolve_workspace_root(ctx: base_cli.Context, workspace: str | None) -> Path:
-    if workspace:
-        return Path(workspace).expanduser().resolve()
-    if ctx.workspace_root is not None:
-        return ctx.workspace_root
-    if ctx.base_home is None:
-        raise ProjectDiscoveryError("BASE_HOME is required to discover workspace projects.")
-    return ctx.base_home.parent.resolve()
-
-
-def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
-    if workspace_manifest is not None:
-        return workspace_manifest
-    configured_manifest = ctx.user_config.workspace.manifest
-    if configured_manifest is None:
-        return None
-    return str(configured_manifest)
 
 
 def workspace_manifest_repo_spec(repo: WorkspaceManifestRepo) -> str | None:
