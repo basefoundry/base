@@ -165,8 +165,10 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"Base requires Bash 4.2 or newer; current version is 3.2."* ]]
     [[ "$output" == *"A supported Bash was not found"* ]]
-    [[ "$output" == *"basectl setup"* ]]
+    [[ "$output" == *"bootstrap.sh --ensure-bash --dry-run"* ]]
+    [[ "$output" == *"bootstrap.sh --ensure-bash --yes"* ]]
     [[ "$output" == *"brew install bash"* ]]
+    [[ "$output" == *"sudo apt-get install -y bash"* ]]
 }
 
 @test "basectl rejects removed legacy commands" {

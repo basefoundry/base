@@ -12,11 +12,13 @@ Usage:
 Options:
   --source                 Install or update Base from a Git checkout.
   --brew                   Install Base through Homebrew.
+  --ensure-bash            Verify or install Bash 4.2+ only.
   --install-dir <path>     Source checkout path. Defaults to ~/work/base.
   --repo-url <url>         Git repository URL for source mode.
   --branch <name>          Clone a specific branch for a new source checkout.
   --no-homebrew-install    Fail instead of installing Homebrew when missing.
   --dry-run                Print planned actions without making changes.
+  --yes                    Allow ensure-bash to make Ubuntu/Debian apt changes.
   -h, --help               Show this help text.
 
 Mode selection uses this precedence:
@@ -419,18 +421,49 @@ bootstrap_ensure_git() {
     bootstrap_git_usable || bootstrap_die "Git was installed, but 'git --version' still does not work."
 }
 
-bootstrap_bash_version_number() {
-    printf '%s\n' "${BASE_BOOTSTRAP_TEST_BASH_VERSION:-${BASH_VERSINFO[0]}${BASH_VERSINFO[1]}}"
+bootstrap_bash_version_supported_parts() {
+    local major="$1"
+    local minor="$2"
+
+    [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]] || return 1
+    ((major > 4 || (major == 4 && minor >= 2)))
+}
+
+bootstrap_current_bash_supported() {
+    local major
+    local minor
+    local test_version="${BASE_BOOTSTRAP_TEST_BASH_VERSION:-}"
+
+    if [[ -n "$test_version" ]]; then
+        major="${test_version:0:1}"
+        minor="${test_version:1}"
+        [[ -n "$minor" ]] || minor=0
+    else
+        major="${BASH_VERSINFO[0]:-0}"
+        minor="${BASH_VERSINFO[1]:-0}"
+    fi
+
+    bootstrap_bash_version_supported_parts "$major" "$minor"
+}
+
+bootstrap_bash_candidate_supported() {
+    local candidate="$1"
+    local major
+    local minor
+    local version_output
+
+    [[ -x "$candidate" ]] || return 1
+    version_output="$("$candidate" -c 'printf "%s %s\n" "${BASH_VERSINFO[0]:-0}" "${BASH_VERSINFO[1]:-0}"' 2>/dev/null)" || return 1
+    read -r major minor _ <<< "$version_output"
+    bootstrap_bash_version_supported_parts "${major:-0}" "${minor:-0}"
 }
 
 bootstrap_find_supported_bash() {
     local candidate
-    local candidates="${BASE_BOOTSTRAP_BASH_CANDIDATES:-/opt/homebrew/bin/bash:/usr/local/bin/bash}"
-    local current_version
+    local candidates="${1:-${BASE_BOOTSTRAP_BASH_CANDIDATES:-/opt/homebrew/bin/bash:/usr/local/bin/bash}}"
     local -a candidate_paths
 
-    current_version="$(bootstrap_bash_version_number)"
-    if [[ "$current_version" -ge 42 ]]; then
+    if bootstrap_current_bash_supported; then
         printf '%s\n' "${BASH:-bash}"
         return 0
     fi
@@ -438,7 +471,7 @@ bootstrap_find_supported_bash() {
     IFS=: read -ra candidate_paths <<< "$candidates"
     for candidate in "${candidate_paths[@]}"; do
         [[ -n "$candidate" ]] || continue
-        [[ -x "$candidate" ]] || continue
+        bootstrap_bash_candidate_supported "$candidate" || continue
         printf '%s\n' "$candidate"
         return 0
     done
@@ -461,6 +494,63 @@ bootstrap_ensure_supported_bash() {
     fi
 
     bootstrap_find_supported_bash >/dev/null 2>&1 || bootstrap_die "Bash was installed, but a supported Bash was not found."
+}
+
+bootstrap_linux_debian_bash_apt_update_command() {
+    printf '%s\n' "sudo apt-get update"
+}
+
+bootstrap_linux_debian_bash_apt_install_command() {
+    printf '%s\n' "sudo apt-get install -y bash"
+}
+
+bootstrap_ensure_linux_debian_bash() {
+    local yes="$1"
+
+    bootstrap_log "Bash 4.2+ is not available for Base."
+
+    if [[ "${BASE_BOOTSTRAP_DRY_RUN:-false}" == "true" ]]; then
+        bootstrap_log "[DRY-RUN] Would run: $(bootstrap_linux_debian_bash_apt_update_command)"
+        bootstrap_log "[DRY-RUN] Would run: $(bootstrap_linux_debian_bash_apt_install_command)"
+        return 0
+    fi
+
+    [[ "$yes" == "true" ]] ||
+        bootstrap_die "Installing Bash on Ubuntu/Debian requires --yes. Run 'bootstrap.sh --ensure-bash --dry-run' to review the apt commands, then rerun with '--yes'."
+
+    bootstrap_log "Installing Bash 4.2+ through apt."
+    sudo apt-get update || bootstrap_die "Failed to update apt package lists."
+    sudo apt-get install -y bash || bootstrap_die "Failed to install Bash through apt."
+    bootstrap_log "Bash install command completed; start a new shell or rerun bootstrap if the current shell is still too old."
+}
+
+bootstrap_run_ensure_bash() {
+    local allow_homebrew_install="$2"
+    local brew_bin=""
+    local linux_bash_candidates="${BASE_BOOTSTRAP_BASH_CANDIDATES:-/usr/bin/bash:/bin/bash}"
+    local platform="$1"
+    local yes="$3"
+
+    case "$platform" in
+        macos)
+            if bootstrap_find_supported_bash >/dev/null 2>&1; then
+                bootstrap_log "Bash 4.2+ is available for Base."
+                return 0
+            fi
+            bootstrap_ensure_homebrew "$allow_homebrew_install" brew_bin || return $?
+            bootstrap_ensure_supported_bash "$brew_bin"
+            ;;
+        linux-debian)
+            if bootstrap_find_supported_bash "$linux_bash_candidates" >/dev/null 2>&1; then
+                bootstrap_log "Bash 4.2+ is available for Base."
+                return 0
+            fi
+            bootstrap_ensure_linux_debian_bash "$yes"
+            ;;
+        *)
+            bootstrap_die "bootstrap.sh --ensure-bash currently supports macOS and Ubuntu/Debian Linux only."
+            ;;
+    esac
 }
 
 bootstrap_source_checkout_present() {
@@ -651,11 +741,13 @@ bootstrap_main() {
     local allow_homebrew_install="${BASE_BOOTSTRAP_HOMEBREW_INSTALL:-true}"
     local branch="${BASE_BOOTSTRAP_BRANCH:-}"
     local brew_bin=""
+    local ensure_bash_only=false
     local formula="${BASE_BOOTSTRAP_BREW_FORMULA:-basefoundry/base/base}"
     local install_dir="${BASE_BOOTSTRAP_INSTALL_DIR:-${BASE_HOME:-$HOME/work/base}}"
     local mode="${BASE_BOOTSTRAP_MODE:-}"
     local platform
     local repo_url="${BASE_BOOTSTRAP_REPO_URL:-https://github.com/basefoundry/base.git}"
+    local yes=false
 
     BASE_BOOTSTRAP_DRY_RUN="${BASE_BOOTSTRAP_DRY_RUN:-false}"
 
@@ -671,6 +763,10 @@ bootstrap_main() {
                 ;;
             --brew)
                 mode=brew
+                shift
+                ;;
+            --ensure-bash)
+                ensure_bash_only=true
                 shift
                 ;;
             --install-dir|--dir)
@@ -696,6 +792,10 @@ bootstrap_main() {
                 BASE_BOOTSTRAP_DRY_RUN=true
                 shift
                 ;;
+            --yes)
+                yes=true
+                shift
+                ;;
             *)
                 bootstrap_usage >&2
                 bootstrap_die "Unknown option '$1'."
@@ -703,11 +803,16 @@ bootstrap_main() {
         esac
     done
 
-    bootstrap_validate_mode "$mode" || return $?
     install_dir="$(bootstrap_expand_path "$install_dir")" || return $?
 
     bootstrap_log "Base bootstrap"
     platform="$(bootstrap_current_platform)" || return $?
+    if [[ "$ensure_bash_only" == "true" ]]; then
+        bootstrap_run_ensure_bash "$platform" "$allow_homebrew_install" "$yes"
+        return $?
+    fi
+
+    bootstrap_validate_mode "$mode" || return $?
     case "$platform" in
         macos)
             ;;

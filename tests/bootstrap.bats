@@ -83,12 +83,24 @@ EOF
     chmod +x "$TEST_MOCKBIN/brew"
 }
 
+create_sudo_stub() {
+    cat > "$TEST_MOCKBIN/sudo" <<'EOF'
+#!/bin/sh
+printf 'sudo %s\n' "$*" >> "${BASE_BOOTSTRAP_TEST_COMMAND_LOG:?}"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/sudo"
+}
+
 create_supported_bash_candidate() {
     local bash_path="$1"
 
     mkdir -p "$(dirname "$bash_path")"
     cat > "$bash_path" <<'EOF'
 #!/bin/sh
+if [ "${1:-}" = "-c" ]; then
+    printf '42\n'
+fi
 exit 0
 EOF
     chmod +x "$bash_path"
@@ -119,6 +131,8 @@ sha256_file() {
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"--source"* ]]
     [[ "$output" == *"--brew"* ]]
+    [[ "$output" == *"--ensure-bash"* ]]
+    [[ "$output" == *"--yes"* ]]
 }
 
 @test "bootstrap avoids shell strict mode" {
@@ -178,6 +192,43 @@ sha256_file() {
     [[ "$output" == *"$install_dir/bin/basectl setup"* ]]
     [[ "$output" == *"$install_dir/bin/basectl update-profile"* ]]
     [[ "$output" == *"exec \"\$SHELL\" -l"* ]]
+}
+
+@test "bootstrap ensure-bash no-ops when current Bash is supported" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=42 \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Base bootstrap"* ]]
+    [[ "$output" == *"Bash 4.2+ is available for Base."* ]]
+    [[ "$output" != *"Install mode:"* ]]
+    [[ "$output" != *"git clone"* ]]
+    [[ "$output" != *"basectl setup"* ]]
+}
+
+@test "bootstrap ensure-bash macOS dry-run installs Homebrew Bash only" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installing Homebrew."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: /bin/bash -c <Homebrew installer from https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh>"* ]]
+    [[ "$output" == *"Installing Bash 4.2+ through Homebrew."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: brew install bash"* ]]
+    [[ "$output" != *"Installing Git through Homebrew."* ]]
+    [[ "$output" != *"Install mode:"* ]]
+    [[ "$output" != *"git clone"* ]]
+    [[ "$output" != *"basectl setup"* ]]
 }
 
 @test "bootstrap dry-run reports pinned Homebrew installer verification" {
@@ -381,6 +432,62 @@ sha256_file() {
     [[ "$output" != *"Xcode"* ]]
 }
 
+@test "bootstrap ensure-bash linux-debian dry-run prints Bash apt commands only" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=linux-debian \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Bash 4.2+ is not available for Base."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get update"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run: sudo apt-get install -y bash"* ]]
+    [[ "$output" != *"git python3"* ]]
+    [[ "$output" != *"git clone"* ]]
+    [[ "$output" != *"basectl setup"* ]]
+}
+
+@test "bootstrap ensure-bash linux-debian requires yes before apt mutation" {
+    create_sudo_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=linux-debian \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_BOOTSTRAP_TEST_COMMAND_LOG="$TEST_COMMAND_LOG" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Installing Bash on Ubuntu/Debian requires --yes."* ]]
+    [ ! -e "$TEST_COMMAND_LOG" ]
+}
+
+@test "bootstrap ensure-bash linux-debian yes runs Bash apt commands" {
+    create_sudo_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=linux-debian \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_BOOTSTRAP_TEST_COMMAND_LOG="$TEST_COMMAND_LOG" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --yes
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installing Bash 4.2+ through apt."* ]]
+    [[ "$output" == *"Bash install command completed; start a new shell or rerun bootstrap if the current shell is still too old."* ]]
+    grep -Fqx "sudo apt-get update" "$TEST_COMMAND_LOG"
+    grep -Fqx "sudo apt-get install -y bash" "$TEST_COMMAND_LOG"
+    [[ "$output" != *"git clone"* ]]
+    [[ "$output" != *"basectl setup"* ]]
+}
+
 @test "bootstrap linux-debian rejects Homebrew mode" {
     run env \
         HOME="$TEST_HOME" \
@@ -432,4 +539,15 @@ sha256_file() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"bootstrap.sh currently supports macOS and Ubuntu/Debian Linux only"* ]]
+}
+
+@test "bootstrap ensure-bash rejects unsupported platforms" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_PLATFORM=unsupported \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"bootstrap.sh --ensure-bash currently supports macOS and Ubuntu/Debian Linux only."* ]]
 }

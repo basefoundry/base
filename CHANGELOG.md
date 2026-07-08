@@ -7,6 +7,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `bootstrap.sh --ensure-bash` to verify or install only the Bash 4.2+
+  prerequisite on macOS and Ubuntu/Debian before the full Base setup path is
+  available.
+
 ### Changed
 
 - Clarified `basectl ci` help and docs so CI-safe setup/readiness/diagnostics

@@ -179,6 +179,14 @@ source checkout at `~/work/base`, and prints the exact `basectl setup` and
 `basectl update-profile` commands to finish the installation. It does not edit
 shell startup files automatically.
 
+If Base is already installed but `basectl` cannot start because Bash is too
+old, repair only that prerequisite:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --dry-run
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --yes
+```
+
 Choose an install mode explicitly when needed:
 
 ```bash
@@ -1174,6 +1182,9 @@ On Ubuntu/Debian Linux, `bootstrap.sh` does not run `sudo apt` automatically.
 It prints the manual source-checkout path, including the supported apt
 prerequisites, a sibling `base-bash-libs` checkout, `basectl setup --dry-run`,
 `basectl setup --yes`, and `basectl update-profile`.
+
+The focused `bootstrap.sh --ensure-bash --yes` path is intentionally narrower:
+it installs only Bash after a dry-run review.
 
 Base can be installed through its Homebrew tap:
 

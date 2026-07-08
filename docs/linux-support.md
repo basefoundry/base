@@ -151,6 +151,24 @@ want to paste the reviewed command sequence into an unattended shell; an
 interactive user can run `basectl setup` after reviewing `--dry-run` and confirm
 the Ubuntu/Debian system-change prompt.
 
+The focused Bash prerequisite repair path is the one exception. When Base is
+already present but the current shell is too old for `basectl`, review and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --dry-run
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/HEAD/bootstrap.sh | bash -s -- --ensure-bash --yes
+```
+
+On Ubuntu/Debian, `--ensure-bash` previews and then runs only:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y bash
+```
+
+It does not clone Base, install Python, create virtual environments, install
+developer tools, or run project setup.
+
 Ubuntu/Debian setup can install the simple apt prerequisites that Base knows
 how to own. The mutation path is intentionally explicit: `basectl setup
 --dry-run` prints the apt commands, interactive `basectl setup` prompts before
