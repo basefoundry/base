@@ -6,8 +6,9 @@ architecture discussion.
 ## Product And Scope
 
 - Base is a Mac-first workspace control plane.
-- Linux runtime and CI support are actively being rolled out, with
-  `basectl ci` and Ubuntu GitHub Actions coverage as the current proof points.
+- Linux runtime and CI support are actively being rolled out, with `--ci` mode
+  on setup/check/doctor and Ubuntu GitHub Actions coverage as the current proof
+  points.
   Full Linux setup/bootstrap remains a narrower planned contract; keep platform
   details in `docs/linux-support.md`.
 - Windows support is not currently in scope.

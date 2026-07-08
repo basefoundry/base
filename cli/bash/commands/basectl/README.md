@@ -35,7 +35,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `activate`
 - `setup`
 - `check`
-- `ci setup/check/doctor`
+- `ci setup/check/doctor` (compatibility alias for `setup/check/doctor --ci`)
 - `clean`
 - `config`
 - `doctor`
@@ -71,9 +71,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   project argument validates `project.name`.
 - `basectl check [project]` verifies the same local requirements without making
   changes and can include project manifest artifacts.
-- `basectl ci setup/check/doctor <project>` runs Base setup, readiness checks,
-  and diagnostics with CI-safe defaults and text or JSON output. It does not
-  run project tests or launch CI runners/VMs.
+- `basectl setup/check/doctor --ci <project>` runs Base setup, readiness
+  checks, and diagnostics with CI-safe defaults and text or JSON output.
+  `basectl ci setup/check/doctor <project>` remains a compatibility alias.
+  Neither surface runs project tests or launches CI runners/VMs.
 - `basectl setup/check/doctor --profile <list>` manage opt-in prerequisite
   profiles. `sre` is the first additional built-in profile, and profiles compose
   as comma-separated lists such as `--profile dev,sre`.

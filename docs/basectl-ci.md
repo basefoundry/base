@@ -1,9 +1,9 @@
-# basectl ci
+# CI-Safe Mode
 
-`basectl ci` is the CI-safe entry point for Base setup, readiness checks, and
-diagnostics. It reuses the same setup, check, doctor, and project manifest
-logic as local development, while avoiding user-facing prompts and macOS-specific
-UI behaviors.
+`--ci` is the CI-safe mode for Base setup, readiness checks, and diagnostics.
+It reuses the same setup, check, doctor, and project manifest logic as local
+development, while avoiding user-facing prompts and macOS-specific UI
+behaviors.
 
 It is not a CI runner. It does not run project tests, launch GitHub Actions
 locally, or create Ubuntu or Multipass virtual machines. CI systems compose it
@@ -19,21 +19,25 @@ with their own runners and test commands.
 ## Interface
 
 ```bash
-basectl ci setup <project> [--format text|json]
-basectl ci check <project> [--format text|json]
-basectl ci doctor <project> [--format text|json]
+basectl setup --ci <project> [--format text|json]
+basectl check --ci <project> [--format text|json]
+basectl doctor --ci <project> [--format text|json]
 ```
 
 All commands also accept `--manifest <path>` for CI jobs that know the manifest
 path directly, plus `--profile <list>` for opt-in prerequisite profiles.
-`basectl ci setup` additionally accepts `--recreate-venv`.
+`basectl setup --ci` additionally accepts `--recreate-venv`.
 
 The default mode is non-interactive. If a required action cannot be performed
-without prompting, `basectl ci` fails with a clear fix message.
+without prompting, the command fails with a clear fix message.
+
+`basectl ci setup|check|doctor` remains a backward-compatible alias for the
+same behavior, but new docs and automation should prefer the `--ci` flag on the
+underlying command.
 
 ## Behavior
 
-`basectl ci setup <project>` should:
+`basectl setup --ci <project>` should:
 
 - set CI-oriented defaults such as `BASE_CI=true`
 - skip shell profile updates
@@ -42,7 +46,7 @@ without prompting, `basectl ci` fails with a clear fix message.
 - run project artifact setup through the same manifest path as `basectl setup`
 - emit a small JSON wrapper when `--format json` is requested
 
-For `basectl ci setup <project> --format json`, stdout is reserved for the JSON
+For `basectl setup --ci <project> --format json`, stdout is reserved for the JSON
 wrapper. The `output` field contains a compact final status line. On failures,
 `output_lines` also includes compacted non-empty setup output lines so CI logs
 retain intermediate context without embedding timestamped Base log prefixes in
@@ -53,13 +57,13 @@ to select non-interactive, CI-safe behavior, including the runtime-only Linux
 path that can allow system Python when Homebrew bootstrap is not available.
 `CI=true` is also set for compatibility with common CI-aware tools.
 
-`basectl ci check <project>` should:
+`basectl check --ci <project>` should:
 
 - run read-only Base and project checks
 - emit JSON output when `--format json` is supplied
 - exit non-zero only for errors, not warnings
 
-`basectl ci doctor <project>` should:
+`basectl doctor --ci <project>` should:
 
 - produce actionable diagnostics with fix commands
 - support `--format json`
@@ -67,7 +71,7 @@ path that can allow system Python when Homebrew bootstrap is not available.
 
 ## Relationship To Tests
 
-`basectl ci check <project>` verifies readiness for a CI environment. It does
+`basectl check --ci <project>` verifies readiness for a CI environment. It does
 not execute the project's declared test command. Use `basectl test <project>` to
 run the manifest-declared test command, or `bin/base-test` in the Base
 repository when the job needs the full source-checkout validation suite.
@@ -99,8 +103,8 @@ manual Ubuntu lab work on macOS. It does not create or mutate VM instances.
 
 ## Acceptance Criteria
 
-- `basectl ci check <project> --format json` is deterministic and parseable.
-- `basectl ci doctor <project> --format json` reports ok, warn, and error
+- `basectl check --ci <project> --format json` is deterministic and parseable.
+- `basectl doctor --ci <project> --format json` reports ok, warn, and error
   findings.
 - The command works in GitHub Actions on Ubuntu when Python and project
   prerequisites are already installed.
@@ -117,13 +121,13 @@ manual Ubuntu lab work on macOS. It does not create or mutate VM instances.
     "$HOME/.base.d/base/.venv/bin/python" -m pip install PyYAML click
 
 - name: Check Base project
-  run: ./bin/basectl ci check base --format json
+  run: ./bin/basectl check --ci base --format json
 
 - name: Run Base source-checkout tests
   run: env -u BASE_HOME ./bin/base-test
 ```
 
-This example is a minimal starter for source-checkout CI. The `ci check` step
+This example is a minimal starter for source-checkout CI. The `check --ci` step
 validates Base readiness; the separate `bin/base-test` step runs the repository's
 full validation suite. Workflows that install Python packages or third-party
 Actions should also follow the

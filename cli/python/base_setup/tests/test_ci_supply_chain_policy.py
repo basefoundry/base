@@ -135,7 +135,7 @@ def test_ci_includes_ubuntu_source_checkout_base_test_job() -> None:
     assert "-r requirements-dev.txt" in venv_command
 
     validation_command = steps["Run Ubuntu source-checkout validation"].get("run", "")
-    assert "./bin/basectl ci check base --format json" in validation_command
+    assert "./bin/basectl check --ci base --format json" in validation_command
     assert "env -u BASE_HOME ./bin/base-test" in validation_command
 
 

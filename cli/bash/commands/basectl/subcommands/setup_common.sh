@@ -249,6 +249,14 @@ setup_disable_notifications() {
     export BASE_SETUP_NOTIFY=false
 }
 
+setup_enable_ci_mode() {
+    export BASE_CI=true
+    export CI=true
+    export BASE_SETUP_NOTIFY=false
+    export BASE_SETUP_ALLOW_SYSTEM_PYTHON=true
+    export BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=false
+}
+
 setup_notify_min_seconds() {
     printf '%s\n' "${BASE_SETUP_NOTIFY_MIN_SECONDS:-30}"
 }
@@ -505,7 +513,7 @@ setup_recovery_base_bash_libraries() {
 }
 
 setup_recovery_ci_python() {
-    printf "%s\n" "Install Python 3.13 or set BASE_SETUP_PYTHON_BIN, then rerun 'basectl ci'."
+    printf "%s\n" "Install Python 3.13 or set BASE_SETUP_PYTHON_BIN, then rerun with '--ci'."
 }
 
 setup_recovery_linux_python() {

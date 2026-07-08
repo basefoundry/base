@@ -42,7 +42,7 @@ def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
 def test_linux_support_docs_include_final_acceptance_commands() -> None:
     text = linux_support_text()
 
-    assert "./bin/basectl ci check base --format text" in text
+    assert "./bin/basectl check --ci base --format text" in text
     assert "./bin/basectl check base --format text" in text
     assert "./bin/basectl doctor base --format text" in text
     assert "env -u BASE_HOME ./bin/base-test" in text

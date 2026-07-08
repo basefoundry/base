@@ -255,7 +255,7 @@ EOF
     [[ "$output" == *"run_projects=base demo"* ]]
     [[ "$output" == *"export_context_projects=base demo"* ]]
     [[ "$output" == *"update_projects=base demo"* ]]
-    [[ "$output" == *"check_options=--profile --format --manifest --remote-network"* ]]
+    [[ "$output" == *"check_options=--ci --profile --format --manifest --remote-network"* ]]
     [[ "$output" == *"update_options=--dry-run"* ]]
     [[ "$output" == *"check_profiles=dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab"* ]]
     [[ "$output" == *"test_options=--workspace --dry-run"* ]]

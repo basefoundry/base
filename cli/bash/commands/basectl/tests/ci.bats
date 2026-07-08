@@ -46,6 +46,8 @@ prepare_ci_runtime() {
     [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
     [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
     [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
+    [[ "$output" == *"Compatibility alias for setup/check/doctor --ci."* ]]
+    [[ "$output" == *"Prefer: basectl <setup|check|doctor> --ci <project> [options]"* ]]
     [[ "$output" == *"BASE_CI=true"* ]]
     [[ "$output" == *"Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs."* ]]
 }
@@ -96,6 +98,23 @@ prepare_ci_runtime() {
     [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
 }
 
+@test "basectl check --ci delegates with CI defaults and JSON output" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check --ci demo --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    assert_base_check_json_status_for_readiness "$output"
+    [[ "$output" == *'"project": "demo"'* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action check --format json demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-base-ci")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
+}
+
 @test "basectl ci setup disables notifications and writes JSON when requested" {
     local workspace="$TEST_TMPDIR/workspace"
 
@@ -114,6 +133,42 @@ prepare_ci_runtime() {
     [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-notify")" = "false" ]
     [ ! -f "$TEST_STATE_DIR/osascript-args" ]
+}
+
+@test "basectl setup --ci disables notifications and writes JSON when requested" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+    create_osascript_stub
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" setup --ci demo --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"command": "setup"'* ]]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"status": "ok"'* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-base-ci")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-notify")" = "false" ]
+    [ ! -f "$TEST_STATE_DIR/osascript-args" ]
+}
+
+@test "basectl doctor --ci delegates with CI defaults and JSON output" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" doctor --ci demo --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"schema_version": 1'* ]]
+    [[ "$output" == *'"project": "demo"'* ]]
+    [[ "$output" == *'"project_findings":'* ]]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$workspace/demo/base_manifest.yaml" --action doctor --format json demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-base-ci")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-ci")" = "true" ]
 }
 
 @test "basectl ci setup json output summarizes stderr without embedding log stream" {

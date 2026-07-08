@@ -227,19 +227,20 @@ Read more: [Base-managed demo project](../base-managed-demo-project.md)
 
 ## CI Posture
 
-`basectl ci` is the CI-safe setup, readiness, and diagnostics entry point.
+`--ci` is the CI-safe setup, readiness, and diagnostics mode.
 
 ```bash
-basectl ci setup <project> --format json
-basectl ci check <project> --format json
-basectl ci doctor <project> --format json
+basectl setup --ci <project> --format json
+basectl check --ci <project> --format json
+basectl doctor --ci <project> --format json
 ```
 
 It sets CI-safe defaults, avoids prompts, and reuses the same manifest and
 diagnostic paths as local development. It does not run project tests, launch
-GitHub Actions locally, or create Ubuntu/Multipass VMs.
+GitHub Actions locally, or create Ubuntu/Multipass VMs. `basectl ci` remains a
+compatibility alias for older automation.
 
-Read more: [`basectl ci`](../basectl-ci.md)
+Read more: [CI-safe mode](../basectl-ci.md)
 
 ---
 

@@ -881,6 +881,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         printf '{"schema_version":1,"status":"ok","project":"demo","checks":[{"id":"BASE-P040","status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]}\n'
     elif [[ "$action" == "check" ]]; then
         printf 'Project artifact check passed.\n' >&2
+    elif [[ "$action" == "doctor" && "$output_format" == "json" ]]; then
+        printf '[{"id":"BASE-P040","status":"ok","name":"demo-artifact","message":"Project artifact check passed.","fix":""}]\n'
     elif [[ "$action" == "doctor" ]]; then
         printf 'ok     demo-artifact               Project artifact check passed.\n'
     fi
