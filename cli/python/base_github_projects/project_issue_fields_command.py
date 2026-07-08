@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
 import base_cli
 
+from .project_model import ProjectArguments
+from .project_operations import ProjectOperations
 
-def issue_set_fields_command(args: Any, ops: Any) -> int:
+
+def issue_set_fields_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     owner = ops.require_owner(args)
     repo = ops.require_repo(args)
     owner_info = ops.find_owner_and_project(owner, args.project_title or "")
