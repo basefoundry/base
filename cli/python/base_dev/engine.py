@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import json
-import sys
 from pathlib import Path
 
 import base_cli
 from base_setup.artifacts import reconcile_artifact
 from base_setup.artifacts import resolve_artifact_definitions  # pylint: disable=unused-import
-from base_setup.checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest  # pylint: disable=unused-import
 from base_setup.manifest_loader import ManifestError
@@ -23,11 +20,8 @@ from base_setup.registry import ArtifactDefinition
 
 from .ai_tools import ai_tool_checks, setup_ai_tools
 from .checks import DevCheck
-from .checks import check_to_doctor_json
-from .checks import check_to_json
-from .checks import checks_status
-from .checks import doctor_status
-from .checks import print_doctor_finding
+from .checks import check_to_doctor_json  # pylint: disable=unused-import
+from .checks import doctor_status  # pylint: disable=unused-import
 from .linux_lab import linux_lab_checks
 from .linux_lab import setup_linux_lab
 from .linux_profile import check_linux_debian_apt_artifact
@@ -50,6 +44,8 @@ from .profiles import profile_manifest_path
 from .profiles import read_dev_manifest  # pylint: disable=unused-import
 from .profiles import read_profile_manifest  # pylint: disable=unused-import
 from .profiles import read_profile_manifests
+from .profile_output import print_check_results
+from .profile_output import print_doctor_results
 
 
 app = base_cli.App(name="base_dev")
@@ -223,39 +219,6 @@ def check_dev_artifacts(
     return print_check_results(ctx, checks, output_format=output_format, profiles=("dev",))
 
 
-def print_check_results(
-    ctx: base_cli.Context,
-    checks: tuple[DevCheck, ...],
-    output_format: str,
-    profiles: tuple[str, ...],
-) -> int:
-    if output_format == "json":
-        print(
-            json.dumps(
-                {
-                    "schema_version": DIAGNOSTIC_JSON_SCHEMA_VERSION,
-                    "status": checks_status(checks),
-                    "profiles": list(profiles),
-                    "checks": [check_to_json(check) for check in checks],
-                },
-                indent=2,
-            )
-        )
-    elif output_format == "text":
-        for check in checks:
-            if check.ok:
-                ctx.log.info(check.message)
-            else:
-                ctx.log.warning(check.message)
-    else:
-        ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
-
-    if all(doctor_status(check) != "error" for check in checks):
-        return base_cli.ExitCode.SUCCESS
-    return base_cli.ExitCode.FAILURE
-
-
 def doctor_profile_manifests(
     profile_manifests: tuple[ProfileManifest, ...],
     output_format: str,
@@ -288,25 +251,6 @@ def doctor_dev_artifacts(
 ) -> int:
     checks = dev_checks(artifacts, definitions, profile="dev")
     return print_doctor_results(checks, output_format=output_format)
-
-
-def print_doctor_results(checks: tuple[DevCheck, ...], output_format: str) -> int:
-    if output_format == "json":
-        print(json.dumps([check_to_doctor_json(check) for check in checks], indent=2))
-        return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
-    if output_format != "text":
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
-        return base_cli.ExitCode.USAGE_ERROR
-
-    error_count = 0
-    for check in checks:
-        status = doctor_status(check)
-        if status == "error":
-            print_doctor_finding("error", check.finding_id, check.name, check.message, check.fix)
-            error_count += 1
-        else:
-            print_doctor_finding(status, check.finding_id, check.name, check.message, check.fix)
-    return min(error_count, 125)
 
 
 def collect_profile_checks(
