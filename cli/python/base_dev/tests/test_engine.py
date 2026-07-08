@@ -18,6 +18,7 @@ from unittest import mock
 
 from base_dev import ai_tools
 from base_dev import engine
+from base_dev import profile_output
 from base_dev.engine import main
 from base_setup.prerequisites import PrerequisiteCheck
 
@@ -1043,6 +1044,14 @@ class DevManifestTests(unittest.TestCase):
         source = Path(engine.__file__).read_text(encoding="utf-8")
 
         self.assertNotIn("status != 0", source)
+
+    def test_profile_output_rendering_lives_outside_engine(self) -> None:
+        source = Path(engine.__file__).read_text(encoding="utf-8")
+
+        self.assertIs(engine.print_check_results, profile_output.print_check_results)
+        self.assertIs(engine.print_doctor_results, profile_output.print_doctor_results)
+        self.assertNotIn("def print_check_results", source)
+        self.assertNotIn("def print_doctor_results", source)
 
 
 if __name__ == "__main__":
