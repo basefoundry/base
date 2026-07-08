@@ -12,9 +12,9 @@ from .delegates import reconcile_mise
 from .ide import effective_ide_config
 from .ide import ide_preference_warning_checks
 from .ide import log_ide_preference_warnings
-from .ide import reconcile_ide_extensions
-from .ide import reconcile_ide_installs
-from .ide import reconcile_ide_settings
+from .ide_extensions import reconcile_ide_extensions
+from .ide_installs import reconcile_ide_installs
+from .ide_settings import reconcile_ide_settings
 from .manifest import BaseManifest
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project

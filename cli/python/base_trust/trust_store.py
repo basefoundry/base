@@ -9,7 +9,8 @@ from typing import Any
 
 from base_cli.history import format_timestamp, utc_now
 from base_cli.paths import base_state_root
-from base_setup import git_remote
+from base_setup.git_commands import run_git
+from base_setup.git_remote_parse import parse_origin_remote
 from base_setup.manifest import read_manifest
 
 SCHEMA_VERSION = 1
@@ -193,7 +194,7 @@ def identity_key_from_record(record: dict[str, Any]) -> str | None:
 
 
 def git_repository_root(project_root: Path) -> Path | None:
-    result = git_remote.run_git(project_root, ["rev-parse", "--show-toplevel"])
+    result = run_git(project_root, ["rev-parse", "--show-toplevel"])
     if result.returncode != 0:
         return None
     value = result.stdout.strip()
@@ -201,18 +202,18 @@ def git_repository_root(project_root: Path) -> Path | None:
 
 
 def git_origin(project_root: Path) -> str | None:
-    result = git_remote.run_git(project_root, ["remote", "get-url", "origin"])
+    result = run_git(project_root, ["remote", "get-url", "origin"])
     if result.returncode != 0:
         return None
     remote_url = result.stdout.strip()
     if not remote_url:
         return None
-    remote_info = git_remote.parse_origin_remote(remote_url, project_root)
+    remote_info = parse_origin_remote(remote_url, project_root)
     return remote_info.sanitized_url if remote_info.valid and remote_info.sanitized_url else None
 
 
 def git_head(project_root: Path) -> str | None:
-    result = git_remote.run_git(project_root, ["rev-parse", "HEAD"])
+    result = run_git(project_root, ["rev-parse", "HEAD"])
     if result.returncode != 0:
         return None
     value = result.stdout.strip()
@@ -232,4 +233,3 @@ def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
             temp_path.unlink()
         except FileNotFoundError:
             pass
-

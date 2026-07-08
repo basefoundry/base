@@ -6,22 +6,48 @@ from pathlib import Path
 
 from . import process
 from .checks import ArtifactCheck
+from .git_commands import run_git
 from .git_remote_parse import GITHUB_HOST
-from .git_remote_parse import SCP_REMOTE_RE  # pylint: disable=unused-import
+from .git_remote_parse import SCP_REMOTE_RE
 from .git_remote_parse import RemoteInfo
-from .git_remote_parse import github_repository  # pylint: disable=unused-import
-from .git_remote_parse import malformed_remote  # pylint: disable=unused-import
+from .git_remote_parse import github_repository
+from .git_remote_parse import malformed_remote
 from .git_remote_parse import origin_remote_message
-from .git_remote_parse import parse_local_remote  # pylint: disable=unused-import
+from .git_remote_parse import parse_local_remote
 from .git_remote_parse import parse_origin_remote
-from .git_remote_parse import parse_scp_remote  # pylint: disable=unused-import
-from .git_remote_parse import parse_url_remote  # pylint: disable=unused-import
+from .git_remote_parse import parse_scp_remote
+from .git_remote_parse import parse_url_remote
 from .git_remote_parse import remote_details
 from .manifest import BaseManifest
 
 
 GITHUB_CLI_LINUX_INSTALL_URL = "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
 REMOTE_REACHABILITY_TIMEOUT_SECONDS = 5
+
+# Compatibility exports for callers that imported remote parsing helpers from
+# this diagnostics module before git_remote_parse existed.
+__all__ = (
+    "GITHUB_CLI_LINUX_INSTALL_URL",
+    "GITHUB_HOST",
+    "REMOTE_REACHABILITY_TIMEOUT_SECONDS",
+    "RemoteInfo",
+    "SCP_REMOTE_RE",
+    "check_git_remote",
+    "check_git_repository",
+    "check_github_cli_auth",
+    "check_origin_reachability",
+    "check_origin_remote",
+    "github_repository",
+    "malformed_remote",
+    "origin_remote_message",
+    "parse_local_remote",
+    "parse_origin_remote",
+    "parse_scp_remote",
+    "parse_url_remote",
+    "reachability_failure_category",
+    "remote_details",
+    "run_git",
+)
 
 
 def check_git_remote(manifest: BaseManifest, check_network: bool = False) -> tuple[ArtifactCheck, ...]:
@@ -281,18 +307,3 @@ def reachability_failure_category(stderr: str | None) -> str:
     if "auth" in message or "permission denied" in message:
         return "authentication"
     return "unreachable"
-
-
-def run_git(
-    project_root: Path,
-    arguments: list[str],
-    timeout_seconds: int | None = None,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(project_root), *arguments],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=False,
-        timeout=timeout_seconds,
-    )
