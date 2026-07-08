@@ -316,6 +316,7 @@ Current implemented commands include:
 - `basectl build <project> [target...]`
 - `basectl run <project> <command>`
 - `basectl export-context [project]`
+- `basectl devcontainer [project]`
 - `basectl docs`
 - `basectl onboard`
 - `basectl version`
@@ -839,6 +840,19 @@ Base-managed project. Markdown exports combine context Markdown files with
 stable source headings, using `.ai-context/INDEX.md` order when available and
 falling back to deterministic filename order for unlisted files. Zip exports
 contain only files from `.ai-context/` so they can be uploaded manually.
+
+Preview a Dev Containers configuration from a project manifest with:
+
+```bash
+basectl devcontainer example
+basectl devcontainer example --format json
+basectl devcontainer example --write
+```
+
+`basectl devcontainer` is dry-run by default and reports unsupported or
+ambiguous manifest fields instead of guessing container behavior. `--write`
+creates `.devcontainer/devcontainer.json` only when that file does not already
+exist.
 
 Open Base's documentation home page on GitHub with:
 

@@ -40,6 +40,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `config`
 - `doctor`
 - `docs`
+- `devcontainer`
 - `export-context`
 - `gh`
 - `onboard`
@@ -159,6 +160,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   directory for manual AI tool upload or copy/paste. Markdown exports include
   stable file headings and use `INDEX.md` ordering when available. Zip exports
   contain only files from `.ai-context`.
+- `basectl devcontainer [project]` previews a generated
+  `.devcontainer/devcontainer.json` from the resolved Base manifest. It is
+  dry-run by default, supports `--format json`, and writes only with `--write`,
+  refusing to replace an existing project-owned Dev Containers file.
 - `basectl docs` opens the Base documentation home page on GitHub. Use
   `--show-url` to print the URL without opening a browser.
 - `basectl prompt list` lists repo-owned Markdown prompts that Base can render
