@@ -238,7 +238,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init clone check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --pr --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --pr --agent-ready --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 clone)
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"

@@ -152,6 +152,7 @@ base_repo_print_agent_guidance_summary() {
     local total=3
     local unchanged=()
     local unchanged_count
+    local unchanged_verb
     local unchanged_word
 
     while (($#)); do
@@ -180,13 +181,17 @@ base_repo_print_agent_guidance_summary() {
     fi
 
     created_word="files"
+    unchanged_verb="were"
     unchanged_word="files"
     [[ "$created_count" == "1" ]] && created_word="file"
-    [[ "$unchanged_count" == "1" ]] && unchanged_word="file"
+    if [[ "$unchanged_count" == "1" ]]; then
+        unchanged_word="file"
+        unchanged_verb="was"
+    fi
 
     if ((created_count > 0 && unchanged_count > 0)); then
-        printf "Agent guidance: %d %s created, %d %s already existed and were left unchanged.\n" \
-            "$created_count" "$created_word" "$unchanged_count" "$unchanged_word"
+        printf "Agent guidance: %d %s created, %d %s already existed and %s left unchanged.\n" \
+            "$created_count" "$created_word" "$unchanged_count" "$unchanged_word" "$unchanged_verb"
     elif ((created_count > 0)); then
         printf "Agent guidance: %d %s created.\n" "$created_count" "$created_word"
     else

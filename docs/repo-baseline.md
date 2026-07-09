@@ -47,7 +47,8 @@ not already exist, and then configures that GitHub repository when
 inferred. New GitHub repositories are private by default; pass `--public` only
 when public visibility is intentional. That keeps the common new-repo path to
 one command. Use `--no-configure` when GitHub setup should be skipped or when
-local-only initialization is desired.
+local-only initialization is desired. Add `--agent-ready` when the baseline
+should also seed `AGENTS.md` and `skills.md` for agent-assisted development.
 
 Without `--path`, `repo init` creates the repository under the configured
 workspace root:
@@ -73,6 +74,8 @@ basectl repo init base-demo \
 or uses the predictable branch `base/repo-baseline-<name>`, writes any missing
 baseline files, commits only the baseline file set, pushes the branch to
 `origin`, and opens a GitHub pull request against the repository default branch.
+When `--agent-ready` is passed, the baseline PR also includes `AGENTS.md` and
+`skills.md`.
 When the generated baseline produces file changes, `repo init --pr` stops after
 opening the pull request. After that pull request is merged, rerun the same
 `repo init --pr` command; when there are no baseline file changes left, it
@@ -89,6 +92,7 @@ basectl repo check ~/work/base-demo
 Seed optional repo-local agent guidance:
 
 ```bash
+basectl repo init base-demo --repo basefoundry/base-demo --agent-ready
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-run
 ```
@@ -244,8 +248,10 @@ apply the shared Project fields and issue defaults.
 
 ## Optional Agent Guidance
 
-`repo agent-guidance` creates repo-local guidance files for agent-assisted
-development when they do not already exist:
+`repo init --agent-ready` includes the agent instructions and skills index in a
+new baseline. For existing repositories, `repo agent-guidance` creates
+repo-local guidance files for agent-assisted development when they do not
+already exist:
 
 - `AGENTS.md`
 - `skills.md`

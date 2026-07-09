@@ -30,6 +30,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added a bounded `copilot-setup-steps` workflow and documentation for optional
   GitHub Copilot cloud-agent setup without changing normal local development or
   CI behavior.
+- Added `basectl repo init --agent-ready` to seed `AGENTS.md` and `skills.md`
+  alongside the standard repo baseline.
 
 ### Changed
 

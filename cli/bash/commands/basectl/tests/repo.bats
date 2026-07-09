@@ -178,6 +178,7 @@ run_repo_command_with_mocks() {
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo init <name> [options]"* ]]
     [[ "$output" == *"--path <path>"* ]]
+    [[ "$output" == *"--agent-ready"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"Create a new public GitHub repo and configure it."* ]]
@@ -1162,6 +1163,35 @@ EOF
     [[ "$output" == *"Repository baseline is present."* ]]
 }
 
+@test "basectl repo init --agent-ready creates baseline and agent guidance" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --agent-ready --no-configure
+
+    [ "$status" -eq 0 ]
+    [ -f "$repo_dir/README.md" ]
+    [ -f "$repo_dir/.github/pull_request_template.md" ]
+    [ -f "$repo_dir/AGENTS.md" ]
+    [ -f "$repo_dir/skills.md" ]
+    grep -Fq "Agent Instructions for base-demo" "$repo_dir/AGENTS.md"
+    grep -Fq "Project Skills for base-demo" "$repo_dir/skills.md"
+    [[ "$output" == *"Agent guidance: 2 files created, 1 file already existed and was left unchanged."* ]]
+    [[ "$output" == *"Created:   AGENTS.md, skills.md"* ]]
+    [[ "$output" == *"Unchanged: .github/pull_request_template.md"* ]]
+}
+
+@test "basectl repo init --agent-ready dry-run reports agent guidance files" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --agent-ready --no-configure --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/README.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/AGENTS.md'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/skills.md'."* ]]
+    [ ! -e "$repo_dir" ]
+}
+
 @test "basectl repo init explains when GitHub configuration is skipped" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 
@@ -2015,6 +2045,62 @@ EOF
     [[ "$output" == *"Review and merge the pull request."* ]]
     [[ "$output" == *"basectl repo init base-demo --path"* ]]
     [[ "$output" == *"--repo codeforester/base-demo --pr"* ]]
+}
+
+@test "basectl repo init --agent-ready --pr includes agent guidance files" {
+    local commit_files
+    local remote_dir="$TEST_TMPDIR/origin.git"
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    init_git_repo "$repo_dir"
+    printf '# Existing project\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+    git init --bare "$remote_dir" >/dev/null 2>&1
+    git -C "$repo_dir" remote add origin "$remote_dir"
+    git -C "$repo_dir" push -u origin master >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
+    printf 'master\n'
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+body_file=""
+is_pr_create=0
+if [[ "$1" == "pr" && "$2" == "create" ]]; then
+    is_pr_create=1
+fi
+while (($#)); do
+    if [[ "$1" == "--body-file" ]]; then
+        body_file="$2"
+        break
+    fi
+    shift
+done
+[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_REPO_TEST_STATE_DIR:?}/pr-body"
+if [[ "$is_pr_create" == "1" ]]; then
+    printf 'https://github.com/codeforester/base-demo/pull/1\n'
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --agent-ready --pr
+
+    [ "$status" -eq 0 ]
+    commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
+    [[ "$commit_files" == *"AGENTS.md"* ]]
+    [[ "$commit_files" == *"skills.md"* ]]
+    grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
+    grep -Fq -- "--agent-ready" "$TEST_STATE_DIR/pr-body"
+    [[ "$output" == *"--agent-ready"* ]]
 }
 
 @test "basectl repo init --pr configures GitHub when baseline has no changes" {

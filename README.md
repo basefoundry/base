@@ -651,7 +651,9 @@ inferred. Newly created GitHub repositories are private by default; pass
 local baseline but does not commit or push local files. Use `--pr` on an
 existing clean Git worktree to commit baseline changes on a branch, push that
 branch to `origin`, and open a pull request. Use `--no-configure` to skip the
-GitHub step, or rerun it later with `basectl repo configure`.
+GitHub step, or rerun it later with `basectl repo configure`. Add
+`--agent-ready` when a new baseline should also include `AGENTS.md` and
+`skills.md` for repo-local agent workflow guidance.
 
 Clone an existing GitHub repository into the configured workspace with:
 
@@ -680,10 +682,15 @@ basectl repo configure ~/work/example --repo basefoundry/example
 Seed optional repo-local agent guidance with:
 
 ```bash
+basectl repo init example --repo basefoundry/example --agent-ready
 basectl repo agent-guidance ~/work/example --repo-name example
 basectl repo agent-guidance ~/work/example --repo-name example --pr --dry-run
 basectl repo check ~/work/example --agent-guidance
 ```
+
+Use `repo init --agent-ready` for new baselines that should include agent
+guidance from the first pull request. Use `repo agent-guidance` to add or repair
+that optional layer in an existing repository.
 
 Use `--pr` on `repo agent-guidance` or `repo installer-template` when the
 generated helper files should go through review first. The target must be a
