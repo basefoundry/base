@@ -62,8 +62,9 @@ options.
   repositories to the configured workspace root; use `--path .` for the current
   checkout. Plain `repo init` writes local baseline files without committing or
   pushing them; `repo init --agent-ready` also seeds `AGENTS.md` and `skills.md`;
-  `repo init --pr` commits baseline changes on a branch, pushes to `origin`, and
-  opens a PR.
+  `repo check --agent-ready` verifies that baseline-integrated agent guidance
+  contract; `repo init --pr` commits baseline changes on a branch, pushes to
+  `origin`, and opens a PR.
 - `basectl <setup|check|doctor> --ci <project>` - run Base setup/check/doctor
   with CI-safe defaults. It does not run project tests or create CI runners/VMs.
   `setup --ci --format json` uses `output` for the compact final status and

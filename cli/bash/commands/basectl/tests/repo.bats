@@ -404,6 +404,7 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo check [path] [options]"* ]]
     [[ "$output" == *"--agent-guidance"* ]]
+    [[ "$output" == *"--agent-ready"* ]]
     [[ "$output" != *"--repo <owner/name>"* ]]
     [[ "$output" != *"--pr"* ]]
 }
@@ -1373,6 +1374,36 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
     [[ "$output" == *"Agent guidance: all 3 files present."* ]]
+}
+
+@test "basectl repo check --agent-ready reports missing agent-ready files" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --no-configure
+    [ "$status" -eq 0 ]
+
+    run_basectl repo check "$repo_dir" --agent-ready
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Agent readiness: 2 of 3 files missing."* ]]
+    [[ "$output" == *"Missing: AGENTS.md"* ]]
+    [[ "$output" == *"Missing: skills.md"* ]]
+    [[ "$output" == *"Run 'basectl repo init base-demo --path $repo_dir --agent-ready' to create the missing files."* ]]
+    [[ "$output" == *"Existing files are left unchanged."* ]]
+}
+
+@test "basectl repo check --agent-ready passes after agent-ready init" {
+    local repo_dir="$TEST_TMPDIR/base-demo"
+
+    run_basectl repo init base-demo --path "$repo_dir" --agent-ready --no-configure
+    [ "$status" -eq 0 ]
+
+    run_basectl repo check "$repo_dir" --agent-ready
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Agent readiness: all 3 files present."* ]]
 }
 
 @test "basectl repo configure dry-run prints GitHub settings and labels" {

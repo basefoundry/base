@@ -244,7 +244,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
                     ;;
                 check)
-                    _base_basectl_completion_compgen "--agent-guidance -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--agent-guidance --agent-ready -v -h --help" "$cur"
                     ;;
                 configure)
                     _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --dry-run -v -h --help" "$cur"

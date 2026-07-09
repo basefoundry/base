@@ -32,6 +32,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
   CI behavior.
 - Added `basectl repo init --agent-ready` to seed `AGENTS.md` and `skills.md`
   alongside the standard repo baseline.
+- Added `basectl repo check --agent-ready` to verify the agent-ready repo
+  guidance contract without changing default baseline checks.
 
 ### Changed
 
