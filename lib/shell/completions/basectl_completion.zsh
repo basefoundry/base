@@ -321,6 +321,7 @@ _base_basectl_completion() {
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--pr[Commit the generated baseline on a branch and open a pull request]' \
+                        '--agent-ready[Also seed repo-local agent guidance files]' \
                         '--description[Repository description]:description:' \
                         '--copyright-holder[Copyright holder]:name:' \
                         '--private[Create a private GitHub repository when needed]' \

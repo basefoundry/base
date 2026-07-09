@@ -113,7 +113,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   checkout, pass the repository name plus `--path .`; plain `repo init` does not
   commit or push local files. Use `--pr` on an existing clean Git worktree to
   commit baseline changes on a branch, push that branch to `origin`, and open a
-  pull request.
+  pull request. Use `--agent-ready` when the baseline should also include
+  `AGENTS.md` and `skills.md`.
   `basectl repo clone <name-or-owner/name>` clones one existing GitHub
   repository into the configured workspace, supports `--owner <owner>` for
   short names, and treats matching existing checkouts as already satisfied.
@@ -141,9 +142,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   preserves missing item field values where possible. Already-standard Projects
   are left intact.
   `basectl repo agent-guidance [path]` seeds optional repo-local agent guidance
-  files and `basectl repo check [path] --agent-guidance` verifies that optional
-  layer for repos that opt in. Use `--pr` when generated guidance should land
-  through a draft pull request instead of direct file generation.
+  files for existing repos, and `basectl repo check [path] --agent-guidance`
+  verifies that optional layer for repos that opt in. Use `--pr` when generated
+  guidance should land through a draft pull request instead of direct file
+  generation.
   `basectl repo installer-template [path]` prints or writes the maintained
   project installer starter script. Use `--pr` with a path to open the
   generated installer template as a draft pull request.
