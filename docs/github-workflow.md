@@ -94,8 +94,15 @@ Project fields:
 - `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
   `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
 - `Size`: `T`, `S`, `M`, `L`
-- `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
-  `v1.0 Readiness`, `Adoption Polish`
+- `Initiative`: `BanyanLabs Dogfood`, `BanyanLabs Dogfooding`,
+  `Workspace Handling`, `pyproject/uv`, `v1.0 Readiness`, `Adoption Polish`,
+  `Contract Hardening`, `Agentic Coding Platform`
+
+Use `Agentic Coding Platform` for work that makes GitHub-centered agentic
+implementation more repeatable: agent-ready repo baselines, agent-readiness
+checks, issue-readiness gates, Copilot/cloud-agent readiness, and local
+handoff/context artifacts. Keep provider-specific runtime integrations out of
+this initiative unless the issue is about Base's GitHub-owned workflow contract.
 
 Use the smallest accurate `Size` when creating or triaging an issue:
 

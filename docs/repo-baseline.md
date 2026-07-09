@@ -356,8 +356,9 @@ the repo Project:
 - `Area`: `CLI`, `Setup`, `Workspace`, `Manifest`, `Runtime`, `Shell`,
   `Python`, `Docs`, `CI`, `Packaging`, `Security`, `Product`
 - `Size`: `T`, `S`, `M`, `L`
-- `Initiative`: `BanyanLabs Dogfood`, `Workspace Handling`, `pyproject/uv`,
-  `v1.0 Readiness`, `Adoption Polish`, plus values passed with
+- `Initiative`: `BanyanLabs Dogfood`, `BanyanLabs Dogfooding`,
+  `Workspace Handling`, `pyproject/uv`, `v1.0 Readiness`, `Adoption Polish`,
+  `Contract Hardening`, `Agentic Coding Platform`, plus values passed with
   `--initiative-option`
 
 `T` means a tiny, obvious issue with no design decision or cross-module
