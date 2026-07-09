@@ -480,7 +480,7 @@ _base_basectl_completion() {
             case "${words[3]:-}" in
                 issue)
                     _arguments '1:gh area:(issue pr branch worktree project)' \
-                        '2:issue command:(list create start)' \
+                        '2:issue command:(list create start readiness)' \
                         '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                         '--title[Issue title]:title:' \
                         '--body[Issue body]:body:' \
@@ -489,6 +489,7 @@ _base_basectl_completion() {
                         '--no-assignee[Do not assign the issue]' \
                         '--project[GitHub Project title]:title:' \
                         '--project-owner[GitHub Project owner]:owner:' \
+                        '--project-number[GitHub Project number]:number:' \
                         '--size[Project size option]:size:(T S M L)' \
                         '--no-project[Skip Project metadata updates]' \
                         '(-h --help)'{-h,--help}'[Show help text]'

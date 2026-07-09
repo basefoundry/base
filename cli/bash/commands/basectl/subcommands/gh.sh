@@ -14,6 +14,7 @@ base_gh_usage() {
 Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
+  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
@@ -67,10 +68,11 @@ base_gh_issue_usage() {
 Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
+  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
 
 Purpose:
-  List, create, and start GitHub issues using Base's issue-first workflow.
+  List, create, validate, and start GitHub issues using Base's issue-first workflow.
 
 Branch naming:
   <category>/<issue>-<YYYYMMDD>-<slug>
@@ -84,6 +86,11 @@ Issue create project options:
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
   --no-project                  Skip Project metadata updates.
+
+Issue readiness options:
+  --repo <owner/name>           Repository containing the issue. Defaults to the origin remote.
+  --project-owner <login>       Project owner for Project field validation.
+  --project-number <number>     Project number for Project field validation.
 
 Default category: enhancement.
 Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml.
@@ -348,6 +355,223 @@ base_gh_issue_labels() {
     gh issue view "$issue" --json labels --jq '.labels[].name' 2>/dev/null || true
 }
 
+base_gh_issue_readiness_required_sections() {
+    printf '%s\n' \
+        "Goal" \
+        "Background" \
+        "Scope" \
+        "Acceptance Criteria" \
+        "Validation" \
+        "Non-Goals" \
+        "Project Fields" \
+        "Agent Assignment"
+}
+
+base_gh_issue_readiness_required_project_fields() {
+    printf '%s\n' Status Priority Size Area Initiative
+}
+
+base_gh_issue_readiness_has_section() {
+    local section="$1"
+
+    awk -v section="$section" '
+        /^##[[:space:]]+/ {
+            heading = $0
+            sub(/^##[[:space:]]+/, "", heading)
+            sub(/[[:space:]]+$/, "", heading)
+            in_section = (heading == section)
+            next
+        }
+        in_section && $0 !~ /^[[:space:]]*$/ {
+            found = 1
+        }
+        END {
+            exit(found ? 0 : 1)
+        }
+    '
+}
+
+base_gh_lines_to_csv() {
+    local line
+    local values=()
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -n "$line" ]] && values+=("$line")
+    done
+
+    if ((${#values[@]})); then
+        base_gh_join_csv "${values[@]}"
+    else
+        printf 'none\n'
+    fi
+}
+
+base_gh_jq_string_literal() {
+    local value="$1"
+
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '"%s"\n' "$value"
+}
+
+base_gh_issue_readiness_project_row() {
+    local issue="$1" repo="$2" project_owner="$3" project_number="$4"
+    local repo_literal query
+
+    repo_literal="$(base_gh_jq_string_literal "$repo")"
+    query=".items[] | select((.content.number == $issue) and (.content.repository == $repo_literal)) | [.status // \"\", .priority // \"\", .size // \"\", .area // \"\", .initiative // \"\"] | join(\"\u001f\")"
+    base_gh_run project item-list "$project_number" --owner "$project_owner" --format json --limit 1000 --jq "$query"
+}
+
+base_gh_issue_readiness() {
+    local issue="${1:-}"
+    local assignees_output="" assignees_summary=""
+    local body="" labels_output="" labels_summary=""
+    local github_repo=""
+    local issue_ready_state="ready"
+    local project_number="" project_owner=""
+    local project_row="" project_status="" project_priority="" project_size="" project_area="" project_initiative=""
+    local project_validation_requested=0
+    local section field
+    local missing_project_fields=()
+    local missing_sections=()
+
+    [[ -n "$issue" ]] || {
+        base_gh_usage_error base_gh_issue_usage "Missing issue number."
+        return $?
+    }
+    if [[ "$issue" == "help" || "$issue" == "-h" || "$issue" == "--help" ]]; then
+        base_gh_issue_usage
+        return 0
+    fi
+    [[ "$issue" =~ ^[0-9]+$ ]] || {
+        base_gh_usage_error base_gh_issue_usage "Invalid issue number '$issue'."
+        return $?
+    }
+    shift
+
+    while (($#)); do
+        case "$1" in
+            --repo)
+                github_repo="${2:-}"
+                [[ -n "$github_repo" ]] || {
+                    base_gh_usage_error base_gh_issue_usage "Option '--repo' requires an argument."
+                    return $?
+                }
+                shift
+                ;;
+            --project-owner)
+                project_owner="${2:-}"
+                [[ -n "$project_owner" ]] || {
+                    base_gh_usage_error base_gh_issue_usage "Option '--project-owner' requires an argument."
+                    return $?
+                }
+                project_validation_requested=1
+                shift
+                ;;
+            --project-number)
+                project_number="${2:-}"
+                [[ -n "$project_number" ]] || {
+                    base_gh_usage_error base_gh_issue_usage "Option '--project-number' requires an argument."
+                    return $?
+                }
+                [[ "$project_number" =~ ^[0-9]+$ ]] || {
+                    base_gh_usage_error base_gh_issue_usage "Invalid project number '$project_number'."
+                    return $?
+                }
+                project_validation_requested=1
+                shift
+                ;;
+            -h|--help)
+                base_gh_issue_usage
+                return 0
+                ;;
+            *)
+                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                return $?
+                ;;
+        esac
+        shift
+    done
+
+    if ((project_validation_requested)) && { [[ -z "$project_owner" ]] || [[ -z "$project_number" ]]; }; then
+        base_gh_usage_error base_gh_issue_usage "Options '--project-owner' and '--project-number' must be used together."
+        return $?
+    fi
+
+    [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
+    [[ -n "$github_repo" ]] || {
+        base_gh_usage_error base_gh_issue_usage "Unable to infer GitHub repository. Pass --repo <owner/name>."
+        return $?
+    }
+
+    body="$(base_gh_run issue view "$issue" --repo "$github_repo" --json body --jq .body)" || return $?
+    labels_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json labels --jq '.labels[].name')" || return $?
+    assignees_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json assignees --jq '.assignees[].login')" || return $?
+
+    while IFS= read -r section || [[ -n "$section" ]]; do
+        [[ -n "$section" ]] || continue
+        if ! base_gh_issue_readiness_has_section "$section" <<<"$body"; then
+            missing_sections+=("$section")
+        fi
+    done < <(base_gh_issue_readiness_required_sections)
+
+    if ((project_validation_requested)); then
+        project_row="$(base_gh_issue_readiness_project_row "$issue" "$github_repo" "$project_owner" "$project_number")" || return $?
+        if [[ -z "$project_row" ]]; then
+            missing_project_fields=("Project item")
+            while IFS= read -r field || [[ -n "$field" ]]; do
+                [[ -n "$field" ]] && missing_project_fields+=("$field")
+            done < <(base_gh_issue_readiness_required_project_fields)
+        else
+            IFS=$'\037' read -r project_status project_priority project_size project_area project_initiative <<<"$project_row"
+            [[ -n "$project_status" ]] || missing_project_fields+=("Status")
+            [[ -n "$project_priority" ]] || missing_project_fields+=("Priority")
+            [[ -n "$project_size" ]] || missing_project_fields+=("Size")
+            [[ -n "$project_area" ]] || missing_project_fields+=("Area")
+            [[ -n "$project_initiative" ]] || missing_project_fields+=("Initiative")
+        fi
+    fi
+
+    labels_summary="$(base_gh_lines_to_csv <<<"$labels_output")"
+    assignees_summary="$(base_gh_lines_to_csv <<<"$assignees_output")"
+
+    if ((${#missing_sections[@]} || ${#missing_project_fields[@]})); then
+        issue_ready_state="not ready"
+    elif ((!project_validation_requested)); then
+        issue_ready_state="partial"
+    fi
+
+    printf 'Issue #%s readiness: %s\n' "$issue" "$issue_ready_state"
+    printf 'Repository: %s\n' "$github_repo"
+    if ((${#missing_sections[@]})); then
+        printf 'Body sections: missing %s\n' "$(base_gh_join_csv "${missing_sections[@]}")"
+    else
+        printf 'Body sections: ok\n'
+    fi
+    if ((project_validation_requested)); then
+        if ((${#missing_project_fields[@]})); then
+            printf 'Project fields: missing %s\n' "$(base_gh_join_csv "${missing_project_fields[@]}")"
+        else
+            printf 'Project fields: ok\n'
+        fi
+    else
+        printf 'Project fields: skipped\n'
+        printf 'Pass --project-owner and --project-number to validate Project fields.\n'
+    fi
+    printf 'Labels: %s\n' "$labels_summary"
+    printf 'Assignees: %s\n' "$assignees_summary"
+
+    if ((${#missing_sections[@]})); then
+        printf 'Fix hint: add non-empty ## sections for the missing issue context.\n'
+    fi
+    if ((${#missing_project_fields[@]})); then
+        printf 'Fix hint: set missing Project fields before assigning implementation work.\n'
+    fi
+
+    [[ "$issue_ready_state" == "ready" ]]
+}
+
 base_gh_pr_changed_paths() {
     local default_branch base_ref candidate
 
@@ -584,6 +808,9 @@ base_gh_do_issue() {
             ;;
         create)
             base_gh_issue_create "$@"
+            ;;
+        readiness)
+            base_gh_issue_readiness "$@"
             ;;
         start)
             base_gh_issue_start "$@"

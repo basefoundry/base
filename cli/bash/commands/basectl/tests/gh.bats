@@ -13,6 +13,91 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+write_issue_readiness_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" >> "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "issue" && "$2" == "view" ]]; then
+    if [[ "${BASE_GH_TEST_FAIL_ISSUE_VIEW:-0}" == "1" ]]; then
+        printf 'GraphQL: Could not resolve to an Issue\n' >&2
+        exit 1
+    fi
+    if [[ "$*" == *"--json body --jq .body"* ]]; then
+        cat "${BASE_GH_TEST_STATE_DIR:?}/issue-body"
+        exit 0
+    fi
+    if [[ "$*" == *"--json labels --jq .labels[].name"* ]]; then
+        printf 'enhancement\nagent-ready\n'
+        exit 0
+    fi
+    if [[ "$*" == *"--json assignees --jq .assignees[].login"* ]]; then
+        printf 'codeforester\n'
+        exit 0
+    fi
+fi
+if [[ "$1" == "project" && "$2" == "item-list" ]]; then
+    case "${BASE_GH_TEST_PROJECT_MODE:-complete}" in
+        complete)
+            printf 'Ready\037P2\037M\037CLI\037Agentic Coding Platform\n'
+            ;;
+        missing)
+            printf 'Ready\037P2\037\037CLI\037\n'
+            ;;
+        none)
+            ;;
+    esac
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+write_complete_issue_readiness_body() {
+    cat > "$TEST_STATE_DIR/issue-body" <<'EOF'
+## Goal
+Make agent assignment deterministic.
+
+## Background
+Base needs issue context before a coding agent starts.
+
+## Scope
+- Add a read-only readiness check.
+
+## Acceptance Criteria
+- Complete issues report ready.
+
+## Validation
+- Run focused BATS coverage.
+
+## Non-Goals
+- Do not assign issues.
+
+## Project Fields
+- Priority, Status, Size, Area, Initiative are required.
+
+## Agent Assignment
+- Assign to codeforester after readiness passes.
+EOF
+}
+
+write_incomplete_issue_readiness_body() {
+    cat > "$TEST_STATE_DIR/issue-body" <<'EOF'
+## Goal
+Make agent assignment deterministic.
+
+## Background
+Base needs issue context before a coding agent starts.
+
+## Scope
+- Add a read-only readiness check.
+EOF
+}
+
 run_gh_subcommand() {
     local cwd="${BASE_GH_TEST_CWD:-$TEST_HOME}"
 
@@ -118,6 +203,7 @@ run_gh_subcommand() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl gh issue list"* ]]
     [[ "$output" == *"basectl gh issue create"* ]]
+    [[ "$output" == *"basectl gh issue readiness <number>"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"Issue create project options:"* ]]
     [[ "$output" == *"--assignee <login>"* ]]
@@ -128,6 +214,72 @@ run_gh_subcommand() {
     [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
     [[ "$output" != *"basectl gh pr create"* ]]
     [[ "$output" != *"basectl gh worktree prune"* ]]
+}
+
+@test "basectl gh issue readiness reports ready when body and Project metadata are complete" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Issue #123 readiness: ready"* ]]
+    [[ "$output" == *"Repository: basefoundry/base"* ]]
+    [[ "$output" == *"Body sections: ok"* ]]
+    [[ "$output" == *"Project fields: ok"* ]]
+    [[ "$output" == *"Labels: enhancement, agent-ready"* ]]
+    [[ "$output" == *"Assignees: codeforester"* ]]
+}
+
+@test "basectl gh issue readiness reports partial when Project validation is omitted" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    run_gh_subcommand issue readiness 123 --repo basefoundry/base
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Issue #123 readiness: partial"* ]]
+    [[ "$output" == *"Body sections: ok"* ]]
+    [[ "$output" == *"Project fields: skipped"* ]]
+    [[ "$output" == *"Pass --project-owner and --project-number to validate Project fields."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" != *"project item-list"* ]]
+}
+
+@test "basectl gh issue readiness reports missing body sections with fix hints" {
+    write_issue_readiness_gh_mock
+    write_incomplete_issue_readiness_body
+
+    run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Issue #123 readiness: not ready"* ]]
+    [[ "$output" == *"Body sections: missing Acceptance Criteria, Validation, Non-Goals, Project Fields, Agent Assignment"* ]]
+    [[ "$output" == *"Fix hint: add non-empty ## sections for the missing issue context."* ]]
+}
+
+@test "basectl gh issue readiness reports missing Project metadata" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_PROJECT_MODE=missing \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Issue #123 readiness: not ready"* ]]
+    [[ "$output" == *"Project fields: missing Size, Initiative"* ]]
+    [[ "$output" == *"Fix hint: set missing Project fields before assigning implementation work."* ]]
+}
+
+@test "basectl gh issue readiness reports GitHub API failures" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_FAIL_ISSUE_VIEW=1 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"GraphQL: Could not resolve to an Issue"* ]]
+    [[ "$output" == *"GitHub command failed: gh issue view 123 --repo basefoundry/base --json body --jq .body"* ]]
 }
 
 @test "basectl gh pr prints area help" {

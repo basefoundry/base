@@ -84,6 +84,20 @@ current primary maintainer. Today that maintainer is `codeforester`, and
 If assignment fails, the automation should mention that in its summary instead
 of silently leaving the issue unassigned.
 
+Before assigning issue-backed implementation work to an agent, run:
+
+```bash
+basectl gh issue readiness <number> --repo <owner/name> --project-owner <login> --project-number <number>
+```
+
+The readiness check is read-only. It verifies that the issue body has non-empty
+`Goal`, `Background`, `Scope`, `Acceptance Criteria`, `Validation`,
+`Non-Goals`, `Project Fields`, and `Agent Assignment` sections, reports label
+and assignee state, and checks `Status`, `Priority`, `Size`, `Area`, and
+`Initiative` when Project coordinates are provided. Omitting Project coordinates
+reports a partial result so maintainers do not mistake body-only validation for
+full assignment readiness.
+
 ## Issue Project Metadata
 
 When an issue is tracked in the repo-named Project, use the standard Base

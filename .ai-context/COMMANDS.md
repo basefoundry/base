@@ -81,6 +81,10 @@ options.
     repo-local default. Pass `--no-assignee` to ignore that default for one
     issue. Pass `--size <T|S|M|L>` when the issue scope is clear; otherwise
     Project metadata defaults to `Size=S`.
+  - `basectl gh issue readiness <number>` checks required implementation issue
+    body sections and reports labels and assignees. Pass `--project-owner` and
+    `--project-number` with `--repo` to validate Base Project fields; without
+    Project coordinates it reports a partial result.
   - `basectl gh pr create` auto-injects `Fixes #<issue>` from Base branch
     names; pass `--no-fixes` to suppress that body injection. When
     `base_manifest.yaml` declares `github.pr`, it renders the PR body from
