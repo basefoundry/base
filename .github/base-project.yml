@@ -20,6 +20,7 @@ project:
     - v1.0 Readiness
     - Adoption Polish
     - Contract Hardening
+    - Agentic Coding Platform
   issue_defaults:
     status: Backlog
     priority: P2

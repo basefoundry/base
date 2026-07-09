@@ -117,6 +117,7 @@ body:
         - v1.0 Readiness
         - Adoption Polish
         - Contract Hardening
+        - Agentic Coding Platform
     validations:
       required: true
   - type: dropdown

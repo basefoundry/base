@@ -308,6 +308,25 @@ def test_implementation_issue_template_is_copilot_ready_and_project_aligned() ->
     assert "assign this issue to Copilot" in fields["agent_assignment"]["attributes"]["description"]
 
 
+def test_agentic_coding_platform_initiative_is_documented() -> None:
+    project_config = load_yaml_mapping(BASE_PROJECT_CONFIG)["project"]
+    implementation_template = load_yaml_mapping(IMPLEMENTATION_ISSUE_TEMPLATE)
+    workflow_docs = (REPO_ROOT / "docs" / "github-workflow.md").read_text(encoding="utf-8")
+    workflow_context = (REPO_ROOT / ".ai-context" / "WORKFLOWS.md").read_text(encoding="utf-8")
+    initiative_fields = [
+        field
+        for field in implementation_template["body"]
+        if isinstance(field, dict) and field.get("id") == "initiative"
+    ]
+
+    assert "Agentic Coding Platform" in project_config["initiatives"]
+    assert len(initiative_fields) == 1
+    assert "Agentic Coding Platform" in initiative_fields[0]["attributes"]["options"]
+    assert "Agentic Coding Platform" in workflow_docs
+    assert "agent-ready repo baselines" in workflow_docs
+    assert "agent-ready repo baselines" in workflow_context
+
+
 def test_python_tests_run_on_supported_minor_versions() -> None:
     workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
     python_job = workflow["jobs"]["python"]

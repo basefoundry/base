@@ -33,6 +33,9 @@ allows it. When an issue is tracked in the repo-named Project, move its status
 through `In Progress`, `In Review`, and `Done` as the work advances. Repo-named
 Project metadata uses five fields: `Status`, `Priority`, `Area`, `Size`, and
 `Initiative`.
+Use `Agentic Coding Platform` for GitHub-centered agentic workflow work such as
+agent-ready repo baselines, agent-readiness checks, issue-readiness gates,
+Copilot/cloud-agent readiness, and local handoff/context artifacts.
 Use the smallest accurate `Size` when creating issues: `T` for tiny obvious
 work, `S` for normal small work or unknown scope, `M` for interacting changes,
 and `L` only for work that should probably be split. The default remains `S`
