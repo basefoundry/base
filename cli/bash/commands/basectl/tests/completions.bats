@@ -335,7 +335,15 @@ EOF
             COMP_WORDS=(basectl gh issue create --); \
             COMP_CWORD=4; \
             _base_basectl_completion; \
-            printf "reply=%s\n" "${COMPREPLY[*]}"'
+            printf "create_reply=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh issue ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "issue_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh issue readiness 123 --); \
+            COMP_CWORD=5; \
+            _base_basectl_completion; \
+            printf "readiness_reply=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"--category"* ]]
@@ -344,6 +352,8 @@ EOF
     [[ "$output" == *"--assignee"* ]]
     [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size"* ]]
+    [[ "$output" == *"issue_commands=list create start readiness"* ]]
+    [[ "$output" == *"readiness_reply=--repo --project-owner --project-number"* ]]
     [[ "$output" != *"--type"* ]]
 }
 

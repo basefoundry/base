@@ -34,6 +34,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
   alongside the standard repo baseline.
 - Added `basectl repo check --agent-ready` to verify the agent-ready repo
   guidance contract without changing default baseline checks.
+- Added `basectl gh issue readiness` to check issue body sections, labels,
+  assignees, and optional GitHub Project fields before assigning agentic
+  implementation work.
 
 ### Changed
 

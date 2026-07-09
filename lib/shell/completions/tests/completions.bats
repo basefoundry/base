@@ -232,11 +232,13 @@ assert_bash_completion_options_match_help() {
 
     block="$(zsh_completion_nested_block gh issue)"
 
+    [[ "$block" == *"2:issue command:(list create start readiness)"* ]]
     [[ "$block" == *"--repo"* ]]
     [[ "$block" == *"--assignee"* ]]
     [[ "$block" == *"--no-assignee"* ]]
     [[ "$block" == *"--project"* ]]
     [[ "$block" == *"--project-owner"* ]]
+    [[ "$block" == *"--project-number"* ]]
     [[ "$block" == *"--size"* ]]
     [[ "$block" == *"--no-project"* ]]
 }
