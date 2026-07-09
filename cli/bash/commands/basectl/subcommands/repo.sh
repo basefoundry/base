@@ -138,6 +138,7 @@ Usage:
 
 Options:
   --agent-guidance              Include optional agent guidance files in repo check.
+  --agent-ready                 Include the agent-ready repo guidance contract in repo check.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
@@ -1931,6 +1932,40 @@ base_repo_check_agent_guidance() {
     return 0
 }
 
+base_repo_check_agent_ready() {
+    local command=()
+    local missing_files=()
+    local path="$1"
+    local rel
+    local repo_name
+    local required_count="${#BASE_REPO_AGENT_GUIDANCE_FILES[@]}"
+
+    for rel in "${BASE_REPO_AGENT_GUIDANCE_FILES[@]}"; do
+        if [[ ! -f "$path/$rel" ]]; then
+            missing_files+=("$rel")
+        fi
+    done
+
+    if ((${#missing_files[@]})); then
+        printf "Agent readiness: %d of %d files missing.\n" \
+            "${#missing_files[@]}" \
+            "$required_count"
+        for rel in "${missing_files[@]}"; do
+            printf "  Missing: %s\n" "$rel"
+        done
+        repo_name="$(basename -- "$path")"
+        command=(basectl repo init "$repo_name" --path "$path" --agent-ready)
+        printf "Run '"
+        base_repo_pretty_command "${command[@]}"
+        printf "' to create the missing files.\n"
+        printf "Existing files are left unchanged.\n"
+        return 1
+    fi
+
+    printf "Agent readiness: all %d files present.\n" "$required_count"
+    return 0
+}
+
 base_repo_init() {
     local agent_default_branch="main"
     local agent_ready=0
@@ -2428,6 +2463,7 @@ base_repo_clone() {
 
 base_repo_check() {
     local agent_guidance=0
+    local agent_ready=0
     local path=""
     local status=0
 
@@ -2439,6 +2475,10 @@ base_repo_check() {
                 ;;
             --agent-guidance)
                 agent_guidance=1
+                shift
+                ;;
+            --agent-ready)
+                agent_ready=1
                 shift
                 ;;
             -v)
@@ -2464,7 +2504,9 @@ base_repo_check() {
     [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
     base_repo_check_baseline "$path" || status=1
-    if ((agent_guidance)); then
+    if ((agent_ready)); then
+        base_repo_check_agent_ready "$path" || status=1
+    elif ((agent_guidance)); then
         base_repo_check_agent_guidance "$path" || status=1
     fi
     return "$status"

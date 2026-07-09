@@ -351,6 +351,7 @@ _base_basectl_completion() {
                     _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--agent-guidance[Include optional agent guidance files]' \
+                        '--agent-ready[Include the agent-ready repo guidance contract]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;

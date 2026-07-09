@@ -686,11 +686,13 @@ basectl repo init example --repo basefoundry/example --agent-ready
 basectl repo agent-guidance ~/work/example --repo-name example
 basectl repo agent-guidance ~/work/example --repo-name example --pr --dry-run
 basectl repo check ~/work/example --agent-guidance
+basectl repo check ~/work/example --agent-ready
 ```
 
 Use `repo init --agent-ready` for new baselines that should include agent
 guidance from the first pull request. Use `repo agent-guidance` to add or repair
-that optional layer in an existing repository.
+that optional layer in an existing repository. Use `repo check --agent-ready`
+when a repo should satisfy the baseline-integrated agent readiness contract.
 
 Use `--pr` on `repo agent-guidance` or `repo installer-template` when the
 generated helper files should go through review first. The target must be a

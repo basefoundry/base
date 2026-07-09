@@ -196,7 +196,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | Command | What it does |
 |---|---|
 | `basectl repo init <name> [--repo owner/name]` | Create a Base-managed repo baseline; use `--agent-ready` to include `AGENTS.md` and `skills.md`, `--path .` for the current checkout, and `--pr` when baseline changes should be pushed through a PR |
-| `basectl repo check [path]` | Validate repo baseline |
+| `basectl repo check [path]` | Validate repo baseline; use `--agent-ready` for the baseline-integrated agent guidance contract |
 | `basectl repo configure [path]` | Repair / standardize repo settings |
 | `basectl repo agent-guidance [path]` | Seed AI guidance for a repo |
 | `basectl release check\|plan\|notes\|publish` | Release readiness + guarded publishing |

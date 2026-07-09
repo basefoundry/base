@@ -87,6 +87,7 @@ Check the local baseline:
 
 ```bash
 basectl repo check ~/work/base-demo
+basectl repo check ~/work/base-demo --agent-ready
 ```
 
 Seed optional repo-local agent guidance:
@@ -286,7 +287,13 @@ has opted into this layer:
 
 ```bash
 basectl repo check ~/work/base-demo --agent-guidance
+basectl repo check ~/work/base-demo --agent-ready
 ```
+
+Use `--agent-guidance` when checking only the standalone optional guidance
+layer. Use `--agent-ready` when checking the same file contract through the
+`repo init --agent-ready` repair path; missing files are reported with a
+no-overwrite `repo init ... --agent-ready` fix command.
 
 ## Git Workflow
 
