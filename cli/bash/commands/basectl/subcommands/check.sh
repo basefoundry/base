@@ -135,6 +135,7 @@ base_check_subcommand_main() {
     if [[ "$output_format" == json ]]; then
         BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_run_check_json "$remote_network"
     else
+        setup_print_runtime_chain_summary
         BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_run_check
     fi
 }

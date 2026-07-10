@@ -90,6 +90,7 @@ base_setup_run_text() {
     if setup_notifications_enabled; then
         trap 'setup_notify_completion "$?"' EXIT
     fi
+    setup_print_runtime_chain_summary
     setup_run_install
     exit_code=$?
     if setup_notifications_enabled; then

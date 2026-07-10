@@ -351,6 +351,85 @@ EOF
     [ -f "$TEST_STATE_DIR/project-setup-ran" ]
 }
 
+@test "basectl setup prints runtime chain summary" {
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/xcode-installed"
+
+    run_base_command setup --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Runtime chain:"* ]]
+    [[ "$output" == *"BASE_OS=macos"* ]]
+    [[ "$output" == *"BASE_PLATFORM=macos"* ]]
+    [[ "$output" == *"Shell:"* ]]
+    [[ "$output" == *"Homebrew:"* ]]
+}
+
+@test "basectl setup rejects x86_64 Base virtualenv under ARM Homebrew before dev profile setup" {
+    local python_executable
+    local python_home
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    python_home="$TEST_TMPDIR/python-home"
+    python_executable="$python_home/python3.13"
+    create_brew_stub
+    create_xcode_stubs
+    mkdir -p "$python_home"
+    mkdir -p "$venv_dir/bin"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/xcode-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$python_executable"
+    chmod +x "$python_executable"
+    cat > "$venv_dir/pyvenv.cfg" <<EOF
+home = $python_home
+executable = $python_executable
+EOF
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    printf 'x86_64\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        exit 0
+    fi
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_dev" ]]; then
+    touch "${BASE_SETUP_TEST_STATE_DIR:?}/dev-setup-ran"
+    exit 0
+fi
+printf 'unexpected stale venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=macos \
+        BASE_SETUP_TEST_HOMEBREW_PREFIX=/opt/homebrew \
+        setup --profile dev
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Base virtual environment Python is x86_64 but Homebrew prefix is '/opt/homebrew'."* ]]
+    [[ "$output" == *"Run 'basectl setup --recreate-venv' to back up and recreate the Base virtual environment."* ]]
+    [ ! -f "$TEST_STATE_DIR/dev-setup-ran" ]
+}
+
 @test "basectl setup base ignores inherited project virtualenv" {
     local inherited_venv="$TEST_TMPDIR/inherited-base-venv"
     local venv_dir="$TEST_HOME/.base.d/base/.venv"

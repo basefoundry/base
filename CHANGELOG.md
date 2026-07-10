@@ -46,6 +46,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Reported `basectl setup`, `check`, and `doctor` runtime chain diagnostics up
+  front and rejected x86_64 Base virtual environments under Apple Silicon
+  Homebrew before profile setup reaches later `brew install` steps.
 - Hardened Ubuntu GitHub Actions package installs against hosted-runner
   third-party apt source failures before Base test jobs install their tools.
 
