@@ -27,6 +27,36 @@ def write_history_line(cache_root: Path, payload: dict | str) -> None:
         handle.write(f"{text}\n")
 
 
+def history_record(  # pylint: disable=too-many-arguments
+    run_id: str,
+    *,
+    command: str = "check",
+    raw_command: str = "base_setup",
+    status: str = "error",
+    exit_code: int = 1,
+    ended_at: str = "2026-06-01T01:00:00Z",
+    project: str | None = "demo",
+    log_path: str | None = "~/logs/run.log",
+    argv: list[str] | None = None,
+) -> dict:
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "run_id": run_id,
+        "event": "finished",
+        "command": command,
+        "raw_command": raw_command,
+        "ended_at": ended_at,
+        "exit_code": exit_code,
+        "status": status,
+        "argv": argv if argv is not None else [command],
+    }
+    if project is not None:
+        payload["project"] = project
+    if log_path is not None:
+        payload["log_path"] = log_path
+    return payload
+
+
 def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -39,7 +69,7 @@ def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
     return status, stdout.getvalue(), stderr.getvalue()
 
 
-class BaseLogsTests(unittest.TestCase):
+class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_delegated_unknown_option_usage_uses_basectl_logs(self) -> None:
         stderr = io.StringIO()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -237,6 +267,190 @@ class BaseLogsTests(unittest.TestCase):
         self.assertEqual(filter_stderr, "")
         self.assertEqual(filter_stdout.strip(), str(older))
 
+    def test_last_prints_latest_failed_history_record_with_redacted_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            older_log = write_log(cache_root, "base_setup", "20260601T010000_aaaaaaaa", "old failure\n")
+            newer_log = write_log(
+                cache_root,
+                "base_setup",
+                "20260601T010200_bbbbbbbb",
+                "\n".join(
+                    [
+                        "line 1",
+                        "line 2",
+                        "token=secret-token",
+                        "fetch https://user:pass@example.com/repo.git",
+                    ]
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010000_aaaaaaaa",
+                    ended_at="2026-06-01T01:00:00Z",
+                    log_path=str(older_log),
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010100_okokokok",
+                    status="ok",
+                    exit_code=0,
+                    ended_at="2026-06-01T01:01:00Z",
+                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "ok.log"),
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010200_bbbbbbbb",
+                    ended_at="2026-06-01T01:02:00Z",
+                    log_path=str(newer_log),
+                    argv=["check", "--github-token", "token-secret", "url=https://user:pass@example.com/repo.git"],
+                ),
+            )
+
+            status, stdout, stderr = invoke(["last", "--lines", "2"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Latest failed Base command", stdout)
+        self.assertIn("Command: check", stdout)
+        self.assertIn("Project: demo", stdout)
+        self.assertIn("Exit: 1", stdout)
+        self.assertIn("Log tail (last 2 lines (truncated)):", stdout)
+        self.assertNotIn("line 1", stdout)
+        self.assertNotIn("secret-token", stdout)
+        self.assertNotIn("token-secret", stdout)
+        self.assertNotIn("user:pass", stdout)
+        self.assertIn("token=[REDACTED]", stdout)
+        self.assertIn("https://[REDACTED]@example.com/repo.git", stdout)
+        self.assertIn("--github-token [REDACTED]", stdout)
+
+    def test_last_reports_no_failure_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010000_aaaaaaaa",
+                    status="ok",
+                    exit_code=0,
+                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "ok.log"),
+                ),
+            )
+
+            status, stdout, stderr = invoke(["last"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("No failed Base command history found", stdout)
+
+    def test_last_reports_missing_log_with_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            missing_log = cache_root / "cli" / "base_setup" / "logs" / "missing.log"
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010000_aaaaaaaa",
+                    log_path=str(missing_log),
+                    argv=["check", "API_KEY=plain-secret"],
+                ),
+            )
+
+            status, stdout, stderr = invoke(["last"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Log:", stdout)
+        self.assertIn("(missing)", stdout)
+        self.assertIn("recorded log file is missing or was cleaned", stdout)
+        self.assertNotIn("plain-secret", stdout)
+        self.assertIn("API_KEY=[REDACTED]", stdout)
+
+    def test_last_json_output_has_stable_shape_and_redacted_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            log_path = write_log(
+                cache_root,
+                "base_setup",
+                "20260601T010000_aaaaaaaa",
+                "ok\npassword=db-secret\n",
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010000_aaaaaaaa",
+                    log_path=str(log_path),
+                    argv=["check", "--token=token-secret"],
+                ),
+            )
+
+            status, stdout, stderr = invoke(["last", "--format", "json", "--lines", "1"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertTrue(payload["found"])
+        self.assertEqual(payload["run"]["command"], "check")
+        self.assertEqual(payload["run"]["project"], "demo")
+        self.assertTrue(payload["run"]["log_exists"])
+        self.assertEqual(payload["run"]["argv"], ["check", "--token=[REDACTED]"])
+        self.assertEqual(payload["tail"]["requested_lines"], 1)
+        self.assertTrue(payload["tail"]["truncated"])
+        self.assertEqual(payload["tail"]["lines"], ["password=[REDACTED]"])
+        self.assertNotIn("db-secret", stdout)
+        self.assertNotIn("token-secret", stdout)
+
+    def test_last_json_reports_no_failure_without_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = invoke(["last", "--format", "json"], Path(tmpdir))
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertFalse(payload["found"])
+        self.assertIn("history_path", payload)
+
+    def test_last_can_filter_failures_by_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            check_log = write_log(cache_root, "base_setup", "20260601T010000_aaaaaaaa", "check failed\n")
+            release_log = write_log(cache_root, "base_release", "20260601T010100_bbbbbbbb", "release failed\n")
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010000_aaaaaaaa",
+                    command="check",
+                    raw_command="base_setup",
+                    ended_at="2026-06-01T01:00:00Z",
+                    log_path=str(check_log),
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "20260601T010100_bbbbbbbb",
+                    command="release",
+                    raw_command="base_release",
+                    ended_at="2026-06-01T01:01:00Z",
+                    log_path=str(release_log),
+                ),
+            )
+
+            status, stdout, stderr = invoke(["last", "--command", "check"], cache_root)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Command: check", stdout)
+        self.assertIn("check failed", stdout)
+        self.assertNotIn("release failed", stdout)
+
     def test_empty_log_set_is_not_an_error_for_table_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = invoke([], Path(tmpdir))
@@ -274,6 +488,30 @@ class BaseLogsTests(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Choose only one", stderr)
+
+    def test_last_rejects_file_actions_and_unknown_formats(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            status, stdout, stderr = invoke(["last", "--path"], cache_root)
+            format_status, format_stdout, format_stderr = invoke(["last", "--format", "xml"], cache_root)
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("does not accept --path", stderr)
+        self.assertEqual(format_status, 2)
+        self.assertEqual(format_stdout, "")
+        self.assertIn("Unsupported output format 'xml'", format_stderr)
+
+    def test_json_format_is_only_supported_for_last(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_log(cache_root, "base_clean", "20260601T010000_aaaaaaaa", "INFO clean\n")
+
+            status, stdout, stderr = invoke(["--format", "json"], cache_root)
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("only supported with `basectl logs last`", stderr)
 
     def test_invalid_count_options_report_usage_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

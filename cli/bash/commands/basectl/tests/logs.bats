@@ -49,14 +49,37 @@ EOF
     [[ "$output" == *"ARGS=--debug --path"* ]]
 }
 
+@test "basectl logs last forwards action and format to the Python logs layer" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected logs python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl logs last --format json --lines 5
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGS=last --format json --lines 5"* ]]
+}
+
 @test "basectl logs prints help without requiring the Base Python venv" {
     run_basectl logs --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl logs [options]"* ]]
+    [[ "$output" == *"basectl logs last"* ]]
     [[ "$output" == *"--command <name>"* ]]
     [[ "$output" == *"--path"* ]]
+    [[ "$output" == *"--format <format>"* ]]
 }
 
 @test "basectl logs reports missing option arguments as usage errors" {
@@ -70,5 +93,11 @@ EOF
 
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--limit' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl logs last --format
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--format' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 }

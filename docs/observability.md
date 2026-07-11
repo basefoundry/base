@@ -1,17 +1,19 @@
 # Local Observability Model
 
-> **STATUS** — `basectl history`, the local history index, and
-> `basectl history --report` are implemented as local-only slices.
+> **STATUS** — `basectl history`, the local history index,
+> `basectl history --report`, and `basectl logs last` are implemented as
+> local-only slices.
 > `basectl explain last-error`, a broader `basectl report` bundle, and history
 > cleanup integration are tracked but not scheduled longer-term future work.
 
 Tracker: [#396](https://github.com/basefoundry/base/issues/396)
 
-Base currently exposes raw runtime logs through `basectl logs`, structured
-local command metadata through `basectl history`, and a redacted local activity
-summary through `basectl history --report`. This document defines the local
-observability layer: shipped command history and activity reports, future
-last-error explanation, and broader future report generation.
+Base currently exposes raw runtime logs through `basectl logs`, latest-failure
+evidence through `basectl logs last`, structured local command metadata through
+`basectl history`, and a redacted local activity summary through
+`basectl history --report`. This document defines the local observability
+layer: shipped command history and activity reports, future last-error
+explanation, and broader future report generation.
 
 ## Goals
 
@@ -174,6 +176,13 @@ Expected options:
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.
 
+`basectl logs last` bridges those surfaces for the common failure case. It reads
+the local history index, finds the latest failed run, prints command metadata,
+and includes a bounded redacted tail of the recorded log when the log still
+exists. It also supports `--format json` for local automation. If the log path
+is missing or the file was cleaned, it still reports the available history
+metadata and says that the recorded log file is missing.
+
 The report mode summarizes selected recent history records with:
 
 - total records, warnings, and failures
@@ -192,9 +201,9 @@ rendering Markdown or JSON.
 
 ### `basectl explain last-error`
 
-`basectl explain last-error` should find the latest failed history record,
-inspect its linked log file if present, and print a deterministic local
-summary:
+`basectl explain last-error` should build on the local evidence surfaced by
+`basectl logs last`. It should find the latest failed history record, inspect
+its linked log file if present, and print a deterministic local summary:
 
 - command, project, exit code, and time
 - likely failing subsystem when detectable
@@ -231,6 +240,8 @@ The shipped first slice is:
 1. Add history recording and `basectl history`. **Shipped.**
 2. Add `basectl history --report` for local history/log activity summaries.
    **Shipped.**
+3. Add `basectl logs last` for latest-failure metadata and bounded redacted log
+   tails. **Shipped.**
 
 ### Unscheduled Future Work
 

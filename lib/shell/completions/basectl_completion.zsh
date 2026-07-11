@@ -443,12 +443,14 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         logs)
-            _arguments '--command[Filter by command]:command:' \
+            _arguments '1:logs command:(last)' \
+                '--command[Filter by command]:command:' \
                 '--limit[Number of entries]:count:' \
                 '--path[Print most recent log path]' \
                 '--tail[Tail and follow most recent log]' \
                 '--open[Open most recent log]' \
                 '--lines[Lines to show before following]:count:' \
+                '--format[Output format for logs last]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         history)

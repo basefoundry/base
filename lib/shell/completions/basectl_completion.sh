@@ -291,7 +291,11 @@ _base_basectl_completion() {
             _base_basectl_completion_compgen "--older-than --keep-last --dry-run -v -h --help" "$cur"
             ;;
         logs)
-            _base_basectl_completion_compgen "--command --limit --path --tail --open --lines -v -h --help" "$cur"
+            if ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then
+                _base_basectl_completion_compgen "last" "$cur"
+            else
+                _base_basectl_completion_compgen "--command --limit --path --tail --open --lines --format -v -h --help" "$cur"
+            fi
             ;;
         history)
             _base_basectl_completion_compgen "--project --command --status --limit --format --report -v -h --help" "$cur"
