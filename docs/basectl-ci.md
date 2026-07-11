@@ -139,3 +139,62 @@ checkout CI job that prepares `~/.base.d/base/.venv` manually must install the
 same bootstrap packages that Base uses to read manifests and run Python command
 entry points. Add project-specific packages separately when the target project's
 manifest requires them.
+
+## Reusable GitHub Actions Workflow
+
+Base also publishes a reusable workflow for repositories that want the standard
+`basectl check --ci` readiness contract without copying the setup steps into
+every repository:
+
+```yaml
+name: Base check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  base-check:
+    permissions:
+      contents: read
+    uses: basefoundry/base/.github/workflows/base-check.yml@<base-ref-or-sha>
+    with:
+      project: my-project
+      manifest-path: base_manifest.yaml
+```
+
+For production repositories, pin the reusable workflow ref to a reviewed Base
+release tag or commit SHA. The default `source-checkout` mode checks out the
+caller repository, checks out Base source at the same commit as the reusable
+workflow, checks out `base-bash-libs`, prepares the Base Python runtime, and
+runs:
+
+```bash
+basectl check --ci <project> --format json --manifest <caller-manifest>
+```
+
+Supported inputs:
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `project` | required | Base project name to pass to `basectl check --ci`. |
+| `manifest-path` | `base_manifest.yaml` | Manifest path relative to the caller repository root. |
+| `setup-mode` | `source-checkout` | `source-checkout` prepares Base from source; `preinstalled` uses `basectl` already on `PATH`. |
+| `base-ref` | workflow commit | Optional Base ref override for `source-checkout` mode. Leave empty to use the pinned reusable workflow commit. |
+| `profiles` | empty | Optional comma-separated prerequisite profiles, such as `dev` or `sre`. |
+| `output-format` | `json` | `basectl check` output format: `json` or `text`. |
+| `python-version` | `3.13` | Python used to prepare the Base source runtime. |
+
+The workflow's `base-bash-libs` checkout is pinned inside the workflow file to
+match Base's CI supply-chain policy. Update that pin through a Base workflow-pin
+maintenance PR, not from caller workflow inputs.
+
+Use a repository-local workflow instead of the reusable workflow when the job
+must start services, install project-specific system packages, run tests, use
+secrets, or perform setup that must happen before `basectl check --ci`. In that
+case, keep the direct command step and follow the CI supply-chain policy for
+pinned actions and dependency installation.
