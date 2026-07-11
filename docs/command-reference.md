@@ -79,6 +79,7 @@ inspect the resolved command contract first.
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
 | `basectl ci setup\|check\|doctor <project>` | Compatibility alias for the corresponding `--ci` mode command. | Same options as the target command. |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
+| `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|json>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
 | `basectl history` | List recent structured Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |
 | `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>` |

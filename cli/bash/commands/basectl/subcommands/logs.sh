@@ -7,6 +7,7 @@ base_logs_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl logs [options]
+  basectl logs last [--command <name>] [--lines <count>] [--format text|json]
 
 Options:
   --command <name>  Filter by basectl command or Python CLI name.
@@ -15,10 +16,12 @@ Options:
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.
+  --format <format> Output format for "logs last": text or json. Defaults to text.
   -v                Enable DEBUG logging for this subcommand.
   -h, --help        Show this help text.
 
 Surface recent Base CLI runtime logs from the Base cache root.
+"logs last" prints the latest failed command metadata and a bounded redacted log tail.
 EOF
 }
 
@@ -36,7 +39,7 @@ base_logs_subcommand_main() {
                 args+=(--debug)
                 shift
                 ;;
-            --command|--limit|--lines)
+            --command|--limit|--lines|--format)
                 [[ -n "${2:-}" ]] || {
                     base_logs_subcommand_usage >&2
                     print_error "Option '$1' requires an argument."
@@ -45,7 +48,7 @@ base_logs_subcommand_main() {
                 args+=("$1" "$2")
                 shift 2
                 ;;
-            --command=*|--limit=*|--lines=*|--path|--tail|--open)
+            --command=*|--limit=*|--lines=*|--format=*|--path|--tail|--open)
                 args+=("$1")
                 shift
                 ;;

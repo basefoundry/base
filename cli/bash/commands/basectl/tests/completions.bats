@@ -187,6 +187,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "logs_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl logs l); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "logs_commands=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl history --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -288,7 +292,8 @@ EOF
     [[ "$output" == *"prompt_options=--output --help"* ]]
     [[ "$output" == *"docs_options=--show-url"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
-    [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
+    [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines --format"* ]]
+    [[ "$output" == *"logs_commands=last"* ]]
     [[ "$output" == *"history_options=--project --command --status --limit --format --report"* ]]
     [[ "$output" == *"trust_commands=status allow revoke"* ]]
     [[ "$output" == *"trust_projects=base demo"* ]]
