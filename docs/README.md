@@ -50,6 +50,8 @@ reference. The filename should answer "what is this about?"
   skill evidence.
 - [Command Quick Reference](command-reference.md) is the one-page lookup table
   for the current `basectl` command surface and important flags.
+- [Stability Tiers](stability-tiers.md) defines which command, JSON, finding ID,
+  generated artifact, and helper surfaces are stable, experimental, or internal.
 - [Technical Overview](technical-overview.md) is the scannable product and
   technical reference: workspace shape, tech stack, three-layer architecture,
   manifest contract, command tables, and file locations.
