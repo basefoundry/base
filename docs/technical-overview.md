@@ -265,7 +265,7 @@ Run everything locally with `basectl test base` or `bin/base-test`.
 
 ## Current Status
 
-Base **1.3.0** (June 2026) covers: first-mile `bootstrap.sh`
+Base **1.6.1** (July 2026) covers: first-mile `bootstrap.sh`
 installation, setup, check, doctor, project discovery, workspace
 status/check/doctor/clone/pull/init/configure, `basectl onboard`, project activation
 (subshell), test execution, build targets, named commands, demo scripts,
@@ -276,10 +276,13 @@ command history, manifest-declared PR policy, Base-managed artifact
 declarations, `--ci` mode for non-interactive CI, IDE bootstrapping (VS
 Code/Cursor), release readiness inspection, the `basectl docs` documentation
 shortcut, CI setup JSON output improvements, CI supply-chain policy enforcement,
-and pinned Homebrew installer variables for verified first-mile bootstrap.
+pinned Homebrew installer variables for verified first-mile bootstrap, and
+apt-backed Ubuntu/Debian setup support.
 
-Linux support is a design target but not yet an implemented or tested contract.
-Windows is out of scope.
+The setup/check/doctor platform contract is implemented for macOS and
+Ubuntu/Debian Linux. Broader Linux families, WSL, and native Windows remain
+outside the supported contract unless a later platform policy explicitly adds
+them.
 
 ## Where to Go Next
 
