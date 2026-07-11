@@ -102,6 +102,27 @@ run_setup_common_script() {
     [[ "$output" == *"guard=1"* ]]
 }
 
+@test "setup_common sources macOS/Homebrew helper idempotently" {
+    run_setup_common_script '
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_macos_homebrew.sh"
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_macos_homebrew.sh"
+        for helper in \
+            setup_find_brew_bin \
+            setup_install_homebrew \
+            setup_collect_macos_base_check_results \
+            setup_run_macos_install; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 21
+            }
+        done
+        printf "guard=%s\n" "${_base_setup_macos_homebrew_sourced:-}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"guard=1"* ]]
+}
+
 @test "setup_common reports WSL2 host context without changing platform support" {
     run_setup_common_script '
         BASE_TEST_MODE=true
