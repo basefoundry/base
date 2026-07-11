@@ -22,7 +22,7 @@ EOF
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --rcfile "$TEST_HOME/.bashrc" -i -c '\

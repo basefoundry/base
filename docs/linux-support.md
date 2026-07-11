@@ -1,8 +1,10 @@
 # Linux support
 
-Base is macOS-primary with a supported Ubuntu/Debian source-checkout path. Linux
-support should continue to grow deliberately, with Ubuntu/Debian as the first
-target because it covers GitHub Actions and a large share of developer machines.
+Base is macOS-primary with a supported Ubuntu/Debian source-checkout path. That
+path also covers Ubuntu/Debian running under WSL2 through the same Linux
+contract. Linux support should continue to grow deliberately, with
+Ubuntu/Debian as the first target because it covers GitHub Actions and a large
+share of developer machines.
 
 ## Supported Ubuntu/Debian Contract
 
@@ -18,11 +20,15 @@ This is Base's current Ubuntu/Debian source-checkout support contract:
   `basectl setup --yes` is the non-interactive apply mode for reviewed setup.
 - `basectl setup --profile dev` can install the Base-owned developer
   prerequisites that have explicit Ubuntu/Debian mappings.
+- Ubuntu/Debian under WSL2 keeps `BASE_PLATFORM=linux-debian` and exposes
+  `BASE_HOST_ENV=wsl2` so setup/check/doctor can report the host context
+  without implying native Windows support.
 
 Base does not ship a Debian package, own every project runtime dependency, or
-claim support for every Linux distribution. Broader Linux families, WSL, native
-Windows, GUI IDE setup on Linux, and project-specific dependency ownership need
-separate product decisions and platform adapters.
+claim support for every Linux distribution. Broader Linux families,
+non-Debian WSL distributions, native Windows, GUI IDE setup on Linux, and
+project-specific dependency ownership need separate product decisions and
+platform adapters.
 
 ## Target Scope
 
@@ -75,10 +81,18 @@ The setup layer should classify platforms into:
 Unsupported platforms should fail with explicit guidance rather than falling
 through to macOS assumptions.
 
+Detect WSL2 as host-environment metadata layered on top of the Linux platform
+family. `BASE_HOST_ENV` is `native` by default and `wsl2` when Linux kernel
+metadata such as `/proc/sys/kernel/osrelease` or `/proc/version` contains a
+WSL2 marker. Do not add a separate `linux-debian-wsl2` platform unless WSL2
+needs different package-manager behavior from native Ubuntu/Debian.
+
 Do not add public `BASE_DISTRO_ID` or `BASE_ARCH` until diagnostics or package
 selection need them. Distribution ID and CPU architecture are separate axes:
 `BASE_PLATFORM` answers "which supported platform family is this?", while a
 future `BASE_ARCH` would answer "which binary/package architecture is this?".
+`BASE_HOST_ENV` answers "is this Linux platform running inside a supported host
+environment such as WSL2?"
 
 ## Platform Policy Boundary
 
@@ -388,7 +402,7 @@ environment and the sibling `base-bash-libs` checkout expected by source tests.
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Split macOS-only setup checks from portable runtime checks. | Done | Initial support exists through `--ci` mode on setup/check/doctor, with `basectl ci` retained as a compatibility alias. |
-| 2. Add platform detection and explicit unsupported-platform messages. | Done | `BASE_PLATFORM` classifies Ubuntu/Debian as `linux-debian`, keeps `BASE_OS=linux`, and fails unsupported platforms explicitly. |
+| 2. Add platform detection and explicit unsupported-platform messages. | Done | `BASE_PLATFORM` classifies Ubuntu/Debian as `linux-debian`, keeps `BASE_OS=linux`, uses `BASE_HOST_ENV=wsl2` for Ubuntu/Debian WSL2 host context, and fails unsupported platforms explicitly. |
 | 3. Make `basectl check` and `doctor` report Linux prerequisite status without requiring Homebrew or Xcode. | Done | `check` and `doctor` report Ubuntu/Debian prerequisite findings with apt-oriented recovery hints. |
 | 4. Add Ubuntu CI coverage for read-only commands and the source-checkout suite. | Done for source-checkout validation | The `ubuntu-source-checkout` job installs hosted-runner prerequisites, runs `basectl check --ci base --format json`, and runs `env -u BASE_HOME ./bin/base-test`. |
 | 5. Add conservative Ubuntu setup guidance. | Done | `basectl setup --dry-run` previews Ubuntu/Debian apt prerequisites before mutation. |
@@ -399,6 +413,8 @@ environment and the sibling `base-bash-libs` checkout expected by source tests.
 ## Non-Goals
 
 - Do not support every Linux distribution in the first pass.
+- Do not claim native Windows support; WSL2 support is limited to supported
+  Ubuntu/Debian distributions using the Linux source-checkout path.
 - Do not add a second manifest format for Linux.
 - Do not use arbitrary `python3` silently on macOS to create Base-managed venvs.
 - Do not attempt GUI IDE installation on Linux until a real project needs it.

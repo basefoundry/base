@@ -124,7 +124,7 @@ call Base's Python layer.
    - constants
    - globals intentionally shared across scripts, sourced modules, or subshells
 4. Use a common prefix for exported environment variables whenever practical.
-   For example: `BASE_HOME`, `BASE_HOST`, `BASE_OS`, `BASE_PLATFORM`,
+   For example: `BASE_HOME`, `BASE_HOST`, `BASE_HOST_ENV`, `BASE_OS`, `BASE_PLATFORM`,
    `BASE_BASH_LIB_DIR`.
 5. Do not use all-uppercase names for ordinary script-local variables.
 6. Use a leading underscore for private variables and functions, especially in
@@ -611,7 +611,7 @@ separate explicit opt-in instead of being added to
 `~/.baserc` is user-managed input for simple Base preferences such as
 `BASE_DEBUG=1`. It must not set Base-owned runtime or profile state such as
 `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`, `BASE_OS`, `BASE_PLATFORM`,
-`BASE_SHELL`, `BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
+`BASE_HOST_ENV`, `BASE_SHELL`, `BASE_PROFILE_VERSION`, `BASE_ENABLE_BASH_DEFAULTS`, or
 `BASE_ENABLE_ZSH_DEFAULTS`. Shell startup code that sources `~/.baserc` should
 reject attempts to change those variables and restore the previous values.
 
