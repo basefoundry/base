@@ -59,6 +59,7 @@ run_setup_common_script() {
     run_setup_common_script '
         for helper in \
             setup_current_platform \
+            setup_current_host_env \
             setup_platform_supported \
             setup_collect_platform_base_check_results \
             setup_run_platform_install; do
@@ -78,6 +79,33 @@ run_setup_common_script() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"platform=macos"* ]]
+}
+
+@test "setup_common reports WSL2 host context without changing platform support" {
+    run_setup_common_script '
+        BASE_TEST_MODE=true
+        BASE_SETUP_TEST_PLATFORM=linux-unknown
+        BASE_SETUP_TEST_HOST_ENV=wsl2
+        printf "host_env=%s\n" "$(setup_current_host_env)"
+        setup_unsupported_platform_message "$(setup_current_platform)"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"host_env=wsl2"* ]]
+    [[ "$output" == *"BASE_PLATFORM='linux-unknown', BASE_HOST_ENV='wsl2'"* ]]
+    [[ "$output" == *"Ubuntu/Debian under WSL2 uses the Linux source-checkout path"* ]]
+    [[ "$output" == *"native Windows are not supported"* ]]
+}
+
+@test "setup_common rejects host environment override outside test mode" {
+    run_setup_common_script '
+        CI=false
+        BASE_SETUP_TEST_HOST_ENV=wsl2
+        setup_current_host_env
+    '
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"BASE_SETUP_TEST_HOST_ENV is a test-only setup override"* ]]
 }
 
 @test "setup_common CI runtime checks use the Linux platform Python finder" {

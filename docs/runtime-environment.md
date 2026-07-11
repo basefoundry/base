@@ -49,7 +49,7 @@ boundary.
 
 `~/.baserc` may set user knobs such as `BASE_DEBUG`. It must not set Base-owned
 runtime or profile variables such as `BASE_HOME`, `BASE_BIN_DIR`, `BASE_LIB_DIR`,
-`BASE_OS`, `BASE_PLATFORM`, `BASE_HOST`, `BASE_SHELL`, `BASE_BASH_LIBS_DIR`,
+`BASE_OS`, `BASE_PLATFORM`, `BASE_HOST_ENV`, `BASE_HOST`, `BASE_SHELL`, `BASE_BASH_LIBS_DIR`,
 `BASE_BASH_LIBS_SOURCE`,
 `BASE_PLATFORM_TOOLS_HOME`, `BASE_PLATFORM_TOOLS_BIN_DIR`, `BASE_PROFILE_VERSION`,
 `BASE_ENABLE_BASH_DEFAULTS`, or `BASE_ENABLE_ZSH_DEFAULTS`. It must also not
@@ -75,6 +75,7 @@ explicit Bash script, or starts a Base runtime Bash shell.
 | `BASE_SHELL_DIR` | Base | `$BASE_HOME/lib/shell`. Root for managed shell startup snippets and completions. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_OS` | Base | Normalized host OS metadata such as `macos` or `linux`. Used by runtime decisions and diagnostics. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_PLATFORM` | Base | Normalized runtime platform metadata such as `macos`, `linux-debian`, or `linux-unknown`. Used when Base needs distribution-family behavior without overloading `BASE_OS`. | Do not set. Readonly after `base_init.sh`. |
+| `BASE_HOST_ENV` | Base | Host-environment metadata layered on `BASE_PLATFORM`, currently `native` or `wsl2`. Ubuntu/Debian under WSL2 remains `BASE_PLATFORM=linux-debian`; this variable only clarifies host context and does not imply native Windows support. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_HOST` | Base | Short host name from `hostname -s`. Used by runtime metadata and prompts. | Do not set. Readonly after `base_init.sh`. |
 | `BASE_SHELL` | Base | Legacy runtime marker. Plain `base_init.sh` defaults it to `bash`; Base runtime shells seed it as `1` before `base_init.sh`. New code should avoid adding new meanings to it. | Do not set in user config. Readonly after `base_init.sh`. |
 

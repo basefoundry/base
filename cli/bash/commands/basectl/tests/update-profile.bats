@@ -142,6 +142,8 @@ EOF
         -u BASE_BASH_LIB_DIR \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         HOME="$TEST_HOME" \
@@ -313,7 +315,7 @@ EOF
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --rcfile "$TEST_HOME/.bashrc" -i -c 'command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -475,7 +477,7 @@ EOF
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM \
         HOME="$TEST_HOME" \
         BASE_DEBUG=1 \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
@@ -493,7 +495,7 @@ EOF
     [ "$status" -eq 0 ]
 
     printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --rcfile "$TEST_HOME/.bashrc" -i -c 'command -v basectl >/dev/null'
@@ -509,7 +511,7 @@ EOF
     [ "$status" -eq 0 ]
 
     printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --norc -i -c 'source "$HOME/.bash_profile"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -530,7 +532,7 @@ EOF
     [ "$status" -eq 0 ]
 
     printf '%s\n' 'BASE_DEBUG=1' > "$TEST_HOME/.baserc"
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c 'source "$HOME/.zprofile"; source "$HOME/.zshrc"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -549,7 +551,7 @@ EOF
     [ "$status" -eq 0 ]
 
     printf '%s\n' 'BASE_HOME=/tmp/not-base' > "$TEST_HOME/.baserc"
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash --rcfile "$TEST_HOME/.bashrc" -i -c 'printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -574,6 +576,7 @@ EOF
     [[ "$output" == *"BASE_PROJECT_ROOT"* ]]
     [[ "$output" == *"BASE_PROJECT_VENV_DIR"* ]]
     [[ "$output" == *"BASE_PLATFORM"* ]]
+    [[ "$output" == *"BASE_HOST_ENV"* ]]
     [[ "$output" == *"BASE_PLATFORM_TOOLS_HOME"* ]]
     [[ "$output" == *"BASE_PLATFORM_TOOLS_BIN_DIR"* ]]
     [[ "$output" != *"BASE_ARCH"* ]]
@@ -585,7 +588,7 @@ EOF
     run_base_command update-profile
     [ "$status" -eq 0 ]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c 'source "$HOME/.zshrc"; command -v basectl; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -650,7 +653,7 @@ EOF
     [ "$status" -eq 0 ]
 
     printf '%s\n' 'BASE_HOME=/tmp/not-base' > "$TEST_HOME/.baserc"
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u BASE_DEBUG \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c 'source "$HOME/.zshrc"; printf "BASE_HOME=%s\n" "${BASE_HOME-unset}"'
@@ -695,7 +698,7 @@ EOF
     [[ "$(cat "$TEST_HOME/.bashrc")" != *"defaults.sh"* ]]
     [[ "$(cat "$TEST_HOME/.zshrc")" != *"defaults.sh"* ]]
 
-    run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u EDITOR -u VISUAL -u EXINIT \
+    run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u EDITOR -u VISUAL -u EXINIT \
         -u HISTCONTROL -u HISTSIZE -u HISTFILESIZE \
         -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
         HOME="$TEST_HOME" \
@@ -725,7 +728,7 @@ EOF
     [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '* ]]
 
     if command -v zsh >/dev/null 2>&1; then
-        run env -u BASE_HOME -u BASE_HOST -u BASE_OS -u BASE_PLATFORM -u EDITOR -u VISUAL -u EXINIT \
+        run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u EDITOR -u VISUAL -u EXINIT \
             -u HISTFILE -u HISTSIZE -u SAVEHIST \
             -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
             HOME="$TEST_HOME" \

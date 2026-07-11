@@ -363,6 +363,7 @@ EOF
     [[ "$output" == *"Runtime chain:"* ]]
     [[ "$output" == *"BASE_OS=macos"* ]]
     [[ "$output" == *"BASE_PLATFORM=macos"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=native"* ]]
     [[ "$output" == *"Shell:"* ]]
     [[ "$output" == *"Homebrew:"* ]]
 }

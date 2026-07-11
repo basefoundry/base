@@ -27,6 +27,7 @@ unset_base_runtime_env() {
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_PLATFORM \
+        BASE_HOST_ENV \
         BASE_HOST \
         BASE_SHELL \
         BASE_PLATFORM_TOOLS_HOME \
@@ -40,6 +41,8 @@ unset_base_runtime_env() {
         BASE_BASH_COMMAND_SCRIPT \
         BASE_BASH_BOOTSTRAP_SOURCE \
         BASE_INIT_TEST_OS_RELEASE_PATH \
+        BASE_INIT_TEST_KERNEL_OSRELEASE_PATH \
+        BASE_INIT_TEST_PROC_VERSION_PATH \
         BASE_ACTIVATE_PRESERVE_CWD \
         BASE_ACTIVATE_SHELL \
         BASE_PROJECT \

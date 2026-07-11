@@ -37,6 +37,9 @@ def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
     assert "plain text" in text
     assert "Base does not store GitHub tokens" in text
     assert "under `~/work`, not under mounted macOS shared folders" in text
+    assert "BASE_HOST_ENV=wsl2" in text
+    assert "native Windows support" in text
+    assert "Do not add a separate `linux-debian-wsl2` platform" in text
 
 
 def test_linux_support_docs_include_final_acceptance_commands() -> None:

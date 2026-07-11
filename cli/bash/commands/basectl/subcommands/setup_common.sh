@@ -484,6 +484,21 @@ setup_current_platform() {
     printf '%s\n' "$platform"
 }
 
+setup_current_host_env() {
+    local host_env
+
+    if [[ -n "${BASE_SETUP_TEST_HOST_ENV+x}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_HOST_ENV
+        host_env="$BASE_SETUP_TEST_HOST_ENV"
+    else
+        host_env="${BASE_HOST_ENV:-native}"
+    fi
+    if [[ -z "$host_env" ]]; then
+        host_env=native
+    fi
+    printf '%s\n' "$host_env"
+}
+
 setup_platform_supported() {
     local platform="${1:-}"
 
@@ -502,14 +517,26 @@ setup_platform_supported() {
 
 setup_unsupported_platform_message() {
     local platform="$1"
+    local host_env
 
-    printf "The setup/check platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s').\n" "$platform"
+    host_env="$(setup_current_host_env)" || return 1
+
+    printf "The setup/check platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s', BASE_HOST_ENV='%s').\n" "$platform" "$host_env"
+    if [[ "$host_env" == wsl2 ]]; then
+        printf "%s\n" "Ubuntu/Debian under WSL2 uses the Linux source-checkout path; other WSL distributions and native Windows are not supported."
+    fi
 }
 
 setup_unsupported_install_platform_message() {
     local platform="$1"
+    local host_env
 
-    printf "The setup platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s').\n" "$platform"
+    host_env="$(setup_current_host_env)" || return 1
+
+    printf "The setup platform path currently supports macOS and Ubuntu/Debian Linux only (BASE_PLATFORM='%s', BASE_HOST_ENV='%s').\n" "$platform" "$host_env"
+    if [[ "$host_env" == wsl2 ]]; then
+        printf "%s\n" "Ubuntu/Debian under WSL2 uses the Linux source-checkout path; other WSL distributions and native Windows are not supported."
+    fi
 }
 
 setup_allow_test_hooks() {
@@ -766,9 +793,10 @@ setup_gh_version_line() {
 }
 
 setup_print_runtime_chain_summary() {
-    local brew_bin brew_prefix gh_arch gh_bin gh_version home_path platform pyvenv_cfg python_arch python_bin shell_machine shell_path translated venv_dir
+    local brew_bin brew_prefix gh_arch gh_bin gh_version home_path host_env platform pyvenv_cfg python_arch python_bin shell_machine shell_path translated venv_dir
 
     platform="$(setup_current_platform 2>/dev/null || printf 'unsupported\n')"
+    host_env="$(setup_current_host_env)" || return 1
     shell_path="${BASH:-}"
     [[ -n "$shell_path" ]] || shell_path="$(setup_command_path bash 2>/dev/null || true)"
     shell_machine="$(setup_current_machine)"
@@ -776,7 +804,7 @@ setup_print_runtime_chain_summary() {
     venv_dir="$(setup_venv_dir)"
     python_bin="$venv_dir/bin/python"
 
-    log_info "Runtime chain: BASE_OS=${BASE_OS:-unknown} BASE_PLATFORM=$platform BASE_HOST=${BASE_HOST:-unknown}"
+    log_info "Runtime chain: BASE_OS=${BASE_OS:-unknown} BASE_PLATFORM=$platform BASE_HOST_ENV=$host_env BASE_HOST=${BASE_HOST:-unknown}"
     log_info "Shell: path=${shell_path:-unknown} version=${BASH_VERSION:-unknown} machine=${shell_machine:-unknown} translated=${translated:-unknown}"
 
     if [[ -x "$python_bin" ]]; then

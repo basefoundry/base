@@ -16,7 +16,7 @@
 #     - validate that the runtime is Bash 4.2 or newer
 #     - derive or validate BASE_HOME
 #     - export the BASE_* paths that downstream scripts may rely on
-#     - export BASE_OS, BASE_PLATFORM, and BASE_HOST runtime metadata
+#     - export BASE_OS, BASE_PLATFORM, BASE_HOST_ENV, and BASE_HOST runtime metadata
 #     - resolve and source the reusable Bash standard library
 #     - add BASE_BIN_DIR to PATH
 #     - provide import_base_lib for convention-based Base Bash library imports
@@ -79,6 +79,14 @@ base_init_linux_os_release_path() {
     printf '%s\n' "${BASE_INIT_TEST_OS_RELEASE_PATH:-/etc/os-release}"
 }
 
+base_init_linux_kernel_osrelease_path() {
+    printf '%s\n' "${BASE_INIT_TEST_KERNEL_OSRELEASE_PATH:-/proc/sys/kernel/osrelease}"
+}
+
+base_init_linux_proc_version_path() {
+    printf '%s\n' "${BASE_INIT_TEST_PROC_VERSION_PATH:-/proc/version}"
+}
+
 base_init_detect_linux_platform() {
     local id id_like os_release_path
     local ID="" ID_LIKE=""
@@ -99,6 +107,24 @@ base_init_detect_linux_platform() {
             printf 'linux-unknown\n'
             ;;
     esac
+}
+
+base_init_detect_linux_host_env() {
+    local content path
+
+    for path in "$(base_init_linux_kernel_osrelease_path)" "$(base_init_linux_proc_version_path)"; do
+        [[ -r "$path" ]] || continue
+        content="$(<"$path")" || continue
+        content="${content,,}"
+        case "$content" in
+            *microsoft-standard-wsl2*|*wsl2*)
+                printf 'wsl2\n'
+                return 0
+                ;;
+        esac
+    done
+
+    printf 'native\n'
 }
 
 base_init_resolve_home() {
@@ -192,9 +218,10 @@ base_init_set_bash_libs_contract() {
 }
 
 base_init_export_contract() {
-    local base_home base_os base_platform base_host uname_os
+    local base_home base_os base_platform base_host base_host_env uname_os
 
     base_home="$(base_init_resolve_home)" || return 1
+    base_host_env=native
     uname_os="$(uname -s)" || {
         base_init_error "Unable to determine BASE_OS with uname."
         return 1
@@ -211,6 +238,7 @@ base_init_export_contract() {
         Linux)
             base_os=linux
             base_platform="$(base_init_detect_linux_platform)" || return 1
+            base_host_env="$(base_init_detect_linux_host_env)" || return 1
             ;;
         *)
             base_os="$(printf '%s\n' "$uname_os" | tr '[:upper:]' '[:lower:]')"
@@ -237,12 +265,13 @@ base_init_export_contract() {
     BASE_SHELL_DIR="$BASE_LIB_DIR/shell"
     BASE_OS="$base_os"
     BASE_PLATFORM="$base_platform"
+    BASE_HOST_ENV="$base_host_env"
     BASE_HOST="$base_host"
     BASE_SHELL="${BASE_SHELL:-bash}"
     export BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST BASE_SHELL
+    export BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST_ENV BASE_HOST BASE_SHELL
     readonly BASE_HOME BASE_BIN_DIR BASE_CLI_DIR BASE_BASH_DIR BASE_BASH_COMMANDS_DIR
-    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST BASE_SHELL
+    readonly BASE_LIB_DIR BASE_BASH_LIB_DIR BASE_BASH_LIBS_DIR BASE_BASH_LIBS_SOURCE BASE_SHELL_DIR BASE_OS BASE_PLATFORM BASE_HOST_ENV BASE_HOST BASE_SHELL
 }
 
 base_init_source_stdlib() {

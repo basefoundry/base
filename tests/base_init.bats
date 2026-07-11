@@ -46,6 +46,7 @@ run_base_init_script() {
         -u BASE_SHELL_DIR \
         -u BASE_OS \
         -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         bash -c "$script" bash "$TEST_BASE_HOME"
@@ -121,6 +122,8 @@ EOF
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         BASE_HOME="$opt_base" \
@@ -141,6 +144,7 @@ EOF
         source "$base_home/base_init.sh"
         printf "BASE_OS=%s\n" "$BASE_OS"
         printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+        printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
         printf "BASE_HOST=%s\n" "$BASE_HOST"
         printf "BASE_SHELL=%s\n" "$BASE_SHELL"
     '
@@ -150,6 +154,7 @@ EOF
     [[ "$output" == *"BASE_SHELL=bash"* ]]
     [[ "$output" == *"BASE_OS=linux"* || "$output" == *"BASE_OS=macos"* ]]
     [[ "$output" == *"BASE_PLATFORM=linux-debian"* || "$output" == *"BASE_PLATFORM=linux-unknown"* || "$output" == *"BASE_PLATFORM=macos"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=native"* || "$output" == *"BASE_HOST_ENV=wsl2"* ]]
 }
 
 @test "base_init keeps BASE_OS coarse while classifying Ubuntu as linux-debian" {
@@ -164,11 +169,71 @@ EOF
         source "$base_home/base_init.sh"
         printf "BASE_OS=%s\n" "$BASE_OS"
         printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+        printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
     '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_OS=linux"* ]]
     [[ "$output" == *"BASE_PLATFORM=linux-debian"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=native"* ]]
+}
+
+@test "base_init keeps Ubuntu WSL2 on linux-debian with host environment metadata" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+    local os_release="$TEST_TMPDIR/os-release"
+    local kernel_osrelease="$TEST_TMPDIR/kernel-osrelease"
+    local proc_version="$TEST_TMPDIR/proc-version"
+
+    create_uname_stub "$mockbin" Linux
+    printf 'ID=ubuntu\nID_LIKE=debian\n' > "$os_release"
+    printf '5.15.146.1-microsoft-standard-WSL2\n' > "$kernel_osrelease"
+    printf 'Linux version 5.15.146.1-microsoft-standard-WSL2\n' > "$proc_version"
+
+    PATH="$mockbin:$PATH" \
+        BASE_INIT_TEST_OS_RELEASE_PATH="$os_release" \
+        BASE_INIT_TEST_KERNEL_OSRELEASE_PATH="$kernel_osrelease" \
+        BASE_INIT_TEST_PROC_VERSION_PATH="$proc_version" \
+        run_base_init_script '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            printf "BASE_OS=%s\n" "$BASE_OS"
+            printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+            printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_OS=linux"* ]]
+    [[ "$output" == *"BASE_PLATFORM=linux-debian"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=wsl2"* ]]
+}
+
+@test "base_init keeps non-Debian WSL2 distributions unsupported" {
+    local mockbin="$TEST_TMPDIR/mockbin"
+    local os_release="$TEST_TMPDIR/os-release"
+    local kernel_osrelease="$TEST_TMPDIR/kernel-osrelease"
+    local proc_version="$TEST_TMPDIR/proc-version"
+
+    create_uname_stub "$mockbin" Linux
+    printf 'ID=fedora\nID_LIKE="rhel fedora"\n' > "$os_release"
+    printf '5.15.146.1-microsoft-standard-WSL2\n' > "$kernel_osrelease"
+    printf 'Linux version 5.15.146.1-microsoft-standard-WSL2\n' > "$proc_version"
+
+    PATH="$mockbin:$PATH" \
+        BASE_INIT_TEST_OS_RELEASE_PATH="$os_release" \
+        BASE_INIT_TEST_KERNEL_OSRELEASE_PATH="$kernel_osrelease" \
+        BASE_INIT_TEST_PROC_VERSION_PATH="$proc_version" \
+        run_base_init_script '
+            base_home="$1"
+            source "$base_home/base_init.sh"
+            printf "BASE_OS=%s\n" "$BASE_OS"
+            printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+            printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_OS=linux"* ]]
+    [[ "$output" == *"BASE_PLATFORM=linux-unknown"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=wsl2"* ]]
 }
 
 @test "base_init classifies non-Debian Linux as linux-unknown" {
@@ -183,11 +248,13 @@ EOF
         source "$base_home/base_init.sh"
         printf "BASE_OS=%s\n" "$BASE_OS"
         printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+        printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
     '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_OS=linux"* ]]
     [[ "$output" == *"BASE_PLATFORM=linux-unknown"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=native"* ]]
 }
 
 @test "base_init classifies macOS platform from uname" {
@@ -200,11 +267,13 @@ EOF
         source "$base_home/base_init.sh"
         printf "BASE_OS=%s\n" "$BASE_OS"
         printf "BASE_PLATFORM=%s\n" "$BASE_PLATFORM"
+        printf "BASE_HOST_ENV=%s\n" "$BASE_HOST_ENV"
     '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_OS=macos"* ]]
     [[ "$output" == *"BASE_PLATFORM=macos"* ]]
+    [[ "$output" == *"BASE_HOST_ENV=native"* ]]
 }
 
 @test "base_init marks the Base runtime contract readonly" {
@@ -226,6 +295,7 @@ EOF
             BASE_SHELL_DIR \
             BASE_OS \
             BASE_PLATFORM \
+            BASE_HOST_ENV \
             BASE_HOST \
             BASE_SHELL; do
             declare -p "$var"
@@ -246,6 +316,7 @@ EOF
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_PLATFORM \
+        BASE_HOST_ENV \
         BASE_HOST \
         BASE_SHELL; do
         [[ "$output" == *"declare -rx $var="* ]]
@@ -283,6 +354,7 @@ EOF
         BASE_SHELL_DIR \
         BASE_OS \
         BASE_PLATFORM \
+        BASE_HOST_ENV \
         BASE_HOST \
         BASE_SHELL; do
         grep -F "| \`$var\` |" "$BASE_REPO_ROOT/docs/runtime-environment.md"
@@ -329,6 +401,8 @@ EOF
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         BASE_BASH_LIBS_DIR="$external_dir" \
@@ -366,6 +440,8 @@ EOF
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         bash -c '
@@ -403,6 +479,8 @@ EOF
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         bash -c '
@@ -448,6 +526,8 @@ EOF
         -u BASE_BASH_LIBS_SOURCE \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         BASE_BASH_LIBS_DIR="$external_dir" \
@@ -497,6 +577,8 @@ EOF
         -u BASE_BASH_LIBS_DIR \
         -u BASE_SHELL_DIR \
         -u BASE_OS \
+        -u BASE_PLATFORM \
+        -u BASE_HOST_ENV \
         -u BASE_HOST \
         -u BASE_SHELL \
         BASE_HOME="$opt_base" \
