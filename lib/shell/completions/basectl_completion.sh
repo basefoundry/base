@@ -306,7 +306,16 @@ _base_basectl_completion() {
             fi
             ;;
         doctor)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network --no-color -v -h --help"
+            if [[ "${COMP_WORDS[2]:-}" == explain ]]; then
+                _base_basectl_completion_compgen "--format -h --help" "$cur"
+            elif ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then
+                _base_basectl_completion_project_candidates "$cur"
+                if [[ "explain" == "$cur"* ]]; then
+                    COMPREPLY+=("explain")
+                fi
+            else
+                _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network --no-color -v -h --help"
+            fi
             ;;
         gh)
             case "${COMP_WORDS[2]:-}" in

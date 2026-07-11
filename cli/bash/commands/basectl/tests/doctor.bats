@@ -174,6 +174,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl doctor [project] [options]"* ]]
+    [[ "$output" == *"basectl doctor explain <finding-id>"* ]]
     [[ "$output" == *"--profile <list>"* ]]
     [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
     [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
@@ -185,8 +186,61 @@ EOF
     [[ "$output" != *"--dev"* ]]
     [[ "$output" == *"Diagnose the local Base CLI environment"* ]]
     [[ "$output" == *"Use doctor for finding IDs and fix hints; use check for a quick pass/fail result."* ]]
+    [[ "$output" == *"Use doctor explain for local, provider-neutral guidance"* ]]
     [[ "$output" == *"See also:"* ]]
     [[ "$output" == *"basectl check [project] [options]"* ]]
+}
+
+@test "basectl doctor explain prints help without requiring diagnostics" {
+    run_basectl doctor explain --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl doctor explain <finding-id>"* ]]
+    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"Print local, deterministic guidance"* ]]
+}
+
+@test "basectl doctor explain delegates to the local explanation renderer" {
+    cat > "$TEST_MOCKBIN/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup.finding_explanations" ]]; then
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+printf 'unexpected doctor explain python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/python3"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor explain BASE-D001 --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGS=BASE-D001 --format json"* ]]
+}
+
+@test "basectl doctor explain reports usage errors before Python dispatch" {
+    run_basectl doctor explain
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: The 'doctor explain' command requires a finding ID."* ]]
+    [[ "$output" == *"Run 'basectl doctor explain --help' for usage."* ]]
+
+    run_basectl doctor explain --format
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--format' requires an argument."* ]]
+
+    run_basectl doctor explain BASE-D001 --format yaml
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unsupported doctor explain output format 'yaml'."* ]]
 }
 
 @test "basectl doctor uses visual status indicators on a color-capable tty" {

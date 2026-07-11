@@ -77,6 +77,7 @@ inspect the resolved command contract first.
 | `basectl setup --ci <project>` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv` |
 | `basectl check [project]` | Verify Base and optional project readiness without making changes. Project checks record the latest result under `~/.base.d/<project>/checks/last.json`. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
+| `basectl doctor explain <finding-id>` | Print local, deterministic guidance for a stable finding ID. | `--format <text\|json>` |
 | `basectl ci setup\|check\|doctor <project>` | Compatibility alias for the corresponding `--ci` mode command. | Same options as the target command. |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|json>` |

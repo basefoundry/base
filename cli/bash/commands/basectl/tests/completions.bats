@@ -43,6 +43,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "doctor_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl doctor explain --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "doctor_explain_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl test ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -261,7 +265,8 @@ EOF
     [[ "$output" == *"activate_projects=base demo"* ]]
     [[ "$output" == *"activate_options=--workspace --no-cd"* ]]
     [[ "$output" == *"check_projects=base demo"* ]]
-    [[ "$output" == *"doctor_projects=base demo"* ]]
+    [[ "$output" == *"doctor_projects=base demo explain"* ]]
+    [[ "$output" == *"doctor_explain_options=--format"* ]]
     [[ "$output" == *"test_projects=base demo"* ]]
     [[ "$output" == *"build_projects=base demo"* ]]
     [[ "$output" == *"run_projects=base demo"* ]]

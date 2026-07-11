@@ -465,18 +465,29 @@ _base_basectl_completion() {
             _arguments '1:config command:(path show doctor)'
             ;;
         doctor)
-            _arguments '--ci[Run diagnostics with CI-safe defaults]' \
-                '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
-                '--format[Output format]:format:(text json)' \
-                '--manifest[Use a specific manifest]:path:_files' \
-                '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
-                '--no-color[Disable doctor status colors and symbols in text output]' \
-                '-v[Enable DEBUG logging]' \
-                '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
-            if [[ "$state" == projects ]]; then
-                _base_basectl_completion_describe_projects
-            fi
+            case "${words[3]:-}" in
+                explain)
+                    _arguments '--format[Output format]:format:(text json)' \
+                        '(-h --help)'{-h,--help}'[Show help text]' \
+                        '2:finding id:'
+                    ;;
+                *)
+                    _arguments '--ci[Run diagnostics with CI-safe defaults]' \
+                        '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
+                        '--format[Output format]:format:(text json)' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
+                        '--no-color[Disable doctor status colors and symbols in text output]' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]' \
+                        '1:doctor command or project:->doctor_targets'
+                    if [[ "$state" == doctor_targets ]]; then
+                        _alternative \
+                            'commands:doctor command:(explain)' \
+                            'projects:Base project:_base_basectl_completion_describe_projects'
+                    fi
+                    ;;
+            esac
             ;;
         gh)
             case "${words[3]:-}" in

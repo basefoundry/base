@@ -26,6 +26,27 @@ machine-readable stdout.
 explicit, reviewable, and paired with dry-run behavior before Base offers it as
 part of the doctor workflow.
 
+## Local Explanations
+
+`basectl doctor explain <finding-id>` prints local, deterministic guidance for
+selected high-frequency finding IDs:
+
+```bash
+basectl doctor explain BASE-P050
+basectl doctor explain BASE-D001 --format json
+```
+
+The explanation catalog is provider-neutral and local-only. It includes a
+summary, why the finding matters, likely causes, concrete fix steps, related
+commands, and documentation links. Unknown IDs fail clearly and point back to
+this reference. The first catalog slice intentionally covers frequent Base
+runtime and project-readiness findings rather than every documented ID.
+
+Future AI-assisted doctor features should build on this local catalog as the
+ground truth. Optional provider amplification may add richer phrasing or
+context later, but it must not replace the local explanation data, require a
+provider for deterministic guidance, or change the stable finding-ID contract.
+
 ## Diagnostic JSON Contract
 
 Base diagnostic JSON uses `schema_version: 1` for object-shaped payloads. This

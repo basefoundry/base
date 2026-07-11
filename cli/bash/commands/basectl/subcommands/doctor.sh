@@ -12,6 +12,7 @@ base_doctor_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl doctor [project] [options]
+  basectl doctor explain <finding-id> [--format text|json]
 
 Options:
   --ci                  Run diagnostics with CI-safe defaults.
@@ -33,6 +34,7 @@ Profiles:
 Purpose:
   Diagnose the local Base CLI environment and, when provided, project artifacts.
   Use doctor for finding IDs and fix hints; use check for a quick pass/fail result.
+  Use doctor explain for local, provider-neutral guidance about a stable finding ID.
 
 See also:
   basectl check [project] [options]
@@ -44,6 +46,98 @@ base_doctor_usage_error() {
     print_error "$*"
     printf "Run 'basectl doctor --help' for usage.\n" >&2
     return 2
+}
+
+base_doctor_explain_usage() {
+    cat <<'EOF'
+Usage:
+  basectl doctor explain <finding-id> [--format text|json]
+
+Options:
+  --format <text|json>  Select output format. Defaults to text.
+  -h, --help            Show this help text.
+
+Purpose:
+  Print local, deterministic guidance for a stable Base finding ID.
+EOF
+}
+
+base_doctor_explain_usage_error() {
+    print_error "$*"
+    printf "Run 'basectl doctor explain --help' for usage.\n" >&2
+    return 2
+}
+
+base_doctor_explain_finding() {
+    local finding_id="$1"
+    local output_format="$2"
+    local python_bin
+
+    python_bin="$(setup_diagnostics_python_bin)" ||
+        fatal_error "Python is required to render Base finding explanations."
+    setup_ensure_cached_paths
+    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -m base_setup.finding_explanations "$finding_id" --format "$output_format"
+}
+
+base_doctor_explain_main() {
+    local finding_id=""
+    local output_format="text"
+
+    while (($#)); do
+        case "$1" in
+            -h|--help|help)
+                base_doctor_explain_usage
+                return 0
+                ;;
+            --format)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_doctor_explain_usage_error "Option '--format' requires an argument."
+                    return $?
+                fi
+                case "$1" in
+                    text|json)
+                        output_format="$1"
+                        ;;
+                    *)
+                        base_doctor_explain_usage_error "Unsupported doctor explain output format '$1'."
+                        return $?
+                        ;;
+                esac
+                ;;
+            --format=*)
+                case "${1#--format=}" in
+                    text|json)
+                        output_format="${1#--format=}"
+                        ;;
+                    *)
+                        base_doctor_explain_usage_error "Unsupported doctor explain output format '${1#--format=}'."
+                        return $?
+                        ;;
+                esac
+                ;;
+            *)
+                if [[ "$1" == -* ]]; then
+                    base_doctor_explain_usage_error "Unknown option '$1'."
+                    return $?
+                fi
+                if [[ -n "$finding_id" ]]; then
+                    base_doctor_explain_usage_error "The 'doctor explain' command accepts exactly one finding ID."
+                    return $?
+                fi
+                finding_id="$1"
+                ;;
+        esac
+        shift
+    done
+
+    if [[ -z "$finding_id" ]]; then
+        base_doctor_explain_usage_error "The 'doctor explain' command requires a finding ID."
+        return $?
+    fi
+
+    base_doctor_explain_finding "$finding_id" "$output_format"
 }
 
 base_doctor_print_finding() {
@@ -181,6 +275,12 @@ base_doctor_subcommand_main() {
     local remote_network=false
 
     setup_clear_run_state
+
+    if [[ "${1:-}" == explain ]]; then
+        shift
+        base_doctor_explain_main "$@"
+        return $?
+    fi
 
     while (($#)); do
         case "$1" in
