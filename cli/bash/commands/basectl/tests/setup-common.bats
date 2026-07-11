@@ -81,6 +81,27 @@ run_setup_common_script() {
     [[ "$output" == *"platform=macos"* ]]
 }
 
+@test "setup_common sources Linux/Debian helper idempotently" {
+    run_setup_common_script '
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_linux_debian.sh"
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_linux_debian.sh"
+        for helper in \
+            setup_find_linux_python_bin \
+            setup_collect_linux_debian_base_check_results \
+            setup_run_linux_debian_apt_prerequisites \
+            setup_run_linux_debian_install; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 20
+            }
+        done
+        printf "guard=%s\n" "${_base_setup_linux_debian_sourced:-}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"guard=1"* ]]
+}
+
 @test "setup_common reports WSL2 host context without changing platform support" {
     run_setup_common_script '
         BASE_TEST_MODE=true
