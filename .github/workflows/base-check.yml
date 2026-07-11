@@ -1,0 +1,174 @@
+name: Reusable Base Check
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Base project name to check.
+        required: true
+        type: string
+      manifest-path:
+        description: Path to base_manifest.yaml relative to the caller repository root.
+        required: false
+        default: base_manifest.yaml
+        type: string
+      setup-mode:
+        description: Use source-checkout to prepare Base from source, or preinstalled to use basectl from PATH.
+        required: false
+        default: source-checkout
+        type: string
+      base-ref:
+        description: Optional Base ref override for source-checkout mode. Empty uses the workflow commit.
+        required: false
+        default: ""
+        type: string
+      profiles:
+        description: Optional comma-separated Base prerequisite profiles.
+        required: false
+        default: ""
+        type: string
+      output-format:
+        description: basectl check output format.
+        required: false
+        default: json
+        type: string
+      python-version:
+        description: Python version used to prepare Base source-checkout mode.
+        required: false
+        default: "3.13"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.project }}
+  cancel-in-progress: true
+
+jobs:
+  base-check:
+    name: Base check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Validate inputs
+        env:
+          BASE_CHECK_OUTPUT_FORMAT: ${{ inputs.output-format }}
+          BASE_CHECK_PROJECT: ${{ inputs.project }}
+          BASE_CHECK_SETUP_MODE: ${{ inputs.setup-mode }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$BASE_CHECK_PROJECT" ]]; then
+            printf 'The project input is required.\n' >&2
+            exit 2
+          fi
+
+          case "$BASE_CHECK_SETUP_MODE" in
+            source-checkout|preinstalled) ;;
+            *)
+              printf 'Unsupported setup-mode: %s\n' "$BASE_CHECK_SETUP_MODE" >&2
+              printf 'Expected one of: source-checkout, preinstalled.\n' >&2
+              exit 2
+              ;;
+          esac
+
+          case "$BASE_CHECK_OUTPUT_FORMAT" in
+            text|json) ;;
+            *)
+              printf 'Unsupported output-format: %s\n' "$BASE_CHECK_OUTPUT_FORMAT" >&2
+              printf 'Expected one of: text, json.\n' >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Checkout caller repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: workspace
+
+      - name: Checkout Base source
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base
+          ref: ${{ inputs.base-ref || github.workflow_sha }}
+          path: .base/source
+
+      - name: Checkout Base Bash libraries
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-bash-libs
+          ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
+          path: .base/base-bash-libs
+
+      - name: Set up Python
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Remove flaky hosted-runner apt sources
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        run: |
+          sudo rm -f \
+            /etc/apt/sources.list.d/azure-cli.sources \
+            /etc/apt/sources.list.d/azure-cli.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources \
+            /etc/apt/sources.list.d/microsoft-prod.list
+
+      - name: Install source-checkout prerequisites
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ca-certificates \
+            python3-venv \
+            python3-pip
+
+      - name: Prepare Base source runtime
+        if: ${{ inputs.setup-mode == 'source-checkout' }}
+        working-directory: .base/source
+        run: |
+          python -m venv "$HOME/.base.d/base/.venv"
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
+
+      - name: Run basectl check --ci
+        env:
+          BASE_CHECK_MANIFEST_PATH: ${{ inputs.manifest-path }}
+          BASE_CHECK_OUTPUT_FORMAT: ${{ inputs.output-format }}
+          BASE_CHECK_PROFILES: ${{ inputs.profiles }}
+          BASE_CHECK_PROJECT: ${{ inputs.project }}
+          BASE_CHECK_SETUP_MODE: ${{ inputs.setup-mode }}
+        run: |
+          set -euo pipefail
+
+          workspace_dir="$GITHUB_WORKSPACE/workspace"
+          case "$BASE_CHECK_SETUP_MODE" in
+            source-checkout)
+              base_command="$GITHUB_WORKSPACE/.base/source/bin/basectl"
+              export BASE_BASH_LIBS_DIR="$GITHUB_WORKSPACE/.base/base-bash-libs/lib/bash"
+              ;;
+            preinstalled)
+              base_command="basectl"
+              ;;
+          esac
+
+          args=(check --ci "$BASE_CHECK_PROJECT" --format "$BASE_CHECK_OUTPUT_FORMAT")
+          if [[ -n "$BASE_CHECK_MANIFEST_PATH" ]]; then
+            case "$BASE_CHECK_MANIFEST_PATH" in
+              /*) manifest_path="$BASE_CHECK_MANIFEST_PATH" ;;
+              *) manifest_path="$workspace_dir/$BASE_CHECK_MANIFEST_PATH" ;;
+            esac
+            args+=(--manifest "$manifest_path")
+          fi
+          if [[ -n "$BASE_CHECK_PROFILES" ]]; then
+            args+=(--profile "$BASE_CHECK_PROFILES")
+          fi
+
+          printf 'Running %s %s\n' "$base_command" "${args[*]}"
+          cd "$workspace_dir"
+          "$base_command" "${args[@]}"

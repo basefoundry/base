@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
 COPILOT_SETUP_WORKFLOW = WORKFLOW_DIR / "copilot-setup-steps.yml"
+BASE_CHECK_WORKFLOW = WORKFLOW_DIR / "base-check.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
@@ -245,6 +246,42 @@ def test_all_workflow_action_uses_are_pinned_to_full_commit_sha() -> None:
     unpinned = workflow_action_references_without_full_sha()
 
     assert not unpinned, unpinned
+
+
+def test_reusable_base_check_workflow_contract() -> None:
+    workflow = load_workflow(BASE_CHECK_WORKFLOW)
+    ci_docs = (REPO_ROOT / "docs" / "basectl-ci.md").read_text(encoding="utf-8")
+    triggers = workflow.get("on") or workflow.get(True)
+    workflow_call = triggers["workflow_call"]
+    inputs = workflow_call["inputs"]
+    job = workflow["jobs"]["base-check"]
+    steps = job["steps"]
+    run_commands = "\n".join(step.get("run", "") for step in steps if isinstance(step, dict))
+
+    assert workflow["name"] == "Reusable Base Check"
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "concurrency" in workflow
+    assert job["runs-on"] == "ubuntu-latest"
+    assert job["timeout-minutes"] == 20
+    assert inputs["project"] == {
+        "description": "Base project name to check.",
+        "required": True,
+        "type": "string",
+    }
+    assert inputs["manifest-path"]["default"] == "base_manifest.yaml"
+    assert inputs["setup-mode"]["default"] == "source-checkout"
+    assert inputs["base-ref"]["default"] == ""
+    assert "base-bash-libs-ref" not in inputs
+    assert inputs["output-format"]["default"] == "json"
+    assert inputs["python-version"]["default"] == "3.13"
+    assert "source-checkout|preinstalled" in run_commands
+    assert "args=(check --ci \"$BASE_CHECK_PROJECT\" --format \"$BASE_CHECK_OUTPUT_FORMAT\")" in run_commands
+    assert "BASE_BASH_LIBS_DIR" in run_commands
+    assert "basefoundry/base-bash-libs" in str(steps)
+    assert "424ef9fe61bc8a462ba9980ea63b38dd202ec242" in str(steps)
+    assert "${{ inputs.base-ref || github.workflow_sha }}" in str(steps)
+    assert "uses: basefoundry/base/.github/workflows/base-check.yml@<base-ref-or-sha>" in ci_docs
+    assert "| `setup-mode` | `source-checkout` |" in ci_docs
 
 
 def test_copilot_repository_instructions_stay_anchored_to_base_guidance() -> None:
