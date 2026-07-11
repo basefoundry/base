@@ -94,6 +94,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   manifest-declared project commands under `~/.base.d/trust/manifest-commands/`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
+- `basectl doctor explain <finding-id>` prints local, deterministic guidance
+  for selected stable finding IDs, with optional JSON output.
 - `basectl gh` manages GitHub issues, pull requests, branch naming, repository
   hygiene, and GitHub Project metadata using Base's opinionated workflow. It
   uses standard GitHub-style issue categories such as `bug`, `enhancement`,
