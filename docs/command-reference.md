@@ -13,6 +13,17 @@ syntax.
 `--config`, `--environment`, and `--keep-temp` are private to Python package
 execution and are rejected by `basectl`.
 
+## Stability Tiers
+
+Commands documented here are stable public CLI unless a focused feature
+document explicitly marks the command, flag, output shape, or generated artifact
+as experimental. Prefer documented `--format json` payloads for automation and
+avoid scripting against human-readable tables, logs, or private `base_cli`
+package options.
+
+See [Base Stability Tiers](stability-tiers.md) for the full stable,
+experimental, and internal support contract.
+
 ## Source Control And Forge Boundary
 
 Base assumes Git as the source-control system. Non-Git SCMs such as Mercurial,

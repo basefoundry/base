@@ -98,6 +98,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Project installer template integrity",
         "CLI local log file privacy",
         "CLI docs, help, and completion drift",
+        "Public command and JSON stability tiers",
         "Project metadata defaults",
     }
     for row in rows:
