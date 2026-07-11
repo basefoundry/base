@@ -1,127 +1,187 @@
 # `setup_common.sh` Ownership Reduction
 
-Status: design note for #929, refreshed after the project-routing migration.
+Status: preliminary implementation slice for #1570, refreshed against the
+current 2,906-line `setup_common.sh` implementation.
 
-`cli/bash/commands/basectl/subcommands/setup_common.sh` is intentionally
-shared by `basectl setup`, `basectl check`, `basectl doctor`, and
-`basectl update-profile`. Its size is a maintainability signal, but the safe
-response is ownership reduction, not a mechanical split into sourced shell
-fragments.
+`cli/bash/commands/basectl/subcommands/setup_common.sh` is intentionally shared
+by `basectl setup`, `basectl check`, `basectl doctor`, and
+`basectl update-profile`. It owns first-mile host bootstrap, Base runtime
+readiness, platform dispatch, project-layer dispatch, and check/doctor
+orchestration. Its size is now the maintenance problem; the safe response is a
+staged ownership split with behavior-preserving PRs, not a line-count driven
+rewrite.
 
-This note maps the current responsibilities, identifies the behavior that should
-move to Python or command helpers, and records the implementation issues that
-are clear enough to pursue.
+This note maps the current responsibilities and records the strategy for
+breaking up the file into domain-scoped helpers or Python-owned surfaces.
 
 ## Guardrails
 
-- Preserve the single-file sourceable library standard from
-  [STANDARDS.md](../STANDARDS.md). Do not split shell code by topic just because
-  one file is long.
-- Keep Bash responsible for host bootstrap and command orchestration.
+- Preserve the top-level setup contract: `basectl check` inspects,
+  `basectl setup` applies, `basectl setup --dry-run` previews, and
+  `basectl setup --yes` is consent for prompts, not an automatic "fix
+  everything" mode.
+- Preserve public function names and call sites during shell extraction. Move
+  code first; rename only in later, separately reviewed cleanup.
+- Keep Bash responsible for host bootstrap, shell process orchestration, prompt
+  consent, environment activation, and command dispatch.
 - Keep Python responsible for manifest parsing, structured project data,
-  artifact decisions, and JSON output.
-- Do not change setup, check, or doctor behavior in the design slice.
-- Add implementation issues only for boundaries that are clear enough to test
-  and review independently.
+  artifact decisions, workspace data, and stable JSON serialization.
+- Move one ownership boundary per PR. Each PR must be reviewable as a no-op for
+  setup/check/doctor/update behavior on macOS and Ubuntu/Debian.
+- Add source guards and sourcing-order tests before introducing any new sourced
+  shell helper.
+- Coordinate Linux/Debian helper movement with #1564 before moving broader
+  platform code.
 
-## Responsibility Map
+## Current Responsibility Map
 
-| Lines | Current responsibility | Target owner |
-| --- | --- | --- |
-| 35-209 | Shared setup state, profile flags, dry-run/recreate/notification toggles. | Keep in Bash orchestration. This is cross-command state used before Python may be available. |
-| 210-401 | Base virtualenv health, package names, environment gates, and recovery messages. | Mostly Bash setup. Python may eventually own package policy, but host readiness still starts in Bash. |
-| 402-441 | macOS completion notification. | Keep in Bash setup. It is local process/UI orchestration, not structured product logic. |
-| 442-656 | Homebrew, Xcode CLT, Homebrew-managed Python, and Base virtualenv creation. | Keep in Bash setup. These are first-mile host bootstrap operations. |
-| 657-1025 | Base bootstrap Python package checks, reusable Bash library diagnostics, and the helper that invokes Python diagnostic JSON commands. | Keep bootstrap checks in Bash for now. The library source is known during runtime bootstrap before Python dispatch. Move remaining structured JSON assembly to Python in #1009. |
-| 1027-1179 | Project manifest resolution, Python route invocation, check-result file location, user config seeding, and fallback project virtualenv helpers. | Project routing and uv/venv selection are Python-owned through `base_setup.project_routing`; Bash consumes the TSV metadata and keeps only dispatch/fallback helpers. |
-| 1181-1305 | Doctor visual status, project virtualenv JSON snippets, and array splicing for pre-venv diagnostics. | Move structured JSON payload assembly to Python. Doctor-only text presentation may move to `doctor.sh` after JSON ownership is reduced. |
-| 1307-1552 | Python project setup/check/doctor layer invocation and pre-venv fallback handling. | Keep Bash as the dispatcher, consuming Python-owned project routing metadata from `base_setup --action route`. |
-| 1554-1577 | `base_dev` profile layer invocation. | Keep Bash as the dispatcher. Internal AI tool/profile extraction belongs in `base_dev` work, not this file. |
-| 1579-2079 | Base host check probe execution, probe result files, text rendering, and setup/check status recording. | Keep host probes in Bash. Move reusable diagnostic formatting and JSON assembly to Python in #1009. |
-| 2081-2128 | Status merging and `check --format json` top-level rendering through Python diagnostic helpers. | Move the remaining top-level assembly responsibility to Python serialization in #1009. |
-| 2130-2178 | Top-level install orchestration for CI runtime and macOS setup. | Keep in Bash setup. It sequences first-mile host work before optional Python project/profile layers. |
+Line spans are approximate navigation aids for the current source shape. The
+entry-point functions are the stable anchors for future edits.
 
-## Python-Owned Moves
+| Span | Current responsibility | Entry-point anchors | Target owner |
+| --- | --- | --- | --- |
+| 1-252 | Source guard, shared cached paths, run state, profile flags, dry-run/debug/yes/CI toggles, and Ubuntu/Debian consent prompts. | `setup_refresh_cached_paths()`, `setup_enable_profile_argument()`, `setup_require_linux_debian_system_consent()` | Keep in shared shell orchestration until profile parsing can move independently. |
+| 260-435 | Base virtualenv health checks, pyvenv inspection, architecture compatibility, backup path handling, and package/config defaults. | `setup_virtualenv_healthy_path()`, `setup_backup_existing_venv_path()`, `setup_python_formula()` | Candidate `setup_venv.sh` only after platform Python finders and project-venv fallback dependencies are separated. |
+| 436-636 | Platform/host-env detection helpers, test-hook gates, recovery text, and GitHub CLI Debian/Ubuntu install guidance constants. | `setup_current_platform()`, `setup_current_host_env()`, `setup_recovery_linux_github_cli()` | Split platform policy only with #1564 or a later platform-boundary issue. |
+| 636-676 | macOS completion notification behavior. | `setup_notify_completion()` | Candidate `setup_notifications.sh`; low risk but low value unless used as a source-guard pilot. |
+| 678-1027 | Homebrew discovery, Rosetta/runtime summary, pinned installer policy, Homebrew install, and macOS command-line-tool prerequisites. | `setup_find_brew_bin()`, `setup_print_runtime_chain_summary()`, `setup_install_homebrew()`, `setup_install_xcode_tools()` | Candidate `setup_homebrew.sh` or `setup_macos.sh` after Linux/Debian boundary decisions settle the helper pattern. |
+| 1031-1319 | macOS/Linux Python discovery, Linux runtime predicates, Base virtualenv creation, and Base bootstrap package install. | `setup_find_platform_python_bin()`, `setup_create_virtualenv()`, `setup_install_base_python_package()` | Candidate `setup_venv.sh`; keep the platform Python finder seam explicit. |
+| 1320-1513 | Base check finding metadata, base-bash-libs status, PYTHONPATH, and the diagnostics JSON bridge. | `setup_base_check_finding_id()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Finding metadata should eventually move to Python; the diagnostics bridge remains shared shell until check JSON assembly moves. |
+| 1523-1671 | Project manifest resolution, project route dispatch, check-result recording, user config seeding, and legacy project-venv fallback helpers. | `setup_resolve_project_manifest()`, `setup_resolve_project_route()`, `setup_record_project_check_result()` | Continue moving structured route policy to Python; keep shell dispatch thin. |
+| 1677-1779 | Doctor visual status and project virtualenv JSON snippets for pre-venv failure handling. | `setup_print_doctor_finding()`, `setup_print_project_venv_check_json()`, `setup_print_project_venv_doctor_json()` | Move structured JSON assembly to Python before considering command-local doctor formatting. |
+| 1779-2067 | Project pre-venv, bootstrap, artifact setup/check/doctor, uv-manager, wrapper, and remote-network dispatch. | `setup_run_project_pre_venv_layer()`, `setup_run_project_bootstrap_layer()`, `setup_run_project_artifact_layer()` | Keep as shell dispatch; reduce by moving project policy and payload shape to Python. |
+| 2075-2099 | `base_dev` prerequisite profile dispatch. | `setup_run_base_dev_layer()` | Candidate `setup_profiles.sh` once profile parsing, profile JSON keys, and profile dispatch can move together. |
+| 2102-2479 | macOS parallel host probes, Linux check-result collectors, platform-specific check dispatch, and CI runtime check collectors. | `setup_collect_macos_base_check_results()`, `setup_collect_linux_debian_base_check_results()`, `setup_collect_platform_base_check_results()` | Linux collector belongs with #1564; macOS probes can later move with Homebrew/macOS helpers. |
+| 2488-2699 | Base check text rendering, project check result status handling, top-level check orchestration, and check JSON argument assembly. | `setup_run_check()`, `setup_run_check_json()`, `setup_print_check_text_results()` | Move check JSON assembly to Python; keep human text rendering and exit orchestration in shell. |
+| 2704-2906 | CI install, macOS install, Ubuntu/Debian apt prerequisites, GitHub CLI apt repository setup, platform install dispatch, and top-level setup dispatch. | `setup_run_ci_runtime_install()`, `setup_run_macos_install()`, `setup_run_linux_debian_install()`, `setup_run_install()` | Split Linux install with #1564 first, then consider macOS install and shared venv helpers. |
 
-### Completed: Project Environment Routing
+## Decomposition Strategy
 
-Project routing has moved to Python. Bash still resolves the manifest path used
-for dispatch, then calls `base_setup --action route` to get a tab-separated
-metadata contract containing the project name, root, manifest path, virtualenv
-path, and uv-manager flag.
+The split should proceed in phases that reduce ownership, preserve behavior, and
+avoid circular shell dependencies.
 
-The Python layer owns manifest parsing, `python.manager: uv` interpretation,
-project virtualenv path selection, and the JSON/text route formatter through
-`base_setup.project_routing`. Bash no longer parses `python.manager: uv`
-directly.
+### Phase 0: Ownership Map And Guard
 
-Current result:
+This issue slice refreshes the map and adds a documentation guard. It does not
+move runtime code. That keeps the first PR review focused on whether the
+planned boundaries are coherent.
 
-- Base-managed and uv-managed project virtualenv paths come from Python-owned
-  manifest/project metadata.
-- `setup_common.sh` validates the returned route fields, uses the uv-manager
-  flag only for dispatch decisions, and keeps setup/check/doctor behavior in
-  the shell orchestration layer.
-- `BASE_PROJECT_VENV_DIR` remains part of the Python route contract for
-  non-Base projects.
+### Phase 1: Linux/Debian Platform Boundary
 
-### Remaining: Setup/Check JSON Diagnostics (#1009)
+Use #1564 as the input for the first sourced-shell extraction. The likely helper
+is `setup_linux_debian.sh` or `setup_apt.sh`, but the name should follow the
+actual ownership being moved.
 
-The second clear mismatch is JSON output. `setup_common.sh` now delegates JSON
-serialization to `base_setup.diagnostics`, but it still owns top-level
-diagnostic status merging, check argument assembly, and Base/profile/project
-payload splicing before calling the Python formatter.
+The first Linux slice should include:
 
-`base_setup.diagnostics` is intentionally an internal pre-CLI helper rather
-than a public `base_cli.App` command. `setup_common.sh` can call it while
-diagnosing whether Click, PyYAML, or the normal Base CLI runtime is present, so
-the helper accepts only its documented argparse subcommands. It does not support
-Base CLI standard flags such as `--debug`, `--log-file`, `--keep-temp`, or
-history/run-id behavior; outer setup/check/doctor orchestration owns user-facing
-logging and status handling.
+- apt package list and dry-run command helpers:
+  `setup_linux_debian_apt_packages()`,
+  `setup_linux_debian_apt_update_command()`, and
+  `setup_linux_debian_apt_prerequisite_command()`;
+- apt package presence and install flow:
+  `setup_linux_debian_apt_prerequisites_installed()` and
+  `setup_run_linux_debian_apt_prerequisites()`;
+- GitHub CLI repository setup helpers:
+  `setup_linux_debian_github_cli_source_line()` and
+  `setup_run_linux_debian_github_cli_prerequisite()`;
+- Linux check collectors only if the PR can keep the review small:
+  `setup_collect_linux_debian_base_check_results()`.
 
-Python already has diagnostic payload helpers in `base_setup.checks`, and JSON
-serialization is a better Python responsibility. Bash can continue to collect
-host probe results and call a Python formatter for structured output.
+This is important because Linux support is now product-visible, and keeping
+Ubuntu/Debian policy buried inside the cross-platform common file increases the
+risk of macOS-specific edits breaking Linux behavior.
 
-Expected result:
+### Phase 2: Homebrew And macOS Host Bootstrap
 
-- `basectl check --format json` keeps the current schema and exit behavior.
-- Host probes can remain Bash-owned until a later issue proves a better probe
-  boundary.
-- `setup_common.sh` no longer owns top-level JSON payload assembly for Base
-  check results.
+After the Linux helper pattern is proven, move the Homebrew/Xcode surface to a
+macOS-specific helper such as `setup_homebrew.sh` or `setup_macos.sh`.
 
-## Command-Helper Candidates
+Candidate functions include `setup_find_brew_bin()`,
+`setup_homebrew_installer_url()`, `setup_install_homebrew()`,
+`setup_xcode_tools_installed()`, and `setup_install_xcode_tools()`.
 
-Do not create issues for these yet:
+This matters because the Homebrew installer policy, Rosetta diagnostics, and
+Xcode behavior change at a different cadence from Ubuntu/Debian setup. A
+macOS-specific helper lets platform reviewers reason about one host family at a
+time.
 
-- Doctor visual text formatting may move to `doctor.sh`, but only after #1009
-  removes the structured JSON responsibilities from the same area.
-- Profile argument parsing can stay shared while setup, check, and doctor all
-  accept the same profile flags.
-- Completion notification belongs with setup orchestration unless another
-  command starts using the same behavior.
+### Phase 3: Base Runtime Virtualenv And Python Bootstrap
 
-These are possible cleanup slices, not proven ownership moves.
+Move the Base virtualenv and Python bootstrap surface only after platform Python
+finder boundaries are explicit. The candidate helper is `setup_venv.sh`.
 
-## Shell Boundary Decision
+Candidate functions include `setup_virtualenv_healthy_path()`,
+`setup_find_platform_python_bin()`, `setup_create_virtualenv()`,
+`setup_base_venv_python_bin()`, and `setup_install_base_python_package()`.
 
-No new sourced shell boundary is justified now.
+This matters because setup, check, CI runtime, and project dispatch all depend
+on Base runtime health. Extracting this too early would create hidden coupling;
+doing it after platform helpers are stable gives the venv helper a clean API.
 
-A future command-local host-prerequisite helper could be justified only if the
-Homebrew/Xcode/Python probe and install surface becomes independently useful
-outside `setup_common.sh`. Until then, introducing another shell file would add
-source ordering and namespace risk without reducing product ownership.
+### Phase 4: Profile Dispatch And Notifications
 
-Keep `setup_common.sh` navigable through section ordering, stable
-`setup_*` function prefixes, focused tests, and Python ownership reduction where
-structured data belongs.
+Move smaller orchestration surfaces only after the platform and venv layers have
+settled.
 
-## Follow-Up Sequence
+Candidate helpers:
 
-1. Implement #1009 next. Project routing is now less Bash-owned, so structured
-   JSON formatting can move without carrying additional manifest logic along.
-2. Reassess command-helper cleanup after #1009 merges. If the remaining
-   doctor text or host probe code is still hard to navigate, create a narrower
-   issue with line-level evidence and test coverage.
+- `setup_profiles.sh` for profile parsing and `setup_run_base_dev_layer()`;
+- `setup_notifications.sh` for `setup_notify_completion()`.
+
+These are cleanup slices, not product enablers. They are useful only when they
+reduce the common file without creating extra source-order complexity.
+
+### Phase 5: Python-Owned Payloads
+
+Do not move structured payload work into new shell helpers. Move it into Python
+instead.
+
+Candidates for Python ownership:
+
+- check JSON assembly currently coordinated by `setup_run_check_json()`;
+- project virtualenv JSON snippets currently emitted through
+  `setup_print_project_venv_check_json()` and
+  `setup_print_project_venv_doctor_json()`;
+- base finding metadata currently in `setup_base_check_finding_id()` and
+  `setup_base_check_display_name()`.
+
+This matters because JSON schema stability is easier to test and preserve in
+Python than in shell argument assembly.
+
+## Source-Guard Protocol
+
+Each sourced helper PR should follow this protocol:
+
+1. Add the helper under `cli/bash/commands/basectl/subcommands/` with a private
+   guard variable such as `_base_setup_linux_debian_sourced`.
+2. Source it from `setup_common.sh` in dependency order, near the existing
+   `setup_check_results.sh` source.
+3. Preserve existing public `setup_*` function names.
+4. Keep helper dependencies explicit. A helper may call functions sourced before
+   it; it must not rely on functions sourced later.
+5. Add BATS coverage that sources `setup_common.sh` twice, verifies moved
+   functions are declared, and exercises at least one behavior path from the
+   moved domain.
+6. Run syntax checks for `setup_common.sh` and every new helper.
+7. Update this map in the same PR so the ownership document remains current.
+
+## Non-Goals
+
+- Do not split by line count alone.
+- Do not rewrite setup orchestration in Python.
+- Do not change user-visible setup/check/doctor text, JSON shape, dry-run
+  behavior, prompt consent behavior, or platform support in extraction PRs.
+- Do not remove `setup_common.sh` as the shared command surface until each
+  command has a proven replacement boundary.
+
+## Recommended PR Sequence
+
+1. Finish this preliminary #1570 slice: refreshed map, strategy, and doc guard.
+2. Resolve or explicitly scope #1564, then move the first Linux/Debian helper
+   boundary.
+3. Move macOS/Homebrew bootstrap helpers using the same source-guard pattern.
+4. Move Base runtime virtualenv/Python bootstrap helpers after both platform
+   helpers are stable.
+5. Move profile and notification helpers if they still reduce ownership.
+6. Move structured check/doctor JSON assembly into Python-owned code, not into
+   another shell helper.
