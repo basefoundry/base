@@ -1,18 +1,19 @@
 # `setup_common.sh` Ownership Reduction
 
-Status: active #1570 decomposition map. The first platform helpers,
+Status: #1570 close-out map. The first platform helpers,
 `setup_linux_debian.sh` and `setup_macos_homebrew.sh`, the Base runtime helper
 `setup_venv.sh`, and the profile helper `setup_profiles.sh` have been
 extracted from the shared 2,906-line baseline; `setup_common.sh` is now the
-shared orchestrator plus remaining unextracted domains.
+shared orchestrator plus the few domains that still need a broader ownership
+boundary before they should move.
 
 `cli/bash/commands/basectl/subcommands/setup_common.sh` is intentionally shared
 by `basectl setup`, `basectl check`, `basectl doctor`, and
 `basectl update-profile`. It owns first-mile host bootstrap, Base runtime
 readiness, platform dispatch, project-layer dispatch, and check/doctor
-orchestration. Its size is now the maintenance problem; the safe response is a
-staged ownership split with behavior-preserving PRs, not a line-count driven
-rewrite.
+orchestration. The maintenance risk was mixed ownership, not raw file length;
+the safe response was a staged ownership split with behavior-preserving PRs,
+not a line-count driven rewrite.
 
 This note maps the current responsibilities and records the strategy for
 breaking up the file into domain-scoped helpers or Python-owned surfaces.
@@ -29,8 +30,11 @@ breaking up the file into domain-scoped helpers or Python-owned surfaces.
   consent, environment activation, and command dispatch.
 - Keep Python responsible for manifest parsing, structured project data,
   artifact decisions, workspace data, and stable JSON serialization.
-- Move one ownership boundary per PR. Each PR must be reviewable as a no-op for
-  setup/check/doctor/update behavior on macOS and Ubuntu/Debian.
+- Move one ownership boundary per PR. Split only when the moved code owns a
+  cohesive functional domain with a stable source boundary; do not split merely
+  because a file has crossed a line-count threshold.
+- Each PR must be reviewable as a no-op for setup/check/doctor/update behavior
+  on macOS and Ubuntu/Debian.
 - Add source guards and sourcing-order tests before introducing any new sourced
   shell helper.
 - Coordinate Linux/Debian helper movement with #1564 before moving broader
@@ -45,7 +49,7 @@ entry-point functions are the stable anchors for future edits.
 | --- | --- | --- | --- |
 | `setup_common.sh` 1-179 | Source guard, helper sourcing, shared cached paths, run state, dry-run/debug/yes/CI toggles, Ubuntu/Debian consent prompts, notification toggles, and CI mode detection. | `setup_refresh_cached_paths()`, `setup_clear_run_state()`, `setup_require_linux_debian_system_consent()` | Keep in shared shell orchestration. |
 | `setup_common.sh` 183-268 | Platform/host-env helpers, platform support messages, test-hook gates, and shared non-runtime recovery text. | `setup_current_platform()`, `setup_current_host_env()`, `setup_reject_test_hook_if_disallowed()` | Keep platform policy shared while OS-specific implementation remains in platform helpers. |
-| `setup_common.sh` 272-310 | macOS completion notification behavior. | `setup_notify_completion()` | Candidate `setup_notifications.sh`; low risk but low value unless it still reduces ownership after platform helpers settle. |
+| `setup_common.sh` 272-310 | Completion notification behavior. | `setup_notify_completion()` | Keep in shared shell for now. Revisit `setup_notifications.sh` when notification policy grows beyond the current macOS-only surface into a cross-platform domain. |
 | `setup_common.sh` 314-410 | Shared command-path probes, executable architecture, Rosetta state, GitHub CLI version display, and runtime-chain summary rendering. | `setup_command_path()`, `setup_rosetta_translation_state()`, `setup_print_runtime_chain_summary()` | Keep shared because the summary combines platform helper data with cross-platform runtime state. |
 | `setup_common.sh` 414-605 | Base check finding metadata, base-bash-libs status, PYTHONPATH, and the diagnostics JSON bridge. | `setup_base_check_finding_id()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Finding metadata should eventually move to Python; the diagnostics bridge remains shared shell until check JSON assembly moves. |
 | `setup_common.sh` 607-755 | Project manifest resolution, project route dispatch, check-result recording, user config seeding, and legacy project-venv fallback helpers. | `setup_resolve_project_manifest()`, `setup_resolve_project_route()`, `setup_record_project_check_result()` | Continue moving structured route policy to Python; keep shell dispatch thin. |
@@ -150,8 +154,8 @@ doing it after platform helpers are stable gives the venv helper a clean API.
 
 ### Phase 4: Profile Dispatch And Notifications
 
-Move smaller orchestration surfaces only after the platform and venv layers have
-settled.
+Move smaller orchestration surfaces only when they have a clear functional
+boundary after the platform and venv layers have settled.
 
 Implemented profile dispatch fourth as `setup_profiles.sh`.
 
@@ -167,19 +171,22 @@ The profile helper owns:
 - `base_dev` prerequisite profile dispatch:
   `setup_run_base_dev_layer()`.
 
-Remaining candidate:
+Deferred candidate:
 
 - `setup_notifications.sh` for `setup_notify_completion()`.
 
-These are cleanup slices, not product enablers. They are useful only when they
-reduce the common file without creating extra source-order complexity.
+The notification helper is intentionally deferred. Today it is a small
+macOS-focused completion path, so extracting it would mostly reduce line count.
+As Base adds more Linux flavors and eventually Windows support, notification
+behavior may become a real cross-platform policy domain with platform-specific
+implementations. That is the right time to extract it.
 
 ### Phase 5: Python-Owned Payloads
 
 Do not move structured payload work into new shell helpers. Move it into Python
 instead.
 
-Candidates for Python ownership:
+Tracked separately as #1591. Candidates for Python ownership:
 
 - check JSON assembly currently coordinated by `setup_run_check_json()`;
 - project virtualenv JSON snippets currently emitted through
@@ -189,7 +196,8 @@ Candidates for Python ownership:
   `setup_base_check_display_name()`.
 
 This matters because JSON schema stability is easier to test and preserve in
-Python than in shell argument assembly.
+Python than in shell argument assembly. It is a 1.7.0 stability cleanup item,
+but it is not part of the shell helper split completed by #1570.
 
 ## Source-Guard Protocol
 
@@ -218,10 +226,12 @@ Each sourced helper PR should follow this protocol:
 - Do not remove `setup_common.sh` as the shared command surface until each
   command has a proven replacement boundary.
 
-## Recommended PR Sequence
+## Close-Out Decisions
 
-1. Complete the Linux/Debian, macOS/Homebrew, Base runtime, and profile helper
-   extractions and keep #1570 open for the remaining staged breakup.
-2. Move notification helpers if they still reduce ownership.
-3. Move structured check/doctor JSON assembly into Python-owned code, not into
-   another shell helper.
+1. Treat the Linux/Debian, macOS/Homebrew, Base runtime, and profile helper
+   extractions as the completed shell-domain decomposition for #1570.
+2. Keep notification behavior in `setup_common.sh` until it grows into a real
+   cross-platform notification policy domain.
+3. Move structured check/doctor JSON assembly into Python-owned code under
+   #1591, not into another shell helper.
+4. Close #1570 after this ownership decision is documented and validated.

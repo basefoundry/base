@@ -65,7 +65,7 @@ def test_setup_common_ownership_doc_records_current_strategy() -> None:
         "## Current Responsibility Map",
         "## Decomposition Strategy",
         "## Source-Guard Protocol",
-        "## Recommended PR Sequence",
+        "## Close-Out Decisions",
     )
     for section in required_sections:
         assert section in text
@@ -78,6 +78,10 @@ def test_setup_common_ownership_doc_records_current_strategy() -> None:
     assert "setup_venv.sh" in text
     assert "setup_profiles.sh" in text
     assert "setup_notifications.sh" in text
+    assert "#1591" in text
+    assert "cohesive functional domain" in text
+    assert "line-count threshold" in text
+    assert "notification helper is intentionally deferred" in text
     assert "Move structured check/doctor JSON assembly into Python-owned code" in text
 
 
