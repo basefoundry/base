@@ -123,6 +123,28 @@ run_setup_common_script() {
     [[ "$output" == *"guard=1"* ]]
 }
 
+@test "setup_common sources venv helper idempotently" {
+    run_setup_common_script '
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_venv.sh"
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_venv.sh"
+        for helper in \
+            setup_virtualenv_healthy_path \
+            setup_create_virtualenv \
+            setup_base_python_package_installed \
+            setup_collect_ci_runtime_check_results \
+            setup_run_ci_runtime_install; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 22
+            }
+        done
+        printf "guard=%s\n" "${_base_setup_venv_sourced:-}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"guard=1"* ]]
+}
+
 @test "setup_common reports WSL2 host context without changing platform support" {
     run_setup_common_script '
         BASE_TEST_MODE=true
