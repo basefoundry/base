@@ -1,9 +1,10 @@
 # `setup_common.sh` Ownership Reduction
 
 Status: active #1570 decomposition map. The first platform helpers,
-`setup_linux_debian.sh` and `setup_macos_homebrew.sh`, have been extracted from
-the shared 2,906-line baseline; `setup_common.sh` is now the shared
-orchestrator plus remaining unextracted domains.
+`setup_linux_debian.sh` and `setup_macos_homebrew.sh`, plus the Base runtime
+helper `setup_venv.sh`, have been extracted from the shared 2,906-line
+baseline; `setup_common.sh` is now the shared orchestrator plus remaining
+unextracted domains.
 
 `cli/bash/commands/basectl/subcommands/setup_common.sh` is intentionally shared
 by `basectl setup`, `basectl check`, `basectl doctor`, and
@@ -42,21 +43,21 @@ entry-point functions are the stable anchors for future edits.
 
 | File / span | Current responsibility | Entry-point anchors | Target owner |
 | --- | --- | --- | --- |
-| `setup_common.sh` 1-286 | Source guard, helper sourcing, shared cached paths, run state, profile flags, dry-run/debug/yes/CI toggles, Ubuntu/Debian consent prompts, and notification toggles. | `setup_refresh_cached_paths()`, `setup_enable_profile_argument()`, `setup_require_linux_debian_system_consent()` | Keep in shared shell orchestration until profile parsing can move independently. |
-| `setup_common.sh` 290-547 | Base virtualenv health checks, pyvenv inspection, architecture compatibility, package/config defaults, platform/host-env helpers, test-hook gates, and shared recovery text. | `setup_virtualenv_healthy_path()`, `setup_current_platform()`, `setup_recovery_venv()` | Candidate `setup_venv.sh` for virtualenv pieces only after platform Python finders and project-venv fallback dependencies are separated. |
-| `setup_common.sh` 551-589 | macOS completion notification behavior. | `setup_notify_completion()` | Candidate `setup_notifications.sh`; low risk but low value unless it still reduces ownership after platform helpers settle. |
-| `setup_common.sh` 593-689 | Shared command-path probes, executable architecture, Rosetta state, GitHub CLI version display, and runtime-chain summary rendering. | `setup_command_path()`, `setup_rosetta_translation_state()`, `setup_print_runtime_chain_summary()` | Keep shared because the summary combines platform helper data with cross-platform runtime state. |
-| `setup_common.sh` 693-806 | Platform Python dispatch, Base virtualenv creation, and Base bootstrap package install. | `setup_find_platform_python_bin()`, `setup_create_virtualenv()`, `setup_install_base_python_package()` | Candidate `setup_venv.sh`; keep the Linux/Debian and macOS Python finder calls as explicit helper dependencies. |
-| `setup_common.sh` 817-1008 | Base check finding metadata, base-bash-libs status, PYTHONPATH, and the diagnostics JSON bridge. | `setup_base_check_finding_id()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Finding metadata should eventually move to Python; the diagnostics bridge remains shared shell until check JSON assembly moves. |
-| `setup_common.sh` 1010-1158 | Project manifest resolution, project route dispatch, check-result recording, user config seeding, and legacy project-venv fallback helpers. | `setup_resolve_project_manifest()`, `setup_resolve_project_route()`, `setup_record_project_check_result()` | Continue moving structured route policy to Python; keep shell dispatch thin. |
-| `setup_common.sh` 1171-1253 | Doctor visual status and project virtualenv JSON snippets for pre-venv failure handling. | `setup_print_doctor_finding()`, `setup_print_project_venv_check_json()`, `setup_print_project_venv_doctor_json()` | Move structured JSON assembly to Python before considering command-local doctor formatting. |
-| `setup_common.sh` 1266-1554 | Project pre-venv, bootstrap, artifact setup/check/doctor, uv-manager, wrapper, and remote-network dispatch. | `setup_run_project_pre_venv_layer()`, `setup_run_project_bootstrap_layer()`, `setup_run_project_artifact_layer()` | Keep as shell dispatch; reduce by moving project policy and payload shape to Python. |
-| `setup_common.sh` 1562-1585 | `base_dev` prerequisite profile dispatch. | `setup_run_base_dev_layer()` | Candidate `setup_profiles.sh` once profile parsing, profile JSON keys, and profile dispatch can move together. |
-| `setup_common.sh` 1589-1654 | Shared parallel probe helpers plus platform and CI-runtime check-result dispatch. | `setup_write_virtualenv_check_probe()`, `setup_collect_platform_base_check_results()`, `setup_collect_ci_runtime_check_results()` | Keep shared until check JSON assembly and probe orchestration have clearer Python boundaries. |
-| `setup_common.sh` 1717-1868 | Base check text rendering, project check result status handling, top-level check orchestration, and check JSON argument assembly. | `setup_run_check()`, `setup_run_check_json()`, `setup_print_check_text_results()` | Move check JSON assembly to Python; keep human text rendering and exit orchestration in shell. |
-| `setup_common.sh` 1870-1914 | CI install, platform install dispatch, and top-level setup dispatch. | `setup_run_ci_runtime_install()`, `setup_run_platform_install()`, `setup_run_install()` | Keep shared dispatch in `setup_common.sh`; platform install bodies belong in platform helpers. |
+| `setup_common.sh` 1-274 | Source guard, helper sourcing, shared cached paths, run state, profile flags, dry-run/debug/yes/CI toggles, Ubuntu/Debian consent prompts, notification toggles, and CI mode detection. | `setup_refresh_cached_paths()`, `setup_enable_profile_argument()`, `setup_require_linux_debian_system_consent()` | Keep in shared shell orchestration until profile parsing can move independently. |
+| `setup_common.sh` 278-363 | Platform/host-env helpers, platform support messages, test-hook gates, and shared non-runtime recovery text. | `setup_current_platform()`, `setup_current_host_env()`, `setup_reject_test_hook_if_disallowed()` | Keep platform policy shared while OS-specific implementation remains in platform helpers. |
+| `setup_common.sh` 367-405 | macOS completion notification behavior. | `setup_notify_completion()` | Candidate `setup_notifications.sh`; low risk but low value unless it still reduces ownership after platform helpers settle. |
+| `setup_common.sh` 409-505 | Shared command-path probes, executable architecture, Rosetta state, GitHub CLI version display, and runtime-chain summary rendering. | `setup_command_path()`, `setup_rosetta_translation_state()`, `setup_print_runtime_chain_summary()` | Keep shared because the summary combines platform helper data with cross-platform runtime state. |
+| `setup_common.sh` 509-700 | Base check finding metadata, base-bash-libs status, PYTHONPATH, and the diagnostics JSON bridge. | `setup_base_check_finding_id()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Finding metadata should eventually move to Python; the diagnostics bridge remains shared shell until check JSON assembly moves. |
+| `setup_common.sh` 702-850 | Project manifest resolution, project route dispatch, check-result recording, user config seeding, and legacy project-venv fallback helpers. | `setup_resolve_project_manifest()`, `setup_resolve_project_route()`, `setup_record_project_check_result()` | Continue moving structured route policy to Python; keep shell dispatch thin. |
+| `setup_common.sh` 856-945 | Doctor visual status and project virtualenv JSON snippets for pre-venv failure handling. | `setup_print_doctor_finding()`, `setup_print_project_venv_check_json()`, `setup_print_project_venv_doctor_json()` | Move structured JSON assembly to Python before considering command-local doctor formatting. |
+| `setup_common.sh` 958-1246 | Project pre-venv, bootstrap, artifact setup/check/doctor, uv-manager, wrapper, and remote-network dispatch. | `setup_run_project_pre_venv_layer()`, `setup_run_project_bootstrap_layer()`, `setup_run_project_artifact_layer()` | Keep as shell dispatch; reduce by moving project policy and payload shape to Python. |
+| `setup_common.sh` 1254-1277 | `base_dev` prerequisite profile dispatch. | `setup_run_base_dev_layer()` | Candidate `setup_profiles.sh` once profile parsing, profile JSON keys, and profile dispatch can move together. |
+| `setup_common.sh` 1281-1309 | Shared probe waiting plus platform/base check dispatch. | `setup_wait_for_base_check_probes()`, `setup_collect_platform_base_check_results()`, `setup_collect_base_check_results()` | Keep dispatch shared until check JSON assembly and probe orchestration have clearer Python boundaries. |
+| `setup_common.sh` 1319-1459 | Base check text rendering, project check result status handling, top-level check orchestration, and check JSON argument assembly. | `setup_run_check()`, `setup_run_check_json()`, `setup_print_check_text_results()` | Move check JSON assembly to Python; keep human text rendering and exit orchestration in shell. |
+| `setup_common.sh` 1462-1486 | Platform install dispatch and top-level setup dispatch. | `setup_run_platform_install()`, `setup_run_install()` | Keep shared dispatch in `setup_common.sh`; install bodies belong in domain helpers. |
 | `setup_linux_debian.sh` 1-422 | Ubuntu/Debian recovery text, Python finder, runtime tool probes, check collector, apt prerequisites, GitHub CLI apt-repo setup, and Linux install body. | `setup_find_linux_python_bin()`, `setup_collect_linux_debian_base_check_results()`, `setup_run_linux_debian_install()` | Extracted OS/platform helper; keep future Ubuntu/Debian policy here unless it is structured data better owned by Python. |
 | `setup_macos_homebrew.sh` 1-601 | macOS/Homebrew recovery text, Homebrew discovery and installer policy, Xcode command-line tools, macOS Python finder, macOS host probes, and macOS install body. | `setup_find_brew_bin()`, `setup_install_homebrew()`, `setup_collect_macos_base_check_results()`, `setup_run_macos_install()` | Extracted OS/platform helper; keep future macOS/Homebrew policy here unless it is structured data better owned by Python. |
+| `setup_venv.sh` 1-444 | Base runtime virtualenv health, pyvenv inspection, recreate behavior, platform Python dispatch, Base bootstrap package checks/install, venv check probes, CI-runtime checks, and CI-runtime install body. | `setup_virtualenv_healthy_path()`, `setup_create_virtualenv()`, `setup_collect_ci_runtime_check_results()`, `setup_run_ci_runtime_install()` | Extracted Base runtime helper; keep future runtime bootstrap policy here unless structured check output moves to Python. |
 
 ## Decomposition Strategy
 
@@ -121,12 +122,27 @@ time.
 
 ### Phase 3: Base Runtime Virtualenv And Python Bootstrap
 
-Move the Base virtualenv and Python bootstrap surface only after platform Python
-finder boundaries are explicit. The candidate helper is `setup_venv.sh`.
+Implemented third as `setup_venv.sh`, after the Linux/Debian and macOS/Homebrew
+Python finder boundaries were explicit.
 
-Candidate functions include `setup_virtualenv_healthy_path()`,
-`setup_find_platform_python_bin()`, `setup_create_virtualenv()`,
-`setup_base_venv_python_bin()`, and `setup_install_base_python_package()`.
+The Base runtime helper owns:
+
+- virtualenv recreate and health policy:
+  `setup_recreate_venv_enabled()`, `setup_virtualenv_healthy_path()`, and
+  `setup_backup_existing_venv_path()`;
+- platform Python dispatch for runtime creation:
+  `setup_find_platform_python_bin()` and
+  `setup_recovery_platform_python()`;
+- Base bootstrap package checks and installs:
+  `setup_base_python_package_installed()`,
+  `setup_install_base_python_package()`, `setup_install_pyyaml()`, and
+  `setup_install_click()`;
+- venv and package probe writers:
+  `setup_write_virtualenv_check_probe()` and
+  `setup_write_python_package_check_probe()`;
+- CI-runtime setup and check body:
+  `setup_collect_ci_runtime_check_results()` and
+  `setup_run_ci_runtime_install()`.
 
 This matters because setup, check, CI runtime, and project dispatch all depend
 on Base runtime health. Extracting this too early would create hidden coupling;
@@ -191,10 +207,8 @@ Each sourced helper PR should follow this protocol:
 
 ## Recommended PR Sequence
 
-1. Complete the Linux/Debian and macOS/Homebrew platform helper extractions and
-   keep #1570 open for the remaining staged breakup.
-2. Move Base runtime virtualenv/Python bootstrap helpers after both platform
-   helpers are stable.
-3. Move profile and notification helpers if they still reduce ownership.
-4. Move structured check/doctor JSON assembly into Python-owned code, not into
+1. Complete the Linux/Debian, macOS/Homebrew, and Base runtime helper
+   extractions and keep #1570 open for the remaining staged breakup.
+2. Move profile and notification helpers if they still reduce ownership.
+3. Move structured check/doctor JSON assembly into Python-owned code, not into
    another shell helper.

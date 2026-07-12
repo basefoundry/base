@@ -13,6 +13,9 @@ SETUP_LINUX_DEBIAN_SCRIPT = (
 SETUP_MACOS_HOMEBREW_SCRIPT = (
     REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "subcommands" / "setup_macos_homebrew.sh"
 )
+SETUP_VENV_SCRIPT = (
+    REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "subcommands" / "setup_venv.sh"
+)
 DOCS_README = REPO_ROOT / "docs" / "README.md"
 
 
@@ -31,6 +34,7 @@ def setup_shell_sources() -> str:
             SETUP_COMMON_SCRIPT,
             SETUP_LINUX_DEBIAN_SCRIPT,
             SETUP_MACOS_HOMEBREW_SCRIPT,
+            SETUP_VENV_SCRIPT,
         )
     )
 
@@ -96,3 +100,11 @@ def test_setup_common_sources_macos_homebrew_helper() -> None:
 
     assert 'source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_macos_homebrew.sh"' in common_source
     assert "_base_setup_macos_homebrew_sourced" in macos_homebrew_source
+
+
+def test_setup_common_sources_venv_helper() -> None:
+    common_source = setup_common_script()
+    venv_source = SETUP_VENV_SCRIPT.read_text(encoding="utf-8")
+
+    assert 'source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_venv.sh"' in common_source
+    assert "_base_setup_venv_sourced" in venv_source
