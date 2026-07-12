@@ -16,6 +16,9 @@ SETUP_MACOS_HOMEBREW_SCRIPT = (
 SETUP_VENV_SCRIPT = (
     REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "subcommands" / "setup_venv.sh"
 )
+SETUP_PROFILES_SCRIPT = (
+    REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "subcommands" / "setup_profiles.sh"
+)
 DOCS_README = REPO_ROOT / "docs" / "README.md"
 
 
@@ -35,6 +38,7 @@ def setup_shell_sources() -> str:
             SETUP_LINUX_DEBIAN_SCRIPT,
             SETUP_MACOS_HOMEBREW_SCRIPT,
             SETUP_VENV_SCRIPT,
+            SETUP_PROFILES_SCRIPT,
         )
     )
 
@@ -108,3 +112,11 @@ def test_setup_common_sources_venv_helper() -> None:
 
     assert 'source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_venv.sh"' in common_source
     assert "_base_setup_venv_sourced" in venv_source
+
+
+def test_setup_common_sources_profiles_helper() -> None:
+    common_source = setup_common_script()
+    profiles_source = SETUP_PROFILES_SCRIPT.read_text(encoding="utf-8")
+
+    assert 'source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_profiles.sh"' in common_source
+    assert "_base_setup_profiles_sourced" in profiles_source
