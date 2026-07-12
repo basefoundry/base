@@ -145,6 +145,32 @@ run_setup_common_script() {
     [[ "$output" == *"guard=1"* ]]
 }
 
+@test "setup_common sources profiles helper idempotently" {
+    run_setup_common_script '
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_profiles.sh"
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_profiles.sh"
+        for helper in \
+            setup_enable_profile_argument \
+            setup_profiles_csv \
+            setup_profile_json_key \
+            setup_run_base_dev_layer; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 23
+            }
+        done
+        setup_enable_profile_argument "DEV, sre"
+        printf "profiles=%s\n" "$(setup_profiles_csv)"
+        printf "json_key=%s\n" "$(setup_profile_json_key checks)"
+        printf "guard=%s\n" "${_base_setup_profiles_sourced:-}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"profiles=dev,sre"* ]]
+    [[ "$output" == *"json_key=profile_checks"* ]]
+    [[ "$output" == *"guard=1"* ]]
+}
+
 @test "setup_common reports WSL2 host context without changing platform support" {
     run_setup_common_script '
         BASE_TEST_MODE=true
