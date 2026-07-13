@@ -270,9 +270,55 @@ def write_check_record(path: Path, project: str, status: str, checked_at: str) -
     temp_path.replace(path)
 
 
+def diagnostic_check(name: str, status: str, message: str, fix: str = "") -> DiagnosticCheck:
+    normalized_status = validate_status(status)
+    return DiagnosticCheck(
+        name=name,
+        status=normalized_status,
+        message=message,
+        fix="" if normalized_status == "ok" else fix,
+    )
+
+
 def parse_check(values: list[str]) -> DiagnosticCheck:
     name, status, message, fix = values
-    return DiagnosticCheck(name=name, status=status, message=message, fix=fix)
+    return diagnostic_check(name=name, status=status, message=message, fix=fix)
+
+
+def read_shell_check_result(path: Path) -> DiagnosticCheck:
+    fields: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        key, separator, value = line.partition("=")
+        if separator:
+            fields[key] = value
+
+    name = fields.get("name", "")
+    ok = fields.get("ok", "")
+    status = fields.get("status", "")
+    message = fields.get("message", "")
+    recovery = fields.get("recovery", "")
+    if not name:
+        raise ValueError(f"Base check result file '{path}' is missing a name.")
+    if not status:
+        if ok == "true":
+            status = "ok"
+        elif ok == "false":
+            status = "error"
+        else:
+            raise ValueError(f"Base check result file '{path}' has invalid ok value '{ok}'.")
+    if not message:
+        raise ValueError(f"Base check result file '{path}' is missing a message.")
+    return diagnostic_check(name=name, status=status, message=message, fix=recovery)
+
+
+def load_diagnostic_checks(
+    values: list[list[str]],
+    result_files: Iterable[Path],
+) -> tuple[DiagnosticCheck, ...]:
+    return (
+        *(parse_check(check) for check in values),
+        *(read_shell_check_result(path) for path in result_files),
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -288,6 +334,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar=("NAME", "STATUS", "MESSAGE", "FIX"),
     )
+    check_json.add_argument("--check-result-file", action="append", type=Path, default=[])
     check_json.add_argument("--embedded-payload", action="append", nargs=2, default=[], metavar=("KEY", "JSON"))
     check_json.add_argument("--record-path")
     check_json.add_argument("--checked-at")
@@ -301,6 +348,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar=("NAME", "STATUS", "MESSAGE", "FIX"),
     )
+    doctor_json.add_argument("--finding-result-file", action="append", type=Path, default=[])
     doctor_json.add_argument("--embedded-payload", action="append", nargs=2, default=[], metavar=("KEY", "JSON"))
 
     record_check = subparsers.add_parser("record-check")
@@ -333,7 +381,7 @@ def main(argv: list[str] | None = None) -> int:
     exit_code = base_cli.ExitCode.SUCCESS
 
     if args.command == "check-json":
-        checks = tuple(parse_check(check) for check in args.check)
+        checks = load_diagnostic_checks(args.check, args.check_result_file)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
         payload = render_base_check_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
         print(payload, end="")
@@ -342,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
             write_check_record(Path(args.record_path), args.project, status, args.checked_at)
         exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
     elif args.command == "doctor-json":
-        checks = tuple(parse_check(finding) for finding in args.finding)
+        checks = load_diagnostic_checks(args.finding, args.finding_result_file)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
         payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
         print(payload, end="")

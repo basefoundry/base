@@ -248,7 +248,7 @@ base_doctor_run_ci_runtime_text() {
 
 base_doctor_run_json() {
     local args=()
-    local count fix i
+    local check_result_dir check_result_file check_result_paths
     local profile_json="[]"
     local project="$1"
     local project_json="[]"
@@ -272,11 +272,14 @@ base_doctor_run_json() {
     if [[ -n "$project" ]]; then
         args+=(--project "$project")
     fi
-    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
-    for ((i = 0; i < count; i++)); do
-        fix="$(setup_check_result_recovery "$i")"
-        args+=(--finding "${_BASE_SETUP_CHECK_NAMES[$i]}" "$(setup_check_result_status "$i")" "${_BASE_SETUP_CHECK_MESSAGES[$i]}" "$fix")
-    done
+    std_make_temp_dir check_result_dir base-doctor-json ||
+        fatal_error "Unable to create temporary Base doctor JSON result directory."
+    check_result_paths="$(setup_write_collected_check_result_files "$check_result_dir")" || return 1
+    if [[ -n "$check_result_paths" ]]; then
+        while IFS= read -r check_result_file; do
+            args+=(--finding-result-file "$check_result_file")
+        done <<<"$check_result_paths"
+    fi
     if setup_profiles_enabled; then
         args+=(--embedded-payload "$(setup_profile_json_key findings)" "$profile_json")
     fi
