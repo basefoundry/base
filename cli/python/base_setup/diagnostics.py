@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import base_cli
 
@@ -39,6 +40,21 @@ BASE_CHECK_FINDING_IDS = {
     "jq": "BASE-D014",
     "go": "BASE-D015",
 }
+BASE_CHECK_DISPLAY_NAMES = {
+    "homebrew": "Homebrew",
+    "xcode_command_line_tools": "Xcode Command Line Tools",
+    "python": "Python",
+    "base_virtualenv": "Base virtualenv",
+    "base_bash_libraries": "Base Bash libraries",
+    "bash": "Bash",
+    "python_venv": "Python venv support",
+    "git": "Git",
+    "gh": "GitHub CLI",
+    "bats": "BATS",
+    "shellcheck": "ShellCheck",
+    "jq": "jq",
+    "go": "Go",
+}
 
 
 @dataclass(frozen=True)
@@ -47,6 +63,13 @@ class DiagnosticCheck:
     status: str
     message: str
     fix: str = ""
+
+
+@dataclass(frozen=True)
+class BaseCheckMetadata:
+    name: str
+    finding_id: str
+    display_name: str
 
 
 def validate_status(status: str) -> str:
@@ -89,8 +112,32 @@ def check_item(finding_id: str, check: DiagnosticCheck) -> dict[str, str]:
     }
 
 
+def base_check_display_name(name: str) -> str:
+    if name == "pyyaml":
+        return os.environ.get("BASE_SETUP_PYYAML_PACKAGE", "PyYAML")
+    if name == "click":
+        return os.environ.get("BASE_SETUP_CLICK_PACKAGE", "click")
+    return BASE_CHECK_DISPLAY_NAMES.get(name, name)
+
+
+def base_check_metadata(name: str) -> BaseCheckMetadata:
+    return BaseCheckMetadata(
+        name=name,
+        finding_id=BASE_CHECK_FINDING_IDS.get(name, "BASE-D000"),
+        display_name=base_check_display_name(name),
+    )
+
+
+def render_base_check_metadata(names: Iterable[str]) -> str:
+    lines = []
+    for name in names:
+        metadata = base_check_metadata(name)
+        lines.append(f"{metadata.name}\t{metadata.finding_id}\t{metadata.display_name}")
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
 def base_check_item(check: DiagnosticCheck) -> dict[str, str]:
-    return check_item(BASE_CHECK_FINDING_IDS.get(check.name, "BASE-D000"), check)
+    return check_item(base_check_metadata(check.name).finding_id, check)
 
 
 def project_venv_check_item(status: str, message: str, fix: str) -> dict[str, str]:
@@ -262,6 +309,9 @@ def build_parser() -> argparse.ArgumentParser:
     record_check.add_argument("--checked-at", required=True)
     record_check.add_argument("--output-path", required=True)
 
+    metadata = subparsers.add_parser("base-check-metadata")
+    metadata.add_argument("--name", action="append", default=[])
+
     venv_check = subparsers.add_parser("project-venv-check-json")
     venv_check.add_argument("--project", required=True)
     venv_check.add_argument("--status", required=True)
@@ -280,6 +330,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    exit_code = base_cli.ExitCode.SUCCESS
 
     if args.command == "check-json":
         checks = tuple(parse_check(check) for check in args.check)
@@ -289,18 +340,19 @@ def main(argv: list[str] | None = None) -> int:
         status = payload_status(json.loads(payload))
         if args.record_path and args.project and args.checked_at:
             write_check_record(Path(args.record_path), args.project, status, args.checked_at)
-        return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
-    if args.command == "doctor-json":
+        exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
+    elif args.command == "doctor-json":
         checks = tuple(parse_check(finding) for finding in args.finding)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
         payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
         print(payload, end="")
         status = payload_status(json.loads(payload))
-        return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
-    if args.command == "record-check":
+        exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
+    elif args.command == "record-check":
         write_check_record(Path(args.output_path), args.project, args.status, args.checked_at)
-        return base_cli.ExitCode.SUCCESS
-    if args.command == "project-venv-check-json":
+    elif args.command == "base-check-metadata":
+        print(render_base_check_metadata(args.name), end="")
+    elif args.command == "project-venv-check-json":
         print(
             render_project_venv_check_payload(
                 project=args.project,
@@ -311,8 +363,8 @@ def main(argv: list[str] | None = None) -> int:
             ),
             end="",
         )
-        return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
-    if args.command == "project-venv-doctor-json":
+        exit_code = base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
+    elif args.command == "project-venv-doctor-json":
         print(
             render_project_venv_doctor_payload(
                 status=args.status,
@@ -322,9 +374,11 @@ def main(argv: list[str] | None = None) -> int:
             ),
             end="",
         )
-        return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
-    parser.error(f"Unsupported diagnostics command '{args.command}'.")
-    return base_cli.ExitCode.USAGE_ERROR
+        exit_code = base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
+    else:
+        parser.error(f"Unsupported diagnostics command '{args.command}'.")
+        exit_code = base_cli.ExitCode.USAGE_ERROR
+    return exit_code
 
 
 if __name__ == "__main__":

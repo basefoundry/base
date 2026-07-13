@@ -164,12 +164,28 @@ base_doctor_count_check_errors() {
 }
 
 base_doctor_print_collected_check_results() {
-    local count fix i status
+    local count display_name finding_id fix i metadata_line metadata_name metadata_output status
+    local metadata_lines=()
 
     count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    if ((count > 0)); then
+        metadata_output="$(setup_base_check_metadata "${_BASE_SETUP_CHECK_NAMES[@]}")" ||
+            fatal_error "Base diagnostic metadata renderer failed."
+        while IFS= read -r metadata_line; do
+            metadata_lines+=("$metadata_line")
+        done <<<"$metadata_output"
+        if ((${#metadata_lines[@]} != count)); then
+            fatal_error "Base diagnostic metadata renderer returned ${#metadata_lines[@]} rows for $count checks."
+        fi
+    fi
+
     for ((i = 0; i < count; i++)); do
         status="$(setup_check_result_status "$i")"
         fix="$(setup_check_result_recovery "$i")"
+        IFS=$'\t' read -r metadata_name finding_id display_name <<<"${metadata_lines[$i]}"
+        if [[ "$metadata_name" != "${_BASE_SETUP_CHECK_NAMES[$i]}" || -z "$finding_id" || -z "$display_name" ]]; then
+            fatal_error "Base diagnostic metadata renderer returned invalid metadata for '${_BASE_SETUP_CHECK_NAMES[$i]}'."
+        fi
         if [[ "$status" == ok && -n "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" ]]; then
             log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
         fi
@@ -179,8 +195,8 @@ base_doctor_print_collected_check_results() {
 
         base_doctor_print_finding \
             "$status" \
-            "$(setup_base_check_finding_id "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
-            "$(setup_base_check_display_name "${_BASE_SETUP_CHECK_NAMES[$i]}")" \
+            "$finding_id" \
+            "$display_name" \
             "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
             "$fix"
     done

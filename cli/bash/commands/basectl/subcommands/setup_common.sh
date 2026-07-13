@@ -455,7 +455,50 @@ setup_add_base_bash_libraries_check_result() {
         "$recovery"
 }
 
-setup_base_check_finding_id() {
+setup_pythonpath() {
+    setup_ensure_cached_paths
+    printf '%s\n' "$_BASE_SETUP_PYTHONPATH_CACHE"
+}
+
+setup_diagnostics_python_bin() {
+    local candidate python_bin venv_dir
+    local candidates=()
+
+    setup_ensure_cached_paths
+    if command -v python3 >/dev/null 2>&1; then
+        candidates+=("$(command -v python3)")
+    fi
+    if python_bin="$(setup_find_python_bin)"; then
+        candidates+=("$python_bin")
+    fi
+    candidates+=("/usr/bin/python3")
+    for candidate in "${candidates[@]}"; do
+        if [[ -x "$candidate" ]] && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$candidate" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
+    if python_bin="$(setup_base_venv_python_bin "$venv_dir")" && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+        printf '%s\n' "$python_bin"
+        return 0
+    fi
+    return 1
+}
+
+setup_run_diagnostics_json() {
+    local python_bin
+
+    python_bin="$(setup_diagnostics_python_bin)" ||
+        fatal_error "Python is required to render Base diagnostic JSON."
+    setup_ensure_cached_paths
+    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+        "$python_bin" -m base_setup.diagnostics "$@"
+}
+
+setup_base_check_metadata_fallback_finding_id() {
     case "$1" in
         homebrew)
             printf '%s\n' "BASE-D001"
@@ -508,7 +551,7 @@ setup_base_check_finding_id() {
     esac
 }
 
-setup_base_check_display_name() {
+setup_base_check_metadata_fallback_display_name() {
     case "$1" in
         homebrew)
             printf '%s\n' "Homebrew"
@@ -561,47 +604,33 @@ setup_base_check_display_name() {
     esac
 }
 
-setup_pythonpath() {
-    setup_ensure_cached_paths
-    printf '%s\n' "$_BASE_SETUP_PYTHONPATH_CACHE"
+setup_base_check_metadata_fallback() {
+    local display_name finding_id name
+
+    for name in "$@"; do
+        finding_id="$(setup_base_check_metadata_fallback_finding_id "$name")"
+        display_name="$(setup_base_check_metadata_fallback_display_name "$name")"
+        printf '%s\t%s\t%s\n' "$name" "$finding_id" "$display_name"
+    done
 }
 
-setup_diagnostics_python_bin() {
-    local candidate python_bin venv_dir
-    local candidates=()
+setup_base_check_metadata() {
+    local args=()
+    local name python_bin
 
-    setup_ensure_cached_paths
-    if command -v python3 >/dev/null 2>&1; then
-        candidates+=("$(command -v python3)")
-    fi
-    if python_bin="$(setup_find_python_bin)"; then
-        candidates+=("$python_bin")
-    fi
-    candidates+=("/usr/bin/python3")
-    for candidate in "${candidates[@]}"; do
-        if [[ -x "$candidate" ]] && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$candidate" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
-            printf '%s\n' "$candidate"
+    for name in "$@"; do
+        args+=(--name "$name")
+    done
+
+    if python_bin="$(setup_diagnostics_python_bin)"; then
+        setup_ensure_cached_paths
+        if env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+            "$python_bin" -m base_setup.diagnostics base-check-metadata "${args[@]}"; then
             return 0
         fi
-    done
-    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
-    if python_bin="$(setup_base_venv_python_bin "$venv_dir")" && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
-        printf '%s\n' "$python_bin"
-        return 0
     fi
-    return 1
-}
 
-setup_run_diagnostics_json() {
-    local python_bin
-
-    python_bin="$(setup_diagnostics_python_bin)" ||
-        fatal_error "Python is required to render Base diagnostic JSON."
-    setup_ensure_cached_paths
-    env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup.diagnostics "$@"
+    setup_base_check_metadata_fallback "$@"
 }
 
 setup_resolve_project_manifest() {

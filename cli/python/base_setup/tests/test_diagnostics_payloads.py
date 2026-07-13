@@ -11,6 +11,8 @@ from unittest import mock
 
 from base_setup import diagnostics
 from base_setup.diagnostics import DiagnosticCheck
+from base_setup.diagnostics import base_check_metadata
+from base_setup.diagnostics import render_base_check_metadata
 from base_setup.diagnostics import render_base_check_payload
 from base_setup.diagnostics import render_base_doctor_payload
 from base_setup.diagnostics import render_check_record
@@ -113,6 +115,42 @@ class DiagnosticsPayloadTests(unittest.TestCase):
         self.assertEqual(payload["profile_checks"]["status"], "error")
         self.assertEqual(payload["project_checks"]["status"], "ok")
         self.assertNotIn('"ok":', payload_text)
+
+    def test_base_check_metadata_maps_ids_and_display_names(self) -> None:
+        homebrew = base_check_metadata("homebrew")
+        virtualenv = base_check_metadata("base_virtualenv")
+        unknown = base_check_metadata("unexpected")
+
+        self.assertEqual(homebrew.finding_id, "BASE-D001")
+        self.assertEqual(homebrew.display_name, "Homebrew")
+        self.assertEqual(virtualenv.finding_id, "BASE-D004")
+        self.assertEqual(virtualenv.display_name, "Base virtualenv")
+        self.assertEqual(unknown.finding_id, "BASE-D000")
+        self.assertEqual(unknown.display_name, "unexpected")
+
+    def test_base_check_metadata_respects_bootstrap_package_name_overrides(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BASE_SETUP_PYYAML_PACKAGE": "CustomYAML",
+                "BASE_SETUP_CLICK_PACKAGE": "CustomClick",
+            },
+        ):
+            pyyaml = base_check_metadata("pyyaml")
+            click = base_check_metadata("click")
+
+        self.assertEqual(pyyaml.finding_id, "BASE-D005")
+        self.assertEqual(pyyaml.display_name, "CustomYAML")
+        self.assertEqual(click.finding_id, "BASE-D006")
+        self.assertEqual(click.display_name, "CustomClick")
+
+    def test_render_base_check_metadata_preserves_input_order(self) -> None:
+        self.assertEqual(
+            render_base_check_metadata(("homebrew", "base_virtualenv", "unexpected")),
+            "homebrew\tBASE-D001\tHomebrew\n"
+            "base_virtualenv\tBASE-D004\tBase virtualenv\n"
+            "unexpected\tBASE-D000\tunexpected\n",
+        )
 
     def test_render_base_doctor_payload_uses_findings_key(self) -> None:
         payload_text = render_base_doctor_payload(
