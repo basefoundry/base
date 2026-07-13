@@ -12,6 +12,7 @@ from unittest import mock
 from base_setup import diagnostics
 from base_setup.diagnostics import DiagnosticCheck
 from base_setup.diagnostics import base_check_metadata
+from base_setup.diagnostics import read_shell_check_result
 from base_setup.diagnostics import render_base_check_metadata
 from base_setup.diagnostics import render_base_check_payload
 from base_setup.diagnostics import render_base_doctor_payload
@@ -115,6 +116,68 @@ class DiagnosticsPayloadTests(unittest.TestCase):
         self.assertEqual(payload["profile_checks"]["status"], "error")
         self.assertEqual(payload["project_checks"]["status"], "ok")
         self.assertNotIn('"ok":', payload_text)
+
+    def test_read_shell_check_result_uses_existing_probe_record_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "python.result"
+            path.write_text(
+                "name=python\n"
+                "ok=false\n"
+                "status=error\n"
+                "message=Python is missing.\v\n"
+                "recovery=Install Python.\n"
+                "debug=ignored in JSON\n",
+                encoding="utf-8",
+            )
+
+            check = read_shell_check_result(path)
+
+        self.assertEqual(check.name, "python")
+        self.assertEqual(check.status, "error")
+        self.assertEqual(check.message, "Python is missing.\v")
+        self.assertEqual(check.fix, "Install Python.")
+
+    def test_check_json_command_reads_shell_check_result_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            ok_path = root / "homebrew.result"
+            warn_path = root / "xcode.result"
+            ok_path.write_text(
+                "name=homebrew\n"
+                "ok=true\n"
+                "status=ok\n"
+                "message=Homebrew is installed.\n"
+                "recovery=This should not be emitted for ok.\n",
+                encoding="utf-8",
+            )
+            warn_path.write_text(
+                "name=xcode_command_line_tools\n"
+                "ok=true\n"
+                "status=warn\n"
+                "message=Xcode needs attention.\n"
+                "recovery=Repair Xcode.\n",
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                status = diagnostics.main(
+                    [
+                        "check-json",
+                        "--check-result-file",
+                        str(ok_path),
+                        "--check-result-file",
+                        str(warn_path),
+                    ]
+                )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual(payload["status"], "warn")
+        self.assertEqual(payload["checks"][0]["id"], "BASE-D001")
+        self.assertEqual(payload["checks"][0]["fix"], "")
+        self.assertEqual(payload["checks"][1]["id"], "BASE-D002")
+        self.assertEqual(payload["checks"][1]["status"], "warn")
+        self.assertEqual(payload["checks"][1]["fix"], "Repair Xcode.")
 
     def test_base_check_metadata_maps_ids_and_display_names(self) -> None:
         homebrew = base_check_metadata("homebrew")

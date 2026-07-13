@@ -46,6 +46,22 @@ run_setup_common_script() {
     [[ "$output" == *"debug=used sibling checkout"* ]]
 }
 
+@test "setup_common writes collected check result records for Python JSON assembly" {
+    local output_dir="$TEST_STATE_DIR/check-records"
+
+    run_setup_common_script "setup_add_check_result_with_status homebrew ok 'Homebrew is installed.' ''; setup_add_check_result_with_status xcode_command_line_tools warn 'Xcode needs attention.' 'Repair Xcode.'; setup_write_collected_check_result_files \"$output_dir\"; printf -- '---\\n'; cat \"$output_dir/check-0.result\"; printf -- '---\\n'; cat \"$output_dir/check-1.result\""
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"$output_dir/check-0.result"* ]]
+    [[ "$output" == *"$output_dir/check-1.result"* ]]
+    [[ "$output" == *"name=homebrew"* ]]
+    [[ "$output" == *"status=ok"* ]]
+    [[ "$output" == *"message=Homebrew is installed."* ]]
+    [[ "$output" == *"name=xcode_command_line_tools"* ]]
+    [[ "$output" == *"status=warn"* ]]
+    [[ "$output" == *"recovery=Repair Xcode."* ]]
+}
+
 @test "setup_common delegates base check metadata to Python" {
     run_setup_common_script 'setup_base_check_metadata homebrew base_virtualenv unexpected'
 

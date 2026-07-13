@@ -1273,6 +1273,26 @@ setup_check_result_recovery() {
     printf '%s\n' "${_BASE_SETUP_CHECK_RECOVERIES[$index]}"
 }
 
+setup_write_collected_check_result_files() {
+    local count i output_dir="$1" output_path
+
+    mkdir -p -- "$output_dir" || fatal_error "Unable to create Base check result directory '$output_dir'."
+
+    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
+    for ((i = 0; i < count; i++)); do
+        output_path="$output_dir/check-$i.result"
+        setup_write_check_result_file \
+            "$output_path" \
+            "${_BASE_SETUP_CHECK_NAMES[$i]}" \
+            "${_BASE_SETUP_CHECK_OK[$i]}" \
+            "${_BASE_SETUP_CHECK_MESSAGES[$i]}" \
+            "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" \
+            "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}" \
+            "$(setup_check_result_status "$i")"
+        printf '%s\n' "$output_path"
+    done
+}
+
 setup_run_check() {
     local missing=0
     local project="${BASE_SETUP_PROJECT_NAME:-}"
@@ -1320,7 +1340,7 @@ setup_diagnostic_status_from_ok() {
 setup_run_check_json() {
     local args=()
     local checked_at=""
-    local count fix i
+    local check_result_dir check_result_file check_result_paths
     local profile_json=""
     local project="${BASE_SETUP_PROJECT_NAME:-}"
     local project_json=""
@@ -1351,11 +1371,14 @@ setup_run_check_json() {
     if [[ -n "$project" ]]; then
         args+=(--project "$project")
     fi
-    count="${#_BASE_SETUP_CHECK_NAMES[@]}"
-    for ((i = 0; i < count; i++)); do
-        fix="$(setup_check_result_recovery "$i")"
-        args+=(--check "${_BASE_SETUP_CHECK_NAMES[$i]}" "$(setup_check_result_status "$i")" "${_BASE_SETUP_CHECK_MESSAGES[$i]}" "$fix")
-    done
+    std_make_temp_dir check_result_dir base-check-json ||
+        fatal_error "Unable to create temporary Base check JSON result directory."
+    check_result_paths="$(setup_write_collected_check_result_files "$check_result_dir")" || return 1
+    if [[ -n "$check_result_paths" ]]; then
+        while IFS= read -r check_result_file; do
+            args+=(--check-result-file "$check_result_file")
+        done <<<"$check_result_paths"
+    fi
     if setup_profiles_enabled; then
         args+=(--embedded-payload "$(setup_profile_json_key checks)" "$profile_json")
     fi
