@@ -82,7 +82,7 @@ def test_setup_common_ownership_doc_records_current_strategy() -> None:
     assert "cohesive functional domain" in text
     assert "line-count threshold" in text
     assert "notification helper is intentionally deferred" in text
-    assert "Move structured check/doctor JSON assembly into Python-owned code" in text
+    assert "Structured check/doctor JSON assembly moved into Python-owned code" in text
 
 
 def test_setup_common_ownership_doc_function_anchors_exist() -> None:

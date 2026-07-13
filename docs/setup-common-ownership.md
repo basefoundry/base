@@ -51,9 +51,9 @@ entry-point functions are the stable anchors for future edits.
 | `setup_common.sh` 183-268 | Platform/host-env helpers, platform support messages, test-hook gates, and shared non-runtime recovery text. | `setup_current_platform()`, `setup_current_host_env()`, `setup_reject_test_hook_if_disallowed()` | Keep platform policy shared while OS-specific implementation remains in platform helpers. |
 | `setup_common.sh` 272-310 | Completion notification behavior. | `setup_notify_completion()` | Keep in shared shell for now. Revisit `setup_notifications.sh` when notification policy grows beyond the current macOS-only surface into a cross-platform domain. |
 | `setup_common.sh` 314-410 | Shared command-path probes, executable architecture, Rosetta state, GitHub CLI version display, and runtime-chain summary rendering. | `setup_command_path()`, `setup_rosetta_translation_state()`, `setup_print_runtime_chain_summary()` | Keep shared because the summary combines platform helper data with cross-platform runtime state. |
-| `setup_common.sh` 414-632 | Base Bash library status, PYTHONPATH, diagnostics JSON bridge, and first-mile text fallback for Base check metadata. | `setup_base_check_metadata()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Base check metadata is Python-primary; keep shell fallback only for pre-runtime text diagnostics and keep the diagnostics bridge shared until check JSON assembly moves further. |
+| `setup_common.sh` 414-632 | Base Bash library status, PYTHONPATH, diagnostics JSON bridge, and first-mile text fallback for Base check metadata. | `setup_base_check_metadata()`, `setup_diagnostics_python_bin()`, `setup_run_diagnostics_json()` | Base check metadata and structured diagnostics JSON are Python-primary; keep shell fallback only for pre-runtime text diagnostics. |
 | `setup_common.sh` 636-784 | Project manifest resolution, project route dispatch, check-result recording, user config seeding, and legacy project-venv fallback helpers. | `setup_resolve_project_manifest()`, `setup_resolve_project_route()`, `setup_record_project_check_result()` | Continue moving structured route policy to Python; keep shell dispatch thin. |
-| `setup_common.sh` 790-879 | Doctor visual status and project virtualenv JSON snippets for pre-venv failure handling. | `setup_print_doctor_finding()`, `setup_print_project_venv_check_json()`, `setup_print_project_venv_doctor_json()` | Move structured JSON assembly to Python before considering command-local doctor formatting. |
+| `setup_common.sh` 790-879 | Doctor visual status and project virtualenv JSON routing for pre-venv failure handling. | `setup_print_doctor_finding()`, `setup_print_project_venv_check_json()`, `setup_print_project_venv_doctor_json()` | Shell owns human doctor text and routes project virtualenv JSON to Python diagnostics. |
 | `setup_common.sh` 892-1179 | Project pre-venv, bootstrap, artifact setup/check/doctor, uv-manager, wrapper, and remote-network dispatch. | `setup_run_project_pre_venv_layer()`, `setup_run_project_bootstrap_layer()`, `setup_run_project_artifact_layer()` | Keep as shell dispatch; reduce by moving project policy and payload shape to Python. |
 | `setup_common.sh` 1188-1267 | Shared probe waiting plus platform/base check dispatch. | `setup_wait_for_base_check_probes()`, `setup_collect_platform_base_check_results()`, `setup_collect_base_check_results()` | Keep dispatch shared until check JSON assembly and probe orchestration have clearer Python boundaries. |
 | `setup_common.sh` 1276-1389 | Base check text rendering, project check result status handling, top-level check orchestration, and raw check-result record routing for JSON. | `setup_run_check()`, `setup_run_check_json()`, `setup_print_check_text_results()` | Python owns JSON item assembly from raw shell result records; keep human text rendering and exit orchestration in shell. |
@@ -186,18 +186,19 @@ implementations. That is the right time to extract it.
 Do not move structured payload work into new shell helpers. Move it into Python
 instead.
 
-Tracked separately as #1591. Candidates for Python ownership:
+Implemented under #1591. The stable boundary is:
 
-- check JSON assembly now reads raw shell check-result records in Python;
-- project virtualenv JSON snippets currently emitted through
-  `setup_print_project_venv_check_json()` and
-  `setup_print_project_venv_doctor_json()`;
-- base finding metadata, now exposed to shell through the
-  `setup_base_check_metadata()` bridge with a pre-runtime text fallback.
+- check and doctor JSON assembly reads raw shell check-result records in
+  Python;
+- project virtualenv JSON is assembled by Python diagnostics, with shell
+  wrappers routing pre-runtime failure details to that surface;
+- base finding metadata is exposed to shell through the
+  `setup_base_check_metadata()` bridge, with a pre-runtime text fallback.
 
 This matters because JSON schema stability is easier to test and preserve in
-Python than in shell argument assembly. It is a 1.7.0 stability cleanup item,
-but it is not part of the shell helper split completed by #1570.
+Python than in shell argument assembly. The remaining shell ownership is
+orchestration, fallback routing, and human text rendering, not schema
+construction.
 
 ## Source-Guard Protocol
 
@@ -232,6 +233,6 @@ Each sourced helper PR should follow this protocol:
    extractions as the completed shell-domain decomposition for #1570.
 2. Keep notification behavior in `setup_common.sh` until it grows into a real
    cross-platform notification policy domain.
-3. Move structured check/doctor JSON assembly into Python-owned code under
+3. Structured check/doctor JSON assembly moved into Python-owned code under
    #1591, not into another shell helper.
 4. Close #1570 after this ownership decision is documented and validated.
