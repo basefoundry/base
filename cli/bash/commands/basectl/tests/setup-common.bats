@@ -46,13 +46,13 @@ run_setup_common_script() {
     [[ "$output" == *"debug=used sibling checkout"* ]]
 }
 
-@test "setup_common owns base check finding metadata" {
-    run_setup_common_script 'printf "homebrew=%s/%s\n" "$(setup_base_check_finding_id homebrew)" "$(setup_base_check_display_name homebrew)"; printf "venv=%s/%s\n" "$(setup_base_check_finding_id base_virtualenv)" "$(setup_base_check_display_name base_virtualenv)"; printf "unknown=%s/%s\n" "$(setup_base_check_finding_id unexpected)" "$(setup_base_check_display_name unexpected)"'
+@test "setup_common delegates base check metadata to Python" {
+    run_setup_common_script 'setup_base_check_metadata homebrew base_virtualenv unexpected'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"homebrew=BASE-D001/Homebrew"* ]]
-    [[ "$output" == *"venv=BASE-D004/Base virtualenv"* ]]
-    [[ "$output" == *"unknown=BASE-D000/unexpected"* ]]
+    [[ "$output" == *$'homebrew\tBASE-D001\tHomebrew'* ]]
+    [[ "$output" == *$'base_virtualenv\tBASE-D004\tBase virtualenv'* ]]
+    [[ "$output" == *$'unexpected\tBASE-D000\tunexpected'* ]]
 }
 
 @test "setup_common exposes centralized platform policy helpers" {
