@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
+from base_devenv import report as devenv_report_impl
 from base_devcontainer import export as devcontainer_export_impl
+from base_setup import devenv_report
 from base_setup import git_remote
 from base_setup import ide
 from base_setup import devcontainer_export
@@ -33,6 +35,14 @@ class CompatibilityFacadeTests(unittest.TestCase):
         self.assertIs(devcontainer_export.build_devcontainer_export, devcontainer_export_impl.build_devcontainer_export)
         self.assertIs(devcontainer_export.write_devcontainer_export, devcontainer_export_impl.write_devcontainer_export)
 
+    def test_devenv_report_declares_compatibility_exports(self) -> None:
+        self.assertIn("build_devenv_report", devenv_report.__all__)
+        self.assertIn("dumps_devenv_report_json", devenv_report.__all__)
+        self.assertIn("print_devenv_report_text", devenv_report.__all__)
+        self.assertIs(devenv_report.build_devenv_report, devenv_report_impl.build_devenv_report)
+        self.assertIs(devenv_report.dumps_devenv_report_json, devenv_report_impl.dumps_devenv_report_json)
+        self.assertIs(devenv_report.print_devenv_report_text, devenv_report_impl.print_devenv_report_text)
+
     def test_setup_callers_use_focused_ide_modules(self) -> None:
         manifest_checks_source = Path(manifest_checks.__file__).read_text(encoding="utf-8")
         setup_reconcile_source = Path(setup_reconcile.__file__).read_text(encoding="utf-8")
@@ -60,6 +70,18 @@ class CompatibilityFacadeTests(unittest.TestCase):
         self.assertNotIn("from .devcontainer_export import", setup_engine_source)
         self.assertIn("from base_devcontainer.export import build_devcontainer_export", facade_source)
         self.assertNotIn("def build_devcontainer_export", facade_source)
+        self.assertNotIn("@dataclass", facade_source)
+
+    def test_setup_engine_uses_focused_devenv_package(self) -> None:
+        setup_engine_source = Path(setup_engine.__file__).read_text(encoding="utf-8")
+        facade_source = Path(devenv_report.__file__).read_text(encoding="utf-8")
+
+        self.assertIn("from base_devenv.report import build_devenv_report", setup_engine_source)
+        self.assertIn("from base_devenv.report import dumps_devenv_report_json", setup_engine_source)
+        self.assertIn("from base_devenv.report import print_devenv_report_text", setup_engine_source)
+        self.assertNotIn("from .devenv_report import", setup_engine_source)
+        self.assertIn("from base_devenv.report import build_devenv_report", facade_source)
+        self.assertNotIn("def build_devenv_report", facade_source)
         self.assertNotIn("@dataclass", facade_source)
 
     def test_trust_store_uses_focused_git_modules(self) -> None:
