@@ -880,7 +880,7 @@ EOF
 
 @test "basectl doctor project includes project artifact findings" {
     local fake_bin="$TEST_TMPDIR/bin"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_python="$TEST_TMPDIR/workspace/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
@@ -933,7 +933,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv"
         exit 0
     fi
     printf 'ok     demo-artifact               Project artifact check passed.\n'
@@ -947,7 +947,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
-    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+    touch "$workspace/demo/.venv/pyvenv.cfg"
 
     run env \
         HOME="$TEST_HOME" \
@@ -968,7 +968,7 @@ EOF
 
 @test "basectl doctor project passes opt-in remote network diagnostics flag" {
     local fake_bin="$TEST_TMPDIR/bin"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_python="$TEST_TMPDIR/workspace/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
@@ -1021,7 +1021,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv"
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
@@ -1036,7 +1036,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
-    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+    touch "$workspace/demo/.venv/pyvenv.cfg"
 
     run env \
         HOME="$TEST_HOME" \
@@ -1054,7 +1054,7 @@ EOF
 
 @test "basectl doctor project --format json includes project findings" {
     local fake_bin="$TEST_TMPDIR/bin"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_python="$TEST_TMPDIR/workspace/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
@@ -1107,7 +1107,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv"
         exit 0
     fi
     printf '[{"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
@@ -1121,7 +1121,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
-    touch "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+    touch "$workspace/demo/.venv/pyvenv.cfg"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
@@ -1146,7 +1146,7 @@ EOF
 @test "basectl doctor project --format json reports broken project virtualenv integrity" {
     local fake_bin="$TEST_TMPDIR/bin"
     local missing_home="$TEST_TMPDIR/missing-project-python-home"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
+    local project_python="$TEST_TMPDIR/workspace/demo/.venv/bin/python"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
@@ -1191,7 +1191,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "$HOME/.base.d/demo/.venv"
+        printf 'demo\t%s\t%s\t%s\tfalse\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv"
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
@@ -1224,7 +1224,7 @@ EOF
     mkdir -p "$TEST_TMPDIR/xcode-tools/usr/bin"
     touch "$TEST_TMPDIR/xcode-tools/usr/bin/clang"
     touch "$TEST_HOME/.base.d/base/.venv/pyvenv.cfg"
-    printf 'home = %s\n' "$missing_home" > "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+    printf 'home = %s\n' "$missing_home" > "$workspace/demo/.venv/pyvenv.cfg"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \

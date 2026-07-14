@@ -137,10 +137,12 @@ def run_engine(args: list[str], base_home: Path) -> tuple[int, str, str]:
 
 
 def base_route_fields(base_home: Path, project: str, *, trust_required: bool = True) -> str:
-    del base_home
     if not _engine_homes:
         raise AssertionError("run_engine must be called before base_route_fields")
-    venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    if project == "base":
+        venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    else:
+        venv_dir = (base_home.parent / project / ".venv").resolve()
     trust_value = "true" if trust_required else "false"
     return (
         f"\t__base_project_venv_dir={venv_dir}"

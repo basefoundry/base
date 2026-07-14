@@ -24,6 +24,7 @@ from .pyproject import check_pyproject
 from .python_policy import python_requirement_checks
 from .python_runtime import project_python_runtime_check
 from .setup_reconcile import effective_manifest_with_user_config
+from .setup_reconcile import project_runtime_argument
 from .setup_reconcile import setup_artifacts
 from .uv import check_uv
 
@@ -72,8 +73,9 @@ def manifest_checks(
     checks.extend(check_pyproject(effective_manifest))
     checks.extend(project_python_runtime_check(effective_manifest))
 
+    runtime_config = project_runtime_argument(effective_manifest)
     for artifact, definition in zip(artifacts, definitions, strict=True):
-        checks.append(check_artifact(effective_manifest.project_name, artifact, definition))
+        checks.append(check_artifact(runtime_config, artifact, definition))
 
     if not pre_venv_checks and not checks:
         checks.append(

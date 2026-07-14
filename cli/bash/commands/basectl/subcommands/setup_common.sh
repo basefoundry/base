@@ -783,7 +783,13 @@ setup_project_venv_python_bin() {
 
 setup_recovery_project_venv() {
     local project="$1"
+    local project_root="${2:-}"
+    local project_venv_dir="${3:-}"
 
+    if [[ "$project" != base && -n "$project_root" && "$project_venv_dir" == "$project_root/.venv" ]]; then
+        printf "Run 'basectl setup %s --recreate-venv' to back up and recreate the project virtual environment. Base now defaults non-Base project virtual environments to '%s'; to keep using '%s', set python.venv_location: external in base_manifest.yaml or export BASE_PROJECT_VENV_DIR.\n" "$project" "$project_venv_dir" "$HOME/.base.d/$project/.venv"
+        return 0
+    fi
     printf "Run 'basectl setup %s --recreate-venv' to back up and recreate the project virtual environment.\n" "$project"
 }
 
@@ -1096,7 +1102,7 @@ setup_run_project_artifact_layer() {
                     "$precheck_json" \
                     "error" \
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
-                    "$(setup_recovery_project_venv "$project")"
+                    "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
             else
                 precheck_json="$(setup_run_project_pre_venv_layer precheck json "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network")" || true
                 [[ -n "$precheck_json" ]] || precheck_json="[]"
@@ -1104,7 +1110,7 @@ setup_run_project_artifact_layer() {
                     "$precheck_json" \
                     false \
                     "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
-                    "$(setup_recovery_project_venv "$project")" \
+                    "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")" \
                     "$project"
             fi
         elif [[ "$action" == doctor ]]; then
@@ -1114,14 +1120,14 @@ setup_run_project_artifact_layer() {
                 "BASE-P050" \
                 "Project virtualenv" \
                 "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
-                "$(setup_recovery_project_venv "$project")"
+                "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
         elif [[ "$action" == check ]]; then
             setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network" || true
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
-            log_warn "$(setup_recovery_project_venv "$project")"
+            log_warn "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
         else
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
-            log_warn "$(setup_recovery_project_venv "$project")"
+            log_warn "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
         fi
         return 1
     fi

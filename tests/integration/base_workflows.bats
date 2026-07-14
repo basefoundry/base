@@ -30,8 +30,8 @@ setup() {
     create_fake_platform_tools
     create_python_venv "$TEST_HOME/.base.d/base/.venv"
     create_demo_project "$TEST_PROJECT_ROOT"
-    create_python_venv "$TEST_HOME/.base.d/demo/.venv"
-    create_fake_project_test_command "$TEST_HOME/.base.d/demo/.venv/bin/fake-test"
+    create_python_venv "$TEST_PROJECT_ROOT/.venv"
+    create_fake_project_test_command "$TEST_PROJECT_ROOT/.venv/bin/fake-test"
 }
 
 create_base_runtime() {
@@ -247,7 +247,7 @@ run_basectl_separate_stderr() {
     grep -Fqx "project=demo" "$TEST_STATE_DIR/fake-test.out"
     grep -Fqx "root=$TEST_PROJECT_ROOT" "$TEST_STATE_DIR/fake-test.out"
     grep -Fqx "manifest=$TEST_PROJECT_ROOT/base_manifest.yaml" "$TEST_STATE_DIR/fake-test.out"
-    grep -Fqx "venv=$TEST_HOME/.base.d/demo/.venv" "$TEST_STATE_DIR/fake-test.out"
+    grep -Fqx "venv=$TEST_PROJECT_ROOT/.venv" "$TEST_STATE_DIR/fake-test.out"
     grep -Fqx "pwd=$TEST_PROJECT_ROOT" "$TEST_STATE_DIR/fake-test.out"
     grep -Fqx "args=<tests/><-k><focused case>" "$TEST_STATE_DIR/fake-test.out"
 }

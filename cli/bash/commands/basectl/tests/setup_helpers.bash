@@ -828,9 +828,20 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         else
             uses_uv_manager=false
         fi
+        if awk '
+            /^[[:space:]]*#/ { next }
+            /^[^[:space:]][^:]*:/ { in_python = 0 }
+            /^[[:space:]]*python:[[:space:]]*$/ { in_python = 1; next }
+            in_python && /^[[:space:]]+venv_location:[[:space:]]*['\''"]?external['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
+            END { exit found ? 0 : 1 }
+        ' "$manifest_path"; then
+            uses_external_venv=true
+        else
+            uses_external_venv=false
+        fi
         if [[ "$project_arg" != base && -n "${BASE_PROJECT_VENV_DIR:-}" && ( -z "${BASE_PROJECT:-}" || "${BASE_PROJECT:-}" == "$project_arg" ) ]]; then
             route_venv_dir="$BASE_PROJECT_VENV_DIR"
-        elif [[ "$project_arg" != base && "$uses_uv_manager" == true ]]; then
+        elif [[ "$project_arg" != base && "$uses_external_venv" != true ]]; then
             route_venv_dir="$project_root/.venv"
         else
             route_venv_dir="$HOME/.base.d/$project_arg/.venv"

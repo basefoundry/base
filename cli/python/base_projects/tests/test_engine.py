@@ -57,11 +57,20 @@ def write_versioned_python_bin(python_bin: Path, version: str) -> None:
 _engine_homes: list[Path] = []
 
 
-def base_route_fields(base_home: Path, project: str, *, trust_required: bool = True) -> str:
-    del base_home
+def base_route_fields(
+    base_home: Path,
+    project: str,
+    *,
+    trust_required: bool = True,
+    project_root: Path | None = None,
+) -> str:
     if not _engine_homes:
         raise AssertionError("run_engine must be called before base_route_fields")
-    venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    if project == "base":
+        venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
+    else:
+        resolved_root = project_root if project_root is not None else base_home.parent / project
+        venv_dir = (resolved_root / ".venv").resolve()
     trust_value = "true" if trust_required else "false"
     return (
         f"\t__base_project_venv_dir={venv_dir}"
@@ -630,7 +639,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=project_root)}\n",
         )
 
     def test_projects_resolve_explicit_workspace_wins_over_active_project(self) -> None:
@@ -658,7 +667,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=explicit_root)}\n",
         )
 
     def test_projects_resolve_rejects_active_project_manifest_mismatch(self) -> None:
@@ -701,7 +710,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
+            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=project_root)}\n",
         )
 
     def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:

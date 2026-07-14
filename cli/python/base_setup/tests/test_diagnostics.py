@@ -572,7 +572,7 @@ class ProjectCheckTests(unittest.TestCase):
                 "project:\n  name: demo\npython:\n  requires_python: '3.12'\nartifacts: []\n",
                 encoding="utf-8",
             )
-            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin = (project_root / ".venv" / "bin" / "python").resolve()
             python_bin.parent.mkdir(parents=True)
             python_bin.write_text("#!/bin/sh\nprintf '3.12\\n'\n", encoding="utf-8")
             python_bin.chmod(0o755)

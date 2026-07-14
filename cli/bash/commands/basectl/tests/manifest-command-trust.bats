@@ -31,7 +31,7 @@ TRUST
 fi
 
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" ]]; then
-    route_fields="__base_project_venv_dir=${HOME:?}/.base.d/demo/.venv	__base_uses_uv_manager=false	__base_manifest_command_trust_required=true"
+    route_fields="__base_project_venv_dir=${BASE_TEST_PROJECT_ROOT:?}/.venv	__base_uses_uv_manager=false	__base_manifest_command_trust_required=true"
     case "${3:-}" in
         test-command)
             printf 'demo\t%s\t%s\t%s\t%s\n' \
@@ -102,9 +102,9 @@ EOF
 
 setup_manifest_trust_project() {
     local project_root="$1"
-    mkdir -p "$project_root" "$TEST_HOME/.base.d/demo/.venv/bin"
-    printf '#!/usr/bin/env bash\n' > "$TEST_HOME/.base.d/demo/.venv/bin/python"
-    chmod +x "$TEST_HOME/.base.d/demo/.venv/bin/python"
+    mkdir -p "$project_root/.venv/bin"
+    printf '#!/usr/bin/env bash\n' > "$project_root/.venv/bin/python"
+    chmod +x "$project_root/.venv/bin/python"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$project_root/base_manifest.yaml"
     cat > "$project_root/demo.sh" <<'EOF'
 #!/usr/bin/env bash

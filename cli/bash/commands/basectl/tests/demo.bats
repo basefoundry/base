@@ -16,7 +16,7 @@ load ./basectl_helpers.bash
     local state_file="$TEST_TMPDIR/demo-state"
     local script_path="$workspace/demo/demo/demo.sh"
 
-    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" ]]; then
@@ -42,7 +42,7 @@ EOF
 exit 7
 EOF
     chmod +x "$python_bin" "$script_path"
-    touch "$TEST_HOME/.base.d/demo/.venv/bin/demo-tool"
+    touch "$workspace/demo/.venv/bin/demo-tool"
     workspace="$(cd "$workspace" && pwd -P)"
 
     run env \
@@ -56,9 +56,9 @@ EOF
     [[ "$(cat "$state_file")" == *"project=demo"* ]]
     [[ "$(cat "$state_file")" == *"root=$workspace/demo"* ]]
     [[ "$(cat "$state_file")" == *"manifest=$workspace/demo/base_manifest.yaml"* ]]
-    [[ "$(cat "$state_file")" == *"venv=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$(cat "$state_file")" == *"venv=$workspace/demo/.venv"* ]]
     [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
-    [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
+    [[ "$(cat "$state_file")" == *"path=$workspace/demo/.venv/bin:"* ]]
     [[ "$(cat "$state_file")" == *"args=<--non-interactive><name with spaces>"* ]]
 }
 
@@ -68,7 +68,7 @@ EOF
     local state_file="$TEST_TMPDIR/demo-state"
     local script_path="$workspace/demo/demo/demo.sh"
 
-    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" ]]; then
@@ -78,7 +78,7 @@ fi
 printf 'unexpected demo python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/uv" <<'EOF'
 #!/usr/bin/env bash
 {
     printf 'pwd=%s\n' "$PWD"
@@ -87,7 +87,7 @@ EOF
     printf '\n'
 } > "${BASE_TEST_DEMO_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/uv"
     touch "$script_path"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -109,7 +109,7 @@ EOF
     local state_file="$TEST_TMPDIR/demo-state"
     local script_path="$workspace/demo/demo.sh"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && -z "${4:-}" ]]; then

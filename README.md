@@ -524,7 +524,9 @@ The curated built-in artifact registry lives in
 `cli/python/base_setup/registry.py` loads and validates that data before setup,
 check, or doctor use it. The registry should stay small and Base-aware.
 `python-package` artifacts are pass-through PyPI package names and install into
-the project virtual environment at `~/.base.d/<project>/.venv`.
+the project virtual environment at `<project-root>/.venv` for non-Base projects
+by default. Projects that need the historical external location can declare
+`python.venv_location: external`.
 Homebrew-managed `tool` artifacts currently support `version: latest`;
 `basectl check` and `basectl doctor` treat an installed but outdated Homebrew
 package as unhealthy, and `basectl setup` upgrades it. Ordinary Homebrew tools
@@ -912,9 +914,9 @@ basectl activate example
 Activation spawns a project-specific Bash runtime shell, changes to the project
 root, sets `BASE_PROJECT` and related project variables, adds project-owned
 commands from `$PROJECT_ROOT/bin` when that directory exists, and activates the
-project virtual environment at `~/.base.d/<project>/.venv`. If the manifest
-declares `activate.source`, Base then sources each declared script in order.
-Exit that shell to return to the original environment.
+project virtual environment at `<project-root>/.venv` by default. If the
+manifest declares `activate.source`, Base then sources each declared script in
+order. Exit that shell to return to the original environment.
 
 The activated runtime shell is always Bash, even when the user's login shell is
 Zsh. `BASE_ACTIVATE_SHELL` may point to another Bash executable, but it must not
@@ -940,9 +942,9 @@ basectl clean --older-than 30d --keep-last 20
 ```
 
 Cleanup only targets runtime artifacts under the Base cache root, which defaults
-to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it. Durable
-state such as `~/.base.d/config.yaml` and project virtual environments under
-`~/.base.d/<project>/.venv` are outside this scope.
+to `~/Library/Caches/base` on macOS. Set `BASE_CACHE_DIR` to override it.
+Durable state such as `~/.base.d/config.yaml`, Base's own venv, and project
+virtual environments are outside this scope.
 
 Show recent Base CLI logs with:
 

@@ -78,10 +78,12 @@ python.defaultInterpreterPath: auto
 Base resolves that to:
 
 ```text
-~/.base.d/<project>/.venv/bin/python
+<project-root>/.venv/bin/python
 ```
 
-or to `$BASE_PROJECT_VENV_DIR/bin/python` when that override is set.
+or to `$BASE_PROJECT_VENV_DIR/bin/python` when that override is set. Projects
+that explicitly declare `python.venv_location: external` resolve to
+`~/.base.d/<project>/.venv/bin/python`.
 
 ## Setup Behavior
 

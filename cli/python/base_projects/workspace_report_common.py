@@ -9,7 +9,7 @@ from typing import Any
 from base_cli.paths import base_state_root
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_setup.manifest_model import BaseManifest
-from base_setup.uv import manifest_uses_uv_project_manager
+from base_setup.project_routing import route_for_manifest
 
 
 @dataclass(frozen=True)
@@ -19,9 +19,7 @@ class ProjectLastCheck:
 
 
 def project_venv_dir(manifest: BaseManifest) -> Path:
-    if manifest_uses_uv_project_manager(manifest):
-        return manifest.path.parent / ".venv"
-    return base_state_root() / manifest.project_name / ".venv"
+    return route_for_manifest(manifest).project_venv_dir
 
 
 def project_venv_ready(venv_dir: Path) -> bool:

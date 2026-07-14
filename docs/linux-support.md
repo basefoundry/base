@@ -35,7 +35,8 @@ platform adapters.
 Start with Ubuntu/Debian runtime support:
 
 - Base Python CLIs run under Linux.
-- `base-wrapper` can select the project venv under `~/.base.d/<project>/.venv`.
+- `base-wrapper` can select the project venv under `<project-root>/.venv`, or
+  the historical external path when a manifest opts into it.
 - `basectl projects list`, `check`, `doctor`, and `ci` work when
   prerequisites are already installed.
 - Setup installs conservative Ubuntu/Debian apt prerequisites after dry-run

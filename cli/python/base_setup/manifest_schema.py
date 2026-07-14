@@ -10,6 +10,7 @@ GITHUB_REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 HOMEBREW_PACKAGE_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/[A-Za-z0-9_.+-]+$")
 PORT_HEALTH_STATES = {"free", "listening"}
 SUPPORTED_PYTHON_MANAGERS = {"uv"}
+SUPPORTED_PYTHON_VENV_LOCATIONS = {"external", "project"}
 SUPPORTED_COMMAND_RUNNERS = {"uv"}
 
 

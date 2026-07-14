@@ -36,6 +36,7 @@ from base_setup.manifest_schema import CURRENT_MANIFEST_SCHEMA_VERSION
 from base_setup.manifest_schema import ENVIRONMENT_VARIABLE_NAME_RE
 from base_setup.manifest_schema import PORT_HEALTH_STATES
 from base_setup.manifest_schema import SUPPORTED_PYTHON_MANAGERS
+from base_setup.manifest_schema import SUPPORTED_PYTHON_VENV_LOCATIONS
 from base_setup.manifest_schema import has_control_line_break
 
 
@@ -286,7 +287,7 @@ def _read_python(path: Path, python_data: Any) -> PythonConfig:
     if not isinstance(python_data, dict):
         raise ManifestError(f"{path}: python must be a mapping when provided.")
 
-    allowed_keys = {"manager", "requires_python"}
+    allowed_keys = {"manager", "requires_python", "venv_location"}
     unknown_keys = sorted(set(python_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: python has unsupported keys: {', '.join(unknown_keys)}.")
@@ -306,7 +307,17 @@ def _read_python(path: Path, python_data: Any) -> PythonConfig:
             raise ManifestError(f"{path}: python.requires_python must be a non-empty string when provided.")
         requires_python = requires_python.strip()
 
-    return PythonConfig(manager=manager, requires_python=requires_python)
+    venv_location = python_data.get("venv_location", "project")
+    if not isinstance(venv_location, str) or not venv_location.strip():
+        raise ManifestError(f"{path}: python.venv_location must be a non-empty string when provided.")
+    venv_location = venv_location.strip()
+    if venv_location not in SUPPORTED_PYTHON_VENV_LOCATIONS:
+        supported = ", ".join(sorted(SUPPORTED_PYTHON_VENV_LOCATIONS))
+        raise ManifestError(f"{path}: python.venv_location must be one of: {supported}.")
+    if manager == "uv" and venv_location == "external":
+        raise ManifestError(f"{path}: python.venv_location: external cannot be combined with python.manager: uv.")
+
+    return PythonConfig(manager=manager, requires_python=requires_python, venv_location=venv_location)
 
 
 def _read_github(path: Path, github_data: Any) -> GithubConfig:

@@ -36,7 +36,7 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")" \
         "$workspace/demo/services/api" \
         "$workspace/demo/services/worker" \
-        "$TEST_HOME/.base.d/demo/.venv/bin"
+        "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
@@ -48,7 +48,7 @@ printf 'unexpected build python args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$python_bin"
-    touch "$TEST_HOME/.base.d/demo/.venv/bin/go"
+    touch "$workspace/demo/.venv/bin/go"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -60,7 +60,7 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" build demo
 
     [ "$status" -eq 0 ]
-    [[ "$(cat "$state_file")" == *"api:demo:$workspace/demo:$workspace/demo/base_manifest.yaml:$TEST_HOME/.base.d/demo/.venv:$workspace/demo/services/api"* ]]
+    [[ "$(cat "$state_file")" == *"api:demo:$workspace/demo:$workspace/demo/base_manifest.yaml:$workspace/demo/.venv:$workspace/demo/services/api"* ]]
     [[ "$(cat "$state_file")" == *"worker:demo:$workspace/demo/services/worker"* ]]
 }
 
@@ -69,7 +69,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/build-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
@@ -79,7 +79,7 @@ fi
 printf 'unexpected build python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/uv" <<'EOF'
 #!/usr/bin/env bash
 {
     printf 'pwd=%s\n' "$PWD"
@@ -88,7 +88,7 @@ EOF
     printf '\n'
 } > "${BASE_TEST_BUILD_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/uv"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -109,7 +109,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/build-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" && "${5:-}" == "api" ]]; then
@@ -119,11 +119,11 @@ fi
 printf 'unexpected build python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/fake-build" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/fake-build" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "${BASE_TEST_BUILD_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/fake-build"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/fake-build"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 

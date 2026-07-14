@@ -8,6 +8,9 @@ from .manifest import BaseManifest
 from .project_environment import project_venv_dir_override
 from .uv import manifest_uses_uv_project_manager
 
+PROJECT_VENV_LOCATION_EXTERNAL = "external"
+PROJECT_VENV_LOCATION_PROJECT = "project"
+
 
 @dataclass(frozen=True)
 class ProjectRoute:
@@ -52,16 +55,24 @@ def route_for_manifest(manifest: BaseManifest) -> ProjectRoute:
             manifest.project_name,
             project_root=project_root,
             uses_uv_manager=uses_uv_manager,
+            venv_location=manifest.python.venv_location,
         ),
         uses_uv_manager=uses_uv_manager,
     )
 
 
-def project_venv_dir(project: str, project_root: Path | None = None, uses_uv_manager: bool = False) -> Path:
+def project_venv_dir(
+    project: str,
+    project_root: Path | None = None,
+    uses_uv_manager: bool = False,
+    venv_location: str = PROJECT_VENV_LOCATION_PROJECT,
+) -> Path:
     override = project_venv_dir_override(project)
     if project != "base" and override is not None:
         return override
-    if project != "base" and uses_uv_manager and project_root is not None:
+    if project != "base" and project_root is not None and (
+        uses_uv_manager or venv_location == PROJECT_VENV_LOCATION_PROJECT
+    ):
         return project_root / ".venv"
     return Path.home() / ".base.d" / project / ".venv"
 
