@@ -60,6 +60,7 @@ Options:
   --repo <owner/name>           GitHub repository to configure.
   --pr                          Commit the generated baseline on a branch and open a pull request.
   --agent-ready                 Also seed repo-local agent guidance files.
+  --language <csv>              Add project language metadata; may be repeated.
   --description <text>          Repository description for generated README.
   --copyright-holder <name>     Copyright holder for generated AGPL license. Defaults to git config user.name.
   --private                     Create a private GitHub repository when needed. This is the default.
@@ -83,6 +84,9 @@ Examples:
 
   # Add or refresh the Base baseline in an existing checkout.
   basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
+
+  # Seed a polyglot project profile (CSV and repeated forms are equivalent).
+  basectl repo init platform --language go,javascript --language typescript
 
   # After the baseline PR is merged, apply or repair GitHub settings.
   basectl repo configure . --repo codeforester/bankbuddy
@@ -826,16 +830,28 @@ base_repo_write_manifest() {
     local dry_run="$1"
     local name="$2"
     local root="$3"
+    local language
+    local languages=("${@:4}")
+    local has_python=0
 
-    base_repo_write_stream "$dry_run" "$root/base_manifest.yaml" <<EOF
-schema_version: 1
+    for language in "${languages[@]}"; do
+        [[ "$language" == 'python' ]] && has_python=1
+    done
 
-project:
-  name: $name
-
-test:
-  command: ./tests/validate.sh
-EOF
+    {
+        printf 'schema_version: 1\n\n'
+        printf 'project:\n  name: %s\n' "$name"
+        if ((${#languages[@]})); then
+            printf '  languages:\n'
+            for language in "${languages[@]}"; do
+                printf '    - %s\n' "$language"
+            done
+        fi
+        if ((has_python)); then
+            printf '\npython:\n  manager: uv\n'
+        fi
+        printf '\ntest:\n  command: ./tests/validate.sh\n'
+    } | base_repo_write_stream "$dry_run" "$root/base_manifest.yaml"
 }
 
 base_repo_write_validate_script() {
@@ -955,6 +971,7 @@ base_repo_write_baseline() {
     local dry_run="$1"
     local name="$2"
     local root="$5"
+    local languages=("${@:6}")
     local status=0
 
     if [[ "$dry_run" != "1" ]]; then
@@ -969,7 +986,7 @@ base_repo_write_baseline() {
     base_repo_write_project_config "$dry_run" "$root" || status=1
     base_repo_write_license "$dry_run" "$copyright_holder" "$root" || status=1
     base_repo_write_gitignore "$dry_run" "$root" || status=1
-    base_repo_write_manifest "$dry_run" "$name" "$root" || status=1
+    base_repo_write_manifest "$dry_run" "$name" "$root" "${languages[@]}" || status=1
     base_repo_write_validate_script "$dry_run" "$root" || status=1
     base_repo_write_project_intake_workflow "$dry_run" "$root" || status=1
     base_repo_write_tests_workflow "$dry_run" "$root" || status=1
@@ -1024,6 +1041,56 @@ base_repo_pretty_command() {
         fi
         base_repo_pretty_arg "$arg"
     done
+}
+
+base_repo_normalize_language() {
+    local language="$1"
+
+    case "$language" in
+        c|cpp)
+            printf '%s\n' "$language"
+            ;;
+        c++)
+            printf 'cpp\n'
+            ;;
+        go|golang)
+            printf 'go\n'
+            ;;
+        java)
+            printf 'java\n'
+            ;;
+        javascript|js)
+            printf 'javascript\n'
+            ;;
+        python)
+            printf 'python\n'
+            ;;
+        ts|typescript)
+            printf 'typescript\n'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+base_repo_supported_languages_display() {
+    printf '%s\n' 'c, c++, cpp, go, golang, java, javascript, js, python, ts, typescript'
+}
+
+base_repo_languages_csv() {
+    local first=1
+    local language
+
+    for language in "$@"; do
+        if ((first)); then
+            first=0
+        else
+            printf ','
+        fi
+        printf '%s' "$language"
+    done
+    printf '\n'
 }
 
 base_repo_join_csv() {
@@ -1393,7 +1460,8 @@ base_repo_init_pr_rerun_command() {
     local repo="$3"
     local root="$2"
     local command=(basectl repo init "$name" --path "$root" --repo "$repo" --pr)
-    shift 11
+    local languages_csv="${12}"
+    shift 12
 
     [[ "$configure" == "1" ]] || command+=(--no-configure)
     [[ "$agent_ready" == "1" ]] && command+=(--agent-ready)
@@ -1403,6 +1471,7 @@ base_repo_init_pr_rerun_command() {
     [[ -z "$project_owner" ]] || command+=(--project-owner "$project_owner")
     [[ "$project_schema" == "base-project" ]] || command+=(--project-schema "$project_schema")
     [[ -z "$copy_project_fields_from" ]] || command+=(--copy-project-fields-from "$copy_project_fields_from")
+    [[ -z "$languages_csv" ]] || command+=(--language "$languages_csv")
     for option in "$@"; do
         command+=(--initiative-option "$option")
     done
@@ -1679,6 +1748,13 @@ base_repo_init() {
     local root
     local configure_project=1
     local initiative_options=()
+    local language_fields=()
+    local language_options=()
+    local language_option
+    local language_field
+    local language
+    local normalized_language
+    local language_seen
 
     while (($#)); do
         case "$1" in
@@ -1716,6 +1792,63 @@ base_repo_init() {
                 ;;
             --agent-ready)
                 agent_ready=1
+                shift
+                ;;
+            --language)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_init_usage_error "Option '--language' requires a comma-separated language list."
+                    return $?
+                }
+                language_option="${2//[[:space:]]/}"
+                if [[ -z "$language_option" || "$language_option" == ,* || "$language_option" == *, || "$language_option" == *,,* ]]; then
+                    base_repo_init_usage_error "Option '--language' must not contain empty entries."
+                    return $?
+                fi
+                str_split language_fields "$language_option" ","
+                for language_field in "${language_fields[@]}"; do
+                    normalized_language="$(base_repo_normalize_language "$language_field" || true)"
+                    if [[ -z "$normalized_language" ]]; then
+                        base_repo_init_usage_error "Unsupported language '$language_field'. Expected one of: $(base_repo_supported_languages_display)."
+                        return $?
+                    fi
+                    language_seen=0
+                    for language in "${language_options[@]}"; do
+                        if [[ "$language" == "$normalized_language" ]]; then
+                            language_seen=1
+                            break
+                        fi
+                    done
+                    ((language_seen)) || language_options+=("$normalized_language")
+                done
+                shift 2
+                ;;
+            --language=*)
+                language_option="${1#--language=}"
+                if [[ -z "$language_option" ]]; then
+                    base_repo_init_usage_error "Option '--language' requires a comma-separated language list."
+                    return $?
+                fi
+                language_option="${language_option//[[:space:]]/}"
+                if [[ "$language_option" == ,* || "$language_option" == *, || "$language_option" == *,,* ]]; then
+                    base_repo_init_usage_error "Option '--language' must not contain empty entries."
+                    return $?
+                fi
+                str_split language_fields "$language_option" ","
+                for language_field in "${language_fields[@]}"; do
+                    normalized_language="$(base_repo_normalize_language "$language_field" || true)"
+                    if [[ -z "$normalized_language" ]]; then
+                        base_repo_init_usage_error "Unsupported language '$language_field'. Expected one of: $(base_repo_supported_languages_display)."
+                        return $?
+                    fi
+                    language_seen=0
+                    for language in "${language_options[@]}"; do
+                        if [[ "$language" == "$normalized_language" ]]; then
+                            language_seen=1
+                            break
+                        fi
+                    done
+                    ((language_seen)) || language_options+=("$normalized_language")
+                done
                 shift
                 ;;
             --description)
@@ -1883,12 +2016,13 @@ base_repo_init() {
                 "$project_schema" \
                 "$copy_project_fields_from" \
                 "$agent_ready" \
+                "$(base_repo_languages_csv "${language_options[@]}")" \
                 "${initiative_options[@]}"
         )"
         base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$default_branch" || return 1
     fi
 
-    base_repo_write_baseline "$dry_run" "$name" "$description" "$copyright_holder" "$root" || return 1
+    base_repo_write_baseline "$dry_run" "$name" "$description" "$copyright_holder" "$root" "${language_options[@]}" || return 1
     if ((agent_ready)); then
         if [[ -n "$default_branch" && "$default_branch" != "<default branch>" ]]; then
             agent_default_branch="$default_branch"

@@ -656,6 +656,9 @@ branch to `origin`, and open a pull request. Use `--no-configure` to skip the
 GitHub step, or rerun it later with `basectl repo configure`. Add
 `--agent-ready` when a new baseline should also include `AGENTS.md` and
 `skills.md` for repo-local agent workflow guidance.
+Use repeatable `--language <csv>` values to record an explicit, normalized
+polyglot profile in `project.languages`; selecting `python` also generates the
+explicit `python.manager: uv` manifest contract.
 
 Clone an existing GitHub repository into the configured workspace with:
 

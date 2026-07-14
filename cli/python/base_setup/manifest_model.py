@@ -114,6 +114,7 @@ class BaseManifest:
     project_name: str
     brewfile: str | None
     artifacts: tuple[ArtifactRequest, ...]
+    project_languages: tuple[str, ...] = ()
     ide: dict[str, IdeConfig] = field(default_factory=dict)
     mise: str | None = None
     test: TestConfig | None = None

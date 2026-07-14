@@ -20,6 +20,8 @@ The current command surface covers:
 - mise integration
 - bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
+- explicit `repo init --language` profiles with normalized
+  `project.languages` metadata and Python uv opt-in
 - project Python runtime requirements through `python.requires_python`
 - cleanup, logs, and local command history
 - local config inspection

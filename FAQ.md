@@ -341,6 +341,9 @@ run in CI or another non-interactive context. See [Project Demo Workflow](docs/p
 `basectl repo init <name>` creates the standard Base-managed repository
 baseline: README, VERSION, CHANGELOG, CONTRIBUTING, LICENSE, `.gitignore`,
 `base_manifest.yaml`, a validation script, and a GitHub Actions test workflow.
+Pass repeatable `--language <csv>` values when the baseline should record a
+polyglot project profile; selecting `python` also opts the generated manifest
+into `python.manager: uv`.
 When a GitHub repo is provided or inferred, Base can also apply the standard
 repository settings and labels; use `--dry-run` to preview everything first.
 See [Repository Baseline](docs/repo-baseline.md).
