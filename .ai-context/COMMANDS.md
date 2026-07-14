@@ -64,7 +64,10 @@ options.
   pushing them; `repo init --agent-ready` also seeds `AGENTS.md` and `skills.md`;
   `repo check --agent-ready` verifies that baseline-integrated agent guidance
   contract; `repo init --pr` commits baseline changes on a branch, pushes to
-  `origin`, and opens a PR.
+  `origin`, and opens a PR. `repo init --language <csv>` may be repeated for
+  explicit, normalized language metadata; selecting `python` adds the explicit
+  `python.manager: uv` profile while other initial language values are metadata
+  only.
 - `basectl <setup|check|doctor> --ci <project>` - run Base setup/check/doctor
   with CI-safe defaults. It does not run project tests or create CI runners/VMs.
   `setup --ci --format json` uses `output` for the compact final status and

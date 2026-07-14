@@ -37,6 +37,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added `basectl gh issue readiness` to check issue body sections, labels,
   assignees, and optional GitHub Project fields before assigning agentic
   implementation work.
+- Added explicit, repeatable `basectl repo init --language <csv>` profiles that
+  record normalized `project.languages` metadata and opt Python baselines into
+  `python.manager: uv`.
 
 ### Changed
 

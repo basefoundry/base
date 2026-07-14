@@ -45,6 +45,7 @@ class ManifestParsingTests(unittest.TestCase):
 
         self.assertEqual(manifest.schema_version, 1)
         self.assertEqual(manifest.project_name, "demo")
+        self.assertEqual(manifest.project_languages, ())
         self.assertIsNone(manifest.brewfile)
         self.assertEqual(manifest.artifacts[0].artifact_type, "tool")
         self.assertEqual(manifest.artifacts[0].name, "terraform")
@@ -73,6 +74,36 @@ class ManifestParsingTests(unittest.TestCase):
         )
 
         self.assertEqual(manifest.python.manager, "uv")
+
+    def test_reads_and_normalizes_project_languages(self) -> None:
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "  languages:",
+            "    - python",
+            "    - golang",
+            "    - c++",
+            "",
+            "artifacts: []",
+        )
+
+        self.assertEqual(manifest.project_languages, ("python", "go", "cpp"))
+
+    def test_rejects_invalid_project_languages(self) -> None:
+        for languages, message in (
+            ("python", "must be a list"),
+            ("[python, unknown]", "must be one of"),
+            ("[python, python]", "duplicates 'python'"),
+        ):
+            with self.subTest(languages=languages):
+                with self.assertRaisesRegex(ManifestError, message):
+                    self.read_manifest_lines(
+                        "project:",
+                        "  name: demo",
+                        f"  languages: {languages}",
+                        "",
+                        "artifacts: []",
+                    )
 
     def test_reads_manifest_python_requirement(self) -> None:
         manifest = self.read_manifest_lines(

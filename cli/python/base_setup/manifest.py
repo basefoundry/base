@@ -35,14 +35,16 @@ from base_setup.manifest_schema import COMMAND_NAME_RE
 from base_setup.manifest_schema import CURRENT_MANIFEST_SCHEMA_VERSION
 from base_setup.manifest_schema import ENVIRONMENT_VARIABLE_NAME_RE
 from base_setup.manifest_schema import PORT_HEALTH_STATES
+from base_setup.manifest_schema import PROJECT_LANGUAGE_ALIASES
 from base_setup.manifest_schema import SUPPORTED_PYTHON_MANAGERS
 from base_setup.manifest_schema import has_control_line_break
+from base_setup.manifest_schema import normalize_project_language
 
 
 def read_manifest(path: Path) -> BaseManifest:
     data = read_manifest_mapping(path)
     schema_version = _read_schema_version(path, data.get("schema_version"))
-    project_name = _read_project_name(path, data.get("project"))
+    project_name, project_languages = _read_project(path, data.get("project"))
     brewfile = _read_brewfile(path, data.get("brewfile"))
     mise = _read_mise(path, data.get("mise"))
     ide = _read_ide(path, data.get("ide"))
@@ -60,6 +62,7 @@ def read_manifest(path: Path) -> BaseManifest:
     return BaseManifest(
         path=path,
         project_name=project_name,
+        project_languages=project_languages,
         brewfile=brewfile,
         artifacts=tuple(artifacts),
         ide=ide,
@@ -92,11 +95,11 @@ def _read_schema_version(path: Path, schema_version_data: Any) -> int:
     return schema_version_data
 
 
-def _read_project_name(path: Path, project_data: Any) -> str:
+def _read_project(path: Path, project_data: Any) -> tuple[str, tuple[str, ...]]:
     if not isinstance(project_data, dict):
         raise ManifestError(f"{path}: project must be a mapping.")
 
-    allowed_project_keys = {"name"}
+    allowed_project_keys = {"name", "languages"}
     unknown_project_keys = sorted(set(project_data) - allowed_project_keys)
     if unknown_project_keys:
         raise ManifestError(f"{path}: unsupported project keys: {', '.join(unknown_project_keys)}.")
@@ -109,7 +112,31 @@ def _read_project_name(path: Path, project_data: Any) -> str:
             f"{path}: project.name must be a valid name "
             "(alphanumeric with optional dots, dashes, underscores, or colons)."
         )
-    return project_name
+    return project_name, _read_project_languages(path, project_data.get("languages"))
+
+
+def _read_project_languages(path: Path, languages_data: Any) -> tuple[str, ...]:
+    if languages_data is None:
+        return ()
+    if not isinstance(languages_data, list):
+        raise ManifestError(f"{path}: project.languages must be a list when provided.")
+
+    languages: list[str] = []
+    seen: set[str] = set()
+    supported = ", ".join(sorted(PROJECT_LANGUAGE_ALIASES))
+    for index, language_data in enumerate(languages_data, start=1):
+        if not isinstance(language_data, str) or not language_data.strip():
+            raise ManifestError(f"{path}: project.languages[{index}] must be a non-empty string.")
+        language = normalize_project_language(language_data)
+        if language is None:
+            raise ManifestError(
+                f"{path}: project.languages[{index}] must be one of: {supported}."
+            )
+        if language in seen:
+            raise ManifestError(f"{path}: project.languages[{index}] duplicates '{language}'.")
+        seen.add(language)
+        languages.append(language)
+    return tuple(languages)
 
 
 def _read_brewfile(path: Path, brewfile_data: Any) -> str | None:

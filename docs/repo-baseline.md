@@ -50,6 +50,24 @@ one command. Use `--no-configure` when GitHub setup should be skipped or when
 local-only initialization is desired. Add `--agent-ready` when the baseline
 should also seed `AGENTS.md` and `skills.md` for agent-assisted development.
 
+Use `--language <csv>` to record the repository's language profile in the
+generated `base_manifest.yaml`. The option may be repeated, and CSV and
+repeated forms are equivalent:
+
+```bash
+basectl repo init platform \
+  --language go,javascript \
+  --language typescript
+```
+
+The initial vocabulary includes `python`, `go`/`golang`, `java`,
+`javascript`/`js`, `typescript`/`ts`, `c`, and `cpp`/`c++`. Base normalizes
+aliases, removes duplicates, and keeps the first-seen order. Language selection
+is explicit; Base does not infer it by scanning repository files. In this first
+slice, non-Python languages are metadata only. Selecting `python` also writes
+the explicit `python.manager: uv` contract; it does not silently change an
+existing manifest.
+
 Without `--path`, `repo init` creates the repository under the configured
 workspace root:
 
@@ -186,13 +204,21 @@ Existing files are left unchanged. This makes `repo init` useful both for a
 fresh directory and for bringing a small existing repository up to Base's
 minimum expectations.
 
-The generated `base_manifest.yaml` declares the project name and a test command:
+The generated `base_manifest.yaml` declares the project name and a test command.
+When language profiles are selected, it also records the normalized languages
+and applies the Python uv profile:
 
 ```yaml
 schema_version: 1
 
 project:
   name: base-demo
+  languages:
+    - python
+    - javascript
+
+python:
+  manager: uv
 
 test:
   command: ./tests/validate.sh

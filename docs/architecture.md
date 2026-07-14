@@ -375,6 +375,9 @@ schema_version: 1
 
 project:
   name: myproject
+  languages:
+    - python
+    - javascript
 
 brewfile: Brewfile
 
@@ -415,6 +418,11 @@ as schema version `1`, which keeps existing project manifests valid. Base reject
 manifests with a schema version newer than the installed Base understands so
 future team-facing manifest expansion can fail with a clear upgrade message
 instead of ambiguous parser behavior.
+
+`project.languages` is additive project taxonomy. It is an explicit,
+allowlisted list that may describe a polyglot repository; it does not infer
+toolchain ownership or make unsupported language setup automatic. The
+`python.manager: uv` field remains the separate Python environment contract.
 
 The Python layer interprets this declarative manifest and translates it into
 orchestration actions. The design rule is delegation-first:

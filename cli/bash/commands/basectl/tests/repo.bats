@@ -179,12 +179,14 @@ run_repo_command_with_mocks() {
     [[ "$output" == *"basectl repo init <name> [options]"* ]]
     [[ "$output" == *"--path <path>"* ]]
     [[ "$output" == *"--agent-ready"* ]]
+    [[ "$output" == *"--language <csv>"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"Create a new public GitHub repo and configure it."* ]]
     [[ "$output" == *"basectl repo init base-demo --repo basefoundry/base-demo --public"* ]]
     [[ "$output" == *"Add or refresh the Base baseline in an existing checkout."* ]]
     [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
+    [[ "$output" == *"basectl repo init platform --language go,javascript --language typescript"* ]]
     [[ "$output" == *"For the current checkout, pass its repository name and --path ."* ]]
     [[ "$output" == *"Plain repo init writes local baseline files but does not commit or push them."* ]]
     [[ "$output" == *"With --pr, repo init commits baseline changes on a branch, pushes that branch to origin, and opens a pull request."* ]]
@@ -1182,6 +1184,46 @@ EOF
     run bash -c 'cd "$1" && ./tests/validate.sh' _ "$repo_dir"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository baseline is present."* ]]
+}
+
+@test "basectl repo init writes normalized language metadata" {
+    local repo_dir="$TEST_TMPDIR/polyglot"
+
+    run_basectl repo init polyglot \
+        --path "$repo_dir" \
+        --language "go, javascript" \
+        --language c++ \
+        --language golang \
+        --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fqx "  languages:" "$repo_dir/base_manifest.yaml"
+    grep -Fqx "    - go" "$repo_dir/base_manifest.yaml"
+    grep -Fqx "    - javascript" "$repo_dir/base_manifest.yaml"
+    grep -Fqx "    - cpp" "$repo_dir/base_manifest.yaml"
+    ! grep -Fq "python:" "$repo_dir/base_manifest.yaml"
+}
+
+@test "basectl repo init selects the uv Python profile" {
+    local repo_dir="$TEST_TMPDIR/python-project"
+
+    run_basectl repo init python-project --path "$repo_dir" --language python --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fqx "    - python" "$repo_dir/base_manifest.yaml"
+    grep -Fqx "  manager: uv" "$repo_dir/base_manifest.yaml"
+}
+
+@test "basectl repo init rejects empty or unsupported language entries" {
+    run_basectl repo init invalid-project --path "$TEST_TMPDIR/invalid" --language "go,,java" --no-configure
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"must not contain empty entries"* ]]
+
+    run_basectl repo init invalid-project --path "$TEST_TMPDIR/invalid" --language rust --no-configure
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unsupported language 'rust'"* ]]
 }
 
 @test "basectl repo init --agent-ready creates baseline and agent guidance" {

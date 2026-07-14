@@ -54,6 +54,10 @@ architecture discussion.
 - uv support is explicit: `python.manager: uv` opts a project into uv-managed
   setup and `.venv` ownership, while command-level `runner: uv` is independent
   and may be used in composite projects.
+- `project.languages` is additive project taxonomy, not a toolchain ownership
+  contract. `repo init --language` is explicit and allowlisted; selecting
+  `python` may generate `python.manager: uv`, but other language values do not
+  imply unsupported setup or check behavior.
 - uv adoption cleanup is manual: when a project moves from Base-managed Python
   to `python.manager: uv`, Base ignores stale `~/.base.d/<project>/.venv`
   directories but does not delete them automatically.
