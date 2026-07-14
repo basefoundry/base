@@ -105,6 +105,7 @@ class ActivateConfig:
 class PythonConfig:
     manager: str | None = None
     requires_python: str | None = None
+    venv_location: str = "project"
 
 
 @dataclass(frozen=True)

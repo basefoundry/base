@@ -8,7 +8,7 @@ from pathlib import Path
 from . import process
 from .checks import ArtifactCheck
 from .manifest import BaseManifest
-from .uv import manifest_uses_uv_project_manager
+from .project_routing import route_for_manifest
 
 
 SHELL_BUILTINS = {
@@ -263,9 +263,5 @@ def command_available(manifest: BaseManifest, executable: str) -> bool:
     if process.command_exists(executable):
         return True
 
-    project_root = manifest.path.parent
-    if manifest_uses_uv_project_manager(manifest):
-        venv_bin = project_root / ".venv" / "bin" / executable
-    else:
-        venv_bin = Path.home() / ".base.d" / manifest.project_name / ".venv" / "bin" / executable
+    venv_bin = route_for_manifest(manifest).project_venv_dir / "bin" / executable
     return venv_bin.is_file() and os.access(venv_bin, os.X_OK)

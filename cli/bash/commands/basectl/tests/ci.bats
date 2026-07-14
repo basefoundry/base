@@ -28,7 +28,7 @@ prepare_ci_runtime() {
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/base/.venv"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 }
 
 @test "basectl ci prints help" {

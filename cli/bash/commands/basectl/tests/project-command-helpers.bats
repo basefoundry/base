@@ -17,6 +17,11 @@ source_project_command_helpers() {
     [ "$status" -eq 0 ]
     [ "$output" = "$TEST_HOME/.base.d/demo/.venv" ]
 
+    run base_project_venv_dir demo "$TEST_TMPDIR/demo" "$TEST_TMPDIR/demo/base_manifest.yaml"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$TEST_TMPDIR/demo/.venv" ]
+
     BASE_PROJECT_VENV_DIR="$TEST_TMPDIR/custom-venv"
 
     run base_project_venv_dir demo
@@ -109,6 +114,7 @@ source_project_command_helpers() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"WARN:Project virtual environment was not found at '$venv_dir'. Run 'basectl setup demo' first."* ]]
+    [[ "$output" == *"set python.venv_location: external in base_manifest.yaml or export BASE_PROJECT_VENV_DIR"* ]]
 
     run env \
         BASE_REPO_ROOT="$BASE_REPO_ROOT" \

@@ -121,10 +121,7 @@ base_activate_subcommand_main() {
     base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:3}" || return $?
 
     venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:3}")"
-    venv_fix="Run 'basectl setup $resolved_name' first."
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_route_uses_uv_manager "${resolve_fields[@]:3}"; then
-        venv_fix="Run 'uv sync' in '$project_root' first."
-    fi
+    venv_fix="$(base_project_venv_fix "$resolved_name" "$project_root" "$venv_dir" "${resolve_fields[@]:3}")"
     [[ -x "$venv_dir/bin/python" ]] || {
         fatal_error "Project virtual environment Python was not found at '$venv_dir/bin/python'. $venv_fix"
     }

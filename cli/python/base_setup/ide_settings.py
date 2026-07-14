@@ -14,6 +14,7 @@ from base_cli.ide_schema import IdeDefinition
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
+from .project_routing import route_for_manifest
 from .python_artifacts import project_venv_dir
 
 if TYPE_CHECKING:
@@ -25,15 +26,19 @@ def reconcile_ide_settings(ctx: base_cli.Context, manifest: BaseManifest, dry_ru
         if not ide_config.settings:
             continue
         definition = IDE_DEFINITIONS[ide_name]
-        resolved_settings = resolve_ide_settings(manifest.project_name, ide_config.settings)
+        resolved_settings = resolve_ide_settings(manifest, ide_config.settings)
         merge_ide_settings(ctx, definition, resolved_settings, dry_run=dry_run)
 
 
-def resolve_ide_settings(project: str, settings: dict[str, object]) -> dict[str, object]:
+def resolve_ide_settings(project: str | BaseManifest, settings: dict[str, object]) -> dict[str, object]:
     resolved: dict[str, object] = {}
     for key, value in settings.items():
         if key == "python.defaultInterpreterPath" and value == "auto":
-            resolved[key] = str(project_venv_dir(project) / "bin" / "python")
+            if isinstance(project, BaseManifest):
+                venv_dir = route_for_manifest(project).project_venv_dir
+            else:
+                venv_dir = project_venv_dir(project)
+            resolved[key] = str(venv_dir / "bin" / "python")
         else:
             resolved[key] = value
     return resolved
@@ -123,7 +128,7 @@ def check_ide_settings(manifest: BaseManifest) -> list[ArtifactCheck]:
             continue
         definition = IDE_DEFINITIONS[ide_name]
         snapshot = IdeDiagnosticSnapshot(definition)
-        resolved_settings = resolve_ide_settings(manifest.project_name, ide_config.settings)
+        resolved_settings = resolve_ide_settings(manifest, ide_config.settings)
         checks.extend(
             check_ide_setting(manifest.project_name, definition, key, value, snapshot=snapshot)
             for key, value in resolved_settings.items()

@@ -119,6 +119,34 @@ class DevcontainerExportTests(unittest.TestCase):
         )
         self.assertEqual({"python.manager", "python.requires_python"}, ambiguous_fields)
 
+    def test_devcontainer_export_reports_external_python_venv_location_as_ambiguous(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            write_manifest(
+                manifest_path,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  venv_location: external",
+                        "artifacts: []",
+                        "",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "devcontainer", "--format", "json", "demo"]
+            )
+
+        payload = json.loads(stdout)
+        ambiguous_fields = {item["field"] for item in payload["ambiguous"]}
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("python.venv_location", ambiguous_fields)
+
     def test_devcontainer_write_refuses_to_replace_existing_project_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

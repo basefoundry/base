@@ -196,6 +196,13 @@ def add_ambiguous_manifest_findings(manifest: BaseManifest, findings: list[Devco
                 reason="Python version constraints require an explicit image or feature policy before export.",
             )
         )
+    if manifest.python.venv_location != "project":
+        findings.append(
+            DevcontainerFinding(
+                field="python.venv_location",
+                reason="External Base-managed virtualenv state is host-local and needs explicit container policy.",
+            )
+        )
 
 
 def devcontainer_export_to_json(export: DevcontainerExport) -> dict[str, Any]:

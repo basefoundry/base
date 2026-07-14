@@ -337,7 +337,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
@@ -352,10 +352,10 @@ EOF
 
 @test "basectl check explicit project ignores different active project virtualenv" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
-    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
     local inherited_venv="$TEST_TMPDIR/active-base-venv"
     local actual_python
     local workspace="$TEST_TMPDIR/workspace"
+    local demo_venv_dir="$workspace/demo/.venv"
 
     create_brew_stub
     create_xcode_stubs
@@ -399,7 +399,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
@@ -416,6 +416,7 @@ EOF
     local record_path="$TEST_HOME/.base.d/demo/checks/last.json"
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"
+    local resolved_demo_root
 
     create_brew_stub
     create_xcode_stubs
@@ -426,6 +427,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
+    resolved_demo_root="$(cd "$workspace/demo" && pwd -P)"
 
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
@@ -438,7 +440,7 @@ EOF
         printf 'unexpected ok status in failed check record\n' >&2
         return 1
     fi
-    [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/demo/.venv'."* ]]
+    [[ "$output" == *"Virtual environment is missing at '$resolved_demo_root/.venv'."* ]]
 }
 
 @test "basectl check uv-managed project does not require historical Base project venv" {
@@ -460,7 +462,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" != *"BASE-P050"* ]]
-    [[ "$output" != *"$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$output" != *"$workspace/demo/.venv"* ]]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$manifest_path" --action check --format json demo)" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
 }
@@ -478,7 +480,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo --remote-network
 
@@ -716,7 +718,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \
@@ -755,7 +757,7 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv" 1
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv" 1
     touch "$TEST_STATE_DIR/project-setup-fail-before-output"
     printf "Error: Unable to create Base runtime directory '%s'.\n" "$TEST_TMPDIR/unwritable-cache/cli/base_setup/logs" > "$TEST_STATE_DIR/project-setup-stderr"
 
@@ -783,8 +785,8 @@ EOF
     touch "$TEST_STATE_DIR/click-installed"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
-    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$TEST_HOME/.base.d/demo/.venv"
-    printf 'home = %s\n' "$missing_home" > "$TEST_HOME/.base.d/demo/.venv/pyvenv.cfg"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
+    printf 'home = %s\n' "$missing_home" > "$workspace/demo/.venv/pyvenv.cfg"
 
     run --separate-stderr env \
         HOME="$TEST_HOME" \

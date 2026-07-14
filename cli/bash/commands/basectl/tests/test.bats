@@ -8,7 +8,7 @@ load ./basectl_helpers.bash
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/test-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -19,7 +19,7 @@ printf 'unexpected test python args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$python_bin"
-    touch "$TEST_HOME/.base.d/demo/.venv/bin/pytest"
+    touch "$workspace/demo/.venv/bin/pytest"
     printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -34,9 +34,9 @@ EOF
     [[ "$(cat "$state_file")" == *"project=demo"* ]]
     [[ "$(cat "$state_file")" == *"root=$workspace/demo"* ]]
     [[ "$(cat "$state_file")" == *"manifest=$workspace/demo/base_manifest.yaml"* ]]
-    [[ "$(cat "$state_file")" == *"venv=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$(cat "$state_file")" == *"venv=$workspace/demo/.venv"* ]]
     [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
-    [[ "$(cat "$state_file")" == *"path=$TEST_HOME/.base.d/demo/.venv/bin:"* ]]
+    [[ "$(cat "$state_file")" == *"path=$workspace/demo/.venv/bin:"* ]]
 }
 
 @test "basectl test routes uv runner commands through uv" {
@@ -44,7 +44,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/test-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -54,7 +54,7 @@ fi
 printf 'unexpected test python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/uv" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/uv" <<'EOF'
 #!/usr/bin/env bash
 {
     printf 'pwd=%s\n' "$PWD"
@@ -63,7 +63,7 @@ EOF
     printf '\n'
 } > "${BASE_TEST_TEST_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/uv"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/uv"
     printf 'project:\n  name: demo\ntest:\n  command: pytest tests/\n  runner: uv\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -84,7 +84,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/test-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -116,7 +116,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/test-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -126,11 +126,11 @@ fi
 printf 'unexpected test python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/fake-test" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/fake-test" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "${BASE_TEST_TEST_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/fake-test"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/fake-test"
     printf 'project:\n  name: demo\ntest:\n  command: fake-test tests/\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -149,7 +149,7 @@ EOF
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -178,7 +178,7 @@ EOF
     local workspace="$TEST_TMPDIR/workspace"
     local state_file="$TEST_TMPDIR/test-state"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
@@ -188,11 +188,11 @@ fi
 printf 'unexpected test python args: %s\n' "$*" >&2
 exit 1
 EOF
-    cat > "$TEST_HOME/.base.d/demo/.venv/bin/mise" <<'EOF'
+    cat > "$workspace/demo/.venv/bin/mise" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "${BASE_TEST_TEST_STATE:?}"
 EOF
-    chmod +x "$python_bin" "$TEST_HOME/.base.d/demo/.venv/bin/mise"
+    chmod +x "$python_bin" "$workspace/demo/.venv/bin/mise"
     printf 'project:\n  name: demo\ntest:\n  mise: unit\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
 
@@ -232,8 +232,9 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" test demo
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Project virtual environment was not found at '$TEST_HOME/.base.d/demo/.venv'"* ]]
+    [[ "$output" == *"Project virtual environment was not found at '$workspace/demo/.venv'"* ]]
     [[ "$output" == *"Run 'basectl setup demo' first."* ]]
+    [[ "$output" == *"set python.venv_location: external in base_manifest.yaml or export BASE_PROJECT_VENV_DIR"* ]]
     [[ "$output" == *"ran-test"* ]]
 }
 
@@ -241,7 +242,7 @@ EOF
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
 
-    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$TEST_HOME/.base.d/demo/.venv/bin"
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && -z "${4:-}" ]]; then

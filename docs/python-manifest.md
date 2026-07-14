@@ -2,8 +2,8 @@
 
 Base supports two Python project shapes.
 
-The older Base-managed shape uses `python-package` artifact rows and installs
-packages into Base's project virtual environment:
+The Base-managed shape uses `python-package` artifact rows and installs
+packages into the project's virtual environment:
 
 ```yaml
 artifacts:
@@ -12,10 +12,10 @@ artifacts:
     version: latest
 ```
 
-That environment defaults to:
+For non-Base projects, that environment defaults to:
 
 ```text
-~/.base.d/<project>/.venv
+<project-root>/.venv
 ```
 
 Projects can also declare the Python runtime they need:
@@ -45,6 +45,23 @@ minor than `python.requires_python` selects, setup stops and asks the user to
 rerun with `--recreate-venv`. Base does not rewrite an existing virtual
 environment in place.
 
+Projects that need to preserve the historical external Base-managed project
+venv can opt in explicitly:
+
+```yaml
+python:
+  venv_location: external
+```
+
+That keeps the project venv at:
+
+```text
+~/.base.d/<project>/.venv
+```
+
+`python.venv_location: external` is only for Base-managed project venvs. It
+cannot be combined with `python.manager: uv`.
+
 The uv-managed shape is explicit:
 
 ```yaml
@@ -63,10 +80,21 @@ environment as the project virtual environment:
 
 ## Migration Paths
 
+### Historical External Venv Migration
+
+For a project that already uses Base's historical external project virtual
+environment, the lowest-friction migration is to rerun setup and let Base
+create `<project-root>/.venv`. To keep the historical location instead, add:
+
+```yaml
+python:
+  venv_location: external
+```
+
 ### Base-Managed Project Adopts uv
 
-For a project that already uses Base's historical project virtual environment,
-add the explicit uv contract to `base_manifest.yaml`:
+For a project that is adopting uv, add the explicit uv contract to
+`base_manifest.yaml`:
 
 ```yaml
 python:
@@ -79,7 +107,7 @@ that, `basectl activate`, `basectl run`, `basectl test`, `basectl build`, and
 `basectl demo` use `<project-root>/.venv` as the project environment unless the
 caller explicitly sets `BASE_PROJECT_VENV_DIR`.
 
-If the old Base-managed environment still exists at
+If the old external Base-managed environment still exists at
 `~/.base.d/<project>/.venv`, Base reports it as stale and ignores it. Base does
 not delete that directory automatically because it may contain local state,
 debugging context, or artifacts a user still wants. Once `basectl check
@@ -200,10 +228,10 @@ bundle` on Ubuntu/Debian and lets uv-owned Python setup proceed through
 
 ## Activation
 
-`basectl activate <project>` uses the project-local `.venv` only when
-`python.manager: uv` is present and the caller has not set
-`BASE_PROJECT_VENV_DIR`. Base no longer infers uv activation from the mere
-presence of `pyproject.toml` and `uv.lock`.
+`basectl activate <project>` uses `<project-root>/.venv` for non-Base projects
+unless the caller sets `BASE_PROJECT_VENV_DIR` or the manifest declares
+`python.venv_location: external`. Base no longer infers uv ownership from the
+mere presence of `pyproject.toml` and `uv.lock`.
 
 If the uv environment does not exist yet, activation asks the user to run
 `uv sync` in the project root.

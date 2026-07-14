@@ -28,6 +28,7 @@ PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS = process.DIAGNOSTIC_TIMEOUT_SECONDS
 class ProjectRuntimeConfig:
     name: str
     python_requirement: str | None = None
+    venv_dir: Path | None = None
 
 
 def reconcile_python_artifact(
@@ -48,7 +49,7 @@ def reconcile_python_artifacts(
 ) -> None:
     runtime_config = project_runtime_config(project)
     python_requirement = runtime_config.python_requirement
-    venv_dir = project_venv_dir(runtime_config.name)
+    venv_dir = runtime_config.venv_dir or project_venv_dir(runtime_config.name)
     python_bin = venv_dir / "bin" / "python"
     recreate_venv = project_venv_recreate_enabled()
     missing = []

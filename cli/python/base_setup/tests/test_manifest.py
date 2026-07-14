@@ -53,6 +53,7 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.activate.source, ())
         self.assertIsNone(manifest.python.manager)
         self.assertIsNone(manifest.python.requires_python)
+        self.assertEqual(manifest.python.venv_location, "project")
 
     def test_rejects_missing_manifest_path_with_manifest_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -86,6 +87,19 @@ class ManifestParsingTests(unittest.TestCase):
         )
 
         self.assertEqual(manifest.python.requires_python, ">=3.11,<3.14")
+
+    def test_reads_manifest_python_external_venv_location(self) -> None:
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "",
+            "python:",
+            "  venv_location: external",
+            "",
+            "artifacts: []",
+        )
+
+        self.assertEqual(manifest.python.venv_location, "external")
 
 
     def test_reads_manifest_github_pr_policy(self) -> None:
@@ -172,6 +186,10 @@ class ManifestParsingTests(unittest.TestCase):
             "unsupported_manager": "python:\n  manager: poetry",
             "empty_requires_python": "python:\n  requires_python: ''",
             "non_string_requires_python": "python:\n  requires_python: 7",
+            "empty_venv_location": "python:\n  venv_location: ''",
+            "non_string_venv_location": "python:\n  venv_location: 7",
+            "unsupported_venv_location": "python:\n  venv_location: shared",
+            "uv_external_venv_location": "python:\n  manager: uv\n  venv_location: external",
         }
         for name, python_yaml in invalid_values.items():
             with self.subTest(name=name):

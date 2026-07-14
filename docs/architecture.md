@@ -349,7 +349,8 @@ active, its venv is active. Showing both would be redundant. The prompt stays cl
 
 - Created per project during `basectl setup <project>` or `basectl setup` when scanning
   all projects
-- Lives at `~/.base.d/<project>/.venv`
+- Lives at `<project-root>/.venv` for non-Base projects by default
+- Can be kept at `~/.base.d/<project>/.venv` with `python.venv_location: external`
 - Activated automatically when `basectl activate <project>` spawns the project subshell
 - Deactivated automatically when the subshell exits
 
@@ -463,10 +464,11 @@ and must stay inside the project. Base runs `brew bundle --file=<path>` during
 setup before reconciling Base-managed artifacts.
 
 `python-package` artifacts are pass-through PyPI package names and install into
-the project virtual environment at `~/.base.d/<project>/.venv`. Base's own
-project venv is therefore
-`~/.base.d/base/.venv`. The wrapper `bin/base-wrapper` runs Python packages
-through that project-scoped venv.
+the project virtual environment at `<project-root>/.venv` for non-Base projects
+by default. Base's own project venv remains `~/.base.d/base/.venv`, and a
+non-Base project can explicitly keep the historical external location with
+`python.venv_location: external`. The wrapper `bin/base-wrapper` runs Python
+packages through that project-scoped venv.
 
 A structured `python:` manifest section owns Python project runtime policy.
 `python.manager: uv` delegates environment setup to uv. `python.requires_python`

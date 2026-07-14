@@ -28,3 +28,7 @@ basectl devenv-report demo --format json
 Use this command when evaluating whether a Base-managed project is a good
 candidate for Nix/devenv support. Treat it as a compatibility report, not as a
 generator.
+
+Explicit external Python venv state such as `python.venv_location: external` is
+reported as unsupported because it points to host-local Base state rather than
+project-owned configuration.

@@ -28,7 +28,63 @@ class IdeSettingsTests(unittest.TestCase):
         self.assertEqual(settings["python.defaultInterpreterPath"], str(venv_dir / "bin" / "python"))
         self.assertTrue(settings["editor.formatOnSave"])
 
+    def test_resolve_ide_settings_auto_interpreter_uses_manifest_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile=None,
+                artifacts=(),
+            )
+            settings = ide.resolve_ide_settings(
+                manifest,
+                {
+                    "python.defaultInterpreterPath": "auto",
+                },
+            )
 
+        self.assertEqual(
+            settings["python.defaultInterpreterPath"],
+            str((project_root / ".venv" / "bin" / "python").resolve()),
+        )
+
+
+
+    def test_check_ide_settings_auto_interpreter_uses_manifest_route(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile=None,
+                artifacts=(),
+                ide={
+                    "vscode": IdeConfig(
+                        install=False,
+                        extensions=(),
+                        settings={"python.defaultInterpreterPath": "auto"},
+                    )
+                },
+            )
+
+            with mock.patch("base_setup.ide_settings.check_ide_setting") as check_setting:
+                check_setting.return_value = ide.ArtifactCheck(
+                    name="vscode setting python.defaultInterpreterPath",
+                    ok=True,
+                    message="ok",
+                    fix="",
+                    finding_id="BASE-P060",
+                )
+                ide.check_ide_settings(manifest)
+
+        check_setting.assert_called_once_with(
+            "demo",
+            ide.IDE_DEFINITIONS["vscode"],
+            "python.defaultInterpreterPath",
+            str((project_root / ".venv" / "bin" / "python").resolve()),
+            snapshot=mock.ANY,
+        )
 
     def test_ide_settings_file_uses_macos_application_support(self) -> None:
         definition = ide.IDE_DEFINITIONS["vscode"]

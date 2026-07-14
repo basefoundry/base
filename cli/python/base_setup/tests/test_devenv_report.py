@@ -104,6 +104,34 @@ class DevenvReportTests(unittest.TestCase):
             {"supported": 1, "unsupported": 2, "lossy": 4, "project-owned": 5},
         )
 
+    def test_devenv_report_json_classifies_external_python_venv_location_as_unsupported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            write_manifest(
+                manifest_path,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  venv_location: external",
+                        "artifacts: []",
+                        "",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "devenv-report", "--format", "json", "demo"]
+            )
+
+        payload = json.loads(stdout)
+        classifications = {item["field"]: item["classification"] for item in payload["fields"]}
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(classifications["python.venv_location"], "unsupported")
+
     def test_devenv_report_text_is_human_readable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

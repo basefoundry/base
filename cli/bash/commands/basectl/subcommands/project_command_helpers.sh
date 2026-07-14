@@ -57,7 +57,37 @@ base_project_venv_dir() {
         return 0
     fi
 
+    if [[ "$project" != base && -n "$project_root" ]]; then
+        printf '%s\n' "$project_root/.venv"
+        return 0
+    fi
+
     printf '%s\n' "$HOME/.base.d/$project/.venv"
+}
+
+base_project_venv_uses_project_local_default() {
+    local project="$1"
+    local project_root="${2:-}"
+    local venv_dir="${3:-}"
+
+    [[ "$project" != base && -n "$project_root" && "$venv_dir" == "$project_root/.venv" ]]
+}
+
+base_project_venv_fix() {
+    local project="$1"
+    local project_root="${2:-}"
+    local venv_dir="${3:-}"
+    shift 3
+
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_route_uses_uv_manager "$@"; then
+        printf "Run 'uv sync' in '%s' first." "$project_root"
+        return 0
+    fi
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_venv_uses_project_local_default "$project" "$project_root" "$venv_dir"; then
+        printf "Run 'basectl setup %s' first. To keep using an external Base-managed virtual environment, set python.venv_location: external in base_manifest.yaml or export BASE_PROJECT_VENV_DIR." "$project"
+        return 0
+    fi
+    printf "Run 'basectl setup %s' first." "$project"
 }
 
 base_project_require_manifest_command_trust() {
@@ -78,9 +108,10 @@ base_project_activate_environment() {
     local manifest_path="$3"
     local dry_run="${4:-0}"
     local route_fields=("${@:5}")
-    local venv_dir
+    local venv_dir venv_fix
 
     venv_dir="$(base_project_venv_dir "$project" "$project_root" "$manifest_path" "${route_fields[@]}")"
+    venv_fix="$(base_project_venv_fix "$project" "$project_root" "$venv_dir" "${route_fields[@]}")"
     export BASE_PROJECT="$project"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
@@ -90,7 +121,7 @@ base_project_activate_environment() {
         PATH="$venv_dir/bin:$PATH"
         export PATH
     elif [[ "$dry_run" != "1" ]]; then
-        log_warn "Project virtual environment was not found at '$venv_dir'. Run 'basectl setup $project' first."
+        log_warn "Project virtual environment was not found at '$venv_dir'. $venv_fix"
     fi
 
     printf '%s\n' "$venv_dir"

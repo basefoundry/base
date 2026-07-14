@@ -107,7 +107,10 @@ class WorkspaceCheckTests(unittest.TestCase):
             (workspace / "docs").mkdir(parents=True)
             write_manifest(workspace / "extra", "extra")
             for project_name in ("base", "extra"):
-                python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
+                if project_name == "base":
+                    python_bin = home / ".base.d" / project_name / ".venv" / "bin" / "python"
+                else:
+                    python_bin = workspace / project_name / ".venv" / "bin" / "python"
                 write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(
@@ -218,7 +221,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             base_home.mkdir()
             write_default_manifest(base_home)
             write_manifest(workspace / "demo", "demo")
-            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin = workspace / "demo" / ".venv" / "bin" / "python"
             write_ready_python_bin(python_bin)
             broken_root = workspace / "broken"
             broken_root.mkdir(parents=True)
@@ -319,7 +322,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             base_home.mkdir()
             write_default_manifest(base_home)
             write_manifest(workspace / "demo", "demo")
-            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin = workspace / "demo" / ".venv" / "bin" / "python"
             python_bin.parent.mkdir(parents=True)
             python_bin.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
             python_bin.chmod(0o755)
@@ -378,7 +381,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             base_home.mkdir()
             write_default_manifest(base_home)
             write_manifest(workspace / "demo", "demo")
-            python_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "python"
+            python_bin = workspace / "demo" / ".venv" / "bin" / "python"
             write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(["doctor", "--workspace", str(workspace)], base_home, home)

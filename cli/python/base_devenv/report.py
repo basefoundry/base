@@ -96,6 +96,14 @@ def add_python_fields(manifest: BaseManifest, fields: list[DevenvFieldClassifica
                 reason="Python version constraints may inform a Nix Python package selection but need explicit policy.",
             )
         )
+    if manifest.python.venv_location != "project":
+        fields.append(
+            DevenvFieldClassification(
+                field="python.venv_location",
+                classification="unsupported",
+                reason="Base-managed external virtualenv state is host-local and is not represented in devenv output.",
+            )
+        )
 
 
 def add_ide_fields(manifest: BaseManifest, fields: list[DevenvFieldClassification]) -> None:

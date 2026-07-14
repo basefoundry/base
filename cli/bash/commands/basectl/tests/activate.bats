@@ -5,9 +5,9 @@ load ./basectl_helpers.bash
 
 @test "basectl activate resolves a project and execs a project subshell" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
-    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
     local workspace="$TEST_TMPDIR/workspace"
+    local project_python="$workspace/demo/.venv/bin/python"
+    local project_activate="$workspace/demo/.venv/bin/activate"
     local fake_bash="$TEST_TMPDIR/fake-bash"
 
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
@@ -17,7 +17,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
         "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-        "${HOME:?}/.base.d/demo/.venv"
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -33,7 +33,7 @@ printf 'BASE_PROJECT_VENV_DIR=%s\n' "$BASE_PROJECT_VENV_DIR"
 printf 'PWD=%s\n' "$PWD"
 EOF
     printf '#!/usr/bin/env bash\n' > "$project_python"
-    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$workspace/demo/.venv" > "$project_activate"
     chmod +x "$base_python" "$project_python" "$fake_bash"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"
@@ -51,7 +51,7 @@ EOF
     [[ "$output" == *"BASE_PROJECT=demo"* ]]
     [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/demo"* ]]
     [[ "$output" == *"BASE_PROJECT_MANIFEST=$workspace/demo/base_manifest.yaml"* ]]
-    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$workspace/demo/.venv"* ]]
     [[ "$output" == *"PWD=$workspace/demo"* ]]
 }
 
@@ -68,7 +68,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
         "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-        "${HOME:?}/.base.d/demo/.venv"
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -139,10 +139,10 @@ EOF
     [[ "$output" == *"BASE_PROJECT_VENV_DIR=$workspace/demo/.venv"* ]]
 }
 
-@test "basectl activate does not infer uv venv without python manager opt-in" {
+@test "basectl activate uses project .venv without python manager uv" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
+    local project_python="$workspace/demo/.venv/bin/python"
     local fake_bash="$TEST_TMPDIR/fake-bash"
 
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo/.venv/bin"
@@ -152,7 +152,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
     printf 'demo\t%s\t%s\t__base_project_venv_dir=%s\t__base_uses_uv_manager=false\n' \
         "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-        "${HOME:?}/.base.d/demo/.venv"
+        "${BASE_TEST_PROJECT_ROOT:?}/.venv"
     exit 0
 fi
 printf 'unexpected activate resolver args: %s\n' "$*" >&2
@@ -180,7 +180,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=demo"* ]]
-    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/demo/.venv"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$workspace/demo/.venv"* ]]
 }
 
 @test "basectl activate guides uv projects to create the uv environment" {
@@ -264,9 +264,9 @@ EOF
 
 @test "basectl activate --no-cd preserves caller working directory" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
-    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
     local workspace="$TEST_TMPDIR/workspace"
+    local project_python="$workspace/demo/.venv/bin/python"
+    local project_activate="$workspace/demo/.venv/bin/activate"
     local caller="$TEST_TMPDIR/caller"
     local fake_bash="$TEST_TMPDIR/fake-bash"
 
@@ -286,7 +286,7 @@ printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
 printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
 printf 'PWD=%s\n' "$PWD"
 EOF
-    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$workspace/demo/.venv" > "$project_activate"
     printf '#!/usr/bin/env bash\n' > "$project_python"
     chmod +x "$base_python" "$project_python" "$fake_bash"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
@@ -319,9 +319,9 @@ EOF
 
 @test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before exec" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
-    local project_python="$TEST_HOME/.base.d/demo/.venv/bin/python"
-    local project_activate="$TEST_HOME/.base.d/demo/.venv/bin/activate"
     local workspace="$TEST_TMPDIR/workspace"
+    local project_python="$workspace/demo/.venv/bin/python"
+    local project_activate="$workspace/demo/.venv/bin/activate"
     local fake_zsh="$TEST_TMPDIR/zsh"
 
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
@@ -340,7 +340,7 @@ printf 'non-bash shell invoked\n'
 exit 99
 EOF
     printf '#!/usr/bin/env bash\n' > "$project_python"
-    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$TEST_HOME/.base.d/demo/.venv" > "$project_activate"
+    printf 'VIRTUAL_ENV=%s\nexport VIRTUAL_ENV\n' "$workspace/demo/.venv" > "$project_activate"
     chmod +x "$base_python" "$project_python" "$fake_zsh"
     printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     workspace="$(cd "$workspace" && pwd -P)"

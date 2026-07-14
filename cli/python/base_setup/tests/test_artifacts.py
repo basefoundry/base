@@ -294,6 +294,38 @@ class ArtifactRegistryTests(unittest.TestCase):
 
 
 
+class ArtifactVenvRoutingTests(unittest.TestCase):
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_python_package_artifact_dry_run_preserves_external_venv_opt_in(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            project_venv = manifest_path.parent.resolve() / ".venv"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  venv_location: external",
+                        "",
+                        "artifacts:",
+                        "  - type: python-package",
+                        "    name: rich",
+                        "    version: latest",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("/.base.d/demo/.venv", stderr)
+        self.assertNotIn(f"Would create project virtual environment at '{project_venv}'", stderr)
+
+
+
 class ArtifactReconcileTests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
@@ -326,6 +358,7 @@ class ArtifactReconcileTests(unittest.TestCase):
     def test_unknown_python_package_artifact_dry_run_uses_pip(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            expected_venv = manifest_path.parent.resolve() / ".venv"
             manifest_path.write_text(
                 "\n".join(
                     [
@@ -344,6 +377,7 @@ class ArtifactReconcileTests(unittest.TestCase):
             status, _stdout, stderr = run_engine(["--dry-run", "--manifest", str(manifest_path)])
 
         self.assertEqual(status, 0)
+        self.assertIn(f"Would create project virtual environment at '{expected_venv}'", stderr)
         self.assertIn(
             "pip install --disable-pip-version-check click==8.4.1 PyYAML==6.0.3 tomli==2.4.1 rich",
             stderr,

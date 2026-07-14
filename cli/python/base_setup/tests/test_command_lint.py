@@ -268,7 +268,7 @@ class CommandLintDiagnosticsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir) / "project"
             home = Path(tmpdir) / "home"
-            pytest_bin = home / ".base.d" / "demo" / ".venv" / "bin" / "pytest"
+            pytest_bin = project_root / ".venv" / "bin" / "pytest"
             pytest_bin.parent.mkdir(parents=True)
             pytest_bin.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
             pytest_bin.chmod(0o755)

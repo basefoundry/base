@@ -7,6 +7,7 @@ from unittest import mock
 
 from base_setup import engine
 from base_setup.artifacts import merge_artifacts
+from base_setup.artifacts import ProjectRuntimeConfig
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
 from base_setup.tests.helpers import fake_context
 
@@ -35,7 +36,10 @@ class BootstrapManifestTests(unittest.TestCase):
 
         reconcile_artifacts.assert_called_once()
         self.assertEqual(reconcile_artifacts.call_args.args[1][0].name, "click")
-        self.assertEqual(reconcile_artifacts.call_args.args[3], "demo")
+        runtime_config = reconcile_artifacts.call_args.args[3]
+        self.assertIsInstance(runtime_config, ProjectRuntimeConfig)
+        self.assertEqual(runtime_config.name, "demo")
+        self.assertEqual(runtime_config.venv_dir, (Path.cwd() / ".venv").resolve())
 
 
 

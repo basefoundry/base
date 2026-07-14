@@ -138,16 +138,17 @@ def merge_artifacts(
 
 
 def check_artifact(
-    project: str,
+    project: str | ProjectRuntimeConfig,
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
 ) -> ArtifactCheck:
+    runtime_config = project_runtime_config(project)
     if definition.manager == "homebrew":
-        return check_homebrew_artifact(project, artifact, definition)
+        return check_homebrew_artifact(runtime_config.name, artifact, definition)
     if definition.manager == "system-package":
-        return check_system_package_artifact(project, artifact, definition)
+        return check_system_package_artifact(runtime_config.name, artifact, definition)
     if definition.manager == "pip":
-        return check_python_artifact(project, artifact, definition)
+        return check_python_artifact(runtime_config, artifact, definition)
     return ArtifactCheck(
         name=artifact.name,
         ok=False,
@@ -208,11 +209,12 @@ def artifact_check_from_prerequisite(check: PrerequisiteCheck) -> ArtifactCheck:
 
 
 def check_python_artifact(
-    project: str,
+    project: str | ProjectRuntimeConfig,
     artifact: ArtifactRequest,
     definition: ArtifactDefinition,
 ) -> ArtifactCheck:
-    venv_dir = project_venv_dir(project)
+    runtime_config = project_runtime_config(project)
+    venv_dir = runtime_config.venv_dir or project_venv_dir(runtime_config.name)
     python_bin = venv_dir / "bin" / "python"
     if python_artifact_installed(python_bin, definition.package, artifact.version):
         return ArtifactCheck(
@@ -227,7 +229,7 @@ def check_python_artifact(
         name=artifact.name,
         ok=False,
         message=f"Python artifact '{artifact.name}' is not installed in the project virtual environment.",
-        fix=f"basectl setup {project}",
+        fix=f"basectl setup {runtime_config.name}",
         finding_id="BASE-P040",
         details=artifact_details(definition),
     )

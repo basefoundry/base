@@ -98,7 +98,7 @@ class ProjectRoutingTests(unittest.TestCase):
         self.assertEqual(route["project_venv_dir"], str(root.resolve() / ".venv"))
         self.assertTrue(route["uses_uv_manager"])
 
-    def test_route_json_reports_base_managed_project_venv(self) -> None:
+    def test_route_json_reports_project_local_venv_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir) / "demo"
             manifest_path = write_manifest(
@@ -107,6 +107,31 @@ class ProjectRoutingTests(unittest.TestCase):
                     [
                         "project:",
                         "  name: demo",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "route", "--format", "json", "demo"]
+            )
+
+        self.assertEqual(status, 0, stderr)
+        route = json.loads(stdout)
+        self.assertEqual(route["project_venv_dir"], str(root.resolve() / ".venv"))
+        self.assertFalse(route["uses_uv_manager"])
+
+    def test_route_json_preserves_external_project_venv_when_manifest_opts_in(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "demo"
+            manifest_path = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  venv_location: external",
                         "artifacts: []",
                     ]
                 ),

@@ -455,7 +455,7 @@ EOF
 
 @test "basectl setup explicit project ignores different active project virtualenv" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
-    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local demo_venv_dir="$TEST_TMPDIR/.venv"
     local inherited_venv="$TEST_TMPDIR/active-base-venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
 
@@ -772,7 +772,7 @@ EOF
 
 @test "basectl setup forwards project setup arguments through the project wrapper" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
-    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local demo_venv_dir="$TEST_TMPDIR/.venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
 
     create_brew_stub
@@ -797,7 +797,7 @@ EOF
 
 @test "basectl setup project --recreate-venv targets the project virtualenv" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
-    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local demo_venv_dir="$TEST_TMPDIR/.venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
 
     create_brew_stub
@@ -822,7 +822,7 @@ EOF
 
 @test "basectl setup infers project name from explicit manifest" {
     local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
-    local demo_venv_dir="$TEST_HOME/.base.d/demo/.venv"
+    local demo_venv_dir="$TEST_TMPDIR/demo/.venv"
     local project_root="$TEST_TMPDIR/demo"
     local resolved_project_root
     local manifest_path="$project_root/base_manifest.yaml"
@@ -923,7 +923,7 @@ EOF
     mkdir -p "$workspace/brew"
     printf 'project:\n  name: brew\nartifacts: []\n' > "$workspace/brew/base_manifest.yaml"
     create_project_setup_venv_stub "$base_venv_dir"
-    create_project_setup_venv_stub "$TEST_HOME/.base.d/brew/.venv"
+    create_project_setup_venv_stub "$workspace/brew/.venv"
 
     run env \
         HOME="$TEST_HOME" \

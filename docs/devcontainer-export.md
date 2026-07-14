@@ -45,8 +45,9 @@ Examples include:
 
 - `brewfile`, `mise`, `artifacts`, `test`, `commands`, `build`, and activation
   sources as unsupported
-- `python.manager` and `python.requires_python` as ambiguous until Base has an
-  explicit image or feature policy
+- `python.manager`, `python.requires_python`, and explicit
+  `python.venv_location` overrides as ambiguous until Base has an explicit
+  image, feature, or host-state policy
 - non-VS Code IDE customizations as unsupported
 
 This command does not build images, start containers, install packages, execute

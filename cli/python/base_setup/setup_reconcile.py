@@ -16,6 +16,7 @@ from .ide_extensions import reconcile_ide_extensions
 from .ide_installs import reconcile_ide_installs
 from .ide_settings import reconcile_ide_settings
 from .manifest import BaseManifest
+from .project_routing import route_for_manifest
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project
 
@@ -85,12 +86,11 @@ def reconcile_bootstrap_artifacts(
     )
 
 
-def project_runtime_argument(manifest: BaseManifest) -> str | ProjectRuntimeConfig:
-    if manifest.python.requires_python is None:
-        return manifest.project_name
+def project_runtime_argument(manifest: BaseManifest) -> ProjectRuntimeConfig:
     return ProjectRuntimeConfig(
         name=manifest.project_name,
         python_requirement=manifest.python.requires_python,
+        venv_dir=route_for_manifest(manifest).project_venv_dir,
     )
 
 
