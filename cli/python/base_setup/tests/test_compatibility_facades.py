@@ -3,8 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
+from base_devcontainer import export as devcontainer_export_impl
 from base_setup import git_remote
 from base_setup import ide
+from base_setup import devcontainer_export
+from base_setup import engine as setup_engine
 from base_setup import manifest_checks
 from base_setup import setup_reconcile
 from base_trust import trust_store
@@ -23,6 +26,13 @@ class CompatibilityFacadeTests(unittest.TestCase):
         self.assertIn("reconcile_ide_settings", ide.__all__)
         self.assertIn("IdeDiagnosticSnapshot", ide.__all__)
 
+    def test_devcontainer_export_declares_compatibility_exports(self) -> None:
+        self.assertIn("build_devcontainer_export", devcontainer_export.__all__)
+        self.assertIn("write_devcontainer_export", devcontainer_export.__all__)
+        self.assertIn("DevcontainerExportError", devcontainer_export.__all__)
+        self.assertIs(devcontainer_export.build_devcontainer_export, devcontainer_export_impl.build_devcontainer_export)
+        self.assertIs(devcontainer_export.write_devcontainer_export, devcontainer_export_impl.write_devcontainer_export)
+
     def test_setup_callers_use_focused_ide_modules(self) -> None:
         manifest_checks_source = Path(manifest_checks.__file__).read_text(encoding="utf-8")
         setup_reconcile_source = Path(setup_reconcile.__file__).read_text(encoding="utf-8")
@@ -40,6 +50,17 @@ class CompatibilityFacadeTests(unittest.TestCase):
         self.assertIn("from .ide_extensions import reconcile_ide_extensions", setup_reconcile_source)
         self.assertIn("from .ide_installs import reconcile_ide_installs", setup_reconcile_source)
         self.assertIn("from .ide_settings import reconcile_ide_settings", setup_reconcile_source)
+
+    def test_setup_engine_uses_focused_devcontainer_package(self) -> None:
+        setup_engine_source = Path(setup_engine.__file__).read_text(encoding="utf-8")
+        facade_source = Path(devcontainer_export.__file__).read_text(encoding="utf-8")
+
+        self.assertIn("from base_devcontainer.export import build_devcontainer_export", setup_engine_source)
+        self.assertIn("from base_devcontainer.export import write_devcontainer_export", setup_engine_source)
+        self.assertNotIn("from .devcontainer_export import", setup_engine_source)
+        self.assertIn("from base_devcontainer.export import build_devcontainer_export", facade_source)
+        self.assertNotIn("def build_devcontainer_export", facade_source)
+        self.assertNotIn("@dataclass", facade_source)
 
     def test_trust_store_uses_focused_git_modules(self) -> None:
         trust_store_source = Path(trust_store.__file__).read_text(encoding="utf-8")

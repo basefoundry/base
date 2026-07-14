@@ -8,17 +8,17 @@ from pathlib import Path
 import base_cli
 from base_cli.config import UserConfig
 from base_cli.paths import discover_manifest
+from base_devcontainer.export import DevcontainerExportError
+from base_devcontainer.export import build_devcontainer_export
+from base_devcontainer.export import dumps_export_json
+from base_devcontainer.export import print_devcontainer_export_text
+from base_devcontainer.export import write_devcontainer_export
 
 from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import checks_status
 from .checks import doctor_status
 from .checks import print_doctor_finding
-from .devcontainer_export import DevcontainerExportError
-from .devcontainer_export import build_devcontainer_export
-from .devcontainer_export import dumps_export_json
-from .devcontainer_export import print_devcontainer_export_text
-from .devcontainer_export import write_devcontainer_export
 from .devenv_report import build_devenv_report
 from .devenv_report import dumps_devenv_report_json
 from .devenv_report import print_devenv_report_text
