@@ -13,15 +13,15 @@ from base_devcontainer.export import build_devcontainer_export
 from base_devcontainer.export import dumps_export_json
 from base_devcontainer.export import print_devcontainer_export_text
 from base_devcontainer.export import write_devcontainer_export
+from base_devenv.report import build_devenv_report
+from base_devenv.report import dumps_devenv_report_json
+from base_devenv.report import print_devenv_report_text
 
 from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import checks_status
 from .checks import doctor_status
 from .checks import print_doctor_finding
-from .devenv_report import build_devenv_report
-from .devenv_report import dumps_devenv_report_json
-from .devenv_report import print_devenv_report_text
 from .errors import ArtifactError
 from .manifest import BaseManifest, ManifestError, read_manifest
 from .manifest_checks import empty_user_config  # pylint: disable=unused-import
