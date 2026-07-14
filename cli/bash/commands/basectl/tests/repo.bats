@@ -459,6 +459,26 @@ EOF
     fi
 }
 
+@test "basectl repo GitHub settings implementation is split from repo dispatcher" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+
+    [ -f "$helper" ]
+    grep -Fq "repo_github_settings.sh" "$dispatcher"
+    grep -Eq '^base_repo_configure_github\(\)' "$helper"
+    grep -Eq '^base_repo_configure_default_branch_protection\(\)' "$helper"
+    grep -Eq '^base_repo_configure_project_metadata\(\)' "$helper"
+    if grep -Eq '^base_repo_configure_github\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_configure_github"
+    fi
+    if grep -Eq '^base_repo_default_branch_ruleset_payload\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define Base ruleset payload helpers"
+    fi
+    if grep -Eq '^base_repo_configure_project_metadata\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define Project metadata delegation"
+    fi
+}
+
 @test "basectl repo init missing name shows focused usage and example" {
     run_basectl repo init --repo codeforester/bankbuddy --pr
 
