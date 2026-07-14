@@ -92,6 +92,8 @@ reference. The filename should answer "what is this about?"
   repository workflows.
 - [Tool Boundaries](tool-boundaries.md) records ecosystem decisions for tools
   such as `mise`, `direnv`, Homebrew, IDEs, Docker, and dotfile managers.
+- [Python Package Ownership](python-package-ownership.md) maps focused
+  `cli/python/` package boundaries and compatibility facade expectations.
 
 ## Presentations
 
