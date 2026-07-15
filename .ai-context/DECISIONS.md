@@ -93,10 +93,10 @@ architecture discussion.
 - AI agent harnesses such as Codex CLI, Claude Code, Cursor agents, Omnigent,
   and Pi-like tools are optional adjacent tools. Base may help install or check
   explicit AI prerequisites, export portable context, render repo-owned prompts,
-  and provide local evidence for handoff. Unified workspace and issue handoff
-  artifacts remain planned in #1561 and #1562. Base should not become a live
-  agent runtime, session server, sandbox, provider/account manager, or cost-policy
-  engine.
+  and provide local evidence for handoff. The workspace agent brief is a
+  shipped local read-only report; the issue-oriented bundle remains planned in
+  #1562. Base should not become a live agent runtime, session server, sandbox,
+  provider/account manager, or cost-policy engine.
 
 ## Repository Workflow
 

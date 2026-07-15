@@ -62,10 +62,11 @@ read-only inspection paths available, but requires explicit local
 manifest-command trust before executing declared project commands or activation
 sources from an unfamiliar or changed manifest.
 
-Current onboarding, check/doctor findings, `history --report`, and
-`export-context` provide evidence for a manual handoff. Unified workspace and
-issue handoff artifacts remain planned in open issues #1561 and #1562; they are
-not shipped commands.
+`workspace agent-brief` now summarizes local repository handoff readiness;
+onboarding, check/doctor findings, `history --report`, and `export-context`
+provide deeper evidence. The issue-oriented bundle in #1562 remains planned;
+Base does not yet package issue, branch, history, diagnostics, and context into
+one artifact.
 
 ## Peer Projects
 

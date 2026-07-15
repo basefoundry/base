@@ -85,6 +85,24 @@ standard Base setup and validation commands for repositories with valid project
 manifests. It does not clone repositories, run setup, create virtual
 environments, or execute project tests.
 
+`basectl workspace agent-brief --manifest <path>` is the local handoff summary
+for a human or coding agent. It includes every expected repository plus
+discovered Base-managed projects outside the manifest, and supports the same
+text or stable JSON output choice:
+
+```bash
+basectl workspace agent-brief --manifest ~/work/base-workspace/workspace.yaml
+basectl workspace agent-brief --manifest ~/work/base-workspace/workspace.yaml --format json
+```
+
+The brief reports the Base repository baseline and agent-guidance file
+contracts, `.ai-context` Markdown availability, project environment state, and
+an inferred validation path. An executable `tests/validate.sh` is preferred;
+when only a manifest-declared test is available, its execution stays behind a
+recommended `basectl test` so Base retains runner, trust, and environment
+ownership. The brief never executes those commands. It does not use GitHub,
+generate guidance or context files, clone repositories, or change setup state.
+
 `basectl workspace clone --manifest <path>` uses the expected repository list
 as an explicit clone plan. It clones missing required GitHub repositories by
 default, reports missing optional repositories without cloning them, and
@@ -109,6 +127,8 @@ It should let Base answer:
 - what a new teammate should do next for each expected repository
 - which discovered repositories are outside the expected set
 - which repositories are required versus optional
+- which local repositories have baseline, agent-guidance, context, and
+  validation evidence for an agent handoff
 - what clone URL and default branch should be shown in reports, and what
   GitHub clone target should be used by explicit clone commands
 
@@ -362,7 +382,7 @@ continues after per-repo failures and reports configured, skipped, and failed
 counts. Use this after shared repo or Project schema changes when each local
 repo should receive the same idempotent `repo configure` repair path.
 
-## Relationship To Onboarding
+## Relationship To Onboarding And Agent Handoff
 
 `basectl onboard` guides first-run Base setup. It should not become a
 project-specific installer.
@@ -373,6 +393,30 @@ manifest state, and suggested next actions in text or JSON without cloning
 repositories, running project setup, or executing manifest-declared commands.
 That keeps project artifact setup, repository checkout, and command trust as
 separate explicit concerns.
+
+`basectl workspace agent-brief` is a separate report rather than an onboarding
+mode because its readiness signals and JSON schema serve a different consumer.
+A Base-managed repository is reported structurally ready for handoff only when
+its manifest is valid, an executable interpreter file is present at its
+expected project environment path, its Base baseline and agent-guidance file contracts are
+complete, and a validation path is available. The interpreter state is
+`present_unverified`: the brief does not execute it or any repository command.
+The recommended repository check and validation still need to run separately
+and may fail. `.ai-context` is reported but is not a hard requirement of the
+existing `repo check --agent-ready` contract.
+
+Missing expected repositories receive clone or materialization hints.
+Present expected repositories without a Base manifest remain `unmanaged`; the
+brief can report generic guidance, context, and validation evidence without
+suggesting Base adoption. Base-managed repositories with an incomplete
+contract receive ordered, non-mutating suggestions such as
+`repo init --agent-ready`, `repo agent-guidance`, `repo check --agent-ready`,
+setup, and validation. An incomplete baseline uses `repo init --agent-ready`
+without a redundant separate guidance action.
+
+This brief is workspace-scoped local evidence. The issue-oriented handoff
+bundle tracked in #1562 remains separate and may compose issue, branch,
+history, diagnostics, and exported context later.
 
 ## Non-Goals
 
@@ -404,6 +448,46 @@ version so users can quickly compare project runtimes across a workspace.
 for present Base-managed projects. They also emit stable workspace findings for
 repository presence, outside-manifest discovered projects, and present
 repositories without a Base project manifest.
+
+`basectl workspace agent-brief --manifest <path>` reports one item per expected
+repository plus each extra locally discovered Base-managed project. JSON uses
+schema version `1` and stable nested signal keys for `baseline`,
+`agent_guidance`, `ai_context`, and `validation`. The command exits successfully
+when it can construct the brief; individual repository readiness is data, not a
+workspace-command failure code.
+
+The text table exposes the venv and validation states directly. In JSON schema
+version `1`, the important state meanings are:
+
+- `base_managed` is true when a present repository has a valid or invalid Base
+  project manifest. It is false for missing and unmanaged repositories.
+- `project` is the parsed Base project name for a valid manifest and `null` for
+  missing, unmanaged, or invalid repositories.
+- `venv: present_unverified` means the expected executable interpreter file
+  exists. The brief never executes it. `missing`, `unknown`, and
+  `not_applicable` represent the other local static states.
+- `handoff_status` is one of `missing_required`, `missing_optional`,
+  `unmanaged`, `needs_manifest_repair`, `needs_baseline`, `needs_setup`,
+  `needs_agent_guidance`, or `ready`. `ready` is structural readiness from
+  non-executing evidence, not proof that checks or tests pass.
+- baseline status is `complete` or `incomplete` for Base-managed repositories,
+  `not_applicable` for unmanaged repositories, and `unavailable` when the
+  repository is missing.
+- agent-guidance status is `complete` or `incomplete` for Base-managed
+  repositories; generic unmanaged guidance uses `present`, `partial`, or
+  `missing`; a missing repository uses `unavailable`.
+- AI-context status is `present`, `missing`, `invalid`, or `unavailable`.
+  Validation status is `available` or `unavailable`, with source
+  `repo_baseline`, `manifest_test`, or `null`. Its `command` is the recommended,
+  non-executed validation path, or `null` when unavailable.
+
+The readiness fraction counts expected required repositories only; optional and
+extra local repositories do not change the denominator. Credentials embedded
+in manifest repository URL userinfo and secret-shaped query or fragment
+parameters are redacted from JSON and suggested clone actions. Ordinary
+`git@host:path` SSH URLs remain intact. When only a manifest-declared test
+command supplies validation, the brief recommends `basectl test`; it does not
+expose or execute the raw command.
 
 `basectl workspace clone --manifest <path>` clones or validates expected
 repositories through `basectl repo clone`. It clones missing required

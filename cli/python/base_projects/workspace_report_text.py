@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from base_projects.workspace_agent_brief import WorkspaceAgentBrief
+from base_projects.workspace_agent_brief import WorkspaceAgentBriefRepository
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
 from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
@@ -130,6 +132,62 @@ def print_workspace_onboarding_action(repository: WorkspaceOnboardingRepository)
         print(f"  validate: {repository.validation_command}")
     if repository.test_command is not None:
         print(f"  test: {repository.test_command}")
+
+
+def print_workspace_agent_brief(brief: WorkspaceAgentBrief) -> None:
+    print(f"Workspace agent brief: {brief.workspace_root} ({brief.workspace_manifest.name})")
+    print(f"Workspace manifest: {brief.workspace_manifest.path}")
+    print()
+    if not brief.repositories:
+        print("No repositories reported by the workspace manifest or discovered locally.")
+        return
+
+    print(
+        f"{'REPOSITORY':<20} {'SCOPE':<12} {'HANDOFF':<22} {'BASELINE':<11} "
+        f"{'GUIDANCE':<11} {'VENV':<18} {'VALIDATION':<11} CONTEXT"
+    )
+    for repository in brief.repositories:
+        print(
+            f"{repository.repository:<20} "
+            f"{repository.scope:<12} "
+            f"{repository.handoff_status:<22} "
+            f"{repository.baseline.status:<11} "
+            f"{repository.agent_guidance.status:<11} "
+            f"{repository.venv:<18} "
+            f"{repository.validation.status:<11} "
+            f"{repository.ai_context_status}"
+        )
+
+    required_repositories = tuple(
+        repository for repository in brief.repositories if repository.expected and repository.required
+    )
+    ready_count = sum(1 for repository in required_repositories if repository.handoff_status == "ready")
+    print(f"\nReady for agent handoff: {ready_count} of {len(required_repositories)} required repositories.")
+    print(
+        "Readiness is structural and based on non-executing local file and manifest evidence; "
+        ".ai-context is reported but is not required."
+    )
+    print("\nNext actions:")
+    for repository in brief.repositories:
+        print_workspace_agent_brief_actions(repository)
+
+
+def print_workspace_agent_brief_actions(repository: WorkspaceAgentBriefRepository) -> None:
+    print(f"- {repository.repository} [{repository.handoff_status}]")
+    if repository.baseline.missing_files:
+        print(f"  missing baseline: {', '.join(repository.baseline.missing_files)}")
+    if repository.baseline.not_executable_files:
+        print(f"  not executable: {', '.join(repository.baseline.not_executable_files)}")
+    if repository.agent_guidance.missing_files:
+        print(f"  missing guidance: {', '.join(repository.agent_guidance.missing_files)}")
+    if not repository.next_actions:
+        if repository.handoff_status == "unmanaged":
+            print("  no Base adoption action recommended")
+        else:
+            print("  no action required")
+        return
+    for action in repository.next_actions:
+        print(f"  {action}")
 
 
 def print_workspace_doctor(

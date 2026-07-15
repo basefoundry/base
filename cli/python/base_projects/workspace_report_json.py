@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from base_projects.workspace_agent_brief import RepositoryFileSignal
+from base_projects.workspace_agent_brief import RepositoryValidationSignal
+from base_projects.workspace_agent_brief import WorkspaceAgentBrief
+from base_projects.workspace_agent_brief import WorkspaceAgentBriefRepository
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
 from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
@@ -75,6 +79,65 @@ def workspace_onboarding_to_json(summary: WorkspaceOnboardingSummary) -> dict[st
         },
         "repository_count": len(summary.repositories),
         "repositories": [workspace_onboarding_item_to_json(repository) for repository in summary.repositories],
+    }
+
+
+def workspace_agent_brief_to_json(brief: WorkspaceAgentBrief) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "workspace": str(brief.workspace_root),
+        "workspace_manifest": {
+            "path": str(brief.workspace_manifest.path),
+            "name": brief.workspace_manifest.name,
+            "schema_version": brief.workspace_manifest.schema_version,
+        },
+        "repository_count": len(brief.repositories),
+        "repositories": [workspace_agent_brief_item_to_json(repository) for repository in brief.repositories],
+    }
+
+
+def workspace_agent_brief_item_to_json(repository: WorkspaceAgentBriefRepository) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "repository": repository.repository,
+        "project": repository.project,
+        "path": str(repository.path),
+        "expected": repository.expected,
+        "required": repository.required,
+        "base_managed": repository.base_managed,
+        "scope": repository.scope,
+        "discovery_status": repository.discovery_status,
+        "manifest_path": str(repository.manifest_path) if repository.manifest_path is not None else None,
+        "manifest": repository.manifest,
+        "venv": repository.venv,
+        "handoff_status": repository.handoff_status,
+        "signals": {
+            "baseline": repository_file_signal_to_json(repository.baseline),
+            "agent_guidance": repository_file_signal_to_json(repository.agent_guidance),
+            "ai_context": {"status": repository.ai_context_status},
+            "validation": repository_validation_signal_to_json(repository.validation),
+        },
+        "next_actions": list(repository.next_actions),
+    }
+    if repository.url is not None:
+        payload["url"] = repository.url
+    if repository.default_branch is not None:
+        payload["default_branch"] = repository.default_branch
+    return payload
+
+
+def repository_file_signal_to_json(signal: RepositoryFileSignal) -> dict[str, Any]:
+    return {
+        "status": signal.status,
+        "missing_files": list(signal.missing_files),
+        "not_executable_files": list(signal.not_executable_files),
+    }
+
+
+def repository_validation_signal_to_json(signal: RepositoryValidationSignal) -> dict[str, Any]:
+    return {
+        "status": signal.status,
+        "command": signal.command,
+        "source": signal.source,
     }
 
 

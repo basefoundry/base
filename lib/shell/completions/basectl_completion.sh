@@ -316,13 +316,13 @@ _base_basectl_completion() {
             ;;
         workspace)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "status check doctor onboarding clone pull init configure" "$cur"
+                _base_basectl_completion_compgen "status check doctor onboarding agent-brief clone pull init configure" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                     status|check|doctor)
                         _base_basectl_completion_compgen "--workspace --manifest --format -v -h --help" "$cur"
                         ;;
-                    onboarding)
+                    onboarding|agent-brief)
                         _base_basectl_completion_compgen "--workspace --manifest --format -v -h --help" "$cur"
                         ;;
                     clone)

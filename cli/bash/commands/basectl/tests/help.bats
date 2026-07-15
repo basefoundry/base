@@ -32,7 +32,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"demo [project] [options]"* ]]
     [[ "$output" == *"update [project] [options]"* ]]
     [[ "$output" == *"projects list [options]"* ]]
-    [[ "$output" == *"workspace <status|check|doctor|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" == *"workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]"* ]]
     [[ "$output" == *"Invoking \`basectl\` with no command starts a Base runtime shell"* ]]
     [[ "$output" == *"--version"* ]]
     [[ "$output" == *"Wrapper options:"* ]]
@@ -69,7 +69,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  docs [options]' <<<"$output"
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  history [options]' <<<"$output"
-    grep -Fqx '  workspace <status|check|doctor|clone|pull|init|configure> [options]' <<<"$output"
+    grep -Fqx '  workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]' <<<"$output"
     grep -Fqx '  trust <status|allow|revoke> <project> [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
@@ -88,7 +88,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]"* ]]
     [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
 
     run_basectl help release
@@ -155,7 +155,7 @@ load ./basectl_helpers.bash
 @test "AI command context includes current clone and update surfaces" {
     local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
 
-    grep -Fqx -- "- \`basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure>\` -" "$commands_file"
+    grep -Fqx -- "- \`basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure>\` -" "$commands_file"
     grep -Fqx -- "  - \`workspace clone\` mutates repository checkouts only when invoked directly;" "$commands_file"
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
@@ -179,6 +179,26 @@ load ./basectl_helpers.bash
         [[ "$output" == *"$flag"* ]]
         [[ "$workspace_init_row" == *"$flag"* ]]
     done
+}
+
+@test "command reference documents workspace agent brief help surface" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+    local agent_brief_row
+
+    run_basectl workspace agent-brief --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace agent-brief [options]"* ]]
+
+    agent_brief_row="$(grep -F '| `basectl workspace agent-brief` |' "$command_reference")"
+    [[ "$agent_brief_row" == *"Report local baseline, agent-guidance, AI-context"* ]]
+
+    for flag in "--workspace <path>" "--manifest <path>"; do
+        [[ "$output" == *"$flag"* ]]
+        [[ "$agent_brief_row" == *"$flag"* ]]
+    done
+    [[ "$output" == *"--format <format>"* ]]
+    [[ "$agent_brief_row" == *'--format <text\|json>'* ]]
 }
 
 @test "command reference documents docs shortcut" {

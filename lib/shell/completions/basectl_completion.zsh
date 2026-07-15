@@ -310,15 +310,15 @@ _base_basectl_completion() {
             ;;
         workspace)
             case "${words[3]:-}" in
-                status|check|doctor)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)' \
+                status|check|doctor|onboarding|agent-brief)
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 clone)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)' \
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--include-optional[Include optional manifest repositories when cloning]' \
@@ -326,14 +326,14 @@ _base_basectl_completion() {
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pull)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)' \
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--source[Canonical workspace manifest source]:url-or-path:' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace pull work without writing]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 init)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)' \
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '2:workspace source:' \
                         '--owner[GitHub owner for short workspace repository names]:owner:' \
                         '--path[Workspace configuration repository checkout path]:path:_files' \
@@ -344,14 +344,14 @@ _base_basectl_completion() {
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)' \
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to configure]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace configuration without applying repo changes]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:workspace command:(status check doctor onboarding clone pull init configure)'
+                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)'
                     ;;
             esac
             ;;

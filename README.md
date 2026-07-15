@@ -151,10 +151,12 @@ workspace:
   manifest_source: https://raw.githubusercontent.com/<org>/<repo>/main/workspace.yaml
 ```
 
-When `workspace.manifest` is set, workspace commands use it unless
-`--manifest <path>` is supplied for a single command. When
-`workspace.manifest_source` is set, `basectl workspace pull` can explicitly
-refresh the local manifest from that canonical source.
+When `workspace.manifest` is set, workspace status, check, doctor, onboarding,
+agent-brief, clone, and configure commands use it unless `--manifest <path>` is
+supplied for a single command. `basectl workspace pull` treats it as the local
+destination for an explicitly requested refresh. When
+`workspace.manifest_source` is set, pull can refresh that local manifest from
+the canonical source.
 
 ### New Or Uncertain Machine?
 
@@ -326,7 +328,7 @@ Current implemented commands include:
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
-- `basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure>`
+- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure>`
 - `basectl trust <status|allow|revoke> <project>`
 - `basectl repo init <name>`
 - `basectl repo clone <name-or-owner/name>`
@@ -598,6 +600,7 @@ basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
 basectl workspace onboarding --manifest ~/work/workspace.yaml
+basectl workspace agent-brief --manifest ~/work/workspace.yaml --format json
 basectl workspace init basefoundry/base-workspace --dry-run
 basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
 basectl workspace configure --dry-run
@@ -611,8 +614,9 @@ Project list output is tab-separated as `<project-name><TAB><path>`.
 In a source checkout, `basectl projects list` can run before `basectl setup`
 when the ambient `python3` has Base's bootstrap Python dependencies available;
 otherwise it reports a targeted setup diagnostic.
-`basectl projects list` and the read-only workspace status, check, doctor, and
-onboarding commands support `--format json` for machine-readable output.
+`basectl projects list` and the read-only workspace status, check, doctor,
+onboarding, and agent-brief commands support `--format json` for
+machine-readable output.
 Workspace clone, pull, init, and configure use text output only. Status reports
 each discovered project's manifest validity, whether the Base-managed project
 virtual environment is present, and the latest recorded `basectl check
@@ -628,12 +632,30 @@ running setup. It reports ready, needs-setup, invalid-manifest,
 missing-required, and missing-optional repository states with next actions as a
 read-only text or JSON view.
 
+`basectl workspace agent-brief` turns the same manifest and local repository
+state into a handoff-readiness view. It includes expected repositories and
+extra locally discovered Base-managed projects, then reports repository
+baseline, agent-guidance, `.ai-context`, environment, and validation evidence.
+Readiness is structural: a ready repository has a valid manifest, an executable
+interpreter file at the expected project-environment path, complete Base
+baseline and agent-guidance file contracts, and an available validation path.
+The executable interpreter is reported as `present_unverified`; the brief never
+executes it. The recommended repository check and validation commands still
+need to run separately and may fail. `.ai-context` is reported as useful context, not
+required by the existing agent-ready repository contract. Present repositories
+without a Base manifest remain `unmanaged`; the brief reports generic guidance,
+context, and validation evidence when available but does not recommend Base
+adoption. The command does not clone, run setup or validation, mutate repository
+checkouts, update workspace manifests, write repo guidance or context, or make
+network calls.
+
 Set `workspace.manifest` in `~/.base.d/config.yaml`, or use `--manifest <path>`
-with `basectl workspace status`, `check`, or `doctor`, to include expected
-repositories from a local workspace manifest. The command-line `--manifest`
-value takes precedence over the configured manifest. Missing required
-repositories are errors, missing optional repositories are warnings, and
-Base-managed projects outside the manifest stay visible as warnings.
+with `basectl workspace status`, `check`, `doctor`, `onboarding`, or
+`agent-brief`, to include expected repositories from a local workspace
+manifest. The command-line `--manifest` value takes precedence over the
+configured manifest. Missing required repositories are errors, missing optional
+repositories are warnings, and Base-managed projects outside the manifest stay
+visible as warnings.
 
 Use `basectl workspace clone --manifest <path>`, or configure
 `workspace.manifest`, to materialize the missing required GitHub repositories
@@ -1114,12 +1136,12 @@ Base-managed project for the check/setup/doctor steps. Product-specific
 onboarding should still live in project installers that call Base internally. See
 [docs/basectl-onboard.md](docs/basectl-onboard.md).
 
-Today, onboarding output, stable diagnostics, `basectl history --report`, and
-`basectl export-context` provide the local evidence needed for a manual handoff.
-A unified workspace agent brief and a single issue-oriented handoff bundle are
-planned in [#1561](https://github.com/basefoundry/base/issues/1561) and
-[#1562](https://github.com/basefoundry/base/issues/1562); they are not shipped
-commands yet.
+Today, `basectl workspace agent-brief`, onboarding output, stable diagnostics,
+`basectl history --report`, and `basectl export-context` provide local evidence
+for a manual handoff. The separate issue-oriented handoff bundle remains
+planned in [#1562](https://github.com/basefoundry/base/issues/1562); Base does
+not yet package branch, issue, history, diagnostics, and context exports into a
+single artifact.
 
 Base can also bootstrap supported IDEs for participating projects through the
 optional `ide:` manifest section. It currently supports VS Code and Cursor app

@@ -36,13 +36,12 @@ external tools and project declarations it orchestrates.
 | Verify | `basectl check` and `basectl doctor`, including workspace forms, report readiness with JSON where supported and stable doctor finding IDs. |
 | Trust | `basectl trust` keeps manifest-declared project execution behind explicit local approval while leaving inspection paths available. |
 | Onboard | `basectl onboard` guides first Base setup; `basectl workspace onboarding` gives a read-only first-day repo-set summary. |
-| Hand off | Diagnostics, `basectl history --report`, `.ai-context/`, and `basectl export-context` provide inspectable local evidence for a manual handoff. |
+| Hand off | `basectl workspace agent-brief` summarizes repository readiness; diagnostics, history reports, and context exports provide deeper local evidence. |
 
-The last step is not yet a single unified artifact. A workspace agent brief and
-an issue-oriented handoff bundle are planned in
-[#1561](https://github.com/basefoundry/base/issues/1561) and
-[#1562](https://github.com/basefoundry/base/issues/1562). Base should not claim
-those commands until they ship.
+The workspace-level brief is shipped, but Base does not yet compose issue,
+branch, history, diagnostics, and exported context into one artifact. That
+issue-oriented bundle remains planned in
+[#1562](https://github.com/basefoundry/base/issues/1562).
 
 ## Product Responsibility Layers
 
@@ -65,8 +64,8 @@ packages:
 
 - A small opt-in contract for independent repositories through
   `base_manifest.yaml`.
-- Inventory and workspace onboarding views that do not require cloning or setup
-  to inspect repo-set state.
+- Inventory, workspace onboarding, and agent-brief views that do not require
+  cloning or setup to inspect repo-set and handoff state.
 - Human-readable and machine-readable readiness checks through `check`,
   `doctor`, workspace reports, and stable finding IDs.
 - Explicit manifest-command trust instead of silently executing project-owned
