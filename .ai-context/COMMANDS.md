@@ -39,19 +39,23 @@ options.
 - `basectl docs` - open the Base documentation home page on GitHub.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure>` -
-  inspect workspace status, checks, diagnostics, and read-only first-day
-  onboarding; explicitly clone expected repositories from a manifest;
-  initialize a workspace from a workspace configuration repo; explicitly sync
-  a local manifest from a configured canonical source; or apply repo
-  configuration across a workspace.
-  - `workspace status`, `workspace check`, `workspace doctor`, and
-    `workspace onboarding` support `--format json`; `workspace clone`,
-    `workspace pull`, `workspace init`, and `workspace configure` use text
-    output.
+- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure>` -
+  inspect workspace status, checks, diagnostics, read-only first-day
+  onboarding, and local agent-handoff readiness; explicitly clone expected
+  repositories from a manifest; initialize a workspace from a workspace
+  configuration repo; explicitly sync a local manifest from a configured
+  canonical source; or apply repo configuration across a workspace.
+  - `workspace status`, `workspace check`, `workspace doctor`,
+    `workspace onboarding`, and `workspace agent-brief` support `--format json`;
+    `workspace clone`, `workspace pull`, `workspace init`, and
+    `workspace configure` use text output.
   - `workspace onboarding` summarizes ready, needs-setup, invalid-manifest,
     missing-required, and missing-optional repository state without cloning
     repositories or running setup.
+  - `workspace agent-brief` reports baseline, agent-guidance, AI-context,
+    environment, and validation evidence for expected and extra Base-managed
+    repositories. It is local and read-only; manifest-declared test execution
+    stays behind a recommended `basectl test` command.
   - `workspace clone` mutates repository checkouts only when invoked directly;
     `workspace pull` mutates only the local workspace manifest after validating
     the source; `workspace init` can clone the workspace configuration repo,

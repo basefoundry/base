@@ -74,6 +74,23 @@ Summarize first-day workspace onboarding from a workspace manifest without cloni
 EOF
 }
 
+base_workspace_agent_brief_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace agent-brief [options]
+
+Options:
+  --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --format <format>   Output format for the agent brief: text or json.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Report local repository readiness signals for an agent handoff without cloning, setup, or network calls.
+EOF
+}
+
 base_workspace_init_usage() {
     cat <<'EOF'
 Usage:
@@ -118,6 +135,9 @@ base_workspace_subcommand_usage() {
         onboarding)
             base_workspace_onboarding_usage
             ;;
+        agent-brief)
+            base_workspace_agent_brief_usage
+            ;;
         clone)
             base_workspace_clone_usage
             ;;
@@ -133,13 +153,14 @@ base_workspace_subcommand_usage() {
         *)
             cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure> [options]
+  basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]
 
 Commands:
   status     Show workspace status. Supports --format text|json.
   check      Run workspace checks. Supports --format text|json.
   doctor     Run workspace diagnostics. Supports --format text|json.
   onboarding Show first-day onboarding summary. Supports --format text|json.
+  agent-brief Show local agent handoff readiness. Supports --format text|json.
   clone      Clone or validate expected repositories from a workspace manifest.
   pull       Fetch and validate a canonical workspace manifest source.
   init       Initialize a workspace from a workspace configuration repository.
@@ -167,7 +188,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|onboarding|clone|pull|init|configure)
+        status|check|doctor|onboarding|agent-brief|clone|pull|init|configure)
             shift
             ;;
         *)

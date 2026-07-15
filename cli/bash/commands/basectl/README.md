@@ -55,7 +55,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `update-profile`
 - `update`
 - `projects list`
-- `workspace status/check/doctor/clone/pull/init/configure`
+- `workspace status/check/doctor/onboarding/agent-brief/clone/pull/init/configure`
 - `version`
 - `help`
 
@@ -216,6 +216,14 @@ such command directories exist. Optional utility CLIs such as `caff` and
   project checks and diagnostics across discovered projects. With a configured
   workspace manifest or `--manifest <path>`, they also report missing expected
   repositories and discovered Base-managed projects outside the manifest.
+- `basectl workspace onboarding` reports expected-repository first-day state
+  and next actions without cloning or setup.
+- `basectl workspace agent-brief` reports expected and extra Base-managed
+  repository baseline, agent-guidance, AI-context, environment, and validation
+  evidence as read-only text or stable JSON. Environment evidence reports the
+  expected executable interpreter file as present but unverified. It does not
+  run the recommended setup, repo-check, or validation commands and performs no
+  network calls.
 - `basectl workspace clone` materializes missing required repositories from a
   configured or explicit workspace manifest by delegating to `basectl repo clone`.
   Optional repositories are reported but skipped unless `--include-optional` is

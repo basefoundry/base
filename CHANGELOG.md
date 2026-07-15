@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added `basectl workspace agent-brief` to report local repository baseline,
+  agent-guidance, AI-context, environment, and validation evidence for a workspace
+  handoff as read-only text or stable JSON.
 - Added `--ci` mode to `basectl setup`, `basectl check`, and `basectl doctor`
   as the preferred CI-safe command surface while keeping `basectl ci` as a
   compatibility alias.

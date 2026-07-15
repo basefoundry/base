@@ -621,6 +621,7 @@ basectl workspace status
 basectl workspace check
 basectl workspace doctor
 basectl workspace onboarding
+basectl workspace agent-brief
 basectl workspace clone
 basectl workspace pull
 basectl workspace init
@@ -638,19 +639,26 @@ and `basectl workspace doctor` run project checks and diagnostics across
 discovered projects. `basectl workspace onboarding` is a shipped read-only text
 or JSON summary of ready, needs-setup, invalid-manifest, missing-required, and
 missing-optional first-day repository state; it does not clone repositories or
-run setup. `basectl
-workspace clone` materializes missing expected repositories only when invoked
+run setup. `basectl workspace agent-brief` is a separate read-only text or JSON
+projection over manifest and local filesystem state. It includes expected and
+extra Base-managed repositories, reports baseline, agent-guidance, AI-context,
+environment, and validation signals, and recommends explicit next commands
+without executing them or making network calls. Environment evidence only
+checks for the expected executable interpreter file and reports it as
+unverified; the brief does not run repository-local code. `basectl workspace clone`
+materializes missing expected repositories only when invoked
 directly. `basectl workspace pull` updates only the local workspace manifest
 after validating an explicit or configured source. `basectl workspace init`
 bootstraps a workspace from a workspace configuration repository and can
 materialize member repositories. `basectl workspace configure` applies the
 existing `repo configure` repair path across discovered Base-managed workspace
-repositories. JSON output is part of the status/check/doctor/onboarding contract
-so automation and future CI smoke checks can use the same data.
+repositories. JSON output is part of the
+status/check/doctor/onboarding/agent-brief contract so automation and future CI
+smoke checks can use the same data.
 
 Future workspace commands should follow the same principles:
 
-- start with read-only status, check, doctor, and onboarding behavior
+- start with read-only status, check, doctor, onboarding, and handoff behavior
 - require explicit commands and dry-run paths before mutating many repositories
   or local workspace metadata
 - treat partial failure as normal in multi-repo workspaces
@@ -683,13 +691,13 @@ The goal is explainability, not surveillance. Base should help users understand
 what happened on their own machine.
 
 These surfaces also provide today's handoff evidence: onboarding reports explain
-initial repo state, check/doctor provide current readiness, history reports show
-recent local command outcomes, and `.ai-context` exports carry canonical
-orientation. A unified workspace agent brief and issue-oriented handoff bundle
-are planned in GitHub issues
-[#1561](https://github.com/basefoundry/base/issues/1561) and
-[#1562](https://github.com/basefoundry/base/issues/1562). Architecture should
-not expose those as commands or stable schemas before they ship.
+initial repo state, `workspace agent-brief` summarizes repository handoff
+signals and ordered next actions, check/doctor provide current readiness,
+history reports show recent local command outcomes, and `.ai-context` exports
+carry canonical orientation. The issue-oriented handoff bundle planned in
+[#1562](https://github.com/basefoundry/base/issues/1562) remains separate; it
+may compose issue, branch, history, diagnostics, and context evidence, but is
+not a shipped command or stable schema.
 
 ---
 

@@ -42,6 +42,7 @@ run_step "$PYTHON_BIN" -m pytest cli/python/base_setup/tests/test_remote_install
 run_step "$PYTHON_BIN" -m pytest lib/python/base_cli/tests/test_logging.py
 run_step "$PYTHON_BIN" -m pytest cli/python/base_projects/tests/test_workspace_manifest.py
 run_step "$PYTHON_BIN" -m pytest cli/python/base_projects/tests/test_workspace_pull.py
+run_step "$PYTHON_BIN" -m pytest cli/python/base_projects/tests/test_workspace_agent_brief.py
 run_step bats --filter "project installer template" cli/bash/commands/basectl/tests/repo.bats
 run_step bats cli/bash/commands/basectl/tests/docs.bats
 run_step bats cli/bash/commands/basectl/tests/help.bats

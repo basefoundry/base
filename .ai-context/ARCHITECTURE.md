@@ -115,9 +115,9 @@ Base orchestrates mature tools instead of replacing them:
 - AI agent harnesses own live agent sessions, provider interaction, credentials,
   sandboxing, approvals, collaboration UI, and multi-agent scheduling. Base
   should support them only through provider-neutral context packs, repo-local
-  guidance, maintained prompts, current local evidence, planned handoff/report
-  artifacts, and explicit opt-in health checks. Unified handoff artifacts remain
-  open work in #1561 and #1562.
+  guidance, maintained prompts, current local evidence, the read-only workspace
+  agent brief, planned issue-oriented reporting, and explicit opt-in health
+  checks. Issue-specific handoff packaging remains open work in #1562.
 
 Adapters should detect relevance, check health, invoke the underlying tool
 without hiding it, report failures in Base-native diagnostics, and avoid taking

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -51,6 +52,8 @@ def workspace_project_statuses(
 def workspace_manifest_project_statuses(
     workspace_root: Path,
     workspace_manifest: WorkspaceManifest,
+    *,
+    probe_venv: bool = True,
 ) -> tuple[WorkspaceProjectStatus, ...]:
     entries_by_repo = {
         entry.path.parent.resolve().name: entry
@@ -60,10 +63,10 @@ def workspace_manifest_project_statuses(
 
     for repo in workspace_manifest.repos:
         entry = entries_by_repo.pop(repo.name, None)
-        statuses.append(workspace_expected_repo_status(workspace_root, repo, entry))
+        statuses.append(workspace_expected_repo_status(workspace_root, repo, entry, probe_venv=probe_venv))
 
     for repo_name in sorted(entries_by_repo):
-        statuses.append(workspace_extra_project_status(entries_by_repo[repo_name]))
+        statuses.append(workspace_extra_project_status(entries_by_repo[repo_name], probe_venv=probe_venv))
 
     return tuple(statuses)
 
@@ -72,10 +75,12 @@ def workspace_expected_repo_status(
     workspace_root: Path,
     repo: WorkspaceManifestRepo,
     entry: ManifestEntry | None,
+    *,
+    probe_venv: bool = True,
 ) -> WorkspaceProjectStatus:
     root = (workspace_root / repo.name).resolve()
     if entry is not None:
-        status = workspace_project_status(entry)
+        status = workspace_project_status(entry, probe_venv=probe_venv)
         return attach_status_repo_metadata(status, repo)
     last_check = project_last_check(repo.name)
     if root.exists():
@@ -129,8 +134,8 @@ def attach_status_repo_metadata(
     )
 
 
-def workspace_extra_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
-    status = workspace_project_status(entry)
+def workspace_extra_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -> WorkspaceProjectStatus:
+    status = workspace_project_status(entry, probe_venv=probe_venv)
     return replace(
         status,
         status=most_severe_status(status.status, "warn"),
@@ -142,7 +147,7 @@ def workspace_extra_project_status(entry: ManifestEntry) -> WorkspaceProjectStat
     )
 
 
-def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
+def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -> WorkspaceProjectStatus:
     root = entry.path.parent.resolve()
     try:
         manifest = read_manifest(entry.path)
@@ -160,17 +165,23 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
 
     last_check = project_last_check(manifest.project_name)
     venv_dir = project_venv_dir(manifest)
-    if project_venv_ready(venv_dir):
+    if probe_venv:
+        venv_ready = project_venv_ready(venv_dir)
+        ready_label = "ready"
+    else:
+        venv_ready = executable_interpreter_present(venv_dir / "bin" / "python")
+        ready_label = "present_unverified"
+    if venv_ready:
         return WorkspaceProjectStatus(
             name=manifest.project_name,
             root=root,
             manifest_path=entry.path.resolve(),
             status="ok",
-            venv="ready",
+            venv=ready_label,
             manifest="valid",
             issues=(),
             last_check=last_check,
-            python_runtime=project_python_runtime(manifest, venv_dir=venv_dir),
+            python_runtime=project_python_runtime(manifest, venv_dir=venv_dir) if probe_venv else None,
         )
 
     return WorkspaceProjectStatus(
@@ -183,3 +194,10 @@ def workspace_project_status(entry: ManifestEntry) -> WorkspaceProjectStatus:
         issues=(f"project virtual environment missing at {venv_dir}",),
         last_check=last_check,
     )
+
+
+def executable_interpreter_present(path: Path) -> bool:
+    try:
+        return path.is_file() and os.access(path, os.X_OK)
+    except OSError:
+        return False

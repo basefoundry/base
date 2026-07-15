@@ -35,6 +35,7 @@ from base_projects.project_dispatch import ProjectCommandActions
 from base_projects.project_dispatch import WorkspaceCommandOptions
 from base_projects.project_dispatch import dispatch_projects_command
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_agent_brief import workspace_agent_brief
 from base_projects.workspace_clone_command import clone_workspace_repo  # pylint: disable=unused-import
 from base_projects.workspace_clone_command import print_optional_clone_skip  # pylint: disable=unused-import
 from base_projects.workspace_clone_command import require_workspace_clone_manifest  # pylint: disable=unused-import
@@ -51,10 +52,12 @@ from base_projects.workspace_onboarding import workspace_onboarding_summary
 from base_projects.workspace_report_json import dumps_json
 from base_projects.workspace_report_json import workspace_check_to_json
 from base_projects.workspace_report_json import workspace_doctor_to_json
+from base_projects.workspace_report_json import workspace_agent_brief_to_json
 from base_projects.workspace_report_json import workspace_onboarding_to_json
 from base_projects.workspace_report_json import workspace_status_to_json
 from base_projects.workspace_report_text import print_workspace_check
 from base_projects.workspace_report_text import print_workspace_doctor
+from base_projects.workspace_report_text import print_workspace_agent_brief
 from base_projects.workspace_report_text import print_workspace_onboarding
 from base_projects.workspace_report_text import print_workspace_status
 from base_projects.workspace_scanner import ProjectDiscoveryError
@@ -132,6 +135,7 @@ def project_command_actions() -> ProjectCommandActions:
         workspace_check=workspace_check_command,
         workspace_doctor=workspace_doctor_command,
         workspace_onboarding=workspace_onboarding_command,
+        workspace_agent_brief=workspace_agent_brief_command,
         workspace_clone=workspace_clone_command,
         workspace_pull=workspace_pull_command,
         workspace_init=workspace_init_project_command,
@@ -329,6 +333,34 @@ def workspace_onboarding_command(
         print(dumps_json(workspace_onboarding_to_json(summary)))
     else:
         print_workspace_onboarding(summary)
+    return base_cli.ExitCode.SUCCESS
+
+
+def workspace_agent_brief_command(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    output_format: str = "text",
+    workspace_manifest: str | None = None,
+) -> int:
+    if output_format not in ("text", "json"):
+        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
+
+    try:
+        workspace_root = resolve_workspace_root(ctx, workspace)
+        manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
+        if manifest is None:
+            ctx.log.error("Workspace agent brief requires a workspace manifest. Use --manifest or workspace.manifest.")
+            return base_cli.ExitCode.USAGE_ERROR
+        brief = workspace_agent_brief(workspace_root, manifest)
+    except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    if output_format == "json":
+        print(dumps_json(workspace_agent_brief_to_json(brief)))
+    else:
+        print_workspace_agent_brief(brief)
     return base_cli.ExitCode.SUCCESS
 
 

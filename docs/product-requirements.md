@@ -130,12 +130,15 @@ Base should help a target user answer one question at each step:
 - Base must preserve current handoff evidence through onboarding views,
   diagnostics, stable finding IDs, privacy-conscious history reports, canonical
   repo guidance, and provider-neutral context exports.
-- Base must describe a manual composition of those surfaces honestly until a
-  unified artifact ships.
-- A workspace agent brief and issue-oriented handoff bundle are planned in
-  [#1561](https://github.com/basefoundry/base/issues/1561) and
-  [#1562](https://github.com/basefoundry/base/issues/1562). They are accepted
-  direction, not current command claims.
+- Base must distinguish the shipped workspace readiness brief from broader
+  issue-oriented handoff packaging.
+- `basectl workspace agent-brief` must remain a local, read-only text or stable
+  JSON view over workspace manifest and filesystem evidence. It must include
+  expected and extra Base-managed repositories and report unavailable evidence
+  explicitly.
+- The issue-oriented handoff bundle planned in
+  [#1562](https://github.com/basefoundry/base/issues/1562) is accepted direction,
+  not a current command claim.
 - Handoff artifacts must remain local-first, deterministic enough for tests,
   redacted, provider-neutral, and explicit about unavailable evidence.
 
@@ -248,8 +251,8 @@ Base is succeeding when:
 - the release, install, upgrade, and Homebrew paths are boring and repeatable;
 - another contributor or AI-assisted agent can follow the docs, issues, tests,
   and context pack without needing private maintainer knowledge;
-- current handoff evidence is described separately from the unified artifacts
-  still planned in #1561 and #1562;
+- the shipped workspace agent brief is described separately from the
+  issue-oriented handoff artifact still planned in #1562;
 - repo-owned prompts and context exports make periodic product and workflow
   reviews repeatable without becoming hidden private process;
 - external adoption evidence grows without widening Base into a catch-all
@@ -316,6 +319,10 @@ repositioning, and after meaningful external user feedback.
 
 ## Decision Log
 
+- 2026-07-15: Ship the local, read-only workspace agent brief from #1561 with
+  text and stable JSON output. Keep `.ai-context` visible but optional, keep
+  manifest-declared test execution behind `basectl test`, and leave
+  issue-oriented artifact composition to #1562.
 - 2026-07-14: Narrow Base's accepted position to a local operating contract for
   deterministic readiness and handoff across independent Git repositories.
   Adopt the `inventory -> prepare -> verify -> trust -> onboard -> hand off`

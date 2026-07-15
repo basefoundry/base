@@ -1,7 +1,7 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 Base era reviewed: 1.6.1 + Unreleased
 
 This document records a candid assessment of Base as a product and engineering
@@ -57,9 +57,10 @@ becoming equal product pillars. Ubuntu/Debian source-checkout runtime and
 apt-backed setup support are implemented, while broader Linux distribution
 support remains deliberately narrow and Windows is not currently in scope.
 
-Current onboarding, diagnostics, privacy-conscious history reports, and context
-exports provide evidence for manual handoff. The unified workspace agent brief
-and issue-oriented handoff bundle remain planned in #1561 and #1562.
+The local workspace agent brief now summarizes repository readiness for a
+handoff, while onboarding, diagnostics, privacy-conscious history reports, and
+context exports provide deeper evidence. The issue-oriented handoff bundle
+remains planned in #1562.
 
 Base becomes weaker if it turns into a general version manager, automatic
 directory environment loader, dotfile manager, package solver, or generic task
@@ -136,9 +137,9 @@ The practical value is that Base reduces repeated human judgment. It turns
 questions like "How do I set this up?", "Which repos are part of this
 workspace?", "Is my shell sane?", "How do I test this project?", and "How do I
 leave enough evidence for the next implementer?" into repeatable commands and
-documented contracts. The last answer is currently assembled from onboarding,
-diagnostics, history, and context export; it is not yet the unified artifact
-planned in #1561 and #1562.
+documented contracts. `workspace agent-brief` now answers the repository-level
+readiness portion; issue, branch, history, diagnostics, and exported context are
+not yet packaged into the issue-oriented artifact planned in #1562.
 
 ## 3. Adoption Potential
 
@@ -442,11 +443,10 @@ surfaces. Repository/GitHub/release behavior is best understood as supporting
 workflow packs; environment, IDE, container, Nix/devenv, and AI behavior remains
 in adapter or export lanes.
 
-The handoff claim needs one explicit limit. Base does not yet produce a unified
-workspace agent brief or issue-oriented handoff bundle. Those outcomes remain
-planned in open issues #1561 and #1562. Current commands provide the evidence a
-human can assemble for a handoff; they do not justify claiming the planned
-artifacts as shipped.
+The handoff claim needs one explicit limit. Base now produces a local workspace
+agent brief with static repository signals and ordered next actions. It
+does not produce the issue-oriented handoff bundle planned in #1562 or package
+issue, branch, history, diagnostics, and context exports into one artifact.
 
 The ratings remain unchanged because positioning clarity is not new adoption,
 contributor independence, support-load, or organizational-impact evidence.
@@ -549,6 +549,9 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-07-15: Added the shipped local workspace agent brief from #1561 to the
+  handoff evidence while retaining the explicit #1562 boundary for
+  issue-oriented artifact composition; ratings remain unchanged.
 - 2026-07-14: Narrowed Base's position to deterministic readiness and handoff,
   separated the core outcome from its execution contract, workflow packs, and
   adapters, verified current bootstrap and multi-repository overlap against

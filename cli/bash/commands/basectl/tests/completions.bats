@@ -145,6 +145,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "workspace_status_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace agent-brief --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_agent_brief_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl workspace clone --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -286,8 +290,9 @@ EOF
     [[ "$output" == *"devenv_report_projects=base demo"* ]]
     [[ "$output" == *"devenv_report_options=--workspace --format"* ]]
     [[ "$output" == *"projects_options=--workspace --format"* ]]
-    [[ "$output" == *"workspace_commands=status check doctor onboarding clone pull init configure"* ]]
+    [[ "$output" == *"workspace_commands=status check doctor onboarding agent-brief clone pull init configure"* ]]
     [[ "$output" == *"workspace_status_options=--workspace --manifest --format"* ]]
+    [[ "$output" == *"workspace_agent_brief_options=--workspace --manifest --format"* ]]
     [[ "$output" == *"workspace_clone_options=--workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_pull_options=--source --manifest --dry-run"* ]]
     [[ "$output" == *"workspace_init_options=--owner --path --workspace --manifest --include-optional --dry-run"* ]]
@@ -407,6 +412,6 @@ EOF
             printf "options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"commands=status check doctor onboarding clone pull init configure"* ]]
+    [[ "$output" == *"commands=status check doctor onboarding agent-brief clone pull init configure"* ]]
     [[ "$output" == *"options=--workspace --manifest --dry-run"* ]]
 }

@@ -27,9 +27,10 @@ The current command surface covers:
 - cleanup, logs, local command history, and privacy-conscious history reports
 - local config inspection
 - guided project onboarding and read-only workspace onboarding summaries
+- read-only workspace agent briefs with stable JSON readiness signals
 - repository baseline creation and checks
 - GitHub issue, PR, branch, and worktree helpers
-- workspace status/check/doctor/onboarding/init/clone/pull/configure flows
+- workspace status/check/doctor/onboarding/agent-brief/init/clone/pull/configure flows
 - release readiness inspection and guarded GitHub release publishing
 - local AI context export bundles
 - repo-owned prompt rendering through `basectl prompt`
@@ -47,9 +48,10 @@ broader prompt ergonomics, broader Linux distribution support, and broader
 setup policy work remaining outside the 1.6 release contract.
 
 The accepted product position is now a local operating contract for
-deterministic readiness and handoff. Current onboarding, diagnostics, history
-reports, and context exports provide manual handoff evidence; unified workspace
-and issue handoff artifacts remain planned in open issues #1561 and #1562.
+deterministic readiness and handoff. `workspace agent-brief` summarizes local
+repository readiness, while onboarding, diagnostics, history reports, and
+context exports provide deeper handoff evidence. The issue-oriented artifact in
+#1562 remains planned.
 No adapter or manifest import is shipped for `mani`, `gita`, `vcs2l`, Android
 Repo, or `west`; those integration ideas remain proposals.
 
