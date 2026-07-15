@@ -48,14 +48,15 @@ precedence over this baseline.
 ## Workflow
 
 1. Create or choose a GitHub issue before implementation work.
-2. Use one standard issue label: \`bug\`, \`enhancement\`, \`documentation\`,
-   \`ci\`, or \`security\`.
+2. Use exactly one standard issue category label: \`bug\`, \`enhancement\`,
+   \`documentation\`, \`ci\`, or \`security\`.
 3. Branch from the issue with:
 
    \`\`\`text
    <category>/<issue>-<YYYYMMDD>-<slug>
    \`\`\`
 
+   The category prefix must match the issue's single standard category label.
    This branch shape is tool-independent; \`feat/\`, \`agent/\`, \`codex/\`, and
    bare issue-number prefixes are invalid.
 
@@ -145,7 +146,7 @@ Closes #
 
 ## Checklist
 
-- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
+- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`, and its category prefix matches the issue's single standard category label.
 - [ ] Pull request is scoped to one issue, unless a documented multi-issue exception applies.
 - [ ] Pull request body explains what changed and how it was validated.
 - [ ] Relevant project checks pass.

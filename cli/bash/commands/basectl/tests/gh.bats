@@ -13,6 +13,105 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+add_github_origin() {
+    git -C "$1" remote add origin https://github.com/basefoundry/base.git
+}
+
+write_branch_issue_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${BASE_GH_TEST_STATE_DIR:?}/gh-calls"
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == repos/*/issues/117 ]]; then
+    case "${BASE_GH_TEST_ISSUE_MODE:-valid}" in
+        nonexistent)
+            printf 'gh: Not Found (HTTP 404)\n' >&2
+            exit 1
+            ;;
+        pull-request)
+            printf 'pull_request\n'
+            exit 0
+            ;;
+    esac
+    if [[ "$*" == *".title"* ]]; then
+        printf 'issue\n%s\n' "${BASE_GH_TEST_ISSUE_TITLE:-Add basectl gh workflow for issues}"
+        exit 0
+    fi
+    if [[ "$*" == *".labels[].name"* ]]; then
+        printf 'issue\n'
+        case "${BASE_GH_TEST_ISSUE_MODE:-valid}" in
+            valid)
+                printf 'enhancement\nneeds-demo\n'
+                ;;
+            missing-category)
+                printf 'needs-demo\n'
+                ;;
+            multiple-categories)
+                printf 'bug\nenhancement\n'
+                ;;
+            *)
+                printf 'unexpected issue mode: %s\n' "$BASE_GH_TEST_ISSUE_MODE" >&2
+                exit 98
+                ;;
+        esac
+        exit 0
+    fi
+    printf 'unexpected issue api args: %s\n' "$*" >&2
+    exit 98
+fi
+if [[ "$1" == "pr" && "$2" == "create" ]]; then
+    printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+    body_file=""
+    while (($#)); do
+        if [[ "$1" == "--body-file" ]]; then
+            body_file="$2"
+            break
+        fi
+        shift
+    done
+    [[ -z "$body_file" ]] || cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+create_branch_pr_repo() {
+    local branch="$2"
+    local repo="$1"
+
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c "$branch" >/dev/null
+    write_branch_issue_gh_mock
+}
+
+run_branch_pr_create() {
+    local issue_mode="$2"
+    local repo="$1"
+    shift 2
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_ISSUE_MODE="$issue_mode" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            shift
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main pr create "$@"
+        ' bash "$repo" --no-fixes "$@"
+}
+
 write_issue_readiness_gh_mock() {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -209,6 +308,8 @@ run_gh_subcommand() {
     [[ "$output" == *"--assignee <login>"* ]]
     [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size <T|S|M|L>"* ]]
+    [[ "$output" == *"--repo, -R <owner/name>"* ]]
+    [[ "$output" == *"the explicit option, GH_REPO, then the origin remote"* ]]
     [[ "$output" == *"Default category: enhancement."* ]]
     [[ "$output" == *"Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml."* ]]
     [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
@@ -771,30 +872,15 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
-
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$*" == "issue view 117 --json labels --jq .labels[].name | select(. == \"bug\" or . == \"enhancement\" or . == \"documentation\" or . == \"ci\" or . == \"security\")" ]]; then
-    printf 'enhancement\n'
-    exit 0
-fi
-if [[ "$*" == "issue view 117 --json title --jq .title" ]]; then
-    printf 'Add basectl gh workflow for issues\n'
-    exit 0
-fi
-printf 'unexpected gh args: %s\n' "$*" >&2
-exit 1
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_branch_issue_gh_mock
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
@@ -811,17 +897,21 @@ EOF
     [ "$(git -C "$repo" branch --show-current)" = "master" ]
 }
 
-@test "basectl gh issue start accepts explicit category and title without gh" {
+@test "basectl gh issue start verifies an explicit category and title against the issue" {
     local repo
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
             source "$BASE_HOME/base_init.sh"
@@ -835,6 +925,96 @@ EOF
     [ "$(printf '%s\n' "$output" | sed -n '3p')" = "To create a worktree:" ]
     [[ "$(printf '%s\n' "$output" | sed -n '4p')" == "  git worktree add -b enhancement/117-"*"-prune-merged-branches "*"/repo-worktrees/117-prune-merged-branches origin/master" ]]
     [ "$(git -C "$repo" branch --show-current)" = "master" ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/basefoundry/base/issues/117 --jq"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"issue view 117"* ]]
+}
+
+@test "basectl gh issue start honors an explicit upstream repository before GH_REPO and origin" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    git -C "$repo" remote add origin https://github.com/fork-owner/base.git
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        GH_REPO="github.com/environment/base" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 -R upstream/base --title "Prune merged branches"
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == "enhancement/117-"*"-prune-merged-branches"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/upstream/base/issues/117 --jq"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"repos/environment/base/issues/117"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"repos/fork-owner/base/issues/117"* ]]
+}
+
+@test "basectl gh issue start honors GH_REPO before a fork origin" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    git -C "$repo" remote add origin https://github.com/fork-owner/base.git
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        GH_REPO="github.com/upstream/base" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 --title "Prune merged branches"
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == "enhancement/117-"*"-prune-merged-branches"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/upstream/base/issues/117 --jq"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"repos/fork-owner/base/issues/117"* ]]
+}
+
+@test "basectl gh issue start rejects an explicit category that mismatches the issue" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 --category bug --title "Prune merged branches"
+        ' bash "$repo"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--category bug' does not match issue #117 category 'enhancement'."* ]]
+    [[ "$output" != *"To create a worktree:"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/basefoundry/base/issues/117 --jq"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"issue view 117"* ]]
 }
 
 @test "basectl gh issue start gets branch date without date command" {
@@ -842,8 +1022,10 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
 
     cat > "$TEST_MOCKBIN/date" <<'EOF'
 #!/usr/bin/env bash
@@ -855,6 +1037,7 @@ EOF
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
@@ -873,8 +1056,10 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
 
     for tool in cut sed; do
         cat > "$TEST_MOCKBIN/$tool" <<'EOF'
@@ -888,6 +1073,7 @@ EOF
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
@@ -908,28 +1094,11 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
     git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
-
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-body_file=""
-while (($#)); do
-    if [[ "$1" == "--body-file" ]]; then
-        body_file="$2"
-        break
-    fi
-    shift
-done
-[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
-exit 0
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_branch_issue_gh_mock
 
     run env \
         HOME="$TEST_HOME" \
@@ -958,6 +1127,7 @@ EOF
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
             [[ "$(base_github_branch_name enhancement 117 valid-branch 20260528)" == "enhancement/117-20260528-valid-branch" ]] || exit 1
+            [[ "$(base_github_branch_name enhancement 117 leap-day 20240229)" == "enhancement/117-20240229-leap-day" ]] || exit 1
             for category in bug enhancement documentation ci security; do
                 base_github_branch_category_is_valid "$category" || exit 1
                 base_github_branch_name_is_valid "$category/117-20260528-valid-branch" || exit 1
@@ -978,6 +1148,10 @@ EOF
                 enhancement/117-missing-date \
                 enhancement/0-20260528-zero-issue \
                 enhancement/117-2026052-short-date \
+                enhancement/117-00000101-zero-year \
+                enhancement/117-20260229-non-leap-day \
+                enhancement/117-20260431-impossible-day \
+                enhancement/117-20261301-impossible-month \
                 enhancement/117-20260528-Uppercase-slug \
                 enhancement/117-20260528-double--hyphen; do
                 if base_github_branch_name_is_valid "$branch"; then
@@ -985,6 +1159,31 @@ EOF
                     exit 1
                 fi
             done
+        '
+
+    [ "$status" -eq 0 ]
+}
+
+@test "basectl gh pr target repository honors gh selectors before origin" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        GH_REPO="github.com/environment/project" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_infer_github_repo() {
+                printf "origin/project\n"
+            }
+
+            [[ "$(base_gh_pr_target_repo --repo explicit/value)" == "explicit/value" ]] || exit 1
+            [[ "$(base_gh_pr_target_repo --repo=equals/value)" == "equals/value" ]] || exit 1
+            [[ "$(base_gh_pr_target_repo -R short/value)" == "short/value" ]] || exit 1
+            [[ "$(base_gh_pr_target_repo -R=short-equals/value)" == "short-equals/value" ]] || exit 1
+            [[ "$(base_gh_pr_target_repo --title Example)" == "environment/project" ]] || exit 1
+            unset GH_REPO
+            [[ "$(base_gh_pr_target_repo --title Example)" == "origin/project" ]] || exit 1
         '
 
     [ "$status" -eq 0 ]
@@ -1024,24 +1223,82 @@ EOF
     [[ "$output" != *"unexpected gh args"* ]]
 }
 
+@test "basectl gh pr create rejects a branch category that mismatches the issue" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    create_branch_pr_repo "$repo" "bug/117-20260528-basectl-gh-workflow"
+
+    run_branch_pr_create "$repo" valid
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Branch category 'bug' does not match issue #117 category 'enhancement'."* ]]
+    [[ "$output" == *"basectl gh issue start 117"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"pr create"* ]]
+}
+
+@test "basectl gh pr create rejects a nonexistent issue" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    create_branch_pr_repo "$repo" "enhancement/117-20260528-basectl-gh-workflow"
+
+    run_branch_pr_create "$repo" nonexistent
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to determine the category label for GitHub issue #117 in 'basefoundry/base'. Confirm that the issue exists and is accessible."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"pr create"* ]]
+}
+
+@test "basectl gh pr create rejects a pull request number as its issue" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    create_branch_pr_repo "$repo" "enhancement/117-20260528-basectl-gh-workflow"
+
+    run_branch_pr_create "$repo" pull-request
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"GitHub reference #117 in 'basefoundry/base' is a pull request, not an issue."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"pr create"* ]]
+}
+
+@test "basectl gh pr create rejects multiple standard issue category labels" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    create_branch_pr_repo "$repo" "enhancement/117-20260528-basectl-gh-workflow"
+
+    run_branch_pr_create "$repo" multiple-categories
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"GitHub issue #117 in 'basefoundry/base' must have exactly one category label: bug, enhancement, documentation, ci, or security."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"pr create"* ]]
+}
+
+@test "basectl gh pr create rejects an issue missing a standard category label" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    create_branch_pr_repo "$repo" "enhancement/117-20260528-basectl-gh-workflow"
+
+    run_branch_pr_create "$repo" missing-category
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"GitHub issue #117 in 'basefoundry/base' must have exactly one category label: bug, enhancement, documentation, ci, or security."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"pr create"* ]]
+}
+
 @test "basectl gh pr create uses reusable temp helper for PR body" {
     local repo
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
     git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
-
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-exit 0
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_branch_issue_gh_mock
 
     run env \
         HOME="$TEST_HOME" \
@@ -1069,6 +1326,7 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     repo_root="$(cd "$repo" && pwd -P)"
     mkdir -p "$repo/docs"
     cat > "$repo/base_manifest.yaml" <<'EOF'
@@ -1094,29 +1352,7 @@ EOF
     git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
     printf 'docs\n' > "$repo/docs/workflow.md"
     commit_all "$repo" "Update docs"
-
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-if [[ "$1 $2 $3" == "issue view 117" ]]; then
-    printf 'needs-demo\n'
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-body_file=""
-while (($#)); do
-    if [[ "$1" == "--body-file" ]]; then
-        body_file="$2"
-        break
-    fi
-    shift
-done
-[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
-exit 0
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_branch_issue_gh_mock
     cat > "$TEST_MOCKBIN/base-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
@@ -1146,17 +1382,19 @@ EOF
             cd "$1"
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main pr create
+            base_gh_subcommand_main pr create --repo upstream/project
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Auto-linking PR to issue #117 from branch name. Pass --no-fixes to suppress."* ]]
-    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == pr\ create\ --fill\ --body-file* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == pr\ create\ --fill\ --body-file*"--repo upstream/project"* ]]
     [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"base_pr_policy body --manifest $repo_root/base_manifest.yaml --issue 117"* ]]
     [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"--label needs-demo"* ]]
     [[ "$(cat "$TEST_STATE_DIR/wrapper-args")" == *"--path docs/workflow.md"* ]]
     [[ "$(cat "$TEST_STATE_DIR/body")" == *"## Demo Impact"* ]]
     [[ "$(cat "$TEST_STATE_DIR/body")" == *"## Docs Impact"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/upstream/project/issues/117 --jq"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" != *"api repos/basefoundry/base/issues/117"* ]]
 }
 
 @test "basectl gh pr create supports no-fixes opt out" {
@@ -1164,28 +1402,11 @@ EOF
 
     repo="$TEST_TMPDIR/repo"
     init_git_repo "$repo"
+    add_github_origin "$repo"
     printf 'hello\n' > "$repo/README.md"
     commit_all "$repo" "Initial commit"
     git -C "$repo" switch -c "enhancement/117-20260528-basectl-gh-workflow" >/dev/null
-
-    cat > "$TEST_MOCKBIN/gh" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$*" == "auth status -h github.com" ]]; then
-    exit 0
-fi
-printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
-body_file=""
-while (($#)); do
-    if [[ "$1" == "--body-file" ]]; then
-        body_file="$2"
-        break
-    fi
-    shift
-done
-[[ -n "$body_file" ]] && cat "$body_file" > "${BASE_GH_TEST_STATE_DIR:?}/body"
-exit 0
-EOF
-    chmod +x "$TEST_MOCKBIN/gh"
+    write_branch_issue_gh_mock
 
     run env \
         HOME="$TEST_HOME" \

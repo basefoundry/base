@@ -62,8 +62,9 @@ options.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
   workspace, configure GitHub repository settings, default branch protection,
-  and non-default branch naming enforcement, repair missing Project intake
-  support files, configure standard GitHub Project metadata, replace nonstandard
+  non-default branch naming enforcement, and the trusted issue/category branch
+  policy status, repair missing Project intake support files, configure standard
+  GitHub Project metadata, replace nonstandard
   Project layouts from `base-project-template`, seed agent guidance, and write
   installer templates. `repo init` defaults new
   repositories to the configured workspace root; use `--path .` for the current
@@ -97,8 +98,11 @@ options.
     body sections and reports labels and assignees. Pass `--project-owner` and
     `--project-number` with `--repo` to validate Base Project fields; without
     Project coordinates it reports a partial result.
+  - `basectl gh issue start <number>` resolves issue metadata from an explicit
+    `--repo`/`-R` selector, then `GH_REPO`, then the origin remote.
   - `basectl gh pr create` auto-injects `Fixes #<issue>` from Base branch
-    names; pass `--no-fixes` to suppress that body injection. When
+    names and fails before PR creation when the prefix disagrees with the
+    issue's single category label; pass `--no-fixes` to suppress only that body injection. When
     `base_manifest.yaml` declares `github.pr`, it renders the PR body from
     that project policy.
   - `basectl gh project doctor --project <title>` - inspect Project metadata

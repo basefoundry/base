@@ -105,6 +105,10 @@ architecture discussion.
 - Every non-default branch name must include an allowed category, issue number,
   date, and slug. Base enforces this at the GitHub ruleset boundary so the
   standard does not depend on a particular human or AI tool.
+- The category prefix must match the issue's single standard category label.
+  Base verifies that through `basectl gh` and the required, GitHub-Actions-bound
+  `base/issue-branch-policy` PR-head status; issue relabeling refreshes matching
+  open PRs automatically.
 - Base dogfoods `basectl gh` when it supports the needed workflow.
 
 ## AI Context

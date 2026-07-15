@@ -186,6 +186,9 @@ repo-owned Project support files such as `.github/base-project.yml` and
 `.github/workflows/project-intake.yml` without overwriting existing files. This
 lets older Base-managed repositories pick up the external-issue intake fallback
 without rerunning a full repository initialization.
+Independently of Project metadata, `repo configure` also seeds a missing
+`.github/workflows/issue-branch-policy.yml` so older repositories can adopt the
+semantic branch check through a reviewed commit.
 
 ## Local Baseline
 
@@ -201,6 +204,7 @@ without rerunning a full repository initialization.
 - `.gitignore`
 - `base_manifest.yaml`
 - `tests/validate.sh`
+- `.github/workflows/issue-branch-policy.yml`
 - `.github/workflows/project-intake.yml`
 - `.github/workflows/tests.yml`
 
@@ -369,6 +373,7 @@ the current GitHub repository policy:
 - squash commit message set to PR title and description
 - Base-managed default branch protection enabled
 - Base-managed branch naming enforcement enabled for non-default branches
+- trusted issue/category branch policy workflow installed
 - standard GitHub Project metadata enabled
 
 They also create or update these labels:
@@ -383,16 +388,41 @@ They also create or update these labels:
 Default branch protection is intentionally modest. `repo configure` creates or
 updates a named repository ruleset, `Base default branch protection`, targeting
 `~DEFAULT_BRANCH`. The ruleset requires pull requests before merge and blocks
-branch deletion and non-fast-forward updates such as force pushes. It does not
-require status checks, approval counts, CODEOWNERS, teams, or repository
-secrets. Pass `--no-protect-default-branch` when a repository intentionally
-skips this Base-managed ruleset.
+branch deletion and non-fast-forward updates such as force pushes. When the
+trusted Issue Branch Policy workflow is active and has produced a recent
+trusted success, the ruleset also requires `base/issue-branch-policy`, bound to
+the GitHub Actions integration. It does not manage other status checks,
+approval counts, CODEOWNERS, teams, or repository secrets. Pass
+`--no-protect-default-branch` when a repository intentionally skips this
+Base-managed ruleset.
 
 Branch naming enforcement is tool-independent. `repo configure` creates or
 updates the active `Base branch naming` ruleset for all non-default branches and
 requires `<category>/<issue>-<YYYYMMDD>-<slug>`, using one of the standard Base
-categories. This rejects nonconforming remote branches whether they come from a
+categories. The CLI and semantic workflow also reject impossible calendar
+dates. This rejects nonconforming remote branches whether they come from a
 human, an AI tool, a GitHub Action, or a Base helper.
+
+The generated `.github/workflows/issue-branch-policy.yml` verifies the semantic
+half of the convention: the referenced number must be an issue with exactly one
+standard category label, and the branch prefix must match it. The workflow uses
+`pull_request_target`, does not check out or execute pull-request code, and
+publishes `base/issue-branch-policy` to the PR head SHA. Issue label events
+queue default-branch revalidation runs for matching open pull requests, using
+the same head-SHA concurrency key as ordinary pull request validation. Each run
+validates every open pull request sharing that SHA, and synchronize events
+revalidate peers left on the previous SHA. Because GitHub commit statuses are
+SHA-scoped, the workflow is an asynchronous semantic gate; the branch naming
+ruleset remains the immediate enforcement boundary for branches created in the
+repository. Fork branches cannot be governed by the repository's branch-name
+ruleset, so their semantic validation occurs through the workflow. `repo configure`
+seeds the workflow when it is missing, but only makes its status required after
+the workflow is present on the default branch and a recent default-branch
+dispatch has produced a trusted GitHub Actions status. Feature-branch runs are
+ignored. Base pins the requirement to that integration and preserves an
+already-bound requirement if retained run history later expires. Commit and
+merge a newly seeded workflow, dispatch it on the default branch for a pull
+request, then rerun `repo configure` to activate the required status.
 
 GitHub rulesets are available for public repositories on GitHub Free and for
 public and private repositories on GitHub Pro, Team, or Enterprise plans. When
@@ -442,10 +472,9 @@ Dry-run mode does not require authentication because it only prints the planned
 
 ## Boundaries
 
-The default branch protection policy does not manage required status checks,
-approval counts, repository secrets, teams, CODEOWNERS, or Base-specific PR
-sections such as `Demo Impact`. The optional agent guidance baseline also does
-not install Superpowers, manage `~/.codex/config.toml`, or vendor third-party
-methodology files. Those are separate workflow and policy decisions. Base can
-grow those capabilities once the baseline command has proven useful for real
-repos such as the Base demo project.
+The default branch protection policy manages only the Base-owned
+`base/issue-branch-policy` required status. It does not manage other required
+checks, approval counts, repository secrets, teams, CODEOWNERS, or Base-specific
+PR sections such as `Demo Impact`. The optional agent guidance baseline also
+does not install Superpowers, manage `~/.codex/config.toml`, or vendor
+third-party methodology files.

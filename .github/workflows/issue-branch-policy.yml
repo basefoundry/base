@@ -1,0 +1,508 @@
+name: Issue Branch Policy
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+  issues:
+    types:
+      - labeled
+      - unlabeled
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to validate"
+        required: true
+        type: string
+      head_sha:
+        description: "Head commit SHA used for same-commit concurrency"
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  issues: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number && format('issue-{0}-{1}', github.event.issue.number, github.event.label.name) || format('sha-{0}', github.event.pull_request.head.sha || inputs.head_sha || github.run_id) }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Publish issue branch policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      POLICY_CONTEXT: base/issue-branch-policy
+      PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request_number }}
+      ISSUE_EVENT_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_EVENT_LABEL: ${{ github.event.label.name }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      DISPATCH_HEAD_SHA: ${{ inputs.head_sha }}
+      PREVIOUS_HEAD_SHA: ${{ github.event.before }}
+      RUN_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Validate issue-backed branch
+        run: |
+          publish_status() {
+            local head_sha="$1"
+            local state="$2"
+            local description="$3"
+
+            gh api "repos/$GITHUB_REPOSITORY/statuses/$head_sha" \
+              --method POST \
+              -f state="$state" \
+              -f context="$POLICY_CONTEXT" \
+              -f description="$description" \
+              -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              >/dev/null
+          }
+
+          fail_policy() {
+            local head_sha="$1"
+            local description="$2"
+
+            publish_status "$head_sha" failure "$description" || true
+            printf '%s\n' "$description" >&2
+            return 1
+          }
+
+          publish_readiness() {
+            if [[ ! "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              printf 'Workflow run did not provide a valid trusted SHA.\n' >&2
+              return 1
+            fi
+            publish_status "$RUN_SHA" success "Issue branch policy workflow is ready"
+          }
+
+          category_is_standard() {
+            case "$1" in
+              bug | enhancement | documentation | ci | security) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          calendar_date_is_valid() {
+            local value="$1"
+            local year month day days_in_month
+
+            [[ "$value" =~ ^[0-9]{8}$ ]] || return 1
+            year=$((10#${value:0:4}))
+            month=$((10#${value:4:2}))
+            day=$((10#${value:6:2}))
+            ((year >= 1 && month >= 1 && month <= 12 && day >= 1)) || return 1
+
+            case "$month" in
+              1 | 3 | 5 | 7 | 8 | 10 | 12) days_in_month=31 ;;
+              4 | 6 | 9 | 11) days_in_month=30 ;;
+              2)
+                days_in_month=28
+                if ((year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))); then
+                  days_in_month=29
+                fi
+                ;;
+            esac
+
+            ((day <= days_in_month))
+          }
+
+          branch_pattern='^(bug|enhancement|documentation|ci|security)/([1-9][0-9]*)-([0-9]{8})-[a-z0-9]+(-[a-z0-9]+)*$'
+
+          validate_pull_request() {
+            local pull_request_number="$1"
+            local expected_head_sha="$2"
+            local pull_request_json branch_name head_sha
+            local category issue branch_date issue_json category_lines
+            local issue_categories=()
+            local issue_category
+
+            if [[ ! "$pull_request_number" =~ ^[1-9][0-9]*$ ]]; then
+              printf 'Pull request number must be a positive integer.\n' >&2
+              return 1
+            fi
+            pull_request_json="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pull_request_number")" || {
+              printf 'Unable to read pull request #%s.\n' "$pull_request_number" >&2
+              return 1
+            }
+            branch_name="$(jq -r '.head.ref // ""' <<< "$pull_request_json")" || {
+              printf 'Pull request #%s did not provide a readable branch name.\n' "$pull_request_number" >&2
+              return 1
+            }
+            head_sha="$(jq -r '.head.sha // ""' <<< "$pull_request_json")" || {
+              printf 'Pull request #%s did not provide a readable head SHA.\n' "$pull_request_number" >&2
+              return 1
+            }
+            if [[ ! "$head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              printf 'Pull request #%s did not provide a valid head SHA.\n' "$pull_request_number" >&2
+              return 1
+            fi
+            if [[ "$head_sha" != "$expected_head_sha" ]]; then
+              printf 'Pull request #%s no longer shares commit %s; skipping it.\n' \
+                "$pull_request_number" "$expected_head_sha"
+              return 2
+            fi
+
+            if [[ ! "$branch_name" =~ $branch_pattern ]]; then
+              printf 'Pull request #%s: branch name is not canonical.\n' \
+                "$pull_request_number" >&2
+              return 1
+            fi
+
+            category="${BASH_REMATCH[1]}"
+            issue="${BASH_REMATCH[2]}"
+            branch_date="${BASH_REMATCH[3]}"
+            if ! calendar_date_is_valid "$branch_date"; then
+              printf 'Pull request #%s: branch date is not a valid YYYYMMDD date.\n' \
+                "$pull_request_number" >&2
+              return 1
+            fi
+
+            issue_json="$(gh api "repos/$GITHUB_REPOSITORY/issues/$issue" 2>/dev/null)" || {
+              printf 'Pull request #%s: referenced issue #%s does not exist.\n' \
+                "$pull_request_number" "$issue" >&2
+              return 1
+            }
+
+            if jq -e 'has("pull_request")' >/dev/null <<< "$issue_json"; then
+              printf 'Pull request #%s: #%s is a pull request, not an issue.\n' \
+                "$pull_request_number" "$issue" >&2
+              return 1
+            fi
+
+            category_lines="$(
+              jq -r '
+                [.labels[].name
+                  | select(
+                      . == "bug" or
+                      . == "enhancement" or
+                      . == "documentation" or
+                      . == "ci" or
+                      . == "security"
+                    )]
+                | unique
+                | .[]
+              ' <<< "$issue_json"
+            )" || {
+              printf 'Pull request #%s: unable to read category labels from issue #%s.\n' \
+                "$pull_request_number" "$issue" >&2
+              return 1
+            }
+            while IFS= read -r issue_category; do
+              [[ -z "$issue_category" ]] || issue_categories+=("$issue_category")
+            done <<< "$category_lines"
+
+            if ((${#issue_categories[@]} != 1)); then
+              printf 'Pull request #%s: issue #%s needs exactly one category label.\n' \
+                "$pull_request_number" "$issue" >&2
+              return 1
+            fi
+            if [[ "${issue_categories[0]}" != "$category" ]]; then
+              printf 'Pull request #%s: branch category does not match issue #%s.\n' \
+                "$pull_request_number" "$issue" >&2
+              return 1
+            fi
+
+            printf 'Validated %s against issue #%s (%s).\n' "$branch_name" "$issue" "$category"
+          }
+
+          if [[ -n "$ISSUE_EVENT_NUMBER" ]]; then
+            if [[ ! "$ISSUE_EVENT_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+              printf 'Issue event number must be a positive integer.\n' >&2
+              exit 1
+            fi
+            if ! category_is_standard "$ISSUE_EVENT_LABEL"; then
+              printf 'Label %s does not affect the branch category policy.\n' "$ISSUE_EVENT_LABEL"
+              exit 0
+            fi
+            if [[ -z "$DEFAULT_BRANCH" ]]; then
+              printf 'Issue event did not provide the repository default branch.\n' >&2
+              exit 1
+            fi
+
+            open_pull_requests="$(
+              gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+                --paginate \
+                --jq '.[] | [.number, .head.ref, .head.sha] | @tsv'
+            )" || {
+              printf 'Unable to list open pull requests for issue #%s.\n' "$ISSUE_EVENT_NUMBER" >&2
+              exit 1
+            }
+
+            matched=0
+            overall_status=0
+            while IFS=$'\t' read -r candidate_number candidate_branch candidate_head_sha; do
+              [[ -n "$candidate_number" ]] || continue
+              if [[ ! "$candidate_number" =~ ^[1-9][0-9]*$ ||
+                -z "$candidate_branch" || ! "$candidate_head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+                printf 'GitHub returned an invalid open pull request record.\n' >&2
+                overall_status=1
+                continue
+              fi
+              if [[ "$candidate_branch" =~ $branch_pattern ]] &&
+                [[ "${BASH_REMATCH[2]}" == "$ISSUE_EVENT_NUMBER" ]]; then
+                matched=$((matched + 1))
+                if ! publish_status "$candidate_head_sha" pending \
+                  "Issue category changed; revalidating branch policy"; then
+                  printf 'Unable to publish pending status for pull request #%s.\n' \
+                    "$candidate_number" >&2
+                  overall_status=1
+                fi
+                if gh api \
+                  "repos/$GITHUB_REPOSITORY/actions/workflows/issue-branch-policy.yml/dispatches" \
+                  --method POST \
+                  -f ref="$DEFAULT_BRANCH" \
+                  -f "inputs[pull_request_number]=$candidate_number" \
+                  -f "inputs[head_sha]=$candidate_head_sha"; then
+                  printf 'Queued branch-policy revalidation for pull request #%s.\n' \
+                    "$candidate_number"
+                else
+                  publish_status "$candidate_head_sha" failure \
+                    "Unable to queue issue-label branch policy validation" || true
+                  printf 'Unable to queue branch-policy revalidation for pull request #%s.\n' \
+                    "$candidate_number" >&2
+                  overall_status=1
+                fi
+              fi
+            done <<< "$open_pull_requests"
+
+            if ((matched == 0)); then
+              printf 'No open pull requests reference issue #%s.\n' "$ISSUE_EVENT_NUMBER"
+            fi
+            exit "$overall_status"
+          fi
+
+          case "$EVENT_NAME" in
+            pull_request_target)
+              if [[ ! "$EVENT_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+                printf 'Pull request event did not provide a valid head SHA.\n' >&2
+                exit 1
+              fi
+              target_head_sha="$EVENT_HEAD_SHA"
+              ;;
+            workflow_dispatch)
+              if [[ ! "$DISPATCH_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+                printf 'Dispatched head SHA must be a lowercase 40-character commit SHA.\n' >&2
+                exit 1
+              fi
+              target_head_sha="$DISPATCH_HEAD_SHA"
+              ;;
+            *)
+              printf 'Unsupported branch policy event: %s.\n' "$EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$PULL_REQUEST_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            fail_policy "$target_head_sha" "Pull request number must be a positive integer" || true
+            exit 1
+          fi
+          requested_pull_request_json="$(
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST_NUMBER"
+          )" || {
+            fail_policy "$target_head_sha" \
+              "Unable to read pull request #$PULL_REQUEST_NUMBER" || true
+            exit 1
+          }
+          requested_pull_request_number="$(
+            jq -r '.number // ""' <<< "$requested_pull_request_json"
+          )" || {
+            fail_policy "$target_head_sha" \
+              "Pull request response did not provide a readable number" || true
+            exit 1
+          }
+          requested_head_sha="$(
+            jq -r '.head.sha // ""' <<< "$requested_pull_request_json"
+          )" || {
+            fail_policy "$target_head_sha" \
+              "Pull request response did not provide a readable head SHA" || true
+            exit 1
+          }
+          requested_state="$(
+            jq -r '.state // ""' <<< "$requested_pull_request_json"
+          )" || {
+            fail_policy "$target_head_sha" \
+              "Pull request response did not provide a readable state" || true
+            exit 1
+          }
+          if [[ "$requested_pull_request_number" != "$PULL_REQUEST_NUMBER" ]]; then
+            fail_policy "$target_head_sha" \
+              "Pull request API response did not match the requested pull request" || true
+            exit 1
+          fi
+          if [[ ! "$requested_head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            fail_policy "$target_head_sha" \
+              "Pull request response did not provide a valid head SHA" || true
+            exit 1
+          fi
+          if [[ "$requested_state" != "open" && "$requested_state" != "closed" ]]; then
+            fail_policy "$target_head_sha" \
+              "Pull request response did not provide a valid state" || true
+            exit 1
+          fi
+
+          target_matches_live=0
+          [[ "$target_head_sha" != "$requested_head_sha" ]] || target_matches_live=1
+          repair_previous=0
+          if [[ "$EVENT_NAME" == "pull_request_target" && -n "$PREVIOUS_HEAD_SHA" ]]; then
+            if [[ ! "$PREVIOUS_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              fail_policy "$target_head_sha" \
+                "Synchronize event did not provide a valid previous head SHA" || true
+              exit 1
+            fi
+            [[ "$PREVIOUS_HEAD_SHA" == "$target_head_sha" ]] || repair_previous=1
+          fi
+
+          if ((target_matches_live == 0 && repair_previous == 0)); then
+            printf 'Skipping stale %s for pull request #%s: expected %s, now at %s.\n' \
+              "$EVENT_NAME" "$PULL_REQUEST_NUMBER" "$target_head_sha" "$requested_head_sha"
+            exit 0
+          fi
+
+          open_pull_request_heads="$(
+            gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+              --paginate \
+              --jq '.[] | [.number, .head.sha] | @tsv'
+          )" || {
+            if ((repair_previous != 0)); then
+              publish_status "$PREVIOUS_HEAD_SHA" failure \
+                "Unable to inspect PRs remaining on the previous commit" || true
+            fi
+            fail_policy "$target_head_sha" "Unable to inspect PRs sharing this commit" || true
+            exit 1
+          }
+
+          if ((repair_previous != 0)); then
+            previous_pull_request_number=""
+            previous_heads_valid=1
+            while IFS=$'\t' read -r candidate_number candidate_head_sha; do
+              [[ -n "$candidate_number" ]] || continue
+              if [[ ! "$candidate_number" =~ ^[1-9][0-9]*$ ||
+                ! "$candidate_head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+                printf 'GitHub returned an invalid open pull request head record.\n' >&2
+                previous_heads_valid=0
+                continue
+              fi
+              if [[ -z "$previous_pull_request_number" &&
+                "$candidate_head_sha" == "$PREVIOUS_HEAD_SHA" ]]; then
+                previous_pull_request_number="$candidate_number"
+              fi
+            done <<< "$open_pull_request_heads"
+
+            if ((previous_heads_valid == 0)); then
+              publish_status "$PREVIOUS_HEAD_SHA" failure \
+                "Unable to inspect PRs remaining on the previous commit" || true
+              fail_policy "$target_head_sha" \
+                "Unable to inspect PRs remaining on the previous commit" || true
+              exit 1
+            fi
+            if [[ -n "$previous_pull_request_number" ]]; then
+              if [[ -z "$DEFAULT_BRANCH" ]]; then
+                publish_status "$PREVIOUS_HEAD_SHA" failure \
+                  "Synchronize event did not provide the default branch" || true
+                if ((target_matches_live != 0)); then
+                  fail_policy "$target_head_sha" \
+                    "Synchronize event did not provide the repository default branch" || true
+                fi
+                exit 1
+              fi
+              if ! publish_status "$PREVIOUS_HEAD_SHA" pending \
+                "Revalidating PRs remaining on the previous commit"; then
+                printf 'Unable to publish pending status for previous commit %s; dispatching anyway.\n' \
+                  "$PREVIOUS_HEAD_SHA" >&2
+              fi
+              if ! gh api \
+                "repos/$GITHUB_REPOSITORY/actions/workflows/issue-branch-policy.yml/dispatches" \
+                --method POST \
+                -f ref="$DEFAULT_BRANCH" \
+                -f "inputs[pull_request_number]=$previous_pull_request_number" \
+                -f "inputs[head_sha]=$PREVIOUS_HEAD_SHA"; then
+                publish_status "$PREVIOUS_HEAD_SHA" failure \
+                  "Unable to queue previous-commit branch policy validation" || true
+                if ((target_matches_live != 0)); then
+                  fail_policy "$target_head_sha" \
+                    "Unable to queue previous-commit branch policy validation" || true
+                else
+                  printf 'Unable to queue previous-commit branch policy validation.\n' >&2
+                fi
+                exit 1
+              fi
+              printf 'Queued previous-commit validation for pull request #%s at %s.\n' \
+                "$previous_pull_request_number" "$PREVIOUS_HEAD_SHA"
+            else
+              printf 'No open pull requests remain on previous commit %s.\n' \
+                "$PREVIOUS_HEAD_SHA"
+            fi
+          fi
+
+          if ((target_matches_live == 0)); then
+            printf 'Skipping stale pull request event for pull request #%s after repairing %s; now at %s.\n' \
+              "$PULL_REQUEST_NUMBER" "$PREVIOUS_HEAD_SHA" "$requested_head_sha"
+            exit 0
+          fi
+
+          if ! publish_status "$target_head_sha" pending \
+            "Validating every open PR sharing this commit"; then
+            printf 'Unable to publish the pending branch policy status for pull request #%s.\n' \
+              "$PULL_REQUEST_NUMBER" >&2
+          fi
+
+          overall_status=0
+          requested_validated=0
+          validated_count=0
+          while IFS=$'\t' read -r candidate_number candidate_head_sha; do
+            [[ -n "$candidate_number" ]] || continue
+            if [[ ! "$candidate_number" =~ ^[1-9][0-9]*$ ||
+              ! "$candidate_head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              printf 'GitHub returned an invalid open pull request head record.\n' >&2
+              overall_status=1
+              continue
+            fi
+            [[ "$candidate_head_sha" == "$target_head_sha" ]] || continue
+
+            if validate_pull_request "$candidate_number" "$target_head_sha"; then
+              validated_count=$((validated_count + 1))
+              [[ "$candidate_number" != "$PULL_REQUEST_NUMBER" ]] || requested_validated=1
+            else
+              validation_status=$?
+              if ((validation_status != 2)); then
+                validated_count=$((validated_count + 1))
+                overall_status=1
+                [[ "$candidate_number" != "$PULL_REQUEST_NUMBER" ]] || requested_validated=1
+              fi
+            fi
+          done <<< "$open_pull_request_heads"
+
+          if [[ "$requested_state" == "open" && "$requested_validated" == "0" ]] ||
+            ((validated_count == 0)); then
+            if validate_pull_request "$PULL_REQUEST_NUMBER" "$target_head_sha"; then
+              validated_count=$((validated_count + 1))
+            else
+              overall_status=1
+            fi
+          fi
+
+          if ((overall_status != 0)); then
+            fail_policy "$target_head_sha" \
+              "One or more PRs sharing this commit violate branch policy" || true
+            exit 1
+          fi
+
+          publish_status "$target_head_sha" success \
+            "All PRs sharing this commit match branch policy" || {
+            printf 'Unable to publish the successful branch policy status for pull request #%s.\n' \
+              "$PULL_REQUEST_NUMBER" >&2
+            exit 1
+          }
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            publish_readiness
+          fi

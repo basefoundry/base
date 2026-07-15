@@ -20,10 +20,39 @@ base_github_issue_number_is_valid() {
     [[ "$issue" =~ ^[1-9][0-9]*$ ]]
 }
 
+base_github_branch_date_is_valid() {
+    local branch_date="$1"
+    local day days_in_month month year
+
+    [[ "$branch_date" =~ ^([0-9]{4})([0-9]{2})([0-9]{2})$ ]] || return 1
+    year=$((10#${BASH_REMATCH[1]}))
+    month=$((10#${BASH_REMATCH[2]}))
+    day=$((10#${BASH_REMATCH[3]}))
+
+    ((year >= 1 && month >= 1 && month <= 12 && day >= 1)) || return 1
+    case "$month" in
+        1|3|5|7|8|10|12) days_in_month=31 ;;
+        4|6|9|11) days_in_month=30 ;;
+        2)
+            days_in_month=28
+            if ((year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))); then
+                days_in_month=29
+            fi
+            ;;
+    esac
+
+    ((day <= days_in_month))
+}
+
 base_github_branch_name_is_valid() {
     local branch="$1"
+    local branch_date issue_and_rest
 
-    [[ "$branch" =~ $BASE_GITHUB_BRANCH_NAME_PATTERN ]]
+    [[ "$branch" =~ $BASE_GITHUB_BRANCH_NAME_PATTERN ]] || return 1
+    issue_and_rest="${branch#*/}"
+    branch_date="${issue_and_rest#*-}"
+    branch_date="${branch_date%%-*}"
+    base_github_branch_date_is_valid "$branch_date"
 }
 
 base_github_branch_name() {
@@ -44,16 +73,64 @@ base_github_branch_name() {
     printf '%s\n' "$branch"
 }
 
+base_github_issue_response_values() {
+    local output="$1"
+
+    case "$output" in
+        pull_request)
+            return 3
+            ;;
+        issue)
+            return 0
+            ;;
+        issue$'\n'*)
+            printf '%s\n' "${output#*$'\n'}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+base_github_issue_labels() {
+    local issue="$2"
+    local output
+    local repo="$1"
+
+    [[ -n "$repo" ]] || return 1
+    base_github_issue_number_is_valid "$issue" || return 1
+    output="$(
+        gh api "repos/$repo/issues/$issue" \
+            --jq 'if has("pull_request") then "pull_request" else "issue", (.labels[].name) end'
+    )" || return 1
+    base_github_issue_response_values "$output"
+}
+
+base_github_issue_title() {
+    local issue="$2"
+    local output
+    local repo="$1"
+
+    [[ -n "$repo" ]] || return 1
+    base_github_issue_number_is_valid "$issue" || return 1
+    output="$(
+        gh api "repos/$repo/issues/$issue" \
+            --jq 'if has("pull_request") then "pull_request" else "issue", .title end'
+    )" || return 1
+    base_github_issue_response_values "$output"
+}
+
 base_github_issue_category() {
     local categories=()
     local issue="$2"
     local label
     local labels
     local repo="$1"
+    local status
 
-    [[ -n "$repo" ]] || return 1
-    base_github_issue_number_is_valid "$issue" || return 1
-    labels="$(gh issue view "$issue" --repo "$repo" --json labels --jq '.labels[].name')" || return 1
+    labels="$(base_github_issue_labels "$repo" "$issue")"
+    status=$?
+    ((status == 0)) || return "$status"
     while IFS= read -r label; do
         base_github_branch_category_is_valid "$label" && categories+=("$label")
     done <<< "$labels"

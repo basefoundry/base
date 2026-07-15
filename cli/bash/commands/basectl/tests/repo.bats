@@ -28,6 +28,26 @@ fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
     exit 0
 fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2999-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "--paginate" && "$3" == "--slurp" && "$4" == "repos/codeforester/base-demo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/statuses?per_page=100" ]]; then
+    printf '%s\n' '[[{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/77","creator":{"login":"github-actions[bot]"}}]]'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "/apps/github-actions" ]]; then
+    printf '15368\n'
+    exit 0
+fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
@@ -510,8 +530,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 4 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'enhancement\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/4" ]]; then
+    printf 'issue\nenhancement\n'
     exit 0
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
@@ -544,6 +564,23 @@ EOF
     grep -Fq "project_intake_gh()" "$template"
     if grep -Fq "project_intake_gh()" "$dispatcher"; then
         fail "repo dispatcher should not embed the Project Intake workflow program"
+    fi
+}
+
+@test "basectl repo issue branch policy workflow is maintained as a template asset" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local template="$BASE_REPO_ROOT/templates/issue-branch-policy.yml"
+    local workflow="$BASE_REPO_ROOT/.github/workflows/issue-branch-policy.yml"
+
+    [ -f "$template" ]
+    [ -f "$workflow" ]
+    cmp "$template" "$workflow"
+    grep -Fq "templates/issue-branch-policy.yml" "$dispatcher"
+    grep -Fq "name: Issue Branch Policy" "$template"
+    grep -Fq "pull_request_target:" "$template"
+    grep -Fq "base/issue-branch-policy" "$template"
+    if grep -Fq "publish_status()" "$dispatcher"; then
+        fail "repo dispatcher should not embed the Issue Branch Policy workflow program"
     fi
 }
 
@@ -851,8 +888,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 703 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'documentation\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/703" ]]; then
+    printf 'issue\ndocumentation\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -1029,8 +1066,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 802 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'ci\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/802" ]]; then
+    printf 'issue\nci\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -1130,12 +1167,15 @@ EOF
     grep -Fq "# Agent Instructions for base-demo" "$repo_dir/AGENTS.md"
     grep -Fq "git worktree add -b <branch> ../base-demo-worktrees/<slug> origin/master" "$repo_dir/AGENTS.md"
     grep -Fq "env -u BASE_HOME ./bin/base-test" "$repo_dir/AGENTS.md"
-    grep -Fq '`bug`, `enhancement`, `documentation`,' "$repo_dir/AGENTS.md"
-    grep -Fq '`ci`, or `security`.' "$repo_dir/AGENTS.md"
+    grep -Fq '`bug`, `enhancement`,' "$repo_dir/AGENTS.md"
+    grep -Fq '`documentation`, `ci`, or `security`.' "$repo_dir/AGENTS.md"
+    grep -Fq "Use exactly one standard issue category label" "$repo_dir/AGENTS.md"
+    grep -Fq "The category prefix must match the issue's single standard category label." "$repo_dir/AGENTS.md"
     grep -Fq "This branch shape is tool-independent" "$repo_dir/AGENTS.md"
     grep -Fq "# Project Skills for base-demo" "$repo_dir/skills.md"
     grep -Fq "The branch convention is tool-independent" "$repo_dir/skills.md"
     grep -Fq "Closes #" "$repo_dir/.github/pull_request_template.md"
+    grep -Fq "its category prefix matches the issue's single standard category label" "$repo_dir/.github/pull_request_template.md"
 }
 
 @test "basectl repo agent-guidance summarizes mixed existing files" {
@@ -1246,11 +1286,15 @@ EOF
     [ -f "$repo_dir/base_manifest.yaml" ]
     [ -x "$repo_dir/tests/validate.sh" ]
     [ -f "$repo_dir/.github/workflows/tests.yml" ]
+    [ -f "$repo_dir/.github/workflows/issue-branch-policy.yml" ]
     [ -f "$repo_dir/.github/workflows/project-intake.yml" ]
     grep -Fqx "0.1.0" "$repo_dir/VERSION"
     grep -Fq "name: base-demo" "$repo_dir/base_manifest.yaml"
+    grep -Fq "Use exactly one standard issue category label" "$repo_dir/CONTRIBUTING.md"
+    grep -Fq "The category prefix must match the issue's single standard category label." "$repo_dir/CONTRIBUTING.md"
     grep -Fq "This branch shape is tool-independent" "$repo_dir/CONTRIBUTING.md"
     grep -Fq 'feat/`, `agent/`, `codex/' "$repo_dir/CONTRIBUTING.md"
+    grep -Fq "its category prefix matches the issue's single standard category label" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
     grep -Fq "issue_defaults:" "$repo_dir/.github/base-project.yml"
     grep -Fq "status: Backlog" "$repo_dir/.github/base-project.yml"
@@ -1267,6 +1311,13 @@ EOF
     grep -Fq "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5" "$repo_dir/.github/workflows/tests.yml"
     if grep -Fq "actions/checkout@v4" "$repo_dir/.github/workflows/tests.yml"; then
         fail "tests workflow should pin checkout to the reviewed commit"
+    fi
+    cmp "$BASE_REPO_ROOT/templates/issue-branch-policy.yml" "$repo_dir/.github/workflows/issue-branch-policy.yml"
+    grep -Fq "pull_request_target:" "$repo_dir/.github/workflows/issue-branch-policy.yml"
+    grep -Fq "statuses: write" "$repo_dir/.github/workflows/issue-branch-policy.yml"
+    grep -Fq "base/issue-branch-policy" "$repo_dir/.github/workflows/issue-branch-policy.yml"
+    if grep -Fq "actions/checkout" "$repo_dir/.github/workflows/issue-branch-policy.yml"; then
+        fail "issue branch policy workflow must not check out pull request code"
     fi
     grep -Fq "name: Project Intake" "$repo_dir/.github/workflows/project-intake.yml"
     grep -Fq "concurrency:" "$repo_dir/.github/workflows/project-intake.yml"
@@ -1497,7 +1548,7 @@ EOF
     run_basectl repo check "$repo_dir"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present."* ]]
 }
 
 @test "basectl repo check reports missing baseline files" {
@@ -1509,7 +1560,7 @@ EOF
     run_basectl repo check "$repo_dir"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Repository baseline: 11 of 12 required files missing."* ]]
+    [[ "$output" == *"Repository baseline: 12 of 13 required files missing."* ]]
     [[ "$output" == *"Missing: VERSION"* ]]
     [[ "$output" == *"Missing: base_manifest.yaml"* ]]
     [[ "$output" == *"Run 'basectl repo init incomplete --path $repo_dir' to create the missing files."* ]]
@@ -1526,7 +1577,7 @@ EOF
     run_basectl repo check .
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present, but some requirements failed."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present, but some requirements failed."* ]]
     [[ "$output" == *"  Not executable: tests/validate.sh"* ]]
     [[ "$output" == *"  Fix: chmod +x tests/validate.sh"* ]]
 }
@@ -1540,7 +1591,7 @@ EOF
     run_basectl repo check "$repo_dir" --agent-guidance
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present."* ]]
     [[ "$output" == *"Agent guidance: 2 of 3 files missing."* ]]
     [[ "$output" == *"Missing: AGENTS.md"* ]]
     [[ "$output" == *"Missing: skills.md"* ]]
@@ -1558,7 +1609,7 @@ EOF
     run_basectl repo check "$repo_dir" --agent-guidance
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present."* ]]
     [[ "$output" == *"Agent guidance: all 3 files present."* ]]
 }
 
@@ -1571,7 +1622,7 @@ EOF
     run_basectl repo check "$repo_dir" --agent-ready
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present."* ]]
     [[ "$output" == *"Agent readiness: 2 of 3 files missing."* ]]
     [[ "$output" == *"Missing: AGENTS.md"* ]]
     [[ "$output" == *"Missing: skills.md"* ]]
@@ -1588,7 +1639,7 @@ EOF
     run_basectl repo check "$repo_dir" --agent-ready
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Repository baseline: all 12 required files present."* ]]
+    [[ "$output" == *"Repository baseline: all 13 required files present."* ]]
     [[ "$output" == *"Agent readiness: all 3 files present."* ]]
 }
 
@@ -1643,6 +1694,23 @@ EOF
     [[ "$output" == *'"type":"branch_name_pattern"'* ]]
     [[ "$output" == *'"operator":"regex"'* ]]
     [[ "$output" == *'^(bug|enhancement|documentation|ci|security)/'* ]]
+    [[ "$output" != *'"type":"required_status_checks"'* ]]
+}
+
+@test "basectl repo configure dry-run requires issue branch policy when the workflow exists" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github/workflows"
+    cp "$BASE_REPO_ROOT/templates/issue-branch-policy.yml" \
+        "$repo_dir/.github/workflows/issue-branch-policy.yml"
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"type":"required_status_checks"'* ]]
+    [[ "$output" == *'"do_not_enforce_on_create":true'* ]]
+    [[ "$output" == *'"context":"base/issue-branch-policy"'* ]]
+    [[ "$output" == *'"integration_id":15368'* ]]
 }
 
 @test "basectl repo configure can skip default branch protection" {
@@ -1928,6 +1996,26 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2999-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "--paginate" && "$3" == "--slurp" && "$4" == "repos/codeforester/base-demo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/statuses?per_page=100" ]]; then
+    printf '%s\n' '[[{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/77","creator":{"login":"github-actions[bot]"}}]]'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "/apps/github-actions" ]]; then
+    printf '15368\n'
+    exit 0
+fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
     exit 0
 fi
@@ -2037,12 +2125,35 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2999-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "--paginate" && "$3" == "--slurp" && "$4" == "repos/codeforester/base-demo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/statuses?per_page=100" ]]; then
+    printf '%s\n' '[[{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/999","creator":{"login":"github-actions[bot]"}},{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/77","creator":{"login":"github-actions[bot]"}}]]'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "/apps/github-actions" ]]; then
+    printf '15368\n'
+    exit 0
+fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
     printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
     printf '%s\n' "42"
     exit 0
 fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method PUT"* ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
     printf '%s\n' "api-update $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
     cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
     printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
@@ -2064,6 +2175,9 @@ EOF
     grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"required_status_checks"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"context":"base/issue-branch-policy"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"integration_id":15368' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"name":"Base branch naming"' "$TEST_STATE_DIR/ruleset-payloads"
@@ -2079,6 +2193,26 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2999-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "--paginate" && "$3" == "--slurp" && "$4" == "repos/codeforester/base-demo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/statuses?per_page=100" ]]; then
+    printf '%s\n' '[[{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/77","creator":{"login":"github-actions[bot]"}}]]'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "/apps/github-actions" ]]; then
+    printf '15368\n'
     exit 0
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
@@ -2107,12 +2241,295 @@ EOF
     grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"required_status_checks"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"context":"base/issue-branch-policy"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"integration_id":15368' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"name":"Base branch naming"' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"include":["~ALL"]' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"exclude":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
     grep -Fq '"type":"branch_name_pattern"' "$TEST_STATE_DIR/ruleset-payloads"
+}
+
+@test "basectl repo configure finds readiness behind a newer stale dispatch" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":88,"head_sha":"dddddddddddddddddddddddddddddddddddddddd","updated_at":"2999-01-02T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/88","head_repository":{"full_name":"codeforester/base-demo"}},{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2999-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "--paginate" && "$3" == "--slurp" && "$4" == repos/codeforester/base-demo/commits/*/statuses\?per_page=100 ]]; then
+    printf '%s\n' "$4" >> "${BASE_REPO_TEST_STATE_DIR:?}/status-lookups"
+    if [[ "$4" == *"/dddddddddddddddddddddddddddddddddddddddd/"* ]]; then
+        printf '%s\n' '[[]]'
+    else
+        printf '%s\n' '[[{"context":"base/issue-branch-policy","state":"success","description":"Issue branch policy workflow is ready","target_url":"https://github.com/codeforester/base-demo/actions/runs/77","creator":{"login":"github-actions[bot]"}}]]'
+    fi
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "/apps/github-actions" ]]; then
+    printf '15368\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    [ "$(line_at "$(cat "$TEST_STATE_DIR/status-lookups")" 1)" = "repos/codeforester/base-demo/commits/dddddddddddddddddddddddddddddddddddddddd/statuses?per_page=100" ]
+    [ "$(line_at "$(cat "$TEST_STATE_DIR/status-lookups")" 2)" = "repos/codeforester/base-demo/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/statuses?per_page=100" ]
+    grep -Fq '"context":"base/issue-branch-policy","integration_id":15368' "$TEST_STATE_DIR/ruleset-payloads"
+}
+
+@test "basectl repo configure waits for a recent issue branch policy run" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":77,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updated_at":"2000-01-01T00:00:00Z","head_branch":"main","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/77","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        EPOCHSECONDS=0 \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Issue branch policy is not required for 'codeforester/base-demo' yet."* ]]
+    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payloads"
+    if grep -Fq '"type":"required_status_checks"' "$TEST_STATE_DIR/ruleset-payloads"; then
+        fail "default branch ruleset should not require a never-successful workflow"
+    fi
+}
+
+@test "basectl repo configure ignores successful policy runs from non-default branches" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '%s\n' '{"workflow_runs":[{"id":88,"head_sha":"dddddddddddddddddddddddddddddddddddddddd","updated_at":"2999-01-01T00:00:00Z","head_branch":"enhancement/99-20260714-untrusted","event":"workflow_dispatch","path":".github/workflows/issue-branch-policy.yml","html_url":"https://github.com/codeforester/base-demo/actions/runs/88","head_repository":{"full_name":"codeforester/base-demo"}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Issue branch policy is not required for 'codeforester/base-demo' yet."* ]]
+    if grep -Fq '"type":"required_status_checks"' "$TEST_STATE_DIR/ruleset-payloads"; then
+        fail "a feature-branch workflow run must not bootstrap the required policy"
+    fi
+}
+
+@test "basectl repo configure preserves an existing trusted issue branch policy requirement" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method PUT"* ]]; then
+    printf '15368\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '{"workflow_runs":[]}\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Preserving the existing Issue Branch Policy requirement"* ]]
+    grep -Fq '"context":"base/issue-branch-policy","integration_id":15368' "$TEST_STATE_DIR/ruleset-payloads"
+}
+
+@test "basectl repo configure refuses to weaken or rebind an untrusted existing requirement" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    printf '0\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'active\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo" ]]; then
+    printf 'main\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" ]]; then
+    printf '{"workflow_runs":[]}\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == repos/codeforester/base-demo/rulesets* && "$*" == *"--method"* ]]; then
+    printf 'unexpected ruleset write\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-writes"
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing to replace the existing unbound Issue Branch Policy requirement"* ]]
+    [ ! -e "$TEST_STATE_DIR/ruleset-writes" ]
+}
+
+@test "basectl repo configure does not weaken rulesets after workflow lookup errors" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf 'gh: server error (HTTP 500)\n' >&2
+    exit 1
+fi
+if [[ "$1" == "api" && "$2" == repos/codeforester/base-demo/rulesets* && "$*" == *"--method"* ]]; then
+    printf 'unexpected ruleset write\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-writes"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to verify the Issue Branch Policy workflow on 'codeforester/base-demo'."* ]]
+    [ ! -e "$TEST_STATE_DIR/ruleset-writes" ]
 }
 
 @test "basectl repo configure warns when GitHub plan blocks rulesets" {
@@ -2211,7 +2628,7 @@ EOF
 
     [ "$status" -eq 1 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
-    [[ "$output" == *"Unable to inspect GitHub rulesets for 'codeforester/base-demo'."* ]]
+    [[ "$output" == *"Unable to inspect current default branch protection for 'codeforester/base-demo'."* ]]
     [[ "$output" != *"Default branch protection skipped"* ]]
 }
 
@@ -2285,8 +2702,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 901 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'bug\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/901" ]]; then
+    printf 'issue\nbug\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -2360,8 +2777,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 902 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'enhancement\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/902" ]]; then
+    printf 'issue\nenhancement\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -2421,8 +2838,8 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
-if [[ "$*" == "issue view 903 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
-    printf 'enhancement\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/issues/903" ]]; then
+    printf 'issue\nenhancement\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then

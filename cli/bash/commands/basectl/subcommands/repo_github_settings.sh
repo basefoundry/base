@@ -6,6 +6,9 @@ readonly _base_repo_github_settings_sourced
 
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 
+BASE_GITHUB_ACTIONS_INTEGRATION_ID=15368
+readonly BASE_GITHUB_ACTIONS_INTEGRATION_ID
+
 base_repo_homebrew_gh_outdated() {
     local output=""
 
@@ -62,6 +65,15 @@ base_repo_ensure_github_repo() {
 }
 
 base_repo_default_branch_ruleset_payload() {
+    local require_issue_branch_policy="${1:-0}"
+
+    if [[ "$require_issue_branch_policy" == "1" ]]; then
+        cat <<'JSON'
+{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":true,"required_status_checks":[{"context":"base/issue-branch-policy","integration_id":15368}],"strict_required_status_checks_policy":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+JSON
+        return 0
+    fi
+
     cat <<'JSON'
 {"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
 JSON
@@ -84,11 +96,12 @@ base_repo_configure_default_branch_protection() {
     local dry_run="$1"
     local payload
     local repo="$2"
+    local require_issue_branch_policy="${3:-0}"
     local ruleset_lookup_output=""
     local ruleset_id=""
     local ruleset_write_output=""
 
-    payload="$(base_repo_default_branch_ruleset_payload)"
+    payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy")"
 
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would create or update GitHub ruleset 'Base default branch protection' on '%s' targeting '~DEFAULT_BRANCH'.\n" "$repo"
@@ -139,6 +152,141 @@ base_repo_configure_default_branch_protection() {
         }
         printf "  Branch protection: created 'Base default branch protection'.\n"
     fi
+}
+
+base_repo_remote_issue_branch_policy_ready() {
+    local actions_app_id=""
+    local cutoff_epoch
+    local cutoff_timestamp
+    local default_branch=""
+    local eligible_runs=""
+    local now_epoch
+    local output=""
+    local ready_run_found=0
+    local repo="$1"
+    local run_id=""
+    local run_json=""
+    local run_target_url=""
+    local run_sha=""
+    local run_timestamp=""
+    local status_creator=""
+    local TZ=UTC
+    local workflow_state=""
+
+    output="$(gh api "repos/$repo/actions/workflows/issue-branch-policy.yml" --jq '.state' 2>&1)" || {
+        if [[ "$output" == *"(HTTP 404)"* ]]; then
+            return 1
+        fi
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to verify the Issue Branch Policy workflow on '$repo'."
+        return 2
+    }
+    workflow_state="$output"
+    if [[ "$workflow_state" != "active" ]]; then
+        return 1
+    fi
+
+    output="$(gh api "repos/$repo" --jq '.default_branch' 2>&1)" || {
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to determine the default branch for '$repo'."
+        return 2
+    }
+    default_branch="$output"
+    [[ -n "$default_branch" ]] || return 1
+
+    run_json="$(gh api "repos/$repo/actions/workflows/issue-branch-policy.yml/runs?status=success&per_page=100" 2>&1)" || {
+        [[ -z "$run_json" ]] || log_error "$run_json"
+        log_error "Unable to inspect successful Issue Branch Policy runs on '$repo'."
+        return 2
+    }
+    output="$(jq -r \
+        --arg default_branch "$default_branch" \
+        --arg repo "$repo" \
+        '.workflow_runs[]? | select(
+            .event == "workflow_dispatch" and
+            .head_branch == $default_branch and
+            .head_repository.full_name == $repo and
+            .path == ".github/workflows/issue-branch-policy.yml"
+        ) | [.id, .head_sha, .updated_at, .html_url] | @tsv' \
+        <<< "$run_json" 2>&1)" || {
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to parse successful Issue Branch Policy runs on '$repo'."
+        return 2
+    }
+    eligible_runs="$output"
+    [[ -n "$eligible_runs" ]] || return 1
+    printf -v now_epoch '%(%s)T' -1
+    [[ "$now_epoch" =~ ^[1-9][0-9]*$ ]] || return 2
+    cutoff_epoch=$((now_epoch - 7 * 24 * 60 * 60))
+    printf -v cutoff_timestamp '%(%Y-%m-%dT%H:%M:%SZ)T' "$cutoff_epoch"
+
+    while IFS=$'\t' read -r run_id run_sha run_timestamp run_target_url; do
+        [[ -n "$run_id" ]] || continue
+        if [[ ! "$run_id" =~ ^[1-9][0-9]*$ ||
+            ! "$run_sha" =~ ^[0-9a-f]{40}$ ||
+            ! "$run_timestamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ||
+            "$run_target_url" != "https://github.com/$repo/actions/runs/$run_id" ]]; then
+            log_error "GitHub returned malformed Issue Branch Policy run metadata for '$repo'."
+            return 2
+        fi
+        [[ "$run_timestamp" > "$cutoff_timestamp" ]] || continue
+
+        output="$(gh api --paginate --slurp \
+            "repos/$repo/commits/$run_sha/statuses?per_page=100" 2>&1)" || {
+            [[ -z "$output" ]] || log_error "$output"
+            log_error "Unable to verify the Issue Branch Policy status source on '$repo'."
+            return 2
+        }
+        status_creator="$(jq -r \
+            --arg target_url "$run_target_url" \
+            '[.[][]? | select(
+                .context == "base/issue-branch-policy" and
+                .state == "success" and
+                .description == "Issue branch policy workflow is ready" and
+                .target_url == $target_url and
+                .creator.login == "github-actions[bot]"
+            )][0].creator.login // ""' <<< "$output")" || return 2
+        if [[ "$status_creator" == "github-actions[bot]" ]]; then
+            ready_run_found=1
+            break
+        fi
+    done <<< "$eligible_runs"
+    ((ready_run_found == 1)) || return 1
+
+    output="$(gh api /apps/github-actions --jq '.id' 2>&1)" || {
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to verify the GitHub Actions integration id."
+        return 2
+    }
+    actions_app_id="$output"
+    [[ "$actions_app_id" == "$BASE_GITHUB_ACTIONS_INTEGRATION_ID" ]]
+}
+
+base_repo_current_issue_branch_policy_integration_id() {
+    local output=""
+    local repo="$1"
+    local ruleset_id=""
+
+    output="$(gh api "repos/$repo/rulesets" \
+        --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""' 2>&1)" || {
+        if base_repo_rulesets_plan_gated_error "$output"; then
+            return 1
+        fi
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to inspect current default branch protection for '$repo'."
+        return 2
+    }
+    ruleset_id="$output"
+    [[ -n "$ruleset_id" ]] || return 1
+
+    output="$(gh api "repos/$repo/rulesets/$ruleset_id" \
+        --jq '[.rules[]? | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | select(.context == "base/issue-branch-policy") | (.integration_id // 0)] | first // ""' 2>&1)" || {
+        [[ -z "$output" ]] || log_error "$output"
+        log_error "Unable to inspect the current Issue Branch Policy requirement on '$repo'."
+        return 2
+    }
+    [[ -n "$output" ]] || return 1
+    printf '%s\n' "$output"
 }
 
 base_repo_configure_branch_naming() {
@@ -372,10 +520,14 @@ base_repo_configure_project_metadata() {
 
 base_repo_configure_github() {
     local applied_labels=()
+    local current_issue_branch_policy_integration_id=""
+    local current_issue_branch_policy_required=0
     local dry_run="$1"
+    local issue_branch_policy_available=0
     local labels=()
     local protect_default_branch="${3:-1}"
     local repo="$2"
+    local root="${4:-}"
     local status=0
 
     if [[ "$dry_run" == "1" ]]; then
@@ -408,7 +560,40 @@ base_repo_configure_github() {
         printf " (%d applied).\n" "${#labels[@]}"
     fi
     if [[ "$protect_default_branch" == "1" ]]; then
-        base_repo_configure_default_branch_protection "$dry_run" "$repo" || status=1
+        if [[ "$dry_run" == "1" ]]; then
+            [[ -n "$root" && -f "$root/.github/workflows/issue-branch-policy.yml" ]] &&
+                issue_branch_policy_available=1
+        else
+            current_issue_branch_policy_integration_id="$(base_repo_current_issue_branch_policy_integration_id "$repo")"
+            case $? in
+                0) current_issue_branch_policy_required=1 ;;
+                1) ;;
+                *) return 1 ;;
+            esac
+            if base_repo_remote_issue_branch_policy_ready "$repo"; then
+                issue_branch_policy_available=1
+            else
+                case $? in
+                    1)
+                        if [[ "$current_issue_branch_policy_required" == "1" && "$current_issue_branch_policy_integration_id" == "$BASE_GITHUB_ACTIONS_INTEGRATION_ID" ]]; then
+                            issue_branch_policy_available=1
+                            log_warn "Preserving the existing Issue Branch Policy requirement on '$repo' without recent bootstrap evidence."
+                        elif [[ "$current_issue_branch_policy_required" == "1" ]]; then
+                            log_error "Refusing to replace the existing unbound Issue Branch Policy requirement on '$repo' without a recent trusted success."
+                            return 1
+                        else
+                            log_warn "Issue branch policy is not required for '$repo' yet."
+                            log_warn "Enable '.github/workflows/issue-branch-policy.yml', complete one recent successful run, and rerun 'basectl repo configure'."
+                        fi
+                        ;;
+                    *) return 1 ;;
+                esac
+            fi
+        fi
+        base_repo_configure_default_branch_protection \
+            "$dry_run" \
+            "$repo" \
+            "$issue_branch_policy_available" || status=1
     fi
     base_repo_configure_branch_naming "$dry_run" "$repo" || status=1
 

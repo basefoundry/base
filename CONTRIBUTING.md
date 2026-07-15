@@ -41,7 +41,11 @@ for issue-backed work, validation, and design-only sessions.
    This is a repository rule, not an AI-tool convention. Do not replace the
    category with `feat`, `agent`, `codex`, or another tool-specific prefix.
    Base-managed GitHub configuration enforces the pattern on every non-default
-   remote branch, and `basectl gh pr create` rejects an invalid local branch.
+   remote branch, and `YYYYMMDD` must be a real calendar date. The category
+   must also match the issue's single primary category label. `basectl gh pr
+   create` rejects an invalid or mismatched local branch, and the required
+   `base/issue-branch-policy` status applies the same semantic check to pull
+   requests opened through raw Git or another tool.
 
 5. Use an isolated Git worktree for each pull request:
 
@@ -181,7 +185,8 @@ When adding or changing a built-in tool artifact:
 
 Before opening a PR:
 
-- The branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
+- The branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`, and its
+  category prefix matches the issue's single standard category label.
 - The PR is scoped to one issue, unless a documented multi-issue exception
   applies.
 - The PR body explains what changed and how it was validated.
