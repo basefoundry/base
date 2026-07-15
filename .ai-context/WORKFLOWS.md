@@ -67,6 +67,12 @@ Base-managed repositories should carry `.github/workflows/project-intake.yml`
 as the fallback for issues created outside `basectl gh issue create`.
 `basectl repo init` seeds it for new repositories, and `basectl repo configure`
 creates it when missing from older repositories.
+They should also carry `.github/workflows/issue-branch-policy.yml`; this trusted
+workflow publishes the semantic category/issue status without checking out PR
+code, queues default-branch refreshes for matching open PRs after issue
+relabeling, aggregates all open PRs sharing a head SHA, and `repo configure`
+promotes a recent trusted default-branch
+dispatch to a GitHub-Actions-bound required status.
 When a shared repo or Project schema repair needs to roll across a local repo
 family, use `basectl workspace configure --dry-run` first, then
 `basectl workspace configure`; it delegates to the same idempotent per-repo
@@ -88,8 +94,13 @@ The allowed categories are `bug`, `enhancement`, `documentation`, `ci`, and
 `security`; short or provider-specific prefixes are not aliases. Base-managed
 repositories enforce this for every non-default remote branch through the
 `Base branch naming` GitHub ruleset, while `basectl gh pr create` fails early
-for an invalid local branch. The policy is the same for humans and every AI
-tool.
+for an invalid local branch, including an impossible calendar date. The prefix
+must match the issue's single category label. The trusted Issue Branch Policy
+workflow publishes the GitHub-Actions-bound `base/issue-branch-policy` status
+on the PR head and refreshes it after issue relabeling. GitHub statuses are
+SHA-scoped, so the workflow validates every open PR sharing that SHA; the
+branch-name ruleset remains the immediate remote boundary for repo-owned
+branches, while the status adds semantic validation for raw Git and forks.
 
 The standard worktree location is:
 

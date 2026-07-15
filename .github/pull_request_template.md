@@ -20,7 +20,7 @@ Closes #
 
 ## Checklist
 
-- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
+- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`, and the prefix matches the issue's single standard category label.
 - [ ] PR is scoped to one issue, unless a documented multi-issue exception applies.
 - [ ] PR body explains what changed and how it was validated.
 - [ ] Validation commands were run from the current checkout or worktree, or unavailable checks are explained.

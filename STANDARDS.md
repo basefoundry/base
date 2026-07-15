@@ -667,10 +667,15 @@ git diff --check
    `<category>/<issue>-<YYYYMMDD>-<slug>`, where `category` is one of `bug`,
    `enhancement`, `documentation`, `ci`, or `security`. This rule applies to
    humans, AI tools, GitHub Actions, and repository helpers; tool-specific
-   prefixes are not exceptions.
+   prefixes are not exceptions. `YYYYMMDD` must be a real calendar date. The
+   category must equal the issue's single primary category label; a
+   syntactically valid but mismatched prefix is not canonical.
 8. Base-managed repositories should enforce that branch shape with the active
-   `Base branch naming` GitHub ruleset. `basectl gh pr create` must also reject
-   a nonconforming current branch before opening a pull request.
+   `Base branch naming` GitHub ruleset. `basectl gh pr create` must reject a
+   nonconforming or category-mismatched branch before opening a pull request,
+   and the source-bound `base/issue-branch-policy` status must perform the same
+   semantic check for raw Git and other tools before merge. Issue category
+   changes must automatically revalidate open pull requests.
 9. Pull request work should happen in a dedicated worktree.
 10. Prefer `basectl gh` when it supports the workflow. Fall back to raw `gh`,
    the GitHub connector, or `git` when needed.

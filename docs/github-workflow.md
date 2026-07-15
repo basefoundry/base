@@ -175,6 +175,13 @@ token configuration failures with `BASE_PROJECT_TOKEN` rotation guidance and can
 be rerun through `workflow_dispatch` after the secret is repaired.
 Use `basectl gh project` directly for lower-level Project inspection,
 schema repair, or issue field updates.
+
+Base-managed repositories also carry
+`.github/workflows/issue-branch-policy.yml`. Unlike Project Intake, this
+workflow does not need a repository secret and is installed even when Project
+metadata is disabled. It validates pull-request branch metadata from the
+trusted default-branch workflow without checking out pull-request code, and it
+revalidates matching open pull requests when an issue category label changes.
 When migrating from an existing shared Project, pass
 `--copy-project-fields-from <title>` to copy missing `Status`, `Priority`,
 `Area`, `Initiative`, and `Size` issue item values into the repo Project without
@@ -277,7 +284,7 @@ Use `enhancement/` for maintenance work unless the issue is more specifically
 This is a repository policy, not a convention owned by a particular coding
 agent. Humans, Codex, Copilot, other AI tools, GitHub Actions, and Base helpers
 must use the same shape. Prefixes such as `feat/`, `agent/`, `codex/`, and bare
-`<issue>-<slug>` names are invalid.
+`<issue>-<slug>` names are invalid. `YYYYMMDD` must be a real calendar date.
 
 `basectl repo configure` creates or updates the active `Base branch naming`
 GitHub ruleset. It targets all non-default branches and uses a branch-name
@@ -286,6 +293,35 @@ create or push the remote branch. The default branch is excluded and remains
 protected by the separate `Base default branch protection` ruleset. On GitHub
 plans where repository rulesets are unavailable, Base reports that enforcement
 was skipped instead of claiming the repository is protected.
+
+The regular expression can validate shape but cannot look up the referenced
+issue. `.github/workflows/issue-branch-policy.yml` closes that semantic gap. Its
+trusted `pull_request_target` job never checks out pull-request code; it reads
+the PR and issue through GitHub APIs, requires exactly one standard issue
+category, compares that label to the branch prefix, and publishes
+`base/issue-branch-policy` on the PR head commit. Label and unlabel events find
+all matching open pull requests and queue default-branch workflow dispatches
+for them. Validation is serialized by head commit, checks every open pull
+request sharing that commit, and revalidates peers left on an earlier commit
+when a pull request synchronizes. Those dispatches share the head commit's
+concurrency key, so they supersede any older validation that read the previous
+issue category or branch state. After the
+workflow is active and a default-branch dispatch has produced a successful
+GitHub Actions status within the previous seven days, `basectl repo configure`
+binds that context to the GitHub Actions integration and adds it to `Base
+default branch protection` as a required check. Feature-branch workflow runs
+cannot bootstrap the requirement. Until then, configuration warns and leaves
+the status optional rather than blocking every merge with a check that cannot
+run. Reconfiguration preserves an already trusted requirement when workflow
+run history expires and fails closed on unexpected API errors or an existing
+unbound requirement without a recent trusted success.
+
+GitHub commit statuses are SHA-scoped rather than pull-request-scoped. The
+workflow therefore aggregates every open pull request sharing a head commit
+and treats any mismatch as a failure for that commit. The branch-name ruleset
+is still the immediate hard boundary for branches created in the repository;
+the status workflow adds asynchronous semantic validation, including for pull
+requests whose branches live in forks that this repository cannot govern.
 
 Before committing or opening a pull request, verify the active branch is not
 `main` and follows the issue-backed branch convention.

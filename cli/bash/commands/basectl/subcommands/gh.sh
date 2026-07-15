@@ -16,7 +16,7 @@ Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
-  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
   basectl gh pr checks [gh options...]
@@ -55,6 +55,8 @@ Notes:
     sets project.issue_defaults.assignee.
   - When the GitHub repo is known, issue create also adds the issue to the
     repo-named Project and applies defaults from .github/base-project.yml.
+  - Issue start resolves its issue repository from --repo/-R, then GH_REPO,
+    then the origin remote.
   - PR creation auto-injects Fixes #<issue> when the branch follows the Base
     naming convention. If base_manifest.yaml declares github.pr, the generated
     body also follows that project policy. Pass --no-fixes to suppress body
@@ -70,7 +72,7 @@ Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
-  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
 
 Purpose:
   List, create, validate, and start GitHub issues using Base's issue-first workflow.
@@ -92,6 +94,12 @@ Issue readiness options:
   --repo <owner/name>           Repository containing the issue. Defaults to the origin remote.
   --project-owner <login>       Project owner for Project field validation.
   --project-number <number>     Project number for Project field validation.
+
+Issue start options:
+  --repo, -R <owner/name>       Repository containing the issue. Selection order is
+                                the explicit option, GH_REPO, then the origin remote.
+  --category <category>         Must match the issue's single category label.
+  --title <title>               Override the issue title used to generate the slug.
 
 Default category: enhancement.
 Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml.
@@ -331,27 +339,45 @@ base_gh_issue_worktree_path() {
     printf '%s/%s-worktrees/%s-%s\n' "$repo_parent" "$repo_name" "$issue" "$slug_short"
 }
 
-base_gh_issue_category_from_labels() {
-    local issue="$1"
+base_gh_issue_category() {
     local category
+    local issue="$2"
+    local repo="$1"
+    local status
 
-    category="$(gh issue view "$issue" --json labels --jq '.labels[].name | select(. == "bug" or . == "enhancement" or . == "documentation" or . == "ci" or . == "security")' 2>/dev/null | head -n 1)"
-    if [[ -z "$category" ]]; then
-        category="enhancement"
-    fi
-    base_gh_validate_category "$category" || return 1
-    printf '%s\n' "$category"
+    category="$(base_github_issue_category "$repo" "$issue")"
+    status=$?
+    case "$status" in
+        0)
+            printf '%s\n' "$category"
+            ;;
+        2)
+            base_gh_error "GitHub issue #$issue in '$repo' must have exactly one category label: bug, enhancement, documentation, ci, or security."
+            return 2
+            ;;
+        3)
+            base_gh_error "GitHub reference #$issue in '$repo' is a pull request, not an issue."
+            return 2
+            ;;
+        *)
+            base_gh_error "Unable to determine the category label for GitHub issue #$issue in '$repo'. Confirm that the issue exists and is accessible."
+            return 1
+            ;;
+    esac
 }
 
 base_gh_issue_title() {
     local issue="$1"
-    gh issue view "$issue" --json title --jq '.title'
+    local repo="$2"
+
+    base_github_issue_title "$repo" "$issue"
 }
 
 base_gh_issue_labels() {
     local issue="$1"
+    local repo="$2"
 
-    gh issue view "$issue" --json labels --jq '.labels[].name' 2>/dev/null || true
+    base_github_issue_labels "$repo" "$issue" 2>/dev/null || true
 }
 
 base_gh_issue_readiness_required_sections() {
@@ -594,6 +620,40 @@ base_gh_infer_github_repo() {
     printf '%s\n' "$github_repo"
 }
 
+base_gh_normalize_github_repo() {
+    local repo="$1"
+
+    if [[ "$repo" == */*/* ]]; then
+        repo="${repo#*/}"
+    fi
+    [[ "$repo" =~ ^[^/[:space:]]+/[^/[:space:]]+$ ]] || return 1
+    printf '%s\n' "$repo"
+}
+
+base_gh_pr_target_repo() {
+    local repo="${GH_REPO:-}"
+
+    while (($#)); do
+        case "$1" in
+            --repo|-R)
+                shift
+                (($#)) || return 2
+                repo="$1"
+                ;;
+            --repo=*|-R=*)
+                repo="${1#*=}"
+                [[ -n "$repo" ]] || return 2
+                ;;
+        esac
+        shift
+    done
+
+    if [[ -z "$repo" ]]; then
+        repo="$(base_gh_infer_github_repo)" || return 1
+    fi
+    base_gh_normalize_github_repo "$repo"
+}
+
 base_gh_default_project_title() {
     local repo="$1"
 
@@ -747,6 +807,7 @@ base_gh_apply_project_issue_fields() {
 
 base_gh_pr_policy_body() {
     local issue="$1"
+    local github_repo="$2"
     local manifest wrapper label path
     local policy_args=()
 
@@ -765,7 +826,7 @@ base_gh_pr_policy_body() {
     policy_args=(--project base base_pr_policy body --manifest "$manifest" --issue "$issue")
     while IFS= read -r label || [[ -n "$label" ]]; do
         [[ -n "$label" ]] && policy_args+=(--label "$label")
-    done < <(base_gh_issue_labels "$issue")
+    done < <(base_gh_issue_labels "$issue" "$github_repo")
     while IFS= read -r path || [[ -n "$path" ]]; do
         [[ -n "$path" ]] && policy_args+=(--path "$path")
     done < <(base_gh_pr_changed_paths)
@@ -980,7 +1041,7 @@ base_gh_issue_create() {
 }
 
 base_gh_pr_create() {
-    local branch issue body_file status
+    local branch branch_category issue issue_category github_repo body_file status
     local no_fixes=0
     local passthrough=()
 
@@ -1008,9 +1069,27 @@ base_gh_pr_create() {
         return 2
     fi
     issue="$(base_gh_current_issue_from_branch)" || return 1
+    branch_category="${branch%%/*}"
+    base_gh_require_command gh || return 1
+    github_repo="$(base_gh_pr_target_repo "${passthrough[@]}")"
+    status=$?
+    if ((status != 0)); then
+        if ((status == 2)); then
+            base_gh_error "Option '--repo' or '-R' requires a repository argument."
+            return 2
+        fi
+        base_gh_error "Unable to determine the target GitHub repository from --repo/-R, GH_REPO, or the origin remote."
+        return 1
+    fi
+    issue_category="$(base_gh_issue_category "$github_repo" "$issue")" || return $?
+    if [[ "$branch_category" != "$issue_category" ]]; then
+        base_gh_error "Branch category '$branch_category' does not match issue #$issue category '$issue_category'."
+        printf "Fix: run 'basectl gh issue start %s' and move the work to its printed branch/worktree.\n" "$issue" >&2
+        return 2
+    fi
     if [[ -n "$issue" && "$no_fixes" -eq 0 ]]; then
         std_make_temp_file body_file basectl-gh-pr || return 1
-        base_gh_pr_policy_body "$issue" > "$body_file" || {
+        base_gh_pr_policy_body "$issue" "$github_repo" > "$body_file" || {
             status=$?
             rm -f "$body_file"
             return "$status"
@@ -1025,7 +1104,9 @@ base_gh_pr_create() {
 }
 
 base_gh_issue_start() {
-    local issue="${1:-}" category="" title="" slug branch default_branch worktree_path
+    local issue="${1:-}" category="" issue_category="" github_repo="" title="" slug branch default_branch worktree_path
+    local repo_args=()
+    local status
 
     [[ -n "$issue" ]] || {
         base_gh_usage_error base_gh_issue_usage "Missing issue number."
@@ -1042,6 +1123,21 @@ base_gh_issue_start() {
             --title)
                 title="${2:-}"
                 shift
+                ;;
+            --repo|-R)
+                if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
+                    base_gh_usage_error base_gh_issue_usage "Option '$1' requires a repository argument."
+                    return $?
+                fi
+                repo_args+=("$1" "$2")
+                shift
+                ;;
+            --repo=*|-R=*)
+                if [[ -z "${1#*=}" ]]; then
+                    base_gh_usage_error base_gh_issue_usage "Option '${1%%=*}' requires a repository argument."
+                    return $?
+                fi
+                repo_args+=("$1")
                 ;;
             -h|--help)
                 base_gh_issue_usage
@@ -1061,18 +1157,35 @@ base_gh_issue_start() {
     }
 
     base_gh_require_git_repo || return 1
-    if [[ -z "$category" || -z "$title" ]]; then
-        base_gh_require_command gh || return 1
+    if [[ -n "$category" ]]; then
+        base_gh_validate_category "$category" || {
+            base_gh_issue_usage >&2
+            return 2
+        }
     fi
-    if [[ -z "$category" ]]; then
-        category="$(base_gh_issue_category_from_labels "$issue")" || return 1
+    base_gh_require_command gh || return 1
+    github_repo="$(base_gh_pr_target_repo "${repo_args[@]}")"
+    status=$?
+    if ((status != 0)); then
+        if ((status == 2)); then
+            base_gh_error "Option '--repo' or '-R' requires a repository argument."
+            return 2
+        fi
+        base_gh_error "Unable to determine the target GitHub repository from --repo/-R, GH_REPO, or the origin remote."
+        return 1
     fi
+    issue_category="$(base_gh_issue_category "$github_repo" "$issue")" || return $?
+    if [[ -n "$category" && "$category" != "$issue_category" ]]; then
+        base_gh_error "Option '--category $category' does not match issue #$issue category '$issue_category'."
+        return 2
+    fi
+    category="$issue_category"
     base_gh_validate_category "$category" || {
         base_gh_issue_usage >&2
         return 2
     }
     if [[ -z "$title" ]]; then
-        title="$(base_gh_issue_title "$issue")" || return 1
+        title="$(base_gh_issue_title "$issue" "$github_repo")" || return 1
     fi
 
     slug="$(base_gh_slug "$title")"

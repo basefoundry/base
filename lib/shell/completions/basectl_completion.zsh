@@ -644,20 +644,46 @@ _base_basectl_completion() {
         gh)
             case "${words[3]:-}" in
                 issue)
-                    _arguments '1:gh area:(issue pr branch worktree project)' \
-                        '2:issue command:(list create start readiness)' \
-                        '--category[Issue category]:category:(bug enhancement documentation ci security)' \
-                        '--title[Issue title]:title:' \
-                        '--body[Issue body]:body:' \
-                        '--repo[GitHub repository]:repo:' \
-                        '--assignee[Issue assignee]:login:' \
-                        '--no-assignee[Do not assign the issue]' \
-                        '--project[GitHub Project title]:title:' \
-                        '--project-owner[GitHub Project owner]:owner:' \
-                        '--project-number[GitHub Project number]:number:' \
-                        '--size[Project size option]:size:(T S M L)' \
-                        '--no-project[Skip Project metadata updates]' \
-                        '(-h --help)'{-h,--help}'[Show help text]'
+                    case "${words[4]:-}" in
+                        create)
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
+                                '2:issue command:(list create start readiness)' \
+                                '--category[Issue category]:category:(bug enhancement documentation ci security)' \
+                                '--title[Issue title]:title:' \
+                                '--body[Issue body]:body:' \
+                                '--repo[GitHub repository]:repo:' \
+                                '--assignee[Issue assignee]:login:' \
+                                '--no-assignee[Do not assign the issue]' \
+                                '--project[GitHub Project title]:title:' \
+                                '--project-owner[GitHub Project owner]:owner:' \
+                                '--size[Project size option]:size:(T S M L)' \
+                                '--no-project[Skip Project metadata updates]' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        start)
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
+                                '2:issue command:(list create start readiness)' \
+                                '3:issue number:' \
+                                '--category[Issue category]:category:(bug enhancement documentation ci security)' \
+                                '--title[Issue title]:title:' \
+                                '(-R --repo)'{-R,--repo}'[Repository containing the issue]:repo:' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        readiness)
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
+                                '2:issue command:(list create start readiness)' \
+                                '3:issue number:' \
+                                '--repo[GitHub repository]:repo:' \
+                                '--project-owner[GitHub Project owner]:owner:' \
+                                '--project-number[GitHub Project number]:number:' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        *)
+                            _arguments '1:gh area:(issue pr branch worktree project)' \
+                                '2:issue command:(list create start readiness)' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                    esac
                     ;;
                 pr)
                     _arguments '1:gh area:(issue pr branch worktree project)' \

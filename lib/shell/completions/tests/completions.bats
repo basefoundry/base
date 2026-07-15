@@ -238,9 +238,20 @@ assert_bash_completion_options_match_help() {
     [[ "$block" == *"--no-assignee"* ]]
     [[ "$block" == *"--project"* ]]
     [[ "$block" == *"--project-owner"* ]]
-    [[ "$block" == *"--project-number"* ]]
     [[ "$block" == *"--size"* ]]
     [[ "$block" == *"--no-project"* ]]
+}
+
+@test "Zsh gh issue start completion includes repository selectors" {
+    local block
+
+    block="$(zsh_completion_deep_nested_block gh issue start)"
+
+    [[ "$block" == *"--repo"* ]]
+    [[ "$block" == *"-R"* ]]
+    [[ "$block" == *"--category"* ]]
+    [[ "$block" == *"--title"* ]]
+    [[ "$block" != *"--assignee"* ]]
 }
 
 @test "Zsh gh project configure completion includes replace-project option" {

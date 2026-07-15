@@ -758,9 +758,14 @@ previews require `--category <name>` explicitly.
 
 `repo configure` is intentionally idempotent. It enables Issues and Projects,
 standardizes merge settings, deletes branches after merge, applies the
-Base-managed default branch protection and branch naming rulesets, configures a
-repo-named GitHub Project copied from `base-project-template`, and creates the
-standard GitHub labels documented in [Repository Baseline](docs/repo-baseline.md).
+Base-managed default branch protection and branch naming rulesets, seeds the
+trusted Issue Branch Policy workflow, configures a repo-named GitHub Project
+copied from `base-project-template`, and creates the standard GitHub labels
+documented in [Repository Baseline](docs/repo-baseline.md). Once that workflow
+is active and a default-branch dispatch has produced a recent trusted success,
+rerunning `repo configure` makes its GitHub-Actions-bound
+`base/issue-branch-policy` PR-head status required without weakening an
+existing requirement when run history expires.
 When `.github/base-project.yml` exists, `repo configure` also adds missing
 shared Project field options, adds repo-specific `Area` and `Initiative`
 Project options from that file, and applies its `issue_defaults` to Project
@@ -768,6 +773,10 @@ issue items that are missing those values.
 `repo init` also seeds `.github/workflows/project-intake.yml`, a visible
 fallback for issues created outside `basectl gh issue create`. `repo configure`
 creates the workflow when it is missing from older Base-managed repositories.
+The baseline also includes `.github/workflows/issue-branch-policy.yml`, which
+does not require a secret, never checks out pull-request code, and automatically
+queues default-branch revalidation for matching open pull requests when an
+issue category label changes.
 Set a `BASE_PROJECT_TOKEN` Actions secret with Project write access so that
 workflow can add issue items and apply the repo Project defaults on issue open,
 reopen, and close events. `repo configure` checks for that secret when Project

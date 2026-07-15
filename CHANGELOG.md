@@ -42,6 +42,12 @@ and Base versions are tracked in the repo-root `VERSION` file.
   `python.manager: uv`.
 - Added shared issue-backed branch validation to `basectl gh pr create` and an
   active GitHub ruleset that rejects noncanonical non-default branch names.
+- Added a trusted Issue Branch Policy workflow and required PR-head status that
+  verify the branch prefix matches the referenced issue's single category
+  label, including for raw Git and third-party AI tools. The workflow rejects
+  impossible dates, aggregates open pull requests sharing a commit, queues
+  head-SHA-serialized default-branch revalidation after issue relabeling or
+  synchronization, and binds enforcement to the GitHub Actions integration.
 
 ### Changed
 
@@ -54,6 +60,10 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Changed Base-owned `repo init`, `repo agent-guidance`, and `repo
   installer-template` pull request flows to require an issue number and create
   canonical issue-backed branches.
+- Changed `basectl gh issue start` and `basectl gh pr create` to fail closed for
+  missing, ambiguous, inaccessible, or mismatched issue category metadata, and
+  aligned `issue start` repository selection with explicit `--repo`/`-R`,
+  `GH_REPO`, then `origin` precedence.
 
 ### Fixed
 

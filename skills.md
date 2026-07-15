@@ -22,7 +22,8 @@ requests for Base.
   - `security` for hardening, dependency pinning, and static analysis.
 - Do not create new `type:*` labels.
 - Name branches as `<category>/<issue>-<YYYYMMDD>-<slug>`, for example
-  `bug/245-20260529-fix-profile-project-prompt`.
+  `bug/245-20260529-fix-profile-project-prompt`. The category prefix must match
+  the issue's single standard category label.
 - Do not use provider-specific alternatives such as `feat/`, `agent/`,
   `codex/`, or a bare `<issue>-<slug>` branch. The same server-side rule applies
   to every AI tool and human contributor.

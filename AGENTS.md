@@ -67,8 +67,11 @@ Before modifying files in this repository, classify the request.
   `<category>/<issue>-<YYYYMMDD>-<slug>`.
 - Treat that branch shape as tool-independent: do not substitute `feat/`,
   `agent/`, `codex/`, a bare issue number, or another provider-specific prefix.
-  `basectl gh pr create` rejects invalid names, and the GitHub branch naming
-  ruleset rejects invalid non-default branches at the remote boundary.
+  The prefix must match the issue's single category label. `basectl gh pr
+  create` rejects invalid or mismatched names, the GitHub branch naming ruleset
+  rejects invalid non-default branches at the remote boundary, and the required
+  `base/issue-branch-policy` status checks semantic matches across every open PR
+  sharing the head commit.
 - Use a dedicated worktree under `~/work/base-worktrees/<slug>` for PR work.
 - Before creating a worktree, check whether the current checkout is already a
   linked worktree for the intended issue.

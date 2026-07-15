@@ -100,8 +100,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   hygiene, and GitHub Project metadata using Base's opinionated workflow. It
   uses standard GitHub-style issue categories such as `bug`, `enhancement`,
   `documentation`, `ci`, and `security`, and derives branch names from those
-  categories. Issue creation is unassigned by default unless `--assignee` is
-  passed or `.github/base-project.yml` sets `project.issue_defaults.assignee`.
+  categories. `issue start` and `pr create` require the branch prefix to match
+  the issue's single standard category label. `issue start` selects that issue
+  repository from `--repo`/`-R`, then `GH_REPO`, then `origin`. Issue creation
+  is unassigned by default unless `--assignee` is passed or
+  `.github/base-project.yml` sets `project.issue_defaults.assignee`.
   Prefer this command for Base repository GitHub workflows when it supports the
   task.
 - `basectl onboard` guides first-run setup around existing setup, check,
@@ -126,8 +129,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   short names, and treats matching existing checkouts as already satisfied.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` applies or repairs the GitHub settings,
-  labels, default branch protection, branch naming enforcement, and standard
-  repo Project setup after the baseline exists. By default, the
+  labels, default branch protection, branch naming enforcement, trusted Issue
+  Branch Policy workflow, and standard repo Project setup after the baseline
+  exists. Once a default-branch workflow dispatch has produced a recent trusted
+  success, its GitHub-Actions-bound PR-head status is required before merge. By
+  default, the
   Project title matches the repository name; missing Projects are copied from
   `base-project-template`, linked to the repository, and backfilled with
   repository issues. When `.github/base-project.yml` exists, repo-specific

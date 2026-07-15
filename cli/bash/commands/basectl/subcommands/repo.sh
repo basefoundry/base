@@ -20,6 +20,7 @@ BASE_REPO_BASELINE_FILES=(
     .gitignore
     base_manifest.yaml
     tests/validate.sh
+    .github/workflows/issue-branch-policy.yml
     .github/workflows/project-intake.yml
     .github/workflows/tests.yml
 )
@@ -695,7 +696,7 @@ Thank you for improving this project.
 ## Workflow
 
 1. Create or choose a GitHub issue before starting implementation work.
-2. Use one of the standard issue labels: \`bug\`, \`enhancement\`,
+2. Use exactly one standard issue category label: \`bug\`, \`enhancement\`,
    \`documentation\`, \`ci\`, or \`security\`.
 3. Create an issue-backed branch:
 
@@ -703,6 +704,7 @@ Thank you for improving this project.
    <category>/<issue>-<YYYYMMDD>-<slug>
    \`\`\`
 
+   The category prefix must match the issue's single standard category label.
    This branch shape is tool-independent; \`feat/\`, \`agent/\`, \`codex/\`, and
    bare issue-number prefixes are invalid.
 
@@ -762,7 +764,7 @@ Closes #
 
 ## Checklist
 
-- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`.
+- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`, and its category prefix matches the issue's single standard category label.
 - [ ] Pull request is scoped to one issue, unless a documented multi-issue exception applies.
 - [ ] Pull request body explains what changed and how it was validated.
 - [ ] Relevant project checks pass.
@@ -882,6 +884,7 @@ required_files=(
   .github/base-project.yml
   LICENSE
   base_manifest.yaml
+  .github/workflows/issue-branch-policy.yml
   .github/workflows/project-intake.yml
   .github/workflows/tests.yml
 )
@@ -933,6 +936,29 @@ base_repo_project_intake_workflow_template_path() {
     }
 
     printf '%s/templates/project-intake.yml\n' "$BASE_HOME"
+}
+
+base_repo_issue_branch_policy_workflow_template_path() {
+    [[ -n "${BASE_HOME:-}" ]] || {
+        log_error "BASE_HOME is required to locate the Issue Branch Policy workflow template."
+        return 1
+    }
+
+    printf '%s/templates/issue-branch-policy.yml\n' "$BASE_HOME"
+}
+
+base_repo_write_issue_branch_policy_workflow() {
+    local dry_run="$1"
+    local root="$2"
+    local template
+
+    template="$(base_repo_issue_branch_policy_workflow_template_path)" || return 1
+    [[ -f "$template" ]] || {
+        log_error "Issue Branch Policy workflow template was not found at '$template'."
+        return 1
+    }
+
+    base_repo_write_stream "$dry_run" "$root/.github/workflows/issue-branch-policy.yml" < "$template"
 }
 
 base_repo_write_project_intake_workflow() {
@@ -1000,6 +1026,7 @@ base_repo_write_baseline() {
     base_repo_write_gitignore "$dry_run" "$root" || status=1
     base_repo_write_manifest "$dry_run" "$name" "$root" "${languages[@]}" || status=1
     base_repo_write_validate_script "$dry_run" "$root" || status=1
+    base_repo_write_issue_branch_policy_workflow "$dry_run" "$root" || status=1
     base_repo_write_project_intake_workflow "$dry_run" "$root" || status=1
     base_repo_write_tests_workflow "$dry_run" "$root" || status=1
 
@@ -2182,7 +2209,7 @@ base_repo_init() {
         if [[ -n "$github_repo" ]]; then
             base_repo_load_github_settings || return 1
             base_repo_ensure_github_repo "$dry_run" "$github_repo" "$description" "$github_visibility" || return 1
-            base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
+            base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" "$root" || return 1
             if ((configure_project)); then
                 [[ -n "$project_title" ]] || project_title="$(base_repo_default_project_title "$github_repo")"
                 [[ -n "$project_owner" ]] || project_owner="$(base_repo_project_owner_from_repo "$github_repo")"
@@ -2592,12 +2619,13 @@ base_repo_configure() {
         return 1
     }
 
+    base_repo_write_issue_branch_policy_workflow "$dry_run" "$path" || return 1
     if ((configure_project)); then
         base_repo_write_project_support_files "$dry_run" "$path" || return 1
     fi
 
     base_repo_load_github_settings || return 1
-    base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" || return 1
+    base_repo_configure_github "$dry_run" "$github_repo" "$protect_default_branch" "$path" || return 1
     if ((configure_project)); then
         [[ -n "$project_title" ]] || project_title="$(base_repo_default_project_title "$github_repo")"
         [[ -n "$project_owner" ]] || project_owner="$(base_repo_project_owner_from_repo "$github_repo")"
