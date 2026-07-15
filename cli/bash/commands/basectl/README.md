@@ -115,17 +115,19 @@ such command directories exist. Optional utility CLIs such as `caff` and
   creates the repository under `workspace.root` from `~/.base.d/config.yaml`,
   then falls back to the parent directory of `BASE_HOME`. For the current
   checkout, pass the repository name plus `--path .`; plain `repo init` does not
-  commit or push local files. Use `--pr` on an existing clean Git worktree to
-  commit baseline changes on a branch, push that branch to `origin`, and open a
-  pull request. Use `--agent-ready` when the baseline should also include
+  commit or push local files. Use `--pr --issue <number>` on an existing clean
+  Git worktree to commit baseline changes on a canonical issue-backed branch,
+  push that branch to `origin`, and open a pull request. Offline `--pr --dry-run`
+  previews also require `--category <name>`. Use `--agent-ready` when the
+  baseline should also include
   `AGENTS.md` and `skills.md`.
   `basectl repo clone <name-or-owner/name>` clones one existing GitHub
   repository into the configured workspace, supports `--owner <owner>` for
   short names, and treats matching existing checkouts as already satisfied.
   `basectl repo check [path]` verifies the local baseline, and
   `basectl repo configure [path]` applies or repairs the GitHub settings,
-  labels, default branch protection, and standard repo Project setup after the
-  baseline exists. By default, the
+  labels, default branch protection, branch naming enforcement, and standard
+  repo Project setup after the baseline exists. By default, the
   Project title matches the repository name; missing Projects are copied from
   `base-project-template`, linked to the repository, and backfilled with
   repository issues. When `.github/base-project.yml` exists, repo-specific
@@ -149,11 +151,13 @@ such command directories exist. Optional utility CLIs such as `caff` and
   files for existing repos, `basectl repo check [path] --agent-guidance`
   verifies that optional layer for repos that opt in, and
   `basectl repo check [path] --agent-ready` verifies the baseline-integrated
-  agent readiness contract. Use `--pr` when generated guidance should land
-  through a draft pull request instead of direct file generation.
+  agent readiness contract. Use `--pr --issue <number>` when generated guidance
+  should land through a draft pull request instead of direct file generation;
+  add `--category <name>` to offline `--pr --dry-run` previews.
   `basectl repo installer-template [path]` prints or writes the maintained
-  project installer starter script. Use `--pr` with a path to open the
-  generated installer template as a draft pull request.
+  project installer starter script. Use `--pr --issue <number>` with a path to
+  open the generated installer template as a draft pull request; add
+  `--category <name>` to offline `--pr --dry-run` previews.
 - `basectl test [project]` runs the project's manifest `test.command` or
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments

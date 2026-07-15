@@ -178,6 +178,6 @@ more complete first-mile path for blank machines.
 repositories, install project dependencies, manage IDE settings, or update shell
 startup files. Those steps belong to `basectl setup`, `basectl repo`,
 `basectl update-profile`, and the project manifest workflow. When a repository
-already exists and the Base baseline should go through review, use
-`basectl repo init <name> --path <path> --repo <owner/name> --pr` after
-bootstrap and setup are complete.
+already exists and the Base baseline should go through review, include
+`--issue <number>` with `basectl repo init ... --pr` after bootstrap and setup
+are complete.

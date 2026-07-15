@@ -55,17 +55,20 @@ options.
     after per-repo failures, and reports configured/skipped/failed counts.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
-  workspace, configure GitHub repository settings and default branch protection,
-  repair missing Project intake support files, configure standard GitHub Project
-  metadata, replace nonstandard Project layouts from `base-project-template`,
-  seed agent guidance, and write installer templates. `repo init` defaults new
+  workspace, configure GitHub repository settings, default branch protection,
+  and non-default branch naming enforcement, repair missing Project intake
+  support files, configure standard GitHub Project metadata, replace nonstandard
+  Project layouts from `base-project-template`, seed agent guidance, and write
+  installer templates. `repo init` defaults new
   repositories to the configured workspace root; use `--path .` for the current
   checkout. Plain `repo init` writes local baseline files without committing or
   pushing them; `repo init --agent-ready` also seeds `AGENTS.md` and `skills.md`;
   `repo check --agent-ready` verifies that baseline-integrated agent guidance
-  contract; `repo init --pr` commits baseline changes on a branch, pushes to
-  `origin`, and opens a PR. `repo init --language <csv>` may be repeated for
-  explicit, normalized language metadata; selecting `python` adds the explicit
+  contract; `repo init --pr --issue <number>` commits baseline changes on a
+  canonical issue-backed branch, pushes to `origin`, and opens a PR. Offline
+  `--pr --dry-run` previews also require `--category <name>`.
+  `repo init --language <csv>` may be repeated for explicit, normalized
+  language metadata; selecting `python` adds the explicit
   `python.manager: uv` profile while other initial language values are metadata
   only.
 - `basectl <setup|check|doctor> --ci <project>` - run Base setup/check/doctor

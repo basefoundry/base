@@ -7,6 +7,8 @@ readonly _base_repo_subcommand_sourced
 import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
+
 BASE_REPO_BASELINE_FILES=(
     README.md
     VERSION
@@ -42,7 +44,7 @@ Commands:
   init                 Create baseline files and optionally configure GitHub.
   clone                Clone one GitHub repository into the Base workspace.
   check                Verify the local repository baseline.
-  configure            Apply GitHub settings, labels, branch protection, and Project metadata.
+  configure            Apply GitHub settings, labels, branch policies, and Project metadata.
   agent-guidance       Seed optional repo-local agent guidance files.
   installer-template   Write or print the maintained project installer template.
 
@@ -58,6 +60,8 @@ Usage:
 Options:
   --path <path>                 Target path for repo init. Defaults to workspace root plus <name>.
   --repo <owner/name>           GitHub repository to configure.
+  --issue <number>              Issue number for --pr. Required with --pr.
+  --category <name>             Issue category for --pr --dry-run. Real PR runs derive or verify it.
   --pr                          Commit the generated baseline on a branch and open a pull request.
   --agent-ready                 Also seed repo-local agent guidance files.
   --language <csv>              Add project language metadata; may be repeated.
@@ -83,7 +87,7 @@ Examples:
   basectl repo init base-demo --repo basefoundry/base-demo --public
 
   # Add or refresh the Base baseline in an existing checkout.
-  basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr
+  basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --issue 123 --category enhancement --pr
 
   # Seed a polyglot project profile (CSV and repeated forms are equivalent).
   basectl repo init platform --language go,javascript --language typescript
@@ -106,7 +110,11 @@ configuration.
 
 For the current checkout, pass its repository name and --path .
 Plain repo init writes local baseline files but does not commit or push them.
-With --pr, repo init commits baseline changes on a branch, pushes that branch to origin, and opens a pull request.
+With --pr, repo init requires --issue, commits baseline changes on the canonical
+issue branch, pushes that branch to origin, and opens a pull request.
+With --pr --dry-run, pass --category because dry-run performs no GitHub reads.
+Real PR runs derive the issue's standard category label and verify --category
+when it is supplied.
 Pass --agent-ready to include AGENTS.md and skills.md with the baseline.
 EOF
 }
@@ -176,7 +184,8 @@ Examples:
   basectl repo configure . --copy-project-fields-from "Legacy Roadmap"
 
 repo configure applies or repairs GitHub-side repository settings, labels,
-branch protection, Project metadata, and repo-visible Project intake support.
+default-branch protection, branch naming enforcement, Project metadata, and
+repo-visible Project intake support.
 Use it after a repo init --pr baseline PR is merged, after cloning an older
 Base-managed repo, or whenever GitHub settings drift.
 
@@ -694,6 +703,9 @@ Thank you for improving this project.
    <category>/<issue>-<YYYYMMDD>-<slug>
    \`\`\`
 
+   This branch shape is tool-independent; \`feat/\`, \`agent/\`, \`codex/\`, and
+   bare issue-number prefixes are invalid.
+
 4. Use a dedicated Git worktree for each pull request so the main checkout can
    stay on the default branch:
 
@@ -1111,16 +1123,46 @@ base_repo_title_case_name() {
 }
 
 base_repo_pr_branch_name() {
-    local name="$1"
+    local category="$1"
+    local issue="$2"
+    local kind="$3"
+    local name="${4,,}"
+    local slug
 
-    printf 'base/repo-baseline-%s\n' "$name"
+    name="${name//[._]/-}"
+    while [[ "$name" == *--* ]]; do
+        name="${name//--/-}"
+    done
+    while [[ "$name" == *- ]]; do
+        name="${name%-}"
+    done
+    slug="$kind-$name"
+
+    base_github_branch_name "$category" "$issue" "$slug"
 }
 
-base_repo_helper_pr_branch_name() {
-    local kind="$1"
-    local name="$2"
+base_repo_pr_issue_category() {
+    local category
+    local issue="$2"
+    local repo="$1"
+    local status
 
-    printf 'base/%s-%s\n' "$kind" "$name"
+    base_repo_require_gh || return 1
+    category="$(base_github_issue_category "$repo" "$issue")"
+    status=$?
+    case "$status" in
+        0)
+            printf '%s\n' "$category"
+            ;;
+        2)
+            log_error "GitHub issue #$issue in '$repo' must have exactly one category label: bug, enhancement, documentation, ci, or security."
+            return 1
+            ;;
+        *)
+            log_error "Unable to determine the category label for GitHub issue #$issue in '$repo'."
+            return 1
+            ;;
+    esac
 }
 
 base_repo_print_pr_worktree_root_hint() {
@@ -1374,15 +1416,20 @@ base_repo_finish_generated_pr() {
 }
 
 base_repo_create_baseline_pr_body() {
+    local command_hint="$5"
+    local issue="$4"
     local name="$1"
     local repo="$3"
     local root="$2"
-    local command_hint="${4:-basectl repo init $name --path $root --repo $repo --pr}"
 
     cat <<EOF
 ## Summary
 
 - Add Base-managed repository baseline files.
+
+## Issue
+
+Closes #$issue
 
 ## Validation
 
@@ -1451,6 +1498,8 @@ base_repo_init_pr_rerun_command() {
     local configure="$4"
     local configure_project="$6"
     local copy_project_fields_from="${10}"
+    local issue="${13}"
+    local category="${14}"
     local name="$1"
     local option
     local project_owner="$8"
@@ -1459,9 +1508,9 @@ base_repo_init_pr_rerun_command() {
     local protect_default_branch="$5"
     local repo="$3"
     local root="$2"
-    local command=(basectl repo init "$name" --path "$root" --repo "$repo" --pr)
+    local command=(basectl repo init "$name" --path "$root" --repo "$repo" --issue "$issue" --category "$category" --pr)
     local languages_csv="${12}"
-    shift 12
+    shift 14
 
     [[ "$configure" == "1" ]] || command+=(--no-configure)
     [[ "$agent_ready" == "1" ]] && command+=(--agent-ready)
@@ -1483,9 +1532,10 @@ base_repo_finish_pr_baseline() {
     local agent_ready="${8:-0}"
     local body_file
     local branch="$5"
-    local command_hint="${7:-}"
+    local command_hint="$7"
     local default_branch="$6"
     local dry_run="$1"
+    local issue="$9"
     local name="$2"
     local output_file
     local pr_output=""
@@ -1523,7 +1573,7 @@ base_repo_finish_pr_baseline() {
         log_error "Failed to create a temporary pull request output file."
         return 1
     }
-    base_repo_create_baseline_pr_body "$name" "$root" "$repo" "$command_hint" > "$body_file"
+    base_repo_create_baseline_pr_body "$name" "$root" "$repo" "$issue" "$command_hint" > "$body_file"
     gh pr create \
         --repo "$repo" \
         --base "$default_branch" \
@@ -1535,7 +1585,7 @@ base_repo_finish_pr_baseline() {
     rm -f "$body_file"
     rm -f "$output_file"
     if [[ "$status" -eq 0 ]]; then
-        base_repo_print_init_pr_next_steps "$pr_output" "${command_hint:-basectl repo init $name --path $root --repo $repo --pr}"
+        base_repo_print_init_pr_next_steps "$pr_output" "$command_hint"
         return 0
     fi
     [[ -z "$pr_output" ]] || printf '%s\n' "$pr_output"
@@ -1728,6 +1778,7 @@ base_repo_init() {
     local configure=1
     local baseline_change_status=0
     local copyright_holder=""
+    local category=""
     local create_pr=0
     local default_branch=""
     local description=""
@@ -1735,6 +1786,7 @@ base_repo_init() {
     local github_repo=""
     local github_visibility="private"
     local github_visibility_explicit=0
+    local issue=""
     local name=""
     local path=""
     local project_owner=""
@@ -1743,8 +1795,10 @@ base_repo_init() {
     local copy_project_fields_from=""
     local protect_default_branch=1
     local pr_branch=""
+    local pr_category=""
     local pr_rerun_command=""
     local requested_visibility=""
+    local issue_category=""
     local root
     local configure_project=1
     local initiative_options=()
@@ -1784,6 +1838,38 @@ base_repo_init() {
                 ;;
             --repo=*)
                 github_repo="${1#--repo=}"
+                shift
+                ;;
+            --issue)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_init_usage_error "Option '--issue' requires a positive integer argument."
+                    return $?
+                }
+                issue="$2"
+                shift 2
+                ;;
+            --issue=*)
+                issue="${1#--issue=}"
+                [[ -n "$issue" ]] || {
+                    base_repo_init_usage_error "Option '--issue' requires a positive integer argument."
+                    return $?
+                }
+                shift
+                ;;
+            --category)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_init_usage_error "Option '--category' requires an argument."
+                    return $?
+                }
+                category="$2"
+                shift 2
+                ;;
+            --category=*)
+                category="${1#--category=}"
+                [[ -n "$category" ]] || {
+                    base_repo_init_usage_error "Option '--category' requires an argument."
+                    return $?
+                }
                 shift
                 ;;
             --pr)
@@ -1982,8 +2068,20 @@ base_repo_init() {
     [[ -n "$description" ]] || description="$(base_repo_default_description "$name")"
     [[ -n "$copyright_holder" ]] || copyright_holder="$(base_repo_default_copyright_holder)"
     root="$(base_repo_target_path "$path")"
+    if [[ -n "$issue" ]] && ! base_github_issue_number_is_valid "$issue"; then
+        base_repo_init_usage_error "Option '--issue' must be a positive integer."
+        return $?
+    fi
+    if [[ -n "$category" ]] && ! base_github_branch_category_is_valid "$category"; then
+        base_repo_init_usage_error "Option '--category' must be one of: bug, enhancement, documentation, ci, security."
+        return $?
+    fi
 
     if ((create_pr)); then
+        [[ -n "$issue" ]] || {
+            base_repo_init_usage_error "Option '--pr' requires --issue <positive integer>."
+            return $?
+        }
         if [[ -z "$github_repo" ]]; then
             github_repo="$(base_repo_infer_github_repo "$root" || true)"
         fi
@@ -1996,11 +2094,28 @@ base_repo_init() {
             return $?
         fi
 
-        pr_branch="$(base_repo_pr_branch_name "$name")"
+        if [[ "$dry_run" == "1" ]]; then
+            [[ -n "$category" ]] || {
+                base_repo_init_usage_error "Options '--pr --dry-run' require --category <name>."
+                return $?
+            }
+            pr_category="$category"
+        else
+            base_repo_require_pr_worktree "$root" || return 1
+            issue_category="$(base_repo_pr_issue_category "$github_repo" "$issue")" || return 1
+            if [[ -n "$category" && "$category" != "$issue_category" ]]; then
+                base_repo_init_usage_error "Option '--category $category' does not match issue #$issue category '$issue_category'."
+                return $?
+            fi
+            pr_category="$issue_category"
+        fi
+        pr_branch="$(base_repo_pr_branch_name "$pr_category" "$issue" "repo-baseline" "$name")" || {
+            log_error "Unable to generate the canonical issue branch for repo init --pr."
+            return 1
+        }
         if [[ "$dry_run" == "1" ]]; then
             default_branch="<default branch>"
         else
-            base_repo_require_pr_worktree "$root" || return 1
             default_branch="$(base_repo_default_branch_for_pr "$github_repo")" || return 1
         fi
         pr_rerun_command="$(
@@ -2017,6 +2132,8 @@ base_repo_init() {
                 "$copy_project_fields_from" \
                 "$agent_ready" \
                 "$(base_repo_languages_csv "${language_options[@]}")" \
+                "$issue" \
+                "$pr_category" \
                 "${initiative_options[@]}"
         )"
         base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$default_branch" || return 1
@@ -2035,11 +2152,11 @@ base_repo_init() {
 
     if ((create_pr)); then
         if [[ "$dry_run" == "1" ]]; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready"
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue"
             return $?
         fi
         if base_repo_pr_baseline_has_changes "$root" "$agent_ready"; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready"
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue"
             return $?
         else
             baseline_change_status=$?

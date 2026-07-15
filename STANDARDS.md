@@ -655,10 +655,18 @@ git diff --check
    - `needs-demo`
 6. Issues created by Codex or other automation should be assigned to
    `codeforester`.
-7. Pull request work should happen in a dedicated worktree.
-8. Prefer `basectl gh` when it supports the workflow. Fall back to raw `gh`,
+7. Every non-default branch must match
+   `<category>/<issue>-<YYYYMMDD>-<slug>`, where `category` is one of `bug`,
+   `enhancement`, `documentation`, `ci`, or `security`. This rule applies to
+   humans, AI tools, GitHub Actions, and repository helpers; tool-specific
+   prefixes are not exceptions.
+8. Base-managed repositories should enforce that branch shape with the active
+   `Base branch naming` GitHub ruleset. `basectl gh pr create` must also reject
+   a nonconforming current branch before opening a pull request.
+9. Pull request work should happen in a dedicated worktree.
+10. Prefer `basectl gh` when it supports the workflow. Fall back to raw `gh`,
    the GitHub connector, or `git` when needed.
-9. PR descriptions should include:
+11. PR descriptions should include:
    - what changed
    - why it changed
    - validation commands

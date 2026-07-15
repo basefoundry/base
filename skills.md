@@ -23,6 +23,9 @@ requests for Base.
 - Do not create new `type:*` labels.
 - Name branches as `<category>/<issue>-<YYYYMMDD>-<slug>`, for example
   `bug/245-20260529-fix-profile-project-prompt`.
+- Do not use provider-specific alternatives such as `feat/`, `agent/`,
+  `codex/`, or a bare `<issue>-<slug>` branch. The same server-side rule applies
+  to every AI tool and human contributor.
 - Do all pull request implementation work in a dedicated worktree under
   `~/work/base-worktrees/<slug>`.
 - Before creating a worktree, check whether the current checkout is already a

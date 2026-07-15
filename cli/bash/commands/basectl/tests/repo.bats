@@ -9,6 +9,13 @@ line_at() {
     printf '%s\n' "$text" | sed -n "${line_number}p"
 }
 
+current_branch_date() {
+    local branch_date
+
+    printf -v branch_date '%(%Y%m%d)T' -1
+    printf '%s\n' "$branch_date"
+}
+
 write_repo_configure_gh_recorder() {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -180,16 +187,18 @@ run_repo_command_with_mocks() {
     [[ "$output" == *"--path <path>"* ]]
     [[ "$output" == *"--agent-ready"* ]]
     [[ "$output" == *"--language <csv>"* ]]
+    [[ "$output" == *"--issue <number>"* ]]
+    [[ "$output" == *"--category <name>"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"Create a new public GitHub repo and configure it."* ]]
     [[ "$output" == *"basectl repo init base-demo --repo basefoundry/base-demo --public"* ]]
     [[ "$output" == *"Add or refresh the Base baseline in an existing checkout."* ]]
-    [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --pr"* ]]
+    [[ "$output" == *"basectl repo init bankbuddy --path . --repo codeforester/bankbuddy --issue 123 --category enhancement --pr"* ]]
     [[ "$output" == *"basectl repo init platform --language go,javascript --language typescript"* ]]
     [[ "$output" == *"For the current checkout, pass its repository name and --path ."* ]]
     [[ "$output" == *"Plain repo init writes local baseline files but does not commit or push them."* ]]
-    [[ "$output" == *"With --pr, repo init commits baseline changes on a branch, pushes that branch to origin, and opens a pull request."* ]]
+    [[ "$output" == *"With --pr, repo init requires --issue, commits baseline changes on the canonical"* ]]
     [[ "$output" == *"Safe to run against an existing repository"* ]]
     [[ "$output" == *"Safe to re-run: Base-managed settings are created or updated"* ]]
     [[ "$output" == *"creates it using --private/--public"* ]]
@@ -419,6 +428,8 @@ EOF
     [[ "$output" == *"basectl repo installer-template [path] [options]"* ]]
     [[ "$output" == *"--print, --stdout"* ]]
     [[ "$output" == *"--repo <owner/name>"* ]]
+    [[ "$output" == *"--issue <number>"* ]]
+    [[ "$output" == *"--category <name>"* ]]
     [[ "$output" == *"--pr"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"to ./install.sh"* ]]
@@ -434,6 +445,93 @@ EOF
     grep -Fq "repo_installer_template.sh" "$dispatcher"
     grep -Eq '^base_repo_installer_template\(\)' "$helper"
     ! grep -Eq '^base_repo_installer_template\(\)' "$dispatcher"
+}
+
+@test "repo pull request helpers require an issue number" {
+    run_basectl repo init base-demo --path "$TEST_TMPDIR/init-missing-issue" --repo codeforester/base-demo --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--pr' requires --issue <positive integer>."* ]]
+
+    run_basectl repo agent-guidance "$TEST_TMPDIR/agent-missing-issue" --repo-name base-demo --repo codeforester/base-demo --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--pr' requires --issue <positive integer>."* ]]
+
+    run_basectl repo installer-template "$TEST_TMPDIR/installer-missing-issue/install.sh" --repo codeforester/base-demo --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--pr' requires --issue <positive integer>."* ]]
+}
+
+@test "repo pull request helpers reject non-positive issue numbers" {
+    run_basectl repo init base-demo --path "$TEST_TMPDIR/init-invalid-issue" --repo codeforester/base-demo --issue 0 --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--issue' must be a positive integer."* ]]
+
+    run_basectl repo agent-guidance "$TEST_TMPDIR/agent-invalid-issue" --repo-name base-demo --repo codeforester/base-demo --issue nope --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--issue' must be a positive integer."* ]]
+
+    run_basectl repo installer-template "$TEST_TMPDIR/installer-invalid-issue/install.sh" --repo codeforester/base-demo --issue -1 --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--issue' must be a positive integer."* ]]
+}
+
+@test "repo pull request helper dry-runs require a valid category" {
+    run_basectl repo init base-demo --path "$TEST_TMPDIR/init-missing-category" --repo codeforester/base-demo --issue 1 --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Options '--pr --dry-run' require --category <name>."* ]]
+
+    run_basectl repo agent-guidance "$TEST_TMPDIR/agent-invalid-category" --repo-name base-demo --repo codeforester/base-demo --issue 2 --category feat --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--category' must be one of: bug, enhancement, documentation, ci, security."* ]]
+
+    run_basectl repo installer-template "$TEST_TMPDIR/installer-missing-category/install.sh" --repo codeforester/base-demo --issue 3 --pr --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Options '--pr --dry-run' require --category <name>."* ]]
+}
+
+@test "repo pull request helpers reject a category that disagrees with the issue" {
+    local repo_dir="$TEST_TMPDIR/category-mismatch"
+
+    init_git_repo "$repo_dir"
+    printf '# Existing project\n' > "$repo_dir/README.md"
+    commit_all "$repo_dir" "Initial commit"
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "issue view 4 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'enhancement\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASE_REPO_ROOT/bin/basectl" repo installer-template "$repo_dir/install.sh" \
+            --repo codeforester/base-demo \
+            --issue 4 \
+            --category documentation \
+            --pr
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--category documentation' does not match issue #4 category 'enhancement'."* ]]
+    [[ "$output" != *"unexpected gh args"* ]]
+    [ ! -e "$repo_dir/install.sh" ]
 }
 
 @test "basectl repo project-intake workflow is maintained as a template asset" {
@@ -469,6 +567,7 @@ EOF
     grep -Fq "repo_github_settings.sh" "$dispatcher"
     grep -Eq '^base_repo_configure_github\(\)' "$helper"
     grep -Eq '^base_repo_configure_default_branch_protection\(\)' "$helper"
+    grep -Eq '^base_repo_configure_branch_naming\(\)' "$helper"
     grep -Eq '^base_repo_configure_project_metadata\(\)' "$helper"
     if grep -Eq '^base_repo_configure_github\(\)' "$dispatcher"; then
         fail "repo dispatcher should not define base_repo_configure_github"
@@ -696,24 +795,26 @@ EOF
 }
 
 @test "basectl repo installer-template --pr dry-run reports branch and pull request plan" {
+    local pr_branch="documentation/701-$(current_branch_date)-installer-template-base-demo"
     local repo_dir="$TEST_TMPDIR/installer-pr-demo"
 
     init_git_repo "$repo_dir"
     git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
 
-    run_basectl repo installer-template "$repo_dir/install.sh" --pr --dry-run
+    run_basectl repo installer-template "$repo_dir/install.sh" --issue 701 --category documentation --pr --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/installer-template-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch '$pr_branch' from default branch '<default branch>'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$repo_dir/install.sh'."* ]]
     [[ "$output" == *"[DRY-RUN] Would commit generated installer template file with message 'Add Base installer template'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would push branch 'base/installer-template-base-demo' to origin."* ]]
-    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/installer-template-base-demo' to '<default branch>' with title 'Add Base installer template'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would push branch '$pr_branch' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from '$pr_branch' to '<default branch>' with title 'Add Base installer template'."* ]]
     [ ! -e "$repo_dir/install.sh" ]
 }
 
 @test "basectl repo installer-template --pr dry-run defaults to install.sh" {
     local physical_repo_dir
+    local pr_branch="security/702-$(current_branch_date)-installer-template-base-demo"
     local repo_dir="$TEST_TMPDIR/installer-pr-default"
 
     init_git_repo "$repo_dir"
@@ -721,17 +822,18 @@ EOF
 
     cd "$repo_dir"
     physical_repo_dir="$(pwd -P)"
-    run_basectl repo installer-template --pr --dry-run
+    run_basectl repo installer-template --issue 702 --category security --pr --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/installer-template-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch '$pr_branch' from default branch '<default branch>'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create executable '$physical_repo_dir/install.sh'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/installer-template-base-demo' to '<default branch>' with title 'Add Base installer template'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from '$pr_branch' to '<default branch>' with title 'Add Base installer template'."* ]]
     [ ! -e "$repo_dir/install.sh" ]
 }
 
 @test "basectl repo installer-template --pr opens a draft pull request" {
     local commit_files
+    local pr_branch="documentation/703-$(current_branch_date)-installer-template-base-demo"
     local remote_dir="$TEST_TMPDIR/origin.git"
     local repo_dir="$TEST_TMPDIR/installer-pr-demo"
 
@@ -747,6 +849,10 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "issue view 703 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'documentation\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -772,18 +878,21 @@ EOF
         PATH="$TEST_MOCKBIN:$PATH" \
         "$BASE_REPO_ROOT/bin/basectl" repo installer-template "$repo_dir/install.sh" \
             --repo codeforester/base-demo \
+            --issue 703 \
             --pr
 
     [ "$status" -eq 0 ]
-    [ "$(git -C "$repo_dir" branch --show-current)" = "base/installer-template-base-demo" ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "$pr_branch" ]
     [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base installer template" ]
-    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/installer-template-base-demo
+    git --git-dir="$remote_dir" show-ref --verify --quiet "refs/heads/$pr_branch"
     commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
     [[ "$commit_files" == *"install.sh"* ]]
     [[ "$commit_files" != *"src/app.txt"* ]]
-    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/installer-template-base-demo --title Add Base installer template --draft --body-file" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head $pr_branch --title Add Base installer template --draft --body-file" "$TEST_STATE_DIR/gh-args"
     grep -Fq "Add the maintained Base project installer template." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "Closes #703" "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo installer-template" "$TEST_STATE_DIR/pr-body"
+    grep -Fq -- "--issue 703 --category documentation --pr" "$TEST_STATE_DIR/pr-body"
 }
 
 @test "basectl repo installer-template --pr requires a clean target worktree" {
@@ -796,7 +905,7 @@ EOF
     printf 'draft\n' > "$repo_dir/notes.txt"
     physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
-    run_basectl repo installer-template "$repo_dir/install.sh" --repo codeforester/dirty-installer-demo --pr
+    run_basectl repo installer-template "$repo_dir/install.sh" --repo codeforester/dirty-installer-demo --issue 704 --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo installer-template --pr requires a clean Git worktree"* ]]
@@ -868,6 +977,8 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl repo agent-guidance [path] [options]"* ]]
     [[ "$output" == *"--repo <owner/name>"* ]]
+    [[ "$output" == *"--issue <number>"* ]]
+    [[ "$output" == *"--category <name>"* ]]
     [[ "$output" == *"--repo-name <name>"* ]]
     [[ "$output" == *"--default-branch <name>"* ]]
     [[ "$output" == *"Defaults to detected branch, then main."* ]]
@@ -879,26 +990,28 @@ EOF
 }
 
 @test "basectl repo agent-guidance --pr dry-run reports branch and pull request plan" {
+    local pr_branch="ci/801-$(current_branch_date)-agent-guidance-base-demo"
     local repo_dir="$TEST_TMPDIR/agent-pr-demo"
 
     init_git_repo "$repo_dir"
     git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
 
-    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo --pr --dry-run
+    run_basectl repo agent-guidance "$repo_dir" --repo-name base-demo --issue 801 --category ci --pr --dry-run
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[DRY-RUN] Would create or use branch 'base/agent-guidance-base-demo' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch '$pr_branch' from default branch '<default branch>'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/AGENTS.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/skills.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'."* ]]
     [[ "$output" == *"[DRY-RUN] Would commit generated agent guidance files with message 'Add Base agent guidance'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would push branch 'base/agent-guidance-base-demo' to origin."* ]]
-    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from 'base/agent-guidance-base-demo' to '<default branch>' with title 'Add Base agent guidance'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would push branch '$pr_branch' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a draft pull request in 'codeforester/base-demo' from '$pr_branch' to '<default branch>' with title 'Add Base agent guidance'."* ]]
     [ ! -e "$repo_dir/AGENTS.md" ]
 }
 
 @test "basectl repo agent-guidance --pr opens a draft pull request" {
     local commit_files
+    local pr_branch="ci/802-$(current_branch_date)-agent-guidance-base-demo"
     local remote_dir="$TEST_TMPDIR/origin.git"
     local repo_dir="$TEST_TMPDIR/agent-pr-demo"
 
@@ -914,6 +1027,10 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "issue view 802 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'ci\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -942,20 +1059,23 @@ EOF
             --default-branch master \
             --validation-command "./tests/validate.sh" \
             --repo codeforester/base-demo \
+            --issue 802 \
             --pr
 
     [ "$status" -eq 0 ]
-    [ "$(git -C "$repo_dir" branch --show-current)" = "base/agent-guidance-base-demo" ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "$pr_branch" ]
     [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base agent guidance" ]
-    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/agent-guidance-base-demo
+    git --git-dir="$remote_dir" show-ref --verify --quiet "refs/heads/$pr_branch"
     commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
     [[ "$commit_files" == *"AGENTS.md"* ]]
     [[ "$commit_files" == *"skills.md"* ]]
     [[ "$commit_files" == *".github/pull_request_template.md"* ]]
     [[ "$commit_files" != *"src/app.txt"* ]]
-    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/agent-guidance-base-demo --title Add Base agent guidance --draft --body-file" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head $pr_branch --title Add Base agent guidance --draft --body-file" "$TEST_STATE_DIR/gh-args"
     grep -Fq "Add Base repo-local agent guidance files." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "Closes #802" "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo agent-guidance" "$TEST_STATE_DIR/pr-body"
+    grep -Fq -- "--issue 802 --category ci --pr" "$TEST_STATE_DIR/pr-body"
 }
 
 @test "basectl repo agent-guidance --pr requires a clean target worktree" {
@@ -968,7 +1088,7 @@ EOF
     printf 'draft\n' > "$repo_dir/notes.txt"
     physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
-    run_basectl repo agent-guidance "$repo_dir" --repo-name dirty-agent-demo --repo codeforester/dirty-agent-demo --pr
+    run_basectl repo agent-guidance "$repo_dir" --repo-name dirty-agent-demo --repo codeforester/dirty-agent-demo --issue 803 --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo agent-guidance --pr requires a clean Git worktree"* ]]
@@ -1012,7 +1132,9 @@ EOF
     grep -Fq "env -u BASE_HOME ./bin/base-test" "$repo_dir/AGENTS.md"
     grep -Fq '`bug`, `enhancement`, `documentation`,' "$repo_dir/AGENTS.md"
     grep -Fq '`ci`, or `security`.' "$repo_dir/AGENTS.md"
+    grep -Fq "This branch shape is tool-independent" "$repo_dir/AGENTS.md"
     grep -Fq "# Project Skills for base-demo" "$repo_dir/skills.md"
+    grep -Fq "The branch convention is tool-independent" "$repo_dir/skills.md"
     grep -Fq "Closes #" "$repo_dir/.github/pull_request_template.md"
 }
 
@@ -1127,6 +1249,8 @@ EOF
     [ -f "$repo_dir/.github/workflows/project-intake.yml" ]
     grep -Fqx "0.1.0" "$repo_dir/VERSION"
     grep -Fq "name: base-demo" "$repo_dir/base_manifest.yaml"
+    grep -Fq "This branch shape is tool-independent" "$repo_dir/CONTRIBUTING.md"
+    grep -Fq 'feat/`, `agent/`, `codex/' "$repo_dir/CONTRIBUTING.md"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
     grep -Fq "issue_defaults:" "$repo_dir/.github/base-project.yml"
     grep -Fq "status: Backlog" "$repo_dir/.github/base-project.yml"
@@ -1513,6 +1637,12 @@ EOF
     [[ "$output" == *'"type":"pull_request"'* ]]
     [[ "$output" == *'"type":"deletion"'* ]]
     [[ "$output" == *'"type":"non_fast_forward"'* ]]
+    [[ "$output" == *"Base branch naming"* ]]
+    [[ "$output" == *'"include":["~ALL"]'* ]]
+    [[ "$output" == *'"exclude":["~DEFAULT_BRANCH"]'* ]]
+    [[ "$output" == *'"type":"branch_name_pattern"'* ]]
+    [[ "$output" == *'"operator":"regex"'* ]]
+    [[ "$output" == *'^(bug|enhancement|documentation|ci|security)/'* ]]
 }
 
 @test "basectl repo configure can skip default branch protection" {
@@ -1528,7 +1658,8 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"gh repo edit codeforester/base-demo"* ]]
     [[ "$output" != *"Base default branch protection"* ]]
-    [[ "$output" != *"rulesets"* ]]
+    [[ "$output" == *"Base branch naming"* ]]
+    [[ "$output" == *"rulesets"* ]]
 }
 
 @test "basectl repo configure dry-run configures project metadata by default" {
@@ -1668,6 +1799,7 @@ EOF
     [[ "$output" == *"  Label: bug (created or updated)."* ]]
     [[ "$output" == *"  Labels: bug, enhancement, documentation, ci, security, needs-demo (6 applied)."* ]]
     [[ "$output" == *"  Branch protection: created 'Base default branch protection'."* ]]
+    [[ "$output" == *"  Branch naming: created 'Base branch naming'."* ]]
     [[ "$output" == *"Configuration complete."* ]]
     grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
     grep -Fq "label create bug --repo codeforester/base-demo" "$TEST_STATE_DIR/gh-args"
@@ -1896,7 +2028,7 @@ EOF
     [[ "$output" == *"Configuration complete."* ]]
 }
 
-@test "basectl repo configure updates an existing Base ruleset" {
+@test "basectl repo configure updates existing Base rulesets" {
     local repo_dir="$TEST_TMPDIR/repo"
 
     mkdir -p "$repo_dir"
@@ -1912,7 +2044,8 @@ if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
     printf '%s\n' "api-update $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload"
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
     exit 0
 fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
@@ -1928,14 +2061,18 @@ EOF
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
     grep -Fq "api-update api repos/codeforester/base-demo/rulesets/42 --method PUT" "$TEST_STATE_DIR/gh-args"
-    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"name":"Base branch naming"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"include":["~ALL"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"exclude":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"branch_name_pattern"' "$TEST_STATE_DIR/ruleset-payloads"
 }
 
-@test "basectl repo configure creates a missing Base ruleset" {
+@test "basectl repo configure creates missing Base rulesets" {
     local repo_dir="$TEST_TMPDIR/repo"
 
     mkdir -p "$repo_dir"
@@ -1950,7 +2087,8 @@ if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" !
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
     printf '%s\n' "api-create $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
-    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload"
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
     exit 0
 fi
 printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
@@ -1966,11 +2104,15 @@ EOF
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
     grep -Fq "api-create api repos/codeforester/base-demo/rulesets --method POST" "$TEST_STATE_DIR/gh-args"
-    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payload"
-    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payload"
+    grep -Fq '"name":"Base default branch protection"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"include":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"pull_request"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"deletion"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"non_fast_forward"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"name":"Base branch naming"' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"include":["~ALL"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"exclude":["~DEFAULT_BRANCH"]' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"type":"branch_name_pattern"' "$TEST_STATE_DIR/ruleset-payloads"
 }
 
 @test "basectl repo configure warns when GitHub plan blocks rulesets" {
@@ -2000,6 +2142,45 @@ EOF
     [ "$status" -eq 0 ]
     grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
     [[ "$output" == *"Default branch protection skipped"* ]]
+    [[ "$output" == *"Branch naming enforcement skipped"* ]]
+    [[ "$output" == *"GitHub Pro"* ]]
+    [[ "$output" == *"make this repository public"* ]]
+}
+
+@test "basectl repo configure warns when GitHub plan blocks ruleset writes" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method POST"* ]]; then
+    printf '%s\n' "api-list $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" == *"--method POST"* ]]; then
+    printf '%s\n' "api-create $*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+    cat >/dev/null
+    printf '%s\n' "gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)" >&2
+    exit 1
+fi
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    grep -Fq "api-list api repos/codeforester/base-demo/rulesets" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "api-create api repos/codeforester/base-demo/rulesets --method POST" "$TEST_STATE_DIR/gh-args"
+    [[ "$output" == *"Default branch protection skipped"* ]]
+    [[ "$output" == *"Branch naming enforcement skipped"* ]]
     [[ "$output" == *"GitHub Pro"* ]]
     [[ "$output" == *"make this repository public"* ]]
 }
@@ -2069,8 +2250,24 @@ EOF
     ! grep -Fq "pr create" "$TEST_STATE_DIR/gh-args"
 }
 
+@test "basectl repo init --pr dry-run reports a canonical branch and pull request plan" {
+    local pr_branch="bug/900-$(current_branch_date)-repo-baseline-base-demo"
+    local repo_dir="$TEST_TMPDIR/base-demo-dry-run"
+
+    init_git_repo "$repo_dir"
+    git -C "$repo_dir" remote add origin git@github.com:codeforester/base-demo.git
+
+    run_basectl repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --issue 900 --category bug --pr --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would create or use branch '$pr_branch' from default branch '<default branch>'."* ]]
+    [[ "$output" == *"[DRY-RUN] Would push branch '$pr_branch' to origin."* ]]
+    [[ "$output" == *"[DRY-RUN] Would open a pull request in 'codeforester/base-demo' from '$pr_branch' to '<default branch>'"* ]]
+}
+
 @test "basectl repo init --pr opens a baseline pull request" {
     local commit_files
+    local pr_branch="bug/901-$(current_branch_date)-repo-baseline-base-demo"
     local remote_dir="$TEST_TMPDIR/origin.git"
     local repo_dir="$TEST_TMPDIR/base-demo"
 
@@ -2086,6 +2283,10 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "issue view 901 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'bug\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -2116,28 +2317,30 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
-        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --pr
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --issue 901 --pr
 
     [ "$status" -eq 0 ]
-    [ "$(git -C "$repo_dir" branch --show-current)" = "base/repo-baseline-base-demo" ]
+    [ "$(git -C "$repo_dir" branch --show-current)" = "$pr_branch" ]
     [ "$(git -C "$repo_dir" log -1 --pretty=%s)" = "Add Base repository baseline" ]
-    git --git-dir="$remote_dir" show-ref --verify --quiet refs/heads/base/repo-baseline-base-demo
+    git --git-dir="$remote_dir" show-ref --verify --quiet "refs/heads/$pr_branch"
     commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
     [[ "$commit_files" == *"VERSION"* ]]
     [[ "$commit_files" == *".github/base-project.yml"* ]]
     [[ "$commit_files" == *"base_manifest.yaml"* ]]
     [[ "$commit_files" != *"src/app.txt"* ]]
-    grep -Fq "pr create --repo codeforester/base-demo --base master --head base/repo-baseline-base-demo --title Add Base repository baseline --body-file" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "pr create --repo codeforester/base-demo --base master --head $pr_branch --title Add Base repository baseline --body-file" "$TEST_STATE_DIR/gh-args"
     if grep -Fq "repo edit codeforester/base-demo" "$TEST_STATE_DIR/gh-args"; then
         fail "repo init --pr should not configure GitHub when opening a baseline pull request"
     fi
     grep -Fq "Add Base-managed repository baseline files." "$TEST_STATE_DIR/pr-body"
+    grep -Fq "Closes #901" "$TEST_STATE_DIR/pr-body"
     grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
+    grep -Fq -- "--issue 901 --category bug --pr" "$TEST_STATE_DIR/pr-body"
     [[ "$output" == *"Baseline PR opened: https://github.com/codeforester/base-demo/pull/1"* ]]
     [[ "$output" == *"Next steps:"* ]]
     [[ "$output" == *"Review and merge the pull request."* ]]
     [[ "$output" == *"basectl repo init base-demo --path"* ]]
-    [[ "$output" == *"--repo codeforester/base-demo --pr"* ]]
+    [[ "$output" == *"--repo codeforester/base-demo --issue 901 --category bug --pr"* ]]
 }
 
 @test "basectl repo init --agent-ready --pr includes agent guidance files" {
@@ -2157,6 +2360,10 @@ EOF
 if [[ "$*" == "auth status -h github.com" ]]; then
     exit 0
 fi
+if [[ "$*" == "issue view 902 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'enhancement\n'
+    exit 0
+fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
     printf 'master\n'
     exit 0
@@ -2185,7 +2392,7 @@ EOF
         HOME="$TEST_HOME" \
         BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
         PATH="$TEST_MOCKBIN:$PATH" \
-        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --agent-ready --pr
+        "$BASE_REPO_ROOT/bin/basectl" repo init base-demo --path "$repo_dir" --repo codeforester/base-demo --agent-ready --issue 902 --pr
 
     [ "$status" -eq 0 ]
     commit_files="$(git -C "$repo_dir" show --name-only --pretty=format: HEAD)"
@@ -2193,6 +2400,7 @@ EOF
     [[ "$commit_files" == *"skills.md"* ]]
     grep -Fq "basectl repo init base-demo --path" "$TEST_STATE_DIR/pr-body"
     grep -Fq -- "--agent-ready" "$TEST_STATE_DIR/pr-body"
+    grep -Fq -- "--issue 902 --category enhancement --pr" "$TEST_STATE_DIR/pr-body"
     [[ "$output" == *"--agent-ready"* ]]
 }
 
@@ -2211,6 +2419,10 @@ EOF
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "issue view 903 --repo codeforester/base-demo --json labels --jq .labels[].name" ]]; then
+    printf 'enhancement\n'
     exit 0
 fi
 if [[ "$*" == "repo view codeforester/base-demo --json defaultBranchRef --jq .defaultBranchRef.name" ]]; then
@@ -2237,6 +2449,7 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" repo init base-demo \
             --path "$repo_dir" \
             --repo codeforester/base-demo \
+            --issue 903 \
             --pr \
             --copy-project-fields-from "Base Roadmap"
 
@@ -2259,7 +2472,7 @@ EOF
     printf 'draft\n' > "$repo_dir/notes.txt"
     physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
 
-    run_basectl repo init dirty-demo --path "$repo_dir" --repo codeforester/dirty-demo --pr
+    run_basectl repo init dirty-demo --path "$repo_dir" --repo codeforester/dirty-demo --issue 904 --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo init --pr requires a clean Git worktree"* ]]
@@ -2283,7 +2496,7 @@ EOF
     physical_repo_dir="$(cd "$repo_dir" && pwd -P)"
     physical_subdir="$(cd "$subdir" && pwd -P)"
 
-    run_basectl repo init root-demo --path "$subdir" --repo codeforester/root-demo --pr
+    run_basectl repo init root-demo --path "$subdir" --repo codeforester/root-demo --issue 905 --pr
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"repo init --pr expects --path to point at the repository root."* ]]

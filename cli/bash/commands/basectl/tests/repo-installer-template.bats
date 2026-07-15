@@ -63,9 +63,9 @@ run_loaded_repo_helper_script() {
 }
 
 @test "repo installer-template helper renders the pull request body command" {
-    run_loaded_repo_helper_script 'base_repo_create_installer_template_pr_body "/tmp/My Project/install.sh" "codeforester/base-demo"'
+    run_loaded_repo_helper_script 'base_repo_create_installer_template_pr_body "/tmp/My Project/install.sh" "codeforester/base-demo" "705" "documentation"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Add the maintained Base project installer template."* ]]
-    [[ "$output" == *'basectl repo installer-template "/tmp/My Project/install.sh" --repo codeforester/base-demo --pr'* ]]
+    [[ "$output" == *'basectl repo installer-template "/tmp/My Project/install.sh" --repo codeforester/base-demo --issue 705 --category documentation --pr'* ]]
 }

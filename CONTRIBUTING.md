@@ -38,6 +38,11 @@ for issue-backed work, validation, and design-only sessions.
    `basectl gh issue start <number>` can generate the branch name and matching
    `git worktree add` command from the issue label and title.
 
+   This is a repository rule, not an AI-tool convention. Do not replace the
+   category with `feat`, `agent`, `codex`, or another tool-specific prefix.
+   Base-managed GitHub configuration enforces the pattern on every non-default
+   remote branch, and `basectl gh pr create` rejects an invalid local branch.
+
 5. Use an isolated Git worktree for each pull request:
 
    ```bash

@@ -306,12 +306,12 @@ EOF
     [[ "$output" == *"trust_allow_options=--workspace --manifest-sha256"* ]]
     [[ "$output" == *"trust_revoke_options=--workspace"* ]]
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
-    [[ "$output" == *"repo_init_options=--path --repo --pr --agent-ready --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]
+    [[ "$output" == *"repo_init_options=--path --repo --issue --category --pr --agent-ready --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]
     [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]
     [[ "$output" == *"repo_check_options=--agent-guidance --agent-ready"* ]]
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --dry-run"* ]]
-    [[ "$output" == *"repo_agent_guidance_options=--repo --repo-name --default-branch --validation-command --pr --dry-run"* ]]
-    [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --pr --dry-run"* ]]
+    [[ "$output" == *"repo_agent_guidance_options=--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run"* ]]
+    [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --issue --category --pr --dry-run"* ]]
     [[ "$output" == *"ci_commands=setup check doctor"* ]]
     [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
@@ -320,6 +320,24 @@ EOF
     [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --config --status --priority --area --initiative --size --dry-run"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes"* ]]
+}
+
+@test "Zsh repo pull request helper completions include issue and category options" {
+    local agent_block
+    local completion="$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+    local init_block
+    local installer_block
+
+    init_block="$(sed -n '/^                init)$/,/^                clone)$/p' "$completion")"
+    agent_block="$(sed -n '/^                agent-guidance)$/,/^                installer-template)$/p' "$completion")"
+    installer_block="$(sed -n '/^                installer-template)$/,/^                \*)/p' "$completion")"
+
+    [[ "$init_block" == *"--issue[Issue number for pull request]"* ]]
+    [[ "$init_block" == *"--category[Issue category for pull request dry-run]"* ]]
+    [[ "$agent_block" == *"--issue[Issue number for pull request]"* ]]
+    [[ "$agent_block" == *"--category[Issue category for pull request dry-run]"* ]]
+    [[ "$installer_block" == *"--issue[Issue number for pull request]"* ]]
+    [[ "$installer_block" == *"--category[Issue category for pull request dry-run]"* ]]
 }
 
 @test "Bash completion includes setup notification options" {
