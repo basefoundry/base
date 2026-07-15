@@ -17,7 +17,7 @@ source_project_command_helpers() {
     [ "$status" -eq 0 ]
     [ "$output" = "$TEST_HOME/.base.d/demo/.venv" ]
 
-    run base_project_venv_dir demo "$TEST_TMPDIR/demo" "$TEST_TMPDIR/demo/base_manifest.yaml"
+    run base_project_venv_dir demo "$TEST_TMPDIR/demo" "$TEST_TMPDIR/demo/.venv"
 
     [ "$status" -eq 0 ]
     [ "$output" = "$TEST_TMPDIR/demo/.venv" ]
@@ -41,7 +41,7 @@ source_project_command_helpers() {
     HOME="$TEST_HOME"
     unset BASE_PROJECT_VENV_DIR
 
-    run base_project_venv_dir demo "$project_root" "$manifest_path" "__base_project_venv_dir=$project_root/.venv"
+    run base_project_venv_dir demo "$project_root" "$project_root/.venv"
 
     [ "$status" -eq 0 ]
     [ "$output" = "$project_root/.venv" ]
@@ -58,7 +58,7 @@ source_project_command_helpers() {
     HOME="$TEST_HOME"
     unset BASE_PROJECT_VENV_DIR
 
-    run base_project_venv_dir demo "$project_root" "$manifest_path" "__base_project_venv_dir=$project_root/.venv"
+    run base_project_venv_dir demo "$project_root" "$project_root/.venv"
 
     [ "$status" -eq 0 ]
     [ "$output" = "$project_root/.venv" ]
@@ -79,7 +79,7 @@ source_project_command_helpers() {
             HOME="$1"
             PATH="/usr/bin:/bin"
             unset BASE_PROJECT BASE_PROJECT_ROOT BASE_PROJECT_MANIFEST BASE_PROJECT_VENV_DIR
-            base_project_activate_environment demo "$2" "$3" 0 "__base_project_venv_dir=$4"
+            base_project_activate_environment demo "$2" "$3" 0 "$4" false
             printf "BASE_PROJECT=%s\n" "$BASE_PROJECT"
             printf "BASE_PROJECT_ROOT=%s\n" "$BASE_PROJECT_ROOT"
             printf "BASE_PROJECT_MANIFEST=%s\n" "$BASE_PROJECT_MANIFEST"
@@ -109,7 +109,7 @@ source_project_command_helpers() {
             source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
             HOME="$1"
             log_warn() { printf "WARN:%s\n" "$*"; }
-            base_project_activate_environment demo "$2" "$3" 0 "__base_project_venv_dir=$4"
+            base_project_activate_environment demo "$2" "$3" 0 "$4" false
         ' bash "$TEST_HOME" "$project_root" "$manifest_path" "$venv_dir"
 
     [ "$status" -eq 0 ]
@@ -122,7 +122,7 @@ source_project_command_helpers() {
             source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
             HOME="$1"
             log_warn() { printf "WARN:%s\n" "$*"; }
-            base_project_activate_environment demo "$2" "$3" 1 "__base_project_venv_dir=$4"
+            base_project_activate_environment demo "$2" "$3" 1 "$4" false
         ' bash "$TEST_HOME" "$project_root" "$manifest_path" "$venv_dir"
 
     [ "$status" -eq 0 ]

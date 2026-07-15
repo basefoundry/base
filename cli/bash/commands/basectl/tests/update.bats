@@ -56,7 +56,11 @@ assert_status() {
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
-            base_update_resolve_project() { printf "demo\t%s\t%s\n" "$BASE_TEST_PROJECT_ROOT" "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml"; }
+            base_update_resolve_project() {
+                printf -v "$3" "%s" demo
+                printf -v "$4" "%s" "$BASE_TEST_PROJECT_ROOT"
+                printf -v "$5" "%s" "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml"
+            }
             base_update_current_branch() { printf "%s\n" main; }
             base_update_default_branch() { printf "%s\n" main; }
             base_update_worktree_clean() { return 0; }
@@ -492,7 +496,11 @@ EOF
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
-            base_update_resolve_project() { printf "demo\t%s\t%s\n" "$BASE_TEST_PROJECT_ROOT" "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml"; }
+            base_update_resolve_project() {
+                printf -v "$3" "%s" demo
+                printf -v "$4" "%s" "$BASE_TEST_PROJECT_ROOT"
+                printf -v "$5" "%s" "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml"
+            }
             base_update_current_branch() { printf "%s\n" main; }
             base_update_default_branch() { printf "%s\n" main; }
             base_update_worktree_clean() { return 0; }

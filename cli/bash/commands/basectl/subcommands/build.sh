@@ -33,56 +33,82 @@ base_build_usage_error() {
     return 2
 }
 
+base_build_print_target_record() {
+    local display_text
+    local resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    local target_name="${BASE_COMMAND_PROTOCOL_FIELDS[target_name]}"
+    local working_dir="${BASE_COMMAND_PROTOCOL_FIELDS[working_dir]}"
+    local build_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
+    local description="${BASE_COMMAND_PROTOCOL_FIELDS[description]}"
+    local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+
+    if ((printed_header == 0)); then
+        printf "Build targets for project '%s'\n\n" "$resolved_name"
+        printed_header=1
+    fi
+    if [[ -n "$description" ]]; then
+        display_text="$description"
+        if [[ -n "$command_runner" ]]; then
+            display_text+=" [runner: $command_runner]"
+        fi
+    else
+        display_text="$(base_display_command_with_runner "$command_runner" "$build_command")" || return $?
+    fi
+    printf '%-20s %-40s %s\n' "$target_name" "$working_dir" "$display_text"
+}
+
+base_build_run_target_record() {
+    local resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    local project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    local manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    local route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
+    local uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
+    local trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
+    local target_name="${BASE_COMMAND_PROTOCOL_FIELDS[target_name]}"
+    local working_dir="${BASE_COMMAND_PROTOCOL_FIELDS[working_dir]}"
+    local build_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
+    local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    local command_to_run display_command
+
+    command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \
+            "$target_name" "$resolved_name" "$working_dir" "$display_command"
+        return 0
+    fi
+
+    if ((environment_prepared == 0)); then
+        base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
+        base_project_activate_environment \
+            "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
+        environment_prepared=1
+    fi
+
+    log_info "Building target '$target_name' for project '$resolved_name': $display_command"
+    base_validate_command_runner "$command_runner"
+    base_project_run_shell_command "$working_dir" "$command_to_run" basectl-build "${extra_args[@]}"
+}
+
 base_build_list_targets() {
     local project="$1"
     shift
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local list_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
-    local display_text
+    local list_output
     local printed_header=0
-    local target_fields=()
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    list_output="$("$wrapper" --project base base_projects build-target-list "$project" "${args[@]}")" || return $?
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r -a target_fields <<<"$line"
-        resolved_name="${target_fields[0]:-}"
-        project_root="${target_fields[1]:-}"
-        manifest_path="${target_fields[2]:-}"
-        target_name="${target_fields[3]:-}"
-        working_dir="${target_fields[4]:-}"
-        build_command="${target_fields[5]:-}"
-        description="${target_fields[6]:-}"
-        command_runner="$(base_project_command_runner_from_field "${target_fields[7]:-}" || true)"
-        [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" ]] || {
-            fatal_error "Unable to parse build targets for project '$project'."
-        }
-        if ((printed_header == 0)); then
-            printf "Build targets for project '%s'\n\n" "$resolved_name"
-            printed_header=1
-        fi
-        command_runner="${command_runner:-}"
-        if [[ -n "$description" ]]; then
-            display_text="$description"
-            if [[ -n "$command_runner" ]]; then
-                display_text+=" [runner: $command_runner]"
-            fi
-        else
-            display_text="$(base_display_command_with_runner "$command_runner" "$build_command")" || return $?
-        fi
-        printf '%-20s %-40s %s\n' "$target_name" "$working_dir" "$display_text"
-    done <<<"$list_output"
+    list_output="$("$wrapper" --project base base_projects build-target-list "$project" "${args[@]}" --format command-protocol)" || return $?
+    base_command_protocol_each build-target "$list_output" base_build_print_target_record
 }
 
 base_build_subcommand_main() {
-    local project="" wrapper resolve_output line resolved_name project_root manifest_path target_name working_dir build_command description command_runner
-    local command_to_run display_command
+    local project="" wrapper resolve_output
     local dry_run=0 list_targets=0 workspace_requested=0 environment_prepared=0
     local args=() extra_args=() targets=()
-    local target_fields=()
 
     while (($#)); do
         case "$1" in
@@ -161,43 +187,8 @@ base_build_subcommand_main() {
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$("$wrapper" --project base base_projects build-targets "$project" "${targets[@]}" "${args[@]}")" || return $?
+    resolve_output="$("$wrapper" --project base base_projects build-targets "$project" "${targets[@]}" "${args[@]}" --format command-protocol)" || return $?
     [[ -n "$resolve_output" ]] || fatal_error "Unable to resolve build targets for project '$project'."
 
-    resolved_name=""
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r -a target_fields <<<"$line"
-        resolved_name="${target_fields[0]:-}"
-        project_root="${target_fields[1]:-}"
-        manifest_path="${target_fields[2]:-}"
-        target_name="${target_fields[3]:-}"
-        working_dir="${target_fields[4]:-}"
-        build_command="${target_fields[5]:-}"
-        description="${target_fields[6]:-}"
-        command_runner="$(base_project_command_runner_from_field "${target_fields[7]:-}" || true)"
-        [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$target_name" && -n "$working_dir" && -n "$build_command" ]] || {
-            fatal_error "Unable to parse build target '$target_name' for project '$project'."
-        }
-
-        command_runner="${command_runner:-}"
-        command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
-        display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
-
-        if [[ "$dry_run" == "1" ]]; then
-            printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \
-                "$target_name" "$resolved_name" "$working_dir" "$display_command"
-            continue
-        fi
-
-        if ((environment_prepared == 0)); then
-            base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${target_fields[@]:7}" || return $?
-            base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${target_fields[@]:7}" >/dev/null
-            environment_prepared=1
-        fi
-
-        log_info "Building target '$target_name' for project '$resolved_name': $display_command"
-        base_validate_command_runner "$command_runner"
-        base_project_run_shell_command "$working_dir" "$command_to_run" basectl-build "${extra_args[@]}" || return $?
-    done <<<"$resolve_output"
+    base_command_protocol_each build-target "$resolve_output" base_build_run_target_record
 }

@@ -368,8 +368,10 @@ base_update_run_setup() {
 base_update_resolve_project() {
     local base_home="$1"
     local project="$2"
+    local output_name_var="$3"
+    local output_root_var="$4"
+    local output_manifest_var="$5"
     local wrapper="$base_home/bin/base-wrapper"
-    local resolve_fields=()
     local resolve_output resolved_name resolved_root resolved_manifest
 
     if [[ -z "$project" ]]; then
@@ -377,26 +379,29 @@ base_update_resolve_project() {
     fi
 
     if [[ "$project" == base ]]; then
-        printf '%s\t%s\t%s\n' base "$base_home" "$base_home/base_manifest.yaml"
-        return 0
+        resolved_name=base
+        resolved_root="$base_home"
+        resolved_manifest="$base_home/base_manifest.yaml"
+    else
+        [[ -x "$wrapper" ]] || {
+            log_error "Base Python wrapper '$wrapper' is missing or is not executable."
+            return 1
+        }
+
+        resolve_output="$("$wrapper" --project base base_projects resolve "$project" --format command-protocol)" || return $?
+        base_command_protocol_decode_one project-route "$resolve_output" || return 1
+        resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+        resolved_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+        resolved_manifest="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+        [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || {
+            log_error "Unable to resolve Base project '$project'."
+            return 1
+        }
     fi
 
-    [[ -x "$wrapper" ]] || {
-        log_error "Base Python wrapper '$wrapper' is missing or is not executable."
-        return 1
-    }
-
-    resolve_output="$("$wrapper" --project base base_projects resolve "$project")" || return $?
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    resolved_root="${resolve_fields[1]:-}"
-    resolved_manifest="${resolve_fields[2]:-}"
-    [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || {
-        log_error "Unable to resolve Base project '$project'."
-        return 1
-    }
-
-    printf '%s\t%s\t%s\n' "$resolved_name" "$resolved_root" "$resolved_manifest"
+    printf -v "$output_name_var" '%s' "$resolved_name"
+    printf -v "$output_root_var" '%s' "$resolved_root"
+    printf -v "$output_manifest_var" '%s' "$resolved_manifest"
 }
 
 base_update_head_revision() {
@@ -413,8 +418,6 @@ base_update_subcommand_main() {
     local project=base
     local project_arg=""
     local repo
-    local resolve_fields=()
-    local resolve_output
     local resolved_project
     local update_branch
     local dry_run=0
@@ -447,11 +450,7 @@ base_update_subcommand_main() {
         shift
     done
 
-    resolve_output="$(base_update_resolve_project "$base_home" "$project")" || return $?
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_project="${resolve_fields[0]:-}"
-    repo="${resolve_fields[1]:-}"
-    manifest_path="${resolve_fields[2]:-}"
+    base_update_resolve_project "$base_home" "$project" resolved_project repo manifest_path || return $?
     [[ -n "$resolved_project" && -n "$repo" && -n "$manifest_path" ]] || {
         log_error "Unable to resolve Base project '$project'."
         return 1

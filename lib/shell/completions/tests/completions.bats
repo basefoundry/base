@@ -273,20 +273,25 @@ assert_bash_completion_options_match_help() {
     mkdir -p "$(dirname "$wrapper")"
     cat > "$wrapper" <<'EOF'
 #!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+[[ " $* " == *" --format command-protocol "* ]] || exit 9
 count=0
 if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
     read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
 fi
 count=$((count + 1))
 printf '%s\n' "$count" > "$BASE_COMPLETION_TEST_COUNT_FILE"
-printf 'base\t/Users/test/base\n'
-printf 'demo\t/Users/test/demo\n'
+base_test_protocol_begin project-list-entry 2
+base_test_protocol_project_list_record 0 base /Users/test/base
+base_test_protocol_project_list_record 1 demo /Users/test/demo
+base_test_protocol_end
 EOF
     chmod +x "$wrapper"
 
     run env BASE_HOME="$base_home" \
         BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
         BASE_COMPLETION_TEST_COUNT_FILE="$count_file" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
         bash -c '\
             source "$1"; \
             COMP_WORDS=(basectl test ""); \
@@ -313,23 +318,28 @@ EOF
     mkdir -p "$(dirname "$wrapper")"
     cat > "$wrapper" <<'EOF'
 #!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+[[ " $* " == *" --format command-protocol "* ]] || exit 9
 count=0
 if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
     read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
 fi
 count=$((count + 1))
 printf '%s\n' "$count" > "$BASE_COMPLETION_TEST_COUNT_FILE"
+base_test_protocol_begin project-list-entry 1
 if [[ "$count" -eq 1 ]]; then
-    printf 'base\t/Users/test/base\n'
+    base_test_protocol_project_list_record 0 base /Users/test/base
 else
-    printf 'base-fresh\t/Users/test/base-fresh\n'
+    base_test_protocol_project_list_record 0 base-fresh /Users/test/base-fresh
 fi
+base_test_protocol_end
 EOF
     chmod +x "$wrapper"
 
     run env BASE_HOME="$base_home" \
         BASE_COMPLETION_PROJECT_CACHE_TTL=1 \
         BASE_COMPLETION_TEST_COUNT_FILE="$count_file" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
         bash -c '\
             source "$1"; \
             _base_basectl_completion_now() { printf "%s\n" "$BASE_COMPLETION_TEST_NOW"; }; \
@@ -363,14 +373,19 @@ EOF
     mkdir -p "$(dirname "$wrapper")"
     cat > "$wrapper" <<'EOF'
 #!/usr/bin/env bash
-printf 'base\t/Users/test/base\n'
-printf 'demo app\t/Users/test/demo app\n'
-printf 'data tools\t/Users/test/data tools\n'
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+[[ " $* " == *" --format command-protocol "* ]] || exit 9
+base_test_protocol_begin project-list-entry 3
+base_test_protocol_project_list_record 0 base /Users/test/base
+base_test_protocol_project_list_record 1 "demo app" "/Users/test/demo app"
+base_test_protocol_project_list_record 2 "data tools" "/Users/test/data tools"
+base_test_protocol_end
 EOF
     chmod +x "$wrapper"
 
     run env BASE_HOME="$base_home" \
         BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
         bash -c '\
             source "$1"; \
             COMP_WORDS=(basectl test d); \
@@ -386,6 +401,66 @@ EOF
     [[ "$output" != *"<app>"* ]]
     [[ "$output" != *"<data>"* ]]
     [[ "$output" != *"<tools>"* ]]
+}
+
+@test "Zsh project-name completions consume structured names with spaces and Unicode" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    local args_file="$TEST_TMPDIR/project-list-args"
+    local base_home="$TEST_TMPDIR/base"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+printf '%s\n' "$*" > "${BASE_COMPLETION_TEST_ARGS_FILE:?}"
+base_test_protocol_begin project-list-entry 2
+base_test_protocol_project_list_record 0 base /Users/test/base
+base_test_protocol_project_list_record 1 "demo app λ" "/Users/test/demo app λ"
+base_test_protocol_end
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        BASE_COMPLETION_TEST_ARGS_FILE="$args_file" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
+        zsh -fc '\
+            source "$1"; \
+            _base_basectl_completion_refresh_project_cache || exit; \
+            print -r -- "$_BASE_BASECTL_COMPLETION_PROJECT_NAMES"' \
+            zsh "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'base\ndemo app λ' ]
+    [[ "$(cat "$args_file")" == *"base_projects list --format command-protocol"* ]]
+}
+
+@test "Zsh project-name protocol reader rejects overflowing record counts" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    local payload=$'BASE_COMMAND_PROTOCOL_V1\nrecord_type=project-list-entry\nrecord_count=18446744073709551616\nend_protocol='
+
+    run env PAYLOAD="$payload" zsh -fc '\
+        source "$1"; \
+        ! _base_basectl_completion_project_names_from_protocol "$PAYLOAD"' \
+        zsh "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "Bash project-name protocol reader rejects overflowing record counts" {
+    local payload=$'BASE_COMMAND_PROTOCOL_V1\nrecord_type=project-list-entry\nrecord_count=18446744073709551616\nend_protocol='
+
+    run env PAYLOAD="$payload" /bin/bash -c '\
+        source "$1"; \
+        ! _base_basectl_completion_project_names_from_protocol "$PAYLOAD"' \
+        bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
 }
 
 @test "Bash completion now helper does not require external date" {

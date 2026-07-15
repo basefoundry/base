@@ -35,7 +35,7 @@ base_demo_subcommand_main() {
     local quoted_demo_script command_to_run display_command
     local dry_run=0 workspace_requested=0
     local args=() extra_args=() project_args=()
-    local resolve_fields=()
+    local route_venv_dir uses_uv_manager trust_required
 
     while (($#)); do
         case "$1" in
@@ -95,13 +95,18 @@ base_demo_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     [[ -n "$project" ]] && project_args+=("$project")
-    resolve_output="$("$wrapper" --project base base_projects demo-script "${project_args[@]}" "${args[@]}")" || return $?
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    project_root="${resolve_fields[1]:-}"
-    manifest_path="${resolve_fields[2]:-}"
-    demo_script="${resolve_fields[3]:-}"
-    command_runner="$(base_project_command_runner_from_field "${resolve_fields[4]:-}" || true)"
+    resolve_output="$("$wrapper" --project base base_projects demo-script "${project_args[@]}" "${args[@]}" --format command-protocol)" || return $?
+    base_command_protocol_decode_one demo "$resolve_output" || {
+        fatal_error "Unable to resolve demo script for project '${project:-current project}'."
+    }
+    resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
+    uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
+    trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
+    demo_script="${BASE_COMMAND_PROTOCOL_FIELDS[demo_script]}"
+    command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$demo_script" ]] || {
         fatal_error "Unable to resolve demo script for project '${project:-current project}'."
@@ -118,8 +123,9 @@ base_demo_subcommand_main() {
         return 0
     fi
 
-    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:4}" || return $?
-    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
+    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
+    base_project_activate_environment \
+        "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
 
     log_info "Running demo for project '$resolved_name': $display_command"
     if [[ -z "$command_runner" ]]; then

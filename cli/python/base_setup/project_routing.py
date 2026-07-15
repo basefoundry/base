@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from base_cli.command_protocol import dumps_record
+
 from .manifest import BaseManifest
 from .project_environment import project_venv_dir_override
 from .uv import manifest_uses_uv_project_manager
@@ -41,6 +43,16 @@ class ProjectRoute:
                 uses_uv,
             ]
         )
+
+    def to_command_record(self) -> dict[str, str | bool]:
+        return {
+            "project_name": self.project,
+            "project_root": str(self.project_root),
+            "manifest_path": str(self.manifest_path),
+            "project_venv_dir": str(self.project_venv_dir),
+            "uses_uv_manager": self.uses_uv_manager,
+            "manifest_command_trust_required": False,
+        }
 
 
 def route_for_manifest(manifest: BaseManifest) -> ProjectRoute:
@@ -82,4 +94,6 @@ def route_to_text(route: ProjectRoute, output_format: str) -> str:
         return json.dumps(route.to_json(), indent=2)
     if output_format == "text":
         return route.to_tsv()
-    raise ValueError(f"Unsupported route output format '{output_format}'. Expected text or json.")
+    if output_format == "command-protocol":
+        return dumps_record("project-route", route.to_command_record())
+    raise ValueError(f"Unsupported route output format '{output_format}'. Expected text, json, or command-protocol.")

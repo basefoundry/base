@@ -13,6 +13,7 @@ setup() {
     unset OSTYPE_OVERRIDE
 
     mkdir -p "$TEST_HOME" "$TEST_MOCKBIN" "$TEST_STATE_DIR"
+    export BASH_ENV="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash"
     create_uname_stub
 }
 
@@ -178,7 +179,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -380,7 +382,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -431,7 +434,8 @@ VENVEOF
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -545,7 +549,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -596,7 +601,8 @@ VENVEOF
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -733,7 +739,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -849,6 +856,9 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         if [[ "$output_format" == "json" ]]; then
             printf '{"schema_version":1,"project":"%s","project_root":"%s","manifest_path":"%s","project_venv_dir":"%s","uses_uv_manager":%s}\n' \
                 "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
+        elif [[ "$output_format" == "command-protocol" ]]; then
+            base_test_protocol_project_route \
+                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" false
         else
             printf '%s\t%s\t%s\t%s\t%s\n' "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
         fi
@@ -907,7 +917,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]
     project_root="${BASE_SETUP_TEST_WORKSPACE:?}/$project"
     manifest_path="$project_root/base_manifest.yaml"
     if [[ -f "$manifest_path" ]]; then
-        printf '%s\t%s\t%s\n' "$project" "$project_root" "$manifest_path"
+        base_test_protocol_project_route \
+            "$project" "$project_root" "$manifest_path" "$project_root/.venv" false false
         exit 0
     fi
     printf 'Project not found: %s\n' "$project" >&2
@@ -918,7 +929,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "manifest" 
     if [[ -f "$manifest_path" ]]; then
         project="$(awk '/^[[:space:]]*name:/ { print $2; exit }' "$manifest_path")"
         project_root="$(cd -- "$(dirname -- "$manifest_path")" && pwd -P)"
-        printf '%s\t%s\t%s\n' "$project" "$project_root" "$manifest_path"
+        base_test_protocol_project_reference "$project" "$project_root" "$manifest_path"
         exit 0
     fi
     printf 'Manifest not found: %s\n' "$manifest_path" >&2

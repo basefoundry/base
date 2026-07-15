@@ -40,8 +40,16 @@ load ./basectl_helpers.bash
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'printf "api:%s:%s:%s:%s:%s\n" "$BASE_PROJECT" "$BASE_PROJECT_ROOT" "$BASE_PROJECT_MANIFEST" "$BASE_PROJECT_VENV_DIR" "$PWD" >> "$BASE_TEST_BUILD_STATE"' 'Build API'
-    printf 'demo\t%s\t%s\tworker\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/worker" 'printf "worker:%s:%s\n" "$BASE_PROJECT" "$PWD" >> "$BASE_TEST_BUILD_STATE"' 'Build worker'
+    base_test_protocol_begin build-target 2
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" \
+        'printf "api:%s:%s:%s:%s:%s\n" "$BASE_PROJECT" "$BASE_PROJECT_ROOT" "$BASE_PROJECT_MANIFEST" "$BASE_PROJECT_VENV_DIR" "$PWD" >> "$BASE_TEST_BUILD_STATE"' 'Build API' ""
+    base_test_protocol_build_target_record 1 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false worker \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/worker" \
+        'printf "worker:%s:%s\n" "$BASE_PROJECT" "$PWD" >> "$BASE_TEST_BUILD_STATE"' 'Build worker' ""
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2
@@ -73,7 +81,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2
@@ -113,7 +125,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" && "${5:-}" == "api" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'fake-build ./cmd/api' 'Build API'
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'fake-build ./cmd/api' 'Build API' ""
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2
@@ -147,7 +163,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'touch "$BASE_TEST_BUILD_STATE"; exit 7' 'Build API'
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'touch "$BASE_TEST_BUILD_STATE"; exit 7' 'Build API' ""
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2
@@ -170,6 +190,38 @@ EOF
     [ ! -e "$state_file" ]
 }
 
+@test "basectl build preserves delegated command failures without reporting protocol errors" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" ]]; then
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'printf "build failed\n" >&2; exit 23' 'Build API' ""
+    base_test_protocol_end
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$python_bin"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" build demo
+
+    [ "$status" -eq 23 ]
+    [[ "$output" == *"build failed"* ]]
+    [[ "$output" != *"Invalid Base command protocol"* ]]
+    [[ "$output" != *"Unable to parse build targets"* ]]
+}
+
 @test "basectl build --list prints project build targets" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
@@ -178,7 +230,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-target-list" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'go build ./cmd/api' 'Build API'
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'go build ./cmd/api' 'Build API' ""
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2
@@ -208,7 +264,11 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-target-list" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'python -m build' 'Build API' uv
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected build python args: %s\n' "$*" >&2

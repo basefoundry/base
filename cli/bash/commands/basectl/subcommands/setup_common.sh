@@ -634,44 +634,53 @@ setup_base_check_metadata() {
 }
 
 setup_resolve_project_manifest() {
-    local project="$1"
+    local requested_project="$1"
     local python_bin="$2"
-    local resolve_fields=()
-    local resolve_output resolved_manifest resolved_name resolved_root
+    local output_name_var="$3"
+    local output_root_var="$4"
+    local output_manifest_var="$5"
+    local protocol_output result_manifest result_name result_root
 
     if [[ -n "${BASE_SETUP_MANIFEST:-}" ]]; then
-        if [[ -z "$project" ]]; then
+        if [[ -z "$requested_project" ]]; then
             setup_ensure_cached_paths
-            env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-                "$python_bin" -m base_projects manifest "$BASE_SETUP_MANIFEST"
-            return $?
+            protocol_output="$(
+                env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+                    "$python_bin" -m base_projects manifest "$BASE_SETUP_MANIFEST" --format command-protocol
+            )" || return $?
+            base_command_protocol_decode_one project-reference "$protocol_output" || return 1
+            result_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+            result_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+            result_manifest="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+        else
+            result_name="$requested_project"
+            result_manifest="$BASE_SETUP_MANIFEST"
+            result_root="$(setup_project_root_from_manifest "$result_manifest")" || return 1
         fi
-        printf '%s\n' "$BASE_SETUP_MANIFEST"
-        return 0
+    else
+        [[ -n "$requested_project" ]] || requested_project=base
+        if [[ "$requested_project" == base ]]; then
+            result_name=base
+            result_root="$BASE_HOME"
+            result_manifest="$BASE_HOME/base_manifest.yaml"
+        else
+            setup_ensure_cached_paths
+            protocol_output="$(
+                env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
+                    "$python_bin" -m base_projects resolve "$requested_project" --format command-protocol
+            )" || return 1
+            base_command_protocol_decode_one project-route "$protocol_output" || return 1
+            result_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+            result_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+            result_manifest="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+            [[ "$result_name" == "$requested_project" ]] || return 1
+        fi
     fi
 
-    if [[ -z "$project" ]]; then
-        project=base
-    fi
-
-    if [[ "$project" == base ]]; then
-        printf '%s\n' "$BASE_HOME/base_manifest.yaml"
-        return 0
-    fi
-
-    setup_ensure_cached_paths
-    resolve_output="$(
-        env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$python_bin" -m base_projects resolve "$project"
-    )" || return 1
-
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    resolved_root="${resolve_fields[1]:-}"
-    resolved_manifest="${resolve_fields[2]:-}"
-    [[ "$resolved_name" == "$project" && -n "$resolved_root" && -n "$resolved_manifest" ]] || return 1
-
-    printf '%s\t%s\t%s\n' "$resolved_name" "$resolved_root" "$resolved_manifest"
+    [[ -n "$result_name" && -n "$result_root" && -n "$result_manifest" ]] || return 1
+    printf -v "$output_name_var" '%s' "$result_name"
+    printf -v "$output_root_var" '%s' "$result_root"
+    printf -v "$output_manifest_var" '%s' "$result_manifest"
 }
 
 setup_project_venv_dir() {
@@ -697,7 +706,7 @@ setup_resolve_project_route() {
 
     setup_ensure_cached_paths
     env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup --manifest "$manifest_path" --action route "$project"
+        "$python_bin" -m base_setup --manifest "$manifest_path" --action route --format command-protocol "$project"
 }
 
 setup_project_check_record_path() {
@@ -994,10 +1003,9 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path platform precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_name resolved_root resolve_output route_output venv_dir
+    local exit_code manifest_path platform precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_root route_output venv_dir
     local args=()
     local project_env_args=()
-    local resolve_fields=()
 
     if setup_is_dry_run && ! setup_base_python_package_installed "$(setup_pyyaml_package)"; then
         log_info "[DRY-RUN] Would run Python project setup layer after PyYAML is installed."
@@ -1008,17 +1016,12 @@ setup_run_project_artifact_layer() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
-    resolve_output="$(setup_resolve_project_manifest "$project" "$python_bin")" || {
+    setup_resolve_project_manifest "$project" "$python_bin" project resolved_root manifest_path || {
         log_error "Unable to resolve Base project '$project'."
         log_error "Run 'basectl projects list' to see projects Base can discover."
         return 1
     }
-    if [[ "$resolve_output" == *$'\t'* ]]; then
-        IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-        resolved_name="${resolve_fields[0]:-}"
-        resolved_root="${resolve_fields[1]:-}"
-        manifest_path="${resolve_fields[2]:-}"
-        project="$resolved_name"
+    if [[ "$project" != base ]]; then
         if [[ "$output_format" != json ]]; then
             if [[ "$action" == setup ]]; then
                 log_info "Resolved project '$project' at '$resolved_root'."
@@ -1026,18 +1029,20 @@ setup_run_project_artifact_layer() {
                 log_debug "Resolved project '$project' at '$resolved_root'."
             fi
         fi
-    else
-        if [[ -z "$project" ]]; then
-            project=base
-        fi
-        manifest_path="$resolve_output"
-        resolved_root="$(setup_project_root_from_manifest "$manifest_path")" || return 1
     fi
     route_output="$(setup_resolve_project_route "$project" "$manifest_path" "$python_bin")" || {
         log_error "Unable to resolve Base project environment for '$project'."
         return 1
     }
-    IFS=$'\t' read -r project resolved_root manifest_path project_venv_dir project_uses_uv_manager <<<"$route_output"
+    base_command_protocol_decode_one project-route "$route_output" || {
+        log_error "Python project routing returned invalid metadata for '$project'."
+        return 1
+    }
+    project="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    resolved_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    project_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
+    project_uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
     if [[ -z "$project" || -z "$resolved_root" || -z "$manifest_path" || -z "$project_venv_dir" ]]; then
         log_error "Python project routing returned incomplete metadata for '$project'."
         return 1

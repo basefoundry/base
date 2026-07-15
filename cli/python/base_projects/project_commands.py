@@ -56,6 +56,89 @@ def route_metadata_fields(manifest: BaseManifest, *, manifest_command_trust_requ
     ]
 
 
+def route_metadata_record(
+    manifest: BaseManifest,
+    *,
+    manifest_command_trust_required: bool = False,
+) -> dict[str, str | bool]:
+    route = route_for_manifest(manifest)
+    return {
+        "project_venv_dir": str(route.project_venv_dir),
+        "uses_uv_manager": route.uses_uv_manager,
+        "manifest_command_trust_required": manifest_command_trust_required,
+    }
+
+
+def project_record(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    manifest: BaseManifest,
+) -> dict[str, str | bool]:
+    return {
+        "project_name": project_name,
+        "project_root": str(project_root),
+        "manifest_path": str(manifest_path),
+        **route_metadata_record(
+            manifest,
+            manifest_command_trust_required=bool(manifest.activate.source),
+        ),
+    }
+
+
+def command_record(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    command: CommandConfig,
+    manifest: BaseManifest,
+) -> dict[str, str | bool | None]:
+    return {
+        "project_name": project_name,
+        "project_root": str(project_root),
+        "manifest_path": str(manifest_path),
+        **route_metadata_record(manifest, manifest_command_trust_required=True),
+        "command": command.command,
+        "runner": command.runner,
+    }
+
+
+def named_command_record(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    command_name: str,
+    command: CommandConfig,
+) -> dict[str, str | None]:
+    return {
+        "project_name": project_name,
+        "project_root": str(project_root),
+        "manifest_path": str(manifest_path),
+        "command_name": command_name,
+        "command": command.command,
+        "runner": command.runner,
+    }
+
+
+def demo_record(
+    project_name: str,
+    project_root: Path,
+    manifest_path: Path,
+    demo_script: Path,
+    manifest: BaseManifest,
+) -> dict[str, str | bool | None]:
+    if manifest.demo is None:
+        raise ProjectCommandError(f"Project '{project_name}' does not declare a demo in '{manifest_path}'.")
+    return {
+        "project_name": project_name,
+        "project_root": str(project_root),
+        "manifest_path": str(manifest_path),
+        **route_metadata_record(manifest, manifest_command_trust_required=True),
+        "demo_script": str(demo_script),
+        "runner": manifest.demo.runner,
+    }
+
+
 def project_output(project_name: str, project_root: Path, manifest_path: Path, manifest: BaseManifest) -> str:
     return "\t".join(
         [

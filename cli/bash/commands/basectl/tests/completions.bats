@@ -10,8 +10,10 @@ load ./setup_helpers.bash
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
-    printf 'base\t/Users/test/base\n'
-    printf 'demo\t/Users/test/demo\n'
+    base_test_protocol_begin project-list-entry 2
+    base_test_protocol_project_list_record 0 base /Users/test/base
+    base_test_protocol_project_list_record 1 demo /Users/test/demo
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected completion python args: %s\n' "$*" >&2

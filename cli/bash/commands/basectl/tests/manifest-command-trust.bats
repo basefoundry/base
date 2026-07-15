@@ -31,64 +31,52 @@ TRUST
 fi
 
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" ]]; then
-    route_fields="__base_project_venv_dir=${BASE_TEST_PROJECT_ROOT:?}/.venv	__base_uses_uv_manager=false	__base_manifest_command_trust_required=true"
     case "${3:-}" in
         test-command)
-            printf 'demo\t%s\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                'touch "$BASE_TEST_TRUST_STATE"; exit 7' \
-                "$route_fields"
+            base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false true \
+                'touch "$BASE_TEST_TRUST_STATE"; exit 7' ""
             exit 0
             ;;
         run-command)
-            printf 'demo\t%s\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                'touch "$BASE_TEST_TRUST_STATE"; exit 7' \
-                "$route_fields"
+            base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false true \
+                'touch "$BASE_TEST_TRUST_STATE"; exit 7' ""
             exit 0
             ;;
         run-commands)
-            printf 'demo\t%s\t%s\tdev\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                'touch "$BASE_TEST_TRUST_STATE"; exit 7'
+            base_test_protocol_begin named-command 1
+            base_test_protocol_named_command_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" dev \
+                'touch "$BASE_TEST_TRUST_STATE"; exit 7' ""
+            base_test_protocol_end
             exit 0
             ;;
         build-targets)
-            printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                'touch "$BASE_TEST_TRUST_STATE"; exit 7' \
-                'Build API' \
-                "$route_fields"
+            base_test_protocol_begin build-target 1
+            base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false true api \
+                "${BASE_TEST_PROJECT_ROOT:?}" 'touch "$BASE_TEST_TRUST_STATE"; exit 7' 'Build API' ""
+            base_test_protocol_end
             exit 0
             ;;
         build-target-list)
-            printf 'demo\t%s\t%s\tapi\t%s\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                'touch "$BASE_TEST_TRUST_STATE"; exit 7' \
-                'Build API' \
-                "$route_fields"
+            base_test_protocol_begin build-target 1
+            base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+                "${BASE_TEST_PROJECT_ROOT:?}" 'touch "$BASE_TEST_TRUST_STATE"; exit 7' 'Build API' ""
+            base_test_protocol_end
             exit 0
             ;;
         demo-script)
-            printf 'demo\t%s\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                "${BASE_TEST_PROJECT_ROOT:?}/demo.sh" \
-                "$route_fields"
+            base_test_protocol_demo demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false true \
+                "${BASE_TEST_PROJECT_ROOT:?}/demo.sh" ""
             exit 0
             ;;
         resolve)
-            printf 'demo\t%s\t%s\t%s\n' \
-                "${BASE_TEST_PROJECT_ROOT:?}" \
-                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" \
-                "$route_fields"
+            base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+                "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false true
             exit 0
             ;;
     esac

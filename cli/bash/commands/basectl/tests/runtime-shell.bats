@@ -93,6 +93,8 @@ EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+    base_test_protocol_begin activation-source 0
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected base_projects args: %s\n' "$*" >&2
@@ -134,7 +136,9 @@ EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
-    printf '%s\n' "${BASE_TEST_ACTIVATION_SOURCE:?}"
+    base_test_protocol_begin activation-source 1
+    base_test_protocol_activation_source_record 0 "${BASE_TEST_ACTIVATION_SOURCE:?}"
+    base_test_protocol_end
     exit 0
 fi
 printf 'unexpected base_projects args: %s\n' "$*" >&2

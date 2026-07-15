@@ -18,10 +18,11 @@ create_minimal_base_home() {
     mkdir -p \
         "$base_home/bin" \
         "$base_home/cli/bash/commands" \
-        "$base_home/lib/bash" \
+        "$base_home/lib/bash/runtime" \
         "$base_home/lib/shell"
 
     cp "$BASE_REPO_ROOT/base_init.sh" "$base_home/base_init.sh"
+    cp "$BASE_REPO_ROOT/lib/bash/runtime/command_protocol.sh" "$base_home/lib/bash/runtime/command_protocol.sh"
 }
 
 create_external_bash_libs() {

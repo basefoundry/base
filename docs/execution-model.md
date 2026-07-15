@@ -252,6 +252,30 @@ callers do not need to duplicate that check.
 The standalone install path, Base resolution order, and post-migration boundary
 are documented in [Base Bash Libraries](base-bash-libs.md).
 
+## Python-To-Bash Command Metadata
+
+Base's Python project commands keep their default `text` output for people and
+existing direct callers. Bash orchestration does not parse that display format.
+It explicitly requests the internal `--format command-protocol` transport when
+it needs project, route, command, build, demo, activation, or project-list
+metadata.
+
+The transport starts with `BASE_COMMAND_PROTOCOL_V1`, declares one record type
+and record count, and carries records with explicit field names and wire types.
+UTF-8 strings use lowercase hexadecimal framing, booleans use `true` or
+`false`, and nullable strings distinguish `null` from an empty string. Decoders
+validate the exact schema, framing, types, UTF-8, and canonical decimal record
+count before a caller uses any value. Version 1 caps the count at 1,000,000.
+NUL is rejected because Bash variables cannot represent it.
+
+This is an internal Base boundary, not a public automation format. Production
+Bash callers must not fall back to tab-position parsing, and the decoder does
+not require `jq` or another Python process. The standalone Bash and Zsh
+completion scripts use narrow readers for the same versioned
+`project-list-entry` records because completion can load before the full Base
+runtime; the Bash reader remains compatible with macOS system Bash 3. Normal
+Base command paths use `lib/bash/runtime/command_protocol.sh`.
+
 ## Runtime Shell
 
 Running `basectl activate <project>` starts an interactive Bash shell with the

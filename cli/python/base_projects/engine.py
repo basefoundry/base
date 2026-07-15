@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 import base_cli
+from base_cli.command_protocol import dumps_record
+from base_cli.command_protocol import dumps_records
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
 from base_projects.command_helpers import ProjectUsageError
@@ -17,11 +19,15 @@ from base_projects.project_commands import CommandConfig  # pylint: disable=unus
 from base_projects.project_commands import ProjectCommandError
 from base_projects.project_commands import TestConfig  # pylint: disable=unused-import
 from base_projects.project_commands import activation_source_paths
+from base_projects.project_commands import command_record
 from base_projects.project_commands import command_output as _command_output
+from base_projects.project_commands import demo_record
 from base_projects.project_commands import demo_output as _demo_output
+from base_projects.project_commands import named_command_record
 from base_projects.project_commands import named_command_output as _named_command_output
 from base_projects.project_commands import project_command
 from base_projects.project_commands import project_commands
+from base_projects.project_commands import project_record
 from base_projects.project_commands import project_output as _project_output
 from base_projects.project_commands import resolve_activation_source_path  # pylint: disable=unused-import
 from base_projects.project_commands import test_command
@@ -160,21 +166,23 @@ def build_targets_project_command(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
     workspace: str | None,
+    output_format: str = "text",
 ) -> int:
-    return build_targets_project_from_args(ctx, arguments, workspace, resolve_named_project)
+    return build_targets_project_from_args(ctx, arguments, workspace, resolve_named_project, output_format)
 
 
 def build_target_list_project_command(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
     workspace: str | None,
+    output_format: str = "text",
 ) -> int:
-    return list_build_targets_from_args(ctx, arguments, workspace, resolve_named_project)
+    return list_build_targets_from_args(ctx, arguments, workspace, resolve_named_project, output_format)
 
 
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if output_format not in ("text", "json", "command-protocol"):
+        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json, command-protocol.", output_format)
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -189,6 +197,20 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
             json.dumps(
                 [{"name": project.name, "path": str(project.root)} for project in projects],
                 separators=(",", ":"),
+            )
+        )
+        return base_cli.ExitCode.SUCCESS
+    if output_format == "command-protocol":
+        print(
+            dumps_records(
+                "project-list-entry",
+                [
+                    {
+                        "project_name": project.name,
+                        "project_root": str(project.root),
+                    }
+                    for project in projects
+                ],
             )
         )
         return base_cli.ExitCode.SUCCESS
@@ -352,7 +374,12 @@ def workspace_manifest_source_label(ctx: base_cli.Context, workspace_manifest: s
     return "none"
 
 
-def resolve_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+def resolve_project_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
         return base_cli.ExitCode.USAGE_ERROR
@@ -364,11 +391,23 @@ def resolve_project_command(ctx: base_cli.Context, project_name: str | None, wor
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    print(_project_output(project.name, project.root, project.manifest_path, manifest))
+    if output_format == "command-protocol":
+        record = project_record(project.name, project.root, project.manifest_path, manifest)
+        print(dumps_record("project-route", record))
+    elif output_format == "text":
+        print(_project_output(project.name, project.root, project.manifest_path, manifest))
+    else:
+        ctx.log.error("Unsupported resolve output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def test_command_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+def test_command_project_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
     try:
         if project_name:
             project = resolve_named_project(ctx, project_name, workspace)
@@ -388,11 +427,27 @@ def test_command_project_command(ctx: base_cli.Context, project_name: str | None
         return base_cli.ExitCode.FAILURE
 
     command_config = test_command(manifest.test)
-    print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
+    if output_format == "command-protocol":
+        print(
+            dumps_record(
+                "project-command",
+                command_record(project.name, project.root, project.manifest_path, command_config, manifest),
+            )
+        )
+    elif output_format == "text":
+        print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
+    else:
+        ctx.log.error("Unsupported test-command output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def demo_script_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+def demo_script_project_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
     try:
         if project_name:
             project = resolve_named_project(ctx, project_name, workspace)
@@ -411,11 +466,27 @@ def demo_script_project_command(ctx: base_cli.Context, project_name: str | None,
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest))
+    if output_format == "command-protocol":
+        print(
+            dumps_record(
+                "demo",
+                demo_record(project.name, project.root, project.manifest_path, demo_script, manifest),
+            )
+        )
+    elif output_format == "text":
+        print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest))
+    else:
+        ctx.log.error("Unsupported demo-script output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def activation_sources_project_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+def activation_sources_project_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
         return base_cli.ExitCode.USAGE_ERROR
@@ -428,8 +499,14 @@ def activation_sources_project_command(ctx: base_cli.Context, project_name: str 
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    for source in sources:
-        print(source)
+    if output_format == "command-protocol":
+        print(dumps_records("activation-source", [{"source_path": str(source)} for source in sources]))
+    elif output_format == "text":
+        for source in sources:
+            print(source)
+    else:
+        ctx.log.error("Unsupported activation-sources output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
@@ -438,6 +515,7 @@ def run_command_project_command(
     project_name: str | None,
     command_name: str | None,
     workspace: str | None,
+    output_format: str = "text",
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
@@ -454,11 +532,27 @@ def run_command_project_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
+    if output_format == "command-protocol":
+        print(
+            dumps_record(
+                "project-command",
+                command_record(project.name, project.root, project.manifest_path, command_config, manifest),
+            )
+        )
+    elif output_format == "text":
+        print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
+    else:
+        ctx.log.error("Unsupported run-command output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, workspace: str | None) -> int:
+def list_run_commands_command(
+    ctx: base_cli.Context,
+    project_name: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
     try:
         if project_name:
             project = resolve_named_project(ctx, project_name, workspace)
@@ -474,23 +568,66 @@ def list_run_commands_command(ctx: base_cli.Context, project_name: str | None, w
         ctx.log.error("Project '%s' does not declare runnable commands in '%s'.", project.name, project.manifest_path)
         return base_cli.ExitCode.FAILURE
 
-    for command_name, command_config in commands.items():
-        print(_named_command_output(project.name, project.root, project.manifest_path, command_name, command_config))
+    if output_format == "command-protocol":
+        print(
+            dumps_records(
+                "named-command",
+                [
+                    named_command_record(
+                        project.name,
+                        project.root,
+                        project.manifest_path,
+                        command_name,
+                        command_config,
+                    )
+                    for command_name, command_config in commands.items()
+                ],
+            )
+        )
+    elif output_format == "text":
+        for command_name, command_config in commands.items():
+            print(
+                _named_command_output(
+                    project.name,
+                    project.root,
+                    project.manifest_path,
+                    command_name,
+                    command_config,
+                )
+            )
+    else:
+        ctx.log.error("Unsupported run-commands output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def current_project_command(ctx: base_cli.Context) -> int:
+def current_project_command(ctx: base_cli.Context, output_format: str = "text") -> int:
     try:
         project = current_project()
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    if output_format == "command-protocol":
+        print(
+            dumps_record(
+                "project-reference",
+                {
+                    "project_name": project.name,
+                    "project_root": str(project.root),
+                    "manifest_path": str(project.manifest_path),
+                },
+            )
+        )
+    elif output_format == "text":
+        print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    else:
+        ctx.log.error("Unsupported current output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
-def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int:
+def manifest_project_command(ctx: base_cli.Context, manifest: str | None, output_format: str = "text") -> int:
     if not manifest:
         ctx.log.error("Manifest path is required.")
         return base_cli.ExitCode.USAGE_ERROR
@@ -501,7 +638,22 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None) -> int
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    if output_format == "command-protocol":
+        print(
+            dumps_record(
+                "project-reference",
+                {
+                    "project_name": project.name,
+                    "project_root": str(project.root),
+                    "manifest_path": str(project.manifest_path),
+                },
+            )
+        )
+    elif output_format == "text":
+        print(f"{project.name}\t{project.root}\t{project.manifest_path}")
+    else:
+        ctx.log.error("Unsupported manifest output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
