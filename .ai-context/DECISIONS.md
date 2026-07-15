@@ -39,6 +39,10 @@ architecture discussion.
   reusable CLI behavior.
 - Python CLIs run through `base-wrapper` so venv and `PYTHONPATH` behavior is
   consistent.
+- Python-to-Bash command metadata uses the strict versioned
+  `BASE_COMMAND_PROTOCOL_V1` transport with named typed fields. Bash callers
+  request it explicitly, validate it without `jq`, and do not fall back to
+  positional tab-delimited parsing; default text output remains human-facing.
 - Base shell code should use explicit error handling and should not rely on
   `set -e`, `set -u`, or `set -o pipefail`.
 - Base treats remote-installer consent and integrity as separate decisions.

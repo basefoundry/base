@@ -286,6 +286,18 @@ base_init_source_stdlib() {
     source "$stdlib_path"
 }
 
+base_init_source_command_protocol() {
+    local protocol_path="$BASE_HOME/lib/bash/runtime/command_protocol.sh"
+
+    [[ -f "$protocol_path" ]] || {
+        base_init_error "Base command protocol helper '$protocol_path' was not found."
+        return 1
+    }
+
+    # shellcheck source=/dev/null
+    source "$protocol_path"
+}
+
 import_base_lib() {
     local relative_path="${1:-}"
     local lib_path
@@ -310,6 +322,7 @@ base_init_main() {
     base_init_require_bash || return 1
     base_init_export_contract || return 1
     base_init_source_stdlib "$@" || return 1
+    base_init_source_command_protocol || return 1
 
     add_to_path -p "$BASE_BIN_DIR"
     export PATH

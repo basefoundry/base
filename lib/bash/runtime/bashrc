@@ -91,8 +91,18 @@ _base_runtime_activate_project_venv() {
     source "$activate_script"
 }
 
+_base_runtime_source_activation_record() {
+    local script="${BASE_COMMAND_PROTOCOL_FIELDS[source_path]}"
+
+    _base_runtime_info "Sourcing project activation script '$script'."
+    # shellcheck source=/dev/null
+    source "$script" || {
+        _base_runtime_error "Project activation script '$script' failed."
+        return 1
+    }
+}
+
 _base_runtime_source_project_activation_scripts() {
-    local script
     local scripts_output
     local wrapper="$BASE_HOME/bin/base-wrapper"
 
@@ -105,20 +115,12 @@ _base_runtime_source_project_activation_scripts() {
         return 1
     }
 
-    scripts_output="$("$wrapper" base_projects activation-sources "$BASE_PROJECT")" || {
+    scripts_output="$("$wrapper" base_projects activation-sources "$BASE_PROJECT" --format command-protocol)" || {
         _base_runtime_error "Unable to resolve project activation scripts for '$BASE_PROJECT'."
         return 1
     }
 
-    while IFS= read -r script; do
-        [[ -n "$script" ]] || continue
-        _base_runtime_info "Sourcing project activation script '$script'."
-        # shellcheck source=/dev/null
-        source "$script" || {
-            _base_runtime_error "Project activation script '$script' failed."
-            return 1
-        }
-    done <<< "$scripts_output"
+    base_command_protocol_each activation-source "$scripts_output" _base_runtime_source_activation_record
 }
 
 _base_runtime_configure_path() {

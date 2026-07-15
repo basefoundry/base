@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Protocol
 
 import base_cli
+from base_cli.command_protocol import dumps_records
+from base_projects.project_commands import route_metadata_record
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest, BuildTargetConfig
@@ -29,11 +31,19 @@ def build_targets_project_from_args(
     arguments: tuple[str, ...],
     workspace: str | None,
     resolve_project: ProjectResolver,
+    output_format: str = "text",
 ) -> int:
     if len(arguments) < 1:
         ctx.log.error("Command 'build-targets' requires at least 1 argument (project name); got %d.", len(arguments))
         return base_cli.ExitCode.USAGE_ERROR
-    return build_targets_project_command(ctx, arguments[0], arguments[1:], workspace, resolve_project)
+    return build_targets_project_command(
+        ctx,
+        arguments[0],
+        arguments[1:],
+        workspace,
+        resolve_project,
+        output_format,
+    )
 
 
 def list_build_targets_from_args(
@@ -41,19 +51,21 @@ def list_build_targets_from_args(
     arguments: tuple[str, ...],
     workspace: str | None,
     resolve_project: ProjectResolver,
+    output_format: str = "text",
 ) -> int:
     if len(arguments) != 1:
         ctx.log.error("Command 'build-target-list' requires exactly 1 argument (project name); got %d.", len(arguments))
         return base_cli.ExitCode.USAGE_ERROR
-    return list_build_targets_command(ctx, arguments[0], workspace, resolve_project)
+    return list_build_targets_command(ctx, arguments[0], workspace, resolve_project, output_format)
 
 
-def build_targets_project_command(
+def build_targets_project_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     ctx: base_cli.Context,
     project_name: str | None,
     target_names: tuple[str, ...],
     workspace: str | None,
     resolve_project: ProjectResolver,
+    output_format: str = "text",
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
@@ -67,15 +79,32 @@ def build_targets_project_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    for target_name, target_config, working_dir in targets:
-        print_build_target(
-            project,
-            manifest,
-            target_name,
-            target_config,
-            working_dir,
-            manifest_command_trust_required=True,
-        )
+    if output_format == "command-protocol":
+        records = [
+            build_target_record(
+                project,
+                manifest,
+                target_name,
+                target_config,
+                working_dir,
+                manifest_command_trust_required=True,
+            )
+            for target_name, target_config, working_dir in targets
+        ]
+        print(dumps_records("build-target", records))
+    elif output_format == "text":
+        for target_name, target_config, working_dir in targets:
+            print_build_target(
+                project,
+                manifest,
+                target_name,
+                target_config,
+                working_dir,
+                manifest_command_trust_required=True,
+            )
+    else:
+        ctx.log.error("Unsupported build-targets output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
@@ -84,6 +113,7 @@ def list_build_targets_command(
     project_name: str | None,
     workspace: str | None,
     resolve_project: ProjectResolver,
+    output_format: str = "text",
 ) -> int:
     if not project_name:
         ctx.log.error("Project name is required.")
@@ -97,16 +127,58 @@ def list_build_targets_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    for target_name, target_config, working_dir in targets:
-        print_build_target(
-            project,
-            manifest,
-            target_name,
-            target_config,
-            working_dir,
-            manifest_command_trust_required=False,
-        )
+    if output_format == "command-protocol":
+        records = [
+            build_target_record(
+                project,
+                manifest,
+                target_name,
+                target_config,
+                working_dir,
+                manifest_command_trust_required=False,
+            )
+            for target_name, target_config, working_dir in targets
+        ]
+        print(dumps_records("build-target", records))
+    elif output_format == "text":
+        for target_name, target_config, working_dir in targets:
+            print_build_target(
+                project,
+                manifest,
+                target_name,
+                target_config,
+                working_dir,
+                manifest_command_trust_required=False,
+            )
+    else:
+        ctx.log.error("Unsupported build-target-list output format '%s'.", output_format)
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
+
+
+def build_target_record(  # pylint: disable=too-many-arguments
+    project: ProjectLike,
+    manifest: BaseManifest,
+    target_name: str,
+    target_config: BuildTargetConfig,
+    working_dir: Path,
+    *,
+    manifest_command_trust_required: bool,
+) -> dict[str, str | bool | None]:
+    return {
+        "project_name": project.name,
+        "project_root": str(project.root),
+        "manifest_path": str(project.manifest_path),
+        **route_metadata_record(
+            manifest,
+            manifest_command_trust_required=manifest_command_trust_required,
+        ),
+        "target_name": target_name,
+        "working_dir": str(working_dir),
+        "command": target_config.command,
+        "description": target_config.description,
+        "runner": target_config.runner,
+    }
 
 
 def print_build_target(  # pylint: disable=too-many-arguments

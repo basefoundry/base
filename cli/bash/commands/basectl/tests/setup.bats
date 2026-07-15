@@ -304,7 +304,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -405,7 +406,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        printf 'base\t%s\t%s\t%s\tfalse\n' "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" "$HOME/.base.d/base/.venv"
+        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"

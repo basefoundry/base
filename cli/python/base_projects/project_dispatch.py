@@ -30,16 +30,16 @@ class ProjectCommandActions:
     workspace_pull: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
     workspace_init: Callable[[base_cli.Context, str, WorkspaceCommandOptions], int]
     workspace_configure: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
-    current_project: Callable[[base_cli.Context], int]
-    manifest_project: Callable[[base_cli.Context, str | None], int]
-    resolve_project: Callable[[base_cli.Context, str | None, str | None], int]
-    test_command_project: Callable[[base_cli.Context, str | None, str | None], int]
-    demo_script_project: Callable[[base_cli.Context, str | None, str | None], int]
-    activation_sources_project: Callable[[base_cli.Context, str | None, str | None], int]
-    run_command_project: Callable[[base_cli.Context, str | None, str | None, str | None], int]
-    list_run_commands: Callable[[base_cli.Context, str | None, str | None], int]
-    build_targets: Callable[[base_cli.Context, tuple[str, ...], str | None], int]
-    build_target_list: Callable[[base_cli.Context, tuple[str, ...], str | None], int]
+    current_project: Callable[[base_cli.Context, str], int]
+    manifest_project: Callable[[base_cli.Context, str | None, str], int]
+    resolve_project: Callable[[base_cli.Context, str | None, str | None, str], int]
+    test_command_project: Callable[[base_cli.Context, str | None, str | None, str], int]
+    demo_script_project: Callable[[base_cli.Context, str | None, str | None, str], int]
+    activation_sources_project: Callable[[base_cli.Context, str | None, str | None, str], int]
+    run_command_project: Callable[[base_cli.Context, str | None, str | None, str | None, str], int]
+    list_run_commands: Callable[[base_cli.Context, str | None, str | None, str], int]
+    build_targets: Callable[[base_cli.Context, tuple[str, ...], str | None, str], int]
+    build_target_list: Callable[[base_cli.Context, tuple[str, ...], str | None, str], int]
 
 
 ProjectCommandHandler = Callable[
@@ -173,21 +173,21 @@ def _handle_configure(
 def _handle_current(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
-    _options: WorkspaceCommandOptions,
+    options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("current", arguments, 0, 0)
-    return actions.current_project(ctx)
+    return actions.current_project(ctx, options.output_format)
 
 
 def _handle_manifest(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
-    _options: WorkspaceCommandOptions,
+    options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("manifest", arguments, 0, 1)
-    return actions.manifest_project(ctx, arguments[0] if arguments else None)
+    return actions.manifest_project(ctx, arguments[0] if arguments else None, options.output_format)
 
 
 def _handle_resolve(
@@ -197,7 +197,7 @@ def _handle_resolve(
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("resolve", arguments, 1, 1)
-    return actions.resolve_project(ctx, arguments[0], options.workspace)
+    return actions.resolve_project(ctx, arguments[0], options.workspace, options.output_format)
 
 
 def _handle_test_command(
@@ -207,7 +207,7 @@ def _handle_test_command(
     actions: ProjectCommandActions,
 ) -> int:
     project = optional_project_argument("test-command", arguments)
-    return actions.test_command_project(ctx, project, options.workspace)
+    return actions.test_command_project(ctx, project, options.workspace, options.output_format)
 
 
 def _handle_demo_script(
@@ -217,7 +217,7 @@ def _handle_demo_script(
     actions: ProjectCommandActions,
 ) -> int:
     project = optional_project_argument("demo-script", arguments)
-    return actions.demo_script_project(ctx, project, options.workspace)
+    return actions.demo_script_project(ctx, project, options.workspace, options.output_format)
 
 
 def _handle_activation_sources(
@@ -227,7 +227,7 @@ def _handle_activation_sources(
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("activation-sources", arguments, 1, 1)
-    return actions.activation_sources_project(ctx, arguments[0], options.workspace)
+    return actions.activation_sources_project(ctx, arguments[0], options.workspace, options.output_format)
 
 
 def _handle_run_command(
@@ -237,7 +237,7 @@ def _handle_run_command(
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("run-command", arguments, 2, 2)
-    return actions.run_command_project(ctx, arguments[0], arguments[1], options.workspace)
+    return actions.run_command_project(ctx, arguments[0], arguments[1], options.workspace, options.output_format)
 
 
 def _handle_run_commands(
@@ -247,7 +247,7 @@ def _handle_run_commands(
     actions: ProjectCommandActions,
 ) -> int:
     project = optional_project_argument("run-commands", arguments)
-    return actions.list_run_commands(ctx, project, options.workspace)
+    return actions.list_run_commands(ctx, project, options.workspace, options.output_format)
 
 
 def _handle_build_targets(
@@ -256,7 +256,7 @@ def _handle_build_targets(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    return actions.build_targets(ctx, arguments, options.workspace)
+    return actions.build_targets(ctx, arguments, options.workspace, options.output_format)
 
 
 def _handle_build_target_list(
@@ -265,7 +265,7 @@ def _handle_build_target_list(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    return actions.build_target_list(ctx, arguments, options.workspace)
+    return actions.build_target_list(ctx, arguments, options.workspace, options.output_format)
 
 
 SUPPORTED_PROJECT_COMMANDS = (

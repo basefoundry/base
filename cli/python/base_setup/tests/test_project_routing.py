@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from base_cli.command_protocol import loads_records
 from base_setup.tests.helpers import run_engine
 
 
@@ -16,6 +17,34 @@ def write_manifest(root: Path, content: str) -> Path:
 
 
 class ProjectRoutingTests(unittest.TestCase):
+    def test_route_command_protocol_reports_explicit_route_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "demo λ"
+            manifest_path = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+
+            status, stdout, stderr = run_engine(
+                ["--manifest", str(manifest_path), "--action", "route", "--format", "command-protocol", "demo"]
+            )
+
+        self.assertEqual((status, stderr), (0, ""))
+        _, records = loads_records(stdout, "project-route")
+        self.assertEqual(records[0]["project_name"], "demo")
+        self.assertEqual(records[0]["project_root"], str(root.resolve()))
+        self.assertEqual(records[0]["project_venv_dir"], str(root.resolve() / ".venv"))
+        self.assertTrue(records[0]["uses_uv_manager"])
+        self.assertFalse(records[0]["manifest_command_trust_required"])
+
     def test_route_ignores_different_active_project_venv_override(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir) / "demo"

@@ -19,21 +19,156 @@ _base_basectl_completion_now() {
     printf '%s\n' "${SECONDS:-0}"
 }
 
-_base_basectl_completion_project_names_from_list() {
-    local line name names=""
+_base_basectl_completion_validate_utf8_hex() {
+    local encoded="$1"
+    local byte continuation first index=0 length
+    local continuation_count continuation_min continuation_max
 
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r name _ <<<"$line"
-        [[ -n "$name" ]] || continue
-        names+="${names:+$'\n'}$name"
+    length=${#encoded}
+    while ((index < length)); do
+        byte=$((16#${encoded:index:2}))
+        ((index += 2))
+        if ((byte <= 0x7f)); then
+            continue
+        elif ((byte >= 0xc2 && byte <= 0xdf)); then
+            continuation_count=1
+            continuation_min=0x80
+            continuation_max=0xbf
+        elif ((byte >= 0xe0 && byte <= 0xef)); then
+            continuation_count=2
+            if ((byte == 0xe0)); then
+                continuation_min=0xa0
+                continuation_max=0xbf
+            elif ((byte == 0xed)); then
+                continuation_min=0x80
+                continuation_max=0x9f
+            else
+                continuation_min=0x80
+                continuation_max=0xbf
+            fi
+        elif ((byte >= 0xf0 && byte <= 0xf4)); then
+            continuation_count=3
+            if ((byte == 0xf0)); then
+                continuation_min=0x90
+                continuation_max=0xbf
+            elif ((byte == 0xf4)); then
+                continuation_min=0x80
+                continuation_max=0x8f
+            else
+                continuation_min=0x80
+                continuation_max=0xbf
+            fi
+        else
+            return 1
+        fi
+
+        ((index + continuation_count * 2 <= length)) || return 1
+        first=$((16#${encoded:index:2}))
+        ((first >= continuation_min && first <= continuation_max)) || return 1
+        ((index += 2))
+        for ((continuation = 1; continuation < continuation_count; continuation += 1)); do
+            byte=$((16#${encoded:index:2}))
+            ((byte >= 0x80 && byte <= 0xbf)) || return 1
+            ((index += 2))
+        done
     done
+}
 
-    printf '%s\n' "$names"
+_base_basectl_completion_decode_hex() {
+    local encoded="$1"
+    local byte decoded="" index pair
+
+    if (( ${#encoded} % 2 != 0 )) || [[ "$encoded" == *[!0-9a-f]* ]]; then
+        return 1
+    fi
+    _base_basectl_completion_validate_utf8_hex "$encoded" || return 1
+
+    for ((index = 0; index < ${#encoded}; index += 2)); do
+        pair="${encoded:index:2}"
+        [[ "$pair" != 00 ]] || return 1
+        printf -v byte '%b' "\\x$pair"
+        decoded+="$byte"
+    done
+    _BASE_BASECTL_COMPLETION_DECODED_VALUE="$decoded"
+}
+
+_base_basectl_completion_project_names_from_protocol() {
+    # Completion can load under macOS system Bash 3 before basectl establishes
+    # its Bash 4.2+ runtime. Keep this strict reader narrow instead of sourcing
+    # the associative-array runtime protocol decoder.
+    local payload="$1"
+    local count_text="" encoded ended=0 in_record=0 line line_number=0 names=""
+    local max_record_count=1000000 next_record=0 phase=0 project_name record_count=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        ((line_number += 1))
+        case "$line_number" in
+            1)
+                [[ "$line" == BASE_COMMAND_PROTOCOL_V1 ]] || return 1
+                continue
+                ;;
+            2)
+                [[ "$line" == record_type=project-list-entry ]] || return 1
+                continue
+                ;;
+            3)
+                [[ "$line" == record_count=* ]] || return 1
+                count_text="${line#record_count=}"
+                [[ "$count_text" =~ ^(0|[1-9][0-9]*)$ ]] || return 1
+                ((${#count_text} <= ${#max_record_count})) || return 1
+                record_count=$((10#$count_text))
+                ((record_count <= max_record_count)) || return 1
+                continue
+                ;;
+        esac
+
+        ((ended == 0)) || return 1
+        if ((in_record == 0)); then
+            if [[ "$line" == "record=$next_record" && next_record -lt record_count ]]; then
+                in_record=1
+                phase=1
+                continue
+            fi
+            if [[ "$line" == end_protocol= && next_record -eq record_count ]]; then
+                ended=1
+                continue
+            fi
+            return 1
+        fi
+
+        case "$phase" in
+            1)
+                [[ "$line" == field.project_name:string=* ]] || return 1
+                encoded="${line#field.project_name:string=}"
+                _base_basectl_completion_decode_hex "$encoded" || return 1
+                project_name="$_BASE_BASECTL_COMPLETION_DECODED_VALUE"
+                phase=2
+                ;;
+            2)
+                [[ "$line" == field.project_root:string=* ]] || return 1
+                encoded="${line#field.project_root:string=}"
+                _base_basectl_completion_decode_hex "$encoded" || return 1
+                phase=3
+                ;;
+            3)
+                [[ "$line" == "end_record=$next_record" ]] || return 1
+                names+="${names:+$'\n'}$project_name"
+                ((next_record += 1))
+                in_record=0
+                phase=0
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    done <<<"$payload"
+
+    ((line_number >= 3 && in_record == 0 && ended == 1)) || return 1
+    _BASE_BASECTL_COMPLETION_PROJECT_NAMES_DECODED="$names"
 }
 
 _base_basectl_completion_refresh_project_cache() {
-    local names now ttl project_list
+    local names="" now ttl project_list
     local wrapper="${BASE_HOME:-}/bin/base-wrapper"
 
     [[ -x "$wrapper" ]] || {
@@ -51,8 +186,10 @@ _base_basectl_completion_refresh_project_cache() {
         return 0
     fi
 
-    project_list="$("$wrapper" --project base base_projects list 2>/dev/null || true)"
-    names="$(_base_basectl_completion_project_names_from_list <<<"$project_list")"
+    project_list="$("$wrapper" --project base base_projects list --format command-protocol 2>/dev/null || true)"
+    if _base_basectl_completion_project_names_from_protocol "$project_list"; then
+        names="$_BASE_BASECTL_COMPLETION_PROJECT_NAMES_DECODED"
+    fi
     _BASE_BASECTL_COMPLETION_PROJECT_NAMES="$names"
     _BASE_BASECTL_COMPLETION_PROJECT_NAMES_SET=1
     if ((ttl > 0)); then

@@ -32,33 +32,35 @@ base_run_usage_error() {
     return 2
 }
 
+base_run_print_command_record() {
+    local display_text
+    local resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    local command_name="${BASE_COMMAND_PROTOCOL_FIELDS[command_name]}"
+    local command_text="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
+    local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+
+    if ((printed_header == 0)); then
+        printf "Commands for project '%s'\n\n" "$resolved_name"
+        printed_header=1
+    fi
+    display_text="$(base_display_command_with_runner "$command_runner" "$command_text")" || return $?
+    printf '%-20s %s\n' "$command_name" "$display_text"
+}
+
 base_run_list_commands() {
     local project="$1"
     shift
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local command_args=(run-commands)
-    local list_output line resolved_name project_root manifest_path command_name command_text command_runner display_text
+    local list_output
     local printed_header=0
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
     [[ -z "$project" ]] || command_args+=("$project")
 
-    list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}")" || return $?
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        IFS=$'\t' read -r resolved_name project_root manifest_path command_name command_text command_runner <<<"$line"
-        [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$command_name" ]] || {
-            fatal_error "Unable to parse runnable commands for project '$project'."
-        }
-        if ((printed_header == 0)); then
-            printf "Commands for project '%s'\n\n" "$resolved_name"
-            printed_header=1
-        fi
-        command_runner="${command_runner:-}"
-        display_text="$(base_display_command_with_runner "$command_runner" "$command_text")" || return $?
-        printf '%-20s %s\n' "$command_name" "$display_text"
-    done <<<"$list_output"
+    list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol)" || return $?
+    base_command_protocol_each named-command "$list_output" base_run_print_command_record
 }
 
 base_run_subcommand_main() {
@@ -66,7 +68,7 @@ base_run_subcommand_main() {
     local command_to_run display_command
     local dry_run=0 list_commands=0 workspace_requested=0
     local args=() extra_args=()
-    local resolve_fields=()
+    local route_venv_dir uses_uv_manager trust_required
 
     while (($#)); do
         case "$1" in
@@ -152,13 +154,18 @@ base_run_subcommand_main() {
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$("$wrapper" --project base base_projects run-command "$project" "$command_name" "${args[@]}")" || return $?
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    project_root="${resolve_fields[1]:-}"
-    manifest_path="${resolve_fields[2]:-}"
-    run_command="${resolve_fields[3]:-}"
-    command_runner="$(base_project_command_runner_from_field "${resolve_fields[4]:-}" || true)"
+    resolve_output="$("$wrapper" --project base base_projects run-command "$project" "$command_name" "${args[@]}" --format command-protocol)" || return $?
+    base_command_protocol_decode_one project-command "$resolve_output" || {
+        fatal_error "Unable to resolve command '$command_name' for project '$project'."
+    }
+    resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
+    uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
+    trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
+    run_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
+    command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$run_command" ]] || {
         fatal_error "Unable to resolve command '$command_name' for project '$project'."
@@ -174,8 +181,9 @@ base_run_subcommand_main() {
         return 0
     fi
 
-    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:4}" || return $?
-    base_project_activate_environment "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "${resolve_fields[@]:4}" >/dev/null
+    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
+    base_project_activate_environment \
+        "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
 
     log_info "Running command '$command_name' for project '$resolved_name': $display_command"
     base_validate_command_runner "$command_runner"

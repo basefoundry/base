@@ -8,6 +8,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.command_protocol import loads_records
 from base_projects import engine
 
 
@@ -161,6 +162,26 @@ def uv_route_fields(project_root: Path, *, trust_required: bool = True) -> str:
 
 
 class BuildTargetTests(unittest.TestCase):
+    def test_build_target_command_protocol_uses_explicit_typed_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo with spaces"
+            write_build_manifest_with_runner(project_root, "demo")
+
+            status, stdout, stderr = run_engine(
+                ["build-targets", "demo", "--format", "command-protocol"], base_home
+            )
+
+        self.assertEqual((status, stderr), (0, ""))
+        _, records = loads_records(stdout, "build-target")
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["target_name"], "package")
+        self.assertEqual(records[0]["working_dir"], str((project_root / "services" / "api").resolve()))
+        self.assertEqual(records[0]["runner"], "uv")
+        self.assertTrue(records[0]["manifest_command_trust_required"])
+
     def test_projects_build_targets_requires_project_argument(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)

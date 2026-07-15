@@ -35,7 +35,6 @@ base_export_context_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="markdown" output_path="" print_bundle=0 list_files=0 workspace_requested=0
     local resolve_args=() exporter_args=()
-    local resolve_fields=()
     local arg
     # shellcheck disable=SC2034 # Passed by name to cli_parse_options.
     local -a option_specs=(
@@ -114,14 +113,19 @@ base_export_context_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     if [[ -n "$project" ]]; then
-        resolve_output="$("$wrapper" --project base base_projects resolve "$project" "${resolve_args[@]}")" || return $?
+        resolve_output="$("$wrapper" --project base base_projects resolve "$project" "${resolve_args[@]}" --format command-protocol)" || return $?
+        base_command_protocol_decode_one project-route "$resolve_output" || {
+            fatal_error "Unable to resolve project for export-context."
+        }
     else
-        resolve_output="$("$wrapper" --project base base_projects current)" || return $?
+        resolve_output="$("$wrapper" --project base base_projects current --format command-protocol)" || return $?
+        base_command_protocol_decode_one project-reference "$resolve_output" || {
+            fatal_error "Unable to resolve project for export-context."
+        }
     fi
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    project_root="${resolve_fields[1]:-}"
-    manifest_path="${resolve_fields[2]:-}"
+    resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project for export-context."

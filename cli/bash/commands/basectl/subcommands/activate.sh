@@ -33,16 +33,16 @@ base_activate_resolve_project() {
     local wrapper="$2"
     shift 2
 
-    env -u BASE_PROJECT_VENV_DIR "$wrapper" --project base base_projects resolve "$project" "$@"
+    env -u BASE_PROJECT_VENV_DIR \
+        "$wrapper" --project base base_projects resolve "$project" "$@" --format command-protocol
 }
 
 base_activate_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
-    local manifest_path="${3:-}"
-    shift 3
+    local route_venv_dir="${3:-}"
 
-    base_project_venv_dir "$project" "$project_root" "$manifest_path" "$@"
+    base_project_venv_dir "$project" "$project_root" "$route_venv_dir"
 }
 
 base_activate_shell_is_bash() {
@@ -54,10 +54,9 @@ base_activate_shell_is_bash() {
 
 base_activate_subcommand_main() {
     local project="" wrapper resolve_output activate_shell venv_fix
-    local resolved_name project_root manifest_path venv_dir shell_rc
+    local resolved_name project_root manifest_path venv_dir shell_rc route_venv_dir uses_uv_manager trust_required
     local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
     local args=()
-    local resolve_fields=()
 
     while (($# > 0)); do
         case "$1" in
@@ -109,19 +108,24 @@ base_activate_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     resolve_output="$(base_activate_resolve_project "$project" "$wrapper" "${args[@]}")" || return $?
-    IFS=$'\t' read -r -a resolve_fields <<<"$resolve_output"
-    resolved_name="${resolve_fields[0]:-}"
-    project_root="${resolve_fields[1]:-}"
-    manifest_path="${resolve_fields[2]:-}"
+    base_command_protocol_decode_one project-route "$resolve_output" || {
+        fatal_error "Unable to resolve project '$project'."
+    }
+    resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
+    project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
+    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
+    uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
+    trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project '$project'."
     }
 
-    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "${resolve_fields[@]:3}" || return $?
+    base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
 
-    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$manifest_path" "${resolve_fields[@]:3}")"
-    venv_fix="$(base_project_venv_fix "$resolved_name" "$project_root" "$venv_dir" "${resolve_fields[@]:3}")"
+    venv_dir="$(base_activate_project_venv_dir "$resolved_name" "$project_root" "$route_venv_dir")"
+    venv_fix="$(base_project_venv_fix "$resolved_name" "$project_root" "$venv_dir" "$uses_uv_manager")"
     [[ -x "$venv_dir/bin/python" ]] || {
         fatal_error "Project virtual environment Python was not found at '$venv_dir/bin/python'. $venv_fix"
     }

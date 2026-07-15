@@ -20,7 +20,9 @@ load ./basectl_helpers.bash
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo/demo.sh"
+    base_test_protocol_demo demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        "${BASE_TEST_PROJECT_ROOT:?}/demo/demo.sh" ""
     exit 0
 fi
 printf 'unexpected demo python args: %s\n' "$*" >&2
@@ -72,7 +74,9 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" ]]; then
-    printf 'demo\t%s\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo/demo.sh" uv
+    base_test_protocol_demo demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        "${BASE_TEST_PROJECT_ROOT:?}/demo/demo.sh" uv
     exit 0
 fi
 printf 'unexpected demo python args: %s\n' "$*" >&2
@@ -112,8 +116,10 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && -z "${4:-}" ]]; then
-    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo.sh"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "--format" ]]; then
+    base_test_protocol_demo demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        "${BASE_TEST_PROJECT_ROOT:?}/demo.sh" ""
     exit 0
 fi
 printf 'unexpected demo python args: %s\n' "$*" >&2
@@ -152,7 +158,9 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "demo" && "${5:-}" == "--workspace" ]]; then
-    printf 'demo\t%s\t%s\t%s\n' "${BASE_TEST_PROJECT_ROOT:?}" "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/demo.sh"
+    base_test_protocol_demo demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        "${BASE_TEST_PROJECT_ROOT:?}/demo.sh" ""
     exit 0
 fi
 printf 'unexpected demo python args: %s\n' "$*" >&2
@@ -270,7 +278,9 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "base" ]]; then
-    printf 'base\t%s\t%s\t%s\n' "${BASE_REPO_ROOT:?}" "${BASE_REPO_ROOT:?}/base_manifest.yaml" "${BASE_REPO_ROOT:?}/demo/demo.sh"
+    base_test_protocol_demo base "${BASE_REPO_ROOT:?}" \
+        "${BASE_REPO_ROOT:?}/base_manifest.yaml" "${HOME:?}/.base.d/base/.venv" false false \
+        "${BASE_REPO_ROOT:?}/demo/demo.sh" ""
     exit 0
 fi
 printf 'unexpected self-demo python args: %s\n' "$*" >&2

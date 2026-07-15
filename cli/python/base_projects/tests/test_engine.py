@@ -11,6 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.command_protocol import loads_records
 from base_projects import engine, project_discovery
 
 
@@ -234,6 +235,110 @@ def run_engine_with_home(args: list[str], base_home: Path, home: Path) -> tuple[
 
 
 class ProjectDiscoveryTests(unittest.TestCase):
+    # pylint: disable=too-many-statements
+    def test_command_protocol_covers_project_command_bridge_records(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "space λ demo"
+            nested = project_root / "docs"
+            demo_script = project_root / "demo" / "demo λ.sh"
+            activation_script = project_root / "scripts" / "activate λ.sh"
+            demo_script.parent.mkdir(parents=True)
+            activation_script.parent.mkdir(parents=True)
+            nested.mkdir()
+            demo_script.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+            demo_script.chmod(0o755)
+            activation_script.write_text("export DEMO=1\n", encoding="utf-8")
+            manifest_path = project_root / "base_manifest.yaml"
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "test:",
+                        '  command: "pytest tests/\\tunit"',
+                        "commands:",
+                        "  dev:",
+                        '    command: "printf λ done"',
+                        "    runner: uv",
+                        "demo:",
+                        '  script: "demo/demo λ.sh"',
+                        "activate:",
+                        "  source:",
+                        '    - "scripts/activate λ.sh"',
+                        "artifacts: []",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = run_engine(["resolve", "demo", "--format", "command-protocol"], base_home)
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-route")
+            self.assertEqual(records[0]["project_root"], str(project_root.resolve()))
+            self.assertTrue(records[0]["manifest_command_trust_required"])
+
+            status, stdout, stderr = run_engine(
+                ["test-command", "demo", "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-command")
+            self.assertEqual(records[0]["command"], "pytest tests/\tunit")
+            self.assertIsNone(records[0]["runner"])
+
+            status, stdout, stderr = run_engine(
+                ["run-command", "demo", "dev", "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-command")
+            self.assertEqual(records[0]["command"], "printf λ done")
+            self.assertEqual(records[0]["runner"], "uv")
+
+            status, stdout, stderr = run_engine(
+                ["run-commands", "demo", "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "named-command")
+            self.assertEqual([record["command_name"] for record in records], ["test", "dev"])
+
+            status, stdout, stderr = run_engine(
+                ["demo-script", "demo", "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "demo")
+            self.assertEqual(records[0]["demo_script"], str(demo_script.resolve()))
+
+            status, stdout, stderr = run_engine(
+                ["activation-sources", "demo", "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "activation-source")
+            self.assertEqual(records[0]["source_path"], str(activation_script.resolve()))
+
+            status, stdout, stderr = run_engine(["list", "--format", "command-protocol"], base_home)
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-list-entry")
+            self.assertEqual(records[0]["project_name"], "demo")
+
+            status, stdout, stderr = run_engine(
+                ["manifest", str(manifest_path), "--format", "command-protocol"], base_home
+            )
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-reference")
+            self.assertEqual(records[0]["manifest_path"], str(manifest_path.resolve()))
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["current", "--format", "command-protocol"], base_home)
+            finally:
+                os.chdir(old_cwd)
+            self.assertEqual((status, stderr), (0, ""))
+            _, records = loads_records(stdout, "project-reference")
+            self.assertEqual(records[0]["project_name"], "demo")
+
     def test_project_discovery_implementation_is_split_from_engine(self) -> None:
         engine_path = Path(engine.__file__)
         discovery_path = engine_path.with_name("project_discovery.py")

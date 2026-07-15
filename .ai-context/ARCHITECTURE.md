@@ -55,6 +55,16 @@ an explicit Bash script, or an interactive Base runtime shell.
 with the selected project virtual environment and a `PYTHONPATH` that includes
 Base's `lib/python` and `cli/python`.
 
+When Bash needs metadata from `base_projects` or the `base_setup` route action,
+it requests the internal versioned `command-protocol` format. Records have
+explicit schemas, field names, string/boolean/null types, and hex-framed UTF-8
+strings, so tabs, spaces, Unicode, newlines, and control bytes cannot change
+field boundaries. Bash validates the full record before use and never falls
+back to positional TSV parsing. Human-facing default text output remains
+unchanged. The runtime decoder is pure Bash and needs neither `jq` nor a second
+Python process; standalone Bash and Zsh completion have narrow readers for the
+same `project-list-entry` records, with the Bash reader remaining Bash-3-safe.
+
 ## Environment Layers
 
 Base separates shell startup from runtime activation:

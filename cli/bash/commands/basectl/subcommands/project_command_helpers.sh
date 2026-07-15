@@ -4,54 +4,16 @@
 _base_project_command_helpers_sourced=1
 readonly _base_project_command_helpers_sourced
 
-base_project_route_value() {
-    local marker="$1" field
-    shift
-
-    for field in "$@"; do
-        case "$field" in
-            "$marker"*)
-                printf '%s\n' "${field#"$marker"}"
-                return 0
-                ;;
-        esac
-    done
-    return 1
-}
-
-base_project_route_venv_dir() {
-    base_project_route_value "__base_project_venv_dir=" "$@"
-}
-
-base_project_route_uses_uv_manager() {
-    [[ "$(base_project_route_value "__base_uses_uv_manager=" "$@" || true)" == "true" ]]
-}
-
-base_project_route_manifest_command_trust_required() {
-    [[ "$(base_project_route_value "__base_manifest_command_trust_required=" "$@" || true)" == "true" ]]
-}
-
-base_project_command_runner_from_field() {
-    local candidate="${1:-}"
-
-    [[ -n "$candidate" ]] || return 1
-    [[ "$candidate" != __base_* ]] || return 1
-    printf '%s\n' "$candidate"
-}
-
 base_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
-    local manifest_path="${3:-}"
-    local route_fields=("${@:4}")
-    local route_venv_dir=""
+    local route_venv_dir="${3:-}"
 
     if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
 
-    route_venv_dir="$(base_project_route_venv_dir "${route_fields[@]}" || true)"
     if [[ -n "$route_venv_dir" ]]; then
         printf '%s\n' "$route_venv_dir"
         return 0
@@ -77,9 +39,9 @@ base_project_venv_fix() {
     local project="$1"
     local project_root="${2:-}"
     local venv_dir="${3:-}"
-    shift 3
+    local uses_uv_manager="${4:-false}"
 
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_route_uses_uv_manager "$@"; then
+    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" && "$uses_uv_manager" == true ]]; then
         printf "Run 'uv sync' in '%s' first." "$project_root"
         return 0
     fi
@@ -93,10 +55,10 @@ base_project_venv_fix() {
 base_project_require_manifest_command_trust() {
     local project="$1"
     local manifest_path="$2"
+    local trust_required="${3:-false}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    shift 2
 
-    base_project_route_manifest_command_trust_required "$@" || return 0
+    [[ "$trust_required" == true ]] || return 0
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     "$wrapper" --project base base_trust require "$project" --manifest "$manifest_path"
@@ -107,11 +69,12 @@ base_project_activate_environment() {
     local project_root="$2"
     local manifest_path="$3"
     local dry_run="${4:-0}"
-    local route_fields=("${@:5}")
+    local route_venv_dir="${5:-}"
+    local uses_uv_manager="${6:-false}"
     local venv_dir venv_fix
 
-    venv_dir="$(base_project_venv_dir "$project" "$project_root" "$manifest_path" "${route_fields[@]}")"
-    venv_fix="$(base_project_venv_fix "$project" "$project_root" "$venv_dir" "${route_fields[@]}")"
+    venv_dir="$(base_project_venv_dir "$project" "$project_root" "$route_venv_dir")"
+    venv_fix="$(base_project_venv_fix "$project" "$project_root" "$venv_dir" "$uses_uv_manager")"
     export BASE_PROJECT="$project"
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"

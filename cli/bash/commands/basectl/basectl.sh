@@ -13,12 +13,19 @@ BASECTL_REQUIRED_HOME_FILES=(
     lib/shell/bashrc
     lib/shell/baserc_guard.sh
     lib/bash/runtime/bashrc
+    lib/bash/runtime/command_protocol.sh
     lib/bash/version/lib_version.sh
     bin/basectl
     bin/base-wrapper
     cli/bash/commands/basectl/basectl.sh
 )
 readonly BASECTL_REQUIRED_HOME_FILES
+
+if ! declare -F base_command_protocol_decode_one >/dev/null 2>&1 &&
+    [[ -n "${BASE_HOME:-}" && -f "$BASE_HOME/lib/bash/runtime/command_protocol.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/lib/bash/runtime/command_protocol.sh"
+fi
 
 basectl_error() {
     printf 'ERROR: %s\n' "$*" >&2
@@ -421,8 +428,9 @@ basectl_default_activate_project() {
     local resolve_output project_name
 
     if [[ -x "$wrapper" ]]; then
-        if resolve_output="$("$wrapper" --project base base_projects current 2>/dev/null)"; then
-            IFS=$'\t' read -r project_name _ <<<"$resolve_output"
+        if resolve_output="$("$wrapper" --project base base_projects current --format command-protocol 2>/dev/null)" &&
+            base_command_protocol_decode_one project-reference "$resolve_output" 2>/dev/null; then
+            project_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
             if [[ -n "$project_name" ]]; then
                 printf '%s\n' "$project_name"
                 return 0

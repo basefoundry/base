@@ -17,7 +17,7 @@ load ./basectl_helpers.bash
     cat > "$fake_base_home/bin/base-wrapper" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "--project" && "${2:-}" == "base" && "${3:-}" == "base_projects" && "${4:-}" == "current" ]]; then
-    printf 'brew\t/tmp/work/brew\t/tmp/work/brew/base_manifest.yaml\n'
+    base_test_protocol_project_reference brew /tmp/work/brew /tmp/work/brew/base_manifest.yaml
     exit 0
 fi
 printf 'unexpected args: %s\n' "$*" >&2
