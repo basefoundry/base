@@ -5,7 +5,6 @@ from .brewfile_delegate import check_brewfile
 from .brewfile_delegate import homebrew_no_auto_update_env
 from .brewfile_delegate import reconcile_brewfile
 from .brewfile_delegate import resolve_brewfile_path
-from .mise_delegate import MISE_INSTALL_COMMAND_TEXT
 from .mise_delegate import check_mise
 from .mise_delegate import check_mise_missing_tools
 from .mise_delegate import check_mise_trust
@@ -20,7 +19,6 @@ from .mise_delegate import require_mise_trusted_for_setup
 from .mise_delegate import resolve_mise_path
 
 __all__ = (
-    "MISE_INSTALL_COMMAND_TEXT",
     "check_brewfile",
     "check_mise",
     "check_mise_missing_tools",

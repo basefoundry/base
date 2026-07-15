@@ -189,6 +189,11 @@ how to own. The mutation path is intentionally explicit: `basectl setup
 --dry-run` prints the apt commands, interactive `basectl setup` prompts before
 system changes, and non-interactive setup requires `--yes` before invoking
 `apt`, writing keyrings/source lists, or running remote installer bootstraps.
+When uv or mise is missing, Base identifies the official bootstrap URL as
+mutable and unverified. Managed environments can instead provide paired
+`BASE_SETUP_UV_INSTALLER_URL`/`BASE_SETUP_UV_INSTALLER_SHA256` or
+`BASE_SETUP_MISE_INSTALLER_URL`/`BASE_SETUP_MISE_INSTALLER_SHA256` values; see
+the [Remote Installer Policy](remote-installer-policy.md).
 
 Use native Linux filesystem paths for source checkouts. In Parallels, keep Base
 under `~/work`, not under mounted macOS shared folders, so file permissions,

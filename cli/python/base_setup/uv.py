@@ -7,15 +7,13 @@ from pathlib import Path
 import base_cli
 
 from . import process
+from . import remote_installers
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
 from .user_paths import prepend_user_local_bin_to_path
 from .user_paths import user_local_bin
-
-
-UV_INSTALL_COMMAND_TEXT = "curl -LsSf https://astral.sh/uv/install.sh | sh"
 
 
 def manifest_uses_uv_project_manager(manifest: BaseManifest) -> bool:
@@ -113,7 +111,7 @@ def ensure_uv_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run: 
         raise ArtifactError("uv is required to set up this project. Install uv and rerun basectl setup.")
 
     if dry_run:
-        ctx.log.info("[DRY-RUN] Would bootstrap uv: %s", UV_INSTALL_COMMAND_TEXT)
+        remote_installers.run_remote_installer(ctx, remote_installers.UV_REMOTE_INSTALLER, dry_run=True)
         return Path("uv")
 
     if os.environ.get("BASE_SETUP_YES") != "true":
@@ -124,7 +122,7 @@ def ensure_uv_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run: 
         )
 
     ctx.log.info("Bootstrapping uv for project '%s'.", manifest.project_name)
-    process.run_command(ctx, ["sh", "-c", UV_INSTALL_COMMAND_TEXT])
+    remote_installers.run_remote_installer(ctx, remote_installers.UV_REMOTE_INSTALLER, dry_run=False)
     prepend_user_local_bin_to_path()
     uv_bin = uv_executable()
     if uv_bin is None:

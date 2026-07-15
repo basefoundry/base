@@ -20,6 +20,7 @@ from base_dev import ai_tools
 from base_dev import engine
 from base_dev import profile_output
 from base_dev.engine import main
+from base_setup import remote_installers
 from base_setup.prerequisites import PrerequisiteCheck
 
 
@@ -188,13 +189,15 @@ class DevManifestTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn(
-            "Remote installer policy: Codex CLI uses allowlisted installer "
-            "https://chatgpt.com/codex/install.sh; execution requires explicit --profile ai.",
+            "Remote installer policy: Codex CLI uses allowlisted official mutable installer "
+            "https://chatgpt.com/codex/install.sh without checksum verification; "
+            "execution requires explicit --profile ai.",
             stderr,
         )
         self.assertIn(
-            "Remote installer policy: Claude Code uses allowlisted installer "
-            "https://claude.ai/install.sh; execution requires explicit --profile ai.",
+            "Remote installer policy: Claude Code uses allowlisted official mutable installer "
+            "https://claude.ai/install.sh without checksum verification; "
+            "execution requires explicit --profile ai.",
             stderr,
         )
         self.assertIn(
@@ -240,8 +243,14 @@ class DevManifestTests(unittest.TestCase):
             name="bad-ai",
             display_name="Bad AI",
             version_args=("--version",),
-            installer_url="https://example.invalid/install.sh",
-            installer_shell="sh",
+            installer=remote_installers.RemoteInstallerSpec(
+                name="bad-ai",
+                display_name="Bad AI",
+                default_url="https://example.invalid/install.sh",
+                interpreter="sh",
+                trigger="test",
+                consent="test",
+            ),
         )
         ctx = mock.Mock()
 
@@ -255,6 +264,17 @@ class DevManifestTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("Remote installer URL is not allowlisted", ctx.log.error.call_args.args[0])
         run_command.assert_not_called()
+
+    def test_ai_profile_rejects_registered_installer_owned_by_another_setup_surface(self) -> None:
+        tool = ai_tools.AITool(
+            name="mise",
+            display_name="mise",
+            version_args=("--version",),
+            installer=remote_installers.MISE_REMOTE_INSTALLER,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "not allowlisted for Base 'ai' profile"):
+            ai_tools.ai_tool_installer_command(tool)
 
     def test_setup_ai_tools_noninteractive_explicit_profile_runs_allowlisted_installers(self) -> None:
         ctx = mock.Mock()
@@ -280,8 +300,7 @@ class DevManifestTests(unittest.TestCase):
             name="codex",
             display_name="Codex CLI",
             version_args=("--version",),
-            installer_url="https://chatgpt.com/codex/install.sh",
-            installer_shell="sh",
+            installer=remote_installers.CODEX_REMOTE_INSTALLER,
         )
 
         with (
