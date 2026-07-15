@@ -46,6 +46,8 @@ Return:
 - Separate evidence from opinion.
 - Be candid, not promotional.
 - Compare Base against adjacent tools without treating them as competitors by default.
+- Verify material adjacent-tool claims against current official documentation.
+- Distinguish shipped Base integrations from proposed adapters or imports.
 - Call out stale documentation.
 - Propose issue-shaped follow-ups.
 - Update ratings only when current shipped behavior justifies it.

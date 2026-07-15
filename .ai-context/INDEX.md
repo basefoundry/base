@@ -19,6 +19,8 @@ below when precise detail matters:
 
 - `README.md` - product front door and current command overview.
 - `docs/README.md` - documentation map.
+- `docs/why-base.md` - concise product position and adjacent-tool chooser.
+- `docs/product-assessment.md` - maintained evidence-backed product review.
 - `docs/product-requirements.md` - accepted product intent, target users,
   durable requirements, non-goals, and PRD maintenance rules.
 - `docs/architecture.md` - product direction, command model, environment model,

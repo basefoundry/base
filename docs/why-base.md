@@ -128,8 +128,19 @@ Base is not the first tool to choose when:
 Base is designed to compose with tools developers already use:
 
 - Use Homebrew or the platform package manager for ordinary system packages.
-- Use [`mise`](https://mise.jdx.dev/) for project tool versions, environment
-  variables, tasks, and other mise-owned setup behavior.
+- Use [`mise`](https://mise.jdx.dev/bootstrap.html) when declarative machine or
+  project bootstrap is the main outcome, including packages, repositories,
+  dotfiles, shell activation, services, tools, environment, and tasks.
+- Use [`mani`](https://manicli.com/) for a declarative Git repository inventory,
+  synchronization, worktrees, filtering, cross-repo tasks, or a TUI.
+- Use [`gita`](https://github.com/nosarthur/gita) for a lightweight personal Git
+  registry, status dashboard, and batch Git or shell commands.
+- Use [`vcs2l`](https://ros-infrastructure.github.io/vcs2l/) for multiple VCS
+  types or reproducible ROS-style repository-set import and export.
+- Use [Android Repo](https://source.android.com/docs/setup/reference/repo) for a
+  manifest-controlled, revision-synchronized source tree or Gerrit workflow.
+- Use [`west`](https://docs.zephyrproject.org/latest/develop/west/index.html) for
+  Zephyr-style manifest workspaces, revisions, groups, and domain extensions.
 - Use uv for Python dependency resolution, lockfiles, and project-local
   environments when the project chooses it.
 - Use [`direnv`](https://direnv.net/) when automatic directory-based environment
@@ -143,6 +154,11 @@ Base is designed to compose with tools developers already use:
 - Let IDEs and AI tools own editor behavior, live sessions, accounts,
   credentials, and provider policy. Base's adapters remain additive and
   provider-neutral.
+
+These tools can materialize or manage repositories before Base inspects the
+opted-in projects. Base ships no adapter or manifest import for `mani`, `gita`,
+`vcs2l`, Android Repo, or `west` today; the external configuration remains
+authoritative, and any future integration is a separate proposal.
 
 Base's job is to read the participating repository contract, invoke the chosen
 tool openly, report readiness in a Base-native way, and leave enough local

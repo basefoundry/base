@@ -52,6 +52,11 @@ under a shared workspace root, reads manifests, and orchestrates setup, checks,
 activation, declared test commands, build targets, run commands, demos, and
 workspace reports.
 
+Repository discovery, clone or synchronization, status, and command fan-out are
+shared ecosystem primitives rather than Base's differentiation. Base adds
+participation semantics, readiness findings, explicit execution trust,
+lifecycle guidance, onboarding, and portable handoff evidence.
+
 Manifest-declared commands are treated as project-owned code. Base keeps
 read-only inspection paths available, but requires explicit local
 manifest-command trust before executing declared project commands or activation
