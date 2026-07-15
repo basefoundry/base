@@ -43,6 +43,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Registered every Python-owned remote shell installer in one policy and added
+  paired URL/SHA-256 overrides for verified uv and mise bootstrap on
+  Debian-family Linux, while explicitly disclosing unverified mutable defaults.
 - Clarified CI-safe setup/readiness/diagnostics help and docs so `--ci` mode is
   not confused with running tests, launching GitHub Actions, or creating
   Ubuntu/Multipass VMs.

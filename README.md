@@ -1185,8 +1185,9 @@ not create, start, mount, or delete Multipass instances during setup. Review
 the planned install with `--dry-run`, then create lab VMs with
 `multipass launch` when you are ready.
 
-For the allowed Homebrew, Codex CLI, and Claude Code installer URLs, dry-run
-behavior, non-interactive behavior, and managed-device guidance, see
+For the complete Homebrew, Codex CLI, Claude Code, uv, and mise installer
+inventory; the distinction between consent and integrity; dry-run behavior;
+and managed-device checksum guidance, see
 [Remote Installer Policy](docs/remote-installer-policy.md).
 
 Setup intentionally stays serial for mutating installers and state writes until

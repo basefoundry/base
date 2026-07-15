@@ -7,6 +7,10 @@ from dataclasses import dataclass
 import base_cli
 from base_setup.errors import ArtifactError
 from base_setup.process import DIAGNOSTIC_TIMEOUT_SECONDS, dry_run_command, run_command
+from base_setup.remote_installers import CLAUDE_REMOTE_INSTALLER
+from base_setup.remote_installers import CODEX_REMOTE_INSTALLER
+from base_setup.remote_installers import RemoteInstallerSpec
+from base_setup.remote_installers import require_registered_remote_installer
 
 from .checks import DevCheck
 
@@ -16,8 +20,15 @@ class AITool:
     name: str
     display_name: str
     version_args: tuple[str, ...]
-    installer_url: str
-    installer_shell: str
+    installer: RemoteInstallerSpec
+
+    @property
+    def installer_url(self) -> str:
+        return self.installer.default_url
+
+    @property
+    def installer_shell(self) -> str:
+        return self.installer.interpreter
 
 
 AI_TOOLS = (
@@ -25,21 +36,16 @@ AI_TOOLS = (
         name="codex",
         display_name="Codex CLI",
         version_args=("--version",),
-        installer_url="https://chatgpt.com/codex/install.sh",
-        installer_shell="sh",
+        installer=CODEX_REMOTE_INSTALLER,
     ),
     AITool(
         name="claude",
         display_name="Claude Code",
         version_args=("--version",),
-        installer_url="https://claude.ai/install.sh",
-        installer_shell="bash",
+        installer=CLAUDE_REMOTE_INSTALLER,
     ),
 )
-AI_REMOTE_INSTALLER_ALLOWLIST = (
-    "https://chatgpt.com/codex/install.sh",
-    "https://claude.ai/install.sh",
-)
+AI_REMOTE_INSTALLERS = (CODEX_REMOTE_INSTALLER, CLAUDE_REMOTE_INSTALLER)
 
 
 def setup_ai_tools(ctx: base_cli.Context, dry_run: bool) -> int:
@@ -66,27 +72,42 @@ def setup_ai_tools(ctx: base_cli.Context, dry_run: bool) -> int:
 
 
 def ai_remote_installer_urls() -> tuple[str, ...]:
-    return AI_REMOTE_INSTALLER_ALLOWLIST
+    return tuple(installer.default_url for installer in AI_REMOTE_INSTALLERS)
 
 
 def validate_ai_remote_installer(tool: AITool) -> None:
-    if tool.installer_url not in AI_REMOTE_INSTALLER_ALLOWLIST:
+    try:
+        require_registered_remote_installer(tool.installer)
+    except ArtifactError as exc:
         raise ArtifactError(
             "Remote installer URL is not allowlisted for Base 'ai' profile: "
-            f"{tool.installer_url}"
+            f"{tool.installer.default_url}"
+        ) from exc
+    if tool.installer not in AI_REMOTE_INSTALLERS:
+        raise ArtifactError(
+            "Remote installer URL is not allowlisted for Base 'ai' profile: "
+            f"{tool.installer.default_url}"
         )
 
 
 def ai_tool_installer_command(tool: AITool) -> tuple[str, ...]:
     validate_ai_remote_installer(tool)
-    return ("sh", "-c", 'curl -fsSL "$1" | "$2"', "--", tool.installer_url, tool.installer_shell)
+    return (
+        "sh",
+        "-c",
+        'curl -fsSL "$1" | "$2"',
+        "--",
+        tool.installer.default_url,
+        tool.installer.interpreter,
+    )
 
 
 def log_ai_remote_installer_policy(ctx: base_cli.Context, tool: AITool) -> None:
     ctx.log.info(
-        "Remote installer policy: %s uses allowlisted installer %s; execution requires explicit --profile ai.",
+        "Remote installer policy: %s uses allowlisted official mutable installer %s without checksum verification; "
+        "execution requires explicit --profile ai.",
         tool.display_name,
-        tool.installer_url,
+        tool.installer.default_url,
     )
 
 

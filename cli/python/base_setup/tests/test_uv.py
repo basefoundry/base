@@ -9,7 +9,8 @@ from unittest import mock
 from base_setup import engine
 from base_setup.manifest import ArtifactRequest, BaseManifest, read_manifest
 from base_setup.tests.helpers import fake_context
-from base_setup.uv import UV_INSTALL_COMMAND_TEXT, check_uv, reconcile_uv_project
+from base_setup import remote_installers
+from base_setup.uv import check_uv, reconcile_uv_project
 
 
 def write_manifest(root: Path, content: str) -> BaseManifest:
@@ -62,10 +63,11 @@ class UvProjectTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
                 mock.patch("base_setup.uv.uv_executable", return_value=None),
+                mock.patch("base_setup.uv.remote_installers.run_remote_installer") as run_installer,
             ):
                 reconcile_uv_project(ctx, manifest, dry_run=True)
 
-        ctx.log.info.assert_any_call("[DRY-RUN] Would bootstrap uv: %s", UV_INSTALL_COMMAND_TEXT)
+        run_installer.assert_called_once_with(ctx, remote_installers.UV_REMOTE_INSTALLER, dry_run=True)
         ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", root, "uv sync")
 
     def test_reconcile_uv_project_bootstraps_uv_on_linux_debian_with_yes(self) -> None:
@@ -89,17 +91,14 @@ class UvProjectTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
                 mock.patch("base_setup.uv.uv_executable", side_effect=[None, uv_path, uv_path]),
+                mock.patch("base_setup.uv.remote_installers.run_remote_installer") as run_installer,
                 mock.patch("base_setup.uv.process.run_command") as run_command,
                 mock.patch("base_setup.uv.process.run_check", return_value=False),
             ):
                 reconcile_uv_project(ctx, manifest, dry_run=False)
 
-        self.assertEqual(
-            run_command.call_args_list[0].args[1],
-            ["sh", "-c", UV_INSTALL_COMMAND_TEXT],
-        )
-        self.assertEqual(run_command.call_args_list[1].args[1], [str(uv_path), "sync"])
-        self.assertEqual(run_command.call_args_list[1].kwargs["cwd"], root)
+        run_installer.assert_called_once_with(ctx, remote_installers.UV_REMOTE_INSTALLER, dry_run=False)
+        run_command.assert_called_once_with(ctx, [str(uv_path), "sync"], cwd=root)
 
     def test_reconcile_uv_project_requires_yes_before_linux_debian_uv_bootstrap(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -147,12 +146,14 @@ class UvProjectTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
                 mock.patch("base_setup.uv.uv_executable", side_effect=[None, uv_path]),
+                mock.patch("base_setup.uv.remote_installers.run_remote_installer") as run_installer,
                 mock.patch("base_setup.uv.process.run_command") as run_command,
                 mock.patch("base_setup.uv.process.run_check") as run_check,
             ):
                 reconcile_uv_project(ctx, manifest, dry_run=False)
 
-        run_command.assert_called_once_with(ctx, ["sh", "-c", UV_INSTALL_COMMAND_TEXT])
+        run_installer.assert_called_once_with(ctx, remote_installers.UV_REMOTE_INSTALLER, dry_run=False)
+        run_command.assert_not_called()
         run_check.assert_not_called()
 
     def test_reconcile_uv_project_requires_uv_for_real_setup(self) -> None:

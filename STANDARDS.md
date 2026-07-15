@@ -112,6 +112,14 @@ call Base's Python layer.
    stable product concept.
 8. Do not introduce hidden import-time side effects. Registration of CLI command
    functions is acceptable; filesystem, network, and process mutations are not.
+9. Base-owned remote shell installers must be documented in
+   `docs/remote-installer-policy.md`. Python-owned installers must use the
+   registry in `base_setup.remote_installers`; standalone first-mile Homebrew
+   paths must stay dependency-free and be kept in sync by contract tests.
+   Consent to run setup is not proof of installer integrity. New managed
+   installer overrides must fail closed on partial configuration, verify the
+   fetched bytes before execution, and avoid interpolating locations into shell
+   source.
 
 ## 3. Bash Standards
 

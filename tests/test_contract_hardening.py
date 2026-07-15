@@ -76,6 +76,7 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
         "GitHub workflow policy": "tests/test_github_workflows.py",
         "Workspace manifest repository URL policy": "cli/python/base_projects/tests/test_workspace_manifest.py",
         "Project installer template integrity": "cli/bash/commands/basectl/tests/repo.bats",
+        "Base-owned remote shell installer policy": "tests/test_remote_installer_policy.py",
         "CLI docs, help, and completion drift": "cli/bash/commands/basectl/tests/completions.bats",
         "CLI local log file privacy": "lib/python/base_cli/tests/test_logging.py",
     }
@@ -96,6 +97,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Workspace manifest repository URL policy",
         "Workspace manifest source policy",
         "Project installer template integrity",
+        "Base-owned remote shell installer policy",
         "CLI local log file privacy",
         "CLI docs, help, and completion drift",
         "Public command and JSON stability tiers",
@@ -113,6 +115,8 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
 
     expected_commands = [
         "tests/test_github_workflows.py",
+        "tests/test_remote_installer_policy.py",
+        "cli/python/base_setup/tests/test_remote_installers.py",
         "cli/python/base_projects/tests/test_workspace_manifest.py",
         "cli/python/base_projects/tests/test_workspace_pull.py",
         "lib/python/base_cli/tests/test_logging.py",

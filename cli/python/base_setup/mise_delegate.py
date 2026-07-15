@@ -10,15 +10,13 @@ from typing import Any
 import base_cli
 
 from . import process
+from . import remote_installers
 from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
 from .user_paths import prepend_user_local_bin_to_path
 from .user_paths import user_local_bin
-
-MISE_INSTALL_COMMAND_TEXT = "curl https://mise.run | sh"
-
 
 def check_mise(manifest: BaseManifest) -> ArtifactCheck:
     try:
@@ -250,7 +248,7 @@ def ensure_mise_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run
         raise ArtifactError("mise is required to set up this project. Install mise and rerun basectl setup.")
 
     if dry_run:
-        ctx.log.info("[DRY-RUN] Would bootstrap mise: %s", MISE_INSTALL_COMMAND_TEXT)
+        remote_installers.run_remote_installer(ctx, remote_installers.MISE_REMOTE_INSTALLER, dry_run=True)
         return Path("mise")
 
     if os.environ.get("BASE_SETUP_YES") != "true":
@@ -261,7 +259,7 @@ def ensure_mise_available(ctx: base_cli.Context, manifest: BaseManifest, dry_run
         )
 
     ctx.log.info("Bootstrapping mise for project '%s'.", manifest.project_name)
-    process.run_command(ctx, ["sh", "-c", MISE_INSTALL_COMMAND_TEXT])
+    remote_installers.run_remote_installer(ctx, remote_installers.MISE_REMOTE_INSTALLER, dry_run=False)
     prepend_user_local_bin_to_path()
     mise_bin = mise_executable()
     if mise_bin is None:
@@ -313,4 +311,3 @@ def resolve_mise_path(manifest: BaseManifest) -> Path:
     if not mise_path.is_file():
         raise ArtifactError(f"{manifest.path}: mise config '{manifest.mise}' does not exist.")
     return mise_path
-

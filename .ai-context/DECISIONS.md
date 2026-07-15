@@ -31,6 +31,11 @@ architecture discussion.
   consistent.
 - Base shell code should use explicit error handling and should not rely on
   `set -e`, `set -u`, or `set -o pipefail`.
+- Base treats remote-installer consent and integrity as separate decisions.
+  Python-owned installer definitions live in one registry; managed uv and mise
+  overrides require paired URL/SHA-256 values and execute the verified bytes.
+  First-mile Homebrew installers stay independent of Python and are aligned by
+  contract tests.
 
 ## Activation And Environment
 

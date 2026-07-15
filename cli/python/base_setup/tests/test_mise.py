@@ -7,8 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from base_setup import delegates, engine
-from base_setup.delegates import MISE_INSTALL_COMMAND_TEXT
+from base_setup import delegates, engine, remote_installers
 from base_setup.errors import ArtifactError
 from base_setup.manifest import BaseManifest
 from base_setup.tests.helpers import fake_context
@@ -66,7 +65,6 @@ class MiseTests(unittest.TestCase):
         from base_setup import mise_delegate
 
         expected_names = (
-            "MISE_INSTALL_COMMAND_TEXT",
             "check_mise",
             "check_mise_missing_tools",
             "check_mise_trust",
@@ -117,10 +115,11 @@ class MiseTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian"}),
                 mock.patch("base_setup.mise_delegate.mise_executable", return_value=None),
+                mock.patch("base_setup.mise_delegate.remote_installers.run_remote_installer") as run_installer,
             ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
-        ctx.log.info.assert_any_call("[DRY-RUN] Would bootstrap mise: %s", MISE_INSTALL_COMMAND_TEXT)
+        run_installer.assert_called_once_with(ctx, remote_installers.MISE_REMOTE_INSTALLER, dry_run=True)
         ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", project_root.resolve(), "mise install")
 
     def test_mise_bootstraps_on_linux_debian_with_yes(self) -> None:
@@ -134,14 +133,14 @@ class MiseTests(unittest.TestCase):
             with (
                 mock.patch.dict(os.environ, {"BASE_PLATFORM": "linux-debian", "BASE_SETUP_YES": "true"}),
                 mock.patch("base_setup.mise_delegate.mise_executable", side_effect=[None, mise_path]),
+                mock.patch("base_setup.mise_delegate.remote_installers.run_remote_installer") as run_installer,
                 mock.patch("base_setup.delegates.process.run_capture", return_value=trusted_mise_check(project_root)),
                 mock.patch("base_setup.delegates.process.run_command") as run_command,
             ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
-        self.assertEqual(run_command.call_args_list[0].args[1], ["sh", "-c", MISE_INSTALL_COMMAND_TEXT])
-        self.assertEqual(run_command.call_args_list[1].args[1], [str(mise_path), "install"])
-        self.assertEqual(run_command.call_args_list[1].kwargs["cwd"], project_root.resolve())
+        run_installer.assert_called_once_with(ctx, remote_installers.MISE_REMOTE_INSTALLER, dry_run=False)
+        run_command.assert_called_once_with(ctx, [str(mise_path), "install"], cwd=project_root.resolve())
 
     def test_mise_requires_yes_before_linux_debian_bootstrap(self) -> None:
         ctx = fake_context()
