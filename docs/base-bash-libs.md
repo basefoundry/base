@@ -2,9 +2,9 @@
 
 Base's reusable Bash libraries live in the standalone
 [`basefoundry/base-bash-libs`](https://github.com/basefoundry/base-bash-libs)
-repository. That repository lets scripts use Base's Bash logging, command
-execution, filesystem, and Git helper conventions without adopting the full
-Base workspace control plane.
+repository. That repository lets scripts use Base's Bash logging, argument
+parsing, command execution, filesystem, Git, GitHub CLI, list, and string helper
+conventions without adopting the full Base workspace control plane.
 
 This page documents the Base-side consumption and post-migration contract. Library
 APIs and standalone examples live in the `base-bash-libs` repository.
@@ -14,8 +14,12 @@ APIs and standalone examples live in the `base-bash-libs` repository.
 The standalone reusable library package owns:
 
 - `lib/bash/std`
+- `lib/bash/arg`
 - `lib/bash/file`
+- `lib/bash/gh`
 - `lib/bash/git`
+- `lib/bash/list`
+- `lib/bash/str`
 - shared BATS helpers needed by those library test suites
 
 Base still owns Base-specific runtime files, including:
@@ -25,8 +29,8 @@ Base still owns Base-specific runtime files, including:
 - Base runtime bootstrap through `base_init.sh`
 - Base command dispatch and project activation
 
-Base no longer bundles the reusable `std`, `file`, or `git` libraries. Base
-commands consume those libraries from `base-bash-libs`.
+Base no longer bundles those reusable libraries. Base commands consume them from
+`base-bash-libs`.
 
 ## Standalone Installation
 
@@ -50,11 +54,15 @@ source "$base_bash_libs_prefix/libexec/lib/bash/std/lib_std.sh"
 ```
 
 Companion libraries should be loaded through the stdlib's absolute import
-helper:
+helper. For example:
 
 ```bash
+import "$base_bash_libs_prefix/libexec/lib/bash/arg/lib_arg.sh"
 import "$base_bash_libs_prefix/libexec/lib/bash/file/lib_file.sh"
+import "$base_bash_libs_prefix/libexec/lib/bash/gh/lib_gh.sh"
 import "$base_bash_libs_prefix/libexec/lib/bash/git/lib_git.sh"
+import "$base_bash_libs_prefix/libexec/lib/bash/list/lib_list.sh"
+import "$base_bash_libs_prefix/libexec/lib/bash/str/lib_str.sh"
 ```
 
 For source checkout development, clone the repository next to Base or source it
@@ -78,8 +86,8 @@ prepared for Homebrew/core without changing the Base runtime contract:
 - it installs reusable libraries under `libexec/lib/bash`;
 - it includes README, changelog, license, notice, and examples under
   `pkgshare`; and
-- its formula test sources `lib_std.sh`, imports the companion `file` and `git`
-  libraries, and verifies the expected public functions through Homebrew Bash.
+- its formula test sources `lib_std.sh`, imports representative companion
+  libraries, and verifies expected public functions through Homebrew Bash.
 
 Before submitting or refreshing a Homebrew/core proposal, validate the tap
 formula by name, not by local formula path:
@@ -131,8 +139,12 @@ They should rely on `basectl` to establish the runtime and then import reusable
 libraries by convention:
 
 ```bash
+import_base_lib arg/lib_arg.sh
 import_base_lib file/lib_file.sh
+import_base_lib gh/lib_gh.sh
 import_base_lib git/lib_git.sh
+import_base_lib list/lib_list.sh
+import_base_lib str/lib_str.sh
 ```
 
 `import_base_lib` checks only the resolved reusable library root. Base-specific
