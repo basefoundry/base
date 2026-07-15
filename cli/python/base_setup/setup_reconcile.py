@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import base_cli
 from base_cli.config import UserConfig
 
@@ -95,24 +97,7 @@ def project_runtime_argument(manifest: BaseManifest) -> ProjectRuntimeConfig:
 
 
 def effective_manifest_with_user_config(manifest: BaseManifest, user_config: UserConfig) -> BaseManifest:
-    return BaseManifest(
-        path=manifest.path,
-        project_name=manifest.project_name,
-        brewfile=manifest.brewfile,
-        artifacts=manifest.artifacts,
-        ide=effective_ide_config(manifest.ide, user_config),
-        mise=manifest.mise,
-        test=manifest.test,
-        schema_version=manifest.schema_version,
-        health=manifest.health,
-        commands=manifest.commands,
-        activate=manifest.activate,
-        python=manifest.python,
-        github=manifest.github,
-        demo=manifest.demo,
-        build=manifest.build,
-        release=manifest.release,
-    )
+    return replace(manifest, ide=effective_ide_config(manifest.ide, user_config))
 
 
 def setup_artifacts(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple:
