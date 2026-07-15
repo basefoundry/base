@@ -268,6 +268,28 @@ EOF
     [ ! -e "$repo_dir" ]
 }
 
+@test "basectl repo clone trims user config values before applying them" {
+    local nested_dir="$TEST_TMPDIR/nested/current"
+    local workspace_root="$TEST_TMPDIR/workspace-root"
+    local repo_dir="$workspace_root/base-demo"
+
+    mkdir -p "$TEST_HOME/.base.d" "$nested_dir" "$workspace_root"
+    cat > "$TEST_HOME/.base.d/config.yaml" <<EOF
+workspace:
+  root:   $workspace_root   # local workspace
+github:
+  default_owner:   codeforester   # repo owner
+  clone_protocol:   ssh
+EOF
+
+    cd "$nested_dir"
+    run_basectl repo clone base-demo --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$(line_at "$output" 1)" = "[DRY-RUN] Would clone codeforester/base-demo (git@github.com:codeforester/base-demo.git) into $repo_dir." ]
+    [ "$(line_at "$output" 2)" = "[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir" ]
+}
+
 @test "basectl repo clone supports explicit owner and path dry-run" {
     local repo_dir="$TEST_HOME/work/base-demo"
 

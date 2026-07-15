@@ -350,8 +350,7 @@ base_repo_strip_config_value() {
     local value="$1"
 
     value="${value%%#*}"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
+    str_trim value
 
     case "$value" in
         \"*\")
