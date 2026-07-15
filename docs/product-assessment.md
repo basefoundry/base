@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-07-07
-Base era reviewed: 1.6.1
+Last reviewed: 2026-07-14
+Base era reviewed: 1.6.1 + Unreleased
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
@@ -35,18 +35,29 @@ When revising the assessment, prefer evidence in this order:
 
 ## Current Product Thesis
 
-Base is a macOS-primary local workspace control plane for developers who keep
-multiple repositories checked out side by side. It gives that workspace a common
-command surface for setup, diagnostics, project discovery, shell activation,
-tests, demos, builds, repository workflow, release support, and local AI context
-exports. Ubuntu/Debian source-checkout runtime and apt-backed setup support are
-implemented, while broader Linux distribution support remains deliberately
-narrow and Windows is not currently in scope.
+Base is a local operating contract for developers and platform engineers who
+work across multiple independent Git repositories. Its core outcome is
+deterministic local readiness and handoff:
 
-Base is strongest when it stays at the workspace orchestration layer. It should
-discover participating repositories, read their `base_manifest.yaml` contracts,
-invoke mature tools openly, report failures in a Base-native way, and keep the
-multi-repo workspace understandable.
+```text
+inventory -> prepare -> verify -> trust -> onboard -> hand off
+```
+
+Here, deterministic means explicit ordering, inspectable local state, stable
+findings or machine-readable structures, and clear next actions. It does not
+mean hermetic builds, byte-for-byte environments, or transactional updates
+across every repository and external tool.
+
+The execution contract (`base_manifest.yaml`, `basectl`, `base-wrapper`, and
+declared project commands) enables that outcome. Repository/GitHub/release
+workflow packs and environment/IDE/container/AI adapters support it without
+becoming equal product pillars. Ubuntu/Debian source-checkout runtime and
+apt-backed setup support are implemented, while broader Linux distribution
+support remains deliberately narrow and Windows is not currently in scope.
+
+Current onboarding, diagnostics, privacy-conscious history reports, and context
+exports provide evidence for manual handoff. The unified workspace agent brief
+and issue-oriented handoff bundle remain planned in #1561 and #1562.
 
 Base becomes weaker if it turns into a general version manager, automatic
 directory environment loader, dotfile manager, package solver, or generic task
@@ -61,26 +72,25 @@ The individual ingredients are not new. Developer tooling already has shell
 bootstrap scripts, environment managers, task runners, manifests, health checks,
 repo templates, release scripts, and dotfile managers.
 
-The original part is the composition and product boundary. Base treats the local
-developer workspace as the product surface: a set of sibling repositories that
-should behave like one coherent place to work without becoming a monorepo.
+The original part is the composition and product boundary. Base treats local
+readiness and transferable operating context as the product surface across a
+set of independent repositories without making them a monorepo.
 
-Most adjacent tools optimize one project, one shell, one task runner, one
-version-management story, one container, or one dotfile system. Base sits one
-level higher. It asks:
+Adjacent tools already cover project environments, tasks, machine bootstrap,
+containers, dotfiles, and generic multi-repository operations. Base's narrower
+question is:
 
-> What projects are in this workspace, what do they declare, what is ready,
-> what is missing, and how do I run the common workflow without relearning each
-> repository from scratch?
+> What repositories participate, what do they declare, what is ready, what may
+> execute, and what evidence lets the next implementer continue safely?
 
 That framing is distinctive. Base is not original because every primitive is
 new; it is original because the primitives are assembled into a clear local
-workspace control-plane model.
+operating contract from inventory through handoff.
 
 The main originality risk is misclassification. A new user may initially read
-Base as another `mise`, `direnv`, `just`, `chezmoi`, Nix, Devbox, or Dev
-Containers competitor. The product must keep making clear that Base delegates
-to those tools where they are stronger.
+Base as another repo manager, `mise`, `direnv`, `just`, `chezmoi`, Nix, Devbox,
+Dev Containers, or agent runtime competitor. The product must keep making clear
+that Base delegates those domains and owns the local readiness/handoff contract.
 
 ## 2. Usefulness
 
@@ -92,13 +102,16 @@ Base is especially useful for:
 
 - engineers working across several sibling repositories;
 - platform, SRE, infrastructure, and internal-tooling engineers;
-- teams that need repeatable onboarding without forcing a monorepo;
+- teams that need repeatable readiness, onboarding, and handoff without forcing
+  a monorepo;
 - projects that want consistent `setup`, `check`, `doctor`, `test`, `run`,
   `demo`, `build`, and release entry points;
 - developers who want explicit activation instead of hidden `cd`-triggered
   environment changes;
 - repositories that benefit from standard GitHub issue, branch, worktree, PR,
-  and release workflow helpers.
+  and release workflow helpers;
+- human and AI-assisted implementers who need inspectable local evidence rather
+  than private maintainer context.
 
 Base is less useful when:
 
@@ -108,12 +121,17 @@ Base is less useful when:
 - the main problem is full reproducibility through Nix, Devbox, or Dev
   Containers;
 - automatic directory-based environment loading is the desired behavior;
-- the team does not want a managed shell startup section.
+- the team does not want a managed shell startup section;
+- generic repository sync, a hosted agent runtime, or provider-specific session
+  transfer is the actual requirement.
 
 The practical value is that Base reduces repeated human judgment. It turns
 questions like "How do I set this up?", "Which repos are part of this
 workspace?", "Is my shell sane?", "How do I test this project?", and "How do I
-open a repo-standard PR?" into repeatable commands and documented contracts.
+leave enough evidence for the next implementer?" into repeatable commands and
+documented contracts. The last answer is currently assembled from onboarding,
+diagnostics, history, and context export; it is not yet the unified artifact
+planned in #1561 and #1562.
 
 ## 3. Adoption Potential
 
@@ -122,7 +140,8 @@ wedge.
 
 The strongest wedge is:
 
-> Mac-first local workspace orchestration for serious multi-repo developers.
+> A local operating contract for deterministic readiness and handoff across
+> independent Git repositories.
 
 That is a real market of users, especially among platform engineering,
 infrastructure, SRE, internal developer platform, and product engineers who
@@ -132,6 +151,8 @@ The blockers to broader adoption are also real:
 
 - Base touches shell startup, so users must trust it.
 - The category is not instantly obvious.
+- The strongest handoff story is currently composed from several shipped
+  surfaces rather than one unified artifact.
 - macOS-first scope limits the addressable audience.
 - Teams already committed to monorepos, Nix, Devbox, or Dev Containers need a
   sharp reason to add another layer.
@@ -153,9 +174,9 @@ The best adoption path is evidence-driven:
   narrow enough to keep.
 
 Base can become much larger, but the larger possibility is not "put every tool
-inside Base." The larger possibility is to become the trusted local control
-plane that makes a developer's workstation, repo set, diagnostics, and common
-workflow coherent.
+inside Base." The larger possibility is to make readiness and operating context
+portable across a repo set without absorbing the tools that prepare, build, or
+host those repositories.
 
 ### 2026-06-17 Product Review Delta
 
@@ -388,13 +409,38 @@ Current watchlist for the next release line:
 - Keep Ubuntu/Debian claims precise: source-checkout runtime and apt-backed setup
   are real, but broader Linux families, WSL, and Windows still need separate
   support contracts before public claims expand.
-- Turn command history and logs into user-facing reports only after the
-  deterministic local data model remains stable and privacy boundaries stay
-  explicit.
+- Use the shipped privacy-conscious history report as handoff evidence while
+  keeping the broader #1562 bundle local, redacted, and explicit about missing
+  data.
 - Continue ownership reduction in `setup_common.sh`, `repo.sh`, `gh.sh`, and the
   largest BATS suites through issue-backed slices instead of broad rewrites.
 - Keep Dev Container, Nix/devenv, Docker, and AI provider work in adapter or
   export lanes unless real projects prove Base must own a narrower contract.
+
+### 2026-07-14 / 1.6.1 + Unreleased Positioning Review Delta
+
+This review narrows the category language without changing the working ratings.
+The broad "workspace control plane" description made setup, execution, GitHub,
+release, IDE, container, environment, and AI surfaces appear equally central.
+The more defensible position is a local operating contract for deterministic
+readiness and handoff across independent Git repositories.
+
+The shipped evidence supports most of the outcome loop today. Project and
+workspace inventory, setup, check/doctor findings, manifest-command trust,
+guided project onboarding, read-only workspace onboarding, privacy-conscious
+history reports, and deterministic `.ai-context` exports are real command
+surfaces. Repository/GitHub/release behavior is best understood as supporting
+workflow packs; environment, IDE, container, Nix/devenv, and AI behavior remains
+in adapter or export lanes.
+
+The handoff claim needs one explicit limit. Base does not yet produce a unified
+workspace agent brief or issue-oriented handoff bundle. Those outcomes remain
+planned in open issues #1561 and #1562. Current commands provide the evidence a
+human can assemble for a handoff; they do not justify claiming the planned
+artifacts as shipped.
+
+The ratings remain unchanged because positioning clarity is not new adoption,
+contributor independence, support-load, or organizational-impact evidence.
 
 ## 4. Creator And Engineering Skill Assessment
 
@@ -406,7 +452,7 @@ and repository evidence.
 
 The strongest evidence for Staff-level skill:
 
-- clear product framing around a workspace control plane;
+- clear product framing around a local readiness and handoff contract;
 - explicit ecosystem boundaries and refusal to replace mature tools wholesale;
 - a small project manifest contract instead of ad hoc per-repo logic;
 - repeatable command surface across setup, diagnostics, activation, tests,
@@ -458,7 +504,8 @@ platform-engineering product with a defensible niche.
 
 Its most durable product identity is:
 
-> a local workspace control plane for multi-repo engineering.
+> a local operating contract for deterministic readiness and handoff across
+> independent Git repositories.
 
 Base should keep that identity narrow and sharp. The next level of proof is not
 feature count; it is reliability, install simplicity, documentation clarity,
@@ -467,6 +514,9 @@ the system without needing the creator in the loop.
 
 ## Assessment History
 
+- 2026-07-14: Narrowed Base's position to deterministic readiness and handoff,
+  separated the core outcome from its execution contract, workflow packs, and
+  adapters, and kept the ratings unchanged while #1561 and #1562 remain open.
 - 2026-07-07: Updated for the 1.6.1 review delta, including Ubuntu/Debian
   source-checkout runtime and apt-backed setup support, manifest-command trust,
   contract checks, and remaining adoption evidence limits.

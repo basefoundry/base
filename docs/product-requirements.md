@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-07-07
-Base era reviewed: 1.6.1
+Last reviewed: 2026-07-14
+Base era reviewed: 1.6.1 + Unreleased
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide
@@ -18,77 +18,126 @@ For execution tracking, use GitHub Issues and the workflow in
 
 ## Product Thesis
 
-Base is a macOS-primary local workspace control plane for developers who keep
-multiple Git repositories checked out side by side. It gives that peer-repo
-workspace one consistent command surface for setup, diagnostics, project
-discovery, activation, tests, demos, builds, repository workflow, release
-support, and local AI context exports. Ubuntu/Debian source-checkout runtime
-and apt-backed setup support are implemented, while broader Linux distribution
-support remains intentionally narrow and Windows is not currently in scope.
-
-Base should make a multi-repo workspace understandable, repeatable,
-diagnosable, and easier to onboard without turning the workspace into a
-monorepo or replacing mature project-local tools.
+Base is a local operating contract for developers and platform engineers who
+work across multiple independent Git repositories. It should make the repo set
+understandable, locally ready, explicitly trusted, onboardable, and transferable
+without forcing a monorepo or taking project behavior away from its owning
+repository.
 
 The durable product loop is:
 
 ```text
-discover -> setup -> activate -> run -> test -> doctor -> fix -> onboard
+inventory -> prepare -> verify -> trust -> onboard -> hand off
 ```
 
-Major product work should strengthen that loop at the project or workspace
-level. Work that does not strengthen that loop should remain outside Base core
-unless real use proves that it needs Base's orchestration model.
+In this PRD, **deterministic** means declared inputs and inspectable local state
+lead to explicit ordering, stable findings or machine-readable structures, and
+clear next actions. Read-only commands stay read-only; mutation uses named
+commands, dry-run paths, or consent where appropriate. It does not mean Base
+promises hermetic builds, byte-for-byte environments, or transactional updates
+across every repository and external tool.
+
+Base remains macOS-primary. Ubuntu/Debian source-checkout runtime and apt-backed
+setup support are implemented, while broader Linux distribution support remains
+intentionally narrow and Windows is not currently in scope.
+
+Major product work should improve the outcome loop. A broad command is not core
+merely because Base can expose it.
+
+## Product Responsibility Layers
+
+These layers classify product responsibility; they are not separately installed
+packages.
+
+1. **Core outcome:** deterministic local readiness and handoff across
+   independent Git repositories.
+2. **Enabling execution contract:** `base_manifest.yaml`, `basectl`,
+   `base-wrapper`, explicit activation, and project-declared setup/check/test/
+   run/demo/build behavior make the core outcome executable.
+3. **Supporting workflow packs:** repository baselines, GitHub issue/branch/PR/
+   Project conventions, and guarded release behavior support delivery but do
+   not define Base's primary category.
+4. **Adapters:** environment managers, IDEs, containers, Nix/devenv, and AI
+   tools keep ownership of their domains. Base may detect, check, invoke,
+   preview, or export context through narrow adapters.
 
 ## Target Users
 
-Base is built first for developers whose real work spans multiple sibling
-repositories under one workspace root. The strongest fit is:
+Base is built first for people whose real work spans independent Git
+repositories under one workspace root and who repeatedly transfer that work or
+its context. The strongest fit is:
 
 - platform, infrastructure, SRE, internal developer platform, and tooling
   engineers;
-- maintainers who need repeatable onboarding across several related
-  repositories;
+- maintainers who need repeatable readiness, onboarding, and handoff across
+  several related repositories;
 - developers who want explicit project activation instead of hidden
   directory-triggered environment changes;
-- teams that want shared setup, check, doctor, test, demo, build, repo, and
-  release entry points without forcing a monorepo.
+- teams that want a shared local contract without forcing a monorepo;
+- human and AI-assisted implementers who need public, inspectable evidence
+  instead of private maintainer context.
 
-Base is a weaker fit for developers who work in one simple repository, only
-need language version pinning, primarily need a fully reproducible container or
-Nix-style shell, want automatic environment changes on `cd`, or want a broad
-dotfile manager.
+## Non-Target Users
+
+Base is not the first tool for users who:
+
+- work in one simple repository with no recurring readiness or handoff problem;
+- should consolidate into a monorepo;
+- only need generic repository clone/sync/status or command fan-out;
+- only need language version pinning, task execution, or dotfile management;
+- primarily need a hermetic build, fully reproducible Nix-style shell, or
+  container platform;
+- want automatic environment changes on `cd`;
+- need a hosted agent runtime, live session transfer, or provider upload
+  service;
+- require non-Git source control or broad Windows support today.
 
 ## Core Jobs
 
-Base should help a target user answer these questions quickly:
+Base should help a target user answer one question at each step:
 
-- Which repositories belong to this local workspace?
-- What has each project declared through `base_manifest.yaml`?
-- What is missing before this project can be set up, tested, run, demoed, or
-  activated?
-- Which setup or diagnostic command should I run next?
-- How do I enter a controlled project shell without changing my parent shell?
-- How do I run common project commands without relearning each repository?
-- How do I apply Base's repository, issue, branch, PR, Project, and release
-  workflow conventions?
-- How do I export repo-visible AI context without depending on a
-  provider-specific upload path?
-- How do I render repo-owned prompts for review workflows without moving
-  private prompt libraries into Base?
+- **Inventory:** Which repositories participate, which are expected, and what
+  has each declared?
+- **Prepare:** What explicit setup or materialization step is required?
+- **Verify:** What is ready, what is missing, and which stable finding or next
+  command explains it?
+- **Trust:** Which project-owned commands or activation sources have been
+  reviewed and approved locally?
+- **Onboard:** Can a technically adjacent user understand the first-day state
+  without private instructions?
+- **Hand off:** What diagnostics, recent activity, context, validation guidance,
+  and canonical instructions can the next human or agent inspect?
 
 ## Requirements
 
-### Workspace Control Plane
+### Core Outcome
 
 - Base must discover participating peer repositories under a shared workspace
   root when they opt in with `base_manifest.yaml`.
-- Base must provide one public control-plane command, `basectl`, for common
-  workspace and project workflows.
+- Base must inventory discovered and manifest-expected repository state without
+  requiring setup or mutation.
+- Base must provide one public command, `basectl`, for the local operating
+  contract.
 - Base must keep project repositories independent. It must not require a
   monorepo or move product-specific application behavior into Base.
 - Base must make dry-run, check, doctor, and JSON-capable output useful for
   humans and automation.
+- Base must keep deterministic claims limited to its declared inputs,
+  inspection order, findings, output contracts, and explicit next actions.
+
+### Handoff
+
+- Base must preserve current handoff evidence through onboarding views,
+  diagnostics, stable finding IDs, privacy-conscious history reports, canonical
+  repo guidance, and provider-neutral context exports.
+- Base must describe a manual composition of those surfaces honestly until a
+  unified artifact ships.
+- A workspace agent brief and issue-oriented handoff bundle are planned in
+  [#1561](https://github.com/basefoundry/base/issues/1561) and
+  [#1562](https://github.com/basefoundry/base/issues/1562). They are accepted
+  direction, not current command claims.
+- Handoff artifacts must remain local-first, deterministic enough for tests,
+  redacted, provider-neutral, and explicit about unavailable evidence.
 
 ### Project Contract
 
@@ -115,6 +164,8 @@ Base should help a target user answer these questions quickly:
 
 ### Tool Integration
 
+- Tool integrations are adapters to the local operating contract, not equal
+  product pillars.
 - Base must orchestrate mature tools openly instead of hiding or replacing
   them.
 - Integrations should detect relevance, check health, invoke the underlying
@@ -131,6 +182,8 @@ Base should help a target user answer these questions quickly:
 
 ### Repository And Release Workflow
 
+- Repository and release behavior is a supporting workflow pack, not the core
+  product outcome.
 - Base must use GitHub Issues as the durable product backlog and activity
   tracker.
 - Base repository work should use issue-backed branches, dedicated worktrees,
@@ -145,6 +198,8 @@ Base should help a target user answer these questions quickly:
 
 ### AI Context
 
+- AI behavior is an adapter and handoff-support surface. Base does not own live
+  agent execution.
 - Base may maintain repo-visible `.ai-context/` files and repo-owned prompt
   templates as curated orientation and review surfaces for AI assistants.
 - Canonical docs remain the source of truth. `.ai-context/` must summarize
@@ -165,9 +220,11 @@ Base should not become:
 - an automatic directory-based environment loader;
 - a full dotfile manager;
 - a generic task runner;
+- a generic multi-repository checkout, sync, or command fan-out manager;
 - a full reproducible package manager or environment solver;
 - a local services platform;
 - a container runtime;
+- a hosted agent runtime, session-transfer service, or provider upload system;
 - a replacement for GitHub CLI, IDEs, Homebrew, `mise`, uv, Docker, Nix,
   Devbox, Dev Containers, `just`, Taskfile, or project-owned build systems.
 
@@ -185,10 +242,14 @@ Base is succeeding when:
   behavior;
 - diagnostics reduce repeated human judgment by explaining missing local state
   before commands fail later;
+- a target user can follow the inventory-to-handoff loop without mistaking
+  Base for a generic repo manager, environment solver, or hosted agent runtime;
 - the product boundary stays clear as new integrations are added;
 - the release, install, upgrade, and Homebrew paths are boring and repeatable;
 - another contributor or AI-assisted agent can follow the docs, issues, tests,
   and context pack without needing private maintainer knowledge;
+- current handoff evidence is described separately from the unified artifacts
+  still planned in #1561 and #1562;
 - repo-owned prompts and context exports make periodic product and workflow
   reviews repeatable without becoming hidden private process;
 - external adoption evidence grows without widening Base into a catch-all
@@ -255,6 +316,12 @@ repositioning, and after meaningful external user feedback.
 
 ## Decision Log
 
+- 2026-07-14: Narrow Base's accepted position to a local operating contract for
+  deterministic readiness and handoff across independent Git repositories.
+  Adopt the `inventory -> prepare -> verify -> trust -> onboard -> hand off`
+  outcome loop, classify execution, workflow packs, and adapters by their role,
+  and keep unified workspace/issue handoff artifacts explicitly planned in
+  #1561 and #1562 rather than claiming them as shipped.
 - 2026-06-29: Reviewed for the 1.3.0 release line.
   The 1.3.0 release hardens Base's command lifecycle, documentation entry
   point, CI setup output, setup/install trust path, completions, and validation

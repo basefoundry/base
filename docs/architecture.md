@@ -2,12 +2,13 @@
 
 ## Overview
 
-Base is an opinionated macOS-primary development orchestrator. It provides a
-unified, declarative foundation for bootstrapping a developer environment and
-managing multiple projects through a single CLI interface. The current
-implementation support contract covers macOS plus narrow Ubuntu/Debian
-source-checkout runtime and apt-backed setup paths. Broader Linux distribution
-support, WSL, and Windows are not in scope today.
+Base is an opinionated macOS-primary implementation of a local operating
+contract for independent Git repositories. It provides the inventory,
+readiness, trust, onboarding, and handoff evidence needed to operate that repo
+set through one CLI interface. The current implementation support contract
+covers macOS plus narrow Ubuntu/Debian source-checkout runtime and apt-backed
+setup paths. Broader Linux distribution support, WSL, and Windows are not in
+scope today.
 
 The governing philosophy: **solve your own problem elegantly first**. Base is
 built for a specific workflow: multiple peer Git repositories under a shared
@@ -22,21 +23,36 @@ GitHub-specific. The exact contract lives in
 
 ## Product Direction
 
-Base's long-term product shape is a macOS-primary control plane for multi-repo
-developer workspaces. It should make a folder of sibling repositories
-understandable, repeatable, diagnosable, and easy to onboard without becoming a
-replacement for Homebrew, `mise`, Docker, GitHub CLI, IDEs, or project-owned
+Base's long-term product shape is a local operating contract for deterministic
+readiness and handoff across independent Git repositories. It should make a
+folder of sibling repositories understandable, locally ready, explicitly
+trusted, easy to onboard, and transferable without becoming a replacement for
+Homebrew, `mise`, Docker, GitHub CLI, IDEs, agent runtimes, or project-owned
 build systems.
 
 The coherent product loop is:
 
 ```text
-discover -> setup -> activate -> run -> test -> doctor -> fix -> onboard
+inventory -> prepare -> verify -> trust -> onboard -> hand off
 ```
 
-Major features should strengthen that loop at the project or workspace level.
-Unrelated commands belong outside the core product unless real use proves they
-need Base's orchestration model.
+Here, deterministic means explicit inspection order, stable findings or
+machine-readable structures, and clear next actions from declared inputs and
+observable local state. It does not mean hermetic builds, byte-for-byte
+environments, or transactional multi-repository mutation.
+
+The product responsibility layers are:
+
+1. The core outcome: deterministic local readiness and handoff.
+2. The enabling execution contract: `base_manifest.yaml`, `basectl`,
+   `base-wrapper`, activation, and declared project commands.
+3. Supporting workflow packs: repository baselines plus GitHub and release
+   conventions.
+4. Adapters: environment managers, IDEs, containers, Nix/devenv, and AI tools.
+
+These are architecture responsibility layers, not separately installed
+packages. Major features should strengthen the outcome loop. A command does not
+become core merely because `basectl` dispatches it.
 
 ---
 
@@ -593,9 +609,9 @@ source of truth, and corrupt or unwritable cache files are ignored.
 
 ## Workspace Operations
 
-Base's larger value is managing a full workspace, not just one repository. The
-workspace command surface should make local state visible before it mutates many
-projects.
+Workspace operations supply the inventory and onboarding evidence for the core
+outcome. The command surface should make local state visible before it mutates
+many projects.
 
 Current workspace-oriented commands include:
 
@@ -604,6 +620,7 @@ basectl projects list
 basectl workspace status
 basectl workspace check
 basectl workspace doctor
+basectl workspace onboarding
 basectl workspace clone
 basectl workspace pull
 basectl workspace init
@@ -611,25 +628,29 @@ basectl workspace configure
 ```
 
 Workspace commands are read-first and mutate only through explicit init, clone,
-pull, or configure commands. `basectl workspace status` reports project manifest state,
-virtual environment state, and Git state across discovered projects, including
-invalid manifests without stopping the whole scan. With `workspace.manifest` or
-`--manifest <path>`, workspace commands also report missing required
-repositories, missing optional repositories, and discovered Base-managed
-projects outside the expected repo set. `basectl workspace check` and `basectl
-workspace doctor` run project checks and diagnostics across discovered
-projects. `basectl workspace clone` materializes missing expected repositories
-only when invoked directly. `basectl workspace pull` updates only the local
-workspace manifest after validating an explicit or configured source. `basectl
-workspace init` bootstraps a workspace from a workspace configuration repository
-and can materialize member repositories. `basectl workspace configure` applies
-the existing `repo configure` repair path across discovered Base-managed
-workspace repositories. JSON output is part of the status/check/doctor contract
+pull, or configure commands. `basectl workspace status` reports project manifest
+state, virtual environment state, and Git state across discovered projects,
+including invalid manifests without stopping the whole scan. With
+`workspace.manifest` or `--manifest <path>`, workspace commands also report
+missing required repositories, missing optional repositories, and discovered
+Base-managed projects outside the expected repo set. `basectl workspace check`
+and `basectl workspace doctor` run project checks and diagnostics across
+discovered projects. `basectl workspace onboarding` is a shipped read-only text
+or JSON summary of ready, needs-setup, invalid-manifest, missing-required, and
+missing-optional first-day repository state; it does not clone repositories or
+run setup. `basectl
+workspace clone` materializes missing expected repositories only when invoked
+directly. `basectl workspace pull` updates only the local workspace manifest
+after validating an explicit or configured source. `basectl workspace init`
+bootstraps a workspace from a workspace configuration repository and can
+materialize member repositories. `basectl workspace configure` applies the
+existing `repo configure` repair path across discovered Base-managed workspace
+repositories. JSON output is part of the status/check/doctor/onboarding contract
 so automation and future CI smoke checks can use the same data.
 
 Future workspace commands should follow the same principles:
 
-- start with read-only status, check, and doctor behavior
+- start with read-only status, check, doctor, and onboarding behavior
 - require explicit commands and dry-run paths before mutating many repositories
   or local workspace metadata
 - treat partial failure as normal in multi-repo workspaces
@@ -660,6 +681,15 @@ invoked, and log file paths.
 
 The goal is explainability, not surveillance. Base should help users understand
 what happened on their own machine.
+
+These surfaces also provide today's handoff evidence: onboarding reports explain
+initial repo state, check/doctor provide current readiness, history reports show
+recent local command outcomes, and `.ai-context` exports carry canonical
+orientation. A unified workspace agent brief and issue-oriented handoff bundle
+are planned in GitHub issues
+[#1561](https://github.com/basefoundry/base/issues/1561) and
+[#1562](https://github.com/basefoundry/base/issues/1562). Architecture should
+not expose those as commands or stable schemas before they ship.
 
 ---
 
@@ -692,6 +722,9 @@ through managed workstation provisioning before invoking `basectl setup`.
 
 ## GitHub and Repository Conventions
 
+These conventions are a supporting workflow pack for the operating contract;
+they are not the core readiness category.
+
 - Base uses a public GitHub repository at `basefoundry/base`.
 - GitHub Issues are the official product backlog for bugs, feature requests,
   release work, maintenance, and documentation follow-up.
@@ -714,6 +747,8 @@ Base should measure product readiness through concrete local workflows:
   demonstrated by Base
 - a technically adjacent user can complete guided onboarding without reading
   private internal notes
+- a second human or coding agent can reconstruct readiness and recent local
+  evidence without an undocumented maintainer briefing
 - multiple project types are supported through adapters instead of
   special-case code
 - `doctor` identifies and explains the most common local failure modes
@@ -743,10 +778,15 @@ These extras emerge organically from real needs — they are not designed upfron
 ## What Base Is Not
 
 - Not a replacement for Docker or dev containers — those solve a different problem
-  (containerization). Base is Mac-native and lightweight.
-- Not broadly cross-platform today — macOS is the current support contract, Linux is a future target, and Windows is explicitly out of scope.
+  (containerization). Base is local and lightweight.
+- Not broadly cross-platform today — macOS remains the primary platform, while
+  Ubuntu/Debian source-checkout runtime and apt-backed setup are implemented.
+  Broader Linux distributions, WSL, and Windows are not supported today.
 - Not a universal package manager — Homebrew handles that. Base orchestrates on top
   of Homebrew.
+- Not a generic multi-repository sync or command fan-out manager.
+- Not a hosted agent runtime, live session-transfer service, or provider upload
+  system.
 - Not trying to solve every edge case — version conflict handling across projects,
   language runtimes beyond Python, and container integration are future considerations.
 

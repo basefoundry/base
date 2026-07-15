@@ -63,11 +63,14 @@ The stable split is:
 - `<project>/install.sh` or a packaged project installer guides product-specific
   onboarding and calls Base internally.
 
-Future workspace or team onboarding should start from a workspace manifest
-design, not from project-specific product logic inside Base. A future
-workspace-level onboarding command would need an explicit manifest location,
-clone policy, trust model, partial-failure model, and dry-run story before it
-becomes part of the product surface. See [Workspace Manifest](workspace-manifest.md).
+Workspace or team onboarding starts from a workspace manifest, not from
+project-specific product logic inside Base. The shipped
+`basectl workspace onboarding` command provides a read-only summary of expected
+repositories, local checkout and manifest state, and suggested next actions in
+text or JSON. It does not clone repositories, run project setup, or execute
+manifest-declared commands, so clone policy, explicit command trust, and
+partial-failure handling remain separate concerns. See
+[Workspace Manifest](workspace-manifest.md).
 
 ## Audience
 
