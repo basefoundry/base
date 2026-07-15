@@ -85,13 +85,17 @@ already exists:
 basectl repo init base-demo \
   --path ~/work/base-demo \
   --repo basefoundry/base-demo \
+  --issue 123 \
   --pr
 ```
 
-`--pr` requires the target path to be an existing, clean Git worktree. It creates
-or uses the predictable branch `base/repo-baseline-<name>`, writes any missing
+`--pr` requires `--issue <number>` and the target path to be an existing, clean
+Git worktree. It creates or uses the canonical branch
+`<category>/<issue>-<YYYYMMDD>-repo-baseline-<name>`, writes any missing
 baseline files, commits only the baseline file set, pushes the branch to
 `origin`, and opens a GitHub pull request against the repository default branch.
+Real PR runs derive and verify the issue's standard category label; offline
+`--pr --dry-run` previews also require `--category <name>`.
 When `--agent-ready` is passed, the baseline PR also includes `AGENTS.md` and
 `skills.md`.
 When the generated baseline produces file changes, `repo init --pr` stops after
@@ -113,7 +117,7 @@ Seed optional repo-local agent guidance:
 ```bash
 basectl repo init base-demo --repo basefoundry/base-demo --agent-ready
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo
-basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-run
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --issue 123 --category enhancement --pr --dry-run
 ```
 
 Reapply GitHub-side repository settings and labels:
@@ -295,17 +299,19 @@ that already have their own instructions or pull request template. After each
 non-dry-run execution, Base prints how many guidance files were created and
 which existing files were left unchanged.
 
-Use `--pr` to commit generated guidance files on a predictable branch and open a
-draft pull request. The target path must be the root of a clean Git worktree.
-Base infers the GitHub repository from the target `origin` remote, or you can
-pass `--repo <owner/name>` explicitly. Only the generated guidance files are
-staged for the helper commit.
+Use `--pr --issue <number>` to commit generated guidance files on a canonical
+issue-backed branch and open a draft pull request. The target path must be the
+root of a clean Git worktree. Base infers the GitHub repository from the target
+`origin` remote, or you can pass `--repo <owner/name>` explicitly. Only the
+generated guidance files are staged for the helper commit. Real PR runs derive
+and verify the issue's standard category label. Because dry-run remains offline,
+`--pr --dry-run` also requires `--category <name>`.
 
 Preview the files without writing them:
 
 ```bash
 basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --dry-run
-basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --pr --dry-run
+basectl repo agent-guidance ~/work/base-demo --repo-name base-demo --issue 123 --category enhancement --pr --dry-run
 ```
 
 Include the optional guidance files in local baseline checks only when the repo
@@ -362,6 +368,7 @@ the current GitHub repository policy:
 - delete branch on merge enabled
 - squash commit message set to PR title and description
 - Base-managed default branch protection enabled
+- Base-managed branch naming enforcement enabled for non-default branches
 - standard GitHub Project metadata enabled
 
 They also create or update these labels:
@@ -381,11 +388,17 @@ require status checks, approval counts, CODEOWNERS, teams, or repository
 secrets. Pass `--no-protect-default-branch` when a repository intentionally
 skips this Base-managed ruleset.
 
+Branch naming enforcement is tool-independent. `repo configure` creates or
+updates the active `Base branch naming` ruleset for all non-default branches and
+requires `<category>/<issue>-<YYYYMMDD>-<slug>`, using one of the standard Base
+categories. This rejects nonconforming remote branches whether they come from a
+human, an AI tool, a GitHub Action, or a Base helper.
+
 GitHub rulesets are available for public repositories on GitHub Free and for
 public and private repositories on GitHub Pro, Team, or Enterprise plans. When
 GitHub reports that rulesets are unavailable for a private repository's plan,
 `repo configure` leaves the supported settings and labels in place, logs a
-warning, and skips default branch protection.
+warning, and skips the unavailable Base-managed rulesets.
 
 The Project metadata schema creates or updates single-select Project fields on
 the repo Project:

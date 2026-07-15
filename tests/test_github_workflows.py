@@ -500,3 +500,42 @@ def test_skills_workflow_generates_current_guidance_without_indent_stripping() -
     assert "AI_CONTEXT.md" not in run_commands
     assert ".ai-context/README.md" in run_commands
     assert "sed -i 's/^" not in run_commands
+
+
+def test_skills_workflow_create_pr_is_issue_backed() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "skills.yml")
+    triggers = workflow.get("on") or workflow.get(True)
+    create_job = workflow["jobs"]["create"]
+    commit_step = next(
+        step for step in create_job["steps"] if step.get("name") == "Commit and push starter file"
+    )
+    run_commands = "\n".join(
+        step.get("run", "")
+        for step in create_job["steps"]
+        if isinstance(step, dict)
+    )
+
+    assert triggers["workflow_dispatch"]["inputs"]["issue_number"] == {
+        "description": "Issue number the generated pull request will close (required with create_pr)",
+        "required": False,
+        "type": "string",
+    }
+    assert workflow["permissions"] == {"contents": "read"}
+    assert create_job["permissions"] == {
+        "contents": "write",
+        "issues": "read",
+        "pull-requests": "write",
+    }
+    assert create_job["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert create_job["env"]["ISSUE_NUMBER"] == "${{ inputs.issue_number }}"
+    assert '[[ ! "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]' in run_commands
+    assert 'gh issue view "$ISSUE_NUMBER"' in run_commands
+    assert 'Issue #$ISSUE_NUMBER must have exactly one Base category label.' in run_commands
+    assert 'date_stamp="$(date -u +%Y%m%d)"' in run_commands
+    assert commit_step["env"]["ISSUE_CATEGORY"] == "${{ steps.issue.outputs.category }}"
+    assert 'branch="${ISSUE_CATEGORY}/${ISSUE_NUMBER}-${date_stamp}-create-skills-md"' in run_commands
+    assert "codex/create-skills-md" not in run_commands
+    assert '"[codex] Add skills.md"' not in run_commands
+    assert '--title "Add skills.md"' in run_commands
+    assert "printf '\\nCloses #%s\\n' \"$ISSUE_NUMBER\" >> pr-body.md" in run_commands
+    assert "${{ inputs.issue_number }}" not in run_commands

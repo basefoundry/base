@@ -949,6 +949,81 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/body")" = "Fixes #117" ]
 }
 
+@test "basectl gh branch policy accepts only canonical issue-backed names" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
+            [[ "$(base_github_branch_name enhancement 117 valid-branch 20260528)" == "enhancement/117-20260528-valid-branch" ]] || exit 1
+            for category in bug enhancement documentation ci security; do
+                base_github_branch_category_is_valid "$category" || exit 1
+                base_github_branch_name_is_valid "$category/117-20260528-valid-branch" || exit 1
+            done
+            if base_github_branch_category_is_valid feat; then
+                printf "unexpected valid category: feat\n" >&2
+                exit 1
+            fi
+            if base_github_branch_name feat 117 valid-branch 20260528 ||
+                base_github_branch_name enhancement 0 valid-branch 20260528 ||
+                base_github_branch_name enhancement 117 Invalid-slug 20260528; then
+                printf "unexpected canonical branch generation success\n" >&2
+                exit 1
+            fi
+            for branch in \
+                117-missing-category \
+                feat/117-20260528-wrong-category \
+                enhancement/117-missing-date \
+                enhancement/0-20260528-zero-issue \
+                enhancement/117-2026052-short-date \
+                enhancement/117-20260528-Uppercase-slug \
+                enhancement/117-20260528-double--hyphen; do
+                if base_github_branch_name_is_valid "$branch"; then
+                    printf "unexpected valid branch: %s\n" "$branch" >&2
+                    exit 1
+                fi
+            done
+        '
+
+    [ "$status" -eq 0 ]
+}
+
+@test "basectl gh pr create rejects a noncanonical branch before gh" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c "feat/117-20260528-basectl-gh-workflow" >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main pr create --no-fixes
+        ' bash "$repo"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Branch 'feat/117-20260528-basectl-gh-workflow' does not follow <category>/<issue>-<YYYYMMDD>-<slug>."* ]]
+    [[ "$output" == *"Categories: bug, enhancement, documentation, ci, security."* ]]
+    [[ "$output" == *"basectl gh issue start <number>"* ]]
+    [[ "$output" != *"unexpected gh args"* ]]
+}
+
 @test "basectl gh pr create uses reusable temp helper for PR body" {
     local repo
 

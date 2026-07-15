@@ -7,6 +7,7 @@ readonly _base_gh_subcommand_sourced
 import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_branch_worktree.sh"
 
 base_gh_usage() {
@@ -270,13 +271,11 @@ base_gh_default_branch() {
 }
 
 base_gh_validate_category() {
-    case "$1" in
-        bug|enhancement|documentation|ci|security) return 0 ;;
-        *)
-            base_gh_error "Invalid category '$1'. Expected one of: bug, enhancement, documentation, ci, security."
-            return 2
-            ;;
-    esac
+    local category="$1"
+
+    base_github_branch_category_is_valid "$category" && return 0
+    base_gh_error "Invalid category '$category'. Expected one of: bug, enhancement, documentation, ci, security."
+    return 2
 }
 
 base_gh_slug() {
@@ -790,8 +789,7 @@ base_gh_current_issue_from_branch() {
     local branch
 
     branch="$(git branch --show-current 2>/dev/null)" || return 1
-    [[ "$branch" =~ ^[^/]+/([0-9]+)- ]] || return 1
-    printf '%s\n' "${BASH_REMATCH[1]}"
+    base_github_issue_from_branch_name "$branch"
 }
 
 base_gh_do_issue() {
@@ -982,7 +980,7 @@ base_gh_issue_create() {
 }
 
 base_gh_pr_create() {
-    local issue body_file status
+    local branch issue body_file status
     local no_fixes=0
     local passthrough=()
 
@@ -999,7 +997,17 @@ base_gh_pr_create() {
     done
 
     base_gh_require_git_repo || return 1
-    issue="$(base_gh_current_issue_from_branch || true)"
+    branch="$(git branch --show-current 2>/dev/null)" || {
+        base_gh_error "Unable to determine the current branch."
+        return 1
+    }
+    if ! base_github_branch_name_is_valid "$branch"; then
+        base_gh_error "Branch '$branch' does not follow <category>/<issue>-<YYYYMMDD>-<slug>."
+        printf 'Categories: bug, enhancement, documentation, ci, security.\n' >&2
+        printf "Fix: run 'basectl gh issue start <number>' and move the work to its printed branch/worktree.\n" >&2
+        return 2
+    fi
+    issue="$(base_gh_current_issue_from_branch)" || return 1
     if [[ -n "$issue" && "$no_fixes" -eq 0 ]]; then
         std_make_temp_file body_file basectl-gh-pr || return 1
         base_gh_pr_policy_body "$issue" > "$body_file" || {
@@ -1017,7 +1025,7 @@ base_gh_pr_create() {
 }
 
 base_gh_issue_start() {
-    local issue="${1:-}" category="" title="" slug branch today default_branch worktree_path
+    local issue="${1:-}" category="" title="" slug branch default_branch worktree_path
 
     [[ -n "$issue" ]] || {
         base_gh_usage_error base_gh_issue_usage "Missing issue number."
@@ -1047,6 +1055,11 @@ base_gh_issue_start() {
         shift
     done
 
+    base_github_issue_number_is_valid "$issue" || {
+        base_gh_usage_error base_gh_issue_usage "Issue number must be a positive integer."
+        return $?
+    }
+
     base_gh_require_git_repo || return 1
     if [[ -z "$category" || -z "$title" ]]; then
         base_gh_require_command gh || return 1
@@ -1063,8 +1076,10 @@ base_gh_issue_start() {
     fi
 
     slug="$(base_gh_slug "$title")"
-    printf -v today '%(%Y%m%d)T' -1
-    branch="$category/$issue-$today-$slug"
+    branch="$(base_github_branch_name "$category" "$issue" "$slug")" || {
+        base_gh_error "Unable to generate the canonical branch name for issue #$issue."
+        return 1
+    }
     default_branch="$(base_gh_default_branch)"
     worktree_path="$(base_gh_issue_worktree_path "$issue" "$slug")" || return 1
 

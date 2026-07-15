@@ -320,6 +320,8 @@ _base_basectl_completion() {
                         '2:repository name:' \
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
+                        '--issue[Issue number for pull request]:number:' \
+                        '--category[Issue category for pull request dry-run]:category:(bug enhancement documentation ci security)' \
                         '--pr[Commit the generated baseline on a branch and open a pull request]' \
                         '--agent-ready[Also seed repo-local agent guidance files]' \
                         '--language[Add project language metadata; may be repeated]:csv:' \
@@ -376,6 +378,8 @@ _base_basectl_completion() {
                     _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
                         '2:path:_files' \
                         '--repo[GitHub repository for pull request]:repo:' \
+                        '--issue[Issue number for pull request]:number:' \
+                        '--category[Issue category for pull request dry-run]:category:(bug enhancement documentation ci security)' \
                         '--repo-name[Repository name for generated guidance]:name:' \
                         '--default-branch[Default branch for generated guidance]:branch:' \
                         '--validation-command[Validation command for generated guidance]:command:' \
@@ -390,6 +394,8 @@ _base_basectl_completion() {
                         '--print[Print the maintained template to stdout instead of writing a file]' \
                         '--stdout[Alias for --print]' \
                         '--repo[GitHub repository for pull request]:repo:' \
+                        '--issue[Issue number for pull request]:number:' \
+                        '--category[Issue category for pull request dry-run]:category:(bug enhancement documentation ci security)' \
                         '--pr[Commit generated installer template and open a draft pull request]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \

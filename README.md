@@ -650,10 +650,12 @@ GitHub repository when needed and then standardizes its settings when
 `--repo <owner/name>` is provided or when an existing `origin` remote can be
 inferred. Newly created GitHub repositories are private by default; pass
 `--public` when a public repository is intentional. Plain `repo init` writes the
-local baseline but does not commit or push local files. Use `--pr` on an
-existing clean Git worktree to commit baseline changes on a branch, push that
-branch to `origin`, and open a pull request. Use `--no-configure` to skip the
-GitHub step, or rerun it later with `basectl repo configure`. Add
+local baseline but does not commit or push local files. Use `--pr --issue
+<number>` on an existing clean Git worktree to commit baseline changes on a
+canonical issue-backed branch, push that branch to `origin`, and open a pull
+request. Use `--no-configure` to skip the GitHub step, or rerun it later with
+`basectl repo configure`. Real PR runs derive and verify the issue category;
+offline `--pr --dry-run` previews also require `--category <name>`. Add
 `--agent-ready` when a new baseline should also include `AGENTS.md` and
 `skills.md` for repo-local agent workflow guidance.
 Use repeatable `--language <csv>` values to record an explicit, normalized
@@ -689,7 +691,7 @@ Seed optional repo-local agent guidance with:
 ```bash
 basectl repo init example --repo basefoundry/example --agent-ready
 basectl repo agent-guidance ~/work/example --repo-name example
-basectl repo agent-guidance ~/work/example --repo-name example --pr --dry-run
+basectl repo agent-guidance ~/work/example --repo-name example --issue 123 --category enhancement --pr --dry-run
 basectl repo check ~/work/example --agent-guidance
 basectl repo check ~/work/example --agent-ready
 ```
@@ -699,16 +701,19 @@ guidance from the first pull request. Use `repo agent-guidance` to add or repair
 that optional layer in an existing repository. Use `repo check --agent-ready`
 when a repo should satisfy the baseline-integrated agent readiness contract.
 
-Use `--pr` on `repo agent-guidance` or `repo installer-template` when the
-generated helper files should go through review first. The target must be a
-clean Git worktree, the GitHub repository is inferred from `origin` unless
-`--repo <owner/name>` is provided, and the opened pull request is a draft.
+Use `--pr --issue <number>` on `repo agent-guidance` or `repo
+installer-template` when the generated helper files should go through review
+first. The target must be a clean Git worktree, the GitHub repository is
+inferred from `origin` unless `--repo <owner/name>` is provided, and the opened
+pull request is a draft on the canonical issue-backed branch. Real PR runs
+derive and verify the issue's standard category label; offline `--pr --dry-run`
+previews require `--category <name>` explicitly.
 
 `repo configure` is intentionally idempotent. It enables Issues and Projects,
 standardizes merge settings, deletes branches after merge, applies the
-Base-managed default branch protection ruleset, configures a repo-named GitHub
-Project copied from `base-project-template`, and creates the standard GitHub
-labels documented in [Repository Baseline](docs/repo-baseline.md).
+Base-managed default branch protection and branch naming rulesets, configures a
+repo-named GitHub Project copied from `base-project-template`, and creates the
+standard GitHub labels documented in [Repository Baseline](docs/repo-baseline.md).
 When `.github/base-project.yml` exists, `repo configure` also adds missing
 shared Project field options, adds repo-specific `Area` and `Initiative`
 Project options from that file, and applies its `issue_defaults` to Project

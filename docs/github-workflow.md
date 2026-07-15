@@ -204,11 +204,12 @@ tooling is authenticated.
 `--category` is omitted and prints that choice. Issues are unassigned unless
 `--assignee <login>` is passed or `.github/base-project.yml` sets
 `project.issue_defaults.assignee`; pass `--no-assignee` to ignore a repo-local
-default for one issue. `basectl gh pr create` auto-injects `Fixes #<issue>`
-when the current branch follows the Base `<category>/<issue>-<YYYYMMDD>-<slug>`
-convention; pass `--no-fixes` when the PR should not close the issue
-automatically. When `base_manifest.yaml` declares `github.pr`, PR creation
-renders the body from that project policy and still preserves the issue link.
+default for one issue. `basectl gh pr create` requires the current branch to
+follow the Base `<category>/<issue>-<YYYYMMDD>-<slug>` convention and
+auto-injects `Fixes #<issue>`; pass `--no-fixes` when the PR should not close
+the issue automatically. An invalid branch fails before `gh pr create` runs.
+When `base_manifest.yaml` declares `github.pr`, PR creation renders the body
+from that project policy and still preserves the issue link.
 
 Fallbacks are allowed when `basectl gh` does not support the needed operation,
 when local GitHub CLI authentication is unavailable, or when the GitHub
@@ -254,7 +255,7 @@ development session.
 
 ## Branch Names
 
-Branch names should be derived from the issue category:
+Every non-default branch must be derived from the issue category:
 
 ```text
 <category>/<issue>-<YYYYMMDD>-<slug>
@@ -272,6 +273,19 @@ security/247-20260529-restrict-log-permissions
 
 Use `enhancement/` for maintenance work unless the issue is more specifically
 `documentation`, `ci`, or `security`.
+
+This is a repository policy, not a convention owned by a particular coding
+agent. Humans, Codex, Copilot, other AI tools, GitHub Actions, and Base helpers
+must use the same shape. Prefixes such as `feat/`, `agent/`, `codex/`, and bare
+`<issue>-<slug>` names are invalid.
+
+`basectl repo configure` creates or updates the active `Base branch naming`
+GitHub ruleset. It targets all non-default branches and uses a branch-name
+regular expression, so an invalid name is rejected when any tool tries to
+create or push the remote branch. The default branch is excluded and remains
+protected by the separate `Base default branch protection` ruleset. On GitHub
+plans where repository rulesets are unavailable, Base reports that enforcement
+was skipped instead of claiming the repository is protected.
 
 Before committing or opening a pull request, verify the active branch is not
 `main` and follows the issue-backed branch convention.

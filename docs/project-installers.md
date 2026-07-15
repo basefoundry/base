@@ -55,7 +55,7 @@ Start from Base's maintained template, then customize the project-owned copy:
 basectl repo installer-template
 basectl repo installer-template install.sh
 basectl repo installer-template --print
-basectl repo installer-template install.sh --pr --dry-run
+basectl repo installer-template install.sh --issue 123 --category enhancement --pr --dry-run
 ```
 
 With no path, the command writes an executable `install.sh` in the current
@@ -63,10 +63,13 @@ directory. With a path, it writes the template there. Use `--print` when you wan
 to inspect or pipe the maintained template. Existing files are left unchanged so
 project customizations are not overwritten.
 
-Use `--pr` when the generated installer should be reviewed before landing. The
-target path must be inside a clean Git worktree, the GitHub repository is
-inferred from `origin` unless `--repo <owner/name>` is provided, and Base opens
-a draft pull request after committing only the generated installer file.
+Use `--pr --issue <number>` when the generated installer should be reviewed
+before landing. The target path must be inside a clean Git worktree, the GitHub
+repository is inferred from `origin` unless `--repo <owner/name>` is provided,
+and Base opens a draft pull request on the canonical issue-backed branch after
+committing only the generated installer file. Real PR runs derive and verify the
+issue's standard category label; offline `--pr --dry-run` previews require
+`--category <name>`.
 
 For a project such as Banyan Labs, the generated script should change the
 project-owned values at the top:

@@ -14,6 +14,7 @@ For implementation work, use Base's issue-backed workflow:
 
 - choose or create the GitHub issue before editing;
 - use the branch shape `<category>/<issue>-<YYYYMMDD>-<slug>`;
+- do not replace the category with a Copilot-specific or generic agent prefix;
 - link pull requests with `Fixes #<issue>` or `Closes #<issue>`;
 - keep Project metadata updated as described in `AGENTS.md`;
 - update `.ai-context/` when a change affects Base's product shape,

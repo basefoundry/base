@@ -238,7 +238,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "init clone check configure agent-guidance installer-template" "$cur"
                     ;;
                 init)
-                    _base_basectl_completion_compgen "--path --repo --pr --agent-ready --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--path --repo --issue --category --pr --agent-ready --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 clone)
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
@@ -250,10 +250,10 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --dry-run -v -h --help" "$cur"
                     ;;
                 agent-guidance)
-                    _base_basectl_completion_compgen "--repo --repo-name --default-branch --validation-command --pr --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run -v -h --help" "$cur"
                     ;;
                 installer-template)
-                    _base_basectl_completion_compgen "--print --stdout --repo --pr --dry-run -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--print --stdout --repo --issue --category --pr --dry-run -v -h --help" "$cur"
                     ;;
             esac
             ;;

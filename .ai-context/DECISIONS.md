@@ -84,7 +84,9 @@ architecture discussion.
 
 - GitHub Issues are the durable product backlog and activity tracker.
 - Work should use issue-backed branches and dedicated worktrees.
-- Branch names include category, issue number, date, and slug.
+- Every non-default branch name must include an allowed category, issue number,
+  date, and slug. Base enforces this at the GitHub ruleset boundary so the
+  standard does not depend on a particular human or AI tool.
 - Base dogfoods `basectl gh` when it supports the needed workflow.
 
 ## AI Context

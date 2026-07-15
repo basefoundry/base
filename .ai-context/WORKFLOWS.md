@@ -83,6 +83,13 @@ Use a dedicated worktree for PR work. Branch names follow:
 <category>/<issue>-<YYYYMMDD>-<slug>
 ```
 
+The allowed categories are `bug`, `enhancement`, `documentation`, `ci`, and
+`security`; short or provider-specific prefixes are not aliases. Base-managed
+repositories enforce this for every non-default remote branch through the
+`Base branch naming` GitHub ruleset, while `basectl gh pr create` fails early
+for an invalid local branch. The policy is the same for humans and every AI
+tool.
+
 The standard worktree location is:
 
 ```text

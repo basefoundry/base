@@ -4,6 +4,8 @@
 _base_repo_github_settings_sourced=1
 readonly _base_repo_github_settings_sourced
 
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
+
 base_repo_homebrew_gh_outdated() {
     local output=""
 
@@ -65,6 +67,11 @@ base_repo_default_branch_ruleset_payload() {
 JSON
 }
 
+base_repo_branch_naming_ruleset_payload() {
+    printf '%s\n' \
+        "{\"name\":\"Base branch naming\",\"target\":\"branch\",\"enforcement\":\"active\",\"conditions\":{\"ref_name\":{\"include\":[\"~ALL\"],\"exclude\":[\"~DEFAULT_BRANCH\"]}},\"rules\":[{\"type\":\"branch_name_pattern\",\"parameters\":{\"name\":\"Issue-backed Base branch name\",\"negate\":false,\"operator\":\"regex\",\"pattern\":\"$BASE_GITHUB_BRANCH_NAME_PATTERN\"}}]}"
+}
+
 base_repo_rulesets_plan_gated_error() {
     local message="$1"
 
@@ -79,6 +86,7 @@ base_repo_configure_default_branch_protection() {
     local repo="$2"
     local ruleset_lookup_output=""
     local ruleset_id=""
+    local ruleset_write_output=""
 
     payload="$(base_repo_default_branch_ruleset_payload)"
 
@@ -107,17 +115,90 @@ base_repo_configure_default_branch_protection() {
     ruleset_id="$ruleset_lookup_output"
 
     if [[ -n "$ruleset_id" ]]; then
-        printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - || {
+        ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - 2>&1)" || {
+            if base_repo_rulesets_plan_gated_error "$ruleset_write_output"; then
+                log_warn "Default branch protection skipped for '$repo'."
+                log_warn "$ruleset_write_output"
+                return 0
+            fi
+            [[ -z "$ruleset_write_output" ]] || log_error "$ruleset_write_output"
             log_error "Unable to update Base default branch protection ruleset for '$repo'."
             return 1
         }
         printf "  Branch protection: updated 'Base default branch protection'.\n"
     else
-        printf '%s\n' "$payload" | gh api "repos/$repo/rulesets" --method POST --input - || {
+        ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets" --method POST --input - 2>&1)" || {
+            if base_repo_rulesets_plan_gated_error "$ruleset_write_output"; then
+                log_warn "Default branch protection skipped for '$repo'."
+                log_warn "$ruleset_write_output"
+                return 0
+            fi
+            [[ -z "$ruleset_write_output" ]] || log_error "$ruleset_write_output"
             log_error "Unable to create Base default branch protection ruleset for '$repo'."
             return 1
         }
         printf "  Branch protection: created 'Base default branch protection'.\n"
+    fi
+}
+
+base_repo_configure_branch_naming() {
+    local dry_run="$1"
+    local payload
+    local repo="$2"
+    local ruleset_lookup_output=""
+    local ruleset_id=""
+    local ruleset_write_output=""
+
+    payload="$(base_repo_branch_naming_ruleset_payload)"
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would create or update GitHub ruleset 'Base branch naming' on '%s' targeting all non-default branches.\n" "$repo"
+        printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --jq %s\n" \
+            "$repo" \
+            "$(base_repo_pretty_quote 'map(select(.name == "Base branch naming" and .source_type == "Repository")) | .[0].id // ""')"
+        printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --method POST --input -\n" "$repo"
+        printf "[DRY-RUN] Payload: %s\n" "$payload"
+        return 0
+    fi
+
+    base_repo_require_gh || return 1
+    ruleset_lookup_output="$(gh api "repos/$repo/rulesets" \
+        --jq 'map(select(.name == "Base branch naming" and .source_type == "Repository")) | .[0].id // ""' 2>&1)" || {
+        if base_repo_rulesets_plan_gated_error "$ruleset_lookup_output"; then
+            log_warn "Branch naming enforcement skipped for '$repo'."
+            log_warn "$ruleset_lookup_output"
+            return 0
+        fi
+        [[ -z "$ruleset_lookup_output" ]] || log_error "$ruleset_lookup_output"
+        log_error "Unable to inspect GitHub rulesets for '$repo'."
+        return 1
+    }
+    ruleset_id="$ruleset_lookup_output"
+
+    if [[ -n "$ruleset_id" ]]; then
+        ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - 2>&1)" || {
+            if base_repo_rulesets_plan_gated_error "$ruleset_write_output"; then
+                log_warn "Branch naming enforcement skipped for '$repo'."
+                log_warn "$ruleset_write_output"
+                return 0
+            fi
+            [[ -z "$ruleset_write_output" ]] || log_error "$ruleset_write_output"
+            log_error "Unable to update Base branch naming ruleset for '$repo'."
+            return 1
+        }
+        printf "  Branch naming: updated 'Base branch naming'.\n"
+    else
+        ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets" --method POST --input - 2>&1)" || {
+            if base_repo_rulesets_plan_gated_error "$ruleset_write_output"; then
+                log_warn "Branch naming enforcement skipped for '$repo'."
+                log_warn "$ruleset_write_output"
+                return 0
+            fi
+            [[ -z "$ruleset_write_output" ]] || log_error "$ruleset_write_output"
+            log_error "Unable to create Base branch naming ruleset for '$repo'."
+            return 1
+        }
+        printf "  Branch naming: created 'Base branch naming'.\n"
     fi
 }
 
@@ -329,6 +410,7 @@ base_repo_configure_github() {
     if [[ "$protect_default_branch" == "1" ]]; then
         base_repo_configure_default_branch_protection "$dry_run" "$repo" || status=1
     fi
+    base_repo_configure_branch_naming "$dry_run" "$repo" || status=1
 
     return "$status"
 }

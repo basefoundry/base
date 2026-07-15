@@ -40,6 +40,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Added explicit, repeatable `basectl repo init --language <csv>` profiles that
   record normalized `project.languages` metadata and opt Python baselines into
   `python.manager: uv`.
+- Added shared issue-backed branch validation to `basectl gh pr create` and an
+  active GitHub ruleset that rejects noncanonical non-default branch names.
 
 ### Changed
 
@@ -49,6 +51,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Clarified CI-safe setup/readiness/diagnostics help and docs so `--ci` mode is
   not confused with running tests, launching GitHub Actions, or creating
   Ubuntu/Multipass VMs.
+- Changed Base-owned `repo init`, `repo agent-guidance`, and `repo
+  installer-template` pull request flows to require an issue number and create
+  canonical issue-backed branches.
 
 ### Fixed
 
