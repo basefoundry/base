@@ -16,6 +16,9 @@ architecture discussion.
   trying to be a broad general-purpose platform.
 - Base should strengthen the loop
   `inventory -> prepare -> verify -> trust -> onboard -> hand off`.
+- Repository discovery, clone or synchronization, status, and command fan-out
+  are shared primitives. Base's distinction is the semantic readiness, trust,
+  lifecycle, onboarding, and handoff contract layered above them.
 - Deterministic means explicit order, stable findings or machine-readable
   structures, and clear next actions from declared inputs and inspectable local
   state. It does not claim hermetic or transactional multi-repo behavior.
@@ -61,6 +64,9 @@ architecture discussion.
 
 - Base orchestrates Homebrew, `mise`, IDEs, Docker/Compose, project task
   runners, and similar tools. It should not replace them.
+- External bootstrap or multi-repository formats remain authoritative. Proposed
+  adapters or imports must not be described as shipped behavior and must not
+  create a second Base-owned source of truth.
 - Ordinary Homebrew packages should move toward Brewfile delegation unless Base
   needs special handling.
 - uv support is explicit: `python.manager: uv` opts a project into uv-managed

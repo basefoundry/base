@@ -4,7 +4,8 @@
 
 Base is strongest when it stays focused on a local operating contract for:
 
-- Inventorying participating and expected independent Git repositories.
+- Applying Base participation and expected-set semantics to repository
+  inventory.
 - Preparing and verifying declared local readiness.
 - Keeping project-owned execution behind an explicit trust boundary.
 - Making onboarding and handoff evidence inspectable.
@@ -80,8 +81,18 @@ but not Zsh or another non-Bash shell.
 Base orchestrates mature tools instead of replacing them:
 
 - Homebrew owns ordinary macOS packages and Brewfiles.
-- `mise` owns language/runtime installation when a project declares a mise
-  config.
+- `mise` owns its configuration model, including tool/runtime management and
+  the broader `mise bootstrap` machine/project convergence model. When a Base
+  manifest points to a mise config, Base checks mise's config trust and missing
+  tools, runs `mise install`, and delegates `mise run`. On Debian-family Linux,
+  Base can install a missing mise CLI after `--dry-run` review and `--yes`
+  consent under the remote-installer policy. Base does not invoke or interpret
+  `mise bootstrap`.
+- `mani`, `gita`, `vcs2l`, Android Repo, and `west` own their repository-set
+  manifests or registries, materialization or synchronization, status, and
+  command fan-out. Base ships no adapter or import for them; any future
+  read-only or one-way integration remains proposed and must preserve the
+  external tool as the source of truth.
 - uv owns Python dependency resolution, lockfiles, and project-local `.venv`
   environments when a manifest declares `python.manager: uv`; individual
   commands can opt into `uv run` with `runner: uv`.
@@ -100,4 +111,5 @@ Base orchestrates mature tools instead of replacing them:
 
 Adapters should detect relevance, check health, invoke the underlying tool
 without hiding it, report failures in Base-native diagnostics, and avoid taking
-over the tool's full configuration model.
+over the tool's full configuration model. An adapter is not shipped until its
+contract is implemented, tested, and documented.

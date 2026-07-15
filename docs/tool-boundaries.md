@@ -5,31 +5,39 @@ Its purpose is not to compete with everything in the ecosystem. Its purpose is
 to help Base stay sharp about what it owns, what it can orchestrate, and what
 it should leave alone.
 
-When we evaluate another tool, we ask three questions:
+Evidence checked: 2026-07-14
 
-1. Does Base need to borrow anything from this tool and build that capability
-   directly into itself?
-2. Can Base coexist with this tool so the combination is better than Base
-   alone?
-3. Is the tool far enough from Base's center of gravity that we do not need to
-   bother about it?
+When we evaluate another tool, we record five separate decisions:
 
-The answers are often mixed. A tool may be worth learning from without being
-something Base should reimplement. A tool may also be worth supporting without
-becoming a hard dependency.
+1. What Base must **own** to preserve its readiness and handoff contract.
+2. What Base should **delegate** to the external tool.
+3. Whether a narrow Base **integration** would improve the combined workflow.
+4. Where the products honestly **overlap** today.
+5. What Base should **not expand into**, even when the adjacent tool is useful.
+
+The answers are often mixed. Coexistence does not imply that Base has or needs
+an adapter, and overlap does not make a generic capability part of Base's
+differentiation. Proposed integrations in this document are explicitly future
+ideas unless the text identifies a shipped Base behavior.
 
 ## Base's Center of Gravity
 
-Base is strongest when it stays focused on these responsibilities:
+Base is strongest as a local operating contract for deterministic readiness and
+handoff across participating Git repositories. Its durable responsibilities are:
 
-- Mac-first workstation bootstrap
-- shared shell startup and shell-environment layering
-- peer-repo workspace discovery under a shared parent directory
-- workspace-level orchestration across sibling repositories
-- shared execution conventions through `basectl` and `base-wrapper`, the
-  Python execution wrapper that routes package commands through project virtual
-  environments
-- a small project manifest and command contract for participating repositories
+- the Base participation and project contract in `base_manifest.yaml`
+- semantic readiness findings with stable identifiers and machine-readable
+  output where supported
+- explicit local trust before manifest-declared project commands execute
+- lifecycle and next-action guidance across prepare, verify, onboard, and handoff
+- portable local evidence that another person or coding agent can inspect
+- transparent delegation through `basectl` and `base-wrapper` when a project
+  chooses an external substrate
+
+Base also owns the safety and behavior of the first-mile bootstrap, shell
+startup, workspace, repository, and release commands it ships. Those supporting
+surfaces are not evidence that generic machine convergence or multi-repository
+management is unique to Base.
 
 Base gets weaker when it drifts into becoming any of these:
 
@@ -38,6 +46,9 @@ Base gets weaker when it drifts into becoming any of these:
 - a full dotfile manager
 - a generic task runner
 - a full reproducible package manager or environment solver
+- a generic multi-repository inventory, synchronization, or command fan-out
+  manager
+- a multi-VCS client or revision-controlled source-tree materializer
 
 ## Adapter Quality Bar
 
@@ -51,27 +62,30 @@ external tool integration, the adapter should answer:
 - How does Base avoid owning the tool's full configuration model?
 - How does Base behave when the tool is absent?
 
-The result should feel like one workspace story while leaving mature tools in
-charge of their own domains.
+The result should feel like one readiness and handoff story while leaving
+mature tools in charge of their own domains.
 
 ## Quick Decision Matrix
 
-| Tool | What it primarily owns | Build directly into Base? | Coexist with Base? | How much to care |
-|---|---|---|---|---|
-| `mise` | tool versions, env vars, tasks | Partially borrow ideas, do not reimplement wholesale | Yes, strongly | High |
-| `uv` | Python projects, dependencies, lockfiles, project venvs, Python versions, tools | No, use an adapter and explicit Python contract | Yes, strongly | High |
-| `direnv` | automatic directory-based env loading | No | Yes, optionally | Medium |
-| `asdf` | tool version management | No | Yes, lightly | Medium |
-| `devbox` | reproducible project shells and packages | No | Yes, strongly | High |
-| `nix` / `devenv` | reproducible environments, shells, services, tasks | No | Yes, strongly | High |
-| `chezmoi` | dotfile management | No | Yes, lightly | Medium |
-| `dotbot` | dotfile bootstrap and symlinks | No | Yes, lightly | Low |
-| `Taskfile` / `just` | task running | No | Yes, strongly | High |
-| `Brewfile` / `brew bundle` | declarative Homebrew bootstrap | Yes, by orchestration rather than replacement | Yes, strongly | High |
-| Docker / Docker Compose / Colima | containers, Compose-defined local services | Partially, as orchestration only | Yes, strongly | High |
-| `mise` tasks | project-local task running inside `mise` | No | Yes, strongly | Medium |
-| VS Code / Cursor | IDE app, extensions, and user editor settings | Partially, as workstation bootstrap only | Yes, strongly | High |
-| AI agent harnesses | live agent sessions, provider interaction, sandboxing, collaboration | No, support through explicit adapters and context artifacts | Yes, optionally | Medium |
+| Tool | What it primarily owns | Base relationship | Choose the adjacent tool when |
+|---|---|---|---|
+| `mise` | machine and project bootstrap, tool versions, environment, tasks | Delegate; keep the shipped Base adapter narrow | Declarative package, repository, dotfile, service, shell, or tool convergence is the main outcome. |
+| `mani` | declarative Git repository inventory, sync, worktrees, filtering, tasks, TUI | Coexist; any import must remain proposed and one-way | You need a Git multi-repo manager and cross-repo task surface. |
+| `gita` | personal Git repository registry, status dashboard, batch Git and shell commands | Coexist; importing clone configuration emitted by `gita freeze` is only a low-priority proposal | You want a lightweight Git dashboard and command fan-out from any directory. |
+| `vcs2l` | multi-VCS discovery, commands, and reproducible repository-set import/export | Delegate; a Git-only `.repos` reader is only proposed | You need Git plus Mercurial, Subversion, or Breezy/Bazaar, or exact ROS-style repository sets. |
+| Android Repo | manifest-controlled Git source trees, revision sync, topic branches, Gerrit | Delegate; resolved-inventory observation is only proposed | You need a large revision-controlled source tree or Gerrit workflow. |
+| `west` | manifest-controlled Git workspaces and extensible embedded workflows | Delegate; resolved `west list` observation is only proposed | Zephyr-style revisions, groups, imports, build, flash, or debug workflows are central. |
+| `uv` | Python projects, dependencies, lockfiles, project venvs, Python versions, tools | Use the shipped explicit Python adapter | The project needs Python dependency or environment ownership. |
+| `direnv` | automatic directory-based environment loading | Stay compatible; do not absorb | Automatic environment changes on `cd` are desired. |
+| `asdf` | tool version management | Stay compatible; do not absorb | Existing `.tool-versions` workflows already solve the requirement. |
+| `devbox` | reproducible project shells and packages | Coexist; any Base adapter remains a future proposal | An isolated project shell is the primary outcome. |
+| `nix` / `devenv` | reproducible environments, shells, services, tasks | Coexist through project-owned contracts; do not replace | Reproducibility and environment solving are the primary outcome. |
+| `chezmoi` / `dotbot` | broad dotfile management | Stay compatible; do not absorb | Personal configuration, templating, or dotfile linking is the requirement. |
+| `Taskfile` / `just` / `mise` tasks | project-local task definition and execution | Delegate project task implementation | Rich task logic inside a repository is the requirement. |
+| `Brewfile` / `brew bundle` | declarative Homebrew bootstrap | Orchestrate; do not replace | Homebrew packages and applications are the requirement. |
+| Docker / Docker Compose / Colima | containers and Compose-defined services | Orchestrate; do not replace | Container runtime or service topology is the requirement. |
+| VS Code / Cursor | editor, extensions, and user settings | Use Base only for explicit readiness integration | Editor behavior is the requirement. |
+| AI agent harnesses | live sessions, providers, sandboxing, collaboration | Provide portable context; do not become a runtime | Live agent execution or hosted collaboration is the requirement. |
 
 ## Tool-by-Tool Decisions
 
@@ -79,9 +93,17 @@ charge of their own domains.
 
 What it does well:
 
-- installs and pins tool versions per project
-- loads project-specific environment variables
-- runs named tasks from one CLI
+- converges OS packages, Git repositories, dotfiles, shell activation, macOS
+  defaults and LaunchAgents, Linux systemd user services, login shell, tools,
+  hooks, and a final bootstrap task through
+  [`mise bootstrap`](https://mise.jdx.dev/bootstrap.html)
+- reports declarative bootstrap state through text, `--json`, and `--missing`
+  via [`mise bootstrap status`](https://mise.jdx.dev/cli/bootstrap/status.html)
+- declares path-keyed Git repositories and safely clones or updates clean
+  matching checkouts without forcing resets, as documented in
+  [Bootstrap Repositories](https://mise.jdx.dev/bootstrap/repos.html)
+- installs and pins project tools, loads project environment variables, and
+  runs named tasks
 
 What Base should borrow:
 
@@ -90,25 +112,129 @@ What Base should borrow:
 
 What Base should not do:
 
-- reimplement a broad tool version manager
-- become a generic env-var loader plus task runner for every language stack
+- reimplement mise's machine-bootstrap, repository-convergence, dotfile,
+  service, tool-version, environment, or task domains
+- imply that Base is broader because mise is only a version manager
 
 How Base should coexist:
 
 - allow a Base-managed project to declare that it uses `mise.toml`
-- let `basectl setup` or `basectl check` invoke `mise install`, `mise doctor`, or
-  `mise run ...` when that is the project's chosen substrate
-- on Ubuntu/Debian, bootstrap the `mise` CLI during `basectl setup <project>`
+- keep the current shipped adapter explicit: use `mise trust --show` to check
+  trust, `mise ls --missing --json` to check missing tools, `mise install`
+  during setup, and `mise run` for declared task delegation
+- on Ubuntu/Debian, install a missing `mise` CLI during `basectl setup <project>`
   only after the manifest declares a mise config and the caller has reviewed
-  `--dry-run` output and passed `--yes`
+  `--dry-run` output and passed `--yes`, subject to Base's
+  [remote-installer policy](remote-installer-policy.md)
 - support Go, Java, and other language runtimes through project-owned
   `.mise.toml` files instead of adding Base-owned package types for each
   language ecosystem
-- keep Base at the workspace-orchestration layer, not the per-language tool
-  installation layer
+- leave `mise bootstrap` configuration and convergence owned by mise; Base does
+  not currently run or interpret it
 
-Current stance: strong coexistence, selective borrowing, no wholesale
-reimplementation.
+A future opt-in, read-only adapter could translate the JSON output from
+[`mise bootstrap status --json`](https://mise.jdx.dev/cli/bootstrap/status.html)
+into Base-native readiness evidence. That is a proposed follow-up, not shipped
+behavior, and it should not make Base responsible for applying or rewriting
+mise bootstrap configuration.
+
+Choose mise instead of Base when declarative machine or project convergence is
+the complete requirement. Add Base only when its semantic readiness, trust,
+lifecycle, onboarding, or handoff contract provides additional value.
+
+Current stance: strong coexistence, narrow shipped tool/task delegation, no
+bootstrap replacement.
+
+### Multi-Repository Managers
+
+Generic inventory, discovery, clone or synchronization, status, and command
+fan-out are established multi-repository capabilities. They overlap with Base
+commands, but they are not Base's unique position.
+
+#### `mani`
+
+The official [`mani` introduction](https://manicli.com/) and
+[command reference](https://manicli.com/commands/) document a declarative
+`mani.yaml`, local and forge-backed repository discovery, clone and sync,
+status, worktrees, filtering, a TUI, named tasks, and arbitrary parallel
+commands. Its [configuration model](https://manicli.com/config/) also owns
+imports, targets, task output, project environment, and remote reconciliation.
+
+- Choose `mani` when a Git repository inventory, synchronizer, task runner,
+  filtering model, or TUI is the primary need.
+- Base may add semantic readiness and handoff after `mani` materializes the
+  repository set, but it should not duplicate `mani` tasks, filters, source
+  discovery, TUI, or worktree reconciliation.
+- A one-way reader for selected `mani.yaml` project fields could be considered
+  separately. It is proposed, not shipped; `mani.yaml` must remain authoritative
+  and Base must not claim lossless round-trip export.
+
+#### `gita`
+
+The official [`gita` repository](https://github.com/nosarthur/gita) documents a
+personal repository registry, side-by-side Git status, recursive discovery,
+groups and contexts, clone/freeze workflows, and arbitrary batch Git or shell
+commands from any directory.
+
+- Choose `gita` for a lightweight Git dashboard and batch Git command surface.
+- Base overlaps on local discovery, status, clone, and execution, but adds a
+  participating-project contract rather than a general personal Git registry.
+- A one-time import of clone configuration emitted by `gita freeze` could be
+  explored only after demonstrated demand. It is proposed, not shipped; Base
+  should not reproduce `gita` groups, contexts, coloring, or customizable Git
+  delegation.
+
+#### `vcs2l`
+
+The Open Source Robotics Foundation's
+[`vcs2l` documentation](https://ros-infrastructure.github.io/vcs2l/) and
+[official package description](https://pypi.org/project/vcs2l/) document
+recursive discovery and command execution for Git, Mercurial, Subversion, and
+Breezy/Bazaar, plus YAML import, export, validation, deletion, and exact revision
+capture through `vcs export --exact`.
+
+- Choose `vcs2l` for ROS-compatible `.repos` workflows, multiple VCS types, or
+  reproducible repository revision sets.
+- Base assumes Git and should not add non-Git client semantics or become a
+  recursive multi-VCS executor.
+- A read-only `.repos` adapter could expose Git entries as expected Base
+  repositories while reporting other VCS types as unsupported. It is proposed,
+  not shipped, and the `.repos` file must remain authoritative.
+
+#### Android Repo
+
+Android's official [source-control overview](https://source.android.com/docs/setup/download/source-control-tools)
+and [Repo command reference](https://source.android.com/docs/setup/reference/repo)
+document a manifest repository, `.repo` client state, revision-aware `init` and
+`sync`, cross-project `status` and `forall`, topic branches, downloads, uploads,
+and Gerrit integration.
+
+- Choose Repo for a large manifest-controlled Git source tree, pinned revisions,
+  known-good builds, or Gerrit/topic-branch workflows.
+- Base must not reproduce Repo XML manifest resolution, synchronization,
+  mirrors, revision checkout, topic branches, or Gerrit behavior.
+- A future read-only integration could consume Repo's resolved project view and
+  apply Base readiness only to repositories that independently opt into Base.
+  This is proposed, not shipped; Base should not parse and reinterpret Repo's
+  source manifest as a competing authority.
+
+#### `west`
+
+Zephyr's official [`west` overview](https://docs.zephyrproject.org/latest/develop/west/index.html),
+[basics](https://docs.zephyrproject.org/latest/develop/west/basics.html),
+[built-in commands](https://docs.zephyrproject.org/latest/develop/west/built-in.html),
+and [manifest reference](https://docs.zephyrproject.org/latest/develop/west/manifest.html)
+document manifest-driven workspaces, revision-aware init and update, groups,
+imports, submodules, compare/diff/status/list/forall/grep, and pluggable commands
+used by Zephyr for build, flash, and debug.
+
+- Choose `west` for Zephyr or embedded workflows where manifest revisions,
+  project groups, imports, or domain extension commands are central.
+- Base must not reproduce west manifest resolution, detached-revision update,
+  group/import semantics, extension APIs, or build/flash/debug behavior.
+- A future read-only adapter could consume resolved `west list` output and
+  apply Base semantics only to opted-in repositories. It is proposed, not
+  shipped, and `west.yml` must remain authoritative.
 
 ### `uv`
 
@@ -262,7 +388,8 @@ How Base should coexist:
 - Base can treat `nix develop` or `devenv shell` as project-level backends
 - a project manifest can eventually say, in effect, "this project's shell
   comes from Nix/devenv"
-- Base remains responsible for workspace discovery and umbrella orchestration
+- Base remains responsible for its participating-project readiness, trust, and
+  handoff contract around the delegated environment
 
 Current stance: strong coexistence, no attempt to replace Nix.
 
@@ -335,7 +462,8 @@ How Base should coexist:
 - a Base project can declare that testing is done through `task test` or
   `just test`
 - `basectl test <project>` should eventually delegate rather than duplicate
-- Base should provide the workspace-wide orchestration and selection layer
+- Base should provide its declared project-command and readiness contract, not
+  a second general task language
 
 Current stance: strong coexistence, borrow the explicit-command philosophy.
 
@@ -549,41 +677,18 @@ Current stance: support Docker and Colima as installable tools now; design
 `docker-service` as future Base orchestration over Docker Compose, not a
 container abstraction owned by Base.
 
-### `mise` tasks
-
-What they do well:
-
-- keep project tasks close to `mise`-managed tools and env vars
-
-What Base should borrow:
-
-- mostly the same lesson as Taskfile and `just`: explicit named tasks are good
-
-What Base should not do:
-
-- create a second parallel task system just because a project chose `mise`
-
-How Base should coexist:
-
-- if a project uses `mise run test`, Base should be happy to delegate to it
-- Base should care about the workspace command contract, not whether the task
-  backend is `mise`, `task`, `just`, shell, or Python
-
-Current stance: strong coexistence, little direct feature work.
-
 ## Practical Guardrails for Base
 
 These are the lines worth defending as Base grows.
 
 ### Base should own
 
-- workspace discovery across peer repositories
-- the shared project manifest and command contract
-- umbrella commands such as `basectl setup`, `basectl check`, `basectl projects list`,
-  `basectl test`, and future `basectl activate`
-- shared shell startup and shell-environment layering
-- shared execution conventions for Bash and Python wrappers
-- workspace-level health checks and diagnostics
+- the opt-in Base participation and project contract
+- semantic readiness findings, stable identifiers, and Base-native diagnostics
+- explicit local trust for manifest-declared execution
+- lifecycle and next-action guidance across prepare, verify, onboard, and handoff
+- portable local evidence for the next person or coding agent
+- the safety, transparency, and compatibility of commands Base itself ships
 
 ### Base should orchestrate rather than replace
 
@@ -596,8 +701,39 @@ These are the lines worth defending as Base grows.
 - `devbox`
 - `nix develop`
 - `devenv`
+- authoritative repository materialization and synchronization through `mani`,
+  `gita`, `vcs2l`, Android Repo, or `west` when a workspace chooses one
 - optional AI agent harnesses through explicit profile checks and context
   artifacts
+
+Base should be able to operate after an external repository manager has
+materialized a workspace. It should not require users to migrate the manager's
+configuration into a second Base-owned source of truth.
+
+### Base may integrate narrowly
+
+- preserve the shipped `mise` and uv project adapters
+- detect an external substrate only when a project or workspace opts in
+- prefer read-only resolved state over reimplementing another manifest engine
+- translate relevant external state into Base-native readiness evidence
+- leave external configuration authoritative and show the underlying command
+
+No adapter or import path for `mani`, `gita`, `vcs2l`, Android Repo, or `west`
+is shipped today. Every such idea in this document requires a separate issue,
+contract, and validation before it becomes a product claim.
+
+### Base honestly overlaps
+
+- repository inventory and local discovery
+- repository materialization and clone planning
+- aggregate status and machine-readable reports
+- cross-repository command selection and execution
+- declarative project or workspace manifests
+- dry-run and next-action output
+
+These primitives are useful parts of Base's execution surface. They are not the
+reason Base is distinct; the differentiating composition is semantic readiness,
+trust, lifecycle guidance, onboarding, and portable handoff evidence.
 
 ### Base should stay compatible with, but not absorb
 
@@ -613,6 +749,10 @@ These are the lines worth defending as Base grows.
 - another general task runner
 - another broad dotfile manager
 - another reproducible package manager or dependency solver
+- another generic multi-repository inventory, sync, status, or command runner
+- a multi-VCS client
+- a revision-pinned source-tree materializer or manifest resolution engine
+- a second authority for `mani.yaml`, `.repos`, Repo manifests, or `west.yml`
 - an agent runtime, hosted session-sharing service, sandbox, or provider-policy
   engine
 
@@ -620,7 +760,11 @@ These are the lines worth defending as Base grows.
 
 A good default rule is:
 
-- if a capability is workspace-level and cross-repo, Base should probably own it
+- if a capability strengthens Base's semantic readiness, trust, lifecycle,
+  onboarding, or handoff contract, Base may own it
+- if a capability is generic multi-repository inventory, materialization,
+  synchronization, status, or command fan-out, Base should first delegate or
+  consume resolved state
 - if a capability is project-local and already solved well by a mature tool,
   Base should probably orchestrate it
 - if a capability is personal-machine preference management, Base should stay
@@ -640,7 +784,23 @@ That suggests the next generation of Base should lean toward:
   - `devbox.json`
   - `devenv.nix`
 - umbrella commands that understand those artifacts well enough to orchestrate
-  them across a whole workspace
+  them without taking ownership of their full configuration models
+
+## Comparison Maintenance
+
+This document is the canonical capability and boundary matrix. Evaluator-facing
+pages should summarize and link here instead of copying detailed feature lists.
+
+- Perform a quarterly fast scan of the high-change `mise` and `mani` official
+  documentation and changelogs.
+- Revalidate all six bootstrap and multi-repository comparisons at least every
+  six months.
+- Revalidate immediately when Base changes workspace, bootstrap, import/export,
+  or adapter claims, or when an adjacent tool materially changes those areas.
+- Record an `Evidence checked: YYYY-MM-DD` line and link every material claim to
+  a primary source.
+- Keep proposed adapters in separate follow-up issues; a documentation refresh
+  must not silently turn a proposal into shipped behavior.
 
 ## Review Trigger
 
@@ -654,6 +814,10 @@ looks like any of these:
 - dependency solving or package-resolution logic
 - project topology complexity such as manifest inheritance, project groups,
   or sub-repository manifests
+- generic repository inventory, synchronization, revision checkout, or command
+  fan-out
+- import or export of `mani.yaml`, clone configuration emitted by `gita freeze`,
+  `.repos`, Repo manifests, or `west.yml`
 - live agent-session orchestration, sandboxing, provider credentials, or hosted
   collaboration
 
@@ -664,9 +828,28 @@ recorded in the "Project Model Scope" section of
 
 ## References
 
-Official references that informed this boundary note:
+Official references that informed this boundary note. Bootstrap and
+multi-repository capabilities were checked on 2026-07-14.
 
-- `mise`: <https://mise.jdx.dev/>
+- `mise` bootstrap: <https://mise.jdx.dev/bootstrap.html>
+- `mise` bootstrap CLI: <https://mise.jdx.dev/cli/bootstrap.html>
+- `mise` bootstrap status CLI: <https://mise.jdx.dev/cli/bootstrap/status.html>
+- `mise` repositories: <https://mise.jdx.dev/bootstrap/repos.html>
+- `mani` introduction: <https://manicli.com/>
+- `mani` usage: <https://manicli.com/usage/>
+- `mani` commands: <https://manicli.com/commands/>
+- `mani` configuration: <https://manicli.com/config/>
+- `mani` changelog: <https://manicli.com/changelog/>
+- `gita`: <https://github.com/nosarthur/gita>
+- `vcs2l` documentation: <https://ros-infrastructure.github.io/vcs2l/>
+- `vcs2l` source: <https://github.com/ros-infrastructure/vcs2l>
+- `vcs2l` package: <https://pypi.org/project/vcs2l/>
+- Android source-control tools: <https://source.android.com/docs/setup/download/source-control-tools>
+- Android Repo command reference: <https://source.android.com/docs/setup/reference/repo>
+- `west` overview: <https://docs.zephyrproject.org/latest/develop/west/index.html>
+- `west` basics: <https://docs.zephyrproject.org/latest/develop/west/basics.html>
+- `west` built-in commands: <https://docs.zephyrproject.org/latest/develop/west/built-in.html>
+- `west` manifests: <https://docs.zephyrproject.org/latest/develop/west/manifest.html>
 - `uv`: <https://docs.astral.sh/uv/>
 - `direnv`: <https://direnv.net/>
 - `asdf`: <https://asdf-vm.com/guide/introduction.html>

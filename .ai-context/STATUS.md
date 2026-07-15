@@ -17,7 +17,8 @@ The current command surface covers:
   `runner: uv` delegation
 - advisory check/doctor lint warnings for missing manifest command executables
   and project script paths
-- mise integration
+- manifest-declared mise trust/missing-tool checks, `mise install`, and
+  `mise run` delegation; no `mise bootstrap` integration
 - bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
 - explicit `repo init --language` profiles with normalized
@@ -49,6 +50,8 @@ The accepted product position is now a local operating contract for
 deterministic readiness and handoff. Current onboarding, diagnostics, history
 reports, and context exports provide manual handoff evidence; unified workspace
 and issue handoff artifacts remain planned in open issues #1561 and #1562.
+No adapter or manifest import is shipped for `mani`, `gita`, `vcs2l`, Android
+Repo, or `west`; those integration ideas remain proposals.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -59,7 +62,8 @@ Recent released work includes:
 - Ubuntu/Debian runtime support through `BASE_PLATFORM=linux-debian`,
   platform-aware setup/check/doctor dispatch, source-checkout CI coverage,
   apt-backed setup behind explicit `--dry-run` / `--yes` confirmation, and
-  uv/mise bootstrap for opted-in project manifests
+  policy-governed uv/mise CLI bootstrap with explicit consent and optional
+  managed checksum verification
 - `basectl docs` for opening the GitHub README documentation entrypoint
 - standardized `basectl` help, option, logging, and usage-error behavior
 - Python-backed CI setup JSON rendering and Project issue-default handling

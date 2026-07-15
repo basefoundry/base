@@ -268,14 +268,22 @@ These are responsibility layers, not separately installed packages. Base
 orchestrates tools that already own their domains:
 
 - Homebrew still owns ordinary macOS packages and Brewfiles.
-- mise still owns language/runtime installation when a project declares a mise
-  config.
+- mise owns its configuration model, including language/runtime management and
+  its broader machine and project bootstrap behavior. When a Base manifest
+  points to a mise config, Base checks mise's config trust and missing tools,
+  runs `mise install`, and delegates `mise run`. On Debian-family Linux, Base
+  can install a missing mise CLI after `--dry-run` review and `--yes` consent
+  under its [remote-installer policy](docs/remote-installer-policy.md). Base
+  does not invoke or interpret `mise bootstrap`.
 - Project repositories still own their source code, tests, installers, service
   definitions, and product-specific onboarding.
 - Base owns the local contract that makes participation, readiness, trusted
   execution, and handoff explicit across projects.
 
-See [Tool Boundaries](docs/tool-boundaries.md) for the detailed boundary model.
+Repository discovery, clone or synchronization, status, and command fan-out are
+shared ecosystem primitives rather than Base's differentiation. See
+[Tool Boundaries](docs/tool-boundaries.md) for the dated comparison, including
+when to choose mise, `mani`, `gita`, `vcs2l`, Android Repo, or `west` instead.
 
 ### Reusable Bash Libraries
 
@@ -425,8 +433,9 @@ and asks the user to upgrade Base.
 The manifest intentionally describes what the project needs and which
 project-owned commands Base should expose. Base's direction is
 delegation-first: use mature tools for the domains they already own, and keep
-Base responsible for workspace orchestration, project discovery, the project
-virtual environment, and diagnostics.
+Base responsible for participation semantics, readiness diagnostics, explicit
+execution trust, lifecycle guidance, onboarding, and handoff evidence. Project
+environments and command execution remain owned by their declared substrates.
 
 Manifest-declared commands are trusted project code. Base executes
 `test.command`, `build.targets.*.command`, and `commands.*` as shell command
@@ -635,6 +644,14 @@ a no-write preview. Optional repositories are reported but skipped unless
 URLs for reporting, but automatic materialization through `workspace clone` is
 GitHub-only today; clone GitLab, Bitbucket, internal Git, or local repositories
 with ordinary Git first, then let Base discover the local checkout.
+
+An external multi-repository manager may materialize repositories before Base
+discovers opted-in projects. Base does not currently import or synchronize
+`mani.yaml`, the clone configuration emitted by `gita freeze`, `.repos`,
+Android Repo manifests, or `west.yml`.
+Until a separately designed adapter exists, either let the external tool remain
+the only repository-set authority and use Base's local discovery, or maintain a
+deliberate Base workspace manifest for Base-specific expected-set semantics.
 
 Use `basectl workspace init <workspace-source>` for first-run bootstrap from a
 workspace configuration repository. The source can be a local path, GitHub URL,
@@ -1768,7 +1785,8 @@ Base follows a few simple principles.
 
 Base `1.6.1` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
-execution, mise integration, cleanup, updates, onboarding, repository baseline
+execution, manifest-declared mise trust/missing-tool checks plus `mise install`
+and `mise run` delegation, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
 guarded GitHub release publishing, GitHub workflow helpers, workspace
 status/check/doctor/onboarding/init/clone/pull/configure flows, privacy-conscious

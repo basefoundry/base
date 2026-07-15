@@ -22,7 +22,9 @@ Review this assessment:
 - before any major repositioning of Base's product scope;
 - before public claims about Linux, Windows, WSL, or team-scale adoption;
 - after meaningful external usage, contributor growth, or support feedback;
-- when Base absorbs or rejects a major adjacent-tool integration.
+- when Base absorbs or rejects a major adjacent-tool integration;
+- after the quarterly high-change comparison scan or six-month full comparison
+  review defined in [Tool Boundaries](tool-boundaries.md).
 
 When revising the assessment, prefer evidence in this order:
 
@@ -61,7 +63,7 @@ and issue-oriented handoff bundle remain planned in #1561 and #1562.
 
 Base becomes weaker if it turns into a general version manager, automatic
 directory environment loader, dotfile manager, package solver, or generic task
-runner.
+runner, repository synchronizer, or cross-repository command fan-out tool.
 
 ## 1. Originality
 
@@ -86,6 +88,11 @@ question is:
 That framing is distinctive. Base is not original because every primitive is
 new; it is original because the primitives are assembled into a clear local
 operating contract from inventory through handoff.
+
+The 7/10 rating applies only to that readiness, trust, lifecycle, onboarding,
+and handoff composition. It would not be supportable if discovery, clone,
+status, manifests, or cross-repository command execution were treated as the
+original contribution.
 
 The main originality risk is misclassification. A new user may initially read
 Base as another repo manager, `mise`, `direnv`, `just`, `chezmoi`, Nix, Devbox,
@@ -187,12 +194,13 @@ The review also sharpened the near-term adoption risks.
 
 Immediate action items:
 
-- Linux remains the largest addressable-market unlock. Keep the first supported
-  Linux runtime target tracked through #562, with a narrow support contract
-  before making broader platform claims.
-- Team onboarding is the strongest moat. Local workspace manifests and explicit
-  canonical manifest sync now let teams refresh the expected repo-set contract
-  without manual file handoff.
+- Ubuntu/Debian runtime and apt-backed setup support have since shipped. The
+  remaining expansion boundary is broader Linux-family, WSL, or Windows support
+  and external adoption evidence; do not generalize beyond the tested contract.
+- Semantic onboarding and transferable readiness/handoff evidence are the
+  strongest moat candidate. Local workspace manifests and explicit canonical
+  manifest sync support that outcome, but repository-set materialization alone
+  is a shared ecosystem capability rather than a moat.
 - Base needs an extension path that does not turn the core product into a
   catch-all tool registry. Design a constrained artifact adapter registry before
   implementation; this is tracked in #816.
@@ -251,8 +259,8 @@ inside this assessment.
 Remaining risks should stay issue-backed rather than becoming a parallel
 backlog here:
 
-- Linux remains the largest platform expansion unlock; keep the first supported
-  Linux runtime target in #562.
+- The first Linux target in #562 has since shipped for Ubuntu/Debian. Broader
+  Linux families, WSL, and Windows still require separate support contracts.
 - Dev Container and Nix bridges should remain export/bridge work from Base
   manifests, not a replacement for those ecosystems; this is tracked in #876.
 - A local dashboard is still plausible, but should follow durable observability
@@ -312,8 +320,8 @@ organizational-impact assessment.
 
 Current watchlist for the next release line:
 
-- Linux remains the largest platform expansion unlock; keep #562 narrow and
-  tested before making broader claims.
+- Ubuntu/Debian support from #562 has since shipped; keep broader Linux, WSL,
+  and Windows claims separate and evidence-backed.
 - Command history should earn user-facing reports before a local dashboard
   becomes product surface.
 - Artifact support should stay Base-managed and manifest-explicit until real
@@ -364,8 +372,9 @@ Current watchlist for the next release line:
 - Keep the clean macOS install checklist honest by automating safe repeatable
   steps where possible and explicitly preserving manual-only boundaries where
   host mutation or real Homebrew installation is required.
-- Continue Linux work as the largest platform expansion unlock; do not make
-  broader platform claims before #562 or equivalent runtime work is complete.
+- Ubuntu/Debian support from #562 has since shipped. Treat broader Linux
+  families, WSL, and Windows as separate expansion decisions with their own
+  evidence and support contracts.
 - Treat remaining ownership pressure in large shell command modules, Project
   engines, and broad BATS files as issue-backed maintainability work rather
   than as a reason to reposition the product.
@@ -442,6 +451,32 @@ artifacts as shipped.
 The ratings remain unchanged because positioning clarity is not new adoption,
 contributor independence, support-load, or organizational-impact evidence.
 
+### 2026-07-14 Adjacent-Tool Evidence Review
+
+Current primary sources confirm that generic bootstrap and multi-repository
+operations are established adjacent capabilities. [`mise bootstrap`](https://mise.jdx.dev/bootstrap.html)
+now covers packages, repositories, dotfiles, shell activation, services, tools,
+status, dry-run, and JSON. [`mani`](https://manicli.com/),
+[`gita`](https://github.com/nosarthur/gita),
+[`vcs2l`](https://ros-infrastructure.github.io/vcs2l/),
+[Android Repo](https://source.android.com/docs/setup/reference/repo), and
+[`west`](https://docs.zephyrproject.org/latest/develop/west/index.html) already
+cover substantial combinations of inventory, materialization, synchronization,
+status, revision control, or command fan-out.
+
+That evidence reinforces the positioning review rather than raising the
+originality score. Base's 7/10 originality assessment rests on composing
+semantic readiness findings, explicit execution trust, lifecycle guidance,
+onboarding, and portable handoff evidence across opted-in repositories. The
+comparison does not provide customer-validation, adoption, or economic-impact
+evidence.
+
+Base ships no adapter or manifest import for `mani`, `gita`, `vcs2l`, Android
+Repo, or `west`. Read-only or one-way adapter ideas remain proposals that must
+preserve the external tool as the repository-set authority and be tracked in
+separate issues. The detailed dated decisions and maintenance cadence live in
+[Tool Boundaries](tool-boundaries.md).
+
 ## 4. Creator And Engineering Skill Assessment
 
 Assessment: at least Staff-level; plausibly upper Staff or early Senior
@@ -516,7 +551,9 @@ the system without needing the creator in the loop.
 
 - 2026-07-14: Narrowed Base's position to deterministic readiness and handoff,
   separated the core outcome from its execution contract, workflow packs, and
-  adapters, and kept the ratings unchanged while #1561 and #1562 remain open.
+  adapters, verified current bootstrap and multi-repository overlap against
+  primary sources, and kept the ratings unchanged while #1561 and #1562 remain
+  open.
 - 2026-07-07: Updated for the 1.6.1 review delta, including Ubuntu/Debian
   source-checkout runtime and apt-backed setup support, manifest-command trust,
   contract checks, and remaining adoption evidence limits.
