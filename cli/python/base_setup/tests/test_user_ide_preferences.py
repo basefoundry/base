@@ -4,16 +4,59 @@ import json
 import os
 import tempfile
 import unittest
+from dataclasses import fields
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
 from base_cli.config import UserConfig, UserIdeConfig, UserIdePreference
 from base_setup import engine, ide
 from base_setup.github_manifest import GithubConfig, GithubPrConfig
-from base_setup.manifest import BaseManifest, IdeConfig
+from base_setup.manifest import BaseManifest, IdeConfig, read_manifest
 from base_setup.tests.helpers import fake_context
 
 class UserIdePreferenceMergeTests(unittest.TestCase):
+
+    def test_effective_manifest_preserves_parsed_project_languages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest_path = Path(tmpdir) / "base_manifest.yaml"
+            manifest_path.write_text(
+                "project:\n"
+                "  name: demo\n"
+                "  languages:\n"
+                "    - python\n"
+                "    - golang\n"
+                "artifacts: []\n",
+                encoding="utf-8",
+            )
+            manifest = read_manifest(manifest_path)
+
+        user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=None, preferences={}))
+
+        effective = engine.effective_manifest_with_user_config(manifest, user_config)
+
+        self.assertEqual(effective.project_languages, ("python", "go"))
+
+    def test_effective_manifest_preserves_every_non_ide_field(self) -> None:
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+        preserved_fields = {
+            field.name: object()
+            for field in fields(BaseManifest)
+            if field.name != "ide"
+        }
+        manifest = replace(manifest, **preserved_fields)
+        user_config = UserConfig(raw={}, ide=UserIdeConfig(enabled=None, preferences={}))
+
+        effective = engine.effective_manifest_with_user_config(manifest, user_config)
+
+        for field_name, expected in preserved_fields.items():
+            with self.subTest(field=field_name):
+                self.assertIs(getattr(effective, field_name), expected)
 
     def test_effective_ide_config_adds_user_extensions_and_settings(self) -> None:
         manifest = BaseManifest(
