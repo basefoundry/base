@@ -243,6 +243,7 @@ Downstream Bash scripts should import Base Bash libraries with:
 
 ```bash
 import_base_lib file/lib_file.sh
+import_base_lib str/lib_str.sh
 ```
 
 `import_base_lib` checks the resolved reusable library root. It fails through

@@ -12,5 +12,6 @@ Base-specific Bash runtime and version helpers.
   user's `~/.bashrc` with guardrails, load the Base runtime, and define the
   Base runtime prompt.
 
-Reusable libraries such as `std`, `file`, and `git` live in the standalone
-`base-bash-libs` repository and are resolved by `base_init.sh`.
+Reusable libraries such as `std`, `arg`, `file`, `gh`, `git`, `list`, and `str`
+live in the standalone `base-bash-libs` repository and are resolved by
+`base_init.sh`.

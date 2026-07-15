@@ -500,8 +500,8 @@ lib/bash/
 ```
 
 Base Bash command code should use `import_base_lib` for reusable libraries such
-as `file/lib_file.sh` or `git/lib_git.sh`; `base_init.sh` resolves those imports
-from `base-bash-libs`.
+as `arg/lib_arg.sh`, `file/lib_file.sh`, `git/lib_git.sh`, or
+`str/lib_str.sh`; `base_init.sh` resolves those imports from `base-bash-libs`.
 
 ### 6.3 Python Packages
 
