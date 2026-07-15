@@ -23,12 +23,12 @@ The current command surface covers:
 - explicit `repo init --language` profiles with normalized
   `project.languages` metadata and Python uv opt-in
 - project Python runtime requirements through `python.requires_python`
-- cleanup, logs, and local command history
+- cleanup, logs, local command history, and privacy-conscious history reports
 - local config inspection
-- onboarding
+- guided project onboarding and read-only workspace onboarding summaries
 - repository baseline creation and checks
 - GitHub issue, PR, branch, and worktree helpers
-- workspace status/check/doctor/init/clone/pull/configure flows
+- workspace status/check/doctor/onboarding/init/clone/pull/configure flows
 - release readiness inspection and guarded GitHub release publishing
 - local AI context export bundles
 - repo-owned prompt rendering through `basectl prompt`
@@ -44,6 +44,11 @@ The `v1.6.1` release is complete. Future work is tracked in GitHub Issues,
 with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
 broader prompt ergonomics, broader Linux distribution support, and broader
 setup policy work remaining outside the 1.6 release contract.
+
+The accepted product position is now a local operating contract for
+deterministic readiness and handoff. Current onboarding, diagnostics, history
+reports, and context exports provide manual handoff evidence; unified workspace
+and issue handoff artifacts remain planned in open issues #1561 and #1562.
 
 The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
@@ -64,10 +69,11 @@ Recent released work includes:
   rendering
 - redaction hardening for config display and setup command logs
 - normalized Bash source guards and explicit `base-test` error handling
-- local command-history index with future report surfaces still deferred
+- local command-history index with privacy-conscious text, Markdown, and JSON
+  report surfaces
 - project Python version requirements for Base-managed virtualenv creation
-- workspace manifest status/check/doctor reporting plus explicit init, clone,
-  and pull support
+- workspace manifest status/check/doctor reporting, read-only onboarding summaries,
+  and explicit init, clone, pull, and configure support
 - guarded `basectl release publish`
 - release check, plan, and notes commands
 - local `.ai-context/` export bundles through `basectl export-context`

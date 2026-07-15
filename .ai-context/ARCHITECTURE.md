@@ -2,18 +2,28 @@
 
 ## Product Boundaries
 
-Base is strongest when it stays focused on:
+Base is strongest when it stays focused on a local operating contract for:
 
-- Mac-first workstation bootstrap.
-- Shared shell startup and shell-environment layering.
-- Peer-repo workspace discovery under a shared parent directory.
-- Workspace-level orchestration across sibling repositories.
-- Shared execution conventions through `basectl` and `base-wrapper`.
-- A small project manifest and command contract for participating repos.
+- Inventorying participating and expected independent Git repositories.
+- Preparing and verifying declared local readiness.
+- Keeping project-owned execution behind an explicit trust boundary.
+- Making onboarding and handoff evidence inspectable.
+
+The small project manifest, `basectl`, `base-wrapper`, activation model, and
+declared project commands are the enabling execution contract. Repository,
+GitHub, and release conventions are supporting workflow packs.
+Environment-manager, IDE, container, Nix/devenv, and AI behavior stays in
+adapter or export lanes.
+
+Deterministic means explicit ordering, stable findings or machine-readable
+structures, and clear next actions from declared inputs and inspectable local
+state. It does not mean hermetic builds or transactional multi-repository
+updates.
 
 Base should not become a general tool version manager, automatic directory-based
 environment loader, full dotfile manager, generic task runner, or reproducible
-package/environment solver.
+package/environment solver. It should also not become a generic repo sync/
+fan-out manager or a hosted agent runtime.
 
 ## Layer Model
 
@@ -84,8 +94,9 @@ Base orchestrates mature tools instead of replacing them:
 - AI agent harnesses own live agent sessions, provider interaction, credentials,
   sandboxing, approvals, collaboration UI, and multi-agent scheduling. Base
   should support them only through provider-neutral context packs, repo-local
-  guidance, maintained prompts, local handoff/report artifacts, and explicit
-  opt-in health checks.
+  guidance, maintained prompts, current local evidence, planned handoff/report
+  artifacts, and explicit opt-in health checks. Unified handoff artifacts remain
+  open work in #1561 and #1562.
 
 Adapters should detect relevance, check health, invoke the underlying tool
 without hiding it, report failures in Base-native diagnostics, and avoid taking

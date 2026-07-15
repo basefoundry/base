@@ -1,128 +1,151 @@
 # Why Base
 
-Base exists for developers who keep multiple repositories checked out side by
-side and want that workspace to behave like one coherent place to work.
+Base is a local operating contract for developers and platform engineers whose
+work spans multiple independent Git repositories. It makes a participating repo
+set understandable and locally ready without forcing a monorepo or taking
+project-specific behavior away from the repositories that own it.
 
-Most developer-environment tools solve an important project-local problem:
-install this language runtime, load these variables, enter this shell, run this
-task, or manage these dotfiles. Base sits one level higher. It gives a
-multi-repo workspace one shared control plane for setup, diagnostics, project
-discovery, activation, tests, demos, repository baseline work, and release
-support.
-
-The goal is not to replace mature tools. The goal is to make them easier to use
-consistently across a workspace.
-
-## The Short Version
-
-Use Base when your real development environment looks more like this:
+The product outcome is:
 
 ```text
-~/work/
-  base/
-  project-a/
-  project-b/
-  shared-tooling/
-  reference-app/
+inventory -> prepare -> verify -> trust -> onboard -> hand off
 ```
 
-and you want one predictable command surface:
+Base is most useful when setup rules, readiness state, safe execution, and
+handoff context would otherwise live in several READMEs, shell sessions, and one
+maintainer's memory.
 
-```bash
-basectl projects list
-basectl setup <project>
-basectl check <project>
-basectl doctor <project>
-basectl test <project>
-basectl run <project> <command>
-basectl demo <project>
-basectl activate <project>
-```
+## What Deterministic Means Here
 
-Base is the layer that answers: "What projects are in this workspace, what do
-they declare, what is ready, what is missing, and how do I run the common
-workflow without relearning every repository from scratch?"
+Base uses **deterministic** narrowly. Given declared repository contracts and
+the local state Base can inspect, it should produce explicit ordering, stable
+findings or machine-readable structures, and clear next actions. Read-only
+commands stay read-only, and mutating commands use explicit entry points,
+dry-run paths, or consent where appropriate.
+
+It does not mean Base promises hermetic builds, byte-for-byte environments,
+transactional updates across every repository, or reproducibility beyond the
+external tools and project declarations it orchestrates.
+
+## The Outcome Loop
+
+| Outcome | Shipped evidence today |
+|---|---|
+| Inventory | `basectl projects list` shows participating repositories; workspace status adds expected, missing, optional, and local-only state; onboarding turns expected-repository state into first-day next actions. |
+| Prepare | `basectl setup`, workspace init/clone/pull/configure, and project-owned adapters prepare the declared local state through explicit commands. |
+| Verify | `basectl check` and `basectl doctor`, including workspace forms, report readiness with JSON where supported and stable doctor finding IDs. |
+| Trust | `basectl trust` keeps manifest-declared project execution behind explicit local approval while leaving inspection paths available. |
+| Onboard | `basectl onboard` guides first Base setup; `basectl workspace onboarding` gives a read-only first-day repo-set summary. |
+| Hand off | Diagnostics, `basectl history --report`, `.ai-context/`, and `basectl export-context` provide inspectable local evidence for a manual handoff. |
+
+The last step is not yet a single unified artifact. A workspace agent brief and
+an issue-oriented handoff bundle are planned in
+[#1561](https://github.com/basefoundry/base/issues/1561) and
+[#1562](https://github.com/basefoundry/base/issues/1562). Base should not claim
+those commands until they ship.
+
+## Product Responsibility Layers
+
+The layers below describe product responsibility, not separately installed
+packages:
+
+- **Core outcome:** deterministic local readiness and handoff across independent
+  Git repositories.
+- **Enabling execution contract:** `base_manifest.yaml`, `basectl`,
+  `base-wrapper`, explicit activation, and declared setup/check/test/run/demo/
+  build behavior make the outcome executable.
+- **Supporting workflow packs:** repository baselines, GitHub issue/branch/PR/
+  Project conventions, and guarded release commands support repeatable delivery
+  but are not the primary product category.
+- **Adapters:** Homebrew, `mise`, uv, IDEs, Dev Containers, Docker, Nix/devenv,
+  and AI tools keep ownership of their domains. Base detects, checks, invokes,
+  previews, or exports context to them through explicit boundaries.
 
 ## What Base Gives You
 
-- A macOS-first first-mile bootstrap path for getting a workstation to the point
-  where `basectl setup` can take over.
-- Workspace discovery for sibling repositories that opt in with
+- A small opt-in contract for independent repositories through
   `base_manifest.yaml`.
-- A small manifest contract for setup, diagnostics, test, run, demo, build,
-  activation, IDE, and release delegation.
-- Human-readable and machine-readable readiness checks through `basectl check`,
-  `basectl doctor`, and `--ci` mode for automation.
-- Explicit project activation that avoids hidden `cd`-driven environment
-  changes.
-- A shared shell and Python execution foundation for Base-aware scripts.
-- Standard repository and GitHub workflow helpers for issue-backed work,
-  repository baselines, Project metadata, and release support.
+- Inventory and workspace onboarding views that do not require cloning or setup
+  to inspect repo-set state.
+- Human-readable and machine-readable readiness checks through `check`,
+  `doctor`, workspace reports, and stable finding IDs.
+- Explicit manifest-command trust instead of silently executing project-owned
+  command strings.
+- A consistent execution surface for setup, test, run, demo, build, and
+  activation while each repository keeps its own implementation details.
+- Local onboarding, history, and provider-neutral context evidence that another
+  person or coding agent can inspect.
+- Optional GitHub/repository and release workflow packs for teams that choose
+  Base's delivery conventions.
+- A macOS-primary support contract with implemented Ubuntu/Debian
+  source-checkout runtime and apt-backed setup paths.
+
+For the complete shipped command surface, see the
+[README](../README.md#product-layers-and-shipped-commands) and
+[Command Quick Reference](command-reference.md).
 
 ## Comparison Matrix
 
-This table is intentionally feature-oriented. Many of these tools are excellent
-inside their own domain; Base is useful when the missing piece is the layer that
-connects those domains across several peer repositories.
-
-| Need | Base | Adjacent tools |
+| Need | Base's role | Prefer another tool when |
 |---|---|---|
-| Multi-repo workspace discovery | Discovers sibling repositories under a shared workspace root when they opt in with `base_manifest.yaml`. | Most tools operate from the current project directory or a single repo-specific config. |
-| One command surface across projects | Provides `basectl setup`, `check`, `doctor`, `test`, `run`, `demo`, `build`, and `activate` for participating projects. | Task runners and environment tools usually expose commands for one project at a time. |
-| First-mile workstation bootstrap | Bootstraps macOS prerequisites such as Homebrew, Git, Bash, and Base before handing off to `basectl setup`. | Project environment tools generally assume the user already has the tool installed. |
-| Tool version management | Delegates to project-owned tools such as `mise` instead of reimplementing version management. | `mise`, `asdf`, Nix, Devbox, and Dev Containers are stronger choices for pinning tools and runtimes. |
-| Project environment isolation | Prepares Base-managed project virtualenvs where appropriate and keeps activation explicit, while delegating broader isolation when a project chooses another backend. | Devbox, Nix, and Dev Containers are stronger choices for fully isolated or reproducible project shells. |
-| Directory-triggered environment loading | Avoids implicit activation on `cd`; project context changes through explicit `basectl activate`. | `direnv` and some `mise` workflows are better when automatic directory-based environment loading is the desired behavior. |
-| Local services and containers | Can orchestrate project-declared checks and future Docker-backed service contracts without replacing Docker. | Docker, Docker Compose, Colima, and Dev Containers own container runtime and containerized development concerns. |
-| Project tasks | Offers a consistent umbrella for test, run, demo, and build commands declared by the project. | `just`, Taskfile, `mise` tasks, Make, and language-native scripts are better for defining rich task logic inside one repo. |
-| Dotfile management | Manages small marked shell-startup sections and keeps user-local Base preferences in `~/.baserc`. | `chezmoi`, dotbot, and private dotfile repos are better for broad dotfile templating, secrets, and machine-specific personalization. |
-| Monorepo-style coordination | Gives sibling repos a common workflow without forcing them into one repository. | A monorepo is better when one source tree, one build graph, and tightly coupled code ownership are the actual product shape. |
-| Diagnostics | Reports Base, workspace, and project readiness through check, doctor, JSON output, and stable finding IDs. | Adjacent tools usually diagnose their own domain, such as tool installs, env loading, container setup, or task execution. |
-| Repository workflow | Helps standardize issue-backed branches, worktrees, PRs, repo baselines, Project metadata, and release handoffs. | General environment tools usually do not own repository governance or GitHub workflow conventions. |
+| Repo-set inventory and onboarding | Adds Base participation/readiness semantics and read-only workspace reports. | You only need generic repository checkout, sync, status, or command fan-out. |
+| Local preparation | Sequences declared Base and project setup with explicit dry-run/consent boundaries. | You need a general machine-convergence, package, runtime, or dotfile system. |
+| Readiness | Connects local prerequisites, project contracts, stable findings, and workspace summaries. | A single tool's own health check fully describes the problem. |
+| Trusted execution | Requires local approval before manifest-declared project commands or activation sources execute. | You want automatic directory-triggered environment changes or a sandboxed execution platform. |
+| Project commands | Provides one umbrella contract while delegating detailed task logic to each repository. | You only need a rich task runner inside one repository. |
+| Handoff | Provides current diagnostics, history reports, onboarding views, and context exports; unified brief/report artifacts remain planned. | You need a hosted agent runtime, live session transfer, or provider-specific collaboration service. |
+| Repository and release workflow | Offers optional GitHub-primary conventions and guarded release support. | Another forge or delivery system already owns the workflow. |
+| Environment isolation | Integrates with project-selected substrates. | Hermetic shells, containers, or reproducible build graphs are the primary outcome. |
 
-## How To Decide
+## Target Users
 
-Base is a good fit when:
+Base is a strong fit when:
 
-- your work spans multiple peer repositories;
-- each repository should keep owning its own code, tests, services, and setup
+- your daily work crosses several independent Git repositories;
+- each repository should keep owning its code, tests, services, and setup
   details;
-- you want one workspace-level command surface for common operations;
-- you want diagnostics that explain what is missing before a project runs;
-- you prefer explicit activation over automatic shell state changes;
-- you want Base to orchestrate mature tools rather than replace them.
+- you need explicit local readiness and next-action evidence before work starts;
+- work moves between maintainers, teammates, or coding agents and private
+  context is a recurring risk;
+- you prefer explicit activation and trust over hidden shell changes;
+- Base's optional GitHub/release conventions reduce repeated delivery judgment.
 
-Base is probably not the first tool you need when:
+Base is not the first tool to choose when:
 
-- you only work in one repository;
-- you mainly need language version pinning;
-- you mainly need a fully reproducible shell or containerized dev environment;
-- you want automatic environment changes whenever you `cd`;
-- you want a full dotfile manager;
-- you want to consolidate everything into a monorepo.
+- you work in one simple repository with no recurring handoff problem;
+- a monorepo is the correct source and ownership model;
+- generic multi-repo clone/sync/status is the whole requirement;
+- language version pinning, dotfiles, or task execution is the whole
+  requirement;
+- a Nix-style environment, container platform, or hermetic build system is the
+  primary product outcome;
+- you need a hosted agent session manager, provider upload service, or live
+  collaboration system;
+- you require non-Git source control or broad Windows support today.
 
 ## How Base Fits With Existing Tools
 
-Base is designed to compose with the tools developers already use:
+Base is designed to compose with tools developers already use:
 
+- Use Homebrew or the platform package manager for ordinary system packages.
 - Use [`mise`](https://mise.jdx.dev/) for project tool versions, environment
-  variables, and tasks when that is the right substrate.
+  variables, tasks, and other mise-owned setup behavior.
+- Use uv for Python dependency resolution, lockfiles, and project-local
+  environments when the project chooses it.
 - Use [`direnv`](https://direnv.net/) when automatic directory-based environment
   loading is the desired local convenience.
 - Use [Devbox](https://www.jetify.com/docs/devbox),
-  [Nix](https://nix.dev/), or
+  [Nix](https://nix.dev/), [devenv](https://devenv.sh/), or
   [Dev Containers](https://containers.dev/overview) when stronger environment
   reproducibility or containerized development is the center of the problem.
 - Use [`just`](https://just.systems/man/en/), [Task](https://taskfile.dev/),
-  Make, or language-native scripts for detailed task definitions inside a
-  project.
-- Use [`chezmoi`](https://www.chezmoi.io/) or another dotfile manager for broad
-  personal configuration.
-- Use Homebrew and Brewfiles for ordinary macOS packages and casks.
+  Make, or language-native scripts for detailed task definitions.
+- Let IDEs and AI tools own editor behavior, live sessions, accounts,
+  credentials, and provider policy. Base's adapters remain additive and
+  provider-neutral.
 
-Base's job is to find the project, read its contract, invoke the right tool
-openly, report failures in a Base-native way, and keep the workspace story
-consistent.
+Base's job is to read the participating repository contract, invoke the chosen
+tool openly, report readiness in a Base-native way, and leave enough local
+evidence for the next operator to continue safely.
 
-For the deeper ecosystem boundary model, see
-[Tool Boundaries](tool-boundaries.md).
+For deeper ecosystem decisions, see [Tool Boundaries](tool-boundaries.md).

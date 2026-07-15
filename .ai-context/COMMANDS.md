@@ -1,7 +1,8 @@
 # Base Command Context
 
 `basectl` is the public Base control-plane command. Run `basectl --help` for
-the canonical current command list.
+top-level command families and `basectl <family> --help` for the canonical
+family subcommands.
 
 Long options with values use space-separated syntax, such as `--format json`.
 Base rejects `--option=value` before command delegation. Arguments after `--`
@@ -38,14 +39,19 @@ options.
 - `basectl docs` - open the Base documentation home page on GitHub.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor|clone|pull|init|configure>` - inspect
-  workspace status, checks, and diagnostics; explicitly clone expected
-  repositories from a manifest; initialize a workspace from a workspace
-  configuration repo; explicitly sync a local manifest from a configured
-  canonical source; or apply repo configuration across a workspace.
-  - `workspace status`, `workspace check`, and `workspace doctor` support
-    `--format json`; `workspace clone`, `workspace pull`, `workspace init`, and
-    `workspace configure` use text output.
+- `basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure>` -
+  inspect workspace status, checks, diagnostics, and read-only first-day
+  onboarding; explicitly clone expected repositories from a manifest;
+  initialize a workspace from a workspace configuration repo; explicitly sync
+  a local manifest from a configured canonical source; or apply repo
+  configuration across a workspace.
+  - `workspace status`, `workspace check`, `workspace doctor`, and
+    `workspace onboarding` support `--format json`; `workspace clone`,
+    `workspace pull`, `workspace init`, and `workspace configure` use text
+    output.
+  - `workspace onboarding` summarizes ready, needs-setup, invalid-manifest,
+    missing-required, and missing-optional repository state without cloning
+    repositories or running setup.
   - `workspace clone` mutates repository checkouts only when invoked directly;
     `workspace pull` mutates only the local workspace manifest after validating
     the source; `workspace init` can clone the workspace configuration repo,
@@ -103,7 +109,8 @@ options.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
 - `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
 - `basectl history` - list recent structured Base command runs from the local
-  history index, with `--format json` for scripts.
+  history index, with `--format json` for scripts and `--report` for a
+  privacy-conscious Markdown or JSON activity report.
 - `basectl config <path|show|doctor>` - inspect Base's machine-local user
   config.
 - `basectl onboard` - guide a user through the first Base setup checklist.

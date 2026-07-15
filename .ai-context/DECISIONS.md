@@ -5,17 +5,24 @@ architecture discussion.
 
 ## Product And Scope
 
-- Base is a Mac-first workspace control plane.
-- Linux runtime and CI support are actively being rolled out, with `--ci` mode
-  on setup/check/doctor and Ubuntu GitHub Actions coverage as the current proof
-  points.
-  Full Linux setup/bootstrap remains a narrower planned contract; keep platform
-  details in `docs/linux-support.md`.
+- Base is a local operating contract for deterministic readiness and handoff
+  across independent Git repositories; macOS remains the primary platform.
+- Ubuntu/Debian runtime support, source-checkout CI validation, and apt-backed
+  setup for conservative Base prerequisites are implemented. Broader Linux
+  distribution and WSL support remain outside the current contract; keep
+  platform details in `docs/linux-support.md`.
 - Windows support is not currently in scope.
 - Base should solve the author's real multi-repo workflow elegantly before
   trying to be a broad general-purpose platform.
 - Base should strengthen the loop
-  `discover -> setup -> activate -> run -> test -> doctor -> fix -> onboard`.
+  `inventory -> prepare -> verify -> trust -> onboard -> hand off`.
+- Deterministic means explicit order, stable findings or machine-readable
+  structures, and clear next actions from declared inputs and inspectable local
+  state. It does not claim hermetic or transactional multi-repo behavior.
+- `base_manifest.yaml`, `basectl`, `base-wrapper`, activation, and declared
+  commands are the enabling execution contract. Repository/GitHub/release
+  behavior is a supporting workflow pack. Environment/IDE/container/AI
+  behavior remains adapter-owned.
 - Project repositories stay independent. Base must not turn the workspace into
   a monorepo.
 
@@ -76,9 +83,10 @@ architecture discussion.
 - AI agent harnesses such as Codex CLI, Claude Code, Cursor agents, Omnigent,
   and Pi-like tools are optional adjacent tools. Base may help install or check
   explicit AI prerequisites, export portable context, render repo-owned prompts,
-  and produce local handoff/report artifacts, but it should not become a live
-  agent runtime, session server, sandbox, provider/account manager, or
-  cost-policy engine.
+  and provide local evidence for handoff. Unified workspace and issue handoff
+  artifacts remain planned in #1561 and #1562. Base should not become a live
+  agent runtime, session server, sandbox, provider/account manager, or cost-policy
+  engine.
 
 ## Repository Workflow
 

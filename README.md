@@ -5,26 +5,30 @@
 ![Platform: macOS + Ubuntu/Debian](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu%2FDebian-lightgrey)
 ![Version](https://img.shields.io/badge/version-1.6.1-blue)
 
-Base is a workspace control plane for developers who keep multiple repositories
-checked out side by side.
+Base is a local operating contract for developers and platform engineers who
+work across multiple independent Git repositories.
 
-It gives that workspace one common layer for setup, diagnostics, project
-discovery, shell activation, and test execution without turning the workspace
-into a monorepo or moving project-specific logic into Base.
+It makes that repo set easier to inventory, prepare, verify, trust, onboard,
+and hand off without turning it into a monorepo or moving project-specific
+logic into Base.
+
+```text
+inventory -> prepare -> verify -> trust -> onboard -> hand off
+```
 
 ## Why Base Exists
 
-Most real engineering environments are not a single repository.
+Most real engineering environments are not a single repository. Their setup
+steps, readiness rules, trusted commands, and handoff context are often spread
+across READMEs, shell state, and maintainer memory. Base gives participating
+repositories one explicit local contract for answering: what belongs here,
+what is ready, what is missing, what may run, and what the next person or agent
+needs to know.
 
-A developer may need:
-
-- one repo for shared tooling
-- several project repos checked out side by side
-- a consistent shell environment across machines
-- common shell and Python helper libraries
-- a clean way to run project commands through wrappers instead of directly
-
-Base exists to provide that missing common layer.
+In this product promise, **deterministic** is deliberately narrow. Base makes
+declared inputs, inspection order, findings, and next actions explicit and
+repeatable. It does not promise hermetic builds, byte-for-byte environments, or
+transactional mutation across every repository and external tool.
 
 For a concise evaluator view of where Base fits, what it gives a multi-repo
 workspace, and how it compares with adjacent tools, see
@@ -247,15 +251,29 @@ basectl test base
 
 ## How Base Fits
 
-Base orchestrates tools that already own their domains:
+Base's product responsibilities have four layers:
+
+- **Core outcome:** deterministic local readiness and handoff across independent
+  Git repositories.
+- **Enabling execution contract:** `base_manifest.yaml`, `basectl`,
+  `base-wrapper`, explicit activation, and declared project commands.
+- **Supporting workflow packs:** repository baselines plus GitHub and release
+  conventions. These support the outcome; they are not Base's primary product
+  category.
+- **Adapters:** environment managers, IDEs, containers, Nix/devenv, and AI
+  tools remain external systems that Base detects, checks, invokes, or exports
+  context for without taking over their domains.
+
+These are responsibility layers, not separately installed packages. Base
+orchestrates tools that already own their domains:
 
 - Homebrew still owns ordinary macOS packages and Brewfiles.
 - mise still owns language/runtime installation when a project declares a mise
   config.
 - Project repositories still own their source code, tests, installers, service
   definitions, and product-specific onboarding.
-- Base owns the workspace-level conventions that make those pieces discoverable
-  and repeatable across projects.
+- Base owns the local contract that makes participation, readiness, trusted
+  execution, and handoff explicit across projects.
 
 See [Tool Boundaries](docs/tool-boundaries.md) for the detailed boundary model.
 
@@ -263,7 +281,7 @@ See [Tool Boundaries](docs/tool-boundaries.md) for the detailed boundary model.
 
 Base's reusable Bash libraries are also available as a standalone package for
 scripts that want Base's Bash helper conventions without adopting the Base
-workspace control plane:
+local operating contract:
 
 ```bash
 brew trust basefoundry/base
@@ -275,11 +293,13 @@ or Homebrew package. The resolution order, standalone usage path, and
 post-migration boundary are documented in
 [Base Bash Libraries](docs/base-bash-libs.md).
 
-## Top Goals
+## Product Layers And Shipped Commands
 
-Base is organized around three primary goals.
+Base's primary product outcome is readiness and handoff. The command and runtime
+details below preserve discovery of the shipped execution contract, workflow
+packs, and adapters that support that outcome.
 
-### 1. Umbrella Interface for Multi-Project Setup and Test
+### 1. Core Outcome And Enabling Execution Contract
 
 Base should give the user one entry point for setting up and validating a
 workspace that contains multiple project repositories.
@@ -298,6 +318,8 @@ Current implemented commands include:
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
+- `basectl workspace <status|check|doctor|onboarding|clone|pull|init|configure>`
+- `basectl trust <status|allow|revoke> <project>`
 - `basectl repo init <name>`
 - `basectl repo clone <name-or-owner/name>`
 - `basectl repo check [path]`
@@ -320,6 +342,7 @@ Current implemented commands include:
 - `basectl devenv-report [project]`
 - `basectl docs`
 - `basectl onboard`
+- `basectl history [--report]`
 - `basectl version`
 
 `--ci` runs setup, check, and doctor with CI-safe defaults such as
@@ -565,6 +588,7 @@ basectl workspace status --format json
 basectl workspace status --manifest ~/work/workspace.yaml
 basectl workspace check
 basectl workspace doctor
+basectl workspace onboarding --manifest ~/work/workspace.yaml
 basectl workspace init basefoundry/base-workspace --dry-run
 basectl workspace clone --manifest ~/work/workspace.yaml --dry-run
 basectl workspace configure --dry-run
@@ -578,16 +602,22 @@ Project list output is tab-separated as `<project-name><TAB><path>`.
 In a source checkout, `basectl projects list` can run before `basectl setup`
 when the ambient `python3` has Base's bootstrap Python dependencies available;
 otherwise it reports a targeted setup diagnostic.
-`basectl projects list` and the read-only workspace status, check, and doctor
-commands support `--format json` for machine-readable output. Workspace clone,
-pull, init, and configure use text output only. Workspace status, check, and
-doctor are read-only. Status reports each discovered project's manifest
-validity, whether the Base-managed project virtual environment is present, and
-the latest recorded `basectl check <project>` date when one exists. Check
-records live under `~/.base.d/<project>/checks/last.json`; status JSON includes
-the full timestamp and recorded check status.
+`basectl projects list` and the read-only workspace status, check, doctor, and
+onboarding commands support `--format json` for machine-readable output.
+Workspace clone, pull, init, and configure use text output only. Status reports
+each discovered project's manifest validity, whether the Base-managed project
+virtual environment is present, and the latest recorded `basectl check
+<project>` date when one exists. Check records live under
+`~/.base.d/<project>/checks/last.json`; status JSON includes the full timestamp
+and recorded check status.
 Check and doctor run project diagnostics across discovered projects and keep
 invalid project manifests visible as per-project findings.
+
+`basectl workspace onboarding` is also shipped. It summarizes first-day
+workspace onboarding from a workspace manifest without cloning repositories or
+running setup. It reports ready, needs-setup, invalid-manifest,
+missing-required, and missing-optional repository states with next actions as a
+read-only text or JSON view.
 
 Set `workspace.manifest` in `~/.base.d/config.yaml`, or use `--manifest <path>`
 with `basectl workspace status`, `check`, or `doctor`, to include expected
@@ -1053,12 +1083,19 @@ Base-managed project for the check/setup/doctor steps. Product-specific
 onboarding should still live in project installers that call Base internally. See
 [docs/basectl-onboard.md](docs/basectl-onboard.md).
 
+Today, onboarding output, stable diagnostics, `basectl history --report`, and
+`basectl export-context` provide the local evidence needed for a manual handoff.
+A unified workspace agent brief and a single issue-oriented handoff bundle are
+planned in [#1561](https://github.com/basefoundry/base/issues/1561) and
+[#1562](https://github.com/basefoundry/base/issues/1562); they are not shipped
+commands yet.
+
 Base can also bootstrap supported IDEs for participating projects through the
 optional `ide:` manifest section. It currently supports VS Code and Cursor app
 installation, extension installation, additive user settings, and check/doctor
 diagnostics. See [docs/ide-bootstrapping.md](docs/ide-bootstrapping.md).
 
-### 2. Shell Environment Management
+### 2. Enabling Execution Contract: Shell Environment
 
 Base should manage shell environments at two levels:
 
@@ -1077,7 +1114,7 @@ That includes things like:
 The goal is to make shell behavior explicit, inspectable, and repeatable instead
 of depending on a fragile mix of ad hoc dotfiles and one-off scripts.
 
-### 3. Common Shell and Python Libraries and Wrappers
+### 3. Enabling Execution Contract: Libraries And Wrappers
 
 Base should provide a stable foundation for controlled CLI execution.
 
@@ -1649,16 +1686,18 @@ The Base control-plane surface remains `basectl`.
 
 ## What Base Is Responsible For
 
-Base owns the shared developer-platform layer of the workspace.
+Base owns the local operating contract for participating repositories.
 
 That means Base should be responsible for:
 
-- bootstrapping the developer environment
-- discovering participating project repos
-- orchestrating setup and test flows across repos
-- managing shared shell initialization
-- providing common shell and Python helper libraries
-- providing wrappers and execution conventions for CLIs
+- inventorying participating repositories and their declared contracts
+- preparing and verifying local readiness through explicit commands
+- enforcing Base's local trust boundary for manifest-declared execution
+- making onboarding state and handoff evidence inspectable
+- providing the execution conventions and diagnostics that support that outcome
+
+Repository/GitHub/release workflow packs and environment/IDE/container/AI
+adapters support this contract, but they do not redefine the core product.
 
 ## What Base Is Not Responsible For
 
@@ -1678,13 +1717,14 @@ Base should orchestrate those things, not replace them.
 
 ## Mental Model
 
-Think of Base as the workspace control plane for local development.
+Think of Base as the local operating contract beside a set of independent Git
+repositories.
 
 Each project repo remains independent. Base sits beside those repos and offers:
 
-- one place to bootstrap the workspace
-- one place to manage shared environments
-- one place to host common execution libraries and wrappers
+- one declared way to inventory, prepare, and verify local readiness
+- one explicit trust boundary for project-owned commands
+- one onboarding story and a growing set of local handoff evidence
 
 That gives a multi-repo setup some of the ergonomic benefits people often reach
 for in a monorepo, without forcing unrelated codebases into a single repository.
@@ -1715,7 +1755,8 @@ Base follows a few simple principles.
 2. Prefer explicit conventions over hidden shell magic.
 3. Keep wrappers thin but reliable.
 4. Make setup and test flows idempotent where possible.
-5. Let Base provide the common layer without turning into a dumping ground for
+5. Make findings and next actions stable enough for human and automated handoff.
+6. Let Base provide the common layer without turning into a dumping ground for
    project-specific behavior.
 
 ## Current Status
@@ -1725,14 +1766,14 @@ setup, checks, diagnostics, project discovery, project activation, project test
 execution, mise integration, cleanup, updates, onboarding, repository baseline
 creation, CI-safe setup/check/doctor entry points, release readiness inspection,
 guarded GitHub release publishing, GitHub workflow helpers, workspace
-status/check/doctor/init/clone/pull/configure flows, local AI context exports,
-repo-owned prompt rendering, the `basectl docs` documentation shortcut,
-external reusable Bash library consumption, and explicit prerequisite profiles
-for developer, SRE, AI tooling, and local Linux lab setup. The `basectl setup`,
-`basectl check`, and `basectl doctor` flows are platform-aware for macOS and
-Ubuntu/Debian, including apt-backed prerequisite handling on Ubuntu/Debian;
-macOS diagnostics also warn when Homebrew reports outdated or incomplete Xcode
-Command Line Tools.
+status/check/doctor/onboarding/init/clone/pull/configure flows, privacy-conscious
+history reports, local AI context exports, repo-owned prompt rendering, the
+`basectl docs` documentation shortcut, external reusable Bash library
+consumption, and explicit prerequisite profiles for developer, SRE, AI tooling,
+and local Linux lab setup. The `basectl setup`, `basectl check`, and `basectl
+doctor` flows are platform-aware for macOS and Ubuntu/Debian, including
+apt-backed prerequisite handling on Ubuntu/Debian; macOS diagnostics also warn
+when Homebrew reports outdated or incomplete Xcode Command Line Tools.
 
 For the documentation map and naming convention, see
 [docs/README.md](docs/README.md). For accepted product requirements, see
@@ -1749,9 +1790,9 @@ tracked in GitHub Issues using the workflow in
 
 ## Short Version
 
-Base is the repo you check out once per workspace so that all the other repos
-in that workspace become easier to set up, easier to test, and easier to run in
-a controlled shell environment.
+Base is the local operating contract you add to a repo set so its readiness,
+trusted execution, onboarding, and handoff stop depending on private maintainer
+memory.
 
 ## License
 

@@ -11,34 +11,35 @@
   support remains tracked in `docs/linux-support.md`.
 - Windows support is not currently in scope.
 
-Base is a workspace control plane for developers who keep multiple repositories
-checked out side by side. It provides a shared layer for setup, diagnostics,
-project discovery, shell activation, project commands, test execution, release
-readiness, and repository workflow without turning the workspace into a
+Base is a local operating contract for developers and platform engineers who
+work across multiple independent Git repositories. Its core outcome is
+deterministic local readiness and handoff without turning the repo set into a
 monorepo.
 
 ## Why It Exists
 
-Real engineering work often spans several peer repositories: one repo for shared
-tooling, one or more product repos, demo repos, and local support repos. Base
-gives that workspace one consistent interface while keeping each project repo
-independent and responsible for its own product logic.
+Real engineering work often spans several peer repositories, while readiness
+rules and handoff context are scattered across docs, shell state, and maintainer
+memory. Base makes participation, local state, trusted execution, onboarding,
+and next actions inspectable while each repository keeps ownership of its code,
+tests, services, and project-specific setup.
 
-The short version: Base is the repo you check out once per workspace so that
-the other repos in that workspace become easier to set up, easier to test, and
-easier to run in a controlled shell environment.
+Deterministic is a narrow claim: declared inputs and inspectable local state
+should produce explicit ordering, stable findings or machine-readable
+structures, and clear next actions. Base does not promise hermetic builds,
+byte-for-byte environments, or transactional multi-repository updates.
 
 ## Product Loop
 
 Base's coherent loop is:
 
 ```text
-discover -> setup -> activate -> run -> test -> doctor -> fix -> onboard
+inventory -> prepare -> verify -> trust -> onboard -> hand off
 ```
 
-Major features should strengthen that loop at the project or workspace level.
-Unrelated commands belong outside Base core unless real use proves they need
-Base's orchestration model.
+The `base_manifest.yaml`/`basectl` execution contract enables the loop.
+Repository/GitHub/release commands are supporting workflow packs;
+environment/IDE/container/AI behavior stays in adapter or export lanes.
 
 ## Current Shape
 
@@ -55,6 +56,11 @@ Manifest-declared commands are treated as project-owned code. Base keeps
 read-only inspection paths available, but requires explicit local
 manifest-command trust before executing declared project commands or activation
 sources from an unfamiliar or changed manifest.
+
+Current onboarding, check/doctor findings, `history --report`, and
+`export-context` provide evidence for a manual handoff. Unified workspace and
+issue handoff artifacts remain planned in open issues #1561 and #1562; they are
+not shipped commands.
 
 ## Peer Projects
 

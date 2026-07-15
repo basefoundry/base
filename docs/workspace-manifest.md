@@ -364,12 +364,15 @@ repo should receive the same idempotent `repo configure` repair path.
 
 ## Relationship To Onboarding
 
-`basectl onboard` currently guides first-run Base setup. It should not become a
+`basectl onboard` guides first-run Base setup. It should not become a
 project-specific installer.
 
-A future workspace onboarding command can build on this manifest and the
-explicit clone path. It should still keep project artifact setup separate from
-repository checkout and retain explicit confirmation and dry-run behavior.
+`basectl workspace onboarding` now builds a read-only first-day summary from
+the workspace manifest. It reports expected repositories, local checkout state,
+manifest state, and suggested next actions in text or JSON without cloning
+repositories, running project setup, or executing manifest-declared commands.
+That keeps project artifact setup, repository checkout, and command trust as
+separate explicit concerns.
 
 ## Non-Goals
 
