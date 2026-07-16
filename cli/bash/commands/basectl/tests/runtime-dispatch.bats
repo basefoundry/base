@@ -278,6 +278,62 @@ EOF
     [[ "$output" == *"script path wins: arg1"* ]]
 }
 
+@test "basectl command names cannot be shadowed by same-named files" {
+    local workdir="$TEST_TMPDIR/command-shadow"
+
+    mkdir -p "$workdir"
+    cat > "$workdir/test" <<'EOF'
+main() {
+    printf 'local file shadowed test\n'
+}
+EOF
+
+    cd "$workdir"
+    run_basectl test --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl test [project] [options]"* ]]
+    [[ "$output" != *"local file shadowed test"* ]]
+}
+
+@test "basectl rejects bare script names with an explicit-path hint" {
+    local workdir="$TEST_TMPDIR/bare-script"
+
+    mkdir -p "$workdir"
+    cat > "$workdir/deploy" <<'EOF'
+main() {
+    printf 'bare script executed unexpectedly\n'
+}
+EOF
+
+    cd "$workdir"
+    run_basectl deploy
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Bare script name 'deploy' is not executed implicitly."* ]]
+    [[ "$output" == *"basectl ./deploy"* ]]
+    [[ "$output" != *"bare script executed unexpectedly"* ]]
+}
+
+@test "basectl runs explicit relative script paths containing spaces" {
+    local workdir="$TEST_TMPDIR/explicit-script"
+    local script_name="deploy task.sh"
+
+    mkdir -p "$workdir"
+    cat > "$workdir/$script_name" <<'EOF'
+main() {
+    printf 'explicit script: %s\n' "$1"
+}
+EOF
+
+    cd "$workdir"
+    run_basectl "./$script_name" "release candidate"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"explicit script: release candidate"* ]]
+}
+
 @test "basectl marks command dispatch metadata readonly" {
     local script_path="$TEST_TMPDIR/inspect-command-env.sh"
     local script_dir

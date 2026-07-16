@@ -198,7 +198,7 @@ basectl_ensure_supported_bash() {
 
 basectl_is_script_argument() {
     local candidate="${1:-}"
-    [[ "$candidate" == */* || -f "$candidate" ]]
+    [[ "$candidate" == */* ]]
 }
 
 basectl_normalize_script_name() {
