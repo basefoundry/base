@@ -323,6 +323,8 @@ run_zsh_positional_completion() {
 }
 
 @test "Zsh nested command completions match command help" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
     assert_nested_completion_matches_help workspace zsh
     assert_nested_completion_matches_help repo zsh
 }
@@ -529,6 +531,8 @@ run_zsh_positional_completion() {
 @test "Zsh gh issue completion includes issue create project options" {
     local options specs
 
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
     specs="$(zsh_completion_specs basectl gh issue "")"
     options="$(zsh_completion_long_options basectl gh issue create --)"
 
@@ -614,6 +618,8 @@ run_zsh_positional_completion() {
 
 @test "Zsh prompt completion includes output option" {
     local list_options render_options
+
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
 
     list_options="$(zsh_completion_long_options basectl prompt list --)"
     render_options="$(zsh_completion_long_options basectl prompt product-self-review --)"
