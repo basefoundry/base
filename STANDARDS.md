@@ -502,6 +502,10 @@ lib/bash/
 Base Bash command code should use `import_base_lib` for reusable libraries such
 as `arg/lib_arg.sh`, `file/lib_file.sh`, `git/lib_git.sh`, or
 `str/lib_str.sh`; `base_init.sh` resolves those imports from `base-bash-libs`.
+Do not use the stdlib `import` helper as a general replacement for Bash
+`source`: keep `source` for runtime bootstrap, Base-owned command modules,
+shell startup files, virtual environment activation scripts, OS metadata files,
+and project activation scripts.
 
 ### 6.3 Python Packages
 
