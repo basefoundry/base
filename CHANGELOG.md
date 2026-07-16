@@ -80,6 +80,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `basectl onboard --yes` reach unattended setup consent and added a
+  read-only, workspace-wide manifest trust review step that never grants trust
+  automatically or prompts for metadata-only manifests.
 - Required explicit relative or absolute paths for Base runtime scripts so a
   same-named file in the current directory cannot shadow a `basectl` control
   command.

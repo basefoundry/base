@@ -282,7 +282,7 @@ _base_basectl_completion() {
             case "${words[3]:-}" in
                 status)
                     _arguments '1:trust command:(status allow revoke)' \
-                        '2:Base project:->projects' \
+                        '2::Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'

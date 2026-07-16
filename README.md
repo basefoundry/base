@@ -69,6 +69,15 @@ git clone https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup --dry-run
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl projects list --workspace ~/work
+~/work/base/bin/basectl trust status base
+```
+
+Review the manifest identity, digest, and read-only inspection commands, then
+run the exact `basectl trust allow base --manifest-sha256 ...` command printed
+by `trust status`. The digest-bound approval is never inferred from setup or an
+unattended flag. After approving the reviewed manifest, finish the proof:
+
+```bash
 ~/work/base/bin/basectl demo base -- --non-interactive
 ```
 
@@ -84,6 +93,14 @@ Base and run its walkthrough:
 ```bash
 git clone https://github.com/basefoundry/base-demo.git ~/work/base-demo
 ~/work/base/bin/basectl setup base-demo
+~/work/base/bin/basectl trust status base-demo
+```
+
+Review the reported command surfaces, then run the exact command it prints:
+`basectl trust allow base-demo --manifest-sha256 ...`. Only then launch the
+demo:
+
+```bash
 ~/work/base/bin/basectl demo base-demo
 ```
 
@@ -440,14 +457,15 @@ execution trust, lifecycle guidance, onboarding, and handoff evidence. Project
 environments and command execution remain owned by their declared substrates.
 
 Manifest-declared commands are trusted project code. Base executes
-`test.command`, `build.targets.*.command`, and `commands.*` as shell command
-strings from the project root, so shell metacharacters are honored. Review
-manifests from unfamiliar repositories before running `basectl test`,
-`basectl build`, or `basectl run`; use `--dry-run` and `--list` first when you
-only want to inspect the resolved command contract. `basectl check <project>`
-and `basectl doctor <project>` include advisory command-lint warnings for
-obvious missing executables or project scripts; those warnings do not make an
-untrusted manifest safe to run. See
+`test.command`, `build.targets.*.command`, `commands.*`, `demo.script`, and
+`activate.source` entries from the project root. Review manifests from
+unfamiliar repositories before running `basectl test`, `basectl build`,
+`basectl run`, `basectl demo`, or manifest-backed `basectl activate`; use
+`--dry-run` and `--list` first for command surfaces that support read-only
+inspection, and inspect `activate.source` entries directly before activation.
+`basectl check <project>` and `basectl doctor <project>` include advisory
+command-lint warnings for obvious missing executables or project scripts;
+those warnings do not make an untrusted manifest safe to run. See
 [Manifest Command Trust](docs/manifest-command-trust.md) for the local allow
 flow before first execution of unfamiliar manifest commands.
 

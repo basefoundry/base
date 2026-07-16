@@ -14,7 +14,21 @@ from unittest import mock
 from base_cli.testing import invoke
 
 
-def write_manifest(project_root: Path, name: str = "demo", command: str = "pytest tests/") -> Path:
+def write_manifest(project_root: Path, name: str = "demo", command: str | None = "pytest tests/") -> Path:
+    project_root.mkdir(parents=True, exist_ok=True)
+    manifest_path = project_root / "base_manifest.yaml"
+    lines = ["project:", f"  name: {name}"]
+    if command is not None:
+        lines.extend(["test:", f"  command: {command}"])
+    lines.append("artifacts: []")
+    manifest_path.write_text(
+        "\n".join(lines) + "\n",
+        encoding="utf-8",
+    )
+    return manifest_path
+
+
+def write_all_command_surfaces_manifest(project_root: Path, name: str = "demo") -> Path:
     project_root.mkdir(parents=True, exist_ok=True)
     manifest_path = project_root / "base_manifest.yaml"
     manifest_path.write_text(
@@ -23,7 +37,18 @@ def write_manifest(project_root: Path, name: str = "demo", command: str = "pytes
                 "project:",
                 f"  name: {name}",
                 "test:",
-                f"  command: {command}",
+                "  command: pytest tests/",
+                "commands:",
+                "  lint: ruff check .",
+                "build:",
+                "  targets:",
+                "    api:",
+                "      command: go build ./...",
+                "demo:",
+                "  script: demo.sh",
+                "activate:",
+                "  source:",
+                "    - .base/activate.sh",
                 "artifacts: []",
             ]
         )
@@ -86,6 +111,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
             "git_origin",
             "git_repository_root",
             "identity_key_from_record",
+            "manifest_command_surfaces",
             "sha256_file",
             "write_json_atomic",
         )
@@ -113,6 +139,20 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertEqual(identity.origin, "https://github.com/example/demo.git")
         self.assertEqual(identity.head, head)
         self.assertNotIn("secret", identity.identity_key)
+
+    def test_manifest_command_surfaces_classifies_only_executable_manifest_fields(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            all_surfaces = write_all_command_surfaces_manifest(root / "all")
+            no_surfaces = write_manifest(root / "none", name="none", command=None)
+
+            self.assertEqual(
+                engine.manifest_command_surfaces(all_surfaces),
+                ("test", "run", "build", "demo", "activate"),
+            )
+            self.assertEqual(engine.manifest_command_surfaces(no_surfaces), ())
 
     def test_trust_store_writes_allow_record_under_base_state_with_schema_version_one(self) -> None:
         from base_trust import engine
@@ -171,6 +211,94 @@ class ManifestCommandTrustTests(unittest.TestCase):
             f"basectl trust allow demo --manifest-sha256 {expected_digest}",
         )
 
+    def test_workspace_status_reports_only_projects_with_executable_manifest_surfaces(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            write_manifest(workspace / "fresh", name="fresh")
+            allowed_manifest = write_manifest(workspace / "allowed", name="allowed")
+            changed_manifest = write_manifest(workspace / "changed", name="changed")
+            write_manifest(workspace / "metadata-only", name="metadata-only", command=None)
+            store = engine.ManifestCommandTrustStore(home=home)
+            store.allow(
+                engine.compute_trust_identity_for_manifest(allowed_manifest),
+                base_version="9.9.9",
+            )
+            store.allow(
+                engine.compute_trust_identity_for_manifest(changed_manifest),
+                base_version="9.9.9",
+            )
+            changed_manifest.write_text(
+                changed_manifest.read_text(encoding="utf-8").replace("pytest tests/", "pytest -q"),
+                encoding="utf-8",
+            )
+
+            result = invoke(
+                engine.app,
+                ["status", "--workspace", str(workspace), "--format", "json"],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+            text_result = invoke(
+                engine.app,
+                ["status", "--workspace", str(workspace)],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual([item["project"]["name"] for item in payload["projects"]], ["allowed", "changed", "fresh"])
+        self.assertEqual(
+            {item["project"]["name"]: item["status"] for item in payload["projects"]},
+            {"allowed": "allowed", "changed": "blocked", "fresh": "blocked"},
+        )
+        self.assertEqual(
+            next(item for item in payload["projects"] if item["project"]["name"] == "changed")["reason"],
+            "manifest_changed",
+        )
+        self.assertNotIn("metadata-only", result.stdout)
+        self.assertEqual(text_result.exit_code, 0, text_result.output)
+        self.assertIn("trust is allowed for project 'allowed'", text_result.stdout)
+        self.assertIn("manifest changed", text_result.stdout)
+        self.assertIn("trust is blocked for project 'fresh'", text_result.stdout)
+        self.assertNotIn("metadata-only", text_result.stdout)
+
+    def test_status_for_project_without_commands_is_not_required_and_omits_allow_guidance(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            write_manifest(workspace / "docs", name="docs", command=None)
+
+            result = invoke(
+                engine.app,
+                ["status", "docs", "--workspace", str(workspace), "--format", "json"],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+            text_result = invoke(
+                engine.app,
+                ["status", "docs", "--workspace", str(workspace)],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "not_required")
+        self.assertEqual(payload["reason"], "no_executable_commands")
+        self.assertNotIn("allow_command", payload)
+        self.assertEqual(text_result.exit_code, 0, text_result.output)
+        self.assertIn("trust is not required", text_result.stdout)
+        self.assertNotIn("trust allow", text_result.stdout)
+
     def test_require_blocks_unapproved_manifest_with_review_guidance(self) -> None:
         from base_trust import engine
 
@@ -199,9 +327,68 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertIn("Manifest-declared commands are not allowed for project 'demo'", stderr.getvalue())
         self.assertIn(f"Manifest SHA-256: {expected_digest}", stderr.getvalue())
         self.assertIn("Review first:", stderr.getvalue())
-        self.assertIn("  basectl run demo --list", stderr.getvalue())
+        self.assertIn("  basectl test demo --dry-run", stderr.getvalue())
+        self.assertNotIn("  basectl run demo --list", stderr.getvalue())
         self.assertIn("Allow after review:", stderr.getvalue())
         self.assertIn(f"  basectl trust allow demo --manifest-sha256 {expected_digest}", stderr.getvalue())
+
+    def test_status_guidance_covers_demo_and_manifest_backed_activation(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = write_all_command_surfaces_manifest(workspace / "demo")
+
+            result = invoke(
+                engine.app,
+                ["status", "demo", "--workspace", str(workspace)],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Review first:", result.stdout)
+        self.assertIn("basectl run demo --list", result.stdout)
+        self.assertIn("basectl build demo --list", result.stdout)
+        self.assertIn("basectl test demo --dry-run", result.stdout)
+        self.assertIn("basectl demo demo --dry-run", result.stdout)
+        self.assertIn(f"Inspect activate.source entries in {manifest_path.resolve()}", result.stdout)
+        self.assertIn("basectl trust allow demo --manifest-sha256", result.stdout)
+
+    def test_changed_manifest_status_shows_recorded_digest_and_reapproval_guidance(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = write_manifest(workspace / "demo")
+            identity = engine.compute_trust_identity_for_manifest(manifest_path)
+            engine.ManifestCommandTrustStore(home=home).allow(identity, base_version="9.9.9")
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace("pytest tests/", "pytest -q"),
+                encoding="utf-8",
+            )
+            current_digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+
+            result = invoke(
+                engine.app,
+                ["status", "demo", "--workspace", str(workspace)],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("manifest changed", result.stdout)
+        self.assertIn(f"Recorded Manifest SHA-256: {identity.manifest_sha256}", result.stdout)
+        self.assertIn(f"Manifest SHA-256: {current_digest}", result.stdout)
+        self.assertIn("basectl test demo --dry-run", result.stdout)
+        self.assertIn(
+            f"basectl trust allow demo --manifest-sha256 {current_digest}",
+            result.stdout,
+        )
 
     def test_require_allows_matching_trust_record_for_manifest_path(self) -> None:
         from base_trust import engine

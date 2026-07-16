@@ -113,10 +113,15 @@ repositories.
 Use the focused trust command to inspect, allow, or revoke approval:
 
 ```bash
-basectl trust status <project> [--workspace <path>] [--format text|json]
+basectl trust status [project] [--workspace <path>] [--format text|json]
 basectl trust allow <project> [--workspace <path>] [--manifest-sha256 <sha256>]
 basectl trust revoke <project> [--workspace <path>]
 ```
+
+With a project, `trust status` reports that one manifest. Without a project, it
+reports every discovered project whose manifest declares an executable test,
+run, build, demo, or activation surface. Metadata-only manifests are omitted so
+workspace onboarding does not suggest unnecessary approval.
 
 `basectl trust allow` prints the exact identity being approved and requires the
 supplied `--manifest-sha256` to match when that option is present. That flag is
@@ -136,6 +141,8 @@ Review first:
   basectl run demo --list
   basectl build demo --list
   basectl test demo --dry-run
+  basectl demo demo --dry-run
+  Inspect activate.source entries in /Users/rameshhp/work/demo/base_manifest.yaml before running 'basectl activate demo'.
 
 Allow after review:
   basectl trust allow demo --manifest-sha256 <sha256>
@@ -163,7 +170,7 @@ If a workflow cannot precompute the digest, it may run `basectl trust status
 base-demo --format json` first, review the emitted `manifest_sha256` in a prior
 step, and then call `trust allow` with that digest.
 
-`basectl trust status --format json` should return a structured payload:
+`basectl trust status <project> --format json` returns a structured payload:
 
 ```json
 {
@@ -179,6 +186,27 @@ step, and then call `trust allow` with that digest.
     "head": "<commit-sha>"
   },
   "allow_command": "basectl trust allow demo --manifest-sha256 <sha256>"
+}
+```
+
+The project-less workspace form preserves each project payload under a
+versioned collection:
+
+```json
+{
+  "schema_version": 1,
+  "projects": [
+    {
+      "schema_version": 1,
+      "status": "blocked",
+      "reason": "not_allowed",
+      "project": {
+        "name": "demo",
+        "manifest_sha256": "<sha256>"
+      },
+      "allow_command": "basectl trust allow demo --manifest-sha256 <sha256>"
+    }
+  ]
 }
 ```
 

@@ -23,7 +23,7 @@ Options:
 
 Purpose:
   Guide a user through the first Base setup by orchestrating check, setup,
-  update-profile, doctor, and project discovery commands.
+  update-profile, doctor, project discovery, and manifest command trust status.
 
 Project:
   Defaults to 'base'. The selected project is passed to check, setup, and doctor.
@@ -135,6 +135,7 @@ base_onboard_subcommand_main() {
     local setup_args=()
     local profile_args=(update-profile)
     local projects_args=(projects list)
+    local trust_args=(trust status)
 
     while (($#)); do
         case "$1" in
@@ -196,6 +197,10 @@ base_onboard_subcommand_main() {
         doctor_args+=(-v)
         profile_args+=(-v)
         projects_args+=(-v)
+        trust_args+=(-v)
+    fi
+    if ((yes)); then
+        setup_args+=(--yes)
     fi
     if ((dry_run)); then
         setup_args+=(--dry-run)
@@ -264,6 +269,10 @@ base_onboard_subcommand_main() {
         base_onboard_run_command "${projects_args[@]}" || printf '%s\n' "Project discovery is not available yet."
     fi
 
+    base_onboard_print_heading "Trust"
+    printf '%s\n' "Base will report manifest command trust for discovered projects without approving any manifest."
+    base_onboard_execute "$dry_run" "${trust_args[@]}" || return $?
+
     base_onboard_print_heading "Next Steps"
-    printf "%s\n" "Run 'basectl' to enter the nearest Base project shell, or 'basectl activate $project' to start with '$project'."
+    printf "%s\n" "After reviewing and allowing any blocked manifest command contracts, run 'basectl' to enter the nearest Base project shell, or 'basectl activate $project' to start with '$project'."
 }
