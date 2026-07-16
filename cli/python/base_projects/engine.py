@@ -11,7 +11,6 @@ from base_projects.build_targets import list_build_targets_from_args
 from base_projects.command_helpers import ProjectUsageError
 from base_projects.project_discovery import Project
 from base_projects.project_discovery import discover_projects_cached
-from base_projects.project_discovery import find_project_in_projects
 from base_projects.project_discovery import current_project
 from base_projects.project_discovery import read_project
 from base_projects.project_discovery import resolve_active_project
@@ -83,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     "--workspace",
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
 )
+@base_cli.option("--project", "project_name", help="Select a project explicitly.")
 @base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
 @base_cli.option("--manifest", "workspace_manifest", help="Local workspace manifest to read.")
 @base_cli.option("--source", "workspace_manifest_source", help="Canonical workspace manifest source URL or path.")
@@ -99,6 +99,7 @@ def run(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
     workspace: str | None,
+    project_name: str | None,
     output_format: str,
     workspace_manifest: str | None,
     workspace_manifest_source: str | None,
@@ -114,6 +115,7 @@ def run(
             WorkspaceCommandOptions(
                 workspace=workspace,
                 output_format=output_format,
+                project_name=project_name,
                 workspace_manifest=workspace_manifest,
                 workspace_manifest_source=workspace_manifest_source,
                 workspace_config_path=workspace_config_path,
@@ -146,7 +148,7 @@ def project_command_actions() -> ProjectCommandActions:
         test_command_project=test_command_project_command,
         demo_script_project=demo_script_project_command,
         activation_sources_project=activation_sources_project_command,
-        run_command_project=run_command_project_command,
+        run_command_project=run_command_project_from_args,
         list_run_commands=list_run_commands_command,
         build_targets=build_targets_project_command,
         build_target_list=build_target_list_project_command,
@@ -169,19 +171,35 @@ def workspace_init_project_command(
 def build_targets_project_command(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
+    explicit_project: str | None,
     workspace: str | None,
     output_format: str = "text",
 ) -> int:
-    return build_targets_project_from_args(ctx, arguments, workspace, resolve_named_project, output_format)
+    return build_targets_project_from_args(
+        ctx,
+        arguments,
+        explicit_project,
+        workspace,
+        select_invocation_project,
+        output_format,
+    )
 
 
 def build_target_list_project_command(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
+    explicit_project: str | None,
     workspace: str | None,
     output_format: str = "text",
 ) -> int:
-    return list_build_targets_from_args(ctx, arguments, workspace, resolve_named_project, output_format)
+    return list_build_targets_from_args(
+        ctx,
+        arguments,
+        explicit_project,
+        workspace,
+        select_invocation_project,
+        output_format,
+    )
 
 
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
@@ -192,7 +210,7 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         projects = discover_projects_cached(ctx, workspace_root)
-    except ProjectDiscoveryError as exc:
+    except (ProjectDiscoveryError, ManifestError) as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
@@ -558,9 +576,45 @@ def run_command_project_command(
 
     try:
         project = resolve_named_project(ctx, project_name, workspace)
+    except (ProjectDiscoveryError, ManifestError, ProjectCommandError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    return run_command_for_project(ctx, project, command_name, output_format)
+
+
+def run_command_project_from_args(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    explicit_project: str | None,
+    workspace: str | None,
+    output_format: str = "text",
+) -> int:
+    try:
+        project, command_arguments = select_invocation_project(ctx, explicit_project, arguments, workspace)
+    except ProjectDiscoveryError as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    if len(command_arguments) != 1:
+        if not command_arguments:
+            ctx.log.error("Command name is required for project '%s'.", project.name)
+        else:
+            ctx.log.error("Command 'run-command' accepts exactly one command name; got %d.", len(command_arguments))
+        return base_cli.ExitCode.USAGE_ERROR
+    return run_command_for_project(ctx, project, command_arguments[0], output_format)
+
+
+def run_command_for_project(
+    ctx: base_cli.Context,
+    project: Project,
+    command_name: str,
+    output_format: str = "text",
+) -> int:
+    try:
         manifest = read_manifest(project.manifest_path)
         command_config = project_command(manifest, command_name)
-    except (ProjectDiscoveryError, ManifestError, ProjectCommandError) as exc:
+    except (ManifestError, ProjectCommandError) as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
@@ -614,6 +668,28 @@ def list_run_commands_command(
                     )
                     for command_name, command_config in commands.items()
                 ],
+            )
+        )
+    elif output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "project": {
+                        "name": project.name,
+                        "root": str(project.root),
+                        "manifest_path": str(project.manifest_path),
+                    },
+                    "commands": [
+                        {
+                            "name": command_name,
+                            "command": command_config.command,
+                            "runner": command_config.runner,
+                        }
+                        for command_name, command_config in commands.items()
+                    ],
+                },
+                indent=2,
             )
         )
     elif output_format == "text":
@@ -690,6 +766,15 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None, output
 
 
 def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project:
+    project = find_named_project(ctx, project_name, workspace)
+    if project is not None:
+        return project
+
+    workspace_root = resolve_workspace_root(ctx, workspace)
+    raise ProjectDiscoveryError(f"Project '{project_name}' was not found in workspace '{workspace_root}'.")
+
+
+def find_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project | None:
     if workspace is None and project_name == "base" and ctx.base_home is not None:
         return read_project(ctx.base_home / "base_manifest.yaml")
 
@@ -701,4 +786,21 @@ def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: s
 
     workspace_root = resolve_workspace_root(ctx, workspace)
     projects = discover_projects_cached(ctx, workspace_root)
-    return find_project_in_projects(projects, workspace_root, project_name)
+    return next((project for project in projects if project.name == project_name), None)
+
+
+def select_invocation_project(
+    ctx: base_cli.Context,
+    explicit_project: str | None,
+    arguments: tuple[str, ...],
+    workspace: str | None,
+) -> tuple[Project, tuple[str, ...]]:
+    if explicit_project is not None:
+        return resolve_named_project(ctx, explicit_project, workspace), arguments
+
+    if arguments:
+        legacy_project = find_named_project(ctx, arguments[0], workspace)
+        if legacy_project is not None:
+            return legacy_project, arguments[1:]
+
+    return current_project(), arguments

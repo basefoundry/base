@@ -25,9 +25,9 @@ options.
 - `basectl doctor [project]` - diagnose Base or project readiness and explain
   fixes.
 - `basectl test [project]` - run a project's declared test command.
-- `basectl build <project> [target...]` - run declared build targets.
+- `basectl build [project] [target...]` - run declared build targets for the positional, explicit, or nearest project.
 - `basectl demo [project]` - run a declared interactive demo script.
-- `basectl run <project> <command>` - run a declared project command.
+- `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
   Zip bundle for manual upload or copy/paste into AI tools.
 - `basectl trust status [project]` - inspect one project's manifest command

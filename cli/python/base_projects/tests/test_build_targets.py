@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -182,17 +183,26 @@ class BuildTargetTests(unittest.TestCase):
         self.assertEqual(records[0]["runner"], "uv")
         self.assertTrue(records[0]["manifest_command_trust_required"])
 
-    def test_projects_build_targets_requires_project_argument(self) -> None:
+    def test_projects_build_targets_defaults_to_current_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
             base_home = workspace / "base"
             base_home.mkdir()
+            project_root = workspace / "demo"
+            nested = project_root / "docs"
+            write_build_manifest(project_root, "demo")
+            nested.mkdir()
 
-            status, stdout, stderr = run_engine(["build-targets"], base_home)
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["build-targets"], base_home)
+            finally:
+                os.chdir(old_cwd)
 
-        self.assertEqual(status, 2)
-        self.assertEqual(stdout, "")
-        self.assertIn("requires at least 1 argument (project name); got 0", stderr)
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("\tapi\t", stdout)
+        self.assertIn("\tworker\t", stdout)
 
     def test_projects_build_targets_does_not_cap_target_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -209,17 +219,26 @@ class BuildTargetTests(unittest.TestCase):
         self.assertIn("does not declare build target 'target-0'", stderr)
         self.assertNotIn("expects between 1 and 1000 arguments", stderr)
 
-    def test_projects_build_target_list_requires_exactly_one_project_argument(self) -> None:
+    def test_projects_build_target_list_defaults_to_current_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
             base_home = workspace / "base"
             base_home.mkdir()
+            project_root = workspace / "demo"
+            nested = project_root / "docs"
+            write_build_manifest(project_root, "demo")
+            nested.mkdir()
 
-            status, stdout, stderr = run_engine(["build-target-list"], base_home)
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                status, stdout, stderr = run_engine(["build-target-list"], base_home)
+            finally:
+                os.chdir(old_cwd)
 
-        self.assertEqual(status, 2)
-        self.assertEqual(stdout, "")
-        self.assertIn("requires exactly 1 argument (project name); got 0", stderr)
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("\tapi\t", stdout)
+        self.assertIn("\tworker\t", stdout)
 
     def test_projects_build_target_list_rejects_extra_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -231,7 +250,7 @@ class BuildTargetTests(unittest.TestCase):
 
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("requires exactly 1 argument (project name); got 2", stderr)
+        self.assertIn("accepts at most 1 positional project; got 2", stderr)
 
     def test_projects_build_targets_prints_default_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -340,6 +359,106 @@ class BuildTargetTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn("\tapi\t", stdout)
         self.assertIn("\tworker\t", stdout)
+
+    def test_projects_build_target_list_json_is_stable_and_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo with spaces"
+            write_build_manifest_with_runner(project_root, "demo")
+
+            status, stdout, stderr = run_engine(
+                ["build-target-list", "demo", "--format", "json"],
+                base_home,
+            )
+
+        self.assertEqual((status, stderr), (0, ""))
+        payload = json.loads(stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(
+            payload["project"],
+            {
+                "name": "demo",
+                "root": str(project_root.resolve()),
+                "manifest_path": str((project_root / "base_manifest.yaml").resolve()),
+            },
+        )
+        self.assertEqual(
+            payload["targets"],
+            [
+                {
+                    "name": "package",
+                    "working_dir": str((project_root / "services" / "api").resolve()),
+                    "command": "python -m build",
+                    "description": "Build the Python package.",
+                    "runner": "uv",
+                }
+            ],
+        )
+
+    def test_projects_build_targets_respects_legacy_and_explicit_project_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            current_root = workspace / "current"
+            other_root = workspace / "api"
+            write_build_manifest(current_root, "current")
+            write_build_manifest(other_root, "api")
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(current_root)
+                legacy_status, legacy_stdout, legacy_stderr = run_engine(["build-targets", "api"], base_home)
+                explicit_status, explicit_stdout, explicit_stderr = run_engine(
+                    ["build-targets", "api", "--project", "current"],
+                    base_home,
+                )
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual((legacy_status, legacy_stderr), (0, ""))
+        self.assertTrue(legacy_stdout.startswith(f"api\t{other_root.resolve()}\t"))
+        self.assertEqual((explicit_status, explicit_stderr), (0, ""))
+        self.assertTrue(explicit_stdout.startswith(f"current\t{current_root.resolve()}\t"))
+        self.assertIn("\tapi\t", explicit_stdout)
+
+    def test_projects_build_targets_missing_current_project_is_controlled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(workspace)
+                status, stdout, stderr = run_engine(["build-targets", "unknown-target"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("No base_manifest.yaml found", stderr)
+        self.assertNotIn("Traceback", stderr)
+
+    def test_projects_build_targets_invalid_current_manifest_is_controlled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            (workspace / "base_manifest.yaml").write_text("project: [\n", encoding="utf-8")
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(workspace)
+                status, stdout, stderr = run_engine(["build-targets", "api"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertNotIn("Traceback", stderr)
 
     def test_projects_build_targets_requires_build_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

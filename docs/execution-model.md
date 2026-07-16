@@ -273,8 +273,10 @@ This is an internal Base boundary, not a public automation format. Production
 Bash callers must not fall back to tab-position parsing, and the decoder does
 not require `jq` or another Python process. The standalone Bash and Zsh
 completion scripts use narrow readers for the same versioned
-`project-list-entry` records because completion can load before the full Base
-runtime; the Bash reader remains compatible with macOS system Bash 3. Normal
+`project-list-entry`, `named-command`, and `build-target` records because
+completion can load before the full Base runtime; the Bash reader remains
+compatible with macOS system Bash 3. Completion requests these records through
+read-only dry-run paths and never executes or trusts manifest commands. Normal
 Base command paths use `lib/bash/runtime/command_protocol.sh`.
 
 ## Runtime Shell

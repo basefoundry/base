@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
@@ -24,39 +25,52 @@ class BuildTargetError(RuntimeError):
 
 
 ProjectResolver = Callable[[base_cli.Context, str, str | None], ProjectLike]
+InvocationProjectSelector = Callable[
+    [base_cli.Context, str | None, tuple[str, ...], str | None],
+    tuple[ProjectLike, tuple[str, ...]],
+]
 
 
-def build_targets_project_from_args(
+def build_targets_project_from_args(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
+    explicit_project: str | None,
     workspace: str | None,
-    resolve_project: ProjectResolver,
+    select_project: InvocationProjectSelector,
     output_format: str = "text",
 ) -> int:
-    if len(arguments) < 1:
-        ctx.log.error("Command 'build-targets' requires at least 1 argument (project name); got %d.", len(arguments))
-        return base_cli.ExitCode.USAGE_ERROR
-    return build_targets_project_command(
-        ctx,
-        arguments[0],
-        arguments[1:],
-        workspace,
-        resolve_project,
-        output_format,
-    )
+    try:
+        project, target_names = select_project(ctx, explicit_project, arguments, workspace)
+    except (RuntimeError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+    return build_targets_for_project(ctx, project, target_names, output_format)
 
 
-def list_build_targets_from_args(
+def list_build_targets_from_args(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
+    explicit_project: str | None,
     workspace: str | None,
-    resolve_project: ProjectResolver,
+    select_project: InvocationProjectSelector,
     output_format: str = "text",
 ) -> int:
-    if len(arguments) != 1:
-        ctx.log.error("Command 'build-target-list' requires exactly 1 argument (project name); got %d.", len(arguments))
+    if explicit_project is not None and arguments:
+        ctx.log.error("Command 'build-target-list' does not accept a positional project with --project.")
         return base_cli.ExitCode.USAGE_ERROR
-    return list_build_targets_command(ctx, arguments[0], workspace, resolve_project, output_format)
+    if len(arguments) > 1:
+        ctx.log.error("Command 'build-target-list' accepts at most 1 positional project; got %d.", len(arguments))
+        return base_cli.ExitCode.USAGE_ERROR
+
+    try:
+        project, remaining = select_project(ctx, explicit_project, arguments, workspace)
+    except (RuntimeError, ManifestError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+    if remaining:
+        ctx.log.error("Project '%s' was not found in the configured workspace.", remaining[0])
+        return base_cli.ExitCode.FAILURE
+    return list_build_targets_for_project(ctx, project, output_format)
 
 
 def build_targets_project_command(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -73,6 +87,20 @@ def build_targets_project_command(  # pylint: disable=too-many-arguments,too-man
 
     try:
         project = resolve_project(ctx, project_name, workspace)
+    except (RuntimeError, ManifestError, BuildTargetError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    return build_targets_for_project(ctx, project, target_names, output_format)
+
+
+def build_targets_for_project(
+    ctx: base_cli.Context,
+    project: ProjectLike,
+    target_names: tuple[str, ...],
+    output_format: str = "text",
+) -> int:
+    try:
         manifest = read_manifest(project.manifest_path)
         targets = selected_build_targets(project, manifest, target_names)
     except (RuntimeError, ManifestError, BuildTargetError) as exc:
@@ -121,6 +149,19 @@ def list_build_targets_command(
 
     try:
         project = resolve_project(ctx, project_name, workspace)
+    except (RuntimeError, ManifestError, BuildTargetError) as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
+
+    return list_build_targets_for_project(ctx, project, output_format)
+
+
+def list_build_targets_for_project(
+    ctx: base_cli.Context,
+    project: ProjectLike,
+    output_format: str = "text",
+) -> int:
+    try:
         manifest = read_manifest(project.manifest_path)
         targets = all_build_targets(project, manifest)
     except (RuntimeError, ManifestError, BuildTargetError) as exc:
@@ -140,6 +181,30 @@ def list_build_targets_command(
             for target_name, target_config, working_dir in targets
         ]
         print(dumps_records("build-target", records))
+    elif output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "project": {
+                        "name": project.name,
+                        "root": str(project.root),
+                        "manifest_path": str(project.manifest_path),
+                    },
+                    "targets": [
+                        {
+                            "name": target_name,
+                            "working_dir": str(working_dir),
+                            "command": target_config.command,
+                            "description": target_config.description,
+                            "runner": target_config.runner,
+                        }
+                        for target_name, target_config, working_dir in targets
+                    ],
+                },
+                indent=2,
+            )
+        )
     elif output_format == "text":
         for target_name, target_config, working_dir in targets:
             print_build_target(

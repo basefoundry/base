@@ -56,12 +56,12 @@ full compatibility contract.
 |---|---|---|
 | `basectl projects list` | Discover Base-managed projects under the workspace root. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--workspace <path>`, `--no-cd` |
-| `basectl test [project]` | Run the project's declared test command from the project root. | `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl run <project> <command>` | Run a named manifest command from the project root. | `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--workspace <path>` |
-| `basectl build <project> [target...]` | Run declared build targets, or `build.default` when no target is provided. | `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl build <project> --list` | List build targets declared by a project manifest. | `--workspace <path>` |
-| `basectl demo [project]` | Run a project-owned demo script. | `--workspace <path>`, `--dry-run`, `-- <args>` |
+| `basectl test [project]` | Run the project's declared test command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
+| `basectl run [project] <command>` | Run a named manifest command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
+| `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
+| `basectl build [project] [target...]` | Run declared build targets, or `build.default` when no target is provided. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
+| `basectl build [project] --list` | List build targets declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
+| `basectl demo [project]` | Run a project-owned demo script. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|json>` |
@@ -72,6 +72,30 @@ Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
 project-owned code executed from the project root. Review manifests from
 unfamiliar repositories before running them; use `--dry-run` or `--list` where
 available and inspect `activate.source` directly before activation.
+
+These four lifecycle commands use one project-selection order: `--project
+<name>`, then a backward-compatible first positional value when it names a
+registered project, then the nearest `base_manifest.yaml` from the current
+directory. If none applies, Base returns a controlled error. `--workspace`
+changes where named projects are discovered; it does not replace nearest-
+manifest traversal. From a workspace root with no project manifest, pass
+`--project <name>` or a registered positional project.
+
+For `run` and `build`, a registered first positional value keeps its legacy
+project meaning even when the current manifest declares a command or target
+with the same name. Select the current project explicitly to disambiguate, for
+example `basectl run --project current api` or `basectl build --project current
+api`. Bash and Zsh completion use the same read-only resolution rules.
+
+`basectl run --list --format json` and `basectl build --list --format json`
+are stable, side-effect-free automation contracts. Each object has
+`schema_version: 1`, a `project` object (`name`, `root`, `manifest_path`), and
+an ordered `commands` or `targets` array. Each command item has `name`,
+`command`, and `runner` (`string` or `null`). Each target item has `name`,
+`working_dir`, `command`, `description` (`string` or `null`), and `runner`
+(`string` or `null`). These keys are always present. Listing and completion
+read manifest metadata only: they do not execute project commands or grant
+manifest trust.
 
 ## Diagnostics And Logs
 

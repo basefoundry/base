@@ -162,9 +162,9 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 |---|---|
 | `basectl projects list [--format json]` | Discover all Base-managed projects |
 | `basectl activate <project> [--no-cd]` | Spawn project subshell |
-| `basectl test <project> [-- args]` | Run declared test command |
-| `basectl run <project> <cmd> [-- args]` | Run named manifest command |
-| `basectl build <project> [targets] [--list\|--dry-run]` | Run build targets |
+| `basectl test [project] [-- args]` | Run the declared test command for the explicit, positional, or nearest project |
+| `basectl run [project] <cmd> [-- args]` | Run a named manifest command for the explicit, positional, or nearest project |
+| `basectl build [project] [targets] [--list\|--dry-run]` | Run build targets for the explicit, positional, or nearest project |
 | `basectl demo [project] [--non-interactive]` | Run project demo script |
 | `basectl export-context [project]` | Generate AI context pack from `.ai-context/` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from manifest metadata |

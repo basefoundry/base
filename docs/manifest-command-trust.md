@@ -29,8 +29,8 @@ Base requires an allow record before commands that execute manifest-declared
 project code:
 
 - `basectl test [project]`
-- `basectl run <project> <command>`
-- `basectl build <project> [target...]`
+- `basectl run [project] <command>`
+- `basectl build [project] [target...]`
 - `basectl demo [project]`
 - `basectl activate <project>` when it will source `activate.source` entries
 
@@ -40,10 +40,10 @@ without executing project-owned shell code:
 - `basectl projects list`
 - `basectl workspace status`, `check`, and `doctor`
 - `basectl run [project] --list`
-- `basectl build <project> --list`
+- `basectl build [project] --list`
 - `basectl test [project] --dry-run`
-- `basectl run <project> <command> --dry-run`
-- `basectl build <project> [target...] --dry-run`
+- `basectl run [project] <command> --dry-run`
+- `basectl build [project] [target...] --dry-run`
 - `basectl demo [project] --dry-run`
 - `basectl check [project]` and `basectl doctor [project]`
 - `basectl export-context [project]`
