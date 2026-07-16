@@ -366,7 +366,7 @@ _base_basectl_completion() {
                 '--recreate-venv[Recreate the Base venv]' \
                 '--yes[Apply setup changes that require explicit confirmation]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -378,7 +378,7 @@ _base_basectl_completion() {
                 '--manifest[Use a specific manifest]:path:_files' \
                 '--remote-network[Opt in to bounded project Git origin reachability checks]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -560,7 +560,7 @@ _base_basectl_completion() {
         ci)
             case "${words[3]:-}" in
                 setup)
-                    _arguments '1:ci command:(setup check doctor)' \
+                    _arguments '2:ci command:(setup check doctor)' \
                         '--ci[Run setup with CI-safe defaults]' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
@@ -572,10 +572,10 @@ _base_basectl_completion() {
                         '--yes[Apply setup changes that require explicit confirmation]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
-                        '2:Base project:->projects'
+                        '3:Base project:->projects'
                     ;;
                 check)
-                    _arguments '1:ci command:(setup check doctor)' \
+                    _arguments '2:ci command:(setup check doctor)' \
                         '--ci[Run checks with CI-safe defaults]' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
@@ -583,10 +583,10 @@ _base_basectl_completion() {
                         '--remote-network[Opt in to bounded project Git origin reachability checks]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
-                        '2:Base project:->projects'
+                        '3:Base project:->projects'
                     ;;
                 doctor)
-                    _arguments '1:ci command:(setup check doctor)' \
+                    _arguments '2:ci command:(setup check doctor)' \
                         '--ci[Run diagnostics with CI-safe defaults]' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
@@ -595,10 +595,10 @@ _base_basectl_completion() {
                         '--no-color[Disable doctor status colors and symbols in text output]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
-                        '2:Base project:->projects'
+                        '3:Base project:->projects'
                     ;;
                 *)
-                    _arguments '1:ci command:(setup check doctor)'
+                    _arguments '2:ci command:(setup check doctor)'
                     ;;
             esac
             if [[ "$state" == projects ]]; then
@@ -657,7 +657,7 @@ _base_basectl_completion() {
                         '--no-color[Disable doctor status colors and symbols in text output]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
-                        '1:doctor command or project:->doctor_targets'
+                        '2:doctor command or project:->doctor_targets'
                     if [[ "$state" == doctor_targets ]]; then
                         _alternative \
                             'commands:doctor command:(explain)' \

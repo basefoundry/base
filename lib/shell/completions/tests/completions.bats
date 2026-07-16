@@ -216,6 +216,39 @@ assert_zsh_ci_completion_options_match_help() {
     [ "$status" -eq 0 ]
 }
 
+run_zsh_positional_completion() {
+    run env BASE_HOME="$BASE_REPO_ROOT" zsh -fc '
+        compdef() { :; }
+        source "$BASE_HOME/lib/shell/completions/basectl_completion.zsh"
+
+        _arguments() {
+            local positional_argument=$((CURRENT - 1)) spec
+
+            for spec in "$@"; do
+                if [[ "$spec" == "${positional_argument}:"* ]]; then
+                    print -r -- "positional=$spec"
+                    case "$spec" in
+                        *"->projects") state=projects ;;
+                        *"->doctor_targets") state=doctor_targets ;;
+                    esac
+                    return 0
+                fi
+            done
+            print -r -- "positional=<none>"
+        }
+        _base_basectl_completion_describe_projects() {
+            print -r -- "projects=base demo"
+        }
+        _alternative() {
+            print -r -- "doctor_targets=explain base demo"
+        }
+
+        words=("$@")
+        CURRENT=${#words}
+        _base_basectl_completion
+    ' zsh "$@"
+}
+
 @test "Bash completion top-level commands match basectl help" {
     local expected="$TEST_TMPDIR/help-commands"
     local actual="$TEST_TMPDIR/bash-completion-commands"
@@ -271,6 +304,42 @@ assert_zsh_ci_completion_options_match_help() {
     assert_zsh_ci_completion_options_match_help setup
     assert_zsh_ci_completion_options_match_help check
     assert_zsh_ci_completion_options_match_help doctor
+}
+
+@test "Zsh lifecycle project completions use executable argument positions" {
+    run_zsh_positional_completion basectl ci ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:ci command:(setup check doctor)"* ]]
+
+    run_zsh_positional_completion basectl setup ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl check ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl doctor ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:doctor command or project:->doctor_targets"* ]]
+    [[ "$output" == *"doctor_targets=explain base demo"* ]]
+
+    run_zsh_positional_completion basectl ci setup ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl ci check ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl ci doctor ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
 }
 
 @test "Zsh repo installer-template completion includes print options" {
