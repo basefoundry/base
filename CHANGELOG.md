@@ -54,6 +54,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Updated Base CI to consume the published `base-bash-libs` v1.3.0 release
+  commit.
+
 - Migrated generic Git branch, worktree, upstream, merge, remote, and default
   branch consumers to canonical `git_*` helpers and synchronized CI with the
   merged `base-bash-libs` implementation.
