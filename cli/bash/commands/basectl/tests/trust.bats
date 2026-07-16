@@ -21,12 +21,16 @@ load ./basectl_helpers.bash
     cat > "$base_home/bin/base-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf 'args=%s\n' "$*"
+printf 'active_project=%s\n' "${BASE_TRUST_ACTIVE_PROJECT:-}"
+printf 'active_manifest=%s\n' "${BASE_TRUST_ACTIVE_PROJECT_MANIFEST:-}"
 EOF
     chmod +x "$base_home/bin/base-wrapper"
 
     run env \
         BASE_HOME="$base_home" \
         BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_MANIFEST=/tmp/work/demo/base_manifest.yaml \
         bash -c '
             source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/trust.sh"
             base_trust_subcommand_main status --workspace /tmp/work
@@ -34,6 +38,8 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"args=--project base base_trust status --workspace /tmp/work"* ]]
+    [[ "$output" == *"active_project=demo"* ]]
+    [[ "$output" == *"active_manifest=/tmp/work/demo/base_manifest.yaml"* ]]
 }
 
 @test "basectl trust forwards through the Python wrapper" {

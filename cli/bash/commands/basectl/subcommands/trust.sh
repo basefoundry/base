@@ -66,5 +66,8 @@ base_trust_subcommand_main() {
     done
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    BASE_CLI_DISPLAY_COMMAND="basectl trust" "$wrapper" --project base base_trust "${args[@]}"
+    BASE_TRUST_ACTIVE_PROJECT="${BASE_PROJECT:-}" \
+        BASE_TRUST_ACTIVE_PROJECT_MANIFEST="${BASE_PROJECT_MANIFEST:-}" \
+        BASE_CLI_DISPLAY_COMMAND="basectl trust" \
+        "$wrapper" --project base base_trust "${args[@]}"
 }

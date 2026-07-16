@@ -44,7 +44,7 @@ full compatibility contract.
 | `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
-| `basectl onboard [project]` | Guide first-run setup by orchestrating check, setup, shell profile, doctor, and project discovery. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
+| `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
 | `basectl version` | Show the installed Base version. | none |
 
 ## Daily Project Loop

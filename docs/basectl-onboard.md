@@ -122,7 +122,8 @@ Options:
 ```text
   --profile <list> Include named prerequisite profiles.
   --dry-run        Explain and show planned actions without making changes.
-  --yes            Accept default answers for non-destructive prompts.
+  --yes            Approve setup changes and the shell-profile prompt; never
+                   grant manifest trust.
   --no-profile     Skip shell profile updates.
   -v               Enable DEBUG logging for underlying commands.
   -h, --help       Show help text.
@@ -193,6 +194,10 @@ Failures are recoverable and specific:
   profile updates.
 - If `basectl update-profile` fails, leave setup success intact and explain how
   to rerun that step.
+- If project discovery or trust status fails after setup, stop before activation
+  guidance, preserve the failing status, and tell the user to retry
+  `basectl projects list` followed by `basectl trust status`. Earlier setup or
+  profile changes remain applied.
 - Preserve the failing command's exit status when onboarding cannot complete.
 
 ## Non-Goals

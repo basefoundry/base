@@ -205,6 +205,40 @@ load ./basectl_helpers.bash
     [[ "$output" != *"RUN:update-profile"* ]]
 }
 
+@test "basectl onboard --yes satisfies the Ubuntu Debian setup consent boundary" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_MODE=true \
+        BASE_ONBOARD_TEST_STATE="$TEST_STATE_DIR/onboard-linux-consent" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_setup_run_text() {
+                setup_require_linux_debian_system_consent \
+                    "Ubuntu/Debian setup requires package-manager consent." || return $?
+                touch "$BASE_ONBOARD_TEST_STATE"
+            }
+            base_onboard_run_command() {
+                if [[ "$1" == setup ]]; then
+                    shift
+                    base_setup_subcommand_main "$@"
+                    return $?
+                fi
+                printf "RUN:%s\n" "$*"
+            }
+            base_onboard_subcommand_main --yes --no-profile
+        '
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/onboard-linux-consent" ]
+    [[ "$output" == *"Next: basectl setup base --yes"* ]]
+    [[ "$output" != *"rerun with '--yes'"* ]]
+    [[ "$output" != *"Proceed with Ubuntu/Debian setup changes?"* ]]
+    [[ "$output" != *"trust allow"* ]]
+}
+
 @test "basectl onboard setup failure stops profile updates and returns setup status" {
     run env \
         HOME="$TEST_HOME" \
@@ -249,4 +283,26 @@ load ./basectl_helpers.bash
     [[ "$output" != *"RUN:trust allow"* ]]
     [[ "$output" != *"Next Steps"* ]]
     [[ "$output" != *"basectl activate base"* ]]
+}
+
+@test "basectl onboard stops consistently when project discovery fails" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() {
+                printf "RUN:%s\n" "$*"
+                [[ "$1 $2" == "projects list" ]] && return 9
+                return 0
+            }
+            base_onboard_subcommand_main --yes --no-profile
+        '
+
+    [ "$status" -eq 9 ]
+    [[ "$output" == *"Project discovery failed after setup."* ]]
+    [[ "$output" == *"Retry 'basectl projects list', then run 'basectl trust status'"* ]]
+    [[ "$output" != *"RUN:trust status"* ]]
+    [[ "$output" != *"Next Steps"* ]]
 }

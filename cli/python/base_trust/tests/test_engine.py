@@ -268,7 +268,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertIn("trust is blocked for project 'fresh'", text_result.stdout)
         self.assertNotIn("metadata-only", text_result.stdout)
 
-    def test_status_for_project_without_commands_is_not_required_and_omits_allow_guidance(self) -> None:
+    def test_status_for_project_without_commands_keeps_json_v1_and_omits_text_guidance(self) -> None:
         from base_trust import engine
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -292,12 +292,66 @@ class ManifestCommandTrustTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, result.output)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["status"], "not_required")
-        self.assertEqual(payload["reason"], "no_executable_commands")
-        self.assertNotIn("allow_command", payload)
+        self.assertEqual(payload["status"], "blocked")
+        self.assertEqual(payload["reason"], "not_allowed")
+        self.assertIn("allow_command", payload)
         self.assertEqual(text_result.exit_code, 0, text_result.output)
         self.assertIn("trust is not required", text_result.stdout)
         self.assertNotIn("trust allow", text_result.stdout)
+
+    def test_workspace_status_adds_context_projects_only_for_implicit_workspace(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "configured-workspace"
+            base_home = root / "installed-base"
+            active_root = root / "active"
+            write_manifest(workspace / "scoped", name="scoped")
+            write_manifest(base_home, name="base")
+            active_manifest = write_manifest(active_root, name="active")
+            config_path = home / ".base.d" / "config.yaml"
+            config_path.parent.mkdir(parents=True)
+            config_path.write_text(f"workspace:\n  root: {workspace}\n", encoding="utf-8")
+
+            implicit_result = invoke(
+                engine.app,
+                ["status", "--format", "json"],
+                home=home,
+                env={
+                    "BASE_HOME": str(base_home),
+                    "BASE_PROJECT": "base",
+                    "BASE_PROJECT_MANIFEST": str(active_manifest),
+                    "BASE_TRUST_ACTIVE_PROJECT": "active",
+                    "BASE_TRUST_ACTIVE_PROJECT_MANIFEST": str(active_manifest),
+                },
+            )
+            explicit_result = invoke(
+                engine.app,
+                ["status", "--workspace", str(workspace), "--format", "json"],
+                home=home,
+                env={
+                    "BASE_HOME": str(base_home),
+                    "BASE_PROJECT": "base",
+                    "BASE_PROJECT_MANIFEST": str(active_manifest),
+                    "BASE_TRUST_ACTIVE_PROJECT": "active",
+                    "BASE_TRUST_ACTIVE_PROJECT_MANIFEST": str(active_manifest),
+                },
+            )
+
+        self.assertEqual(implicit_result.exit_code, 0, implicit_result.output)
+        implicit_payload = json.loads(implicit_result.stdout)
+        self.assertEqual(
+            [item["project"]["name"] for item in implicit_payload["projects"]],
+            ["active", "base", "scoped"],
+        )
+        self.assertEqual(explicit_result.exit_code, 0, explicit_result.output)
+        explicit_payload = json.loads(explicit_result.stdout)
+        self.assertEqual(
+            [item["project"]["name"] for item in explicit_payload["projects"]],
+            ["scoped"],
+        )
 
     def test_require_blocks_unapproved_manifest_with_review_guidance(self) -> None:
         from base_trust import engine

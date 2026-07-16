@@ -74,8 +74,11 @@ git clone https://github.com/basefoundry/base.git ~/work/base
 
 Review the manifest identity, digest, and read-only inspection commands, then
 run the exact `basectl trust allow base --manifest-sha256 ...` command printed
-by `trust status`. The digest-bound approval is never inferred from setup or an
-unattended flag. After approving the reviewed manifest, finish the proof:
+by `trust status`. Until shell-profile setup puts `basectl` on `PATH`, replace
+its leading `basectl` with `~/work/base/bin/basectl`; keep the project and
+printed digest unchanged. The digest-bound approval is never inferred from
+setup or an unattended flag. After approving the reviewed manifest, finish the
+proof:
 
 ```bash
 ~/work/base/bin/basectl demo base -- --non-interactive

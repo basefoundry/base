@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -8,7 +9,9 @@ from typing import Any
 import base_cli
 from base_cli.history import base_version as read_base_version
 from base_projects import engine as project_engine
+from base_projects.project_discovery import Project
 from base_projects.project_discovery import discover_projects_cached
+from base_projects.project_discovery import read_project
 from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_setup.manifest_loader import ManifestError
@@ -61,7 +64,7 @@ def status_command(ctx: base_cli.Context, project: str | None, workspace: str | 
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    trust_status = trust_status_for_surfaces(identity, surfaces)
+    trust_status = ManifestCommandTrustStore().status(identity)
     if output_format == "json":
         print(json.dumps(status_payload(trust_status), indent=2, sort_keys=True))
     else:
@@ -150,8 +153,7 @@ class TrustError(RuntimeError):
 
 def workspace_status_command(ctx: base_cli.Context, workspace: str | None, output_format: str) -> int:
     try:
-        workspace_root = resolve_workspace_root(ctx, workspace)
-        projects = discover_projects_cached(ctx, workspace_root)
+        projects = workspace_status_projects(ctx, workspace)
         store = ManifestCommandTrustStore()
         statuses = []
         for project in projects:
@@ -186,6 +188,43 @@ def workspace_status_command(ctx: base_cli.Context, workspace: str | None, outpu
             print()
         print_status_text(trust_status, surfaces)
     return base_cli.ExitCode.SUCCESS
+
+
+def workspace_status_projects(ctx: base_cli.Context, workspace: str | None) -> tuple[Project, ...]:
+    workspace_root = resolve_workspace_root(ctx, workspace)
+    projects_by_name = {project.name: project for project in discover_projects_cached(ctx, workspace_root)}
+
+    if workspace is None:
+        active_project = workspace_status_active_project()
+        if active_project is not None:
+            projects_by_name[active_project.name] = active_project
+
+        if ctx.base_home is not None:
+            base_manifest = ctx.base_home / "base_manifest.yaml"
+            if base_manifest.is_file():
+                base_project = read_project(base_manifest)
+                projects_by_name[base_project.name] = base_project
+
+    return tuple(sorted(projects_by_name.values()))
+
+
+def workspace_status_active_project() -> Project | None:
+    if "BASE_TRUST_ACTIVE_PROJECT" in os.environ:
+        active_name = os.environ.get("BASE_TRUST_ACTIVE_PROJECT")
+        active_manifest = os.environ.get("BASE_TRUST_ACTIVE_PROJECT_MANIFEST")
+    else:
+        active_name = os.environ.get("BASE_PROJECT")
+        active_manifest = os.environ.get("BASE_PROJECT_MANIFEST")
+
+    if not active_name or not active_manifest:
+        return None
+
+    project = read_project(Path(active_manifest).expanduser().resolve())
+    if project.name != active_name:
+        raise ProjectDiscoveryError(
+            f"Active project is '{active_name}' but its manifest declares project '{project.name}'."
+        )
+    return project
 
 
 def resolve_trust_identity(
@@ -224,7 +263,7 @@ def status_payload(trust_status: TrustStatus) -> dict[str, Any]:
     }
     if trust_status.is_allowed:
         payload["record"] = trust_status.record
-    elif trust_status.status != "not_required":
+    else:
         payload["allow_command"] = allow_command_text(trust_status.identity)
     if trust_status.changed_record is not None:
         changed_project = trust_status.changed_record.get("project", {})
@@ -237,22 +276,9 @@ def allow_command_text(identity: ManifestCommandTrustIdentity) -> str:
     return f"basectl trust allow {identity.project_name} --manifest-sha256 {identity.manifest_sha256}"
 
 
-def trust_status_for_surfaces(
-    identity: ManifestCommandTrustIdentity,
-    surfaces: tuple[str, ...],
-) -> TrustStatus:
-    if not surfaces:
-        return TrustStatus(
-            status="not_required",
-            reason="no_executable_commands",
-            identity=identity,
-        )
-    return ManifestCommandTrustStore().status(identity)
-
-
 def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> None:
     identity = trust_status.identity
-    if trust_status.status == "not_required":
+    if not surfaces:
         print(
             f"Manifest command trust is not required for project '{identity.project_name}': "
             "the manifest declares no executable command surfaces."

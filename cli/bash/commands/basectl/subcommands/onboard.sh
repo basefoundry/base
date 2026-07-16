@@ -16,7 +16,7 @@ Usage:
 Options:
   --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --dry-run     Explain planned onboarding steps without making changes.
-  --yes         Accept default answers for setup and shell profile prompts.
+  --yes         Approve setup changes and the shell-profile prompt; never grant manifest trust.
   --no-profile  Skip shell profile updates.
   -v            Enable DEBUG logging for underlying commands.
   -h, --help    Show this help text.
@@ -129,7 +129,9 @@ base_onboard_subcommand_main() {
     local yes=0
     local check_status=0
     local profile_status=0
+    local projects_status=0
     local setup_status=0
+    local trust_status=0
     local check_args=()
     local doctor_args=()
     local setup_args=()
@@ -266,12 +268,23 @@ base_onboard_subcommand_main() {
         base_onboard_execute "$dry_run" "${projects_args[@]}" || return $?
     else
         base_onboard_print_next "${projects_args[@]}"
-        base_onboard_run_command "${projects_args[@]}" || printf '%s\n' "Project discovery is not available yet."
+        base_onboard_run_command "${projects_args[@]}"
+        projects_status=$?
+        if ((projects_status != 0)); then
+            printf '%s\n' "Project discovery failed after setup."
+            printf '%s\n' "Retry 'basectl projects list', then run 'basectl trust status' before manifest-backed commands."
+            return "$projects_status"
+        fi
     fi
 
     base_onboard_print_heading "Trust"
     printf '%s\n' "Base will report manifest command trust for discovered projects without approving any manifest."
-    base_onboard_execute "$dry_run" "${trust_args[@]}" || return $?
+    base_onboard_execute "$dry_run" "${trust_args[@]}"
+    trust_status=$?
+    if ((trust_status != 0)); then
+        printf '%s\n' "Manifest trust status is unavailable. Retry 'basectl trust status' before manifest-backed commands."
+        return "$trust_status"
+    fi
 
     base_onboard_print_heading "Next Steps"
     printf "%s\n" "After reviewing and allowing any blocked manifest command contracts, run 'basectl' to enter the nearest Base project shell, or 'basectl activate $project' to start with '$project'."

@@ -123,6 +123,13 @@ reports every discovered project whose manifest declares an executable test,
 run, build, demo, or activation surface. Metadata-only manifests are omitted so
 workspace onboarding does not suggest unnecessary approval.
 
+For schema-v1 compatibility, explicit single-project JSON continues to report
+the underlying allow-record state, including `status: blocked` and an
+`allow_command` for a metadata-only manifest. Human text reports that approval
+is not required, and the project-less workspace view omits that manifest. The
+existing `status`, `reason`, and conditional `allow_command`/`record` meanings
+are unchanged.
+
 `basectl trust allow` prints the exact identity being approved and requires the
 supplied `--manifest-sha256` to match when that option is present. That flag is
 useful for scripted, non-interactive approval after a prior review step.
