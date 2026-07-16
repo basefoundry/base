@@ -14,6 +14,32 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--manifest-sha256 <sha256>"* ]]
 }
 
+@test "basectl trust leaves print command-scoped help" {
+    run_basectl trust status --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl trust status [project] [options]"* ]]
+    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" != *"--manifest-sha256"* ]]
+    [[ "$output" != *"basectl trust revoke"* ]]
+
+    run_basectl trust allow --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl trust allow <project> [options]"* ]]
+    [[ "$output" == *"--manifest-sha256 <sha256>"* ]]
+    [[ "$output" != *"--format"* ]]
+    [[ "$output" != *"basectl trust status"* ]]
+
+    run_basectl trust revoke --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl trust revoke <project> [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" != *"--format"* ]]
+    [[ "$output" != *"--manifest-sha256"* ]]
+}
+
 @test "basectl trust status forwards without a project for workspace inspection" {
     local base_home="$TEST_TMPDIR/base-home"
 

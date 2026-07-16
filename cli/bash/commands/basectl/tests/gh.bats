@@ -330,6 +330,25 @@ run_gh_subcommand() {
     [[ "$output" != *"ERROR:"* ]]
 }
 
+@test "basectl gh issue leaves print command-scoped help" {
+    run_basectl gh issue list --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh issue list [gh options...]"* ]]
+    [[ "$output" != *"--category"* ]]
+
+    run_basectl gh issue create --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh issue create --title <title> [options]"* ]]
+    [[ "$output" == *"--no-project"* ]]
+    [[ "$output" != *"--project-number"* ]]
+
+    run_basectl gh issue readiness --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh issue readiness <number> [options]"* ]]
+    [[ "$output" == *"--project-number <number>"* ]]
+    [[ "$output" != *"--category"* ]]
+}
+
 @test "basectl gh issue readiness reports ready when body and Project metadata are complete" {
     write_issue_readiness_gh_mock
     write_complete_issue_readiness_body
@@ -410,6 +429,20 @@ run_gh_subcommand() {
     [[ "$output" != *"basectl gh branch prune"* ]]
 }
 
+@test "basectl gh pr leaves print command-scoped help" {
+    run_basectl gh pr create --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh pr create [gh options...]"* ]]
+    [[ "$output" == *"--no-fixes"* ]]
+    [[ "$output" != *"basectl gh pr merge"* ]]
+
+    run_basectl gh pr status --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh pr status [gh options...]"* ]]
+    [[ "$output" != *"--no-fixes"* ]]
+    [[ "$output" != *"basectl gh pr create"* ]]
+}
+
 @test "basectl gh project prints area help" {
     run_basectl gh project --help
 
@@ -423,12 +456,34 @@ run_gh_subcommand() {
 }
 
 @test "basectl gh project configure help lists delegated Python options" {
-    run_basectl gh project --help
+    run_basectl gh project configure --help
 
     [ "$status" -eq 0 ]
     for flag in "--schema base-project" "--config <path>" "--copy-fields-from <title>" "--replace-project" "--initiative-option <name>" "--dry-run"; do
         [[ "$output" == *"$flag"* ]]
     done
+}
+
+@test "basectl gh project and branch leaves print command-scoped help" {
+    run_basectl gh project doctor --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh project doctor --project <title> [options]"* ]]
+    [[ "$output" == *"--schema base-project"* ]]
+    [[ "$output" != *"--dry-run"* ]]
+    [[ "$output" != *"basectl gh project configure"* ]]
+
+    run_basectl gh branch stale --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh branch stale [--days <days>]"* ]]
+    [[ "$output" != *"--dry-run"* ]]
+    [[ "$output" != *"--remote"* ]]
+
+    run_basectl gh branch prune --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh branch prune [options]"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" == *"--remote"* ]]
+    [[ "$output" != *"--days"* ]]
 }
 
 @test "basectl gh project issue set-fields prints concrete help" {

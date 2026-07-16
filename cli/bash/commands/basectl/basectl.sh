@@ -60,8 +60,8 @@ Daily project loop:
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
-  trust <status|allow|revoke> <project> [options]
-    Manage local approval for manifest-declared project commands.
+  trust <status|allow|revoke> [project] [options]
+    Inspect trust across projects, or manage one project's local approval.
 
 Workspace and repositories:
   workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]
@@ -101,7 +101,7 @@ Diagnostics and maintenance:
 
 Compatibility:
   ci <setup|check|doctor> [project] [options]
-    Compatibility alias for setup, check, and doctor --ci mode.
+    Compatibility alias for setup, check, and doctor --ci.
 
 Other:
   version

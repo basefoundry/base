@@ -349,7 +349,8 @@ Current implemented commands include:
 - `basectl update`
 - `basectl projects list`
 - `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure>`
-- `basectl trust <status|allow|revoke> <project>`
+- `basectl trust status [project]`
+- `basectl trust <allow|revoke> <project>`
 - `basectl repo init <name>`
 - `basectl repo clone <name-or-owner/name>`
 - `basectl repo check [path]`
@@ -366,6 +367,7 @@ Current implemented commands include:
 - `basectl activate <project>`
 - `basectl test [project]`
 - `basectl build <project> [target...]`
+- `basectl demo [project]`
 - `basectl run <project> <command>`
 - `basectl export-context [project]`
 - `basectl devcontainer [project]`

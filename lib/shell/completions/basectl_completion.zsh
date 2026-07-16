@@ -263,17 +263,17 @@ _base_basectl_completion() {
 
     case "${words[2]:-}" in
         activate)
-            if ((CURRENT == 3)); then
+            _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--no-cd[Preserve the caller current directory]' \
+                '-v[Enable DEBUG logging]' \
+                '(-h --help)'{-h,--help}'[Show help text]' \
+                '2:Base project:->projects'
+            if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
-            else
-                _arguments '--workspace[Workspace directory to scan]:path:_files' \
-                    '--no-cd[Preserve the caller current directory]' \
-                    '-v[Enable DEBUG logging]' \
-                    '(-h --help)'{-h,--help}'[Show help text]'
             fi
             ;;
         projects)
-            _arguments '1:projects command:(list)' \
+            _arguments '2:projects command:(list)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
@@ -281,27 +281,27 @@ _base_basectl_completion() {
         trust)
             case "${words[3]:-}" in
                 status)
-                    _arguments '1:trust command:(status allow revoke)' \
-                        '2::Base project:->projects' \
+                    _arguments '2:trust command:(status allow revoke)' \
+                        '3::Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 allow)
-                    _arguments '1:trust command:(status allow revoke)' \
-                        '2:Base project:->projects' \
+                    _arguments '2:trust command:(status allow revoke)' \
+                        '3:Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest-sha256[Expected manifest SHA-256]:sha256:' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 revoke)
-                    _arguments '1:trust command:(status allow revoke)' \
-                        '2:Base project:->projects' \
+                    _arguments '2:trust command:(status allow revoke)' \
+                        '3:Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:trust command:(status allow revoke)'
+                    _arguments '2:trust command:(status allow revoke)'
                     ;;
             esac
             if [[ "$state" == projects ]]; then
@@ -311,14 +311,14 @@ _base_basectl_completion() {
         workspace)
             case "${words[3]:-}" in
                 status|check|doctor|onboarding|agent-brief)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 clone)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--include-optional[Include optional manifest repositories when cloning]' \
@@ -326,15 +326,15 @@ _base_basectl_completion() {
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 pull)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--source[Canonical workspace manifest source]:url-or-path:' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace pull work without writing]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 init)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
-                        '2:workspace source:' \
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
+                        '3:workspace source:' \
                         '--owner[GitHub owner for short workspace repository names]:owner:' \
                         '--path[Workspace configuration repository checkout path]:path:_files' \
                         '--workspace[Workspace directory for member repositories]:path:_files' \
@@ -344,14 +344,14 @@ _base_basectl_completion() {
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to configure]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace configuration without applying repo changes]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:workspace command:(status check doctor onboarding agent-brief clone pull init configure)'
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)'
                     ;;
             esac
             ;;
@@ -387,7 +387,7 @@ _base_basectl_completion() {
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
                 '--dry-run[Print the resolved test command without running it]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -399,7 +399,7 @@ _base_basectl_completion() {
                 '--print[Print the Markdown export to stdout]' \
                 '--list-files[List files in export order]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -409,7 +409,7 @@ _base_basectl_completion() {
                 '--format[Output format]:format:(text json)' \
                 '--write[Write .devcontainer/devcontainer.json]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -418,7 +418,7 @@ _base_basectl_completion() {
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -428,7 +428,7 @@ _base_basectl_completion() {
                 '--dry-run[Print resolved build commands without running them]' \
                 '--list[List build targets]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects' '*:Build target:'
+                '2:Base project:->projects' '*:Build target:'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -437,7 +437,7 @@ _base_basectl_completion() {
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
                 '--dry-run[Print the resolved demo script without running it]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -447,16 +447,25 @@ _base_basectl_completion() {
                 '--dry-run[Print the resolved command without running it]' \
                 '--list[List runnable project commands]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects' '2:Project command:'
+                '2:Base project:->projects' '3:Project command:'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
             ;;
         prompt)
-            _arguments '1:prompt:(list product-self-review)' \
-                '--output[Write rendered prompt Markdown to this path]:path:_files' \
-                '-v[Enable DEBUG logging]' \
-                '(-h --help)'{-h,--help}'[Show help text]'
+            case "${words[3]:-}" in
+                list)
+                    _arguments '2:prompt:(list product-self-review)' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '2:prompt:(list product-self-review)' \
+                        '--output[Write rendered prompt Markdown to this path]:path:_files' \
+                        '-v[Enable DEBUG logging]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+            esac
             ;;
         docs)
             _arguments '--show-url[Print the documentation URL without opening a browser]' \
@@ -465,8 +474,8 @@ _base_basectl_completion() {
         repo)
             case "${words[3]:-}" in
                 init)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:repository name:' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:repository name:' \
                         '--path[Target path]:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--issue[Issue number for pull request]:number:' \
@@ -492,8 +501,8 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 clone)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:repository name or owner/name:' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:repository name or owner/name:' \
                         '--owner[GitHub owner for short repository names]:owner:' \
                         '--path[Clone destination]:path:_files' \
                         '--dry-run[Print planned clone without modifying the filesystem]' \
@@ -501,8 +510,8 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 check)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:path:_files' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:path:_files' \
                         '--agent-guidance[Include optional agent guidance files]' \
                         '--agent-ready[Include the agent-ready repo guidance contract]' \
                         '--release[Include the release contract and process document]' \
@@ -510,8 +519,8 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 configure)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:path:_files' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:path:_files' \
                         '--repo[GitHub repository]:repo:' \
                         '--no-protect-default-branch[Skip Base-managed default branch protection]' \
                         '--project[GitHub Project title]:title:' \
@@ -527,8 +536,8 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 agent-guidance)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:path:_files' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:path:_files' \
                         '--repo[GitHub repository for pull request]:repo:' \
                         '--issue[Issue number for pull request]:number:' \
                         '--category[Issue category for pull request dry-run]:category:(bug enhancement documentation ci security)' \
@@ -541,8 +550,8 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 installer-template)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)' \
-                        '2:path:_files' \
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)' \
+                        '3:path:_files' \
                         '--print[Print the maintained template to stdout instead of writing a file]' \
                         '--stdout[Alias for --print]' \
                         '--repo[GitHub repository for pull request]:repo:' \
@@ -554,7 +563,7 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:repo command:(init clone check configure agent-guidance installer-template)'
+                    _arguments '2:repo command:(init clone check configure agent-guidance installer-template)'
                     ;;
             esac
             ;;
@@ -609,13 +618,13 @@ _base_basectl_completion() {
         release)
             case "${words[3]:-}" in
                 check|plan|notes)
-                    _arguments '1:release command:(check plan notes publish)' \
+                    _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 publish)
-                    _arguments '1:release command:(check plan notes publish)' \
+                    _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
                         '--dry-run[Print publish actions without creating tags or releases]' \
@@ -623,7 +632,7 @@ _base_basectl_completion() {
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
-                    _arguments '1:release command:(check plan notes publish)'
+                    _arguments '2:release command:(check plan notes publish)'
                     ;;
             esac
             ;;
@@ -634,15 +643,22 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         logs)
-            _arguments '1:logs command:(last)' \
-                '--command[Filter by command]:command:' \
-                '--limit[Number of entries]:count:' \
-                '--path[Print most recent log path]' \
-                '--tail[Tail and follow most recent log]' \
-                '--open[Open most recent log]' \
-                '--lines[Lines to show before following]:count:' \
-                '--format[Output format for logs last]:format:(text json)' \
-                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            if [[ "${words[3]:-}" == last ]]; then
+                _arguments '2:logs command:(last)' \
+                    '--command[Filter by command]:command:' \
+                    '--lines[Maximum log-tail lines]:count:' \
+                    '--format[Output format]:format:(text json)' \
+                    '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            else
+                _arguments '2:logs command:(last)' \
+                    '--command[Filter by command]:command:' \
+                    '--limit[Number of entries]:count:' \
+                    '--path[Print most recent log path]' \
+                    '--tail[Tail and follow most recent log]' \
+                    '--open[Open most recent log]' \
+                    '--lines[Lines to show before following]:count:' \
+                    '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            fi
             ;;
         history)
             _arguments '--project[Filter by Base project]:project:' \
@@ -654,7 +670,7 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)
-            _arguments '1:config command:(path show doctor)' \
+            _arguments '2:config command:(path show doctor)' \
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         doctor)
@@ -662,7 +678,7 @@ _base_basectl_completion() {
                 explain)
                     _arguments '--format[Output format]:format:(text json)' \
                         '(-h --help)'{-h,--help}'[Show help text]' \
-                        '2:finding id:'
+                        '3:finding id:'
                     ;;
                 *)
                     _arguments '--ci[Run diagnostics with CI-safe defaults]' \
@@ -686,9 +702,14 @@ _base_basectl_completion() {
             case "${words[3]:-}" in
                 issue)
                     case "${words[4]:-}" in
+                        list)
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:issue command:(list create start readiness)' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
                         create)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:issue command:(list create start readiness)' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:issue command:(list create start readiness)' \
                                 '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                                 '--title[Issue title]:title:' \
                                 '--body[Issue body]:body:' \
@@ -702,46 +723,63 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         start)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:issue command:(list create start readiness)' \
-                                '3:issue number:' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:issue command:(list create start readiness)' \
+                                '4:issue number:' \
                                 '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                                 '--title[Issue title]:title:' \
                                 '(-R --repo)'{-R,--repo}'[Repository containing the issue]:repo:' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         readiness)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:issue command:(list create start readiness)' \
-                                '3:issue number:' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:issue command:(list create start readiness)' \
+                                '4:issue number:' \
                                 '--repo[GitHub repository]:repo:' \
                                 '--project-owner[GitHub Project owner]:owner:' \
                                 '--project-number[GitHub Project number]:number:' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:issue command:(list create start readiness)' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:issue command:(list create start readiness)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                     esac
                     ;;
                 pr)
-                    _arguments '1:gh area:(issue pr branch worktree project)' \
-                        '2:pr command:(create status checks ready merge)'
+                    if [[ "${words[4]:-}" == create ]]; then
+                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                            '3:pr command:(create status checks ready merge)' \
+                            '--no-fixes[Do not add an issue-closing line derived from the branch]' \
+                            '(-h --help)'{-h,--help}'[Show help text]'
+                    else
+                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                            '3:pr command:(create status checks ready merge)' \
+                            '(-h --help)'{-h,--help}'[Show help text]'
+                    fi
                     ;;
                 branch)
-                    _arguments '1:gh area:(issue pr branch worktree project)' \
-                        '2:branch command:(stale prune)' \
-                        '--days[Stale threshold in days]:days:' \
-                        '--dry-run[Show planned deletions]' \
-                        '--yes[Apply branch pruning]' \
-                        '--remote[Prune stale remote tracking refs]' \
-                        '(-h --help)'{-h,--help}'[Show help text]'
+                    if [[ "${words[4]:-}" == stale ]]; then
+                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                            '3:branch command:(stale prune)' \
+                            '--days[Stale threshold in days]:days:' \
+                            '(-h --help)'{-h,--help}'[Show help text]'
+                    elif [[ "${words[4]:-}" == prune ]]; then
+                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                            '3:branch command:(stale prune)' \
+                            '--dry-run[Show planned deletions]' \
+                            '--yes[Apply branch pruning]' \
+                            '--remote[Prune stale remote tracking refs]' \
+                            '(-h --help)'{-h,--help}'[Show help text]'
+                    else
+                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                            '3:branch command:(stale prune)'
+                    fi
                     ;;
                 worktree)
-                    _arguments '1:gh area:(issue pr branch worktree project)' \
-                        '2:worktree command:(prune)' \
+                    _arguments '2:gh area:(issue pr branch worktree project)' \
+                        '3:worktree command:(prune)' \
                         '--dry-run[Show planned removals]' \
                         '--yes[Apply worktree pruning]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
@@ -749,16 +787,16 @@ _base_basectl_completion() {
                 project)
                     case "${words[4]:-}" in
                         doctor)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:project command:(doctor configure issue)' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
                                 '--schema[Project metadata schema]:schema:(base-project)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         configure)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:project command:(doctor configure issue)' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
                                 '--schema[Project metadata schema]:schema:(base-project)' \
@@ -771,10 +809,10 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         issue)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:project command:(doctor configure issue)' \
-                                '3:issue command:(set-fields)' \
-                                '4:issue number:' \
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:project command:(doctor configure issue)' \
+                                '4:issue command:(set-fields)' \
+                                '5:issue number:' \
                                 '--repo[GitHub repository]:repo:' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
@@ -788,13 +826,13 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
-                            _arguments '1:gh area:(issue pr branch worktree project)' \
-                                '2:project command:(doctor configure issue)'
+                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                                '3:project command:(doctor configure issue)'
                             ;;
                     esac
                     ;;
                 *)
-                    _arguments '1:gh area:(issue pr branch worktree project)'
+                    _arguments '2:gh area:(issue pr branch worktree project)'
                     ;;
             esac
             ;;
@@ -805,7 +843,7 @@ _base_basectl_completion() {
                 '--no-profile[Skip shell profile updates]' \
                 '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
@@ -819,7 +857,7 @@ _base_basectl_completion() {
         update)
             _arguments '--dry-run[Log without pulling or running setup]' '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
-                '1:Base project:->projects'
+                '2:Base project:->projects'
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi

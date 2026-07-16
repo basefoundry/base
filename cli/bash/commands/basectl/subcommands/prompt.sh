@@ -23,6 +23,38 @@ the prompt; an AI tool performs the review.
 EOF
 }
 
+base_prompt_leaf_usage() {
+    local prompt_name="$1"
+
+    if [[ "$prompt_name" == list ]]; then
+        cat <<'EOF'
+Usage:
+  basectl prompt list
+
+Purpose:
+  List the repo-owned Markdown prompts that Base can render.
+
+Options:
+  -v          Enable DEBUG logging for this subcommand.
+  -h, --help  Show this help text.
+EOF
+        return 0
+    fi
+
+    cat <<EOF
+Usage:
+  basectl prompt $prompt_name [--output <path>]
+
+Purpose:
+  Render the repo-owned '$prompt_name' Markdown prompt.
+
+Options:
+  --output <path>  Write the rendered prompt Markdown to this path.
+  -v               Enable DEBUG logging for this subcommand.
+  -h, --help       Show this help text.
+EOF
+}
+
 base_prompt_usage_error() {
     base_prompt_subcommand_usage >&2
     print_error "$*"
@@ -40,8 +72,12 @@ base_prompt_subcommand_main() {
     while (($#)); do
         case "$1" in
             -h|--help|help)
-                base_prompt_subcommand_usage
-                return 0
+                if ((${#prompt_args[@]})); then
+                    base_prompt_leaf_usage "${prompt_args[0]}"
+                else
+                    base_prompt_subcommand_usage
+                fi
+                return $?
                 ;;
             -v)
                 debug=1

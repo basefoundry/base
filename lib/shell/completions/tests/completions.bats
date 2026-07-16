@@ -77,8 +77,9 @@ bash_completion_nested_commands() {
 zsh_completion_nested_commands() {
     local area="$1"
 
-    awk -v area="$area" '
-        $0 ~ "1:" area " command:\\(" {
+    zsh_completion_specs basectl "$area" "" |
+        awk -v area="$area" '
+        $0 ~ "^spec=2:" area " command:\\(" {
             line = $0
             sub(/.*command:\(/, "", line)
             sub(/\).*/, "", line)
@@ -90,7 +91,36 @@ zsh_completion_nested_commands() {
             }
             exit
         }
-    ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh" |
+    ' |
+        sort -u
+}
+
+zsh_completion_specs() {
+    env BASE_HOME="$BASE_REPO_ROOT" zsh -fc '
+        compdef() { :; }
+        source "$BASE_HOME/lib/shell/completions/basectl_completion.zsh"
+        _arguments() {
+            printf "spec=%s\n" "$@"
+        }
+        _describe() { :; }
+        _alternative() { :; }
+        words=("$@")
+        CURRENT=${#words}
+        _base_basectl_completion
+    ' zsh "$@"
+}
+
+zsh_completion_long_options() {
+    zsh_completion_specs "$@" |
+        awk '
+            {
+                line = $0
+                while (match(line, /--[-A-Za-z0-9_]+/)) {
+                    print substr(line, RSTART, RLENGTH)
+                    line = substr(line, RSTART + RLENGTH)
+                }
+            }
+        ' |
         sort -u
 }
 
@@ -167,6 +197,20 @@ assert_bash_completion_options_match_help() {
 
     long_options_from_help "$@" > "$expected"
     bash_completion_long_options basectl "$@" -- > "$actual"
+
+    bats_run diff -u "$expected" "$actual"
+
+    [ "$status" -eq 0 ]
+}
+
+assert_zsh_completion_options_match_help() {
+    local label="$1"
+    shift
+    local expected="$TEST_TMPDIR/zsh-$label-help-options"
+    local actual="$TEST_TMPDIR/zsh-$label-completion-options"
+
+    long_options_from_help "$@" > "$expected"
+    zsh_completion_long_options basectl "$@" -- > "$actual"
 
     bats_run diff -u "$expected" "$actual"
 
@@ -285,6 +329,7 @@ run_zsh_positional_completion() {
 
 @test "Bash option completions match command help" {
     assert_bash_completion_options_match_help setup setup
+    assert_bash_completion_options_match_help activate activate
     assert_bash_completion_options_match_help check check
     assert_bash_completion_options_match_help doctor doctor
     assert_bash_completion_options_match_help devcontainer devcontainer
@@ -297,6 +342,36 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help release-plan release plan
     assert_bash_completion_options_match_help release-notes release notes
     assert_bash_completion_options_match_help release-publish release publish
+    assert_bash_completion_options_match_help trust-status trust status
+    assert_bash_completion_options_match_help trust-allow trust allow
+    assert_bash_completion_options_match_help trust-revoke trust revoke
+    assert_bash_completion_options_match_help prompt-list prompt list
+    assert_bash_completion_options_match_help prompt-render prompt product-self-review
+    assert_bash_completion_options_match_help logs logs
+    assert_bash_completion_options_match_help logs-last logs last
+    assert_bash_completion_options_match_help gh-branch-stale gh branch stale
+    assert_bash_completion_options_match_help gh-branch-prune gh branch prune
+    assert_bash_completion_options_match_help gh-project-doctor gh project doctor
+    assert_bash_completion_options_match_help gh-project-configure gh project configure
+}
+
+@test "Zsh option completions match focused leaf help" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    assert_zsh_completion_options_match_help activate activate
+    assert_zsh_completion_options_match_help trust-status trust status
+    assert_zsh_completion_options_match_help trust-allow trust allow
+    assert_zsh_completion_options_match_help trust-revoke trust revoke
+    assert_zsh_completion_options_match_help release-check release check
+    assert_zsh_completion_options_match_help release-publish release publish
+    assert_zsh_completion_options_match_help prompt-list prompt list
+    assert_zsh_completion_options_match_help prompt-render prompt product-self-review
+    assert_zsh_completion_options_match_help logs logs
+    assert_zsh_completion_options_match_help logs-last logs last
+    assert_zsh_completion_options_match_help gh-branch-stale gh branch stale
+    assert_zsh_completion_options_match_help gh-branch-prune gh branch prune
+    assert_zsh_completion_options_match_help gh-project-doctor gh project doctor
+    assert_zsh_completion_options_match_help gh-project-configure gh project configure
 }
 
 @test "Bash help completion mirrors command and nested leaf candidates" {
@@ -365,6 +440,83 @@ run_zsh_positional_completion() {
     [[ "$output" == *"projects=base demo"* ]]
 }
 
+@test "Zsh public nested and positional completions use executable argument positions" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run_zsh_positional_completion basectl projects ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:projects command:(list)"* ]]
+
+    run_zsh_positional_completion basectl trust allow ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl workspace init ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:workspace source:"* ]]
+
+    run_zsh_positional_completion basectl test ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+
+    run_zsh_positional_completion basectl run demo ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Project command:"* ]]
+
+    run_zsh_positional_completion basectl prompt ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:prompt:(list product-self-review)"* ]]
+
+    run_zsh_positional_completion basectl repo ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:repo command:(init clone check configure agent-guidance installer-template)"* ]]
+
+    run_zsh_positional_completion basectl repo check ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:path:_files"* ]]
+
+    run_zsh_positional_completion basectl release ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:release command:(check plan notes publish)"* ]]
+
+    run_zsh_positional_completion basectl logs ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:logs command:(last)"* ]]
+
+    run_zsh_positional_completion basectl config ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:config command:(path show doctor)"* ]]
+
+    run_zsh_positional_completion basectl doctor explain ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:finding id:"* ]]
+
+    run_zsh_positional_completion basectl gh ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:gh area:(issue pr branch worktree project)"* ]]
+
+    run_zsh_positional_completion basectl gh issue ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:issue command:(list create start readiness)"* ]]
+
+    run_zsh_positional_completion basectl gh issue readiness ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=4:issue number:"* ]]
+
+    run_zsh_positional_completion basectl gh project issue set-fields ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=5:issue number:"* ]]
+
+    run_zsh_positional_completion basectl onboard ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+
+    run_zsh_positional_completion basectl update ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+}
+
 @test "Zsh repo installer-template completion includes print options" {
     local block
 
@@ -375,18 +527,19 @@ run_zsh_positional_completion() {
 }
 
 @test "Zsh gh issue completion includes issue create project options" {
-    local block
+    local options specs
 
-    block="$(zsh_completion_nested_block gh issue)"
+    specs="$(zsh_completion_specs basectl gh issue "")"
+    options="$(zsh_completion_long_options basectl gh issue create --)"
 
-    [[ "$block" == *"2:issue command:(list create start readiness)"* ]]
-    [[ "$block" == *"--repo"* ]]
-    [[ "$block" == *"--assignee"* ]]
-    [[ "$block" == *"--no-assignee"* ]]
-    [[ "$block" == *"--project"* ]]
-    [[ "$block" == *"--project-owner"* ]]
-    [[ "$block" == *"--size"* ]]
-    [[ "$block" == *"--no-project"* ]]
+    [[ "$specs" == *"3:issue command:(list create start readiness)"* ]]
+    [[ "$options" == *"--repo"* ]]
+    [[ "$options" == *"--assignee"* ]]
+    [[ "$options" == *"--no-assignee"* ]]
+    [[ "$options" == *"--project"* ]]
+    [[ "$options" == *"--project-owner"* ]]
+    [[ "$options" == *"--size"* ]]
+    [[ "$options" == *"--no-project"* ]]
 }
 
 @test "Zsh gh issue start completion includes repository selectors" {
@@ -460,17 +613,13 @@ run_zsh_positional_completion() {
 }
 
 @test "Zsh prompt completion includes output option" {
-    local block
+    local list_options render_options
 
-    block="$(
-        awk '
-            /^[[:space:]]*prompt\)/ { in_block = 1 }
-            in_block && /^[[:space:]]*;;/ { exit }
-            in_block { print }
-        ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
-    )"
+    list_options="$(zsh_completion_long_options basectl prompt list --)"
+    render_options="$(zsh_completion_long_options basectl prompt product-self-review --)"
 
-    [[ "$block" == *"--output"* ]]
+    [[ "$list_options" != *"--output"* ]]
+    [[ "$render_options" == *"--output"* ]]
 }
 
 @test "Bash project-name completions reuse shell-session project cache" {
@@ -525,7 +674,15 @@ EOF
             COMP_WORDS=(basectl ci doctor ""); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
-            printf "ci-doctor=%s\n" "${COMPREPLY[*]}"' \
+            printf "ci-doctor=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl setup --profile dev ""); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "setup-after-options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl test --workspace /tmp ""); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "test-after-options=%s\n" "${COMPREPLY[*]}"' \
             bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
 
     [ "$status" -eq 0 ]
@@ -535,6 +692,8 @@ EOF
     [[ "$output" == *"ci-setup=base demo"* ]]
     [[ "$output" == *"ci-check=base demo"* ]]
     [[ "$output" == *"ci-doctor=base demo"* ]]
+    [[ "$output" == *"setup-after-options=base demo"* ]]
+    [[ "$output" == *"test-after-options=base demo"* ]]
     [ "$(cat "$count_file")" = "1" ]
 }
 

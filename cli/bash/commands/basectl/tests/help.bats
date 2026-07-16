@@ -26,7 +26,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"logs [options]"* ]]
     [[ "$output" == *"history [options]"* ]]
     [[ "$output" == *"config <path|show|doctor>"* ]]
-    [[ "$output" == *"trust <status|allow|revoke> <project> [options]"* ]]
+    [[ "$output" == *"trust <status|allow|revoke> [project] [options]"* ]]
     [[ "$output" == *"doctor [project] [options]"* ]]
     [[ "$output" == *"gh <area> <command> [options]"* ]]
     [[ "$output" == *"onboard [project] [options]"* ]]
@@ -54,7 +54,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Diagnostics and maintenance:"* ]]
     [[ "$output" == *"Compatibility:"* ]]
     [[ "$output" == *"Install and bootstrap the local Base CLI environment on macOS or Ubuntu/Debian."* ]]
-    [[ "$output" == *"Compatibility alias for setup, check, and doctor --ci mode."* ]]
+    [[ "$output" == *"Compatibility alias for setup, check, and doctor --ci."* ]]
     [[ "$output" != *"environment on macOS."* ]]
 }
 
@@ -86,7 +86,7 @@ load ./basectl_helpers.bash
     grep -Fqx '  logs [options]' <<<"$output"
     grep -Fqx '  history [options]' <<<"$output"
     grep -Fqx '  workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]' <<<"$output"
-    grep -Fqx '  trust <status|allow|revoke> <project> [options]' <<<"$output"
+    grep -Fqx '  trust <status|allow|revoke> [project] [options]' <<<"$output"
     [[ "$output" != *"-b DIR"* ]]
     [[ "$output" != *"Force install"* ]]
     [[ "$output" != *"-V"* ]]
@@ -137,6 +137,7 @@ load ./basectl_helpers.bash
 
 @test "every documented public leaf returns usage from --help" {
     local args=()
+    local direct_output
     local path
     local paths=(
         "activate" "setup" "check" "doctor" "doctor explain"
@@ -149,7 +150,7 @@ load ./basectl_helpers.bash
         "repo installer-template" "ci setup" "ci check" "ci doctor"
         "release check" "release plan" "release notes" "release publish"
         "prompt list" "prompt product-self-review" "docs" "clean" "logs"
-        "history" "config path" "config show" "config doctor" "gh issue list"
+        "logs last" "history" "config path" "config show" "config doctor" "gh issue list"
         "gh issue create" "gh issue readiness" "gh issue start" "gh pr create"
         "gh pr status" "gh pr checks" "gh pr ready" "gh pr merge"
         "gh project doctor" "gh project configure" "gh project issue set-fields"
@@ -163,6 +164,11 @@ load ./basectl_helpers.bash
 
         [ "$status" -eq 0 ]
         [[ "$output" == *"Usage:"* ]]
+        direct_output="$output"
+
+        run_basectl help "${args[@]}"
+        [ "$status" -eq 0 ]
+        [ "$output" = "$direct_output" ]
     done
 }
 
@@ -236,7 +242,18 @@ load ./basectl_helpers.bash
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
     grep -Fqx -- "- \`basectl docs\` - open the Base documentation home page on GitHub." "$commands_file"
-    grep -Fqx -- "- \`basectl trust <status|allow|revoke> <project>\` - inspect, allow, or" "$commands_file"
+    grep -Fqx -- "- \`basectl trust status [project]\` - inspect one project's manifest command" "$commands_file"
+    grep -Fqx -- "- \`basectl trust <allow|revoke> <project>\` - add or remove local approval for" "$commands_file"
+}
+
+@test "public command inventories include demo, run, and release" {
+    local cli_readme="$BASE_REPO_ROOT/cli/bash/commands/basectl/README.md"
+    local root_readme="$BASE_REPO_ROOT/README.md"
+
+    grep -Fqx -- '- `basectl demo [project]`' "$root_readme"
+    grep -Fqx -- '- `demo`' "$cli_readme"
+    grep -Fqx -- '- `run`' "$cli_readme"
+    grep -Fqx -- '- `release check/plan/notes/publish`' "$cli_readme"
 }
 
 @test "command reference documents workspace init help surface" {
