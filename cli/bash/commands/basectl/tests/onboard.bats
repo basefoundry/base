@@ -14,6 +14,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"--no-profile"* ]]
     [[ "$output" == *"Defaults to 'base'."* ]]
+    [[ "$output" == *"manifest command trust"* ]]
 }
 
 @test "basectl onboard dry-run shows planned commands without prompting" {
@@ -33,6 +34,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"[DRY-RUN] Would run basectl update-profile --dry-run"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl doctor base --profile dev"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl projects list"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl trust status"* ]]
+    [[ "$output" != *"trust allow"* ]]
     [[ "$output" != *"Next: basectl check base --profile dev"* ]]
     [[ "$output" != *"Next: basectl setup base --profile dev --dry-run"* ]]
     [[ "$output" != *"Next: basectl update-profile --dry-run"* ]]
@@ -73,6 +76,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"[DRY-RUN] Would run basectl check bankbuddy --profile dev"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl setup bankbuddy --profile dev --dry-run"* ]]
     [[ "$output" == *"[DRY-RUN] Would run basectl doctor bankbuddy --profile dev"* ]]
+    [[ "$output" == *"[DRY-RUN] Would run basectl trust status"* ]]
     [[ "$output" == *"basectl activate bankbuddy"* ]]
     [[ "$output" != *"unexpected run"* ]]
 }
@@ -175,6 +179,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"RUN:update-profile"* ]]
     [[ "$output" == *"RUN:doctor base --profile dev"* ]]
     [[ "$output" == *"RUN:projects list"* ]]
+    [[ "$output" == *"RUN:trust status"* ]]
+    [[ "$output" != *"RUN:trust allow"* ]]
 }
 
 @test "basectl onboard --yes accepts setup and profile prompts" {
@@ -192,9 +198,45 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Proceed with setup? [yes]"* ]]
     [[ "$output" == *"This installs or verifies Base platform prerequisites, Base Python, and Base-managed artifacts."* ]]
     [[ "$output" != *"This installs or verifies Homebrew, Xcode Command Line Tools"* ]]
-    [[ "$output" == *"RUN:setup base"* ]]
+    [[ "$output" == *"RUN:setup base --yes"* ]]
     [[ "$output" == *"Shell profile updates skipped because --no-profile was set."* ]]
+    [[ "$output" == *"RUN:trust status"* ]]
+    [[ "$output" != *"RUN:trust allow"* ]]
     [[ "$output" != *"RUN:update-profile"* ]]
+}
+
+@test "basectl onboard --yes satisfies the Ubuntu Debian setup consent boundary" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_MODE=true \
+        BASE_ONBOARD_TEST_STATE="$TEST_STATE_DIR/onboard-linux-consent" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_setup_run_text() {
+                setup_require_linux_debian_system_consent \
+                    "Ubuntu/Debian setup requires package-manager consent." || return $?
+                touch "$BASE_ONBOARD_TEST_STATE"
+            }
+            base_onboard_run_command() {
+                if [[ "$1" == setup ]]; then
+                    shift
+                    base_setup_subcommand_main "$@"
+                    return $?
+                fi
+                printf "RUN:%s\n" "$*"
+            }
+            base_onboard_subcommand_main --yes --no-profile
+        '
+
+    [ "$status" -eq 0 ]
+    [ -f "$TEST_STATE_DIR/onboard-linux-consent" ]
+    [[ "$output" == *"Next: basectl setup base --yes"* ]]
+    [[ "$output" != *"rerun with '--yes'"* ]]
+    [[ "$output" != *"Proceed with Ubuntu/Debian setup changes?"* ]]
+    [[ "$output" != *"trust allow"* ]]
 }
 
 @test "basectl onboard setup failure stops profile updates and returns setup status" {
@@ -214,8 +256,53 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 7 ]
     [[ "$output" == *"RUN:check base"* ]]
-    [[ "$output" == *"RUN:setup base"* ]]
+    [[ "$output" == *"RUN:setup base --yes"* ]]
     [[ "$output" == *"Setup failed. Running doctor can show the remaining issues."* ]]
     [[ "$output" == *"RUN:doctor base"* ]]
     [[ "$output" != *"RUN:update-profile"* ]]
+    [[ "$output" != *"RUN:trust status"* ]]
+}
+
+@test "basectl onboard stops before activation guidance when trust status fails" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() {
+                printf "RUN:%s\n" "$*"
+                [[ "$1 $2" == "trust status" ]] && return 8
+                return 0
+            }
+            base_onboard_subcommand_main --yes --no-profile
+        '
+
+    [ "$status" -eq 8 ]
+    [[ "$output" == *"RUN:trust status"* ]]
+    [[ "$output" != *"RUN:trust allow"* ]]
+    [[ "$output" != *"Next Steps"* ]]
+    [[ "$output" != *"basectl activate base"* ]]
+}
+
+@test "basectl onboard stops consistently when project discovery fails" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() {
+                printf "RUN:%s\n" "$*"
+                [[ "$1 $2" == "projects list" ]] && return 9
+                return 0
+            }
+            base_onboard_subcommand_main --yes --no-profile
+        '
+
+    [ "$status" -eq 9 ]
+    [[ "$output" == *"Project discovery failed after setup."* ]]
+    [[ "$output" == *"Retry 'basectl projects list', then run 'basectl trust status'"* ]]
+    [[ "$output" != *"RUN:trust status"* ]]
+    [[ "$output" != *"Next Steps"* ]]
 }

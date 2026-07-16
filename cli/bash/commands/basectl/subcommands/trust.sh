@@ -6,7 +6,7 @@ readonly _base_trust_subcommand_sourced
 base_trust_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl trust status <project> [options]
+  basectl trust status [project] [options]
   basectl trust allow <project> [options]
   basectl trust revoke <project> [options]
 
@@ -17,7 +17,8 @@ Options:
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
-Manage local approval for manifest-declared project commands.
+Inspect trust for one project or all discovered projects, and manage local
+approval for manifest-declared project commands.
 EOF
 }
 
@@ -65,5 +66,8 @@ base_trust_subcommand_main() {
     done
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    BASE_CLI_DISPLAY_COMMAND="basectl trust" "$wrapper" --project base base_trust "${args[@]}"
+    BASE_TRUST_ACTIVE_PROJECT="${BASE_PROJECT:-}" \
+        BASE_TRUST_ACTIVE_PROJECT_MANIFEST="${BASE_PROJECT_MANIFEST:-}" \
+        BASE_CLI_DISPLAY_COMMAND="basectl trust" \
+        "$wrapper" --project base base_trust "${args[@]}"
 }

@@ -44,7 +44,7 @@ full compatibility contract.
 | `basectl setup [project]` | Install or reconcile Base and optional project artifacts. | `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--recreate-venv`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
-| `basectl onboard [project]` | Guide first-run setup by orchestrating check, setup, shell profile, doctor, and project discovery. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
+| `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--no-profile` |
 | `basectl version` | Show the installed Base version. | none |
 
 ## Daily Project Loop
@@ -61,14 +61,14 @@ full compatibility contract.
 | `basectl demo [project]` | Run a project-owned demo script. | `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
-| `basectl trust status <project>` | Show local manifest command trust status. | `--workspace <path>`, `--format <text\|json>` |
+| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>` |
 | `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |
 
-Manifest-declared `test`, `run`, and `build` commands are project-owned shell
-command strings executed from the project root. Review manifests from
-unfamiliar repositories before running them; use `--dry-run` or `--list` to
-inspect the resolved command contract first.
+Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
+project-owned code executed from the project root. Review manifests from
+unfamiliar repositories before running them; use `--dry-run` or `--list` where
+available and inspect `activate.source` directly before activation.
 
 ## Diagnostics And Logs
 

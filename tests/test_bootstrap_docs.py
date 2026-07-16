@@ -36,3 +36,19 @@ def test_bootstrap_quick_start_surfaces_verified_homebrew_installer_path() -> No
     assert "BASE_BOOTSTRAP_HOMEBREW_INSTALLER_SHA256" in quick_start
     assert "BASE_HOMEBREW_INSTALLER_URL" in quick_start
     assert "BASE_HOMEBREW_INSTALLER_SHA256" in quick_start
+
+
+def test_readme_90_second_proof_reviews_manifest_trust_before_demo() -> None:
+    text = README.read_text(encoding="utf-8")
+    proof = section(text, "### 90-Second Proof, No Dotfile Changes", "### Shell Startup Is Explicit")
+    normalized_proof = " ".join(proof.split())
+
+    base_status = proof.index("basectl trust status base")
+    base_demo = proof.index("basectl demo base")
+    demo_status = proof.index("basectl trust status base-demo")
+    demo_demo = proof.index("basectl demo base-demo")
+
+    assert base_status < base_demo
+    assert demo_status < demo_demo
+    assert "exact `basectl trust allow" in proof
+    assert "replace its leading `basectl` with `~/work/base/bin/basectl`" in normalized_proof

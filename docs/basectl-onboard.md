@@ -19,7 +19,9 @@ commands:
    disabled
 4. runs `basectl doctor [project]`
 5. lists discovered projects with `basectl projects list`
-6. suggests the next interactive shell step
+6. reports trust status for discovered manifests with executable command
+   surfaces, without approving them
+7. suggests the next interactive shell step after any required trust review
 
 It keeps underlying command output visible and shows each Base command before it
 runs it. Use it when you want a guided first setup. Use `basectl setup` directly
@@ -36,7 +38,7 @@ Options:
 ```text
   --profile <list> Include named prerequisite profiles.
   --dry-run        Explain and show planned actions without making changes.
-  --yes            Accept default answers for setup/profile prompts.
+  --yes            Accept setup/profile prompts; never approve manifest trust.
   --no-profile     Skip shell profile updates.
   -v               Enable DEBUG logging for underlying commands.
   -h, --help       Show help text.
@@ -100,6 +102,8 @@ boundary.
   profiles
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
+- `basectl trust status` to show digest-bound command trust for discovered
+  projects without granting approval
 - `basectl activate <project>` as the final suggested next step
 
 It does not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
@@ -118,7 +122,8 @@ Options:
 ```text
   --profile <list> Include named prerequisite profiles.
   --dry-run        Explain and show planned actions without making changes.
-  --yes            Accept default answers for non-destructive prompts.
+  --yes            Approve setup changes and the shell-profile prompt; never
+                   grant manifest trust.
   --no-profile     Skip shell profile updates.
   -v               Enable DEBUG logging for underlying commands.
   -h, --help       Show help text.
@@ -141,7 +146,11 @@ The shipped flow is simple and checklist-oriented:
    `--no-profile` was set.
 7. Run `basectl doctor` to summarize the final state.
 8. Print discovered projects with `basectl projects list` when available.
-9. Suggest `basectl` or `basectl activate base` as the next interactive step.
+9. Run the read-only `basectl trust status` workspace view, which filters out
+   manifests without executable command surfaces and prints exact review and
+   digest-bound allow guidance for those that need it.
+10. Suggest `basectl` or `basectl activate base` after any required trust
+    review.
 
 The command shows the exact Base command before it runs it. For example:
 
@@ -160,7 +169,9 @@ Prompts should be explicit but sparse:
 - Do not prompt before read-only checks.
 - Treat Enter as the conservative answer when there is risk.
 - `--yes` may accept normal setup/profile prompts, but should not bypass fatal
-  safety checks such as unsupported operating systems.
+  safety checks such as unsupported operating systems or grant manifest
+  command trust. It is forwarded to setup so package-manager consent does not
+  unexpectedly remain interactive on Ubuntu/Debian.
 - `--dry-run` should not prompt for actions it will not perform.
 
 ## Output Style
@@ -183,6 +194,10 @@ Failures are recoverable and specific:
   profile updates.
 - If `basectl update-profile` fails, leave setup success intact and explain how
   to rerun that step.
+- If project discovery or trust status fails after setup, stop before activation
+  guidance, preserve the failing status, and tell the user to retry
+  `basectl projects list` followed by `basectl trust status`. Earlier setup or
+  profile changes remain applied.
 - Preserve the failing command's exit status when onboarding cannot complete.
 
 ## Non-Goals

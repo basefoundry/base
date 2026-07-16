@@ -147,6 +147,22 @@ class ManifestCommandTrustStore:
         return removed
 
 
+def manifest_command_surfaces(manifest_path: Path) -> tuple[str, ...]:
+    manifest = read_manifest(manifest_path.expanduser().resolve())
+    surfaces = []
+    if manifest.test is not None:
+        surfaces.append("test")
+    if manifest.commands:
+        surfaces.append("run")
+    if manifest.build is not None and manifest.build.targets:
+        surfaces.append("build")
+    if manifest.demo is not None:
+        surfaces.append("demo")
+    if manifest.activate.source:
+        surfaces.append("activate")
+    return tuple(surfaces)
+
+
 def compute_trust_identity_for_manifest(manifest_path: Path) -> ManifestCommandTrustIdentity:
     manifest = read_manifest(manifest_path.expanduser().resolve())
     canonical_manifest = manifest.path.resolve()
