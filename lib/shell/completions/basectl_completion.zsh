@@ -469,6 +469,7 @@ _base_basectl_completion() {
                         '--category[Issue category for pull request dry-run]:category:(bug enhancement documentation ci security)' \
                         '--pr[Commit the generated baseline on a branch and open a pull request]' \
                         '--agent-ready[Also seed repo-local agent guidance files]' \
+                        '--release[Seed the generic release contract and process documentation]' \
                         '--language[Add project language metadata; may be repeated]:csv:' \
                         '--description[Repository description]:description:' \
                         '--copyright-holder[Copyright holder]:name:' \
@@ -515,6 +516,7 @@ _base_basectl_completion() {
                         '--copy-project-fields-from[Copy missing Project item field values from another Project]:title:' \
                         '--replace-project[Replace a nonstandard existing Project from base-project-template]' \
                         '--no-project[Skip GitHub Project metadata configuration]' \
+                        '--release[Seed the generic release contract and process documentation]' \
                         '--dry-run[Print planned changes]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'

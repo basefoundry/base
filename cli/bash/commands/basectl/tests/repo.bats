@@ -210,6 +210,7 @@ run_repo_command_with_mocks() {
     [[ "$output" == *"--issue <number>"* ]]
     [[ "$output" == *"--category <name>"* ]]
     [[ "$output" == *"--pr"* ]]
+    [[ "$output" == *"--release"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"Create a new public GitHub repo and configure it."* ]]
     [[ "$output" == *"basectl repo init base-demo --repo basefoundry/base-demo --public"* ]]
@@ -439,6 +440,7 @@ EOF
     [[ "$output" == *"--no-protect-default-branch"* ]]
     [[ "$output" == *"--copy-project-fields-from <title>"* ]]
     [[ "$output" == *"--replace-project"* ]]
+    [[ "$output" == *"--release"* ]]
     [[ "$output" == *"basectl repo configure . --repo codeforester/bankbuddy"* ]]
     [[ "$output" == *"applies or repairs GitHub-side repository settings"* ]]
     [[ "$output" == *"Safe to re-run: Base-managed settings are created or updated"* ]]
@@ -448,6 +450,50 @@ EOF
     [[ "$output" != *"--private"* ]]
     [[ "$output" != *"--public"* ]]
     [[ "$output" != *"--description <text>"* ]]
+}
+
+@test "basectl repo init release profile writes the contract and process guide" {
+    local repo_dir="$TEST_TMPDIR/release-profile"
+
+    run_basectl repo init release-profile \
+        --path "$repo_dir" \
+        --repo codeforester/release-profile \
+        --release \
+        --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fqx "release:" "$repo_dir/base_manifest.yaml"
+    grep -Fqx "    repository: codeforester/release-profile" "$repo_dir/base_manifest.yaml"
+    grep -Fq "basectl release check --version X.Y.Z" "$repo_dir/docs/release-process.md"
+    grep -Fq "Homebrew" "$repo_dir/docs/release-process.md"
+
+    run_basectl repo check "$repo_dir" --release
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Release contract: present."* ]]
+}
+
+@test "basectl repo configure release dry-run preserves a missing contract" {
+    local repo_dir="$TEST_TMPDIR/release-configure-dry-run"
+
+    run_basectl repo init release-configure-dry-run \
+        --path "$repo_dir" \
+        --repo codeforester/release-configure-dry-run \
+        --no-configure
+
+    [ "$status" -eq 0 ]
+
+    run_basectl repo configure "$repo_dir" \
+        --repo codeforester/release-configure-dry-run \
+        --release \
+        --no-project \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would append the generic release contract"* ]]
+    [[ "$output" == *"Would create '$repo_dir/docs/release-process.md'"* ]]
+    ! grep -Fq "release:" "$repo_dir/base_manifest.yaml"
+    [ ! -e "$repo_dir/docs/release-process.md" ]
 }
 
 @test "basectl repo check prints command-specific help" {
@@ -1196,6 +1242,7 @@ EOF
     grep -Fq "This branch shape is tool-independent" "$repo_dir/AGENTS.md"
     grep -Fq "# Project Skills for base-demo" "$repo_dir/skills.md"
     grep -Fq "The branch convention is tool-independent" "$repo_dir/skills.md"
+    grep -Fq 'docs/release-process.md' "$repo_dir/skills.md"
     grep -Fq "Closes #" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "its category prefix matches the issue's single standard category label" "$repo_dir/.github/pull_request_template.md"
 }

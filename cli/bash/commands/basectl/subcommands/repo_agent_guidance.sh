@@ -110,7 +110,9 @@ Keep entries short, concrete, and owned by this repository.
 - Development workflow: issue selection, branch naming, validation, PR creation,
   merge, and cleanup.
 - Testing workflow: the commands that prove common changes are safe.
-- Release workflow: version, changelog, tag, release, and package manager steps.
+- Release workflow: read \`docs/release-process.md\` when the repository declares
+  release metadata, then follow its version, changelog, tag, release, and
+  package manager steps.
 - Domain workflow: product-specific checks or demo expectations that agents
   should not have to rediscover.
 

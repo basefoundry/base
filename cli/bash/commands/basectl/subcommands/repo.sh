@@ -66,6 +66,7 @@ Options:
   --category <name>             Issue category for --pr --dry-run. Real PR runs derive or verify it.
   --pr                          Commit the generated baseline on a branch and open a pull request.
   --agent-ready                 Also seed repo-local agent guidance files.
+  --release                     Seed the generic release contract and process documentation.
   --language <csv>              Add project language metadata; may be repeated.
   --description <text>          Repository description for generated README.
   --copyright-holder <name>     Copyright holder for generated AGPL license. Defaults to git config user.name.
@@ -118,6 +119,9 @@ With --pr --dry-run, pass --category because dry-run performs no GitHub reads.
 Real PR runs derive the issue's standard category label and verify --category
 when it is supplied.
 Pass --agent-ready to include AGENTS.md and skills.md with the baseline.
+With --release, the baseline also declares the generic release contract and
+creates docs/release-process.md. Release standardization requires --repo or an
+existing GitHub origin so the manifest can record the release repository.
 EOF
 }
 
@@ -153,11 +157,13 @@ Usage:
 Options:
   --agent-guidance              Include optional agent guidance files in repo check.
   --agent-ready                 Include the agent-ready repo guidance contract in repo check.
+  --release                     Include the release contract and process document in repo check.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
 Verifies the standard Base-managed repository baseline at path, or the current
-directory when path is omitted.
+directory when path is omitted. Use --release to verify the opt-in release
+contract as well.
 EOF
 }
 
@@ -177,6 +183,7 @@ Options:
                                 Copy missing Project item field values from another Project.
   --replace-project             Replace a nonstandard existing Project from base-project-template.
   --no-project                  Skip GitHub Project metadata configuration.
+  --release                     Seed the generic release contract and process documentation.
   --dry-run                     Print planned changes without applying them.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
@@ -187,7 +194,9 @@ Examples:
 
 repo configure applies or repairs GitHub-side repository settings, labels,
 default-branch protection, branch naming enforcement, Project metadata, and
-repo-visible Project intake support.
+repo-visible Project intake support. With --release, it also adds missing
+release metadata and agent-facing release documentation without replacing an
+existing release declaration.
 Use it after a repo init --pr baseline PR is merged, after cloning an older
 Base-managed repo, or whenever GitHub settings drift.
 
@@ -198,7 +207,8 @@ Safe to re-run: Base-managed settings are created or updated to the Base
 standard. Settings added outside Base are not removed.
 
 It does not create the full local baseline; run repo init first when the
-Base-managed files are missing.
+Base-managed files are missing. Release standardization is opt-in because not
+every repository publishes versioned artifacts.
 EOF
 }
 
@@ -868,6 +878,158 @@ base_repo_write_manifest() {
     } | base_repo_write_stream "$dry_run" "$root/base_manifest.yaml"
 }
 
+base_repo_release_manifest_has_key() {
+    local manifest_path="$1"
+
+    awk '
+        /^[^[:space:]#][^:]*:[[:space:]]*(#.*)?$/ {
+            key = $0
+            sub(/:.*/, "", key)
+            if (key == "release") {
+                found = 1
+            }
+        }
+        END { exit(found ? 0 : 1) }
+    ' "$manifest_path"
+}
+
+base_repo_write_release_manifest() {
+    local dry_run="$1"
+    local github_repo="$2"
+    local manifest_path="$3/base_manifest.yaml"
+
+    if [[ ! -f "$manifest_path" && "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would add the generic release contract to '%s'.\n" "$manifest_path"
+        return 0
+    fi
+
+    [[ -f "$manifest_path" ]] || {
+        log_error "Release standardization requires '$manifest_path'."
+        printf "       Run 'basectl repo init' first to create the Base repository baseline.\n" >&2
+        return 1
+    }
+
+    if base_repo_release_manifest_has_key "$manifest_path"; then
+        printf "Release metadata: existing release contract found in '%s'; leaving it unchanged.\n" "$manifest_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "1" ]]; then
+        printf "[DRY-RUN] Would append the generic release contract to '%s'.\n" "$manifest_path"
+        return 0
+    fi
+
+    {
+        printf '\nrelease:\n'
+        printf '  version_file: VERSION\n'
+        printf '  changelog: CHANGELOG.md\n'
+        printf '  tag_prefix: v\n'
+        printf '  github:\n'
+        printf '    repository: %s\n' "$github_repo"
+        printf '    release_title: "{repository} v{version}"\n'
+    } >> "$manifest_path" || {
+        log_error "Unable to append release metadata to '$manifest_path'."
+        return 1
+    }
+    printf "Created release metadata in '%s'.\n" "$manifest_path"
+}
+
+base_repo_write_release_process() {
+    local dry_run="$1"
+    local name="$2"
+    local repo="$3"
+    local root="$4"
+
+    base_repo_write_stream "$dry_run" "$root/docs/release-process.md" <<EOF
+# Release Process
+
+This repository uses the Base release contract. The machine-readable release
+metadata lives in \`base_manifest.yaml\`; the guarded \`basectl release\`
+commands use that contract for readiness checks, notes, tags, and GitHub
+Releases.
+
+## Standard Sequence
+
+1. Create or choose a release issue and keep its Project metadata current.
+2. Create a release-preparation branch and dedicated worktree from
+   \`origin/main\`.
+3. Update \`VERSION\`, the README release reference, and \`CHANGELOG.md\`.
+   Keep ordinary pull requests under \`[Unreleased]\`; only release-preparation
+   work changes the published version.
+4. Run the repository validation command, \`git diff --check\`, and any package
+   or integration checks required by this repository.
+5. Open and merge the release-preparation pull request.
+6. Sync local \`main\`, then inspect the release:
+
+   \`\`\`bash
+   basectl release check --version X.Y.Z
+   basectl release plan --version X.Y.Z
+   basectl release notes --version X.Y.Z
+   basectl release publish --version X.Y.Z --dry-run
+   \`\`\`
+
+7. Publish only after the checks pass. Use \`--yes\` only from a trusted
+   non-interactive release shell:
+
+   \`\`\`bash
+   basectl release publish --version X.Y.Z --yes
+   \`\`\`
+
+8. Verify the annotated tag and GitHub Release for \`$repo\`.
+9. Complete every declared downstream handoff. For Homebrew, update the tap
+   formula to the published archive and checksum, run the formula tests and
+   audit, publish required bottles, and verify install and upgrade paths. If a
+   downstream repository pins this project by commit, update and validate that
+   pin after the release.
+10. Record the release and downstream URLs on the release issue, then remove
+    the release worktree and merged branches when safe.
+
+## Repository Contract
+
+- Project: \`$name\`
+- GitHub repository: \`$repo\`
+- Version file: \`VERSION\`
+- Changelog: \`CHANGELOG.md\`
+- Tag prefix: \`v\`
+
+Do not publish a release when the repository is dirty, the version metadata is
+inconsistent, the changelog section is missing, or a required downstream handoff
+has not been identified.
+EOF
+}
+
+base_repo_configure_release() {
+    local dry_run="$1"
+    local github_repo="$2"
+    local root="$3"
+
+    [[ -n "$github_repo" ]] || {
+        log_error "Release standardization requires a GitHub repository."
+        return 1
+    }
+    base_repo_write_release_manifest "$dry_run" "$github_repo" "$root" || return 1
+    base_repo_write_release_process "$dry_run" "$(basename -- "$root")" "$github_repo" "$root" || return 1
+}
+
+base_repo_check_release() {
+    local manifest_path="$1/base_manifest.yaml"
+    local release_doc="$1/docs/release-process.md"
+    local status=0
+
+    if [[ ! -f "$manifest_path" ]] || ! base_repo_release_manifest_has_key "$manifest_path"; then
+        printf "Release contract: missing from '%s'.\n" "$manifest_path"
+        status=1
+    fi
+    if [[ ! -f "$release_doc" ]]; then
+        printf "Release process: missing '%s'.\n" "$release_doc"
+        status=1
+    fi
+    if [[ "$status" -eq 0 ]]; then
+        printf "Release contract: present.\n"
+    fi
+    return "$status"
+}
+
 base_repo_write_validate_script() {
     local dry_run="$1"
     local root="$2"
@@ -1367,10 +1529,14 @@ base_repo_stage_pr_files() {
 base_repo_stage_pr_baseline_files() {
     local agent_ready="${2:-0}"
     local files=("${BASE_REPO_BASELINE_FILES[@]}")
+    local release_contract="${3:-0}"
     local root="$1"
 
     if [[ "$agent_ready" == "1" ]]; then
         files+=(AGENTS.md skills.md)
+    fi
+    if [[ "$release_contract" == "1" ]]; then
+        files+=(docs/release-process.md)
     fi
 
     base_repo_stage_pr_files "$root" "repository baseline files" "${files[@]}"
@@ -1524,6 +1690,7 @@ base_repo_init_pr_rerun_command() {
     local agent_ready="${11}"
     local configure="$4"
     local configure_project="$6"
+    local configure_release="${15}"
     local copy_project_fields_from="${10}"
     local issue="${13}"
     local category="${14}"
@@ -1537,12 +1704,13 @@ base_repo_init_pr_rerun_command() {
     local root="$2"
     local command=(basectl repo init "$name" --path "$root" --repo "$repo" --issue "$issue" --category "$category" --pr)
     local languages_csv="${12}"
-    shift 14
+    shift 15
 
     [[ "$configure" == "1" ]] || command+=(--no-configure)
     [[ "$agent_ready" == "1" ]] && command+=(--agent-ready)
     [[ "$protect_default_branch" == "1" ]] || command+=(--no-protect-default-branch)
     [[ "$configure_project" == "1" ]] || command+=(--no-project)
+    [[ "$configure_release" == "1" ]] && command+=(--release)
     [[ -z "$project_title" ]] || command+=(--project "$project_title")
     [[ -z "$project_owner" ]] || command+=(--project-owner "$project_owner")
     [[ "$project_schema" == "base-project" ]] || command+=(--project-schema "$project_schema")
@@ -1566,6 +1734,7 @@ base_repo_finish_pr_baseline() {
     local name="$2"
     local output_file
     local pr_output=""
+    local release_contract="${10:-0}"
     local repo="$4"
     local root="$3"
     local status
@@ -1577,7 +1746,7 @@ base_repo_finish_pr_baseline() {
         return 0
     fi
 
-    base_repo_stage_pr_baseline_files "$root" "$agent_ready" || return 1
+    base_repo_stage_pr_baseline_files "$root" "$agent_ready" "$release_contract" || return 1
     if git -C "$root" diff --cached --quiet --; then
         log_info "No repository baseline changes to commit; skipping pull request creation."
         return 0
@@ -1621,9 +1790,10 @@ base_repo_finish_pr_baseline() {
 
 base_repo_pr_baseline_has_changes() {
     local agent_ready="${2:-0}"
+    local release_contract="${3:-0}"
     local root="$1"
 
-    base_repo_stage_pr_baseline_files "$root" "$agent_ready" || return 2
+    base_repo_stage_pr_baseline_files "$root" "$agent_ready" "$release_contract" || return 2
     if git -C "$root" diff --cached --quiet --; then
         git -C "$root" reset --quiet || return 2
         return 1
@@ -1828,6 +1998,7 @@ base_repo_init() {
     local issue_category=""
     local root
     local configure_project=1
+    local configure_release=0
     local initiative_options=()
     local language_fields=()
     local language_options=()
@@ -1905,6 +2076,10 @@ base_repo_init() {
                 ;;
             --agent-ready)
                 agent_ready=1
+                shift
+                ;;
+            --release)
+                configure_release=1
                 shift
                 ;;
             --language)
@@ -2161,12 +2336,24 @@ base_repo_init() {
                 "$(base_repo_languages_csv "${language_options[@]}")" \
                 "$issue" \
                 "$pr_category" \
+                "$configure_release" \
                 "${initiative_options[@]}"
         )"
         base_repo_prepare_pr_branch "$dry_run" "$root" "$pr_branch" "$default_branch" || return 1
     fi
 
+    if ((configure_release)) && [[ -z "$github_repo" ]]; then
+        github_repo="$(base_repo_infer_github_repo "$root" || true)"
+    fi
+    if ((configure_release)) && [[ -z "$github_repo" ]]; then
+        base_repo_init_usage_error "Option '--release' requires --repo <owner/name> or an existing GitHub origin remote."
+        return $?
+    fi
+
     base_repo_write_baseline "$dry_run" "$name" "$description" "$copyright_holder" "$root" "${language_options[@]}" || return 1
+    if ((configure_release)); then
+        base_repo_configure_release "$dry_run" "$github_repo" "$root" || return 1
+    fi
     if ((agent_ready)); then
         if [[ -n "$default_branch" && "$default_branch" != "<default branch>" ]]; then
             agent_default_branch="$default_branch"
@@ -2179,11 +2366,11 @@ base_repo_init() {
 
     if ((create_pr)); then
         if [[ "$dry_run" == "1" ]]; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue"
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue" "$configure_release"
             return $?
         fi
-        if base_repo_pr_baseline_has_changes "$root" "$agent_ready"; then
-            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue"
+        if base_repo_pr_baseline_has_changes "$root" "$agent_ready" "$configure_release"; then
+            base_repo_finish_pr_baseline "$dry_run" "$name" "$root" "$github_repo" "$pr_branch" "$default_branch" "$pr_rerun_command" "$agent_ready" "$issue" "$configure_release"
             return $?
         else
             baseline_change_status=$?
@@ -2430,6 +2617,7 @@ base_repo_clone() {
 base_repo_check() {
     local agent_guidance=0
     local agent_ready=0
+    local release_contract=0
     local path=""
     local status=0
 
@@ -2445,6 +2633,10 @@ base_repo_check() {
                 ;;
             --agent-ready)
                 agent_ready=1
+                shift
+                ;;
+            --release)
+                release_contract=1
                 shift
                 ;;
             -v)
@@ -2470,6 +2662,9 @@ base_repo_check() {
     [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
     base_repo_check_baseline "$path" || status=1
+    if ((release_contract)); then
+        base_repo_check_release "$path" || status=1
+    fi
     if ((agent_ready)); then
         base_repo_check_agent_ready "$path" || status=1
     elif ((agent_guidance)); then
@@ -2480,6 +2675,7 @@ base_repo_check() {
 
 base_repo_configure() {
     local configure_project=1
+    local configure_release=0
     local copy_project_fields_from=""
     local dry_run=0
     local github_repo=""
@@ -2585,6 +2781,10 @@ base_repo_configure() {
                 configure_project=0
                 shift
                 ;;
+            --release)
+                configure_release=1
+                shift
+                ;;
             -v)
                 set_log_level DEBUG
                 export LOG_DEBUG=1
@@ -2619,6 +2819,9 @@ base_repo_configure() {
         return 1
     }
 
+    if ((configure_release)); then
+        base_repo_configure_release "$dry_run" "$github_repo" "$path" || return 1
+    fi
     base_repo_write_issue_branch_policy_workflow "$dry_run" "$path" || return 1
     if ((configure_project)); then
         base_repo_write_project_support_files "$dry_run" "$path" || return 1

@@ -83,6 +83,15 @@ Before modifying files in this repository, classify the request.
 See `docs/github-workflow.md` for the full policy, including PR body sections,
 milestones, GitHub Projects, and cleanup rules.
 
+## Repository Release Contract
+
+Repositories that publish versioned artifacts should opt into Base's release
+standardization with `basectl repo configure --release --repo <owner/name>`.
+This adds missing release metadata to `base_manifest.yaml` and a
+`docs/release-process.md` guide without overwriting repository-specific release
+content. Use `basectl repo check --release` to verify adoption, and read the
+generated release guide before preparing a release.
+
 ## Validation
 
 - Run the narrowest relevant checks first, then broaden when shared behavior is

@@ -132,6 +132,25 @@ GitHub changes without applying them. In dry-run mode, `repo init` explicitly
 reports whether it would create a GitHub repository or why GitHub creation is
 being skipped.
 
+Release standardization is an explicit opt-in because not every repository
+publishes versioned artifacts. Pass `--release` to `repo init` or
+`repo configure` when the repository should follow Base's release contract:
+
+```bash
+basectl repo init base-bash-libs --repo basefoundry/base-bash-libs --release
+basectl repo configure ~/work/base-bash-libs \
+  --repo basefoundry/base-bash-libs --release
+basectl repo check ~/work/base-bash-libs --release
+```
+
+The release mode adds a generic `release:` declaration to
+`base_manifest.yaml` and a missing `docs/release-process.md` guide. It does
+not overwrite an existing release declaration or release guide, so repositories
+can keep their project-specific contract and instructions. Use `--dry-run` to
+review the proposed local changes before applying them. A GitHub repository
+name is required explicitly or must be inferable from the checkout's `origin`
+remote.
+
 `repo init` and `repo configure` also configure a repo-named GitHub Project by
 default when a GitHub repository is known. If the Project is missing, Base copies
 `base-project-template`, links the new Project to the repository, and backfills
