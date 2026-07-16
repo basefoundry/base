@@ -83,6 +83,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Made `basectl onboard --yes` reach unattended setup consent and added a
   read-only, workspace-wide manifest trust review step that never grants trust
   automatically or prompts for metadata-only manifests.
+- Made the legacy `basectl ci setup|check|doctor` compatibility syntax pass
+  arguments directly to the canonical lifecycle parsers, restoring option,
+  help, validation, and exit-code parity.
 - Required explicit relative or absolute paths for Base runtime scripts so a
   same-named file in the current directory cannot shadow a `basectl` control
   command.

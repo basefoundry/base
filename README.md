@@ -339,7 +339,7 @@ Current implemented commands include:
 - `basectl setup [project]`
 - `basectl check`
 - `basectl doctor`
-- `basectl <setup|check|doctor> --ci <project>`
+- `basectl <setup|check|doctor> --ci [project]`
 - `basectl clean --older-than <age>`
 - `basectl clean --keep-last <count>`
 - `basectl config path`

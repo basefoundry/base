@@ -35,7 +35,7 @@ Purpose:
 
 See also:
   basectl doctor [project] [options]
-  basectl ci check <project> [options]  Compatibility alias for check --ci.
+  basectl ci check [project] [options]  Compatibility alias for check --ci.
 
 Check does:
   1. Verify platform-specific runtime prerequisites.

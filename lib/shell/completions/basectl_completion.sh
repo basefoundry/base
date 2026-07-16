@@ -243,33 +243,27 @@ _base_basectl_completion_project_or_options() {
     fi
 }
 
-_base_basectl_completion_profiles_or_options() {
-    local current="$1"
-    local options="$2"
-    local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
-
-    if [[ "$previous" == "--profile" ]]; then
-        _base_basectl_completion_compgen "$(_base_basectl_completion_profiles)" "$current"
-    else
-        _base_basectl_completion_compgen "$options" "$current"
-    fi
-}
-
 _base_basectl_completion_project_profiles_or_options() {
     local current="$1"
     local options="$2"
+    local project_position="${3:-2}"
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
         _base_basectl_completion_compgen "$(_base_basectl_completion_profiles)" "$current"
+    elif ((COMP_CWORD == project_position)) && [[ "$current" != -* ]]; then
+        _base_basectl_completion_project_candidates "$current"
     else
-        _base_basectl_completion_project_or_options "$options" "$current"
+        _base_basectl_completion_compgen "$options" "$current"
     fi
 }
 
 _base_basectl_completion() {
     local command cur
     local commands="activate setup check test export-context devcontainer devenv-report build demo run repo ci release prompt docs clean logs history config trust doctor gh onboard update-profile update projects workspace version help"
+    local setup_options="--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --yes -v -h --help"
+    local check_options="--ci --profile --format --manifest --remote-network -v -h --help"
+    local doctor_options="--ci --profile --format --manifest --remote-network --no-color -v -h --help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -341,12 +335,10 @@ _base_basectl_completion() {
             fi
             ;;
         setup)
-            _base_basectl_completion_profiles_or_options \
-                "$cur" \
-                "--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --yes -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "$setup_options"
             ;;
         check)
-            _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network -v -h --help"
+            _base_basectl_completion_project_profiles_or_options "$cur" "$check_options"
             ;;
         test)
             _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
@@ -400,10 +392,13 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "setup check doctor" "$cur"
                     ;;
                 setup)
-                    _base_basectl_completion_project_profiles_or_options "$cur" "--format --manifest --profile --recreate-venv -v -h --help"
+                    _base_basectl_completion_project_profiles_or_options "$cur" "$setup_options" 3
                     ;;
-                check|doctor)
-                    _base_basectl_completion_project_profiles_or_options "$cur" "--format --manifest --profile -v -h --help"
+                check)
+                    _base_basectl_completion_project_profiles_or_options "$cur" "$check_options" 3
+                    ;;
+                doctor)
+                    _base_basectl_completion_project_profiles_or_options "$cur" "$doctor_options" 3
                     ;;
             esac
             ;;
@@ -451,7 +446,7 @@ _base_basectl_completion() {
                     COMPREPLY+=("explain")
                 fi
             else
-                _base_basectl_completion_project_profiles_or_options "$cur" "--ci --profile --format --manifest --remote-network --no-color -v -h --help"
+                _base_basectl_completion_project_profiles_or_options "$cur" "$doctor_options"
             fi
             ;;
         gh)

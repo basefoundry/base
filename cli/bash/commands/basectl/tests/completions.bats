@@ -237,10 +237,30 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "ci_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci setup ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_setup_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci setup --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_setup_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci check ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_check_projects=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl ci check --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "ci_check_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci doctor ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_doctor_projects=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci doctor --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci_doctor_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl gh ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -320,7 +340,12 @@ EOF
     [[ "$output" == *"repo_agent_guidance_options=--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --issue --category --pr --dry-run"* ]]
     [[ "$output" == *"ci_commands=setup check doctor"* ]]
-    [[ "$output" == *"ci_check_options=--format --manifest --profile"* ]]
+    [[ "$output" == *"ci_setup_projects=base demo"* ]]
+    [[ "$output" == *"ci_setup_options=--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --yes"* ]]
+    [[ "$output" == *"ci_check_projects=base demo"* ]]
+    [[ "$output" == *"ci_check_options=--ci --profile --format --manifest --remote-network"* ]]
+    [[ "$output" == *"ci_doctor_projects=base demo"* ]]
+    [[ "$output" == *"ci_doctor_options=--ci --profile --format --manifest --remote-network --no-color"* ]]
     [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
     [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
     [[ "$output" == *"gh_project_configure_options=--project --owner --schema --config --copy-fields-from --initiative-option --repo --replace-project --dry-run"* ]]
