@@ -351,6 +351,7 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help prompt-render prompt product-self-review
     assert_bash_completion_options_match_help logs logs
     assert_bash_completion_options_match_help logs-last logs last
+    assert_bash_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_bash_completion_options_match_help gh-branch-stale gh branch stale
     assert_bash_completion_options_match_help gh-branch-prune gh branch prune
     assert_bash_completion_options_match_help gh-project-doctor gh project doctor
@@ -364,12 +365,14 @@ run_zsh_positional_completion() {
     assert_zsh_completion_options_match_help trust-status trust status
     assert_zsh_completion_options_match_help trust-allow trust allow
     assert_zsh_completion_options_match_help trust-revoke trust revoke
+    assert_zsh_completion_options_match_help repo-check repo check
     assert_zsh_completion_options_match_help release-check release check
     assert_zsh_completion_options_match_help release-publish release publish
     assert_zsh_completion_options_match_help prompt-list prompt list
     assert_zsh_completion_options_match_help prompt-render prompt product-self-review
     assert_zsh_completion_options_match_help logs logs
     assert_zsh_completion_options_match_help logs-last logs last
+    assert_zsh_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_zsh_completion_options_match_help gh-branch-stale gh branch stale
     assert_zsh_completion_options_match_help gh-branch-prune gh branch prune
     assert_zsh_completion_options_match_help gh-project-doctor gh project doctor
@@ -590,14 +593,16 @@ run_zsh_positional_completion() {
     [[ "$block" == *"--report"* ]]
 }
 
-@test "Zsh release completion scopes publish-only options" {
+@test "Zsh release completion scopes inspection and publish options" {
     local block
 
     block="$(sed -n '/^[[:space:]]*release)$/,/^[[:space:]]*clean)$/p' \
         "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh")"
 
-    [[ "$block" == *"check|plan|notes)"* ]]
+    [[ "$block" == *"check)"* ]]
+    [[ "$block" == *"plan|notes)"* ]]
     [[ "$block" == *"publish)"* ]]
+    [[ "$block" == *"--format"* ]]
     [[ "$block" == *"--dry-run"* ]]
     [[ "$block" == *"--yes"* ]]
 }
