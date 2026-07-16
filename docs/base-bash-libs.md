@@ -151,6 +151,13 @@ import_base_lib str/lib_str.sh
 runtime and version helpers remain in `basefoundry/base` under `lib/bash`, but
 the reusable libraries come from `base-bash-libs`.
 
+The stdlib `import` helper is for standalone scripts that have already sourced
+`lib_std.sh`. Inside Base, do not treat `import` as a blanket replacement for
+Bash `source`: `base_init.sh` still sources the stdlib, and Base-owned command
+modules, shell startup files, virtual environment activation scripts, OS
+metadata files, and project activation scripts should continue to use
+purpose-specific `source` calls.
+
 ## Post-Migration Contract
 
 The Base contract is external-required:
