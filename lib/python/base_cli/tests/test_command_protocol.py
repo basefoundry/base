@@ -19,6 +19,7 @@ def project_command_record(**overrides: object) -> dict[str, object]:
         "manifest_path": "/tmp/work space/demo/base_manifest.yaml",
         "project_venv_dir": "/tmp/work space/demo/.venv",
         "uses_uv_manager": False,
+        "requires_project_python": True,
         "manifest_command_trust_required": True,
         "command": "printf 'tab=\t unicode=λ newline=\n control=\x01'",
         "runner": None,

@@ -9,6 +9,7 @@ from base_setup import engine
 from base_setup.artifacts import merge_artifacts
 from base_setup.artifacts import ProjectRuntimeConfig
 from base_setup.manifest import ArtifactRequest, BaseManifest, ManifestError, read_manifest
+from base_setup.setup_reconcile import setup_artifacts
 from base_setup.tests.helpers import fake_context
 
 class BootstrapManifestTests(unittest.TestCase):
@@ -29,6 +30,7 @@ class BootstrapManifestTests(unittest.TestCase):
             project_name="demo",
             brewfile=None,
             artifacts=(),
+            python_declared=True,
         )
 
         with mock.patch("base_setup.setup_reconcile.reconcile_artifacts") as reconcile_artifacts:
@@ -40,6 +42,30 @@ class BootstrapManifestTests(unittest.TestCase):
         self.assertIsInstance(runtime_config, ProjectRuntimeConfig)
         self.assertEqual(runtime_config.name, "demo")
         self.assertEqual(runtime_config.venv_dir, (Path.cwd() / ".venv").resolve())
+
+    def test_shell_only_manifest_does_not_inherit_base_python_artifacts(self) -> None:
+        default_manifest = BaseManifest(
+            path=Path("default_manifest.yaml"),
+            project_name="base-defaults",
+            brewfile=None,
+            artifacts=(
+                ArtifactRequest("python-package", "click", "8.4.1", bootstrap=True),
+                ArtifactRequest("tool", "shellcheck", "latest"),
+            ),
+        )
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="shell-only",
+            brewfile=None,
+            artifacts=(ArtifactRequest("tool", "jq", "latest"),),
+        )
+
+        artifacts = setup_artifacts(default_manifest, manifest)
+
+        self.assertEqual(
+            tuple((artifact.artifact_type, artifact.name) for artifact in artifacts),
+            (("tool", "shellcheck"), ("tool", "jq")),
+        )
 
 
 

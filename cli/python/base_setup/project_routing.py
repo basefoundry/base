@@ -21,6 +21,7 @@ class ProjectRoute:
     manifest_path: Path
     project_venv_dir: Path
     uses_uv_manager: bool
+    requires_project_python: bool
 
     def to_json(self) -> dict[str, object]:
         return {
@@ -30,10 +31,12 @@ class ProjectRoute:
             "manifest_path": str(self.manifest_path),
             "project_venv_dir": str(self.project_venv_dir),
             "uses_uv_manager": self.uses_uv_manager,
+            "requires_project_python": self.requires_project_python,
         }
 
     def to_tsv(self) -> str:
         uses_uv = "true" if self.uses_uv_manager else "false"
+        requires_python = "true" if self.requires_project_python else "false"
         return "\t".join(
             [
                 self.project,
@@ -41,6 +44,7 @@ class ProjectRoute:
                 str(self.manifest_path),
                 str(self.project_venv_dir),
                 uses_uv,
+                requires_python,
             ]
         )
 
@@ -51,6 +55,7 @@ class ProjectRoute:
             "manifest_path": str(self.manifest_path),
             "project_venv_dir": str(self.project_venv_dir),
             "uses_uv_manager": self.uses_uv_manager,
+            "requires_project_python": self.requires_project_python,
             "manifest_command_trust_required": False,
         }
 
@@ -70,7 +75,16 @@ def route_for_manifest(manifest: BaseManifest) -> ProjectRoute:
             venv_location=manifest.python.venv_location,
         ),
         uses_uv_manager=uses_uv_manager,
+        requires_project_python=manifest_requires_project_python(manifest),
     )
+
+
+def manifest_requires_project_python(manifest: BaseManifest) -> bool:
+    """Return whether the manifest explicitly owns a project Python runtime."""
+
+    if manifest.python_declared:
+        return True
+    return any(artifact.artifact_type == "python-package" for artifact in manifest.artifacts)
 
 
 def project_venv_dir(

@@ -15,6 +15,14 @@ from base_projects import engine
 def write_manifest(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\npython: {{}}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
+def write_shell_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
         f"project:\n  name: {name}\nartifacts: []\n",
         encoding="utf-8",
     )
@@ -279,6 +287,31 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertIn("BASE-P154", stdout)
         self.assertNotIn("BASE-P050", stdout)
         self.assertIn("All discovered projects passed.", stdout)
+
+    def test_workspace_check_and_doctor_skip_project_venv_for_shell_only_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_shell_manifest(workspace / "shell-only", "shell-only")
+
+            for command in ("check", "doctor"):
+                with self.subTest(command=command):
+                    status, stdout, stderr = invoke_engine(
+                        [command, "--workspace", str(workspace)],
+                        base_home,
+                        home,
+                    )
+                    self.assertEqual(status, 0, stderr)
+                    self.assertIn("Project: shell-only [ok]", stdout)
+                    self.assertNotIn("BASE-P050", stdout + stderr)
+                    self.assertIn("All discovered projects passed.", stdout)
+
+            self.assertFalse((workspace / "shell-only" / ".venv").exists())
 
     def test_workspace_check_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

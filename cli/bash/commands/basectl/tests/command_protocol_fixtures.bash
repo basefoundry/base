@@ -47,23 +47,29 @@ base_test_protocol_project_reference_record() {
 }
 
 base_test_protocol_project_route_record() {
+    local requires_project_python="${8:-true}"
+
     printf 'record=%s\n' "$1"
     base_test_protocol_string project_name "$2"
     base_test_protocol_string project_root "$3"
     base_test_protocol_string manifest_path "$4"
     base_test_protocol_string project_venv_dir "$5"
     base_test_protocol_boolean uses_uv_manager "$6"
+    base_test_protocol_boolean requires_project_python "$requires_project_python"
     base_test_protocol_boolean manifest_command_trust_required "$7"
     printf 'end_record=%s\n' "$1"
 }
 
 base_test_protocol_project_command_record() {
+    local requires_project_python="${10:-true}"
+
     printf 'record=%s\n' "$1"
     base_test_protocol_string project_name "$2"
     base_test_protocol_string project_root "$3"
     base_test_protocol_string manifest_path "$4"
     base_test_protocol_string project_venv_dir "$5"
     base_test_protocol_boolean uses_uv_manager "$6"
+    base_test_protocol_boolean requires_project_python "$requires_project_python"
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string command "$8"
     base_test_protocol_nullable_string runner "${9:-}"
@@ -86,6 +92,7 @@ base_test_protocol_build_target_record() {
     local command="${10}"
     local description="${11:-}"
     local runner="${12:-}"
+    local requires_project_python="${13:-true}"
 
     printf 'record=%s\n' "$record_index"
     base_test_protocol_string project_name "$2"
@@ -93,6 +100,7 @@ base_test_protocol_build_target_record() {
     base_test_protocol_string manifest_path "$4"
     base_test_protocol_string project_venv_dir "$5"
     base_test_protocol_boolean uses_uv_manager "$6"
+    base_test_protocol_boolean requires_project_python "$requires_project_python"
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string target_name "$8"
     base_test_protocol_string working_dir "$9"
@@ -103,12 +111,15 @@ base_test_protocol_build_target_record() {
 }
 
 base_test_protocol_demo_record() {
+    local requires_project_python="${10:-true}"
+
     printf 'record=%s\n' "$1"
     base_test_protocol_string project_name "$2"
     base_test_protocol_string project_root "$3"
     base_test_protocol_string manifest_path "$4"
     base_test_protocol_string project_venv_dir "$5"
     base_test_protocol_boolean uses_uv_manager "$6"
+    base_test_protocol_boolean requires_project_python "$requires_project_python"
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string demo_script "$8"
     base_test_protocol_nullable_string runner "${9:-}"

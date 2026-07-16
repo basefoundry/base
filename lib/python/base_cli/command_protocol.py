@@ -32,6 +32,7 @@ PROJECT_ROUTE_FIELDS = {
     **PROJECT_REFERENCE_FIELDS,
     "project_venv_dir": STRING,
     "uses_uv_manager": BOOLEAN,
+    "requires_project_python": BOOLEAN,
     "manifest_command_trust_required": BOOLEAN,
 }
 

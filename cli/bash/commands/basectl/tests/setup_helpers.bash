@@ -837,6 +837,16 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
         fi
         if awk '
             /^[[:space:]]*#/ { next }
+            /^python:[[:space:]]*/ { found = 1 }
+            /^[[:space:]]*-[[:space:]]+type:[[:space:]]*['\''"]?python-package['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
+            END { exit found ? 0 : 1 }
+        ' "$manifest_path"; then
+            requires_project_python=true
+        else
+            requires_project_python=false
+        fi
+        if awk '
+            /^[[:space:]]*#/ { next }
             /^[^[:space:]][^:]*:/ { in_python = 0 }
             /^[[:space:]]*python:[[:space:]]*$/ { in_python = 1; next }
             in_python && /^[[:space:]]+venv_location:[[:space:]]*['\''"]?external['\''"]?[[:space:]]*(#.*)?$/ { found = 1 }
@@ -854,13 +864,14 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
             route_venv_dir="$HOME/.base.d/$project_arg/.venv"
         fi
         if [[ "$output_format" == "json" ]]; then
-            printf '{"schema_version":1,"project":"%s","project_root":"%s","manifest_path":"%s","project_venv_dir":"%s","uses_uv_manager":%s}\n' \
-                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
+            printf '{"schema_version":1,"project":"%s","project_root":"%s","manifest_path":"%s","project_venv_dir":"%s","uses_uv_manager":%s,"requires_project_python":%s}\n' \
+                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" "$requires_project_python"
         elif [[ "$output_format" == "command-protocol" ]]; then
             base_test_protocol_project_route \
-                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" false
+                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" false "$requires_project_python"
         else
-            printf '%s\t%s\t%s\t%s\t%s\n' "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" "$requires_project_python"
         fi
         exit 0
     fi

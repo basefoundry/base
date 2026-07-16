@@ -2,6 +2,33 @@
 
 Base supports two Python project shapes.
 
+## When A Project Python Runtime Is Required
+
+Base treats project Python as explicit. A manifest requires a project Python
+runtime when either of these is present:
+
+- a top-level `python:` mapping, including `python: {}`
+- at least one `python-package` artifact
+
+The empty mapping is a compatibility opt-in to Base's default managed project
+venv. `project.languages: [python]` is classification metadata only and does
+not independently request an environment.
+
+A manifest with neither contract is shell-only for Base setup and diagnostics.
+`basectl setup`, `basectl check`, and `basectl doctor` run Base-owned manifest
+parsing and reconciliation from `~/.base.d/base/.venv`; they do not copy
+Click, PyYAML, tomli, or other Base bootstrap packages into the project and do
+not create `<project-root>/.venv` solely for Base. Workspace status and
+onboarding expose the venv state as `not_applicable` and can report the project
+healthy without a project interpreter.
+
+This is a scoped boundary, not the complete migration tracked in
+[#1611](https://github.com/basefoundry/base/issues/1611). Project-owned
+activation, run, test, build, and demo command routing keeps its existing
+environment behavior for now. Future work should move more Base-owned control
+plane execution to the Base runtime while preserving environments explicitly
+owned by projects.
+
 The Base-managed shape uses `python-package` artifact rows and installs
 packages into the project's virtual environment:
 
@@ -265,6 +292,8 @@ from unfamiliar repositories before running their declared commands.
 object for each ready, inspectable project environment. That summary reports
 the environment manager, virtualenv path, interpreter path, and actual Python
 minor version for both Base-managed and uv-managed projects.
+Shell-only projects instead report `venv: "not_applicable"` and omit
+`python_runtime`.
 
 ## Non-Goals
 

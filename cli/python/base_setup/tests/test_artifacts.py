@@ -955,6 +955,8 @@ class EngineArtifactTests(unittest.TestCase):
                         "project:",
                         "  name: demo",
                         "",
+                        "python: {}",
+                        "",
                         "artifacts: []",
                     ]
                 ),

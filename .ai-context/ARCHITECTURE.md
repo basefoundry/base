@@ -55,6 +55,13 @@ an explicit Bash script, or an interactive Base runtime shell.
 with the selected project virtual environment and a `PYTHONPATH` that includes
 Base's `lib/python` and `cli/python`.
 
+Project Python ownership is explicit. A top-level `python:` mapping (including
+`python: {}`) or a `python-package` artifact requires a project runtime.
+Shell-only manifests use Base's own venv for setup/check/doctor control-plane
+work, do not inherit Base bootstrap packages into a project venv, and report
+workspace venv state as `not_applicable`. `project.languages` remains taxonomy.
+The broader runtime separation remains tracked in #1611.
+
 When Bash needs metadata from `base_projects` or the `base_setup` route action,
 it requests the internal versioned `command-protocol` format. Records have
 explicit schemas, field names, string/boolean/null types, and hex-framed UTF-8

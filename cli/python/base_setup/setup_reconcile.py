@@ -18,6 +18,7 @@ from .ide_extensions import reconcile_ide_extensions
 from .ide_installs import reconcile_ide_installs
 from .ide_settings import reconcile_ide_settings
 from .manifest import BaseManifest
+from .project_routing import manifest_requires_project_python
 from .project_routing import route_for_manifest
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project
@@ -71,6 +72,13 @@ def reconcile_bootstrap_artifacts(
     manifest: BaseManifest,
     dry_run: bool,
 ) -> None:
+    if not manifest_requires_project_python(manifest):
+        ctx.log.info(
+            "Project '%s' does not declare a Python runtime; skipping project bootstrap.",
+            manifest.project_name,
+        )
+        return
+
     ctx.log.info("Bootstrapping project '%s' Python runtime.", manifest.project_name)
 
     artifacts = tuple(artifact for artifact in default_manifest.artifacts if artifact.bootstrap)
@@ -101,7 +109,12 @@ def effective_manifest_with_user_config(manifest: BaseManifest, user_config: Use
 
 
 def setup_artifacts(default_manifest: BaseManifest, manifest: BaseManifest) -> tuple:
-    artifacts = merge_artifacts(default_manifest.artifacts, manifest.artifacts)
+    default_artifacts = default_manifest.artifacts
+    if not manifest_requires_project_python(manifest):
+        default_artifacts = tuple(
+            artifact for artifact in default_artifacts if artifact.artifact_type != "python-package"
+        )
+    artifacts = merge_artifacts(default_artifacts, manifest.artifacts)
     if not manifest_uses_uv_project_manager(manifest):
         return artifacts
     return tuple(artifact for artifact in artifacts if artifact.artifact_type != "python-package")

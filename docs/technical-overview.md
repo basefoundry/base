@@ -80,10 +80,12 @@ libraries are documented in [Base Bash Libraries](base-bash-libs.md).
 
 **Layer 3 — Project environment** (`basectl activate <project>`)
 
-Spawns a Bash runtime shell, sets `BASE_PROJECT`, activates the project venv at
-`<project-root>/.venv`, runs `activate.source` scripts declared in the
-manifest, and updates the prompt to `[project: branch] ~/path $`. Exit that
-shell to return to the original environment - no deactivation logic needed.
+Spawns a Bash runtime shell, sets `BASE_PROJECT`, applies the project runtime
+route, runs `activate.source` scripts declared in the manifest, and updates the
+prompt to `[project: branch] ~/path $`. Python projects activate their selected
+project venv. Shell-only setup/check/doctor work does not create one solely for
+Base's control plane. Exit that shell to return to the original environment -
+no deactivation logic needed.
 
 **Design choice — no `cd`-triggered activation:** switching directories does not
 change environment. Users explicitly activate projects with `basectl activate`.
@@ -245,7 +247,7 @@ exec "$SHELL" -l
 | Path | Purpose |
 |---|---|
 | `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, canonical manifest source, log level) |
-| `<project-root>/.venv` | Default non-Base project Python virtual environment |
+| `<project-root>/.venv` | Default non-Base project Python virtual environment when the manifest declares `python:` or `python-package` artifacts; not created for shell-only control-plane work |
 | `~/.base.d/<project>/.venv` | Historical external project Python virtual environment when `python.venv_location: external` is set |
 | `~/.base.d/<project>/checks/last.json` | Latest recorded `basectl check <project>` result used by workspace status |
 | `~/Library/Caches/base/` | Runtime logs, temp files, project discovery cache |

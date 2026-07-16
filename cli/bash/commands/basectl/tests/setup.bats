@@ -471,7 +471,7 @@ EOF
     create_project_setup_venv_stub "$base_venv_dir"
     create_project_setup_venv_stub "$demo_venv_dir"
     create_project_setup_venv_stub "$inherited_venv"
-    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$manifest_path"
 
     run_base_command \
         BASE_PROJECT=base \
@@ -812,7 +812,7 @@ EOF
     create_project_setup_venv_stub "$base_venv_dir"
     create_project_setup_venv_stub "$demo_venv_dir"
     printf 'base marker\n' > "$base_venv_dir/old.txt"
-    printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest_path"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$manifest_path"
 
     run_base_command setup --dry-run --manifest "$manifest_path" --recreate-venv demo
 
@@ -873,6 +873,31 @@ EOF
     [ ! -e "$TEST_HOME/.base.d/demo/.venv" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --dry-run --manifest "$manifest_path" --action setup demo)" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+}
+
+@test "basectl setup shell-only project runs from Base runtime without project venv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/shell-only"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$project_root"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" "$manifest_path"
+
+    run_base_command setup --dry-run --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ ! -e "$project_root/.venv" ]
+    [ -f "$TEST_STATE_DIR/project-setup-python" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-python")" = "$base_venv_dir/bin/python" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "shell-only" ]
+    [ ! -e "$TEST_STATE_DIR/project-bootstrap-recreate-venv" ]
 }
 
 @test "basectl setup --yes linux-debian forwards consent to uv-managed project setup" {

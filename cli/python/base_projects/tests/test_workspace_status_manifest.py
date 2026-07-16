@@ -15,7 +15,7 @@ from base_projects import engine
 def write_manifest(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "base_manifest.yaml").write_text(
-        f"project:\n  name: {name}\nartifacts: []\n",
+        f"project:\n  name: {name}\npython: {{}}\nartifacts: []\n",
         encoding="utf-8",
     )
 

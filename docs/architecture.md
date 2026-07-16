@@ -472,8 +472,9 @@ orchestration actions. The design rule is delegation-first:
   affect the interactive runtime shell, such as local environment loading,
   aliases, or functions. Source paths must be relative to the project root and
   must resolve inside that root.
-- Let Base own the project virtual environment and Base-aware package
-  reconciliation.
+- Let Base own Base-aware package reconciliation and any project virtual
+  environment explicitly requested by `python:` or `python-package` manifest
+  contracts. Shell-only manifests use the Base runtime for control-plane work.
 - Do not run arbitrary project setup hooks until Base has a clear safety
   contract for dry-run behavior, interactivity, setup diagnostics, and broader
   side effects. See [setup-hooks.md](setup-hooks.md) for the setup no-hooks
@@ -501,6 +502,22 @@ Base-managed virtualenv creation, while check/doctor distinguish unsupported
 requests from supported-but-unavailable interpreters. See
 [python-manifest.md](python-manifest.md) for the current contract and migration
 boundary.
+
+A manifest requires project Python when it contains a top-level `python:`
+mapping, including an explicit empty `python: {}`, or declares at least one
+`python-package` artifact. `project.languages: [python]` remains taxonomy and
+does not independently create an environment. When neither project-Python
+contract is present, setup, check, and doctor run Base-owned parsing and
+reconciliation from `~/.base.d/base/.venv`, skip Base's default project Python
+bootstrap artifacts, and do not require `<project-root>/.venv`. Workspace
+status reports that venv as `not_applicable` rather than missing.
+
+This is the shell-only vertical slice of the broader runtime-boundary work in
+[#1611](https://github.com/basefoundry/base/issues/1611). Activation and
+project-owned run, test, build, and demo command environment semantics retain
+their existing routing in this slice; the remaining migration should continue
+to separate Base control-plane execution from project-owned runtime execution
+without adding another special-purpose runtime.
 
 Homebrew-managed `tool` artifacts currently support `version: latest`. If a
 project requests a pinned Homebrew version, setup fails clearly instead of
@@ -714,9 +731,11 @@ On a fresh Mac, installation and first-run setup use this sequence:
    separate one-time shell-profile step; run it again only when updating
    Base-managed shell dotfiles
 7. Scan the parent directory for peer repos with base manifests
-8. For each project setup target, seed the project venv with `bootstrap: true`
-   default artifacts, then run project artifact reconciliation through
-   `base-wrapper --project <project>`
+8. For a shell-only setup target, run manifest reconciliation from Base's own
+   venv without creating a project venv. For a target that explicitly declares
+   project Python, seed its project venv with `bootstrap: true` default
+   artifacts, then run reconciliation through `base-wrapper --project
+   <project>`.
 
 Homebrew installation follows Homebrew's official `install/HEAD/install.sh`
 bootstrap command. That means Base intentionally trusts Homebrew's mutable

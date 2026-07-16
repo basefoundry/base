@@ -35,6 +35,7 @@ field.project_root:string=2f746d702f64656d6f
 field.manifest_path:string=2f746d702f64656d6f2f626173655f6d616e69666573742e79616d6c
 field.project_venv_dir:string=2f746d702f64656d6f2f2e76656e76
 field.uses_uv_manager:boolean=false
+field.requires_project_python:boolean=true
 field.manifest_command_trust_required:boolean=true
 field.command:string=7072696e7466206f6b
 field.runner:string=

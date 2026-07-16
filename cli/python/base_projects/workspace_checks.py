@@ -23,6 +23,7 @@ from base_setup.engine import read_default_manifest
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest
+from base_setup.project_routing import manifest_requires_project_python
 from base_setup.uv import manifest_uses_uv_project_manager
 
 
@@ -182,7 +183,7 @@ def workspace_project_check_result(
             checks=checks,
         )
 
-    if manifest_uses_uv_project_manager(manifest):
+    if not manifest_requires_project_python(manifest) or manifest_uses_uv_project_manager(manifest):
         checks = manifest_checks(default_manifest, manifest)
     else:
         venv_check = project_venv_check(manifest)
