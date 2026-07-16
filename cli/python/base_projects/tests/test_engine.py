@@ -704,6 +704,23 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stdout, f"renamed\t{project_root.resolve()}\n")
         self.assertEqual(read_project_mock.call_count, 2)
 
+    def test_projects_list_dry_run_does_not_write_discovery_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            with mock.patch("base_projects.project_discovery.write_project_cache") as write_cache:
+                status, stdout, stderr = run_engine(
+                    ["list", "--workspace", str(workspace), "--dry-run"],
+                    base_home,
+                )
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("demo\t", stdout)
+        write_cache.assert_not_called()
+
     def test_projects_list_rejects_unknown_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
@@ -1468,6 +1485,143 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             "\taudit\tpytest tests/audit\tuv\n",
         )
+
+    def test_projects_run_commands_json_is_stable_and_ordered(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo with spaces"
+            write_runner_commands_manifest(project_root, "demo")
+
+            status, stdout, stderr = run_engine(
+                ["run-commands", "demo", "--format", "json"],
+                base_home,
+            )
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertEqual(
+            json.loads(stdout),
+            {
+                "schema_version": 1,
+                "project": {
+                    "name": "demo",
+                    "root": str(project_root.resolve()),
+                    "manifest_path": str((project_root / "base_manifest.yaml").resolve()),
+                },
+                "commands": [
+                    {"name": "test", "command": "pytest tests/", "runner": "uv"},
+                    {"name": "audit", "command": "pytest tests/audit", "runner": "uv"},
+                ],
+            },
+        )
+
+    def test_projects_run_command_respects_current_legacy_and_explicit_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            current_root = workspace / "current"
+            other_root = workspace / "api"
+            nested = current_root / "docs"
+            write_commands_manifest(current_root, "current")
+            write_commands_manifest(other_root, "api")
+            nested.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(nested)
+                current_status, current_stdout, current_stderr = run_engine(["run-command", "dev"], base_home)
+                legacy_status, legacy_stdout, legacy_stderr = run_engine(
+                    ["run-command", "api", "dev"],
+                    base_home,
+                )
+                explicit_status, explicit_stdout, explicit_stderr = run_engine(
+                    ["run-command", "dev", "--project", "api"],
+                    base_home,
+                )
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual((current_status, current_stderr), (0, ""))
+        self.assertTrue(current_stdout.startswith(f"current\t{current_root.resolve()}\t"))
+        self.assertEqual((legacy_status, legacy_stderr), (0, ""))
+        self.assertTrue(legacy_stdout.startswith(f"api\t{other_root.resolve()}\t"))
+        self.assertEqual((explicit_status, explicit_stderr), (0, ""))
+        self.assertTrue(explicit_stdout.startswith(f"api\t{other_root.resolve()}\t"))
+
+    def test_projects_run_command_collision_favors_registered_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            current_root = workspace / "current"
+            other_root = workspace / "api"
+            write_commands_manifest(current_root, "current")
+            write_commands_manifest(other_root, "api")
+            manifest_path = current_root / "base_manifest.yaml"
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace(
+                    "  dev: uvicorn app:app --reload",
+                    "  api: printf current-api\n  dev: uvicorn app:app --reload",
+                ),
+                encoding="utf-8",
+            )
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(current_root)
+                collision_status, _collision_stdout, collision_stderr = run_engine(
+                    ["run-command", "api"],
+                    base_home,
+                )
+                explicit_status, explicit_stdout, explicit_stderr = run_engine(
+                    ["run-command", "api", "--project", "current"],
+                    base_home,
+                )
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(collision_status, 2)
+        self.assertIn("Command name is required for project 'api'", collision_stderr)
+        self.assertEqual((explicit_status, explicit_stderr), (0, ""))
+        self.assertIn("\tprintf current-api", explicit_stdout)
+
+    def test_projects_run_command_missing_current_project_is_controlled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(workspace)
+                status, stdout, stderr = run_engine(["run-command", "dev"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("No base_manifest.yaml found", stderr)
+        self.assertNotIn("Traceback", stderr)
+
+    def test_projects_run_command_invalid_current_manifest_is_controlled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            (workspace / "base_manifest.yaml").write_text("project: [\n", encoding="utf-8")
+
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(workspace)
+                status, stdout, stderr = run_engine(["run-command", "dev"], base_home)
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertNotIn("Traceback", stderr)
 
     def test_projects_run_commands_defaults_to_current_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

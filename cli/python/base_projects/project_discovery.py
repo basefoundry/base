@@ -53,7 +53,8 @@ def discover_projects_cached(ctx: base_cli.Context, workspace_root: Path) -> tup
         return cached_projects
 
     projects = validate_unique_project_names(tuple(sorted(read_project(entry.path) for entry in entries)))
-    write_project_cache(workspace_root, entries, projects, ctx)
+    if not ctx.dry_run:
+        write_project_cache(workspace_root, entries, projects, ctx)
     elapsed_ms = (time.perf_counter() - start) * 1000
     ctx.log.debug(
         "Project discovery scanned '%s': %d project(s) in %.1fms.",

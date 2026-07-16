@@ -15,6 +15,7 @@ Usage:
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --project <name>    Select a project explicitly instead of the positional or nearest project.
   --dry-run           Print the resolved test command without running it.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
@@ -31,9 +32,9 @@ base_test_usage_error() {
 }
 
 base_test_subcommand_main() {
-    local project="" wrapper resolve_output resolved_name project_root manifest_path test_command command_runner
+    local project="" explicit_project="" wrapper resolve_output resolved_name project_root manifest_path test_command command_runner
     local command_to_run display_command
-    local dry_run=0 workspace_requested=0
+    local dry_run=0
     local args=() extra_args=()
     local route_venv_dir uses_uv_manager trust_required
 
@@ -57,14 +58,24 @@ base_test_subcommand_main() {
                     base_test_usage_error "Option '--workspace' requires an argument."
                     return $?
                 }
-                workspace_requested=1
                 args+=(--workspace "$2")
                 shift 2
                 ;;
             --workspace=*)
-                workspace_requested=1
                 args+=("$1")
                 shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_test_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_test_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="$2"
+                shift 2
                 ;;
             --dry-run)
                 dry_run=1
@@ -85,8 +96,8 @@ base_test_subcommand_main() {
         esac
     done
 
-    [[ -n "$project" || "$workspace_requested" != "1" ]] || {
-        base_test_usage_error "Option '--workspace' requires an explicit project name."
+    [[ -z "$explicit_project" || -z "$project" ]] || {
+        base_test_usage_error "The 'test' command does not accept a positional project with --project."
         return $?
     }
 
@@ -94,7 +105,11 @@ base_test_subcommand_main() {
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
     local command_args=(test-command)
-    [[ -z "$project" ]] || command_args+=("$project")
+    if [[ -n "$explicit_project" ]]; then
+        command_args+=(--project "$explicit_project")
+    elif [[ -n "$project" ]]; then
+        command_args+=("$project")
+    fi
     resolve_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol)" || return $?
     base_command_protocol_decode_one project-command "$resolve_output" || {
         fatal_error "Unable to resolve test command for project '$project'."

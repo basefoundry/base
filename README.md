@@ -111,7 +111,7 @@ Success looks like a workspace where each participating project has a
 `base_manifest.yaml`, appears in `basectl projects list`, can be checked with
 `basectl check <project>`, and can run its declared test command through
 `basectl test <project>` or named project commands through
-`basectl run <project> <command>`.
+`basectl run [project] <command>`.
 
 ### Shell Startup Is Explicit
 
@@ -258,7 +258,7 @@ basectl check <project>
 basectl doctor <project>
 basectl test <project>
 basectl demo [project]
-basectl run <project> <command>
+basectl run [project] <command>
 basectl export-context <project>
 basectl docs
 basectl activate <project>
@@ -366,9 +366,9 @@ Current implemented commands include:
 - `basectl prompt product-self-review`
 - `basectl activate <project>`
 - `basectl test [project]`
-- `basectl build <project> [target...]`
+- `basectl build [project] [target...]`
 - `basectl demo [project]`
-- `basectl run <project> <command>`
+- `basectl run [project] <command>`
 - `basectl export-context [project]`
 - `basectl devcontainer [project]`
 - `basectl devenv-report [project]`
@@ -889,8 +889,10 @@ For `test.mise`, Base passes those arguments after `mise run <task> --`.
 Run a discovered project's declared build targets with:
 
 ```bash
+basectl build
 basectl build example
 basectl build example api worker
+basectl build --project example api worker
 ```
 
 The `build` contract is intentionally declarative. Base does not infer how to
@@ -913,8 +915,8 @@ build:
       command: go build ./cmd/worker
 ```
 
-`basectl build <project>` runs `build.default` sequentially. `basectl build
-<project> <target> [target...]` runs only the named targets. Base exports the
+`basectl build [project]` runs `build.default` sequentially. `basectl build
+[project] <target> [target...]` runs only the named targets. Base exports the
 same project environment variables as `basectl test`, prepends the project
 virtual environment when it exists, changes into each target's `working_dir`,
 and returns the first failing build command's exit status.
@@ -923,14 +925,17 @@ Use `--list` or `--dry-run` to inspect the manifest contract:
 
 ```bash
 basectl build example --list
+basectl build --list --format json
 basectl build example --dry-run
 ```
 
 Run other manifest-declared project commands with:
 
 ```bash
+basectl run dev
 basectl run example dev
 basectl run example lint
+basectl run --project example dev
 ```
 
 The `commands` map is intentionally small and declarative:
@@ -945,13 +950,26 @@ commands:
   format: ruff format .
 ```
 
-`basectl run <project> <command>` runs the command from the project root,
+`basectl run [project] <command>` runs the command from the project root,
 exports the same `BASE_PROJECT`, `BASE_PROJECT_ROOT`,
 `BASE_PROJECT_MANIFEST`, and `BASE_PROJECT_VENV_DIR` variables as
 `basectl test`, prepends the project virtual environment when it exists, and
-returns the command's exit status. Use `basectl run <project> --list` to see a
+returns the command's exit status. Use `basectl run [project] --list` to see a
 project's runnable commands. When the current directory is inside a
 Base-managed project, `basectl run --list` lists that project.
+
+`run`, `build`, `test`, and `demo` select projects in one order: explicit
+`--project <name>`, a backward-compatible first positional project when that
+name is registered, then the nearest `base_manifest.yaml`. At a workspace root
+with no nearest manifest, pass `--project` or a registered positional project.
+`--workspace` controls named-project discovery and does not scan arbitrary
+directories. If a current command or build target has the same name as a
+registered project, the legacy project interpretation wins; use `--project
+<current-name>` to select the current command or target explicitly.
+
+`basectl run --list --format json` and `basectl build --list --format json`
+return stable `schema_version: 1` objects for automation. These list paths only
+read manifest metadata; they do not execute commands or grant manifest trust.
 
 Pass additional arguments after `--`:
 

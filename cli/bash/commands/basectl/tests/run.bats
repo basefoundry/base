@@ -326,7 +326,7 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-commands" && "${4:-}" == "--format" ]]; then
+if [[ " $* " == *" -m base_projects run-commands --dry-run --format command-protocol "* ]]; then
     base_test_protocol_begin named-command 1
     base_test_protocol_named_command_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" dev 'uvicorn app:app --reload' ""
@@ -355,12 +355,67 @@ EOF
     [[ "$output" == *"dev"*"uvicorn app:app --reload"* ]]
 }
 
+@test "basectl run resolves a current-project command from a nested directory" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/docs"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "run-command" && "${4:-}" == "dev" ]]; then
+    base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        'printf current-project-run' ""
+    exit 0
+fi
+printf 'unexpected current run python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\ncommands:\n  dev: printf current-project-run\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        bash -c 'cd "$1" && shift && "$@"' bash "$workspace/demo/docs" \
+        "$BASE_REPO_ROOT/bin/basectl" run dev --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would run command dev for project demo"* ]]
+}
+
+@test "basectl run list exposes stable JSON for an explicit project" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local expected='{"schema_version":1,"project":{"name":"demo"},"commands":[{"name":"serve app"}]}'
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ " $* " == *" -m base_projects run-commands --project demo --dry-run --format json "* ]]; then
+    printf '%s\n' "${BASE_TEST_EXPECTED_JSON:?}"
+    exit 0
+fi
+printf 'unexpected run JSON args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_EXPECTED_JSON="$expected" \
+        "$BASE_REPO_ROOT/bin/basectl" run --project demo --list --format json
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl run prints help without requiring the Base Python venv" {
     run_basectl run --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl run <project> <command>"* ]]
+    [[ "$output" == *"basectl run [project] <command>"* ]]
+    [[ "$output" == *"--project <name>"* ]]
+    [[ "$output" == *"--format <format>"* ]]
     [[ "$output" == *"--list"* ]]
     [[ "$output" == *"--dry-run"* ]]
 }
@@ -368,19 +423,23 @@ EOF
 @test "basectl run reports invalid arguments as usage errors" {
     run_basectl run
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Project name is required."* ]]
+    [[ "$output" == *"ERROR: The 'run' command requires a command name"* ]]
 
-    run_basectl run demo
+    run_basectl run --project demo
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Command name is required."* ]]
+    [[ "$output" == *"ERROR: The 'run' command accepts exactly one command name with --project."* ]]
 
-    run_basectl run --workspace "$TEST_TMPDIR" --list
+    run_basectl run --project
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
+    [[ "$output" == *"ERROR: Option '--project' requires an argument."* ]]
 
     run_basectl run demo dev --list
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Option '--list' cannot be combined with a command name."* ]]
+    [[ "$output" == *"ERROR: Option '--list' accepts at most one positional project."* ]]
+
+    run_basectl run demo --format json
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--format' requires --list."* ]]
 
     run_basectl run --unknown demo
     [ "$status" -eq 2 ]

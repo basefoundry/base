@@ -178,15 +178,18 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `test.mise` from the project root with Base project environment variables
   exported. Use `basectl test <project> -- <args...>` to pass extra arguments
   to the delegated test command.
-- `basectl build <project> [target...]` runs manifest `build.targets` from
+- `basectl build [project] [target...]` runs manifest `build.targets` from
   each target's `working_dir`. With no targets, it runs `build.default`
-  sequentially. Use `basectl build <project> --list` to inspect targets and
+  sequentially. Use `basectl build [project] --list` to inspect targets and
   `--dry-run` to preview commands without running them.
-- `basectl run <project> <command>` runs a named command from the project's
+- `basectl run [project] <command>` runs a named command from the project's
   manifest `commands` map with the same project root, environment variables,
   virtual environment, dry-run, and extra-argument contract as `basectl test`.
   `basectl run <project> test` delegates to the top-level manifest `test`
-  contract. Use `basectl run <project> --list` to inspect available commands.
+  contract. Use `basectl run [project] --list` to inspect available commands.
+  `run`, `build`, `test`, and `demo` prefer `--project`, preserve a registered
+  first positional project, then use the nearest manifest. Run/build list JSON
+  is available with `--format json`; list and completion paths are read-only.
 - `basectl export-context [project]` exports a project's `.ai-context`
   directory for manual AI tool upload or copy/paste. Markdown exports include
   stable file headings and use `INDEX.md` ordering when available. Zip exports

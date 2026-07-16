@@ -11,17 +11,21 @@ source "$_base_project_command_helpers_path"
 base_build_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl build <project> [target...] [options] [-- extra args...]
-  basectl build <project> --list [options]
+  basectl build [project] [target...] [options] [-- extra args...]
+  basectl build [project] --list [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --project <name>    Select a project explicitly; required for a current target named like a project.
   --dry-run           Print resolved build commands without running them.
   --list              List build targets for a project.
+  --format <format>   List output format: text or json. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
 Run a project's declared build targets from their configured working directories.
+The first positional value remains a project when it names a registered project;
+otherwise Base uses the nearest project and treats all values as target names.
 When no target is provided, Base runs build.default from the project manifest.
 Use -- to pass additional arguments to each delegated build command.
 EOF
@@ -93,21 +97,35 @@ base_build_run_target_record() {
 
 base_build_list_targets() {
     local project="$1"
-    shift
+    local explicit_project="$2"
+    local output_format="$3"
+    shift 3
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
+    local command_args=(build-target-list)
     local list_output
     local printed_header=0
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    if [[ -n "$explicit_project" ]]; then
+        command_args+=(--project "$explicit_project")
+    elif [[ -n "$project" ]]; then
+        command_args+=("$project")
+    fi
 
-    list_output="$("$wrapper" --project base base_projects build-target-list "$project" "${args[@]}" --format command-protocol)" || return $?
+    if [[ "$output_format" == "json" ]]; then
+        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format json
+        return $?
+    fi
+
+    list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format command-protocol)" || return $?
     base_command_protocol_each build-target "$list_output" base_build_print_target_record
 }
 
 base_build_subcommand_main() {
-    local project="" wrapper resolve_output
-    local dry_run=0 list_targets=0 workspace_requested=0 environment_prepared=0
+    local project="" explicit_project="" wrapper resolve_output
+    local dry_run=0 list_targets=0 environment_prepared=0
+    local output_format="text"
     local args=() extra_args=() targets=()
 
     while (($#)); do
@@ -130,14 +148,24 @@ base_build_subcommand_main() {
                     base_build_usage_error "Option '--workspace' requires an argument."
                     return $?
                 }
-                workspace_requested=1
                 args+=(--workspace "$2")
                 shift 2
                 ;;
             --workspace=*)
-                workspace_requested=1
                 args+=("$1")
                 shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_build_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_build_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="$2"
+                shift 2
                 ;;
             --dry-run)
                 dry_run=1
@@ -147,48 +175,68 @@ base_build_subcommand_main() {
                 list_targets=1
                 shift
                 ;;
+            --format)
+                [[ -n "${2:-}" ]] || {
+                    base_build_usage_error "Option '--format' requires an argument."
+                    return $?
+                }
+                output_format="$2"
+                shift 2
+                ;;
             -*)
                 base_build_usage_error "Unknown build option '$1'."
                 return $?
                 ;;
             *)
-                if [[ -z "$project" ]]; then
-                    project="$1"
-                else
-                    targets+=("$1")
-                fi
+                targets+=("$1")
                 shift
                 ;;
         esac
     done
 
-    [[ -n "$project" || "$workspace_requested" != "1" ]] || {
-        base_build_usage_error "Option '--workspace' requires an explicit project name."
-        return $?
-    }
-    [[ -n "$project" ]] || {
-        base_build_usage_error "Project name is required."
+    [[ "$output_format" == "text" || "$output_format" == "json" ]] || {
+        base_build_usage_error "Unsupported build format '$output_format'. Expected text or json."
         return $?
     }
 
     if [[ "$list_targets" == "1" ]]; then
-        [[ ${#targets[@]} -eq 0 ]] || {
-            base_build_usage_error "Option '--list' cannot be combined with build targets."
+        [[ "$dry_run" == "0" ]] || {
+            base_build_usage_error "Option '--list' cannot be combined with --dry-run."
             return $?
         }
+        if [[ -n "$explicit_project" ]]; then
+            [[ ${#targets[@]} -eq 0 ]] || {
+                base_build_usage_error "Option '--list' does not accept a positional project with --project."
+                return $?
+            }
+        else
+            [[ ${#targets[@]} -le 1 ]] || {
+                base_build_usage_error "Option '--list' accepts at most one positional project."
+                return $?
+            }
+            project="${targets[0]:-}"
+        fi
         [[ ${#extra_args[@]} -eq 0 ]] || {
             base_build_usage_error "Option '--list' cannot be combined with extra build arguments."
             return $?
         }
-        base_build_list_targets "$project" "${args[@]}"
+        base_build_list_targets "$project" "$explicit_project" "$output_format" "${args[@]}"
         return $?
     fi
+
+    [[ "$output_format" == "text" ]] || {
+        base_build_usage_error "Option '--format' requires --list."
+        return $?
+    }
 
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$("$wrapper" --project base base_projects build-targets "$project" "${targets[@]}" "${args[@]}" --format command-protocol)" || return $?
-    [[ -n "$resolve_output" ]] || fatal_error "Unable to resolve build targets for project '$project'."
+    local command_args=(build-targets)
+    [[ -z "$explicit_project" ]] || command_args+=(--project "$explicit_project")
+    command_args+=("${targets[@]}")
+    resolve_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol)" || return $?
+    [[ -n "$resolve_output" ]] || fatal_error "Unable to resolve build targets for project '${explicit_project:-current project}'."
 
     base_command_protocol_each build-target "$resolve_output" base_build_run_target_record
 }

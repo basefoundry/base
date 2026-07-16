@@ -15,7 +15,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"export-context [project] [options]"* ]]
     [[ "$output" == *"devcontainer [project] [options]"* ]]
     [[ "$output" == *"devenv-report [project] [options]"* ]]
-    [[ "$output" == *"run <project> <command> [options]"* ]]
+    [[ "$output" == *"build [project] [target...] [options]"* ]]
+    [[ "$output" == *"run [project] <command> [options]"* ]]
     [[ "$output" == *"repo <init|clone|check|configure|agent-guidance|installer-template> [options]"* ]]
     [[ "$output" == *"ci <setup|check|doctor> [project] [options]"* ]]
     [[ "$output" == *"Compatibility alias for setup, check, and doctor --ci."* ]]
@@ -74,7 +75,8 @@ load ./basectl_helpers.bash
     grep -Fqx '  gh <area> <command> [options]' <<<"$output"
     grep -Fqx '  onboard [project] [options]' <<<"$output"
     grep -Fqx '  config <path|show|doctor>' <<<"$output"
-    grep -Fqx '  run <project> <command> [options]' <<<"$output"
+    grep -Fqx '  build [project] [target...] [options]' <<<"$output"
+    grep -Fqx '  run [project] <command> [options]' <<<"$output"
     grep -Fqx '  export-context [project] [options]' <<<"$output"
     grep -Fqx '  devcontainer [project] [options]' <<<"$output"
     grep -Fqx '  devenv-report [project] [options]' <<<"$output"

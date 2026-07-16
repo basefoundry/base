@@ -7,21 +7,23 @@ load ./basectl_helpers.bash
     run_basectl build --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl build <project> [target...]"* ]]
+    [[ "$output" == *"basectl build [project] [target...]"* ]]
+    [[ "$output" == *"--project <name>"* ]]
+    [[ "$output" == *"--format <format>"* ]]
 }
 
 @test "basectl build reports invalid arguments as usage errors" {
-    run_basectl build
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Project name is required."* ]]
-
     run_basectl build --workspace
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
 
-    run_basectl build --workspace "$TEST_TMPDIR"
+    run_basectl build --project
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
+    [[ "$output" == *"ERROR: Option '--project' requires an argument."* ]]
+
+    run_basectl build --format json
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--format' requires --list."* ]]
 
     run_basectl build --unknown demo
     [ "$status" -eq 2 ]
@@ -287,6 +289,61 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Build API [runner: uv]"* ]]
     [[ "$output" != *"uv run -- Build API"* ]]
+}
+
+@test "basectl build resolves current-project targets from a nested directory" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/docs" "$workspace/demo/services/api"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "api" ]]; then
+    base_test_protocol_begin build-target 1
+    base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false api \
+        "${BASE_TEST_PROJECT_ROOT:?}/services/api" 'printf current-project-build' 'Build API' ""
+    base_test_protocol_end
+    exit 0
+fi
+printf 'unexpected current build python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        bash -c 'cd "$1" && shift && "$@"' bash "$workspace/demo/docs" \
+        "$BASE_REPO_ROOT/bin/basectl" build api --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would build target api for project demo"* ]]
+}
+
+@test "basectl build list exposes stable JSON for an explicit project" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local expected='{"schema_version":1,"project":{"name":"demo"},"targets":[{"name":"web app"}]}'
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ " $* " == *" -m base_projects build-target-list --project demo --dry-run --format json "* ]]; then
+    printf '%s\n' "${BASE_TEST_EXPECTED_JSON:?}"
+    exit 0
+fi
+printf 'unexpected build JSON args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_EXPECTED_JSON="$expected" \
+        "$BASE_REPO_ROOT/bin/basectl" build --project demo --list --format json
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$expected" ]
 }
 
 @test "basectl build reports resolver errors" {

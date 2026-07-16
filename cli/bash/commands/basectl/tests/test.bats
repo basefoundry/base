@@ -286,6 +286,32 @@ EOF
     [[ "$output" == *"current-project-test"* ]]
 }
 
+@test "basectl test --project selects a non-current project" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/current"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "--project" && "${5:-}" == "other" ]]; then
+    base_test_protocol_project_command other "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        'printf explicit-test' ""
+    exit 0
+fi
+printf 'unexpected explicit test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/other" \
+        "$BASE_REPO_ROOT/bin/basectl" test --project other --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would run tests for project other"* ]]
+}
+
 @test "basectl test prints help without requiring the Base Python venv" {
     run_basectl test --help
 
@@ -301,9 +327,13 @@ EOF
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--workspace' requires an argument."* ]]
 
-    run_basectl test --workspace "$TEST_TMPDIR"
+    run_basectl test --project
     [ "$status" -eq 2 ]
-    [[ "$output" == *"ERROR: Option '--workspace' requires an explicit project name."* ]]
+    [[ "$output" == *"ERROR: Option '--project' requires an argument."* ]]
+
+    run_basectl test demo --project base
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"does not accept a positional project with --project"* ]]
 
     run_basectl test --unknown demo
     [ "$status" -eq 2 ]

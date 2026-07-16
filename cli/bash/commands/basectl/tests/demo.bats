@@ -148,6 +148,34 @@ EOF
     [ "$(cat "$state_file")" = "current-project-demo" ]
 }
 
+@test "basectl demo --project selects a non-current project" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local script_path="$workspace/other/demo.sh"
+
+    mkdir -p "$(dirname "$python_bin")" "$(dirname "$script_path")"
+    touch "$script_path"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "demo-script" && "${4:-}" == "--project" && "${5:-}" == "other" ]]; then
+    base_test_protocol_demo other "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        "${BASE_TEST_PROJECT_ROOT:?}/demo.sh" ""
+    exit 0
+fi
+printf 'unexpected explicit demo python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env HOME="$TEST_HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/other" \
+        "$BASE_REPO_ROOT/bin/basectl" demo --project other --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would run demo for project other"* ]]
+}
+
 @test "basectl demo dry-run prints resolved script without running it" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

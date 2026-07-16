@@ -54,11 +54,11 @@ Daily project loop:
     Start an interactive Base runtime subshell for a project.
   test [project] [options]
     Run a project's declared test command.
-  build <project> [target...] [options]
+  build [project] [target...] [options]
     Run a project's declared build targets.
   demo [project] [options]
     Run a project's declared interactive demo.
-  run <project> <command> [options]
+  run [project] <command> [options]
     Run a project's declared command.
   trust <status|allow|revoke> [project] [options]
     Inspect trust across projects, or manage one project's local approval.

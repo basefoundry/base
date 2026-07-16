@@ -334,6 +334,10 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help activate activate
     assert_bash_completion_options_match_help check check
     assert_bash_completion_options_match_help doctor doctor
+    assert_bash_completion_options_match_help test test
+    assert_bash_completion_options_match_help build build
+    assert_bash_completion_options_match_help demo demo
+    assert_bash_completion_options_match_help run run
     assert_bash_completion_options_match_help devcontainer devcontainer
     assert_bash_completion_options_match_help devenv-report devenv-report
     assert_bash_completion_options_match_help repo-init repo init
@@ -362,6 +366,10 @@ run_zsh_positional_completion() {
     command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
 
     assert_zsh_completion_options_match_help activate activate
+    assert_zsh_completion_options_match_help test test
+    assert_zsh_completion_options_match_help build build
+    assert_zsh_completion_options_match_help demo demo
+    assert_zsh_completion_options_match_help run run
     assert_zsh_completion_options_match_help trust-status trust status
     assert_zsh_completion_options_match_help trust-allow trust allow
     assert_zsh_completion_options_match_help trust-revoke trust revoke
@@ -643,6 +651,7 @@ run_zsh_positional_completion() {
 #!/usr/bin/env bash
 source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
 [[ " $* " == *" --format command-protocol "* ]] || exit 9
+[[ "${4:-}" == list ]] || exit 9
 count=0
 if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
     read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
@@ -718,6 +727,7 @@ EOF
 #!/usr/bin/env bash
 source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
 [[ " $* " == *" --format command-protocol "* ]] || exit 9
+[[ "${4:-}" == list ]] || exit 9
 count=0
 if [[ -f "${BASE_COMPLETION_TEST_COUNT_FILE:?}" ]]; then
     read -r count < "$BASE_COMPLETION_TEST_COUNT_FILE" || count=0
@@ -832,7 +842,251 @@ EOF
 
     [ "$status" -eq 0 ]
     [ "$output" = $'base\ndemo app λ' ]
-    [[ "$(cat "$args_file")" == *"base_projects list --format command-protocol"* ]]
+    [[ "$(cat "$args_file")" == *"base_projects list --dry-run --format command-protocol"* ]]
+}
+
+@test "Bash lifecycle completion resolves current explicit and legacy manifest candidates read-only" {
+    local args_file="$TEST_TMPDIR/completion-args"
+    local base_home="$TEST_TMPDIR/base"
+    local marker="$TEST_TMPDIR/executed"
+    local version_file="$TEST_TMPDIR/manifest-version"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    printf 'old\n' > "$version_file"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+printf '%s\n' "$*" >> "${BASE_COMPLETION_TEST_ARGS_FILE:?}"
+[[ " $* " == *" --dry-run "* ]] || exit 9
+case "${4:-}" in
+    list)
+        if [[ " $* " == *" --workspace /tmp/work space "* ]]; then
+            base_test_protocol_begin project-list-entry 1
+            base_test_protocol_project_list_record 0 remote "/tmp/work space/remote"
+        else
+            base_test_protocol_begin project-list-entry 2
+            base_test_protocol_project_list_record 0 current "/Users/test/current project"
+            base_test_protocol_project_list_record 1 api /Users/test/api
+        fi
+        base_test_protocol_end
+        ;;
+    run-commands)
+        if [[ " $* " == *" run-commands api "* ]]; then
+            base_test_protocol_begin named-command 1
+            base_test_protocol_named_command_record 0 api /Users/test/api /Users/test/api/base_manifest.yaml deploy 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_end
+        else
+            command_name="$(<"${BASE_COMPLETION_TEST_VERSION_FILE:?}") command"
+            base_test_protocol_begin named-command 3
+            base_test_protocol_named_command_record 0 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "serve app" 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_named_command_record 1 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" api 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_named_command_record 2 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "$command_name" 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_end
+        fi
+        ;;
+    build-target-list)
+        if [[ " $* " == *" build-target-list api "* ]]; then
+            base_test_protocol_begin build-target 1
+            base_test_protocol_build_target_record 0 api /Users/test/api /Users/test/api/base_manifest.yaml /Users/test/api/.venv false false package /Users/test/api 'touch "$BASE_COMPLETION_TEST_MARKER"' "Package" ""
+            base_test_protocol_end
+        else
+            base_test_protocol_begin build-target 2
+            base_test_protocol_build_target_record 0 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "/Users/test/current project/.venv" false false "web app" "/Users/test/current project" 'touch "$BASE_COMPLETION_TEST_MARKER"' "Web app" ""
+            base_test_protocol_build_target_record 1 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "/Users/test/current project/.venv" false false api "/Users/test/current project" 'touch "$BASE_COMPLETION_TEST_MARKER"' "API" ""
+            base_test_protocol_end
+        fi
+        ;;
+    *) exit 8 ;;
+esac
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        BASE_COMPLETION_TEST_ARGS_FILE="$args_file" \
+        BASE_COMPLETION_TEST_MARKER="$marker" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
+        BASE_COMPLETION_TEST_VERSION_FILE="$version_file" \
+        bash -c '
+            source "$1"
+            complete_values() {
+                COMP_WORDS=("$@")
+                COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+                _base_basectl_completion
+                printf "<%s>" "${COMPREPLY[@]}"
+                printf "\n"
+            }
+            printf "run-current="; complete_values basectl run ""
+            printf "run-legacy="; complete_values basectl run api ""
+            printf "run-explicit="; complete_values basectl run --project current a
+            printf "build-current="; complete_values basectl build ""
+            printf "build-legacy="; complete_values basectl build api ""
+            printf "build-explicit="; complete_values basectl build --project current a
+            printf "run-list="; complete_values basectl run --list ""
+            printf "build-list="; complete_values basectl build --list ""
+            printf "run-after-separator="; complete_values basectl run dev -- ""
+            printf "build-after-separator="; complete_values basectl build api -- ""
+            printf "run-workspace="; complete_values basectl run --workspace "/tmp/work space" ""
+            printf "run-workspace-project="; complete_values basectl run --workspace "/tmp/work space" --project ""
+            printf new > "$BASE_COMPLETION_TEST_VERSION_FILE"
+            printf "run-changed="; complete_values basectl run n
+        ' bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"run-current="*"<current>"*"<api>"*"<serve app>"*"<old command>"* ]]
+    [[ "$output" == *"run-legacy=<deploy>"* ]]
+    [[ "$output" == *"run-explicit=<api>"* ]]
+    [[ "$output" == *"build-current="*"<current>"*"<api>"*"<web app>"* ]]
+    [[ "$output" == *"build-legacy=<package>"* ]]
+    [[ "$output" == *"build-explicit=<api>"* ]]
+    [[ "$output" == *$'run-list=<current><api>\n'* ]]
+    [[ "$output" == *$'build-list=<current><api>\n'* ]]
+    [[ "$output" == *$'run-after-separator=<>\n'* ]]
+    [[ "$output" == *$'build-after-separator=<>\n'* ]]
+    [[ "$output" == *"run-workspace="*"<serve app>"* ]]
+    [[ "$output" == *"run-workspace-project=<remote>"* ]]
+    [[ "$output" == *"run-changed=<new command>"* ]]
+    [ ! -e "$marker" ]
+    [[ "$(cat "$args_file")" != *"base_trust"* ]]
+    [[ "$(cat "$args_file")" == *"base_projects list --workspace /tmp/work space --dry-run --format command-protocol"* ]]
+    ! grep -Ev 'base_projects (list|run-commands|build-target-list) ' "$args_file"
+}
+
+@test "Zsh lifecycle completion preserves manifest names and collision precedence" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    local base_home="$TEST_TMPDIR/base"
+    local marker="$TEST_TMPDIR/executed"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+[[ " $* " == *" --dry-run "* ]] || exit 9
+case "${4:-}" in
+    list)
+        if [[ " $* " == *" --workspace /tmp/work space "* ]]; then
+            base_test_protocol_begin project-list-entry 1
+            base_test_protocol_project_list_record 0 remote "/tmp/work space/remote"
+        else
+            base_test_protocol_begin project-list-entry 2
+            base_test_protocol_project_list_record 0 current "/Users/test/current project"
+            base_test_protocol_project_list_record 1 api /Users/test/api
+        fi
+        base_test_protocol_end
+        ;;
+    run-commands)
+        if [[ " $* " == *" run-commands api "* ]]; then
+            base_test_protocol_begin named-command 1
+            base_test_protocol_named_command_record 0 api /Users/test/api /Users/test/api/base_manifest.yaml deploy 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_end
+        else
+            base_test_protocol_begin named-command 2
+            base_test_protocol_named_command_record 0 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "serve app" 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_named_command_record 1 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" api 'touch "$BASE_COMPLETION_TEST_MARKER"' ""
+            base_test_protocol_end
+        fi
+        ;;
+    build-target-list)
+        base_test_protocol_begin build-target 1
+        base_test_protocol_build_target_record 0 current "/Users/test/current project" "/Users/test/current project/base_manifest.yaml" "/Users/test/current project/.venv" false false "web app" "/Users/test/current project" 'touch "$BASE_COMPLETION_TEST_MARKER"' "Web app" ""
+        base_test_protocol_end
+        ;;
+    *) exit 8 ;;
+esac
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_PROJECT_CACHE_TTL=60 \
+        BASE_COMPLETION_TEST_MARKER="$marker" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
+        zsh -fc '
+            source "$1"
+            _describe() {
+                local name="${@: -1}"
+                print -rl -- "${(@P)name}"
+            }
+            print run-current
+            words=(basectl run ""); CURRENT=3; _base_basectl_completion_describe_lifecycle run
+            print run-legacy
+            words=(basectl run api ""); CURRENT=4; _base_basectl_completion_describe_lifecycle run
+            print run-explicit
+            words=(basectl run --project current a); CURRENT=5; _base_basectl_completion_describe_lifecycle run
+            print run-workspace-project
+            words=(basectl run --workspace "/tmp/work space" --project ""); CURRENT=6; _base_basectl_completion_describe_lifecycle_projects
+            print run-list
+            words=(basectl run --list ""); CURRENT=4; _base_basectl_completion_describe_lifecycle run
+            print build-list
+            words=(basectl build --list ""); CURRENT=4; _base_basectl_completion_describe_lifecycle build
+            print run-after-separator
+            words=(basectl run dev -- ""); CURRENT=5; _base_basectl_completion_describe_lifecycle run
+            print build-after-separator
+            words=(basectl build api -- ""); CURRENT=5; _base_basectl_completion_describe_lifecycle build
+            print build-current
+            words=(basectl build ""); CURRENT=3; _base_basectl_completion_describe_lifecycle build
+        ' zsh "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'run-current\ncurrent\napi\nserve app'* ]]
+    [[ "$output" == *$'run-legacy\ndeploy'* ]]
+    [[ "$output" == *$'run-explicit\nserve app\napi'* ]]
+    [[ "$output" == *$'run-workspace-project\nremote'* ]]
+    [[ "$output" == *$'run-list\ncurrent\napi\nbuild-list'* ]]
+    [[ "$output" == *$'build-list\ncurrent\napi\nrun-after-separator\nbuild-after-separator\nbuild-current'* ]]
+    [[ "$output" == *$'build-current\ncurrent\napi\nweb app'* ]]
+    [ ! -e "$marker" ]
+}
+
+@test "Lifecycle completion degrades quietly for missing and malformed metadata" {
+    local base_home="$TEST_TMPDIR/base"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    cat > "$wrapper" <<'EOF'
+#!/usr/bin/env bash
+source "${BASE_COMPLETION_TEST_PROTOCOL_FIXTURE:?}"
+case "${4:-}" in
+    list)
+        base_test_protocol_begin project-list-entry 1
+        base_test_protocol_project_list_record 0 current /Users/test/current
+        base_test_protocol_end
+        ;;
+    run-commands)
+        printf 'completion metadata failed noisily\n' >&2
+        base_test_protocol_begin named-command 2
+        base_test_protocol_named_command_record 0 current /Users/test/current /Users/test/current/base_manifest.yaml valid 'printf safe' ""
+        ;;
+    *) exit 1 ;;
+esac
+EOF
+    chmod +x "$wrapper"
+
+    run env BASE_HOME="$base_home" \
+        BASE_COMPLETION_TEST_PROTOCOL_FIXTURE="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash" \
+        bash -c '
+            source "$1"
+            COMP_WORDS=(basectl run x)
+            COMP_CWORD=2
+            _base_basectl_completion
+            printf "malformed=%s\n" "${#COMPREPLY[@]}"
+        ' bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "malformed=0" ]
+
+    run env BASE_HOME="$TEST_TMPDIR/missing" bash -c '
+        source "$1"
+        COMP_WORDS=(basectl build x)
+        COMP_CWORD=2
+        _base_basectl_completion
+        printf "missing=%s\n" "${#COMPREPLY[@]}"
+    ' bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "missing=0" ]
 }
 
 @test "Zsh project-name protocol reader rejects overflowing record counts" {

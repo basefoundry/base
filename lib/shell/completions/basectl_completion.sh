@@ -167,6 +167,102 @@ _base_basectl_completion_project_names_from_protocol() {
     _BASE_BASECTL_COMPLETION_PROJECT_NAMES_DECODED="$names"
 }
 
+_base_basectl_completion_manifest_names_from_protocol() {
+    local payload="$1"
+    local record_type="$2"
+    local candidate_field count_text="" encoded ended=0 in_record=0 line line_number=0 names=""
+    local max_record_count=1000000 next_record=0 phase=0 record_count=0 value
+    local -a fields kinds
+
+    case "$record_type" in
+        named-command)
+            candidate_field=command_name
+            fields=(project_name project_root manifest_path command_name command runner)
+            kinds=(string string string string string nullable-string)
+            ;;
+        build-target)
+            candidate_field=target_name
+            fields=(project_name project_root manifest_path project_venv_dir uses_uv_manager manifest_command_trust_required target_name working_dir command description runner)
+            kinds=(string string string string boolean boolean string string string nullable-string nullable-string)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        ((line_number += 1))
+        case "$line_number" in
+            1)
+                [[ "$line" == BASE_COMMAND_PROTOCOL_V1 ]] || return 1
+                continue
+                ;;
+            2)
+                [[ "$line" == "record_type=$record_type" ]] || return 1
+                continue
+                ;;
+            3)
+                [[ "$line" == record_count=* ]] || return 1
+                count_text="${line#record_count=}"
+                [[ "$count_text" =~ ^(0|[1-9][0-9]*)$ ]] || return 1
+                ((${#count_text} <= ${#max_record_count})) || return 1
+                record_count=$((10#$count_text))
+                ((record_count <= max_record_count)) || return 1
+                continue
+                ;;
+        esac
+
+        ((ended == 0)) || return 1
+        if ((in_record == 0)); then
+            if [[ "$line" == "record=$next_record" && next_record -lt record_count ]]; then
+                in_record=1
+                phase=0
+                value=""
+                continue
+            fi
+            if [[ "$line" == end_protocol= && next_record -eq record_count ]]; then
+                ended=1
+                continue
+            fi
+            return 1
+        fi
+
+        if ((phase < ${#fields[@]})); then
+            case "${kinds[phase]}" in
+                string)
+                    [[ "$line" == "field.${fields[phase]}:string="* ]] || return 1
+                    encoded="${line#*=}"
+                    _base_basectl_completion_decode_hex "$encoded" || return 1
+                    [[ "${fields[phase]}" != "$candidate_field" ]] || value="$_BASE_BASECTL_COMPLETION_DECODED_VALUE"
+                    ;;
+                nullable-string)
+                    if [[ "$line" == "field.${fields[phase]}:null=" ]]; then
+                        :
+                    elif [[ "$line" == "field.${fields[phase]}:string="* ]]; then
+                        encoded="${line#*=}"
+                        _base_basectl_completion_decode_hex "$encoded" || return 1
+                    else
+                        return 1
+                    fi
+                    ;;
+                boolean)
+                    [[ "$line" == "field.${fields[phase]}:boolean=true" || "$line" == "field.${fields[phase]}:boolean=false" ]] || return 1
+                    ;;
+            esac
+            ((phase += 1))
+            continue
+        fi
+
+        [[ "$line" == "end_record=$next_record" ]] || return 1
+        names+="${names:+$'\n'}$value"
+        ((next_record += 1))
+        in_record=0
+    done <<<"$payload"
+
+    ((line_number >= 3 && in_record == 0 && ended == 1)) || return 1
+    _BASE_BASECTL_COMPLETION_MANIFEST_NAMES_DECODED="$names"
+}
+
 _base_basectl_completion_refresh_project_cache() {
     local names="" now ttl project_list
     local wrapper="${BASE_HOME:-}/bin/base-wrapper"
@@ -186,7 +282,7 @@ _base_basectl_completion_refresh_project_cache() {
         return 0
     fi
 
-    project_list="$("$wrapper" --project base base_projects list --format command-protocol 2>/dev/null || true)"
+    project_list="$("$wrapper" --project base base_projects list --dry-run --format command-protocol 2>/dev/null || true)"
     if _base_basectl_completion_project_names_from_protocol "$project_list"; then
         names="$_BASE_BASECTL_COMPLETION_PROJECT_NAMES_DECODED"
     fi
@@ -217,6 +313,161 @@ _base_basectl_completion_project_candidates() {
     done <<<"$_BASE_BASECTL_COMPLETION_PROJECT_NAMES"
 }
 
+_base_basectl_completion_is_registered_project() {
+    local expected="$1" workspace="${2:-}" candidate
+
+    if [[ -n "$workspace" ]]; then
+        while IFS= read -r candidate; do
+            [[ "$candidate" == "$expected" ]] && return 0
+        done < <(_base_basectl_completion_lifecycle_project_names "$workspace")
+        return 1
+    fi
+    _base_basectl_completion_refresh_project_cache || return 1
+    while IFS= read -r candidate; do
+        [[ "$candidate" == "$expected" ]] && return 0
+    done <<<"$_BASE_BASECTL_COMPLETION_PROJECT_NAMES"
+    return 1
+}
+
+_base_basectl_completion_lifecycle_project_names() {
+    local workspace="${1:-}" output wrapper="${BASE_HOME:-}/bin/base-wrapper"
+
+    if [[ -z "$workspace" ]]; then
+        _base_basectl_completion_project_names
+        return 0
+    fi
+    [[ -x "$wrapper" ]] || return 0
+    output="$("$wrapper" --project base base_projects list --workspace "$workspace" --dry-run --format command-protocol 2>/dev/null || true)"
+    if _base_basectl_completion_project_names_from_protocol "$output"; then
+        printf '%s\n' "$_BASE_BASECTL_COMPLETION_PROJECT_NAMES_DECODED"
+    fi
+}
+
+_base_basectl_completion_lifecycle_context() {
+    local expect="" index word
+
+    _BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT=""
+    _BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE=""
+    _BASE_BASECTL_COMPLETION_LIFECYCLE_LIST=0
+    _BASE_BASECTL_COMPLETION_LIFECYCLE_AFTER_SEPARATOR=0
+    _BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS=()
+    for ((index = 2; index < COMP_CWORD; index += 1)); do
+        word="${COMP_WORDS[index]:-}"
+        if [[ -n "$expect" ]]; then
+            case "$expect" in
+                project) _BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT="$word" ;;
+                workspace) _BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE="$word" ;;
+            esac
+            expect=""
+            continue
+        fi
+        case "$word" in
+            --project) expect=project ;;
+            --workspace) expect=workspace ;;
+            --format) expect=format ;;
+            --list) _BASE_BASECTL_COMPLETION_LIFECYCLE_LIST=1 ;;
+            --)
+                _BASE_BASECTL_COMPLETION_LIFECYCLE_AFTER_SEPARATOR=1
+                break
+                ;;
+            -*) ;;
+            *) _BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS+=("$word") ;;
+        esac
+    done
+}
+
+_base_basectl_completion_manifest_names() {
+    local kind="$1" action record_type output wrapper="${BASE_HOME:-}/bin/base-wrapper"
+    local first_operand="${_BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS[0]:-}"
+    local -a command_args workspace_args
+
+    [[ -x "$wrapper" ]] || return 0
+    case "$kind" in
+        run)
+            action=run-commands
+            record_type=named-command
+            ;;
+        build)
+            action=build-target-list
+            record_type=build-target
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+    command_args=("$action")
+    if [[ -n "$_BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT" ]]; then
+        command_args+=(--project "$_BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT")
+    elif [[ -n "$first_operand" ]] && _base_basectl_completion_is_registered_project "$first_operand" "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE"; then
+        command_args+=("$first_operand")
+    elif [[ "$kind" == run && ${#_BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS[@]} -gt 0 ]]; then
+        return 0
+    fi
+    [[ -z "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE" ]] || workspace_args=(--workspace "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE")
+
+    output="$("$wrapper" --project base base_projects "${command_args[@]}" "${workspace_args[@]}" --dry-run --format command-protocol 2>/dev/null || true)"
+    if _base_basectl_completion_manifest_names_from_protocol "$output" "$record_type"; then
+        printf '%s\n' "$_BASE_BASECTL_COMPLETION_MANIFEST_NAMES_DECODED"
+    fi
+}
+
+_base_basectl_completion_lifecycle_candidates() {
+    local kind="$1" options="$2" current="$3"
+    local candidate seen="" previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
+    local include_projects=0
+
+    _base_basectl_completion_lifecycle_context
+    if [[ "$_BASE_BASECTL_COMPLETION_LIFECYCLE_AFTER_SEPARATOR" == "1" ]]; then
+        COMPREPLY=()
+        return 0
+    fi
+    if [[ "$previous" == --project ]]; then
+        COMPREPLY=()
+        while IFS= read -r candidate; do
+            [[ -n "$candidate" && "$candidate" == "$current"* ]] || continue
+            COMPREPLY+=("$candidate")
+        done < <(_base_basectl_completion_lifecycle_project_names "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE")
+        return 0
+    fi
+    if [[ "$previous" == --format ]]; then
+        _base_basectl_completion_compgen "text json" "$current"
+        return 0
+    fi
+    if [[ "$current" == -* ]]; then
+        _base_basectl_completion_compgen "$options" "$current"
+        return 0
+    fi
+
+    if [[ "$_BASE_BASECTL_COMPLETION_LIFECYCLE_LIST" == "1" ]]; then
+        COMPREPLY=()
+        if [[ -z "$_BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT" && ${#_BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS[@]} -eq 0 ]]; then
+            while IFS= read -r candidate; do
+                [[ -n "$candidate" && "$candidate" == "$current"* ]] || continue
+                COMPREPLY+=("$candidate")
+            done < <(_base_basectl_completion_lifecycle_project_names "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE")
+        fi
+        return 0
+    fi
+
+    if [[ -z "$_BASE_BASECTL_COMPLETION_LIFECYCLE_EXPLICIT_PROJECT" && ${#_BASE_BASECTL_COMPLETION_LIFECYCLE_OPERANDS[@]} -eq 0 ]]; then
+        include_projects=1
+    fi
+    COMPREPLY=()
+    if ((include_projects)); then
+        while IFS= read -r candidate; do
+            [[ -n "$candidate" && "$candidate" == "$current"* ]] || continue
+            COMPREPLY+=("$candidate")
+            seen+=$'\n'"$candidate"$'\n'
+        done < <(_base_basectl_completion_lifecycle_project_names "$_BASE_BASECTL_COMPLETION_LIFECYCLE_WORKSPACE")
+    fi
+    while IFS= read -r candidate; do
+        [[ -n "$candidate" && "$candidate" == "$current"* ]] || continue
+        [[ "$seen" != *$'\n'"$candidate"$'\n'* ]] || continue
+        COMPREPLY+=("$candidate")
+        seen+=$'\n'"$candidate"$'\n'
+    done < <(_base_basectl_completion_manifest_names "$kind")
+}
+
 _base_basectl_completion_compgen() {
     local candidate
     local words="$1"
@@ -238,6 +489,11 @@ _base_basectl_completion_project_or_options() {
     local value_options="${3:-}"
     local argument_start="${4:-2}"
     local expect_value=0 index word
+
+    if [[ "${COMP_WORDS[COMP_CWORD - 1]:-}" == --project ]]; then
+        _base_basectl_completion_project_candidates "$current"
+        return 0
+    fi
 
     if [[ "$current" == -* ]]; then
         _base_basectl_completion_compgen "$options" "$current"
@@ -390,7 +646,7 @@ _base_basectl_completion() {
             ;;
         test)
             _base_basectl_completion_project_or_options \
-                "--workspace --dry-run -v -h --help" "$cur" "--workspace"
+                "--workspace --project --dry-run -v -h --help" "$cur" "--workspace --project"
             ;;
         export-context)
             _base_basectl_completion_project_or_options \
@@ -406,16 +662,16 @@ _base_basectl_completion() {
                 "--workspace --format -v -h --help" "$cur" "--workspace --format"
             ;;
         build)
-            _base_basectl_completion_project_or_options \
-                "--workspace --dry-run --list -v -h --help" "$cur" "--workspace"
+            _base_basectl_completion_lifecycle_candidates build \
+                "--workspace --project --dry-run --list --format -v -h --help" "$cur"
             ;;
         demo)
             _base_basectl_completion_project_or_options \
-                "--workspace --dry-run -v -h --help" "$cur" "--workspace"
+                "--workspace --project --dry-run -v -h --help" "$cur" "--workspace --project"
             ;;
         run)
-            _base_basectl_completion_project_or_options \
-                "--workspace --dry-run --list -v -h --help" "$cur" "--workspace"
+            _base_basectl_completion_lifecycle_candidates run \
+                "--workspace --project --dry-run --list --format -v -h --help" "$cur"
             ;;
         repo)
             if ((COMP_CWORD == 2)); then

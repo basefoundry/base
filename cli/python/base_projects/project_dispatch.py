@@ -11,6 +11,7 @@ from base_projects.command_helpers import ProjectUsageError
 class WorkspaceCommandOptions:
     workspace: str | None
     output_format: str
+    project_name: str | None = None
     workspace_manifest: str | None = None
     workspace_manifest_source: str | None = None
     workspace_config_path: str | None = None
@@ -37,10 +38,13 @@ class ProjectCommandActions:
     test_command_project: Callable[[base_cli.Context, str | None, str | None, str], int]
     demo_script_project: Callable[[base_cli.Context, str | None, str | None, str], int]
     activation_sources_project: Callable[[base_cli.Context, str | None, str | None, str], int]
-    run_command_project: Callable[[base_cli.Context, str | None, str | None, str | None, str], int]
+    run_command_project: Callable[
+        [base_cli.Context, tuple[str, ...], str | None, str | None, str],
+        int,
+    ]
     list_run_commands: Callable[[base_cli.Context, str | None, str | None, str], int]
-    build_targets: Callable[[base_cli.Context, tuple[str, ...], str | None, str], int]
-    build_target_list: Callable[[base_cli.Context, tuple[str, ...], str | None, str], int]
+    build_targets: Callable[[base_cli.Context, tuple[str, ...], str | None, str | None, str], int]
+    build_target_list: Callable[[base_cli.Context, tuple[str, ...], str | None, str | None, str], int]
 
 
 ProjectCommandHandler = Callable[
@@ -217,7 +221,9 @@ def _handle_test_command(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    project = optional_project_argument("test-command", arguments)
+    if options.project_name is not None and arguments:
+        raise ProjectUsageError("Project command 'test-command' does not accept a positional project with --project.")
+    project = options.project_name or optional_project_argument("test-command", arguments)
     return actions.test_command_project(ctx, project, options.workspace, options.output_format)
 
 
@@ -227,7 +233,9 @@ def _handle_demo_script(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    project = optional_project_argument("demo-script", arguments)
+    if options.project_name is not None and arguments:
+        raise ProjectUsageError("Project command 'demo-script' does not accept a positional project with --project.")
+    project = options.project_name or optional_project_argument("demo-script", arguments)
     return actions.demo_script_project(ctx, project, options.workspace, options.output_format)
 
 
@@ -247,8 +255,13 @@ def _handle_run_command(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    require_argument_count("run-command", arguments, 2, 2)
-    return actions.run_command_project(ctx, arguments[0], arguments[1], options.workspace, options.output_format)
+    return actions.run_command_project(
+        ctx,
+        arguments,
+        options.project_name,
+        options.workspace,
+        options.output_format,
+    )
 
 
 def _handle_run_commands(
@@ -257,7 +270,9 @@ def _handle_run_commands(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    project = optional_project_argument("run-commands", arguments)
+    if options.project_name is not None and arguments:
+        raise ProjectUsageError("Project command 'run-commands' does not accept a positional project with --project.")
+    project = options.project_name or optional_project_argument("run-commands", arguments)
     return actions.list_run_commands(ctx, project, options.workspace, options.output_format)
 
 
@@ -267,7 +282,7 @@ def _handle_build_targets(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    return actions.build_targets(ctx, arguments, options.workspace, options.output_format)
+    return actions.build_targets(ctx, arguments, options.project_name, options.workspace, options.output_format)
 
 
 def _handle_build_target_list(
@@ -276,7 +291,7 @@ def _handle_build_target_list(
     options: WorkspaceCommandOptions,
     actions: ProjectCommandActions,
 ) -> int:
-    return actions.build_target_list(ctx, arguments, options.workspace, options.output_format)
+    return actions.build_target_list(ctx, arguments, options.project_name, options.workspace, options.output_format)
 
 
 SUPPORTED_PROJECT_COMMANDS = (

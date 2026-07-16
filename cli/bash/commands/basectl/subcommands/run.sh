@@ -11,17 +11,21 @@ source "$_base_project_command_helpers_path"
 base_run_subcommand_usage() {
     cat <<'EOF'
 Usage:
-  basectl run <project> <command> [options] [-- extra args...]
+  basectl run [project] <command> [options] [-- extra args...]
   basectl run [project] --list [options]
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --project <name>    Select a project explicitly; required for a current command named like a project.
   --dry-run           Print the resolved command without running it.
   --list              List runnable commands for a project. Defaults to the nearest project.
+  --format <format>   List output format: text or json. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Run a project's declared command from its project root.
+Run a project's declared command from its project root. The first positional
+value remains a project when it names a registered project; otherwise Base uses
+the nearest project and treats that value as the command name.
 Use -- to pass additional arguments to the declared command.
 EOF
 }
@@ -49,7 +53,9 @@ base_run_print_command_record() {
 
 base_run_list_commands() {
     local project="$1"
-    shift
+    local explicit_project="$2"
+    local output_format="$3"
+    shift 3
     local args=("$@")
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local command_args=(run-commands)
@@ -57,17 +63,27 @@ base_run_list_commands() {
     local printed_header=0
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-    [[ -z "$project" ]] || command_args+=("$project")
+    if [[ -n "$explicit_project" ]]; then
+        command_args+=(--project "$explicit_project")
+    elif [[ -n "$project" ]]; then
+        command_args+=("$project")
+    fi
 
-    list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol)" || return $?
+    if [[ "$output_format" == "json" ]]; then
+        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format json
+        return $?
+    fi
+
+    list_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format command-protocol)" || return $?
     base_command_protocol_each named-command "$list_output" base_run_print_command_record
 }
 
 base_run_subcommand_main() {
-    local project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command command_runner
+    local project="" explicit_project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command command_runner
     local command_to_run display_command
-    local dry_run=0 list_commands=0 workspace_requested=0
-    local args=() extra_args=()
+    local dry_run=0 list_commands=0
+    local output_format="text"
+    local args=() extra_args=() operands=()
     local route_venv_dir uses_uv_manager trust_required
 
     while (($#)); do
@@ -90,14 +106,24 @@ base_run_subcommand_main() {
                     base_run_usage_error "Option '--workspace' requires an argument."
                     return $?
                 }
-                workspace_requested=1
                 args+=(--workspace "$2")
                 shift 2
                 ;;
             --workspace=*)
-                workspace_requested=1
                 args+=("$1")
                 shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_run_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_run_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="$2"
+                shift 2
                 ;;
             --dry-run)
                 dry_run=1
@@ -107,56 +133,84 @@ base_run_subcommand_main() {
                 list_commands=1
                 shift
                 ;;
+            --format)
+                [[ -n "${2:-}" ]] || {
+                    base_run_usage_error "Option '--format' requires an argument."
+                    return $?
+                }
+                output_format="$2"
+                shift 2
+                ;;
             -*)
                 base_run_usage_error "Unknown run option '$1'."
                 return $?
                 ;;
             *)
-                if [[ -z "$project" ]]; then
-                    project="$1"
-                elif [[ -z "$command_name" ]]; then
-                    command_name="$1"
-                else
-                    base_run_usage_error "The 'run' command accepts one project name and one command name."
-                    return $?
-                fi
+                operands+=("$1")
                 shift
                 ;;
         esac
     done
 
-    [[ -n "$project" || "$workspace_requested" != "1" ]] || {
-        base_run_usage_error "Option '--workspace' requires an explicit project name."
+    [[ "$output_format" == "text" || "$output_format" == "json" ]] || {
+        base_run_usage_error "Unsupported run format '$output_format'. Expected text or json."
         return $?
     }
     if [[ "$list_commands" == "1" ]]; then
-        [[ -z "$command_name" ]] || {
-            base_run_usage_error "Option '--list' cannot be combined with a command name."
+        [[ "$dry_run" == "0" ]] || {
+            base_run_usage_error "Option '--list' cannot be combined with --dry-run."
             return $?
         }
+        if [[ -n "$explicit_project" ]]; then
+            [[ ${#operands[@]} -eq 0 ]] || {
+                base_run_usage_error "Option '--list' does not accept a positional project with --project."
+                return $?
+            }
+        else
+            [[ ${#operands[@]} -le 1 ]] || {
+                base_run_usage_error "Option '--list' accepts at most one positional project."
+                return $?
+            }
+            project="${operands[0]:-}"
+        fi
         [[ ${#extra_args[@]} -eq 0 ]] || {
             base_run_usage_error "Option '--list' cannot be combined with extra command arguments."
             return $?
         }
-        base_run_list_commands "$project" "${args[@]}"
+        base_run_list_commands "$project" "$explicit_project" "$output_format" "${args[@]}"
         return $?
     fi
 
-    [[ -n "$project" ]] || {
-        base_run_usage_error "Project name is required."
+    [[ "$output_format" == "text" ]] || {
+        base_run_usage_error "Option '--format' requires --list."
         return $?
     }
-    [[ -n "$command_name" ]] || {
-        base_run_usage_error "Command name is required."
-        return $?
-    }
+    if [[ -n "$explicit_project" ]]; then
+        [[ ${#operands[@]} -eq 1 ]] || {
+            base_run_usage_error "The 'run' command accepts exactly one command name with --project."
+            return $?
+        }
+        command_name="${operands[0]}"
+    else
+        [[ ${#operands[@]} -ge 1 && ${#operands[@]} -le 2 ]] || {
+            base_run_usage_error "The 'run' command requires a command name and accepts an optional positional project."
+            return $?
+        }
+    fi
 
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$("$wrapper" --project base base_projects run-command "$project" "$command_name" "${args[@]}" --format command-protocol)" || return $?
+    local command_args=(run-command)
+    if [[ -n "$explicit_project" ]]; then
+        command_args+=(--project "$explicit_project" "$command_name")
+    else
+        command_args+=("${operands[@]}")
+        command_name="${operands[${#operands[@]} - 1]}"
+    fi
+    resolve_output="$("$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol)" || return $?
     base_command_protocol_decode_one project-command "$resolve_output" || {
-        fatal_error "Unable to resolve command '$command_name' for project '$project'."
+        fatal_error "Unable to resolve command '$command_name' for project '${explicit_project:-current project}'."
     }
     resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
     project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
@@ -168,7 +222,7 @@ base_run_subcommand_main() {
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$run_command" ]] || {
-        fatal_error "Unable to resolve command '$command_name' for project '$project'."
+        fatal_error "Unable to resolve command '$command_name' for project '${explicit_project:-current project}'."
     }
 
     command_runner="${command_runner:-}"
