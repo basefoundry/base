@@ -19,9 +19,9 @@ with their own runners and test commands.
 ## Interface
 
 ```bash
-basectl setup --ci <project> [--format text|json]
-basectl check --ci <project> [--format text|json]
-basectl doctor --ci <project> [--format text|json]
+basectl setup --ci [project] [--format text|json]
+basectl check --ci [project] [--format text|json]
+basectl doctor --ci [project] [--format text|json]
 ```
 
 All commands also accept `--manifest <path>` for CI jobs that know the manifest
@@ -32,8 +32,10 @@ The default mode is non-interactive. If a required action cannot be performed
 without prompting, the command fails with a clear fix message.
 
 `basectl ci setup|check|doctor` remains a backward-compatible alias for the
-same behavior, but new docs and automation should prefer the `--ci` flag on the
-underlying command.
+same behavior. The alias prepends `--ci` and passes all remaining arguments to
+the underlying command unchanged, so that command's help, option validation,
+and exit codes are authoritative. New docs and automation should prefer the
+`--ci` flag on the underlying command.
 
 ## Behavior
 

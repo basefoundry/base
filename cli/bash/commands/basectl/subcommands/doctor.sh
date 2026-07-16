@@ -38,7 +38,7 @@ Purpose:
 
 See also:
   basectl check [project] [options]
-  basectl ci doctor <project> [options]  Compatibility alias for doctor --ci.
+  basectl ci doctor [project] [options]  Compatibility alias for doctor --ci.
 EOF
 }
 

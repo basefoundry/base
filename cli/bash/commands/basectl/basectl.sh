@@ -58,8 +58,8 @@ Commands:
     Run a project's declared command.
   repo <init|clone|check|configure|agent-guidance|installer-template> [options]
     Create, clone, check, and configure repository baselines and guidance.
-  ci <setup|check|doctor> <project> [options]
-    Run Base setup, checks, and diagnostics in non-interactive CI.
+  ci <setup|check|doctor> [project] [options]
+    Compatibility alias for setup, check, and doctor --ci.
   release <check|plan|notes|publish> --version <version> [options]
     Inspect release readiness, plan, notes, and guarded GitHub publishing.
   prompt <list|name> [options]

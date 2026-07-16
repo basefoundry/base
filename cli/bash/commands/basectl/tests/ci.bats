@@ -31,38 +31,7 @@ prepare_ci_runtime() {
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
 }
 
-@test "basectl ci prints help" {
-    run_base_command ci --help
-
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"basectl ci setup <project>"* ]]
-    [[ "$output" == *"basectl ci check <project>"* ]]
-    [[ "$output" == *"basectl ci doctor <project>"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
-    [[ "$output" == *"--profile <list>"* ]]
-    [[ "$output" == *"Profile lists are comma-separated, for example: --profile dev,sre."* ]]
-    [[ "$output" == *"dev       - Base development tooling for this repository."* ]]
-    [[ "$output" == *"sre       - production/SRE prerequisite tooling."* ]]
-    [[ "$output" == *"ai        - AI coding assistant tooling."* ]]
-    [[ "$output" == *"linux-lab - Multipass tooling for local Ubuntu lab VMs on macOS hosts."* ]]
-    [[ "$output" == *"Compatibility alias for setup/check/doctor --ci."* ]]
-    [[ "$output" == *"Prefer: basectl <setup|check|doctor> --ci <project> [options]"* ]]
-    [[ "$output" == *"BASE_CI=true"* ]]
-    [[ "$output" == *"Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs."* ]]
-}
-
-@test "basectl ci requires a command and project" {
-    run_base_command ci
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"CI command is required."* ]]
-
-    run_base_command ci check --format json
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"The 'ci check' command requires a project name."* ]]
-}
-
-@test "basectl ci parser tracks help without magic status codes" {
+run_ci_delegate_capture() {
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
@@ -70,13 +39,159 @@ prepare_ci_runtime() {
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/ci.sh"
-            base_ci_parse_args setup --help
-            printf "status=%s help=%s\n" "$?" "${BASE_CI_HELP_REQUESTED:-}"
-        '
+
+            base_ci_source_subcommand_module() {
+                return 0
+            }
+            base_setup_subcommand_main() {
+                printf "command=setup\n"
+                printf "arg=<%s>\n" "$@"
+            }
+            base_check_subcommand_main() {
+                printf "command=check\n"
+                printf "arg=<%s>\n" "$@"
+            }
+            base_doctor_subcommand_main() {
+                printf "command=doctor\n"
+                printf "arg=<%s>\n" "$@"
+            }
+
+            base_ci_subcommand_main "$@"
+        ' bash "$@"
+}
+
+@test "basectl ci prints help" {
+    run_base_command ci --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
-    [[ "$output" == *"status=0 help=1"* ]]
+    [[ "$output" == *"basectl ci setup [project] [options]"* ]]
+    [[ "$output" == *"basectl ci check [project] [options]"* ]]
+    [[ "$output" == *"basectl ci doctor [project] [options]"* ]]
+    [[ "$output" == *"Target command options are passed through unchanged after --ci is added."* ]]
+    [[ "$output" == *'Run `basectl setup --help`, `basectl check --help`, or'* ]]
+    [[ "$output" == *'`basectl doctor --help` for the canonical option list.'* ]]
+    [[ "$output" == *"Compatibility alias for setup/check/doctor --ci."* ]]
+    [[ "$output" == *"Prefer: basectl <setup|check|doctor> --ci [project] [options]"* ]]
+    [[ "$output" == *"BASE_CI=true"* ]]
+    [[ "$output" == *"Does not run project tests, launch GitHub Actions, or create Ubuntu/Multipass VMs."* ]]
+}
+
+@test "basectl ci requires a supported lifecycle command" {
+    run_base_command ci
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"CI command is required."* ]]
+
+    run_base_command ci deploy demo
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unknown ci command 'deploy'."* ]]
+}
+
+@test "basectl ci passes lifecycle arguments through unchanged after adding --ci" {
+    run_ci_delegate_capture setup demo --dry-run --yes --notify --no-notify --recreate-venv
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(printf '%s\n' \
+        'command=setup' \
+        'arg=<--ci>' \
+        'arg=<demo>' \
+        'arg=<--dry-run>' \
+        'arg=<--yes>' \
+        'arg=<--notify>' \
+        'arg=<--no-notify>' \
+        'arg=<--recreate-venv>')" ]
+
+    run_ci_delegate_capture check demo --remote-network
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(printf '%s\n' \
+        'command=check' \
+        'arg=<--ci>' \
+        'arg=<demo>' \
+        'arg=<--remote-network>')" ]
+
+    run_ci_delegate_capture doctor demo --remote-network --no-color
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(printf '%s\n' \
+        'command=doctor' \
+        'arg=<--ci>' \
+        'arg=<demo>' \
+        'arg=<--remote-network>' \
+        'arg=<--no-color>')" ]
+}
+
+@test "basectl ci lifecycle help and parser errors match canonical commands" {
+    local command
+    local alias_output alias_status canonical_output canonical_status
+
+    for command in setup check doctor; do
+        run_base_command ci "$command" --help
+        alias_status="$status"
+        alias_output="$output"
+        run_base_command "$command" --ci --help
+        canonical_status="$status"
+        canonical_output="$output"
+
+        [ "$alias_status" -eq "$canonical_status" ]
+        [ "$alias_output" = "$canonical_output" ]
+
+        run_base_command ci "$command" demo --not-a-real-option
+        alias_status="$status"
+        alias_output="$output"
+        run_base_command "$command" --ci demo --not-a-real-option
+        canonical_status="$status"
+        canonical_output="$output"
+
+        [ "$alias_status" -eq "$canonical_status" ]
+        [ "$alias_output" = "$canonical_output" ]
+    done
+}
+
+@test "basectl ci forwards canonical setup mutation controls" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+
+    run_base_command \
+        BASE_SETUP_TEST_WORKSPACE="$workspace" \
+        ci setup demo --dry-run --yes --no-notify --recreate-venv
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' \
+        --dry-run \
+        --manifest "$workspace/demo/base_manifest.yaml" \
+        --action setup \
+        demo)" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-yes")" = "true" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-notify")" = "false" ]
+    [ "$(cat "$TEST_STATE_DIR/project-bootstrap-recreate-venv")" = "true" ]
+}
+
+@test "basectl ci forwards canonical check and doctor diagnostic controls" {
+    local workspace="$TEST_TMPDIR/workspace"
+
+    prepare_ci_runtime "$workspace"
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" ci check demo --remote-network
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' \
+        --manifest "$workspace/demo/base_manifest.yaml" \
+        --action check \
+        --format text \
+        --remote-network \
+        demo)" ]
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" ci doctor demo --remote-network --no-color
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' \
+        --manifest "$workspace/demo/base_manifest.yaml" \
+        --action doctor \
+        --format text \
+        --remote-network \
+        demo)" ]
 }
 
 @test "basectl ci check delegates with CI defaults and JSON output" {

@@ -173,6 +173,82 @@ assert_bash_completion_options_match_help() {
     [ "$status" -eq 0 ]
 }
 
+zsh_completion_nested_long_options() {
+    local parent="$1"
+    local child="$2"
+
+    zsh_completion_nested_block "$parent" "$child" |
+        awk '
+            {
+                line = $0
+                while (match(line, /--[-A-Za-z0-9_]+/)) {
+                    print substr(line, RSTART, RLENGTH)
+                    line = substr(line, RSTART + RLENGTH)
+                }
+            }
+        ' |
+        sort -u
+}
+
+assert_bash_ci_completion_options_match_help() {
+    local command="$1"
+    local expected="$TEST_TMPDIR/bash-ci-$command-help-options"
+    local actual="$TEST_TMPDIR/bash-ci-$command-completion-options"
+
+    long_options_from_help "$command" > "$expected"
+    bash_completion_long_options basectl ci "$command" -- > "$actual"
+
+    bats_run diff -u "$expected" "$actual"
+
+    [ "$status" -eq 0 ]
+}
+
+assert_zsh_ci_completion_options_match_help() {
+    local command="$1"
+    local expected="$TEST_TMPDIR/zsh-ci-$command-help-options"
+    local actual="$TEST_TMPDIR/zsh-ci-$command-completion-options"
+
+    long_options_from_help "$command" > "$expected"
+    zsh_completion_nested_long_options ci "$command" > "$actual"
+
+    bats_run diff -u "$expected" "$actual"
+
+    [ "$status" -eq 0 ]
+}
+
+run_zsh_positional_completion() {
+    run env BASE_HOME="$BASE_REPO_ROOT" zsh -fc '
+        compdef() { :; }
+        source "$BASE_HOME/lib/shell/completions/basectl_completion.zsh"
+
+        _arguments() {
+            local positional_argument=$((CURRENT - 1)) spec
+
+            for spec in "$@"; do
+                if [[ "$spec" == "${positional_argument}:"* ]]; then
+                    print -r -- "positional=$spec"
+                    case "$spec" in
+                        *"->projects") state=projects ;;
+                        *"->doctor_targets") state=doctor_targets ;;
+                    esac
+                    return 0
+                fi
+            done
+            print -r -- "positional=<none>"
+        }
+        _base_basectl_completion_describe_projects() {
+            print -r -- "projects=base demo"
+        }
+        _alternative() {
+            print -r -- "doctor_targets=explain base demo"
+        }
+
+        words=("$@")
+        CURRENT=${#words}
+        _base_basectl_completion
+    ' zsh "$@"
+}
+
 @test "Bash completion top-level commands match basectl help" {
     local expected="$TEST_TMPDIR/help-commands"
     local actual="$TEST_TMPDIR/bash-completion-commands"
@@ -216,6 +292,56 @@ assert_bash_completion_options_match_help() {
     assert_bash_completion_options_match_help repo-init repo init
     assert_bash_completion_options_match_help repo-configure repo configure
     assert_bash_completion_options_match_help repo-installer-template repo installer-template
+}
+
+@test "Bash ci alias option completions match canonical command help" {
+    assert_bash_ci_completion_options_match_help setup
+    assert_bash_ci_completion_options_match_help check
+    assert_bash_ci_completion_options_match_help doctor
+}
+
+@test "Zsh ci alias option completions match canonical command help" {
+    assert_zsh_ci_completion_options_match_help setup
+    assert_zsh_ci_completion_options_match_help check
+    assert_zsh_ci_completion_options_match_help doctor
+}
+
+@test "Zsh lifecycle project completions use executable argument positions" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run_zsh_positional_completion basectl ci ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:ci command:(setup check doctor)"* ]]
+
+    run_zsh_positional_completion basectl setup ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl check ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl doctor ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=2:doctor command or project:->doctor_targets"* ]]
+    [[ "$output" == *"doctor_targets=explain base demo"* ]]
+
+    run_zsh_positional_completion basectl ci setup ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl ci check ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
+
+    run_zsh_positional_completion basectl ci doctor ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:Base project:->projects"* ]]
+    [[ "$output" == *"projects=base demo"* ]]
 }
 
 @test "Zsh repo installer-template completion includes print options" {
@@ -312,12 +438,32 @@ EOF
             COMP_WORDS=(basectl build ""); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
-            printf "second=%s\n" "${COMPREPLY[*]}"' \
+            printf "second=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl setup ""); \
+            COMP_CWORD=2; \
+            _base_basectl_completion; \
+            printf "setup=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci setup ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci-setup=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci check ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci-check=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl ci doctor ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "ci-doctor=%s\n" "${COMPREPLY[*]}"' \
             bash "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.sh"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"first=base demo"* ]]
     [[ "$output" == *"second=base demo"* ]]
+    [[ "$output" == *"setup=base demo"* ]]
+    [[ "$output" == *"ci-setup=base demo"* ]]
+    [[ "$output" == *"ci-check=base demo"* ]]
+    [[ "$output" == *"ci-doctor=base demo"* ]]
     [ "$(cat "$count_file")" = "1" ]
 }
 
