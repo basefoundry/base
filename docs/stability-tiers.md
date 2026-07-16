@@ -53,6 +53,8 @@ Stable JSON contracts include:
 - local trust status JSON documented in
   [Manifest Command Trust](manifest-command-trust.md);
 - redacted local config JSON documented in [Local Config](local-config.md).
+- the shared v1 envelope and command-specific fields for read-only control-plane
+  inspection JSON documented in [Inspection JSON](inspection-json.md).
 
 Additive keys are allowed when they do not change the meaning of existing keys.
 Removing keys, renaming keys, changing value types, or changing enum meanings is

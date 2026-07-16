@@ -6,6 +6,11 @@ readonly _base_gh_branch_worktree_sourced
 
 base_gh_branch_stale() {
     local days=30 now ref name timestamp age
+    local output_format="text" requested_format
+    local refs_output status scope last_commit_json name_json data_json branches_joined envelope_status="ok"
+    local branches_json=()
+
+    base_inspection_find_output_format output_format "$@"
 
     while (($#)); do
         case "$1" in
@@ -13,12 +18,29 @@ base_gh_branch_stale() {
                 days="${2:-}"
                 shift
                 ;;
+            --format)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_branch_stale_format_error "$output_format" "Option '--format' requires an argument."
+                    return $?
+                }
+                requested_format="$2"
+                case "$requested_format" in
+                    text|json)
+                        ;;
+                    *)
+                        base_gh_branch_stale_format_error "$output_format" "Unsupported branch stale format '$requested_format'. Expected text or json."
+                        return $?
+                        ;;
+                esac
+                output_format="$requested_format"
+                shift
+                ;;
             -h|--help)
                 base_gh_branch_leaf_usage stale
                 return 0
                 ;;
             *)
-                base_gh_usage_error base_gh_branch_usage "Unknown option '$1'."
+                base_gh_branch_stale_format_error "$output_format" "Unknown option '$1'."
                 return $?
                 ;;
         esac
@@ -26,21 +48,84 @@ base_gh_branch_stale() {
     done
 
     [[ "$days" =~ ^[0-9]+$ ]] || {
-        base_gh_usage_error base_gh_branch_usage "--days must be a positive integer."
+        base_gh_branch_stale_format_error "$output_format" "--days must be a positive integer."
         return $?
     }
-    base_gh_require_git_repo || return 1
+    days="$(base_inspection_json_decimal "$days")"
+    base_inspection_json_decimal_fits_bash_integer "$days" || {
+        base_gh_branch_stale_format_error "$output_format" "--days exceeds the supported integer range."
+        return $?
+    }
+    if ! base_gh_require_git_repo; then
+        if [[ "$output_format" == "json" ]]; then
+            base_inspection_json_emit_error \
+                "gh branch stale" environment_error \
+                "Current directory is not inside a Git worktree." \
+                '{"operation":"git_repository_check"}'
+        fi
+        return 1
+    fi
+
+    refs_output="$(git for-each-ref --format='%(committerdate:unix) %(refname)' refs/heads refs/remotes/origin)"
+    status=$?
+    if ((status != 0)); then
+        if [[ "$output_format" == "json" ]]; then
+            base_inspection_json_emit_error \
+                "gh branch stale" upstream_error \
+                "Git reference inspection failed." \
+                '{"operation":"git_for_each_ref"}'
+        else
+            base_gh_error "Git reference inspection failed."
+        fi
+        return "$status"
+    fi
 
     printf -v now '%(%s)T' -1
-    printf 'age_days\tlast_commit\tbranch\n'
+    [[ "$output_format" == "json" ]] || printf 'age_days\tlast_commit\tbranch\n'
     while read -r timestamp ref; do
+        [[ -n "$timestamp" && -n "$ref" ]] || continue
+        [[ "$ref" != refs/remotes/origin/HEAD ]] || continue
         age=$(((now - timestamp) / 86400))
         if ((age >= days)); then
             name="${ref#refs/heads/}"
             name="${name#refs/remotes/}"
-            printf '%s\t%s\t%s\n' "$age" "$(base_gh_format_unix_date "$timestamp")" "$name"
+            if [[ "$output_format" == "json" ]]; then
+                if [[ "$ref" == refs/remotes/* ]]; then
+                    scope=remote
+                else
+                    scope=local
+                fi
+                name_json="$(base_inspection_json_string "$name")"
+                last_commit_json="$(base_inspection_json_string "$(base_gh_format_unix_date "$timestamp")")"
+                printf -v ref \
+                    '{"name":%s,"scope":"%s","age_days":%d,"last_commit":%s,"last_commit_unix":%d}' \
+                    "$name_json" "$scope" "$age" "$last_commit_json" "$timestamp"
+                branches_json+=("$ref")
+            else
+                printf '%s\t%s\t%s\n' "$age" "$(base_gh_format_unix_date "$timestamp")" "$name"
+            fi
         fi
-    done < <(git for-each-ref --format='%(committerdate:unix) %(refname)' refs/heads refs/remotes/origin | grep -v ' refs/remotes/origin/HEAD$')
+    done <<<"$refs_output"
+
+    if [[ "$output_format" == "json" ]]; then
+        ((${#branches_json[@]})) && envelope_status=warn
+        branches_joined="$(IFS=,; printf '%s' "${branches_json[*]}")"
+        printf -v data_json \
+            '{"days":%d,"inspected_at_unix":%d,"branches":[%s]}' \
+            "$days" "$now" "$branches_joined"
+        base_inspection_json_envelope "gh branch stale" "$envelope_status" "$data_json" null
+    fi
+}
+
+base_gh_branch_stale_format_error() {
+    local output_format="$1"
+    local message="$2"
+
+    if [[ "$output_format" == "json" ]]; then
+        base_inspection_json_emit_error "gh branch stale" usage_error "$message" '{}'
+        return 2
+    fi
+    base_gh_usage_error base_gh_branch_usage "$message"
 }
 
 base_gh_format_unix_date() {

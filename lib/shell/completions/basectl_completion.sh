@@ -430,7 +430,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
                     ;;
                 check)
-                    _base_basectl_completion_compgen "--agent-guidance --agent-ready --release -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--agent-guidance --agent-ready --release --format -v -h --help" "$cur"
                     ;;
                 configure)
                     _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run -v -h --help" "$cur"
@@ -467,6 +467,8 @@ _base_basectl_completion() {
         release)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "check plan notes publish" "$cur"
+            elif [[ "${COMP_WORDS[2]:-}" == "check" ]]; then
+                _base_basectl_completion_compgen "--version --manifest --format -h --help" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                     check|plan|notes)
@@ -547,7 +549,7 @@ _base_basectl_completion() {
                                 _base_basectl_completion_compgen "--category --title --body --repo --assignee --no-assignee --project --project-owner --size --no-project -h --help" "$cur"
                                 ;;
                             readiness)
-                                _base_basectl_completion_compgen "--repo --project-owner --project-number -h --help" "$cur"
+                                _base_basectl_completion_compgen "--repo --project-owner --project-number --format -h --help" "$cur"
                                 ;;
                             start)
                                 _base_basectl_completion_compgen "--category --title --repo -R -h --help" "$cur"
@@ -568,7 +570,7 @@ _base_basectl_completion() {
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "stale prune" "$cur"
                     elif [[ "${COMP_WORDS[3]:-}" == stale ]]; then
-                        _base_basectl_completion_compgen "--days -h --help" "$cur"
+                        _base_basectl_completion_compgen "--days --format -h --help" "$cur"
                     elif [[ "${COMP_WORDS[3]:-}" == prune ]]; then
                         _base_basectl_completion_compgen "--dry-run --yes --remote -h --help" "$cur"
                     fi

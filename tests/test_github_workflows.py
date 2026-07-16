@@ -760,6 +760,20 @@ def test_macos_smoke_tests_cover_bootstrap_dry_run_routes() -> None:
     assert "basectl update-profile" in run_command
 
 
+def test_ubuntu_source_checkout_consumes_inspection_json() -> None:
+    workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
+    job = workflow["jobs"]["ubuntu-source-checkout"]
+    validation_step = workflow_step_by_name(job, "Run Ubuntu source-checkout validation")
+    run_command = validation_step["run"]
+
+    assert './bin/basectl gh branch stale --days 999999 --format json' in run_command
+    assert "jq -e" in run_command
+    assert '.schema_version == 1' in run_command
+    assert '.command == "gh branch stale"' in run_command
+    assert '.data.branches == []' in run_command
+    assert '.error == null' in run_command
+
+
 def test_ubuntu_apt_jobs_remove_flaky_runner_third_party_sources() -> None:
     workflow = load_workflow(WORKFLOW_DIR / "tests.yml")
     jobs = workflow["jobs"]

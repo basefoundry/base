@@ -101,6 +101,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "CLI local log file privacy",
         "CLI docs, help, and completion drift",
         "Public command and JSON stability tiers",
+        "Read-only inspection JSON",
         "Project metadata defaults",
     }
     for row in rows:
@@ -120,6 +121,9 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
         "cli/python/base_projects/tests/test_workspace_manifest.py",
         "cli/python/base_projects/tests/test_workspace_pull.py",
         "lib/python/base_cli/tests/test_logging.py",
+        "lib/python/base_cli/tests/test_inspection.py",
+        "cli/python/base_release/tests/test_engine.py",
+        "cli/bash/commands/basectl/tests/inspection-json.bats",
         'bats --filter "project installer template"',
         "cli/bash/commands/basectl/tests/docs.bats",
         "cli/bash/commands/basectl/tests/help.bats",

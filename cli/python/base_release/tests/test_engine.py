@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import subprocess
 import tempfile
@@ -130,6 +131,38 @@ def add_origin_with_remote_tag(root: Path, tag_name: str) -> None:
 
 
 class ReleaseUsageTests(unittest.TestCase):
+    def test_json_usage_error_stays_structured_after_later_invalid_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = run_engine(
+                ["check", "--format", "json", "--format", "yaml"],
+                Path(tmpdir),
+                {"BASE_CLI_DISPLAY_COMMAND": "basectl release"},
+            )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["command"], "release check")
+        self.assertEqual(payload["error"]["type"], "usage_error")
+
+    def test_json_usage_error_uses_inspection_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = run_engine(
+                ["check", "--format", "json", "--wat"],
+                Path(tmpdir),
+                {"BASE_CLI_DISPLAY_COMMAND": "basectl release"},
+            )
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["schema_version"], 1)
+        self.assertEqual(payload["command"], "release check")
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["data"], {})
+        self.assertEqual(payload["error"]["type"], "usage_error")
+        self.assertIn("Unknown release check option '--wat'", payload["error"]["message"])
+
     def test_delegated_unknown_option_usage_uses_basectl_release(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = run_engine(
@@ -160,6 +193,107 @@ class ReleaseUsageTests(unittest.TestCase):
 
 
 class ReleaseEngineTests(unittest.TestCase):
+
+    def test_check_json_reports_ready_findings_with_stable_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS):
+                status, stdout, stderr = run_engine(
+                    ["check", "--format", "json", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 0, stderr)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(
+            list(payload),
+            ["schema_version", "command", "status", "data", "error"],
+        )
+        self.assertEqual(payload["command"], "release check")
+        self.assertEqual(payload["status"], "ok")
+        self.assertIsNone(payload["error"])
+        self.assertEqual(payload["data"]["project"], "demo")
+        self.assertEqual(payload["data"]["version"], "1.2.3")
+        self.assertEqual(payload["data"]["tag_name"], "v1.2.3")
+        self.assertEqual(payload["data"]["findings"][0]["name"], "manifest")
+        self.assertEqual(
+            set(payload["data"]),
+            {"project", "version", "tag_name", "manifest_path", "findings"},
+        )
+        self.assertEqual(
+            set(payload["data"]["findings"][0]),
+            {"status", "name", "message"},
+        )
+
+    def test_check_json_finding_is_error_with_null_execution_error(self) -> None:
+        findings = (
+            ReleaseFinding("ok", "manifest", "Release metadata found."),
+            ReleaseFinding("error", "gh", "GitHub CLI auth check failed: upstream unavailable."),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch("base_release.engine.release_findings", return_value=findings):
+                status, stdout, stderr = run_engine(
+                    ["check", "--format", "json", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["status"], "error")
+        self.assertIsNone(payload["error"])
+        self.assertEqual(payload["data"]["findings"][1]["status"], "error")
+
+    def test_check_json_warning_and_empty_findings_preserve_success_exit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = write_release_project(root)
+
+            with mock.patch(
+                "base_release.engine.release_findings",
+                return_value=(ReleaseFinding("warn", "branch", "Unable to inspect current Git branch."),),
+            ):
+                status, stdout, stderr = run_engine(
+                    ["check", "--format", "json", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+            self.assertEqual(status, 0, stderr)
+            self.assertEqual(json.loads(stdout)["status"], "warn")
+
+            with mock.patch("base_release.engine.release_findings", return_value=()):
+                status, stdout, stderr = run_engine(
+                    ["check", "--format", "json", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["findings"], [])
+
+    def test_check_json_controlled_manifest_failure_has_error_object(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+
+            status, stdout, stderr = run_engine(
+                ["check", "--format", "json", "--version", "1.2.3", "--manifest", str(root / "missing.yaml")],
+                root,
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["data"], {})
+        self.assertEqual(payload["error"]["type"], "execution_error")
+        self.assertIn("missing.yaml", payload["error"]["message"])
 
     def test_notes_prints_changelog_section_for_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

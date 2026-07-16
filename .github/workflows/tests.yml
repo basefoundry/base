@@ -266,6 +266,10 @@ jobs:
       - name: Run Ubuntu source-checkout validation
         run: |
           ./bin/basectl check --ci base --format json
+          branch_payload="$(./bin/basectl gh branch stale --days 999999 --format json)"
+          jq -e \
+            '.schema_version == 1 and .command == "gh branch stale" and .status == "ok" and .data.branches == [] and .error == null' \
+            <<<"$branch_payload"
           env -u BASE_HOME ./bin/base-test
 
   security:

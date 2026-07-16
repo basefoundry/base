@@ -422,9 +422,33 @@ EOF
     [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size"* ]]
     [[ "$output" == *"issue_commands=list create start readiness"* ]]
-    [[ "$output" == *"readiness_reply=--repo --project-owner --project-number"* ]]
+    [[ "$output" == *"readiness_reply=--repo --project-owner --project-number --format"* ]]
     [[ "$output" == *"start_reply=--category --title --repo -R"* ]]
     [[ "$output" != *"--type"* ]]
+}
+
+@test "Bash completion includes inspection JSON format options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '\
+            source "$BASE_HOME/lib/shell/completions/basectl_completion.sh"; \
+            COMP_WORDS=(basectl repo check --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "repo=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl release check --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "release=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh branch stale --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "branch=%s\n" "${COMPREPLY[*]}"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"repo="*"--format"* ]]
+    [[ "$output" == *"release="*"--format"* ]]
+    [[ "$output" == *"branch="*"--format"* ]]
 }
 
 @test "Bash completion includes workspace configure options" {

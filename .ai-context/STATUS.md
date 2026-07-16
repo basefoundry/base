@@ -32,6 +32,8 @@ The current command surface covers:
 - GitHub issue, PR, branch, and worktree helpers
 - workspace status/check/doctor/onboarding/agent-brief/init/clone/pull/configure flows
 - release readiness inspection and guarded GitHub release publishing
+- stable v1 JSON envelopes for repo, release, issue-readiness, and stale-branch
+  inspection surfaces
 - local AI context export bundles
 - repo-owned prompt rendering through `basectl prompt`
 - documentation entrypoint opening through `basectl docs`

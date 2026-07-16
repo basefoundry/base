@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 
 import base_cli
+from base_cli.inspection import InspectionStatus
+from base_cli.inspection import render_inspection_json
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 
@@ -12,6 +14,7 @@ from .release_parser import ReleaseArguments
 from .release_parser import ReleaseUsageError
 from .release_parser import parse_release_args
 from .release_parser import print_usage
+from .release_parser import selected_release_check_format
 from .release_publish import release_publish_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, write_temp_release_notes
 from .release_readiness import extract_changelog_section, gh_cli_finding, github_release_finding
@@ -36,11 +39,12 @@ def main(argv: list[str] | None = None) -> int:
 )
 @base_cli.argument("arguments", nargs=-1)
 def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
+    selected_format = selected_release_check_format(arguments)
     try:
         args = parse_release_args(arguments)
         release_context = build_release_context(ctx, args)
         if args.command == "check":
-            return release_check_command(release_context)
+            return release_check_command(release_context, output_format=args.output_format)
         if args.command == "plan":
             return release_plan_command(release_context)
         if args.command == "notes":
@@ -49,11 +53,35 @@ def run(ctx: base_cli.Context, arguments: tuple[str, ...]) -> int:
             return release_publish_command(release_context, args)
         raise ReleaseUsageError(f"Unknown release command '{args.command}'.")
     except ReleaseUsageError as exc:
-        print_usage(file=sys.stderr)
-        print(f"ERROR: {exc}", file=sys.stderr)
+        if selected_format == "json":
+            print(
+                render_inspection_json(
+                    command="release check",
+                    status="error",
+                    data={},
+                    error={"type": "usage_error", "message": str(exc), "details": {}},
+                ),
+                end="",
+            )
+        else:
+            print_usage(file=sys.stderr)
+            print(f"ERROR: {exc}", file=sys.stderr)
         return base_cli.ExitCode.USAGE_ERROR
     except (ManifestError, ReleaseError) as exc:
-        print_error(exc)
+        if selected_format == "json":
+            guidance = getattr(exc, "guidance", "")
+            details = {"guidance": guidance} if guidance else {}
+            print(
+                render_inspection_json(
+                    command="release check",
+                    status="error",
+                    data={},
+                    error={"type": "execution_error", "message": str(exc), "details": details},
+                ),
+                end="",
+            )
+        else:
+            print_error(exc)
         return base_cli.ExitCode.FAILURE
 
 
@@ -88,14 +116,44 @@ def build_release_context(ctx: base_cli.Context, args: ReleaseArguments) -> Rele
     )
 
 
-def release_check_command(ctx: ReleaseContext) -> int:
+def release_check_command(ctx: ReleaseContext, *, output_format: str = "text") -> int:
     findings = release_findings(ctx)
+    if output_format == "json":
+        inspection_status = release_inspection_status(findings)
+        print(
+            render_inspection_json(
+                command="release check",
+                status=inspection_status,
+                data={
+                    "project": ctx.manifest.project_name,
+                    "version": ctx.version,
+                    "tag_name": ctx.tag_name,
+                    "manifest_path": str(ctx.manifest_path),
+                    "findings": [
+                        {"status": finding.status, "name": finding.name, "message": finding.message}
+                        for finding in findings
+                    ],
+                },
+            ),
+            end="",
+        )
+        if inspection_status == "error":
+            return base_cli.ExitCode.FAILURE
+        return base_cli.ExitCode.SUCCESS
     print(f"\nRelease check for {ctx.manifest.project_name} v{ctx.version}\n")
     for finding in findings:
         print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")
     if any(finding.status == "error" for finding in findings):
         return base_cli.ExitCode.FAILURE
     return base_cli.ExitCode.SUCCESS
+
+
+def release_inspection_status(findings: tuple[ReleaseFinding, ...]) -> InspectionStatus:
+    if any(finding.status == "error" for finding in findings):
+        return "error"
+    if any(finding.status == "warn" for finding in findings):
+        return "warn"
+    return "ok"
 
 
 def release_plan_command(ctx: ReleaseContext) -> int:

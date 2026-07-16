@@ -779,8 +779,13 @@ Check and repair the repo baseline with:
 
 ```bash
 basectl repo check ~/work/example
+basectl repo check ~/work/example --format json
 basectl repo configure ~/work/example --repo basefoundry/example
 ```
+
+The JSON form is a stable v1 inspection contract for automation. The same
+envelope is available from release readiness, issue readiness, and stale-branch
+inspection; see [Inspection JSON](docs/inspection-json.md).
 
 Seed optional repo-local agent guidance with:
 
@@ -1115,6 +1120,7 @@ Inspect release readiness for a Base-managed repository with:
 
 ```bash
 basectl release check --version 1.6.1
+basectl release check --version 1.6.1 --format json
 basectl release plan --version 1.6.1
 basectl release notes --version 1.6.1
 basectl release publish --version 1.6.1 --dry-run

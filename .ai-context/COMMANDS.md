@@ -119,6 +119,13 @@ options.
     that already have standard Base views are left intact.
   - `basectl gh project issue set-fields <number>` - add an issue to the
     Project if needed and update its metadata fields.
+
+Stable read-only inspection JSON uses one schema-versioned envelope across
+`repo check`, `release check`, `gh issue readiness`, and `gh branch stale`.
+Pass `--format json`; text remains the default. Completed inspections keep
+findings in `data` with `error: null`, while controlled usage or upstream
+failures use an `error` object. The canonical field contract and exit semantics
+are documented in `docs/inspection-json.md`.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
 - `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
 - `basectl history` - list recent structured Base command runs from the local
