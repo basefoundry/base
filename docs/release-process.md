@@ -41,6 +41,10 @@ release-prep PR moves them into a dated release section.
 Base-managed repositories can declare a `release:` section in
 `base_manifest.yaml` with the version file, changelog, tag prefix, GitHub
 repository, GitHub Release title, and optional Homebrew handoff metadata.
+For an existing repository, `basectl repo configure --release --repo
+<owner/name>` adds the generic contract and a missing release guide without
+overwriting an existing declaration or guide. Use `basectl repo check --release`
+to verify adoption.
 
 The inspection commands are read-only:
 

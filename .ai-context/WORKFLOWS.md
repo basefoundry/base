@@ -171,6 +171,13 @@ BASE_BASH_LIBS_DIR=~/work/base-bash-libs/lib/bash env -u BASE_HOME ./bin/base-te
 Base releases are explicit ceremonies. Ordinary PRs do not update `VERSION`.
 Release-prep PRs update `VERSION`, README release text, and `CHANGELOG.md`.
 
+Repositories that publish versioned artifacts can opt into the shared release
+contract with `basectl repo configure --release --repo <owner/name>`. The
+command adds missing release metadata and an agent-facing
+`docs/release-process.md` guide without overwriting repository-specific
+release declarations or instructions. Use `basectl repo check --release` to
+verify adoption before starting release preparation.
+
 The `basectl release check|plan|notes` commands are read-only inspection
 commands. `basectl release publish` is guarded and creates the annotated tag and
 GitHub Release after checks pass. The Homebrew tap update happens in

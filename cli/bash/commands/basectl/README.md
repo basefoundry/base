@@ -146,6 +146,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   Project setup, `--project <title>` to override the
   Project title, or
   `--initiative-option <name>` to seed repository-specific Initiative values.
+  Release standardization is opt-in: add `--release` to `repo init` or
+  `repo configure` to add a missing generic `release:` contract to
+  `base_manifest.yaml` and a missing `docs/release-process.md` guide. Existing
+  release declarations and guides are preserved. Use `repo check --release` to
+  verify the local contract; pass `--dry-run` to preview the local changes.
   Use `--copy-project-fields-from <title>` during migration to copy missing
   issue item field values from an existing Project before config defaults fill
   remaining blanks in the repo Project. Use `--replace-project` when an
