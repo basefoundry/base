@@ -307,6 +307,8 @@ run_zsh_positional_completion() {
 }
 
 @test "Zsh lifecycle project completions use executable argument positions" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
     run_zsh_positional_completion basectl ci ""
     [ "$status" -eq 0 ]
     [[ "$output" == *"positional=2:ci command:(setup check doctor)"* ]]
