@@ -36,60 +36,74 @@ basectl_show_help() {
 Usage: basectl [options] <command> [args...]
 
 Commands:
-  activate <project> [options]
-    Start an interactive Base runtime subshell for a project.
+
+Getting started:
+  onboard [project] [options]
+    Guide a user through the first Base setup checklist.
   setup [options] [project]
-    Install and bootstrap the local Base CLI environment on macOS.
+    Install and bootstrap the local Base CLI environment on macOS or Ubuntu/Debian.
   check [project] [options]
     Verify the local Base CLI environment and optional project artifacts without making changes.
+  doctor [project] [options]
+    Diagnose the local Base CLI environment and optional project artifacts.
+
+Daily project loop:
+  projects list [options]
+    List Base-managed projects discovered in the workspace.
+  activate <project> [options]
+    Start an interactive Base runtime subshell for a project.
   test [project] [options]
     Run a project's declared test command.
-  export-context [project] [options]
-    Export a project's .ai-context directory as Markdown or Zip.
-  devcontainer [project] [options]
-    Preview or write .devcontainer/devcontainer.json from a Base manifest.
-  devenv-report [project] [options]
-    Report Nix/devenv compatibility for a Base manifest.
   build <project> [target...] [options]
     Run a project's declared build targets.
   demo [project] [options]
     Run a project's declared interactive demo.
   run <project> <command> [options]
     Run a project's declared command.
+  trust <status|allow|revoke> [project] [options]
+    Inspect trust across projects, or manage one project's local approval.
+
+Workspace and repositories:
+  workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]
+    Show workspace status, onboarding, agent readiness, checks, or explicit workspace mutations.
   repo <init|clone|check|configure|agent-guidance|installer-template> [options]
     Create, clone, check, and configure repository baselines and guidance.
-  ci <setup|check|doctor> [project] [options]
-    Compatibility alias for setup, check, and doctor --ci.
+  gh <area> <command> [options]
+    Manage GitHub issues, PRs, branches, and repository hygiene.
+
+Release and sharing:
   release <check|plan|notes|publish> --version <version> [options]
     Inspect release readiness, plan, notes, and guarded GitHub publishing.
+  export-context [project] [options]
+    Export a project's .ai-context directory as Markdown or Zip.
+  devcontainer [project] [options]
+    Preview or write .devcontainer/devcontainer.json from a Base manifest.
+  devenv-report [project] [options]
+    Report Nix/devenv compatibility for a Base manifest.
   prompt <list|name> [options]
     Print repo-owned Markdown prompts for AI-assisted Base workflows.
   docs [options]
     Open the Base documentation home page on GitHub.
-  clean [--older-than <age>] [--keep-last <count>] [options]
-    Remove old Base CLI runtime logs, temp files, and cache entries.
+
+Diagnostics and maintenance:
+  config <path|show|doctor>
+    Inspect Base's machine-local user config.
   logs [options]
     List and open recent Base CLI runtime logs.
   history [options]
     List recent Base command history records.
-  config <path|show|doctor>
-    Inspect Base's machine-local user config.
-  trust <status|allow|revoke> <project> [options]
-    Manage local approval for manifest-declared project commands.
-  doctor [project] [options]
-    Diagnose the local Base CLI environment and optional project artifacts.
-  gh <area> <command> [options]
-    Manage GitHub issues, PRs, branches, and repository hygiene.
-  onboard [project] [options]
-    Guide a user through the first Base setup checklist.
+  clean [--older-than <age>] [--keep-last <count>] [options]
+    Remove old Base CLI runtime logs, temp files, and cache entries.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   update [project] [options]
     Update Base from Git and run setup.
-  projects list [options]
-    List Base-managed projects discovered in the workspace.
-  workspace <status|check|doctor|onboarding|agent-brief|clone|pull|init|configure> [options]
-    Show workspace status, onboarding, agent readiness, checks, or explicit workspace mutations.
+
+Compatibility:
+  ci <setup|check|doctor> [project] [options]
+    Compatibility alias for setup, check, and doctor --ci.
+
+Other:
   version
     Show the installed Base version.
   help
@@ -103,6 +117,7 @@ Options:
            Show the installed Base version.
 
 Wrapper options:
+  Advanced startup diagnostics; normal command flags are documented by leaf help.
   --debug-wrapper    Enable DEBUG logging before the Base runtime is loaded.
   --verbose-wrapper  Enable verbose runtime argument handling before dispatch.
   --utc-wrapper      Print wrapper/runtime log timestamps in UTC.
@@ -426,6 +441,34 @@ basectl_source_version_library() {
 }
 
 basectl_do_version() {
+    case "${1:-}" in
+        "")
+            ;;
+        -h|--help|help)
+            (($# == 1)) || {
+                basectl_error "version does not accept arguments."
+                printf "Run 'basectl version --help' for usage.\n" >&2
+                return 2
+            }
+            cat <<'EOF'
+Usage:
+  basectl version
+
+Purpose:
+  Show the installed Base version.
+
+Options:
+  -h, --help  Show this help text.
+EOF
+            return 0
+            ;;
+        *)
+            basectl_error "version does not accept arguments."
+            printf "Run 'basectl version --help' for usage.\n" >&2
+            return 2
+            ;;
+    esac
+
     basectl_source_version_library || return 1
     printf 'basectl %s\n' "$(base_read_version "$BASE_HOME")"
 }
@@ -472,6 +515,10 @@ basectl_main() {
     fi
 
     if [[ "${1:-}" == "--version" ]]; then
+        if (($# != 1)); then
+            basectl_usage_error "Option '--version' does not accept arguments."
+            return $?
+        fi
         basectl_get_base_home || return 1
         basectl_do_version
         return 0
@@ -558,7 +605,7 @@ basectl_main() {
         workspace)        basectl_do_workspace "$@" ;;
         update)           basectl_do_update "$@" ;;
         update-profile)   basectl_do_update_profile "$@" ;;
-        version)          basectl_do_version ;;
+        version)          basectl_do_version "$@" ;;
         "")
             if basectl_should_start_shell; then
                 BASE_ACTIVATE_PRESERVE_CWD=1 basectl_do_activate "$(basectl_default_activate_project)"

@@ -83,6 +83,27 @@ EOF
     [ "$output" = "basectl $expected_version" ]
 }
 
+@test "basectl version has leaf help and rejects trailing arguments" {
+    run_basectl version --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl version"* ]]
+    [[ "$output" == *"Show the installed Base version."* ]]
+
+    run_basectl help version
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl version"* ]]
+
+    run_basectl version nonsense
+
+    [ "$status" -eq 2 ]
+    [ "${lines[0]}" = "ERROR: version does not accept arguments." ]
+    [ "${lines[1]}" = "Run 'basectl version --help' for usage." ]
+    [[ "$output" != *"basectl $(head -n 1 "$BASE_REPO_ROOT/VERSION")"* ]]
+}
+
 @test "README version badge matches VERSION" {
     local expected_version expected_badge
 

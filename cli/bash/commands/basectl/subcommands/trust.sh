@@ -22,6 +22,62 @@ approval for manifest-declared project commands.
 EOF
 }
 
+base_trust_leaf_usage() {
+    local trust_command="$1"
+
+    case "$trust_command" in
+        status)
+            cat <<'EOF'
+Usage:
+  basectl trust status [project] [options]
+
+Purpose:
+  Show manifest command trust for one project, or for all discovered
+  command-bearing projects when no project is supplied.
+
+Options:
+  --workspace <path>    Workspace directory to scan.
+  --format <text|json>  Output format. Defaults to text.
+  -v                    Enable DEBUG logging for this subcommand.
+  -h, --help            Show this help text.
+EOF
+            ;;
+        allow)
+            cat <<'EOF'
+Usage:
+  basectl trust allow <project> [options]
+
+Purpose:
+  Approve the current manifest command contract for one project on this
+  machine.
+
+Options:
+  --workspace <path>          Workspace directory to scan.
+  --manifest-sha256 <sha256>  Require the current manifest to match this digest.
+  -v                          Enable DEBUG logging for this subcommand.
+  -h, --help                  Show this help text.
+EOF
+            ;;
+        revoke)
+            cat <<'EOF'
+Usage:
+  basectl trust revoke <project> [options]
+
+Purpose:
+  Remove local manifest command approval for one project.
+
+Options:
+  --workspace <path>  Workspace directory to scan.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+EOF
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 base_trust_usage_error() {
     base_trust_subcommand_usage >&2
     print_error "$*"
@@ -51,8 +107,8 @@ base_trust_subcommand_main() {
     while (($# > 0)); do
         case "$1" in
             -h|--help)
-                base_trust_subcommand_usage
-                return 0
+                base_trust_leaf_usage "$trust_command"
+                return $?
                 ;;
             -v)
                 args+=(--debug)

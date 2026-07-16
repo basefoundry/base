@@ -1,7 +1,8 @@
 # basectl Quick Reference
 
 This page is a compact lookup table for the current `basectl` command surface.
-Run `basectl --help` or `basectl <command> --help` for full usage.
+Run `basectl help <nested path>` or append `--help` to that path for the same
+leaf-specific usage. Run `basectl --help` for the journey-oriented command map.
 
 Use space-separated values for long options, for example `--format json`.
 Base rejects `--option=value` syntax before command delegation. Arguments after
@@ -115,7 +116,7 @@ daily project loop commands from the local checkout.
 |---|---|---|
 | `basectl repo init <name>` | Create a Base-managed repository baseline, including `.github/base-project.yml`, and optionally create/configure the GitHub repo. Use `--path .` for the current checkout; plain init does not commit or push local files, while `--pr --issue <number>` commits baseline changes on a canonical issue-backed branch, pushes it to `origin`, and opens a PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. Use `--agent-ready` to seed `AGENTS.md` and `skills.md` with the baseline. Use repeatable `--language <csv>` values to seed normalized `project.languages` metadata; selecting `python` also writes `python.manager: uv`. | `--path <path>`, `--repo <owner/name>`, `--issue <number>`, `--category <name>`, `--language <csv>`, `--description <text>`, `--copyright-holder <name>`, `--public`, `--private`, `--pr`, `--agent-ready`, `--project <title>`, `--project-owner <login>`, `--project-schema <schema>`, `--copy-project-fields-from <title>`, `--initiative-option <name>`, `--no-configure`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo clone <name-or-owner/name>` | Clone one GitHub repository into the configured Base workspace, treating matching existing checkouts as already satisfied. | `--owner <owner>`, `--path <path>`, `--dry-run` |
-| `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance`, `--agent-ready` |
+| `basectl repo check [path]` | Verify the local repository baseline. | `--agent-guidance`, `--agent-ready`, `--release` |
 | `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, default branch protection, non-default branch naming enforcement, the trusted issue/category branch policy workflow, and repo Project metadata. After a default-branch dispatch produces a recent trusted success, its GitHub-Actions-bound PR-head status becomes required. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--project-schema <schema>`, `--copy-project-fields-from <title>`, `--initiative-option <name>`, `--replace-project`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files, optionally through a draft PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. | `--repo <owner/name>`, `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--issue <number>`, `--category <name>`, `--pr`, `--dry-run` |
 | `basectl repo installer-template [path]` | Write the maintained project installer starter script to a path, defaulting to `./install.sh`, optionally through a draft PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. | `--print`, `--repo <owner/name>`, `--issue <number>`, `--category <name>`, `--pr`, `--dry-run` |

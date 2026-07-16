@@ -14,6 +14,22 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--output <path>"* ]]
 }
 
+@test "basectl prompt leaves scope output help to rendered prompts" {
+    run_basectl prompt list --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl prompt list"* ]]
+    [[ "$output" != *"--output"* ]]
+    [[ "$output" != *"basectl prompt <name>"* ]]
+
+    run_basectl prompt product-self-review --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl prompt product-self-review [--output <path>]"* ]]
+    [[ "$output" == *"--output <path>"* ]]
+    [[ "$output" != *"basectl prompt list"* ]]
+}
+
 @test "basectl prompt forwards prompt names to the Python prompt renderer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local state_file="$TEST_TMPDIR/prompt-state"

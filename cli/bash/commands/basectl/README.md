@@ -42,16 +42,19 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `docs`
 - `devcontainer`
 - `devenv-report`
+- `demo`
 - `export-context`
 - `gh`
 - `history`
 - `logs`
 - `onboard`
 - `prompt`
+- `release check/plan/notes/publish`
 - `repo init/clone/check/configure/agent-guidance/installer-template`
 - `trust status/allow/revoke`
 - `test`
 - `build`
+- `run`
 - `update-profile`
 - `update`
 - `projects list`
@@ -90,8 +93,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl history` lists recent structured Base command runs from the local
   history index and supports table, JSON, and privacy-conscious report output.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
-- `basectl trust status/allow/revoke <project>` manages local approval for
-  manifest-declared project commands under `~/.base.d/trust/manifest-commands/`.
+- `basectl trust status [project]` inspects one project's manifest command
+  trust or all discovered command-bearing projects. `basectl trust
+  allow/revoke <project>` manages local approval under
+  `~/.base.d/trust/manifest-commands/`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
 - `basectl doctor explain <finding-id>` prints local, deterministic guidance

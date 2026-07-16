@@ -197,6 +197,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "logs_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl logs last --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "logs_last_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl logs l); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -324,7 +328,8 @@ EOF
     [[ "$output" == *"prompt_options=--output --help"* ]]
     [[ "$output" == *"docs_options=--show-url"* ]]
     [[ "$output" == *"clean_options=--older-than --keep-last --dry-run"* ]]
-    [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines --format"* ]]
+    [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
+    [[ "$output" == *"logs_last_options=--command --lines --format"* ]]
     [[ "$output" == *"logs_commands=last"* ]]
     [[ "$output" == *"history_options=--project --command --status --limit --format --report"* ]]
     [[ "$output" == *"trust_commands=status allow revoke"* ]]
@@ -335,7 +340,7 @@ EOF
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --issue --category --pr --agent-ready --release --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]
     [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]
-    [[ "$output" == *"repo_check_options=--agent-guidance --agent-ready"* ]]
+    [[ "$output" == *"repo_check_options=--agent-guidance --agent-ready --release"* ]]
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --issue --category --pr --dry-run"* ]]

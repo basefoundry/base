@@ -79,7 +79,20 @@ EOF
     [[ "$output" == *"basectl logs last"* ]]
     [[ "$output" == *"--command <name>"* ]]
     [[ "$output" == *"--path"* ]]
+    [[ "$output" != *"--format <format>"* ]]
+}
+
+@test "basectl logs last prints focused help" {
+    run_basectl logs last --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl logs last [options]"* ]]
     [[ "$output" == *"--format <format>"* ]]
+    [[ "$output" == *"--lines <count>"* ]]
+    [[ "$output" != *"--limit"* ]]
+    [[ "$output" != *"--path"* ]]
+    [[ "$output" != *"--tail"* ]]
+    [[ "$output" != *"--open"* ]]
 }
 
 @test "basectl logs reports missing option arguments as usage errors" {

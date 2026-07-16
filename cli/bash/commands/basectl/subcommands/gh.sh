@@ -108,6 +108,80 @@ Categories: bug, enhancement, documentation, ci, security.
 EOF
 }
 
+base_gh_issue_start_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue start <number> [options]
+
+Purpose:
+  Print the canonical issue-backed branch and worktree commands after verifying
+  the issue's standard category label.
+
+Options:
+  --repo, -R <owner/name>  Repository containing the issue. Selection order is
+                           the explicit option, GH_REPO, then the origin remote.
+  --category <category>    Must match the issue's single category label.
+  --title <title>          Override the issue title used to generate the slug.
+  -h, --help               Show this help text.
+EOF
+}
+
+base_gh_issue_list_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue list [gh options...]
+
+Purpose:
+  List GitHub issues through the GitHub CLI.
+
+Options:
+  -h, --help  Show this help text.
+
+Additional options are passed through to `gh issue list`.
+EOF
+}
+
+base_gh_issue_create_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue create --title <title> [options]
+
+Purpose:
+  Create an issue with Base category, assignment, and Project conventions.
+
+Options:
+  --category <category>    Issue category. Defaults to enhancement.
+  --title <title>          Required issue title.
+  --body <body>            Issue body.
+  --repo <owner/name>      Target repository. Defaults to origin.
+  --assignee <login>       Assign the issue to a GitHub login.
+  --no-assignee            Ignore any repository assignee default.
+  --project <title>        GitHub Project title.
+  --project-owner <login>  GitHub Project owner.
+  --size <T|S|M|L>         GitHub Project Size value.
+  --no-project             Skip GitHub Project metadata updates.
+  -h, --help               Show this help text.
+
+Categories: bug, enhancement, documentation, ci, security.
+EOF
+}
+
+base_gh_issue_readiness_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue readiness <number> [options]
+
+Purpose:
+  Check required issue sections and optional Base Project metadata before work.
+
+Options:
+  --repo <owner/name>        Repository containing the issue.
+  --project-owner <login>    Project owner for field validation.
+  --project-number <number>  Project number for field validation.
+  -h, --help                 Show this help text.
+EOF
+}
+
 base_gh_pr_usage() {
     cat <<'EOF'
 Usage:
@@ -129,6 +203,38 @@ Notes:
 EOF
 }
 
+base_gh_pr_leaf_usage() {
+    local pr_command="$1"
+    local purpose
+
+    case "$pr_command" in
+        create) purpose="Create an issue-linked pull request from the current Base branch." ;;
+        status) purpose="Show pull-request status through the GitHub CLI." ;;
+        checks) purpose="Show pull-request checks through the GitHub CLI." ;;
+        ready) purpose="Mark a pull request ready for review through the GitHub CLI." ;;
+        merge) purpose="Merge a pull request through the GitHub CLI." ;;
+        *) return 1 ;;
+    esac
+
+    cat <<EOF
+Usage:
+  basectl gh pr $pr_command [gh options...]
+
+Purpose:
+  $purpose
+
+Options:
+EOF
+    if [[ "$pr_command" == create ]]; then
+        printf '%s\n' '  --no-fixes  Do not add the issue-closing line derived from the branch.'
+    fi
+    cat <<EOF
+  -h, --help  Show this help text.
+
+Additional options are passed through to \`gh pr $pr_command\`.
+EOF
+}
+
 base_gh_project_usage() {
     cat <<'EOF'
 Usage:
@@ -145,6 +251,52 @@ Notes:
   - Use --replace-project to replace a nonstandard repo Project from base-project-template.
     Already-standard Projects are left intact.
 EOF
+}
+
+base_gh_project_leaf_usage() {
+    local project_command="$1"
+
+    case "$project_command" in
+        doctor)
+            cat <<'EOF'
+Usage:
+  basectl gh project doctor --project <title> [options]
+
+Purpose:
+  Inspect GitHub Project metadata against the Base Project schema.
+
+Options:
+  --project <title>  Project title to inspect.
+  --owner <login>    Project owner.
+  --schema base-project  Project schema. This is the only supported value.
+  -h, --help         Show this help text.
+EOF
+            ;;
+        configure)
+            cat <<'EOF'
+Usage:
+  basectl gh project configure --project <title> [options]
+
+Purpose:
+  Create or repair Base-managed GitHub Project metadata.
+
+Options:
+  --project <title>           Project title to configure.
+  --owner <login>             Project owner.
+  --repo <owner/name>         Repository to link and backfill.
+  --schema base-project       Project schema. This is the only supported value.
+  --config <path>             Project intake config.
+  --copy-fields-from <title>  Copy missing field values from another Project.
+  --replace-project           Replace a nonstandard repository Project.
+  --initiative-option <name>  Initiative option to seed.
+  --dry-run                   Print planned changes.
+  -h, --help                  Show this help text.
+EOF
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 base_gh_project_issue_set_fields_usage() {
@@ -166,6 +318,7 @@ Options:
   --initiative <name>   Initiative option.
   --size <T|S|M|L>      Size option.
   --dry-run             Print the planned Project updates without applying them.
+  -h, --help            Show this help text.
 EOF
 }
 
@@ -187,6 +340,44 @@ Options:
   --yes          Delete merged branches after preview.
   --remote       Also prune merged GitHub remote branches and stale origin/* refs.
 EOF
+}
+
+base_gh_branch_leaf_usage() {
+    local branch_command="$1"
+
+    case "$branch_command" in
+        stale)
+            cat <<'EOF'
+Usage:
+  basectl gh branch stale [--days <days>]
+
+Purpose:
+  Report local and origin branches older than the selected threshold.
+
+Options:
+  --days <days>  Minimum age in days. Defaults to 30.
+  -h, --help     Show this help text.
+EOF
+            ;;
+        prune)
+            cat <<'EOF'
+Usage:
+  basectl gh branch prune [options]
+
+Purpose:
+  Preview or remove safely merged local and GitHub branches.
+
+Options:
+  --dry-run   Preview branches that would be deleted (default).
+  --yes       Delete safely merged branches after preview.
+  --remote    Also clean merged GitHub branches and stale origin refs.
+  -h, --help  Show this help text.
+EOF
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 base_gh_worktree_usage() {
@@ -467,7 +658,7 @@ base_gh_issue_readiness() {
         return $?
     }
     if [[ "$issue" == "help" || "$issue" == "-h" || "$issue" == "--help" ]]; then
-        base_gh_issue_usage
+        base_gh_issue_readiness_usage
         return 0
     fi
     [[ "$issue" =~ ^[0-9]+$ ]] || {
@@ -509,7 +700,7 @@ base_gh_issue_readiness() {
                 shift
                 ;;
             -h|--help)
-                base_gh_issue_usage
+                base_gh_issue_readiness_usage
                 return 0
                 ;;
             *)
@@ -861,18 +1052,26 @@ base_gh_do_issue() {
     case "$command" in
         list)
             if base_gh_args_request_help "$@"; then
-                base_gh_issue_usage
+                base_gh_issue_list_usage
                 return 0
             fi
             base_gh_run issue list "$@"
             ;;
         create)
+            if base_gh_args_request_help "$@"; then
+                base_gh_issue_create_usage
+                return 0
+            fi
             base_gh_issue_create "$@"
             ;;
         readiness)
             base_gh_issue_readiness "$@"
             ;;
         start)
+            if base_gh_args_request_help "$@"; then
+                base_gh_issue_start_usage
+                return 0
+            fi
             base_gh_issue_start "$@"
             ;;
         -h|--help|help|"")
@@ -944,7 +1143,7 @@ base_gh_issue_create() {
                 configure_project=0
                 ;;
             -h|--help)
-                base_gh_issue_usage
+                base_gh_issue_create_usage
                 return 0
                 ;;
             *)
@@ -1141,7 +1340,7 @@ base_gh_issue_start() {
                 repo_args+=("$1")
                 ;;
             -h|--help)
-                base_gh_issue_usage
+                base_gh_issue_start_usage
                 return 0
                 ;;
             *)
@@ -1210,35 +1409,35 @@ base_gh_do_pr() {
     case "$command" in
         create)
             if base_gh_args_request_help "$@"; then
-                base_gh_pr_usage
+                base_gh_pr_leaf_usage create
                 return 0
             fi
             base_gh_pr_create "$@"
             ;;
         status)
             if base_gh_args_request_help "$@"; then
-                base_gh_pr_usage
+                base_gh_pr_leaf_usage status
                 return 0
             fi
             base_gh_run pr status "$@"
             ;;
         checks)
             if base_gh_args_request_help "$@"; then
-                base_gh_pr_usage
+                base_gh_pr_leaf_usage checks
                 return 0
             fi
             base_gh_run pr checks "$@"
             ;;
         ready)
             if base_gh_args_request_help "$@"; then
-                base_gh_pr_usage
+                base_gh_pr_leaf_usage ready
                 return 0
             fi
             base_gh_run pr ready "$@"
             ;;
         merge)
             if base_gh_args_request_help "$@"; then
-                base_gh_pr_usage
+                base_gh_pr_leaf_usage merge
                 return 0
             fi
             base_gh_run pr merge "$@"
@@ -1259,6 +1458,10 @@ base_gh_do_project() {
     if [[ "${1:-}" == "issue" && "${2:-}" == "set-fields" ]] && base_gh_args_request_help "$@"; then
         base_gh_project_issue_set_fields_usage
         return 0
+    fi
+    if [[ "${1:-}" == doctor || "${1:-}" == configure ]] && base_gh_args_request_help "$@"; then
+        base_gh_project_leaf_usage "$1"
+        return $?
     fi
     if base_gh_args_request_help "$@"; then
         base_gh_project_usage

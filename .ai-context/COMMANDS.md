@@ -1,8 +1,8 @@
 # Base Command Context
 
 `basectl` is the public Base control-plane command. Run `basectl --help` for
-top-level command families and `basectl <family> --help` for the canonical
-family subcommands.
+the journey-oriented command map. Run `basectl help <nested path>` or append
+`--help` to that path for the same leaf-specific usage.
 
 Long options with values use space-separated syntax, such as `--format json`.
 Base rejects `--option=value` before command delegation. Arguments after `--`
@@ -30,8 +30,10 @@ options.
 - `basectl run <project> <command>` - run a declared project command.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
   Zip bundle for manual upload or copy/paste into AI tools.
-- `basectl trust <status|allow|revoke> <project>` - inspect, allow, or
-  remove local approval for manifest-declared project commands.
+- `basectl trust status [project]` - inspect one project's manifest command
+  trust or all discovered command-bearing projects.
+- `basectl trust <allow|revoke> <project>` - add or remove local approval for
+  manifest-declared project commands.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata, and `--output <path>`
@@ -82,7 +84,7 @@ options.
   language metadata; selecting `python` adds the explicit
   `python.manager: uv` profile while other initial language values are metadata
   only.
-- `basectl <setup|check|doctor> --ci <project>` - run Base setup/check/doctor
+- `basectl <setup|check|doctor> --ci [project]` - run Base setup/check/doctor
   with CI-safe defaults. It does not run project tests or create CI runners/VMs.
   `setup --ci --format json` uses `output` for the compact final status and
   adds `output_lines` on failures for intermediate context. `basectl ci`

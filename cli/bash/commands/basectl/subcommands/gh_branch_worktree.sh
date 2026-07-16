@@ -14,7 +14,7 @@ base_gh_branch_stale() {
                 shift
                 ;;
             -h|--help)
-                base_gh_branch_usage
+                base_gh_branch_leaf_usage stale
                 return 0
                 ;;
             *)
@@ -314,7 +314,7 @@ base_gh_branch_prune() {
                 remote=1
                 ;;
             -h|--help)
-                base_gh_branch_usage
+                base_gh_branch_leaf_usage prune
                 return 0
                 ;;
             *)

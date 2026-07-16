@@ -71,6 +71,25 @@ basectl_print_version() {
     printf 'basectl %s\n' "$(base_read_version "$base_home")"
 }
 
+basectl_version_usage() {
+    cat <<'EOF'
+Usage:
+  basectl version
+
+Purpose:
+  Show the installed Base version.
+
+Options:
+  -h, --help  Show this help text.
+EOF
+}
+
+basectl_version_usage_error() {
+    printf 'ERROR: %s\n' "$*" >&2
+    printf "Run 'basectl version --help' for usage.\n" >&2
+    return 2
+}
+
 basectl_proc_translated() {
     local translated
 
@@ -316,9 +335,35 @@ main() {
     basectl_ensure_supported_bash "$@"
     base_home="$(basectl_base_home)" || basectl_die "Unable to resolve Base home."
 
-    if [[ "${1:-}" == "--version" || "${1:-}" == "version" ]]; then
+    if [[ "${1:-}" == "--version" ]]; then
+        if (($# != 1)); then
+            printf "ERROR: Option '--version' does not accept arguments.\n" >&2
+            return 2
+        fi
         basectl_print_version "$base_home"
         return 0
+    fi
+
+    if [[ "${1:-}" == "version" ]]; then
+        shift
+        case "${1:-}" in
+            -h|--help|help)
+                (($# == 1)) || {
+                    basectl_version_usage_error "version does not accept arguments."
+                    return $?
+                }
+                basectl_version_usage
+                return 0
+                ;;
+            "")
+                basectl_print_version "$base_home"
+                return 0
+                ;;
+            *)
+                basectl_version_usage_error "version does not accept arguments."
+                return $?
+                ;;
+        esac
     fi
 
     if [[ $# -eq 0 && -t 0 && -t 1 ]]; then

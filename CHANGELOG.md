@@ -80,6 +80,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Aligned `basectl` leaf help, exact-command argument errors, and Bash/Zsh
+  completions, including scoped release options and GitHub Project flags, while
+  grouping root help around the first-run and daily project journeys.
 - Made `basectl onboard --yes` reach unattended setup consent and added a
   read-only, workspace-wide manifest trust review step that never grants trust
   automatically or prompts for metadata-only manifests.

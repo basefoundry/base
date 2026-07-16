@@ -30,6 +30,71 @@ Homebrew tap updates remain a manual handoff.
 EOF
 }
 
+base_release_leaf_usage() {
+    local release_command="$1"
+    local purpose=""
+
+    case "$release_command" in
+        check)
+            purpose="Verify release readiness for the version, changelog, Git, and GitHub."
+            ;;
+        plan)
+            purpose="Show the release plan without creating tags or releases."
+            ;;
+        notes)
+            purpose="Print changelog notes for the target version."
+            ;;
+        publish)
+            purpose="Tag the release and create the GitHub Release after readiness passes."
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    if [[ "$release_command" == "publish" ]]; then
+        cat <<EOF
+Usage:
+  basectl release publish --version <version> [--manifest <path>] [--dry-run] [--yes]
+
+Purpose:
+  $purpose
+
+Options:
+  --version <version>  Release version to publish.
+  --manifest <path>    Use a specific base_manifest.yaml path.
+  --dry-run            Print publish actions without creating tags or releases.
+  --yes                Publish without an interactive confirmation prompt.
+  -h, --help           Show this help text.
+EOF
+        return 0
+    fi
+
+    cat <<EOF
+Usage:
+  basectl release $release_command --version <version> [--manifest <path>]
+
+Purpose:
+  $purpose
+
+Options:
+  --version <version>  Release version to inspect.
+  --manifest <path>    Use a specific base_manifest.yaml path.
+  -h, --help           Show this help text.
+EOF
+}
+
+base_release_args_request_help() {
+    local arg
+
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 base_release_usage_error() {
     base_release_subcommand_usage >&2
     print_error "$*"
@@ -52,6 +117,11 @@ base_release_subcommand_main() {
             return $?
             ;;
     esac
+
+    if base_release_args_request_help "${@:2}"; then
+        base_release_leaf_usage "$release_command"
+        return $?
+    fi
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
     BASE_CLI_DISPLAY_COMMAND="basectl release" "$wrapper" --project base base_release "$@"

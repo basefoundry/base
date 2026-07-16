@@ -235,11 +235,44 @@ _base_basectl_completion_profiles() {
 _base_basectl_completion_project_or_options() {
     local options="$1"
     local current="$2"
+    local value_options="${3:-}"
+    local argument_start="${4:-2}"
+    local expect_value=0 index word
 
-    if ((COMP_CWORD == 2)) && [[ "$current" != -* ]]; then
-        _base_basectl_completion_project_candidates "$current"
-    else
+    if [[ "$current" == -* ]]; then
         _base_basectl_completion_compgen "$options" "$current"
+        return 0
+    fi
+
+    for ((index = argument_start; index < COMP_CWORD; index += 1)); do
+        word="${COMP_WORDS[index]:-}"
+        if ((expect_value)); then
+            expect_value=0
+            continue
+        fi
+        if [[ " $value_options " == *" $word "* ]]; then
+            expect_value=1
+            continue
+        fi
+        case "$word" in
+            --)
+                _base_basectl_completion_compgen "$options" "$current"
+                return 0
+                ;;
+            -*)
+                continue
+                ;;
+            *)
+                _base_basectl_completion_compgen "$options" "$current"
+                return 0
+                ;;
+        esac
+    done
+
+    if [[ " $value_options " == *" ${COMP_WORDS[COMP_CWORD - 1]:-} "* ]]; then
+        _base_basectl_completion_compgen "$options" "$current"
+    else
+        _base_basectl_completion_project_candidates "$current"
     fi
 }
 
@@ -247,15 +280,29 @@ _base_basectl_completion_project_profiles_or_options() {
     local current="$1"
     local options="$2"
     local project_position="${3:-2}"
+    local value_options="${4:-}"
     local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
 
     if [[ "$previous" == "--profile" ]]; then
         _base_basectl_completion_compgen "$(_base_basectl_completion_profiles)" "$current"
-    elif ((COMP_CWORD == project_position)) && [[ "$current" != -* ]]; then
-        _base_basectl_completion_project_candidates "$current"
     else
-        _base_basectl_completion_compgen "$options" "$current"
+        _base_basectl_completion_project_or_options \
+            "$options" "$current" "$value_options --profile" "$project_position"
     fi
+}
+
+_base_basectl_completion_help() {
+    local saved_cword="$COMP_CWORD"
+    local -a saved_words=("${COMP_WORDS[@]}")
+    local status
+
+    COMP_WORDS=(basectl "${saved_words[@]:2}")
+    COMP_CWORD=$((saved_cword - 1))
+    _base_basectl_completion
+    status=$?
+    COMP_WORDS=("${saved_words[@]}")
+    COMP_CWORD="$saved_cword"
+    return "$status"
 }
 
 _base_basectl_completion() {
@@ -276,11 +323,8 @@ _base_basectl_completion() {
     command="${COMP_WORDS[1]:-}"
     case "$command" in
         activate)
-            if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_project_candidates "$cur"
-            else
-                _base_basectl_completion_compgen "--workspace --no-cd -v -h --help" "$cur"
-            fi
+            _base_basectl_completion_project_or_options \
+                "--workspace --no-cd -v -h --help" "$cur" "--workspace"
             ;;
         projects)
             if ((COMP_CWORD == 2)); then
@@ -292,18 +336,20 @@ _base_basectl_completion() {
         trust)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "status allow revoke" "$cur"
-            elif ((COMP_CWORD == 3)) && [[ "$cur" != -* ]]; then
-                _base_basectl_completion_project_candidates "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                     status)
-                        _base_basectl_completion_compgen "--workspace --format -v -h --help" "$cur"
+                        _base_basectl_completion_project_or_options \
+                            "--workspace --format -v -h --help" "$cur" "--workspace --format" 3
                         ;;
                     allow)
-                        _base_basectl_completion_compgen "--workspace --manifest-sha256 -v -h --help" "$cur"
+                        _base_basectl_completion_project_or_options \
+                            "--workspace --manifest-sha256 -v -h --help" "$cur" \
+                            "--workspace --manifest-sha256" 3
                         ;;
                     revoke)
-                        _base_basectl_completion_compgen "--workspace -v -h --help" "$cur"
+                        _base_basectl_completion_project_or_options \
+                            "--workspace -v -h --help" "$cur" "--workspace" 3
                         ;;
                 esac
             fi
@@ -335,37 +381,48 @@ _base_basectl_completion() {
             fi
             ;;
         setup)
-            _base_basectl_completion_project_profiles_or_options "$cur" "$setup_options"
+            _base_basectl_completion_project_profiles_or_options \
+                "$cur" "$setup_options" 2 "--format --manifest"
             ;;
         check)
-            _base_basectl_completion_project_profiles_or_options "$cur" "$check_options"
+            _base_basectl_completion_project_profiles_or_options \
+                "$cur" "$check_options" 2 "--format --manifest"
             ;;
         test)
-            _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --dry-run -v -h --help" "$cur" "--workspace"
             ;;
         export-context)
-            _base_basectl_completion_project_or_options "--workspace --format --output --print --list-files -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --format --output --print --list-files -v -h --help" "$cur" \
+                "--workspace --format --output"
             ;;
         devcontainer)
-            _base_basectl_completion_project_or_options "--workspace --format --write -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --format --write -v -h --help" "$cur" "--workspace --format"
             ;;
         devenv-report)
-            _base_basectl_completion_project_or_options "--workspace --format -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --format -v -h --help" "$cur" "--workspace --format"
             ;;
         build)
-            _base_basectl_completion_project_or_options "--workspace --dry-run --list -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --dry-run --list -v -h --help" "$cur" "--workspace"
             ;;
         demo)
-            _base_basectl_completion_project_or_options "--workspace --dry-run -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --dry-run -v -h --help" "$cur" "--workspace"
             ;;
         run)
-            _base_basectl_completion_project_or_options "--workspace --dry-run --list -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options \
+                "--workspace --dry-run --list -v -h --help" "$cur" "--workspace"
             ;;
         repo)
-            case "${COMP_WORDS[2]:-}" in
-                "")
-                    _base_basectl_completion_compgen "init clone check configure agent-guidance installer-template" "$cur"
-                    ;;
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen \
+                    "init clone check configure agent-guidance installer-template" "$cur"
+            else
+                case "${COMP_WORDS[2]:-}" in
                 init)
                     _base_basectl_completion_compgen "--path --repo --issue --category --pr --agent-ready --release --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run -v -h --help" "$cur"
                     ;;
@@ -373,7 +430,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
                     ;;
                 check)
-                    _base_basectl_completion_compgen "--agent-guidance --agent-ready -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--agent-guidance --agent-ready --release -v -h --help" "$cur"
                     ;;
                 configure)
                     _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run -v -h --help" "$cur"
@@ -384,36 +441,55 @@ _base_basectl_completion() {
                 installer-template)
                     _base_basectl_completion_compgen "--print --stdout --repo --issue --category --pr --dry-run -v -h --help" "$cur"
                     ;;
-            esac
+                esac
+            fi
             ;;
         ci)
-            case "${COMP_WORDS[2]:-}" in
-                "")
-                    _base_basectl_completion_compgen "setup check doctor" "$cur"
-                    ;;
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen "setup check doctor" "$cur"
+            else
+                case "${COMP_WORDS[2]:-}" in
                 setup)
-                    _base_basectl_completion_project_profiles_or_options "$cur" "$setup_options" 3
+                    _base_basectl_completion_project_profiles_or_options \
+                        "$cur" "$setup_options" 3 "--format --manifest"
                     ;;
                 check)
-                    _base_basectl_completion_project_profiles_or_options "$cur" "$check_options" 3
+                    _base_basectl_completion_project_profiles_or_options \
+                        "$cur" "$check_options" 3 "--format --manifest"
                     ;;
                 doctor)
-                    _base_basectl_completion_project_profiles_or_options "$cur" "$doctor_options" 3
+                    _base_basectl_completion_project_profiles_or_options \
+                        "$cur" "$doctor_options" 3 "--format --manifest"
                     ;;
-            esac
+                esac
+            fi
             ;;
         release)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "check plan notes publish" "$cur"
             else
-                _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+                case "${COMP_WORDS[2]:-}" in
+                    check|plan|notes)
+                        _base_basectl_completion_compgen "--version --manifest -h --help" "$cur"
+                        ;;
+                    publish)
+                        _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+                        ;;
+                esac
             fi
             ;;
         prompt)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "list product-self-review" "$cur"
             else
-                _base_basectl_completion_compgen "--output -v -h --help" "$cur"
+                case "${COMP_WORDS[2]:-}" in
+                    list)
+                        _base_basectl_completion_compgen "-v -h --help" "$cur"
+                        ;;
+                    *)
+                        _base_basectl_completion_compgen "--output -v -h --help" "$cur"
+                        ;;
+                esac
             fi
             ;;
         docs)
@@ -425,8 +501,10 @@ _base_basectl_completion() {
         logs)
             if ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then
                 _base_basectl_completion_compgen "last" "$cur"
+            elif [[ "${COMP_WORDS[2]:-}" == last ]]; then
+                _base_basectl_completion_compgen "--command --lines --format -v -h --help" "$cur"
             else
-                _base_basectl_completion_compgen "--command --limit --path --tail --open --lines --format -v -h --help" "$cur"
+                _base_basectl_completion_compgen "--command --limit --path --tail --open --lines -v -h --help" "$cur"
             fi
             ;;
         history)
@@ -435,6 +513,8 @@ _base_basectl_completion() {
         config)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "path show doctor" "$cur"
+            else
+                _base_basectl_completion_compgen "-h --help" "$cur"
             fi
             ;;
         doctor)
@@ -446,35 +526,51 @@ _base_basectl_completion() {
                     COMPREPLY+=("explain")
                 fi
             else
-                _base_basectl_completion_project_profiles_or_options "$cur" "$doctor_options"
+                _base_basectl_completion_project_profiles_or_options \
+                    "$cur" "$doctor_options" 2 "--format --manifest"
             fi
             ;;
         gh)
-            case "${COMP_WORDS[2]:-}" in
-                "")
-                    _base_basectl_completion_compgen "issue pr branch worktree project" "$cur"
-                    ;;
+            if ((COMP_CWORD == 2)); then
+                _base_basectl_completion_compgen "issue pr branch worktree project" "$cur"
+            else
+                case "${COMP_WORDS[2]:-}" in
                 issue)
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "list create start readiness" "$cur"
-                    elif [[ "${COMP_WORDS[3]:-}" == "readiness" ]]; then
-                        _base_basectl_completion_compgen "--repo --project-owner --project-number -h --help" "$cur"
-                    elif [[ "${COMP_WORDS[3]:-}" == "start" ]]; then
-                        _base_basectl_completion_compgen "--category --title --repo -R -h --help" "$cur"
                     else
-                        _base_basectl_completion_compgen "--category --title --body --repo --assignee --no-assignee --project --project-owner --size --no-project -h --help" "$cur"
+                        case "${COMP_WORDS[3]:-}" in
+                            list)
+                                _base_basectl_completion_compgen "-h --help" "$cur"
+                                ;;
+                            create)
+                                _base_basectl_completion_compgen "--category --title --body --repo --assignee --no-assignee --project --project-owner --size --no-project -h --help" "$cur"
+                                ;;
+                            readiness)
+                                _base_basectl_completion_compgen "--repo --project-owner --project-number -h --help" "$cur"
+                                ;;
+                            start)
+                                _base_basectl_completion_compgen "--category --title --repo -R -h --help" "$cur"
+                                ;;
+                        esac
                     fi
                     ;;
                 pr)
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "create status checks ready merge" "$cur"
+                    elif [[ "${COMP_WORDS[3]:-}" == create ]]; then
+                        _base_basectl_completion_compgen "--no-fixes -h --help" "$cur"
+                    else
+                        _base_basectl_completion_compgen "-h --help" "$cur"
                     fi
                     ;;
                 branch)
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "stale prune" "$cur"
-                    else
-                        _base_basectl_completion_compgen "--days --dry-run --yes --remote -h --help" "$cur"
+                    elif [[ "${COMP_WORDS[3]:-}" == stale ]]; then
+                        _base_basectl_completion_compgen "--days -h --help" "$cur"
+                    elif [[ "${COMP_WORDS[3]:-}" == prune ]]; then
+                        _base_basectl_completion_compgen "--dry-run --yes --remote -h --help" "$cur"
                     fi
                     ;;
                 worktree)
@@ -485,10 +581,10 @@ _base_basectl_completion() {
                     fi
                     ;;
                 project)
-                    case "${COMP_WORDS[3]:-}" in
-                        "")
-                            _base_basectl_completion_compgen "doctor configure issue" "$cur"
-                            ;;
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "doctor configure issue" "$cur"
+                    else
+                        case "${COMP_WORDS[3]:-}" in
                         doctor)
                             _base_basectl_completion_compgen "--project --owner --schema -h --help" "$cur"
                             ;;
@@ -502,20 +598,29 @@ _base_basectl_completion() {
                                 _base_basectl_completion_compgen "--repo --project --owner --config --status --priority --area --initiative --size --dry-run -h --help" "$cur"
                             fi
                             ;;
-                    esac
+                        esac
+                    fi
                     ;;
-            esac
+                esac
+            fi
             ;;
         onboard)
             _base_basectl_completion_project_profiles_or_options \
                 "$cur" \
-                "--profile --dry-run --yes --no-profile -v -h --help"
+                "--profile --dry-run --yes --no-profile -v -h --help" \
+                2 ""
             ;;
         update-profile)
             _base_basectl_completion_compgen "--defaults --no-defaults --remove --dry-run -v -h --help" "$cur"
             ;;
         update)
             _base_basectl_completion_project_or_options "--dry-run -v -h --help" "$cur"
+            ;;
+        version)
+            _base_basectl_completion_compgen "-h --help" "$cur"
+            ;;
+        help)
+            _base_basectl_completion_help
             ;;
     esac
 }
