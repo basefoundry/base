@@ -10,6 +10,7 @@ from base_cli.command_protocol import CommandProtocolError
 from base_cli.command_protocol import dumps_record
 from base_cli.command_protocol import dumps_records
 from base_cli.command_protocol import loads_records
+from base_cli.command_protocol import RECORD_SCHEMAS
 
 
 def project_command_record(**overrides: object) -> dict[str, object]:
@@ -28,6 +29,12 @@ def project_command_record(**overrides: object) -> dict[str, object]:
 
 
 class CommandProtocolTests(unittest.TestCase):
+    def test_project_python_requirement_is_scoped_to_project_setup_route_records(self) -> None:
+        self.assertIn("requires_project_python", RECORD_SCHEMAS["project-setup-route"])
+        for record_type in ("project-route", "project-command", "build-target", "demo"):
+            with self.subTest(record_type=record_type):
+                self.assertNotIn("requires_project_python", RECORD_SCHEMAS[record_type])
+
     def test_round_trip_preserves_manifest_strings_and_empty_optional_fields(self) -> None:
         records = (
             project_command_record(),

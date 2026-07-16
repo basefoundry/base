@@ -14,6 +14,8 @@ schema_version: 1
 
 project:
   name: $project
+
+python: {}
 EOF
 }
 

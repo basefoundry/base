@@ -46,7 +46,7 @@ def write_project_manifest(project_root: Path, name: str, test_command: str | No
     lines = ["project:", f"  name: {name}"]
     if test_command is not None:
         lines.extend(["test:", f"  command: {test_command}"])
-    lines.extend(["artifacts: []", ""])
+    lines.extend(["python: {}", "artifacts: []", ""])
     (project_root / "base_manifest.yaml").write_text("\n".join(lines), encoding="utf-8")
 
 

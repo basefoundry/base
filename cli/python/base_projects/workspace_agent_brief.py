@@ -326,7 +326,7 @@ def repository_handoff_status(
         handoff_status = "needs_manifest_repair"
     elif baseline.status != "complete" or status.manifest != "valid":
         handoff_status = "needs_baseline"
-    elif status.venv not in ("ready", "present_unverified"):
+    elif status.venv not in ("ready", "present_unverified", "not_applicable"):
         handoff_status = "needs_setup"
     elif agent_guidance.status != "complete":
         handoff_status = "needs_agent_guidance"
@@ -365,7 +365,7 @@ def repository_next_actions(
     elif baseline.status != "complete" or status.manifest != "valid":
         actions.append(repo_init_command(status))
 
-    if status.manifest == "valid" and status.venv not in ("ready", "present_unverified"):
+    if status.manifest == "valid" and status.venv not in ("ready", "present_unverified", "not_applicable"):
         actions.append(command_in_directory(status.root, "basectl setup"))
 
     if baseline.status == "complete" and agent_guidance.status != "complete":

@@ -1003,7 +1003,7 @@ setup_run_project_bootstrap_layer() {
 setup_run_project_artifact_layer() {
     local action="$1"
     local output_format="$2"
-    local exit_code manifest_path platform precheck_json project project_uses_uv_manager project_venv_dir python_bin remote_network resolved_root route_output venv_dir
+    local exit_code manifest_path platform precheck_json project project_requires_python project_uses_uv_manager project_venv_dir python_bin remote_network resolved_root route_output venv_dir
     local args=()
     local project_env_args=()
 
@@ -1034,7 +1034,7 @@ setup_run_project_artifact_layer() {
         log_error "Unable to resolve Base project environment for '$project'."
         return 1
     }
-    base_command_protocol_decode_one project-route "$route_output" || {
+    base_command_protocol_decode_one project-setup-route "$route_output" || {
         log_error "Python project routing returned invalid metadata for '$project'."
         return 1
     }
@@ -1043,12 +1043,17 @@ setup_run_project_artifact_layer() {
     manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
     project_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
     project_uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
+    project_requires_python="${BASE_COMMAND_PROTOCOL_FIELDS[requires_project_python]}"
     if [[ -z "$project" || -z "$resolved_root" || -z "$manifest_path" || -z "$project_venv_dir" ]]; then
         log_error "Python project routing returned incomplete metadata for '$project'."
         return 1
     fi
     if [[ "$project_uses_uv_manager" != true && "$project_uses_uv_manager" != false ]]; then
         log_error "Python project routing returned invalid uv-manager metadata for '$project'."
+        return 1
+    fi
+    if [[ "$project_requires_python" != true && "$project_requires_python" != false ]]; then
+        log_error "Python project routing returned invalid project-Python metadata for '$project'."
         return 1
     fi
     if [[ "$project" == base ]]; then
@@ -1084,7 +1089,7 @@ setup_run_project_artifact_layer() {
         fi
     fi
 
-    if [[ "$action" == setup && "$project_uses_uv_manager" != true ]]; then
+    if [[ "$action" == setup && "$project_requires_python" == true && "$project_uses_uv_manager" != true ]]; then
         setup_run_project_bootstrap_layer "$manifest_path" "$project" "$output_format" "$resolved_root" "$project_venv_dir"
         exit_code=$?
         if ((exit_code)); then
@@ -1094,7 +1099,7 @@ setup_run_project_artifact_layer() {
         fi
     fi
 
-    if [[ "$project_uses_uv_manager" != true ]] && ! setup_virtualenv_healthy_path "$project_venv_dir"; then
+    if [[ "$project_requires_python" == true && "$project_uses_uv_manager" != true ]] && ! setup_virtualenv_healthy_path "$project_venv_dir"; then
         if setup_is_dry_run && [[ "$action" == setup ]]; then
             log_info "[DRY-RUN] Would run Python project setup layer through base-wrapper for project '$project'."
             return 0
@@ -1137,7 +1142,7 @@ setup_run_project_artifact_layer() {
         return 1
     fi
 
-    if [[ "$project_uses_uv_manager" == true ]]; then
+    if [[ "$project_uses_uv_manager" == true || "$project_requires_python" != true ]]; then
         env "${project_env_args[@]}" \
             BASE_HOME="$BASE_HOME" \
             BASE_PLATFORM="$platform" \

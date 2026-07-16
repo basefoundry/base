@@ -19,6 +19,7 @@ from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.python_runtime import ProjectPythonRuntime
 from base_setup.python_runtime import project_python_runtime
+from base_setup.project_routing import manifest_requires_project_python
 
 
 @dataclass(frozen=True)
@@ -164,6 +165,18 @@ def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -
         )
 
     last_check = project_last_check(manifest.project_name)
+    if not manifest_requires_project_python(manifest):
+        return WorkspaceProjectStatus(
+            name=manifest.project_name,
+            root=root,
+            manifest_path=entry.path.resolve(),
+            status="ok",
+            venv="not_applicable",
+            manifest="valid",
+            issues=(),
+            last_check=last_check,
+        )
+
     venv_dir = project_venv_dir(manifest)
     if probe_venv:
         venv_ready = project_venv_ready(venv_dir)

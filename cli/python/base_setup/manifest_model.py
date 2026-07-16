@@ -127,3 +127,4 @@ class BaseManifest:
     demo: DemoConfig | None = None
     build: BuildConfig | None = None
     release: ReleaseConfig | None = None
+    python_declared: bool = False

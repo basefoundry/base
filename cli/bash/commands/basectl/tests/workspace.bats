@@ -34,6 +34,39 @@ EOF
     [ "$(cat "$TEST_TMPDIR/workspace-status-state")" = "BASE_PROJECT=base" ]
 }
 
+@test "basectl workspace status exposes shell-only fixture venv as not applicable" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local project_root="$TEST_TMPDIR/workspace/shell-only"
+
+    mkdir -p "$(dirname "$python_bin")" "$project_root"
+    cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" \
+        "$project_root/base_manifest.yaml"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "status" ]]; then
+    [[ ! -e "${BASE_TEST_SHELL_PROJECT_ROOT:?}/.venv" ]] || exit 10
+    ! grep -Eq '^[[:space:]]*python:' "${BASE_TEST_SHELL_PROJECT_ROOT:?}/base_manifest.yaml" || exit 11
+    printf '{"schema_version":1,"status":"ok","projects":[{"name":"shell-only","status":"ok","venv":"not_applicable","manifest":"valid","issues":[]}]}\n'
+    exit 0
+fi
+printf 'unexpected shell-only workspace status Python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_SHELL_PROJECT_ROOT="$project_root" \
+        "$BASE_REPO_ROOT/bin/basectl" workspace status \
+        --workspace "$TEST_TMPDIR/workspace" --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"name":"shell-only"'* ]]
+    [[ "$output" == *'"venv":"not_applicable"'* ]]
+    [ ! -e "$project_root/.venv" ]
+}
+
 @test "basectl workspace check delegates to the Python projects layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

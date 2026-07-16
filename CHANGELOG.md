@@ -87,6 +87,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 - Aligned `basectl` leaf help, exact-command argument errors, and Bash/Zsh
   completions, including scoped release options and GitHub Project flags, while
   grouping root help around the first-run and daily project journeys.
+- Stopped shell-only project setup, check, doctor, workspace status, and
+  onboarding from requiring a project virtual environment solely to host
+  Base's own Python control-plane dependencies. Manifests that explicitly
+  declare `python:` or a `python-package` artifact keep the existing project
+  Python environment behavior.
 - Made `basectl onboard --yes` reach unattended setup consent and added a
   read-only, workspace-wide manifest trust review step that never grants trust
   automatically or prompts for metadata-only manifests.

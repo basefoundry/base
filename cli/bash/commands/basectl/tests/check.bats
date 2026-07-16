@@ -364,7 +364,7 @@ EOF
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
-    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$base_venv_dir"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$demo_venv_dir"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$inherited_venv"
@@ -425,7 +425,7 @@ EOF
     touch "$TEST_STATE_DIR/python-installed"
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
-    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
     resolved_demo_root="$(cd "$workspace/demo" && pwd -P)"
 
@@ -465,6 +465,30 @@ EOF
     [[ "$output" != *"$workspace/demo/.venv"* ]]
     [ "$(cat "$TEST_STATE_DIR/project-setup-args")" = "$(printf '%s\n' --manifest "$manifest_path" --action check --format json demo)" ]
     [ "$(cat "$TEST_STATE_DIR/project-setup-project")" = "demo" ]
+}
+
+@test "basectl check shell-only project runs from Base runtime without project venv" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_root="$TEST_TMPDIR/shell-only"
+    local manifest_path="$project_root/base_manifest.yaml"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$project_root"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_project_setup_venv_stub "$base_venv_dir"
+    cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" "$manifest_path"
+
+    run_base_command check shell-only --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ ! -e "$project_root/.venv" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-python")" = "$base_venv_dir/bin/python" ]
+    [[ "$output" != *"Project virtual environment"* ]]
+    [[ "$output" != *"BASE-P050"* ]]
 }
 
 @test "basectl check project passes opt-in remote network diagnostics flag" {
@@ -783,7 +807,7 @@ EOF
     touch "$TEST_STATE_DIR/bats-installed"
     touch "$TEST_STATE_DIR/pyyaml-installed"
     touch "$TEST_STATE_DIR/click-installed"
-    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv"
     printf 'home = %s\n' "$missing_home" > "$workspace/demo/.venv/pyvenv.cfg"

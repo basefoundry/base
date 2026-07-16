@@ -74,6 +74,7 @@ def read_manifest(path: Path) -> BaseManifest:
         commands=commands,
         activate=activate,
         python=python,
+        python_declared="python" in data,
         github=github,
         demo=demo,
         build=build,

@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 
 from base_cli.command_protocol import loads_records
+from base_setup.manifest import read_manifest
+from base_setup.project_routing import manifest_requires_project_python
 from base_setup.tests.helpers import run_engine
 
 
@@ -17,6 +19,25 @@ def write_manifest(root: Path, content: str) -> Path:
 
 
 class ProjectRoutingTests(unittest.TestCase):
+    def test_manifest_requires_project_python_only_for_explicit_python_contracts(self) -> None:
+        cases = (
+            ("project:\n  name: shell-only\nartifacts: []\n", False),
+            ("project:\n  name: taxonomy-only\n  languages: [python]\nartifacts: []\n", False),
+            ("project:\n  name: explicit-empty\npython: {}\nartifacts: []\n", True),
+            (
+                "project:\n  name: packages\nartifacts:\n"
+                "  - type: python-package\n    name: requests\n    version: latest\n",
+                True,
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for index, (content, expected) in enumerate(cases):
+                with self.subTest(content=content):
+                    manifest = read_manifest(write_manifest(root / str(index), content))
+                    self.assertEqual(manifest_requires_project_python(manifest), expected)
+
     def test_route_command_protocol_reports_explicit_route_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir) / "demo λ"
@@ -38,11 +59,12 @@ class ProjectRoutingTests(unittest.TestCase):
             )
 
         self.assertEqual((status, stderr), (0, ""))
-        _, records = loads_records(stdout, "project-route")
+        _, records = loads_records(stdout, "project-setup-route")
         self.assertEqual(records[0]["project_name"], "demo")
         self.assertEqual(records[0]["project_root"], str(root.resolve()))
         self.assertEqual(records[0]["project_venv_dir"], str(root.resolve() / ".venv"))
         self.assertTrue(records[0]["uses_uv_manager"])
+        self.assertTrue(records[0]["requires_project_python"])
         self.assertFalse(records[0]["manifest_command_trust_required"])
 
     def test_route_ignores_different_active_project_venv_override(self) -> None:
@@ -126,6 +148,7 @@ class ProjectRoutingTests(unittest.TestCase):
         self.assertEqual(route["manifest_path"], str(manifest_path.resolve()))
         self.assertEqual(route["project_venv_dir"], str(root.resolve() / ".venv"))
         self.assertTrue(route["uses_uv_manager"])
+        self.assertTrue(route["requires_project_python"])
 
     def test_route_json_reports_project_local_venv_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -149,6 +172,7 @@ class ProjectRoutingTests(unittest.TestCase):
         route = json.loads(stdout)
         self.assertEqual(route["project_venv_dir"], str(root.resolve() / ".venv"))
         self.assertFalse(route["uses_uv_manager"])
+        self.assertFalse(route["requires_project_python"])
 
     def test_route_json_preserves_external_project_venv_when_manifest_opts_in(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -203,6 +227,7 @@ class ProjectRoutingTests(unittest.TestCase):
                     str(root.resolve()),
                     str(manifest_path.resolve()),
                     str(root.resolve() / ".venv"),
+                    "true",
                     "true",
                 ]
             )

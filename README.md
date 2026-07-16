@@ -607,6 +607,12 @@ For uv-managed projects, Base delegates setup to `uv sync`, uses the
 project-local `.venv` for activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](docs/python-manifest.md).
+Projects without a top-level `python:` section or any `python-package`
+artifacts are treated as shell-only for setup and diagnostics. Base parses and
+reconciles those manifests from its own runtime, does not create a project
+`.venv` for its control plane, and reports workspace venv state as
+`not_applicable`. An explicit `python: {}` keeps the existing Base-managed
+project venv contract; `project.languages: [python]` remains taxonomy only.
 Use `basectl check <project> --format json` for detailed runtime diagnostics
 and `basectl workspace status --format json` to compare actual project Python
 versions across a workspace.
@@ -1262,10 +1268,12 @@ exec "$BASE_HOME/bin/base-wrapper" --project "${BASE_PROJECT:-example}" example_
 reproducible across machines. The current default is `python@3.13`. Override it
 with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
-installs Base bootstrap Python packages into that environment. For project
-artifact setup, Base first seeds the target project venv with `bootstrap: true`
-default artifacts and then invokes the Python project setup layer through
-`base-wrapper --project <project>`.
+installs Base bootstrap Python packages into that environment. Shell-only
+project reconciliation runs from that Base runtime and does not copy those
+packages into a project venv. Projects that explicitly declare `python:` or a
+`python-package` artifact keep the project-runtime path: Base first seeds the
+target project venv with `bootstrap: true` default artifacts and then invokes
+the Python project setup layer through `base-wrapper --project <project>`.
 Prerequisite profiles are opt-in. Use `--profile dev` to install Base
 contributor tools from `lib/base/dev_manifest.yaml`. On macOS that includes
 Homebrew-managed BATS, GitHub CLI, and ShellCheck. On Ubuntu/Debian it installs

@@ -89,7 +89,7 @@ def onboarding_status(status: WorkspaceProjectStatus) -> str:
         return "present_without_manifest"
     if status.manifest == "invalid":
         return "invalid_manifest"
-    if status.venv == "ready":
+    if status.venv in ("ready", "not_applicable"):
         return "ready"
     return "needs_setup"
 

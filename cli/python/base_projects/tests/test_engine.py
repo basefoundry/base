@@ -18,6 +18,14 @@ from base_projects import engine, project_discovery
 def write_manifest(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "base_manifest.yaml").write_text(
+        f"project:\n  name: {name}\npython: {{}}\nartifacts: []\n",
+        encoding="utf-8",
+    )
+
+
+def write_shell_manifest(project_root: Path, name: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
         f"project:\n  name: {name}\nartifacts: []\n",
         encoding="utf-8",
     )
@@ -68,6 +76,7 @@ def base_route_fields(
     if not _engine_homes:
         raise AssertionError("run_engine must be called before base_route_fields")
     if project == "base":
+        resolved_root = base_home
         venv_dir = _engine_homes[-1] / ".base.d" / project / ".venv"
     else:
         resolved_root = project_root if project_root is not None else base_home.parent / project
@@ -503,6 +512,31 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertIn("bankbuddy            ok     ready    valid    -", stdout)
         self.assertIn("All discovered projects look ok.", stdout)
 
+    def test_workspace_status_reports_shell_only_project_venv_not_applicable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            project_root = workspace / "shell-only"
+            write_shell_manifest(project_root, "shell-only")
+
+            status, stdout, stderr = invoke_engine(
+                ["status", "--workspace", str(workspace), "--format", "json"],
+                base_home,
+                home,
+            )
+            self.assertFalse((project_root / ".venv").exists())
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["projects"][0]["status"], "ok")
+        self.assertEqual(payload["projects"][0]["venv"], "not_applicable")
+        self.assertEqual(payload["projects"][0]["issues"], [])
+
     def test_workspace_status_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -739,12 +773,18 @@ class ProjectDiscoveryTests(unittest.TestCase):
                     },
                 )
 
+        route_fields = base_route_fields(
+            base_home,
+            "demo",
+            trust_required=False,
+            project_root=project_root,
+        )
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{manifest_path.resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=project_root)}\n",
+            f"{route_fields}\n",
         )
 
     def test_projects_resolve_explicit_workspace_wins_over_active_project(self) -> None:
@@ -767,12 +807,18 @@ class ProjectDiscoveryTests(unittest.TestCase):
                 },
             )
 
+        route_fields = base_route_fields(
+            base_home,
+            "demo",
+            trust_required=False,
+            project_root=explicit_root,
+        )
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
             f"demo\t{explicit_root.resolve()}\t{(explicit_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=explicit_root)}\n",
+            f"{route_fields}\n",
         )
 
     def test_projects_resolve_rejects_active_project_manifest_mismatch(self) -> None:
@@ -810,12 +856,18 @@ class ProjectDiscoveryTests(unittest.TestCase):
                 user_config=f"workspace:\n  root: {workspace}\n",
             )
 
+        route_fields = base_route_fields(
+            base_home,
+            "demo",
+            trust_required=False,
+            project_root=project_root,
+        )
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(
             stdout,
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
-            f"{base_route_fields(base_home, 'demo', trust_required=False, project_root=project_root)}\n",
+            f"{route_fields}\n",
         )
 
     def test_projects_resolve_base_uses_base_home_without_workspace_scan(self) -> None:

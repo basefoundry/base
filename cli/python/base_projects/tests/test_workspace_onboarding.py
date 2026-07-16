@@ -25,7 +25,7 @@ def write_project_manifest(project_root: Path, name: str, test_command: str | No
                 f"  command: {test_command}",
             ]
         )
-    lines.extend(["artifacts: []", ""])
+    lines.extend(["python: {}", "artifacts: []", ""])
     (project_root / "base_manifest.yaml").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -76,6 +76,46 @@ def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, st
 
 
 class WorkspaceOnboardingTests(unittest.TestCase):
+    def test_shell_only_repository_is_ready_without_project_venv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: demo-suite\nrepos:\n  - name: shell-only\n",
+                encoding="utf-8",
+            )
+            project_root = workspace / "shell-only"
+            project_root.mkdir(parents=True)
+            (project_root / "base_manifest.yaml").write_text(
+                "project:\n  name: shell-only\nartifacts: []\n",
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "onboarding",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest_path),
+                    "--format",
+                    "json",
+                ],
+                base_home,
+                home,
+            )
+
+        repository = json.loads(stdout)["repositories"][0]
+        self.assertEqual(status, 0, stderr)
+        self.assertEqual(repository["status"], "ready")
+        self.assertEqual(repository["venv"], "not_applicable")
+        self.assertEqual(repository["next_action"], "Run validation command.")
+
     def test_workspace_onboarding_json_reports_complete_manifest_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

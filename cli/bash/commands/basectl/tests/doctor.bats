@@ -934,8 +934,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf 'ok     demo-artifact               Project artifact check passed.\n'
@@ -966,6 +966,66 @@ EOF
     [[ "$output" != *"Running Python project doctor layer."* ]]
     [[ "$output" == *"ok"*"demo-artifact"*"Project artifact check passed."* ]]
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
+}
+
+@test "basectl doctor shell-only project runs from Base runtime without project venv" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local project_root="$TEST_TMPDIR/shell-only"
+    local manifest_path="$project_root/base_manifest.yaml"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$project_root"
+    create_doctor_success_stubs "$fake_bin" "$venv_python"
+    cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" "$manifest_path"
+    cat > "$venv_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'Python 3.13.test\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-c" ]]; then
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    case "${4:-}" in
+        PyYAML|click) exit 0 ;;
+    esac
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]]; then
+    base_test_protocol_project_route shell-only "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
+    if [[ "$*" == *"--action route"* ]]; then
+        base_test_protocol_project_setup_route shell-only "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false false
+        exit 0
+    fi
+    printf '%s\n' "$0" > "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-python"
+    printf 'ok     demo-artifact               Project artifact check passed.\n'
+    exit 0
+fi
+printf 'unexpected doctor shell-only Python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="darwin24" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$project_root" \
+        BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor shell-only --manifest "$manifest_path"
+
+    [ "$status" -eq 0 ]
+    [ ! -e "$project_root/.venv" ]
+    [ "$(cat "$TEST_STATE_DIR/project-setup-python")" = "$venv_python" ]
+    [[ "$output" != *"Project virtualenv"* ]]
+    [[ "$output" != *"BASE-P050"* ]]
 }
 
 @test "basectl doctor project passes opt-in remote network diagnostics flag" {
@@ -1024,8 +1084,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
@@ -1112,8 +1172,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '[{"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
@@ -1198,8 +1258,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
