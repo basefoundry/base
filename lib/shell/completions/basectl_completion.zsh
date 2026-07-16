@@ -515,6 +515,7 @@ _base_basectl_completion() {
                         '--agent-guidance[Include optional agent guidance files]' \
                         '--agent-ready[Include the agent-ready repo guidance contract]' \
                         '--release[Include the release contract and process document]' \
+                        '--format[Output format]:format:(text json)' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -617,7 +618,14 @@ _base_basectl_completion() {
             ;;
         release)
             case "${words[3]:-}" in
-                check|plan|notes)
+                check)
+                    _arguments '2:release command:(check plan notes publish)' \
+                        '--version[Release version]:version:' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '--format[Output format]:format:(text json)' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                plan|notes)
                     _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
@@ -738,6 +746,7 @@ _base_basectl_completion() {
                                 '--repo[GitHub repository]:repo:' \
                                 '--project-owner[GitHub Project owner]:owner:' \
                                 '--project-number[GitHub Project number]:number:' \
+                                '--format[Output format]:format:(text json)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
@@ -764,6 +773,7 @@ _base_basectl_completion() {
                         _arguments '2:gh area:(issue pr branch worktree project)' \
                             '3:branch command:(stale prune)' \
                             '--days[Stale threshold in days]:days:' \
+                            '--format[Output format]:format:(text json)' \
                             '(-h --help)'{-h,--help}'[Show help text]'
                     elif [[ "${words[4]:-}" == prune ]]; then
                         _arguments '2:gh area:(issue pr branch worktree project)' \

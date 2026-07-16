@@ -4,6 +4,7 @@ from . import history, testing
 from .app import App, argument, command, delegated_display_command, option, run_app
 from .context import Context, get_current_context
 from .exit_codes import ExitCode
+from .inspection import inspection_envelope, render_inspection_json
 from .logging import configure_logger, log_critical, log_debug, log_error, log_info, log_warning
 
 __all__ = [
@@ -11,6 +12,8 @@ __all__ = [
     "Context",
     "ExitCode",
     "history",
+    "inspection_envelope",
+    "render_inspection_json",
     "testing",
     "argument",
     "command",

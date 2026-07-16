@@ -9,6 +9,8 @@ import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
+# shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
 
 BASE_REPO_BASELINE_FILES=(
     README.md
@@ -158,6 +160,7 @@ Options:
   --agent-guidance              Include optional agent guidance files in repo check.
   --agent-ready                 Include the agent-ready repo guidance contract in repo check.
   --release                     Include the release contract and process document in repo check.
+  --format <text|json>          Select human text or stable inspection JSON. Defaults to text.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
@@ -2614,12 +2617,124 @@ base_repo_clone() {
     base_repo_clone_with_gh "$dry_run" "$github_repo" "$target" "$clone_url"
 }
 
+base_repo_check_format_error() {
+    local output_format="$1"
+    local message="$2"
+
+    if [[ "$output_format" == "json" ]]; then
+        base_inspection_json_emit_error "repo check" usage_error "$message" '{}'
+        return 2
+    fi
+    base_repo_check_usage_error "$message"
+}
+
+base_repo_check_missing_files() {
+    local path="$1"
+    local rel
+    shift
+
+    for rel in "$@"; do
+        [[ -f "$path/$rel" ]] || printf '%s\n' "$rel"
+    done
+}
+
+base_repo_check_json() {
+    local path="$1"
+    local release_contract="$2"
+    local agent_guidance="$3"
+    local agent_ready="$4"
+    local agent_name agent_status baseline_status envelope_status="ok" release_status
+    local baseline_json checks_joined data_json manifest_json missing_json not_executable_json path_json process_json
+    local agent_json="" release_json=""
+    local check_count=1 failed_count=0 passed_count=0
+    local manifest_declared=false process_present=false
+    local missing_files=() not_executable_files=() agent_missing_files=() checks_json=()
+    local required_count present_count
+
+    mapfile -t missing_files < <(base_repo_check_missing_files "$path" "${BASE_REPO_BASELINE_FILES[@]}")
+    if [[ -f "$path/tests/validate.sh" && ! -x "$path/tests/validate.sh" ]]; then
+        not_executable_files+=(tests/validate.sh)
+    fi
+    required_count="${#BASE_REPO_BASELINE_FILES[@]}"
+    present_count=$((required_count - ${#missing_files[@]}))
+    baseline_status=ok
+    if ((${#missing_files[@]} || ${#not_executable_files[@]})); then
+        baseline_status=error
+        envelope_status=error
+        failed_count=$((failed_count + 1))
+    else
+        passed_count=$((passed_count + 1))
+    fi
+    missing_json="$(base_inspection_json_string_array "${missing_files[@]}")"
+    not_executable_json="$(base_inspection_json_string_array "${not_executable_files[@]}")"
+    printf -v baseline_json \
+        '{"name":"baseline","status":"%s","required_count":%d,"present_count":%d,"missing_files":%s,"not_executable_files":%s}' \
+        "$baseline_status" "$required_count" "$present_count" "$missing_json" "$not_executable_json"
+    checks_json+=("$baseline_json")
+
+    if ((release_contract)); then
+        check_count=$((check_count + 1))
+        [[ -f "$path/base_manifest.yaml" ]] && base_repo_release_manifest_has_key "$path/base_manifest.yaml" && manifest_declared=true
+        [[ -f "$path/docs/release-process.md" ]] && process_present=true
+        release_status=ok
+        if [[ "$manifest_declared" != true || "$process_present" != true ]]; then
+            release_status=error
+            envelope_status=error
+            failed_count=$((failed_count + 1))
+        else
+            passed_count=$((passed_count + 1))
+        fi
+        manifest_json="$(base_inspection_json_string "$path/base_manifest.yaml")"
+        process_json="$(base_inspection_json_string "$path/docs/release-process.md")"
+        printf -v release_json \
+            '{"name":"release","status":"%s","manifest_path":%s,"manifest_declared":%s,"process_document_path":%s,"process_document_present":%s}' \
+            "$release_status" "$manifest_json" "$manifest_declared" "$process_json" "$process_present"
+        checks_json+=("$release_json")
+    fi
+
+    if ((agent_ready || agent_guidance)); then
+        check_count=$((check_count + 1))
+        mapfile -t agent_missing_files < <(base_repo_check_missing_files "$path" "${BASE_REPO_AGENT_GUIDANCE_FILES[@]}")
+        required_count="${#BASE_REPO_AGENT_GUIDANCE_FILES[@]}"
+        present_count=$((required_count - ${#agent_missing_files[@]}))
+        if ((agent_ready)); then
+            agent_name=agent_readiness
+        else
+            agent_name=agent_guidance
+        fi
+        agent_status=ok
+        if ((${#agent_missing_files[@]})); then
+            agent_status=error
+            envelope_status=error
+            failed_count=$((failed_count + 1))
+        else
+            passed_count=$((passed_count + 1))
+        fi
+        missing_json="$(base_inspection_json_string_array "${agent_missing_files[@]}")"
+        printf -v agent_json \
+            '{"name":"%s","status":"%s","required_count":%d,"present_count":%d,"missing_files":%s}' \
+            "$agent_name" "$agent_status" "$required_count" "$present_count" "$missing_json"
+        checks_json+=("$agent_json")
+    fi
+
+    checks_joined="$(IFS=,; printf '%s' "${checks_json[*]}")"
+    path_json="$(base_inspection_json_string "$path")"
+    printf -v data_json \
+        '{"path":%s,"summary":{"checks":%d,"passed":%d,"failed":%d},"checks":[%s]}' \
+        "$path_json" "$check_count" "$passed_count" "$failed_count" "$checks_joined"
+    base_inspection_json_envelope "repo check" "$envelope_status" "$data_json" null
+    [[ "$envelope_status" == "ok" ]]
+}
+
 base_repo_check() {
     local agent_guidance=0
     local agent_ready=0
+    local output_format="text" requested_format
     local release_contract=0
     local path=""
     local status=0
+
+    base_inspection_find_output_format output_format "$@"
 
     while (($#)); do
         case "$1" in
@@ -2639,18 +2754,35 @@ base_repo_check() {
                 release_contract=1
                 shift
                 ;;
+            --format)
+                [[ -n "${2:-}" ]] || {
+                    base_repo_check_format_error "$output_format" "Option '--format' requires an argument."
+                    return $?
+                }
+                requested_format="$2"
+                case "$requested_format" in
+                    text|json)
+                        ;;
+                    *)
+                        base_repo_check_format_error "$output_format" "Unsupported repo check format '$requested_format'. Expected text or json."
+                        return $?
+                        ;;
+                esac
+                output_format="$requested_format"
+                shift 2
+                ;;
             -v)
                 set_log_level DEBUG
                 export LOG_DEBUG=1
                 shift
                 ;;
             -*)
-                base_repo_check_usage_error "Unknown repo check option '$1'."
+                base_repo_check_format_error "$output_format" "Unknown repo check option '$1'."
                 return $?
                 ;;
             *)
                 if [[ -n "$path" ]]; then
-                    base_repo_check_usage_error "The 'repo check' command accepts at most one path."
+                    base_repo_check_format_error "$output_format" "The 'repo check' command accepts at most one path."
                     return $?
                 fi
                 path="$1"
@@ -2661,6 +2793,10 @@ base_repo_check() {
 
     [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
+    if [[ "$output_format" == "json" ]]; then
+        base_repo_check_json "$path" "$release_contract" "$agent_guidance" "$agent_ready"
+        return $?
+    fi
     base_repo_check_baseline "$path" || status=1
     if ((release_contract)); then
         base_repo_check_release "$path" || status=1

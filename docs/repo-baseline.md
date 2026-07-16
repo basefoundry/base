@@ -110,7 +110,12 @@ Check the local baseline:
 ```bash
 basectl repo check ~/work/base-demo
 basectl repo check ~/work/base-demo --agent-ready
+basectl repo check ~/work/base-demo --format json
 ```
+
+`--format json` emits the stable shared v1 inspection envelope documented in
+[Inspection JSON](inspection-json.md). Missing files remain inspection findings:
+the payload has `status: "error"`, structured check records, and `error: null`.
 
 Seed optional repo-local agent guidance:
 

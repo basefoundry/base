@@ -9,6 +9,8 @@ import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
+# shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_branch_worktree.sh"
 
 base_gh_usage() {
@@ -16,7 +18,7 @@ base_gh_usage() {
 Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
-  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
+  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
@@ -26,7 +28,7 @@ Usage:
   basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
   basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] [--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [field options...]
-  basectl gh branch stale [--days <days>]
+  basectl gh branch stale [--days <days>] [--format <text|json>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
   basectl gh worktree prune [--dry-run] [--yes]
 
@@ -72,7 +74,7 @@ base_gh_issue_usage() {
 Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
-  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>]
+  basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
 
 Purpose:
@@ -95,6 +97,7 @@ Issue readiness options:
   --repo <owner/name>           Repository containing the issue. Defaults to the origin remote.
   --project-owner <login>       Project owner for Project field validation.
   --project-number <number>     Project number for Project field validation.
+  --format <text|json>          Select human text or stable inspection JSON. Defaults to text.
 
 Issue start options:
   --repo, -R <owner/name>       Repository containing the issue. Selection order is
@@ -178,6 +181,7 @@ Options:
   --repo <owner/name>        Repository containing the issue.
   --project-owner <login>    Project owner for field validation.
   --project-number <number>  Project number for field validation.
+  --format <text|json>       Select human text or stable inspection JSON.
   -h, --help                 Show this help text.
 EOF
 }
@@ -325,7 +329,7 @@ EOF
 base_gh_branch_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh branch stale [--days <days>]
+  basectl gh branch stale [--days <days>] [--format <text|json>]
   basectl gh branch prune [--dry-run] [--yes] [--remote]
 
 Purpose:
@@ -336,6 +340,8 @@ Note:
 
 Options:
   --days <days>  Minimum age for stale branch reporting. Defaults to 30.
+  --format <text|json>
+                 Select human text or stable inspection JSON for stale reporting.
   --dry-run      Preview branches that would be deleted (default).
   --yes          Delete merged branches after preview.
   --remote       Also prune merged GitHub remote branches and stale origin/* refs.
@@ -349,14 +355,15 @@ base_gh_branch_leaf_usage() {
         stale)
             cat <<'EOF'
 Usage:
-  basectl gh branch stale [--days <days>]
+  basectl gh branch stale [--days <days>] [--format <text|json>]
 
 Purpose:
   Report local and origin branches older than the selected threshold.
 
 Options:
-  --days <days>  Minimum age in days. Defaults to 30.
-  -h, --help     Show this help text.
+  --days <days>        Minimum age in days. Defaults to 30.
+  --format <text|json> Select human text or stable inspection JSON.
+  -h, --help          Show this help text.
 EOF
             ;;
         prune)
@@ -640,21 +647,53 @@ base_gh_issue_readiness_project_row() {
     base_gh_run project item-list "$project_number" --owner "$project_owner" --format json --limit 1000 --jq "$query"
 }
 
+base_gh_issue_readiness_format_error() {
+    local output_format="$1"
+    local message="$2"
+
+    if [[ "$output_format" == "json" ]]; then
+        base_inspection_json_emit_error "gh issue readiness" usage_error "$message" '{}'
+        return 2
+    fi
+    base_gh_usage_error base_gh_issue_usage "$message"
+}
+
+base_gh_issue_readiness_upstream_error() {
+    local output_format="$1"
+    local operation="$2"
+    local status="$3"
+    local details_json
+
+    if [[ "$output_format" == "json" ]]; then
+        printf -v details_json '{"operation":"%s"}' "$operation"
+        base_inspection_json_emit_error \
+            "gh issue readiness" upstream_error \
+            "GitHub inspection failed during $operation." "$details_json"
+    fi
+    return "$status"
+}
+
 base_gh_issue_readiness() {
     local issue="${1:-}"
     local assignees_output="" assignees_summary=""
     local body="" labels_output="" labels_summary=""
     local github_repo=""
     local issue_ready_state="ready"
+    local output_format="text" requested_format
     local project_number="" project_owner=""
     local project_row="" project_status="" project_priority="" project_size="" project_area="" project_initiative=""
     local project_validation_requested=0
-    local section field
+    local command_status=0 data_json envelope_status body_status issue_number_json project_check_status
+    local assignees_json fields_json labels_json missing_project_json missing_sections_json project_number_json project_owner_json
+    local section field value status
+    local labels=() assignees=()
     local missing_project_fields=()
     local missing_sections=()
 
+    base_inspection_find_output_format output_format "$@"
+
     [[ -n "$issue" ]] || {
-        base_gh_usage_error base_gh_issue_usage "Missing issue number."
+        base_gh_issue_readiness_format_error "$output_format" "Missing issue number."
         return $?
     }
     if [[ "$issue" == "help" || "$issue" == "-h" || "$issue" == "--help" ]]; then
@@ -662,7 +701,7 @@ base_gh_issue_readiness() {
         return 0
     fi
     [[ "$issue" =~ ^[0-9]+$ ]] || {
-        base_gh_usage_error base_gh_issue_usage "Invalid issue number '$issue'."
+        base_gh_issue_readiness_format_error "$output_format" "Invalid issue number '$issue'."
         return $?
     }
     shift
@@ -672,7 +711,7 @@ base_gh_issue_readiness() {
             --repo)
                 github_repo="${2:-}"
                 [[ -n "$github_repo" ]] || {
-                    base_gh_usage_error base_gh_issue_usage "Option '--repo' requires an argument."
+                    base_gh_issue_readiness_format_error "$output_format" "Option '--repo' requires an argument."
                     return $?
                 }
                 shift
@@ -680,7 +719,7 @@ base_gh_issue_readiness() {
             --project-owner)
                 project_owner="${2:-}"
                 [[ -n "$project_owner" ]] || {
-                    base_gh_usage_error base_gh_issue_usage "Option '--project-owner' requires an argument."
+                    base_gh_issue_readiness_format_error "$output_format" "Option '--project-owner' requires an argument."
                     return $?
                 }
                 project_validation_requested=1
@@ -689,14 +728,31 @@ base_gh_issue_readiness() {
             --project-number)
                 project_number="${2:-}"
                 [[ -n "$project_number" ]] || {
-                    base_gh_usage_error base_gh_issue_usage "Option '--project-number' requires an argument."
+                    base_gh_issue_readiness_format_error "$output_format" "Option '--project-number' requires an argument."
                     return $?
                 }
                 [[ "$project_number" =~ ^[0-9]+$ ]] || {
-                    base_gh_usage_error base_gh_issue_usage "Invalid project number '$project_number'."
+                    base_gh_issue_readiness_format_error "$output_format" "Invalid project number '$project_number'."
                     return $?
                 }
                 project_validation_requested=1
+                shift
+                ;;
+            --format)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_issue_readiness_format_error "$output_format" "Option '--format' requires an argument."
+                    return $?
+                }
+                requested_format="$2"
+                case "$requested_format" in
+                    text|json)
+                        ;;
+                    *)
+                        base_gh_issue_readiness_format_error "$output_format" "Unsupported issue readiness format '$requested_format'. Expected text or json."
+                        return $?
+                        ;;
+                esac
+                output_format="$requested_format"
                 shift
                 ;;
             -h|--help)
@@ -704,7 +760,7 @@ base_gh_issue_readiness() {
                 return 0
                 ;;
             *)
-                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                base_gh_issue_readiness_format_error "$output_format" "Unknown option '$1'."
                 return $?
                 ;;
         esac
@@ -712,19 +768,34 @@ base_gh_issue_readiness() {
     done
 
     if ((project_validation_requested)) && { [[ -z "$project_owner" ]] || [[ -z "$project_number" ]]; }; then
-        base_gh_usage_error base_gh_issue_usage "Options '--project-owner' and '--project-number' must be used together."
+        base_gh_issue_readiness_format_error "$output_format" "Options '--project-owner' and '--project-number' must be used together."
         return $?
     fi
 
     [[ -n "$github_repo" ]] || github_repo="$(base_gh_infer_github_repo || true)"
     [[ -n "$github_repo" ]] || {
-        base_gh_usage_error base_gh_issue_usage "Unable to infer GitHub repository. Pass --repo <owner/name>."
+        base_gh_issue_readiness_format_error "$output_format" "Unable to infer GitHub repository. Pass --repo <owner/name>."
         return $?
     }
 
-    body="$(base_gh_run issue view "$issue" --repo "$github_repo" --json body --jq .body)" || return $?
-    labels_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json labels --jq '.labels[].name')" || return $?
-    assignees_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json assignees --jq '.assignees[].login')" || return $?
+    body="$(base_gh_run issue view "$issue" --repo "$github_repo" --json body --jq .body)"
+    status=$?
+    ((status == 0)) || {
+        base_gh_issue_readiness_upstream_error "$output_format" issue_view_body "$status"
+        return $?
+    }
+    labels_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json labels --jq '.labels[].name')"
+    status=$?
+    ((status == 0)) || {
+        base_gh_issue_readiness_upstream_error "$output_format" issue_view_labels "$status"
+        return $?
+    }
+    assignees_output="$(base_gh_run issue view "$issue" --repo "$github_repo" --json assignees --jq '.assignees[].login')"
+    status=$?
+    ((status == 0)) || {
+        base_gh_issue_readiness_upstream_error "$output_format" issue_view_assignees "$status"
+        return $?
+    }
 
     while IFS= read -r section || [[ -n "$section" ]]; do
         [[ -n "$section" ]] || continue
@@ -734,7 +805,12 @@ base_gh_issue_readiness() {
     done < <(base_gh_issue_readiness_required_sections)
 
     if ((project_validation_requested)); then
-        project_row="$(base_gh_issue_readiness_project_row "$issue" "$github_repo" "$project_owner" "$project_number")" || return $?
+        project_row="$(base_gh_issue_readiness_project_row "$issue" "$github_repo" "$project_owner" "$project_number")"
+        status=$?
+        ((status == 0)) || {
+            base_gh_issue_readiness_upstream_error "$output_format" project_item_list "$status"
+            return $?
+        }
         if [[ -z "$project_row" ]]; then
             missing_project_fields=("Project item")
             while IFS= read -r field || [[ -n "$field" ]]; do
@@ -757,6 +833,73 @@ base_gh_issue_readiness() {
         issue_ready_state="not ready"
     elif ((!project_validation_requested)); then
         issue_ready_state="partial"
+    fi
+
+    if [[ "$output_format" == "json" ]]; then
+        while IFS= read -r value || [[ -n "$value" ]]; do
+            [[ -n "$value" ]] && labels+=("$value")
+        done <<<"$labels_output"
+        while IFS= read -r value || [[ -n "$value" ]]; do
+            [[ -n "$value" ]] && assignees+=("$value")
+        done <<<"$assignees_output"
+
+        missing_sections_json="$(base_inspection_json_string_array "${missing_sections[@]}")"
+        missing_project_json="$(base_inspection_json_string_array "${missing_project_fields[@]}")"
+        labels_json="$(base_inspection_json_string_array "${labels[@]}")"
+        assignees_json="$(base_inspection_json_string_array "${assignees[@]}")"
+        project_owner_json="$(base_inspection_json_nullable_string "$project_owner")"
+        if [[ -n "$project_number" ]]; then
+            project_number_json="$(base_inspection_json_decimal "$project_number")"
+        else
+            project_number_json=null
+        fi
+        printf -v fields_json \
+            '{"status":%s,"priority":%s,"size":%s,"area":%s,"initiative":%s}' \
+            "$(base_inspection_json_nullable_string "$project_status")" \
+            "$(base_inspection_json_nullable_string "$project_priority")" \
+            "$(base_inspection_json_nullable_string "$project_size")" \
+            "$(base_inspection_json_nullable_string "$project_area")" \
+            "$(base_inspection_json_nullable_string "$project_initiative")"
+        body_status=ok
+        ((${#missing_sections[@]})) && body_status=error
+        if ((project_validation_requested)); then
+            project_check_status=ok
+            ((${#missing_project_fields[@]})) && project_check_status=error
+        else
+            project_check_status=skipped
+        fi
+        case "$issue_ready_state" in
+            ready)
+                envelope_status=ok
+                command_status=0
+                ;;
+            partial)
+                envelope_status=warn
+                command_status=1
+                ;;
+            *)
+                envelope_status=error
+                command_status=1
+                ;;
+        esac
+        issue_number_json="$(base_inspection_json_decimal "$issue")"
+        printf -v data_json \
+            '{"issue_number":%s,"repository":%s,"readiness":%s,"body":{"status":%s,"missing_sections":%s},"project":{"requested":%s,"status":%s,"owner":%s,"number":%s,"missing_fields":%s,"fields":%s},"labels":%s,"assignees":%s}' \
+            "$issue_number_json" \
+            "$(base_inspection_json_string "$github_repo")" \
+            "$(base_inspection_json_string "${issue_ready_state// /_}")" \
+            "$(base_inspection_json_string "$body_status")" \
+            "$missing_sections_json" \
+            "$([[ "$project_validation_requested" -eq 1 ]] && printf true || printf false)" \
+            "$(base_inspection_json_string "$project_check_status")" \
+            "$project_owner_json" \
+            "$project_number_json" \
+            "$missing_project_json" \
+            "$fields_json" \
+            "$labels_json" \
+            "$assignees_json"
+        base_inspection_json_envelope "gh issue readiness" "$envelope_status" "$data_json" null
+        return "$command_status"
     fi
 
     printf 'Issue #%s readiness: %s\n' "$issue" "$issue_ready_state"

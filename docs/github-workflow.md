@@ -88,6 +88,7 @@ Before assigning issue-backed implementation work to an agent, run:
 
 ```bash
 basectl gh issue readiness <number> --repo <owner/name> --project-owner <login> --project-number <number>
+basectl gh issue readiness <number> --repo <owner/name> --project-owner <login> --project-number <number> --format json
 ```
 
 The readiness check is read-only. It verifies that the issue body has non-empty
@@ -97,6 +98,10 @@ and assignee state, and checks `Status`, `Priority`, `Size`, `Area`, and
 `Initiative` when Project coordinates are provided. Omitting Project coordinates
 reports a partial result so maintainers do not mistake body-only validation for
 full assignment readiness.
+JSON output follows the stable shared v1 envelope in
+[Inspection JSON](inspection-json.md). `gh branch stale --format json` uses the
+same envelope and returns an empty `branches` array when no refs meet the age
+threshold.
 
 ## Issue Project Metadata
 

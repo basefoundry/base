@@ -9,6 +9,10 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Added
 
+- Added stable, versioned `--format json` inspection envelopes for `basectl
+  repo check`, `basectl release check`, `basectl gh issue readiness`, and
+  `basectl gh branch stale`, including structured findings and controlled
+  usage or upstream failures without changing text defaults or exit policy.
 - Added `basectl workspace agent-brief` to report local repository baseline,
   agent-guidance, AI-context, environment, and validation evidence for a workspace
   handoff as read-only text or stable JSON.

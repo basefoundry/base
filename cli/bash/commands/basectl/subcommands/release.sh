@@ -20,6 +20,8 @@ Subcommands:
 Options:
   --version <version>  Release version to inspect.
   --manifest <path>   Use a specific base_manifest.yaml path.
+  --format <text|json>
+                      Select human text or stable inspection JSON for check.
   --dry-run           Print publish actions without creating tags or releases.
   --yes               Publish without an interactive confirmation prompt.
   -h, --help          Show this help text.
@@ -65,6 +67,23 @@ Options:
   --manifest <path>    Use a specific base_manifest.yaml path.
   --dry-run            Print publish actions without creating tags or releases.
   --yes                Publish without an interactive confirmation prompt.
+  -h, --help           Show this help text.
+EOF
+        return 0
+    fi
+
+    if [[ "$release_command" == "check" ]]; then
+        cat <<EOF
+Usage:
+  basectl release check --version <version> [--manifest <path>] [--format <text|json>]
+
+Purpose:
+  $purpose
+
+Options:
+  --version <version>  Release version to inspect.
+  --manifest <path>    Use a specific base_manifest.yaml path.
+  --format <text|json> Select human text or stable inspection JSON.
   -h, --help           Show this help text.
 EOF
         return 0

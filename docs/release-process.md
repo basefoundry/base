@@ -50,6 +50,7 @@ The inspection commands are read-only:
 
 ```bash
 basectl release check --version X.Y.Z
+basectl release check --version X.Y.Z --format json
 basectl release plan --version X.Y.Z
 basectl release notes --version X.Y.Z
 ```
@@ -59,6 +60,9 @@ Git worktree cleanliness, current branch, GitHub CLI authentication, and local
 and remote tag availability. Use `plan` to print the GitHub release target and
 downstream handoff requirements. Use `notes` to print the changelog body
 intended for the GitHub Release.
+The JSON check uses the stable shared v1 envelope documented in
+[Inspection JSON](inspection-json.md); readiness blockers stay in `data.findings`
+with `error: null`.
 
 Publishing is guarded:
 
