@@ -32,8 +32,11 @@ PROJECT_ROUTE_FIELDS = {
     **PROJECT_REFERENCE_FIELDS,
     "project_venv_dir": STRING,
     "uses_uv_manager": BOOLEAN,
-    "requires_project_python": BOOLEAN,
     "manifest_command_trust_required": BOOLEAN,
+}
+PROJECT_SETUP_ROUTE_FIELDS = {
+    **PROJECT_ROUTE_FIELDS,
+    "requires_project_python": BOOLEAN,
 }
 
 RECORD_SCHEMAS: dict[str, dict[str, FieldSpec]] = {
@@ -43,6 +46,7 @@ RECORD_SCHEMAS: dict[str, dict[str, FieldSpec]] = {
     },
     "project-reference": PROJECT_REFERENCE_FIELDS,
     "project-route": PROJECT_ROUTE_FIELDS,
+    "project-setup-route": PROJECT_SETUP_ROUTE_FIELDS,
     "project-command": {
         **PROJECT_ROUTE_FIELDS,
         "command": STRING,

@@ -109,5 +109,5 @@ def route_to_text(route: ProjectRoute, output_format: str) -> str:
     if output_format == "text":
         return route.to_tsv()
     if output_format == "command-protocol":
-        return dumps_record("project-route", route.to_command_record())
+        return dumps_record("project-setup-route", route.to_command_record())
     raise ValueError(f"Unsupported route output format '{output_format}'. Expected text, json, or command-protocol.")

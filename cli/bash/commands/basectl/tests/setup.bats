@@ -304,8 +304,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -406,8 +406,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -890,7 +890,7 @@ EOF
     create_project_setup_venv_stub "$base_venv_dir"
     cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" "$manifest_path"
 
-    run_base_command setup --dry-run --manifest "$manifest_path"
+    run_base_command setup --manifest "$manifest_path"
 
     [ "$status" -eq 0 ]
     [ ! -e "$project_root/.venv" ]

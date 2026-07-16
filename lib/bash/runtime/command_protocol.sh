@@ -26,12 +26,17 @@ base_command_protocol_record_fields() {
         project-route)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager requires_project_python manifest_command_trust_required
+                uses_uv_manager manifest_command_trust_required
+            ;;
+        project-setup-route)
+            printf '%s\n' \
+                project_name project_root manifest_path project_venv_dir \
+                uses_uv_manager manifest_command_trust_required requires_project_python
             ;;
         project-command)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager requires_project_python manifest_command_trust_required command runner
+                uses_uv_manager manifest_command_trust_required command runner
             ;;
         named-command)
             printf '%s\n' project_name project_root manifest_path command_name command runner
@@ -39,13 +44,13 @@ base_command_protocol_record_fields() {
         build-target)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager requires_project_python manifest_command_trust_required target_name \
+                uses_uv_manager manifest_command_trust_required target_name \
                 working_dir command description runner
             ;;
         demo)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager requires_project_python manifest_command_trust_required demo_script runner
+                uses_uv_manager manifest_command_trust_required demo_script runner
             ;;
         activation-source)
             printf '%s\n' source_path
@@ -64,7 +69,9 @@ base_command_protocol_field_spec() {
         project-list-entry:project_name|project-list-entry:project_root|\
         project-reference:project_name|project-reference:project_root|project-reference:manifest_path|\
         project-route:project_name|project-route:project_root|project-route:manifest_path|\
-        project-route:project_venv_dir|\
+        project-route:project_venv_dir|project-setup-route:project_name|\
+        project-setup-route:project_root|project-setup-route:manifest_path|\
+        project-setup-route:project_venv_dir|\
         project-command:project_name|project-command:project_root|project-command:manifest_path|\
         project-command:project_venv_dir|project-command:command|\
         named-command:project_name|named-command:project_root|named-command:manifest_path|\
@@ -76,12 +83,12 @@ base_command_protocol_field_spec() {
         demo:demo_script|activation-source:source_path)
             printf 'string\n'
             ;;
-        project-route:uses_uv_manager|project-route:requires_project_python|\
-        project-route:manifest_command_trust_required|project-command:uses_uv_manager|\
-        project-command:requires_project_python|project-command:manifest_command_trust_required|\
-        build-target:uses_uv_manager|build-target:requires_project_python|\
+        project-route:uses_uv_manager|project-route:manifest_command_trust_required|\
+        project-setup-route:uses_uv_manager|project-setup-route:manifest_command_trust_required|\
+        project-setup-route:requires_project_python|project-command:uses_uv_manager|\
+        project-command:manifest_command_trust_required|build-target:uses_uv_manager|\
         build-target:manifest_command_trust_required|demo:uses_uv_manager|\
-        demo:requires_project_python|demo:manifest_command_trust_required)
+        demo:manifest_command_trust_required)
             printf 'boolean\n'
             ;;
         project-command:runner|named-command:runner|build-target:description|\

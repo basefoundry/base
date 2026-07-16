@@ -1034,7 +1034,7 @@ setup_run_project_artifact_layer() {
         log_error "Unable to resolve Base project environment for '$project'."
         return 1
     }
-    base_command_protocol_decode_one project-route "$route_output" || {
+    base_command_protocol_decode_one project-setup-route "$route_output" || {
         log_error "Python project routing returned invalid metadata for '$project'."
         return 1
     }

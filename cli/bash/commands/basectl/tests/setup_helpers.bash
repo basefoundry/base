@@ -179,8 +179,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -382,8 +382,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -434,8 +434,8 @@ VENVEOF
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -549,8 +549,8 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -601,8 +601,8 @@ VENVEOF
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -739,8 +739,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" && "${4:-}" ==
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
-            "$HOME/.base.d/base/.venv" false false
+        base_test_protocol_project_setup_route base "$BASE_HOME" "$BASE_HOME/base_manifest.yaml" \
+            "$HOME/.base.d/base/.venv" false false true
         exit 0
     fi
     touch "${BASE_SETUP_TEST_STATE_DIR:?}/project-setup-ran"
@@ -867,7 +867,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
             printf '{"schema_version":1,"project":"%s","project_root":"%s","manifest_path":"%s","project_venv_dir":"%s","uses_uv_manager":%s,"requires_project_python":%s}\n' \
                 "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" "$requires_project_python"
         elif [[ "$output_format" == "command-protocol" ]]; then
-            base_test_protocol_project_route \
+            base_test_protocol_project_setup_route \
                 "$project_arg" "$project_root" "$manifest_path" "$route_venv_dir" "$uses_uv_manager" false "$requires_project_python"
         else
             printf '%s\t%s\t%s\t%s\t%s\t%s\n' \

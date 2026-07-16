@@ -59,7 +59,7 @@ class ProjectRoutingTests(unittest.TestCase):
             )
 
         self.assertEqual((status, stderr), (0, ""))
-        _, records = loads_records(stdout, "project-route")
+        _, records = loads_records(stdout, "project-setup-route")
         self.assertEqual(records[0]["project_name"], "demo")
         self.assertEqual(records[0]["project_root"], str(root.resolve()))
         self.assertEqual(records[0]["project_venv_dir"], str(root.resolve() / ".venv"))

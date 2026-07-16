@@ -23,6 +23,22 @@ load ./basectl_helpers.bash
     [ "$output" = decoded ]
 }
 
+@test "project Python requirement metadata is scoped to setup routes" {
+    run env BASE_REPO_ROOT="$BASE_REPO_ROOT" "$BASH" -c '
+        source "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash"
+        source "$BASE_REPO_ROOT/lib/bash/runtime/command_protocol.sh"
+        route_payload="$(base_test_protocol_project_route demo /tmp/demo /tmp/demo/base_manifest.yaml /tmp/demo/.venv false false)"
+        base_command_protocol_decode_one project-route "$route_payload" || exit
+        [[ -z "${BASE_COMMAND_PROTOCOL_FIELDS[requires_project_python]+present}" ]]
+
+        setup_payload="$(base_test_protocol_project_setup_route demo /tmp/demo /tmp/demo/base_manifest.yaml /tmp/demo/.venv false false false)"
+        base_command_protocol_decode_one project-setup-route "$setup_payload" || exit
+        [[ "${BASE_COMMAND_PROTOCOL_FIELDS[requires_project_python]}" == false ]]
+    '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "command protocol distinguishes an empty string from null" {
     run env BASE_REPO_ROOT="$BASE_REPO_ROOT" "$BASH" -c '
         source "$BASE_REPO_ROOT/lib/bash/runtime/command_protocol.sh"
@@ -35,7 +51,6 @@ field.project_root:string=2f746d702f64656d6f
 field.manifest_path:string=2f746d702f64656d6f2f626173655f6d616e69666573742e79616d6c
 field.project_venv_dir:string=2f746d702f64656d6f2f2e76656e76
 field.uses_uv_manager:boolean=false
-field.requires_project_python:boolean=true
 field.manifest_command_trust_required:boolean=true
 field.command:string=7072696e7466206f6b
 field.runner:string=

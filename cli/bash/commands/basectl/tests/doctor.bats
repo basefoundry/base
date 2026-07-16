@@ -934,8 +934,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf 'ok     demo-artifact               Project artifact check passed.\n'
@@ -993,12 +993,12 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" ]]; then
     base_test_protocol_project_route shell-only "${BASE_TEST_PROJECT_ROOT:?}" \
-        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false false
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route shell-only "${BASE_TEST_PROJECT_ROOT:?}" \
+        base_test_protocol_project_setup_route shell-only "${BASE_TEST_PROJECT_ROOT:?}" \
             "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false false
         exit 0
     fi
@@ -1084,8 +1084,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
@@ -1172,8 +1172,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '[{"id":"BASE-P033","status":"warn","name":"demo-artifact","message":"Optional project artifact is not installed.","fix":"basectl setup demo"}]\n'
@@ -1258,8 +1258,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" &
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup" ]]; then
     if [[ "$*" == *"--action route"* ]]; then
-        base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
-            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+        base_test_protocol_project_setup_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+            "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false true
         exit 0
     fi
     printf '%s\n' "$@" > "${BASE_TEST_PROJECT_ARGS:?}"
