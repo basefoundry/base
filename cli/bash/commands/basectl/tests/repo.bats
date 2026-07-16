@@ -144,7 +144,7 @@ run_repo_command_with_mocks() {
             [[ "$(type -t gh_auth_status_diagnostics)" == "function" ]]
             [[ "$(type -t gh_run)" == "function" ]]
             [[ "$(type -t gh_infer_repo_from_origin)" == "function" ]]
-            [[ "$(type -t gh_detect_default_branch)" == "function" ]]
+            [[ "$(type -t git_detect_default_branch)" == "function" ]]
             [[ "$(type -t gh_repo_default_branch)" == "function" ]]
         '
 
@@ -164,7 +164,7 @@ run_repo_command_with_mocks() {
             gh_infer_repo_from_origin() {
                 printf -v "$2" "%s" "owner/repo"
             }
-            gh_detect_default_branch() {
+            git_detect_default_branch() {
                 printf -v "$2" "%s" "develop"
             }
             gh_repo_default_branch() {

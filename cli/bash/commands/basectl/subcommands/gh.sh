@@ -4,6 +4,7 @@
 _base_gh_subcommand_sourced=1
 readonly _base_gh_subcommand_sourced
 
+import_base_lib git/lib_git.sh
 import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 
@@ -270,7 +271,7 @@ base_gh_default_branch() {
     local base_default_branch repo_root
 
     repo_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '.')"
-    if gh_detect_default_branch "$repo_root" base_default_branch; then
+    if git_detect_default_branch "$repo_root" base_default_branch; then
         printf '%s\n' "$base_default_branch"
         return 0
     fi

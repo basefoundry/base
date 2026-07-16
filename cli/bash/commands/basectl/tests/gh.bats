@@ -230,10 +230,10 @@ run_gh_subcommand() {
             [[ "$(type -t gh_require_cli)" == "function" ]]
             [[ "$(type -t gh_auth_status_diagnostics)" == "function" ]]
             [[ "$(type -t gh_run)" == "function" ]]
-            [[ "$(type -t gh_detect_default_branch)" == "function" ]]
+            [[ "$(type -t git_detect_default_branch)" == "function" ]]
             [[ "$(type -t gh_infer_repo_from_origin)" == "function" ]]
-            [[ "$(type -t gh_worktree_path_for_branch)" == "function" ]]
-            [[ "$(type -t gh_branch_merged_to_ref)" == "function" ]]
+            [[ "$(type -t git_worktree_path_for_branch)" == "function" ]]
+            [[ "$(type -t git_branch_merged_to_ref)" == "function" ]]
         '
 
     [ "$status" -eq 0 ]
@@ -246,7 +246,7 @@ run_gh_subcommand() {
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            gh_detect_default_branch() {
+            git_detect_default_branch() {
                 printf -v "$2" "%s" "develop"
             }
             gh_infer_repo_from_origin() {
