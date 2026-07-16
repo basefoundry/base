@@ -30,6 +30,40 @@ load ./basectl_helpers.bash
     [[ "$output" != *"Encountered a fatal error"* ]]
 }
 
+@test "basectl release leaves print scoped public help without Python runtime options" {
+    local command
+
+    for command in check plan notes; do
+        run_basectl release "$command" --help
+
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"basectl release $command --version <version> [--manifest <path>]"* ]]
+        [[ "$output" == *"--version <version>"* ]]
+        [[ "$output" == *"--manifest <path>"* ]]
+        [[ "$output" != *"--dry-run"* ]]
+        [[ "$output" != *"--yes"* ]]
+        [[ "$output" != *"--quiet"* ]]
+        [[ "$output" != *"--debug"* ]]
+        [[ "$output" != *"--environment"* ]]
+        [[ "$output" != *"--config"* ]]
+        [[ "$output" != *"--keep-temp"* ]]
+        [[ "$output" != *"--log-file"* ]]
+    done
+
+    run_basectl release publish --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl release publish --version <version> [--manifest <path>] [--dry-run] [--yes]"* ]]
+    [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" == *"--yes"* ]]
+    [[ "$output" != *"--quiet"* ]]
+    [[ "$output" != *"--debug"* ]]
+    [[ "$output" != *"--environment"* ]]
+    [[ "$output" != *"--config"* ]]
+    [[ "$output" != *"--keep-temp"* ]]
+    [[ "$output" != *"--log-file"* ]]
+}
+
 @test "basectl release delegates to the Python release layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local manifest="$TEST_TMPDIR/base_manifest.yaml"
@@ -61,7 +95,7 @@ EOF
     [ "$(cat "$TEST_TMPDIR/release-state")" = "BASE_PROJECT=base" ]
 }
 
-@test "Bash completion includes release publish commands and options" {
+@test "Bash completion scopes release options to the selected leaf" {
     run env \
         BASE_HOME="$BASE_REPO_ROOT" \
         bash -c '\
@@ -70,6 +104,10 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "release_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl release check --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "release_check_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl release publish --); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -77,5 +115,6 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"release_commands=check plan notes publish"* ]]
+    [[ "$output" == *"release_check_options=--version --manifest"* ]]
     [[ "$output" == *"release_publish_options=--version --manifest --dry-run --yes"* ]]
 }

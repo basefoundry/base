@@ -9,6 +9,25 @@ line_at() {
     printf '%s\n' "$text" | sed -n "${line_number}p"
 }
 
+@test "basectl config leaves print focused help without Python runtime options" {
+    local command
+
+    for command in path show doctor; do
+        run_basectl config "$command" --help
+
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"Usage:"* ]]
+        [[ "$output" == *"basectl config $command"* ]]
+        [[ "$output" != *"[show|doctor]"* ]]
+        [[ "$output" != *"--quiet"* ]]
+        [[ "$output" != *"--debug"* ]]
+        [[ "$output" != *"--environment"* ]]
+        [[ "$output" != *"--config"* ]]
+        [[ "$output" != *"--keep-temp"* ]]
+        [[ "$output" != *"--log-file"* ]]
+    done
+}
+
 @test "basectl config path rejects extra arguments with focused usage hint" {
     run_basectl config path extra
 

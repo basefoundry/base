@@ -1,8 +1,8 @@
 # Base Command Context
 
 `basectl` is the public Base control-plane command. Run `basectl --help` for
-top-level command families and `basectl <family> --help` for the canonical
-family subcommands.
+the journey-oriented command map. Run `basectl help <nested path>` or append
+`--help` to that path for the same leaf-specific usage.
 
 Long options with values use space-separated syntax, such as `--format json`.
 Base rejects `--option=value` before command delegation. Arguments after `--`

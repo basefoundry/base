@@ -505,6 +505,7 @@ _base_basectl_completion() {
                         '2:path:_files' \
                         '--agent-guidance[Include optional agent guidance files]' \
                         '--agent-ready[Include the agent-ready repo guidance contract]' \
+                        '--release[Include the release contract and process document]' \
                         '-v[Enable DEBUG logging]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -606,12 +607,25 @@ _base_basectl_completion() {
             fi
             ;;
         release)
-            _arguments '1:release command:(check plan notes publish)' \
-                '--version[Release version]:version:' \
-                '--manifest[Use a specific manifest]:path:_files' \
-                '--dry-run[Print publish actions without creating tags or releases]' \
-                '--yes[Publish without an interactive confirmation prompt]' \
-                '(-h --help)'{-h,--help}'[Show help text]'
+            case "${words[3]:-}" in
+                check|plan|notes)
+                    _arguments '1:release command:(check plan notes publish)' \
+                        '--version[Release version]:version:' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                publish)
+                    _arguments '1:release command:(check plan notes publish)' \
+                        '--version[Release version]:version:' \
+                        '--manifest[Use a specific manifest]:path:_files' \
+                        '--dry-run[Print publish actions without creating tags or releases]' \
+                        '--yes[Publish without an interactive confirmation prompt]' \
+                        '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                *)
+                    _arguments '1:release command:(check plan notes publish)'
+                    ;;
+            esac
             ;;
         clean)
             _arguments '--older-than[Artifact age]:age:' \
@@ -636,10 +650,12 @@ _base_basectl_completion() {
                 '--status[Filter by status]:status:(ok warn error)' \
                 '--limit[Number of records]:count:' \
                 '--format[Output format]:format:(text json)' \
+                '--report[Print a privacy-conscious Markdown or JSON activity report]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)
-            _arguments '1:config command:(path show doctor)'
+            _arguments '1:config command:(path show doctor)' \
+                '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         doctor)
             case "${words[3]:-}" in
@@ -746,6 +762,8 @@ _base_basectl_completion() {
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
                                 '--schema[Project metadata schema]:schema:(base-project)' \
+                                '--config[Project intake config]:path:_files' \
+                                '--copy-fields-from[Copy missing field values from another Project]:title:' \
                                 '--initiative-option[Initiative option to seed]:name:' \
                                 '--repo[GitHub repository]:repo:' \
                                 '--replace-project[Replace a nonstandard existing Project from base-project-template]' \
@@ -760,6 +778,7 @@ _base_basectl_completion() {
                                 '--repo[GitHub repository]:repo:' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
+                                '--config[Project intake config]:path:_files' \
                                 '--status[Status option]:status:' \
                                 '--priority[Priority option]:priority:' \
                                 '--area[Area option]:area:' \
@@ -804,6 +823,20 @@ _base_basectl_completion() {
             if [[ "$state" == projects ]]; then
                 _base_basectl_completion_describe_projects
             fi
+            ;;
+        version)
+            _arguments '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        help)
+            local -a help_words
+            local help_current="$CURRENT"
+
+            help_words=("${words[@]}")
+            words=("$help_words[1]" "${help_words[@]:2}")
+            CURRENT=$((help_current - 1))
+            _base_basectl_completion
+            words=("${help_words[@]}")
+            CURRENT="$help_current"
             ;;
     esac
 }

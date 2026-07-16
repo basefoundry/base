@@ -335,7 +335,7 @@ EOF
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --issue --category --pr --agent-ready --release --language --description --copyright-holder --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]
     [[ "$output" == *"repo_clone_options=--owner --path --dry-run"* ]]
-    [[ "$output" == *"repo_check_options=--agent-guidance --agent-ready"* ]]
+    [[ "$output" == *"repo_check_options=--agent-guidance --agent-ready --release"* ]]
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --issue --category --pr --dry-run"* ]]

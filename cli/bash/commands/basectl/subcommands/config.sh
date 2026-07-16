@@ -22,6 +22,63 @@ Notes:
 EOF
 }
 
+base_config_leaf_usage() {
+    local config_command="$1"
+
+    case "$config_command" in
+        path)
+            cat <<'EOF'
+Usage:
+  basectl config path
+
+Purpose:
+  Print Base's machine-local user config path.
+
+Options:
+  -h, --help  Show this help text.
+EOF
+            ;;
+        show)
+            cat <<'EOF'
+Usage:
+  basectl config show
+
+Purpose:
+  Show Base's machine-local user config as redacted JSON.
+
+Options:
+  -h, --help  Show this help text.
+EOF
+            ;;
+        doctor)
+            cat <<'EOF'
+Usage:
+  basectl config doctor
+
+Purpose:
+  Diagnose Base's machine-local user config.
+
+Options:
+  -h, --help  Show this help text.
+EOF
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+base_config_args_request_help() {
+    local arg
+
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 base_config_path() {
     [[ -n "${HOME:-}" ]] || fatal_error "Environment variable 'HOME' is not set."
     printf '%s\n' "$HOME/.base.d/config.yaml"
@@ -44,6 +101,10 @@ base_config_subcommand_main() {
             ;;
         path)
             shift
+            if base_config_args_request_help "$@"; then
+                base_config_leaf_usage path
+                return $?
+            fi
             if (($#)); then
                 base_config_usage_error "config path does not accept arguments."
                 return $?
@@ -52,6 +113,10 @@ base_config_subcommand_main() {
             ;;
         show|doctor)
             shift
+            if base_config_args_request_help "$@"; then
+                base_config_leaf_usage "$config_command"
+                return $?
+            fi
             [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
             BASE_CLI_DISPLAY_COMMAND="basectl config" "$wrapper" --project base base_config "$config_command" "$@"
             ;;

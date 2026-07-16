@@ -258,6 +258,20 @@ _base_basectl_completion_project_profiles_or_options() {
     fi
 }
 
+_base_basectl_completion_help() {
+    local saved_cword="$COMP_CWORD"
+    local -a saved_words=("${COMP_WORDS[@]}")
+    local status
+
+    COMP_WORDS=(basectl "${saved_words[@]:2}")
+    COMP_CWORD=$((saved_cword - 1))
+    _base_basectl_completion
+    status=$?
+    COMP_WORDS=("${saved_words[@]}")
+    COMP_CWORD="$saved_cword"
+    return "$status"
+}
+
 _base_basectl_completion() {
     local command cur
     local commands="activate setup check test export-context devcontainer devenv-report build demo run repo ci release prompt docs clean logs history config trust doctor gh onboard update-profile update projects workspace version help"
@@ -373,7 +387,7 @@ _base_basectl_completion() {
                     _base_basectl_completion_compgen "--owner --path --dry-run -v -h --help" "$cur"
                     ;;
                 check)
-                    _base_basectl_completion_compgen "--agent-guidance --agent-ready -v -h --help" "$cur"
+                    _base_basectl_completion_compgen "--agent-guidance --agent-ready --release -v -h --help" "$cur"
                     ;;
                 configure)
                     _base_basectl_completion_compgen "--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run -v -h --help" "$cur"
@@ -406,7 +420,14 @@ _base_basectl_completion() {
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "check plan notes publish" "$cur"
             else
-                _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+                case "${COMP_WORDS[2]:-}" in
+                    check|plan|notes)
+                        _base_basectl_completion_compgen "--version --manifest -h --help" "$cur"
+                        ;;
+                    publish)
+                        _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+                        ;;
+                esac
             fi
             ;;
         prompt)
@@ -435,6 +456,8 @@ _base_basectl_completion() {
         config)
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "path show doctor" "$cur"
+            else
+                _base_basectl_completion_compgen "-h --help" "$cur"
             fi
             ;;
         doctor)
@@ -516,6 +539,12 @@ _base_basectl_completion() {
             ;;
         update)
             _base_basectl_completion_project_or_options "--dry-run -v -h --help" "$cur"
+            ;;
+        version)
+            _base_basectl_completion_compgen "-h --help" "$cur"
+            ;;
+        help)
+            _base_basectl_completion_help
             ;;
     esac
 }

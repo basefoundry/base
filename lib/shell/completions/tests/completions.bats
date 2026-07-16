@@ -290,8 +290,29 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help devcontainer devcontainer
     assert_bash_completion_options_match_help devenv-report devenv-report
     assert_bash_completion_options_match_help repo-init repo init
+    assert_bash_completion_options_match_help repo-check repo check
     assert_bash_completion_options_match_help repo-configure repo configure
     assert_bash_completion_options_match_help repo-installer-template repo installer-template
+    assert_bash_completion_options_match_help release-check release check
+    assert_bash_completion_options_match_help release-plan release plan
+    assert_bash_completion_options_match_help release-notes release notes
+    assert_bash_completion_options_match_help release-publish release publish
+}
+
+@test "Bash help completion mirrors command and nested leaf candidates" {
+    local direct nested
+
+    direct="$(bash_completion_candidates basectl "" | sort)"
+    nested="$(bash_completion_candidates basectl help "" | sort)"
+    [ "$nested" = "$direct" ]
+
+    direct="$(bash_completion_candidates basectl release "" | sort)"
+    nested="$(bash_completion_candidates basectl help release "" | sort)"
+    [ "$nested" = "$direct" ]
+
+    direct="$(bash_completion_candidates basectl gh project "" | sort)"
+    nested="$(bash_completion_candidates basectl help gh project "" | sort)"
+    [ "$nested" = "$direct" ]
 }
 
 @test "Bash ci alias option completions match canonical command help" {
@@ -386,6 +407,56 @@ run_zsh_positional_completion() {
     block="$(zsh_completion_deep_nested_block gh project configure)"
 
     [[ "$block" == *"--replace-project"* ]]
+    [[ "$block" == *"--config"* ]]
+    [[ "$block" == *"--copy-fields-from"* ]]
+}
+
+@test "Zsh gh project issue completion includes config option" {
+    local block
+
+    block="$(zsh_completion_deep_nested_block gh project issue)"
+
+    [[ "$block" == *"--config"* ]]
+}
+
+@test "Zsh history completion includes report option" {
+    local block
+
+    block="$(
+        awk '
+            /^[[:space:]]*history\)/ { in_block = 1 }
+            in_block && /^[[:space:]]*;;/ { exit }
+            in_block { print }
+        ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+    )"
+
+    [[ "$block" == *"--report"* ]]
+}
+
+@test "Zsh release completion scopes publish-only options" {
+    local block
+
+    block="$(sed -n '/^[[:space:]]*release)$/,/^[[:space:]]*clean)$/p' \
+        "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh")"
+
+    [[ "$block" == *"check|plan|notes)"* ]]
+    [[ "$block" == *"publish)"* ]]
+    [[ "$block" == *"--dry-run"* ]]
+    [[ "$block" == *"--yes"* ]]
+}
+
+@test "Zsh help completion delegates to normal command completion" {
+    local block
+
+    block="$(
+        awk '
+            /^[[:space:]]*help\)/ { in_block = 1 }
+            in_block && /^[[:space:]]*;;/ { exit }
+            in_block { print }
+        ' "$BASE_REPO_ROOT/lib/shell/completions/basectl_completion.zsh"
+    )"
+
+    [[ "$block" == *"_base_basectl_completion"* ]]
 }
 
 @test "Zsh prompt completion includes output option" {

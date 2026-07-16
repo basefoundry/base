@@ -108,6 +108,24 @@ Categories: bug, enhancement, documentation, ci, security.
 EOF
 }
 
+base_gh_issue_start_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh issue start <number> [options]
+
+Purpose:
+  Print the canonical issue-backed branch and worktree commands after verifying
+  the issue's standard category label.
+
+Options:
+  --repo, -R <owner/name>  Repository containing the issue. Selection order is
+                           the explicit option, GH_REPO, then the origin remote.
+  --category <category>    Must match the issue's single category label.
+  --title <title>          Override the issue title used to generate the slug.
+  -h, --help               Show this help text.
+EOF
+}
+
 base_gh_pr_usage() {
     cat <<'EOF'
 Usage:
@@ -873,6 +891,10 @@ base_gh_do_issue() {
             base_gh_issue_readiness "$@"
             ;;
         start)
+            if base_gh_args_request_help "$@"; then
+                base_gh_issue_start_usage
+                return 0
+            fi
             base_gh_issue_start "$@"
             ;;
         -h|--help|help|"")

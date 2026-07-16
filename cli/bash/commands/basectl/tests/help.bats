@@ -43,6 +43,21 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--color"* ]]
 }
 
+@test "basectl groups default help by user journey and describes supported setup platforms" {
+    run_basectl --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Getting started:"* ]]
+    [[ "$output" == *"Daily project loop:"* ]]
+    [[ "$output" == *"Workspace and repositories:"* ]]
+    [[ "$output" == *"Release and sharing:"* ]]
+    [[ "$output" == *"Diagnostics and maintenance:"* ]]
+    [[ "$output" == *"Compatibility:"* ]]
+    [[ "$output" == *"Install and bootstrap the local Base CLI environment on macOS or Ubuntu/Debian."* ]]
+    [[ "$output" == *"Compatibility alias for setup, check, and doctor --ci mode."* ]]
+    [[ "$output" != *"environment on macOS."* ]]
+}
+
 @test "basectl help omits legacy leftover commands" {
     run_basectl --help
 
@@ -98,6 +113,66 @@ load ./basectl_helpers.bash
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl release check --version <version>"* ]]
     [[ "$output" != *"Usage: basectl [options] <command> [args...]"* ]]
+}
+
+@test "basectl nested help matches the corresponding leaf help" {
+    local direct_output
+    local path
+
+    for path in \
+        "release check" \
+        "release publish" \
+        "config path" \
+        "config show" \
+        "gh issue start"; do
+        run_basectl $path --help
+        [ "$status" -eq 0 ]
+        direct_output="$output"
+
+        run_basectl help $path
+        [ "$status" -eq 0 ]
+        [ "$output" = "$direct_output" ]
+    done
+}
+
+@test "every documented public leaf returns usage from --help" {
+    local args=()
+    local path
+    local paths=(
+        "activate" "setup" "check" "doctor" "doctor explain"
+        "test" "build" "run" "demo" "export-context" "devcontainer"
+        "devenv-report" "projects list" "trust status" "trust allow"
+        "trust revoke" "workspace status" "workspace check" "workspace doctor"
+        "workspace onboarding" "workspace agent-brief" "workspace clone"
+        "workspace pull" "workspace init" "workspace configure" "repo init"
+        "repo clone" "repo check" "repo configure" "repo agent-guidance"
+        "repo installer-template" "ci setup" "ci check" "ci doctor"
+        "release check" "release plan" "release notes" "release publish"
+        "prompt list" "prompt product-self-review" "docs" "clean" "logs"
+        "history" "config path" "config show" "config doctor" "gh issue list"
+        "gh issue create" "gh issue readiness" "gh issue start" "gh pr create"
+        "gh pr status" "gh pr checks" "gh pr ready" "gh pr merge"
+        "gh project doctor" "gh project configure" "gh project issue set-fields"
+        "gh branch stale" "gh branch prune" "gh worktree prune" "onboard"
+        "update-profile" "update" "version"
+    )
+
+    for path in "${paths[@]}"; do
+        read -r -a args <<<"$path"
+        run_basectl "${args[@]}" --help
+
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"Usage:"* ]]
+    done
+}
+
+@test "command reference documents nested help and repo check release parity" {
+    local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
+    local repo_check_row
+
+    grep -Fq 'Run `basectl help <nested path>` or append `--help` to that path' "$command_reference"
+    repo_check_row="$(grep -F '| `basectl repo check [path]` |' "$command_reference")"
+    [[ "$repo_check_row" == *'`--release`'* ]]
 }
 
 @test "basectl rejects equals-form long option values before command delegation" {

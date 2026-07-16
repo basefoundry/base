@@ -317,6 +317,19 @@ run_gh_subcommand() {
     [[ "$output" != *"basectl gh worktree prune"* ]]
 }
 
+@test "basectl gh issue start prints leaf help without an issue number" {
+    run_basectl gh issue start --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl gh issue start <number>"* ]]
+    [[ "$output" == *"--repo, -R <owner/name>"* ]]
+    [[ "$output" == *"--category <category>"* ]]
+    [[ "$output" == *"--title <title>"* ]]
+    [[ "$output" != *"basectl gh issue create"* ]]
+    [[ "$output" != *"ERROR:"* ]]
+}
+
 @test "basectl gh issue readiness reports ready when body and Project metadata are complete" {
     write_issue_readiness_gh_mock
     write_complete_issue_readiness_body

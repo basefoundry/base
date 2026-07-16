@@ -375,6 +375,10 @@ Current implemented commands include:
 - `basectl history [--report]`
 - `basectl version`
 
+Use `basectl --help` for the journey-oriented command map. For a group or leaf,
+`basectl help <nested path>` and `basectl <nested path> --help` show the same
+public usage without exposing private Python runtime options.
+
 `--ci` runs setup, check, and doctor with CI-safe defaults such as
 non-interactive behavior and JSON-capable output. The legacy `basectl ci`
 wrapper remains as a compatibility alias. Neither surface runs project tests,
