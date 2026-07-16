@@ -80,6 +80,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Required explicit relative or absolute paths for Base runtime scripts so a
+  same-named file in the current directory cannot shadow a `basectl` control
+  command.
 - Reported `basectl setup`, `check`, and `doctor` runtime chain diagnostics up
   front and rejected x86_64 Base virtual environments under Apple Silicon
   Homebrew before profile setup reaches later `brew install` steps.

@@ -137,6 +137,17 @@ basectl_usage_error() {
     return 2
 }
 
+basectl_bare_script_usage_error() {
+    local candidate="$1"
+    local explicit_path
+
+    printf -v explicit_path '%q' "./$candidate"
+    printf "ERROR: Bare script name '%s' is not executed implicitly.\n" "$candidate" >&2
+    printf 'Use an explicit path instead:\n' >&2
+    printf '  basectl %s\n' "$explicit_path" >&2
+    return 2
+}
+
 basectl_equals_option_usage_error() {
     local argument="$1"
     local option="${argument%%=*}"
@@ -556,7 +567,11 @@ basectl_main() {
             fi
             ;;
         *)
-            basectl_usage_error "Unrecognized command: $command"
+            if [[ -f "$command" ]]; then
+                basectl_bare_script_usage_error "$command"
+            else
+                basectl_usage_error "Unrecognized command: $command"
+            fi
             ;;
     esac
 }

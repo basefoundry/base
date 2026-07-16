@@ -48,22 +48,22 @@ When `basectl` starts, it uses this dispatch order:
 1. If no arguments are provided and stdin/stdout are attached to a terminal,
    start a Base-enabled interactive Bash shell with Base's project virtual
    environment activated, while preserving the caller's current directory.
-2. If the first argument is path-like or names an existing file, treat it as a
-   Bash script path and run that script inside the Base runtime.
+2. If the first argument is an explicit path containing `/`, treat it as a Bash
+   script path and run that script inside the Base runtime.
 3. If the first argument matches a Base command implementation by convention,
    run that command implementation.
 4. Otherwise, run the umbrella Base command dispatcher.
 
-This ordering lets explicit script paths win over command names.
+This ordering lets explicit script paths win while ensuring a local file cannot
+shadow a Base control command with the same name. The umbrella dispatcher checks
+its named commands before reporting an unknown bare file; if that file exists,
+the error includes a hint to use an explicit path such as `./script.sh`.
 
 ## Script Arguments
 
-A first argument is treated as a script when either condition is true:
-
-- it contains `/`, such as `./script.sh`, `scripts/deploy`, or
-  `/tmp/base-task.sh`
-- it is an existing file in the current directory, such as `deploy.sh` or
-  `deploy`
+A first argument is treated as a script only when it contains `/`, such as
+`./script.sh`, `scripts/deploy`, or `/tmp/base-task.sh`. A bare file name is not
+executed implicitly; use an explicit relative or absolute path instead.
 
 Script files do not need a `.sh` extension. The script is sourced as Bash and
 must define a `main` function. After sourcing the script, `basectl` calls
@@ -77,7 +77,7 @@ Examples:
 ```bash
 basectl ./scripts/deploy.sh prod
 basectl scripts/deploy prod
-basectl deploy.sh prod      # works if deploy.sh exists in the current directory
+basectl ./deploy.sh prod
 ```
 
 A script can also opt into Base with a shebang:
