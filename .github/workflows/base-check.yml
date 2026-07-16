@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 189ed0be4a71602de2be0f75107288e39eddf7a7
+          ref: 5e52e79a8d6f61f82e5e95a07c75da256642f92e
           path: .base/base-bash-libs
 
       - name: Set up Python
