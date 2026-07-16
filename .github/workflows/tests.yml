@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
+          ref: 189ed0be4a71602de2be0f75107288e39eddf7a7
           path: .dependencies/base-bash-libs
 
       - name: Remove flaky hosted-runner apt sources
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
+          ref: 189ed0be4a71602de2be0f75107288e39eddf7a7
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
@@ -175,7 +175,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
+          ref: 189ed0be4a71602de2be0f75107288e39eddf7a7
           path: .dependencies/base-bash-libs
 
       - name: Set up Python
@@ -226,7 +226,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 424ef9fe61bc8a462ba9980ea63b38dd202ec242
+          ref: 189ed0be4a71602de2be0f75107288e39eddf7a7
           path: .dependencies/base-bash-libs
 
       - name: Expose reusable Bash library checkout as sibling

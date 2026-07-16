@@ -54,6 +54,10 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Migrated generic Git branch, worktree, upstream, merge, remote, and default
+  branch consumers to canonical `git_*` helpers and synchronized CI with the
+  merged `base-bash-libs` implementation.
+
 - Migrated generic branch, worktree, default-branch, upstream, merge, and
   remote inspection consumers to the canonical `git_*` APIs from
   `base-bash-libs`, leaving `base_gh_*` as the command-facing wrapper layer.
