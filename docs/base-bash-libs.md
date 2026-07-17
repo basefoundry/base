@@ -127,12 +127,14 @@ diagnostics can report which external path won: `explicit`, `sibling`, or
    `<homebrew-prefix>/opt/base-bash-libs/libexec/lib/bash` when `BASE_HOME`
    looks like a Homebrew Base install.
 
-An explicit `BASE_BASH_LIBS_DIR` must contain `std/lib_std.sh`; otherwise Base
-fails early with a direct error. If no explicit, sibling, or Homebrew source is
-available, Base fails during runtime bootstrap with an actionable install or
-checkout message. The variable is intended for tests and nonstandard source
-worktree development. Users should not set it in `~/.baserc`, shell dotfiles,
-or project activation scripts.
+An explicit `BASE_BASH_LIBS_DIR` must contain `std/lib_std.sh`, and the loaded
+package must be from the corrected 1.x release line at version 1.3.0 or newer.
+Base rejects stale 1.x checkouts and incompatible major-version checkouts during
+runtime bootstrap with a direct diagnostic. If no explicit, sibling, or
+Homebrew source is available, Base fails during runtime bootstrap with an
+actionable install or checkout message. The variable is intended for tests and
+nonstandard source worktree development. Users should not set it in `~/.baserc`,
+shell dotfiles, or project activation scripts.
 
 Base command implementations should not source these files by absolute path.
 They should rely on `basectl` to establish the runtime and then import reusable
@@ -164,10 +166,13 @@ The Base contract is external-required:
 
 - Base consumes `base-bash-libs` from a sibling checkout during source
   development.
-- Nonstandard worktrees can set `BASE_BASH_LIBS_DIR` to a compatible
-  `base-bash-libs/lib/bash` directory before runtime bootstrap.
+- Nonstandard worktrees can set `BASE_BASH_LIBS_DIR` to a compatible 1.x
+  `base-bash-libs/lib/bash` directory at version 1.3.0 or newer before runtime
+  bootstrap.
 - Homebrew Base consumes the Homebrew `base-bash-libs` package declared by the
   tap formula.
+- Base CI pins the source checkout to the immutable `base-bash-libs` v1.3.0
+  release commit; runtime compatibility remains a 1.x minimum-version contract.
 - `basectl check` and `basectl doctor` emit `BASE-D007` as ok when the external
   source is explicit, sibling, or Homebrew.
 - CI checks out `base-bash-libs` and validates Base without bundled reusable

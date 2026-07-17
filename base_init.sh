@@ -18,6 +18,7 @@
 #     - export the BASE_* paths that downstream scripts may rely on
 #     - export BASE_OS, BASE_PLATFORM, BASE_HOST_ENV, and BASE_HOST runtime metadata
 #     - resolve and source the reusable Bash standard library
+#     - require a compatible 1.x base-bash-libs release line
 #     - add BASE_BIN_DIR to PATH
 #     - provide import_base_lib for convention-based Base Bash library imports
 #
@@ -286,6 +287,20 @@ base_init_source_stdlib() {
     source "$stdlib_path"
 }
 
+base_init_require_bash_libs_version() {
+    local loaded_version="${BASE_BASH_LIBS_VERSION:-}"
+
+    case "$loaded_version" in
+        1.*)
+            base_bash_libs_require_version 1.3.0
+            ;;
+        *)
+            base_init_error "Base requires base-bash-libs 1.3.0 or a compatible later 1.x release; loaded version is '$loaded_version'."
+            return 1
+            ;;
+    esac
+}
+
 base_init_source_command_protocol() {
     local protocol_path="$BASE_HOME/lib/bash/runtime/command_protocol.sh"
 
@@ -322,6 +337,7 @@ base_init_main() {
     base_init_require_bash || return 1
     base_init_export_contract || return 1
     base_init_source_stdlib "$@" || return 1
+    base_init_require_bash_libs_version || return 1
     base_init_source_command_protocol || return 1
 
     add_to_path -p "$BASE_BIN_DIR"
