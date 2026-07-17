@@ -35,12 +35,12 @@ def print_workspace_status(
         print("No Base-managed projects discovered.")
         return
 
-    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<8} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
+    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<14} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
     for status in statuses:
         print(
             f"{status.name:<20} "
             f"{status.status:<6} "
-            f"{status.venv:<8} "
+            f"{status.venv:<14} "
             f"{status.manifest:<8} "
             f"{last_check_display(status.last_check):<10} "
             f"{status.root}"
