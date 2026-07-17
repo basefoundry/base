@@ -7,6 +7,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-17
+
 ### Added
 
 - Added stable, versioned `--format json` inspection envelopes for `basectl
@@ -61,6 +63,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Changed
 
+- Required Base runtime startup to use the corrected 1.x `base-bash-libs`
+  release line at version 1.3.0 or newer, with clear rejection of stale or
+  incompatible library checkouts.
 - Updated Base CI to consume the published `base-bash-libs` v1.3.0 release
   commit.
 

@@ -3,7 +3,7 @@
 ![Tests](https://github.com/basefoundry/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/basefoundry/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS + Ubuntu/Debian](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu%2FDebian-lightgrey)
-![Version](https://img.shields.io/badge/version-1.6.1-blue)
+![Version](https://img.shields.io/badge/version-1.7.0-blue)
 
 Base is a local operating contract for developers and platform engineers who
 work across multiple independent Git repositories.
@@ -1143,12 +1143,12 @@ See [docs/local-config.md](docs/local-config.md).
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.6.1
-basectl release check --version 1.6.1 --format json
-basectl release plan --version 1.6.1
-basectl release notes --version 1.6.1
-basectl release publish --version 1.6.1 --dry-run
-basectl release publish --version 1.6.1 --yes
+basectl release check --version 1.7.0
+basectl release check --version 1.7.0 --format json
+basectl release plan --version 1.7.0
+basectl release notes --version 1.7.0
+basectl release publish --version 1.7.0 --dry-run
+basectl release publish --version 1.7.0 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
@@ -1873,7 +1873,7 @@ Base follows a few simple principles.
 
 ## Current Status
 
-Base `1.6.1` is the current release. The implemented command surface covers
+Base `1.7.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, manifest-declared mise trust/missing-tool checks plus `mise install`
 and `mise run` delegation, cleanup, updates, onboarding, repository baseline
