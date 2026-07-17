@@ -87,6 +87,7 @@ EOF
         printf "BASE_BASH_LIB_DIR=%s\n" "$BASE_BASH_LIB_DIR"
         printf "BASE_BASH_LIBS_DIR=%s\n" "$BASE_BASH_LIBS_DIR"
         printf "BASE_BASH_LIBS_SOURCE=%s\n" "$BASE_BASH_LIBS_SOURCE"
+        printf "BASE_BASH_LIBS_VERSION=%s\n" "$BASE_BASH_LIBS_VERSION"
         printf "BASE_SHELL_DIR=%s\n" "$BASE_SHELL_DIR"
     '
 
@@ -100,7 +101,34 @@ EOF
     [[ "$output" == *"BASE_BASH_LIB_DIR=$TEST_BASE_HOME/lib/bash"* ]]
     [[ "$output" == *"BASE_BASH_LIBS_DIR=$expected_bash_libs_dir"* ]]
     [[ "$output" == *"BASE_BASH_LIBS_SOURCE=sibling"* ]]
+    [[ "$output" == *"BASE_BASH_LIBS_VERSION=1.3.0"* ]]
     [[ "$output" == *"BASE_SHELL_DIR=$TEST_BASE_HOME/lib/shell"* ]]
+}
+
+@test "base_init rejects a stale base-bash-libs release" {
+    printf '1.2.0\n' > "$TEST_TMPDIR/base-bash-libs/VERSION"
+
+    run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+    '
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"base-bash-libs 1.3.0 or newer is required"* ]]
+    [[ "$output" == *"loaded version is 1.2.0"* ]]
+}
+
+@test "base_init rejects an incompatible base-bash-libs major release" {
+    printf '2.0.0\n' > "$TEST_TMPDIR/base-bash-libs/VERSION"
+
+    run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+    '
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Base requires base-bash-libs 1.3.0 or a compatible later 1.x release"* ]]
+    [[ "$output" == *"loaded version is '2.0.0'"* ]]
 }
 
 @test "base_init preserves explicit symlinked BASE_HOME paths" {
