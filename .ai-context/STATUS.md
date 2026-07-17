@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.6.1` is the current release. The repo-root `VERSION` file is updated
+Base `1.7.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR.
 
 ## Current Implemented Areas
@@ -47,10 +47,10 @@ The current command surface covers:
 
 ## Active Development Direction
 
-The `v1.6.1` release is complete. Future work is tracked in GitHub Issues,
+The `v1.7.0` release is complete. Future work is tracked in GitHub Issues,
 with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
 broader prompt ergonomics, broader Linux distribution support, and broader
-setup policy work remaining outside the 1.6 release contract.
+setup policy work remaining outside the 1.7 release contract.
 
 The accepted product position is now a local operating contract for
 deterministic readiness and handoff. `workspace agent-brief` summarizes local
