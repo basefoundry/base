@@ -491,8 +491,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace: {workspace.resolve()} (2 projects)", stdout)
-        self.assertIn("base                 ok     ready    valid    2026-06-17", stdout)
-        self.assertIn("demo                 warn   missing  valid    -", stdout)
+        self.assertIn("base                 ok     ready          valid    2026-06-17", stdout)
+        self.assertIn("demo                 warn   missing        valid    -", stdout)
         self.assertIn("1 project(s) need attention", stdout)
 
     def test_workspace_status_reports_uv_project_venv_ready_without_base_project_venv(self) -> None:
@@ -509,7 +509,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("bankbuddy            ok     ready    valid    -", stdout)
+        self.assertIn("bankbuddy            ok     ready          valid    -", stdout)
         self.assertIn("All discovered projects look ok.", stdout)
 
     def test_workspace_status_reports_shell_only_project_venv_not_applicable(self) -> None:
@@ -536,6 +536,33 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(payload["projects"][0]["status"], "ok")
         self.assertEqual(payload["projects"][0]["venv"], "not_applicable")
         self.assertEqual(payload["projects"][0]["issues"], [])
+
+    def test_workspace_status_text_aligns_shell_only_project_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            home.mkdir()
+            base_home.mkdir()
+            project_root = workspace / "shell-only"
+            write_shell_manifest(project_root, "shell-only")
+
+            status, stdout, stderr = invoke_engine(["status", "--workspace", str(workspace)], base_home, home)
+
+        lines = stdout.splitlines()
+        header = next(line for line in lines if line.startswith("PROJECT"))
+        project_line = next(line for line in lines if line.startswith("shell-only"))
+        manifest_column = header.index("MANIFEST")
+        last_check_column = header.index("LAST CHECK")
+        path_column = header.index("PATH")
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(project_line[header.index("VENV") : manifest_column].rstrip(), "not_applicable")
+        self.assertEqual(project_line[manifest_column : manifest_column + len("valid")], "valid")
+        self.assertEqual(project_line[last_check_column], "-")
+        self.assertEqual(project_line[path_column:], str(project_root.resolve()))
 
     def test_workspace_status_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -645,8 +672,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
-        self.assertIn("broken               error  unknown  invalid", stdout)
-        self.assertIn("demo                 warn   missing  valid", stdout)
+        self.assertIn("broken               error  unknown        invalid", stdout)
+        self.assertIn("demo                 warn   missing        valid", stdout)
         self.assertIn("2 project(s) need attention", stdout)
 
     def test_projects_list_reuses_project_cache_when_manifests_are_unchanged(self) -> None:
