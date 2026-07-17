@@ -292,7 +292,7 @@ load ./basectl_helpers.bash
         [[ "$output" == *"$flag"* ]]
         [[ "$agent_brief_row" == *"$flag"* ]]
     done
-    [[ "$output" == *"--format <format>"* ]]
+    [[ "$output" == *"--format <text|json>"* ]]
     [[ "$agent_brief_row" == *'--format <text\|json>'* ]]
 }
 

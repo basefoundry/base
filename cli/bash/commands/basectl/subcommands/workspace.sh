@@ -12,7 +12,8 @@ Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
-  --format <format>   Output format for the workspace command: text or json.
+  --format <text|json>
+                      Output format for the workspace command. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -66,7 +67,8 @@ Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
-  --format <format>   Output format for the onboarding summary: text or json.
+  --format <text|json>
+                      Output format for the onboarding summary. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -83,7 +85,8 @@ Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
-  --format <format>   Output format for the agent brief: text or json.
+  --format <text|json>
+                      Output format for the agent brief. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
