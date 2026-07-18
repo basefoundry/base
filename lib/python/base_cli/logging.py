@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import sys
+import time
 from pathlib import Path
 from typing import TextIO
 
@@ -82,7 +83,9 @@ def _secure_log_file_open_flags(mode: str) -> int:
 
 class BaseCliFormatter(logging.Formatter):
     def __init__(self) -> None:
-        super().__init__(datefmt="%Y-%m-%d %H:%M:%S")
+        super().__init__(datefmt="%Y-%m-%d %H:%M:%S UTC")
+
+    converter = time.gmtime
 
     def format(self, record: logging.LogRecord) -> str:
         timestamp = self.formatTime(record, self.datefmt)

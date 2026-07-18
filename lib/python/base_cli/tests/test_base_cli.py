@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines,too-many-public-methods
 
 import importlib.util
 import io
+import json
 import logging
 import os
 import tempfile
+import time
 import unittest
 from contextlib import contextmanager, redirect_stderr
 from pathlib import Path
@@ -192,6 +194,9 @@ class BaseCliTests(unittest.TestCase):
                 formatted = BaseCliFormatter().format(record)
 
         self.assertIn(f"{external.resolve()}:7 hello", formatted)
+
+    def test_base_cli_formatter_uses_utc_converter(self) -> None:
+        self.assertIs(BaseCliFormatter.converter, time.gmtime)
 
     def test_config_precedence_excludes_implicit_system_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -587,11 +592,14 @@ class BaseCliTests(unittest.TestCase):
                 path.name for path in (home / ".cache" / "base" / "base" / "runs").iterdir()
             ) / "logs"
             self.assertTrue(log_dir.is_dir())
+            run_metadata = log_dir.parent / "run.json"
+            self.assertEqual(run_metadata.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(json.loads(run_metadata.read_text(encoding="utf-8"))["status"], "ok")
             log_files = tuple(log_dir.glob("*.log"))
             self.assertEqual(len(log_files), 1)
             self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
             self.assertFalse((home / ".base.d" / "cli").exists())
-            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO\s+")
+            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC INFO\s+")
             self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")

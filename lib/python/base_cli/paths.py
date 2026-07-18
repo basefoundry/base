@@ -49,7 +49,7 @@ def use_working_dir(path: Path | None) -> Iterator[None]:
 
 
 def make_run_id() -> str:
-    timestamp = time.strftime("%Y%m%dT%H%M%S")
+    timestamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
     return f"{timestamp}_{uuid.uuid4().hex[:8]}"
 
 

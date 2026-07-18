@@ -167,8 +167,21 @@ def update_run_metadata(run_root: Path, record: dict[str, Any]) -> None:
                 "command": record.get("command"),
             }
         )
+        for key in (
+            "argv",
+            "manifest",
+            "parent_run_id",
+            "project",
+            "project_root",
+            "raw_command",
+            "scope",
+            "workspace_root",
+        ):
+            if key in record and record[key] is not None:
+                metadata[key] = record[key]
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         metadata_path.write_text(json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8")
+        metadata_path.chmod(0o600)
     except (OSError, TypeError, ValueError):
         pass
 

@@ -114,6 +114,12 @@ class BaseCliHistoryTests(unittest.TestCase):
             cache_root = Path(tmpdir) / "cache"
             project_root = Path(tmpdir) / "work" / "demo"
             manifest = project_root / "base_manifest.yaml"
+            bundle = cache_root / "base" / "runs" / "parent-1"
+            bundle.mkdir(parents=True)
+            (bundle / "run.json").write_text(
+                json.dumps({"run_id": "parent-1", "owner": "base", "status": "running"}) + "\n",
+                encoding="utf-8",
+            )
             with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
                 history_helpers.write_primary_record(
                     command="test",
@@ -125,8 +131,11 @@ class BaseCliHistoryTests(unittest.TestCase):
                     project="demo",
                     project_root=str(project_root),
                     manifest=str(manifest),
+                    bundle_path=str(bundle),
                 )
             record = read_history_records(cache_root)[0]
+            metadata = json.loads((bundle / "run.json").read_text(encoding="utf-8"))
+            metadata_mode = (bundle / "run.json").stat().st_mode & 0o777
 
         self.assertEqual(record["command"], "test")
         self.assertEqual(record["raw_command"], "basectl")
@@ -136,6 +145,12 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(record["project_root"], str(project_root.resolve()))
         self.assertEqual(record["manifest"], str(manifest.resolve()))
         self.assertEqual(record["status"], "error")
+        self.assertEqual(metadata["project"], "demo")
+        self.assertEqual(metadata["project_root"], str(project_root.resolve()))
+        self.assertEqual(metadata["manifest"], str(manifest.resolve()))
+        self.assertEqual(metadata["raw_command"], "basectl")
+        self.assertEqual(metadata["scope"], "internal")
+        self.assertEqual(metadata_mode, 0o600)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_successful_command_history_with_redacted_metadata(self) -> None:

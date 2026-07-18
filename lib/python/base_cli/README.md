@@ -281,7 +281,8 @@ from stderr.
 Advanced tests and CI wrappers can call `base_cli.configure_logger(...,
 stream=..., formatter=...)` to capture user-facing logs or apply a custom
 formatter without replacing Base's logger setup. Leave those arguments as
-`None` to keep the default stderr stream and `BaseCliFormatter`.
+`None` to keep the default stderr stream and `BaseCliFormatter`. Base CLI log
+timestamps are rendered in UTC and include an explicit `UTC` marker.
 
 Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
 to keep the standard context, `--debug`, and `--quiet` behavior without creating
@@ -391,7 +392,8 @@ elsewhere. `BASE_CACHE_DIR` overrides the root. See
 [`docs/cache-ownership-and-layout.md`](../../../docs/cache-ownership-and-layout.md)
 for the owner-aware layout. Base control-plane commands use `base/`; a
 Base-compliant project's own commands use `projects/<project>/<checkout-id>/`.
-Each invocation is a run bundle containing `run.json`, `logs/`, and `tmp/`,
+Each invocation is a run bundle containing private (`0600`) `run.json`,
+`logs/`, and `tmp/`,
 while persistent component caches live in the owner's `cache/components/`.
 `basectl clean --older-than <age>` removes old bundles and component caches;
 `--keep-last <count>` retains the newest completed bundles per owner.
