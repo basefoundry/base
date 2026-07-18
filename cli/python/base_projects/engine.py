@@ -745,6 +745,7 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None, output
     except ProjectDiscoveryError as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
+    bind_project_context(ctx, project)
 
     if output_format == "command-protocol":
         print(
@@ -768,10 +769,17 @@ def manifest_project_command(ctx: base_cli.Context, manifest: str | None, output
 def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project:
     project = find_named_project(ctx, project_name, workspace)
     if project is not None:
-        return project
+        return bind_project_context(ctx, project)
 
     workspace_root = resolve_workspace_root(ctx, workspace)
     raise ProjectDiscoveryError(f"Project '{project_name}' was not found in workspace '{workspace_root}'.")
+
+
+def bind_project_context(ctx: base_cli.Context, project: Project) -> Project:
+    """Associate a resolved project with the invocation history context."""
+    ctx.project_root = project.root
+    ctx.manifest_path = project.manifest_path
+    return project
 
 
 def find_named_project(ctx: base_cli.Context, project_name: str, workspace: str | None) -> Project | None:
@@ -801,6 +809,6 @@ def select_invocation_project(
     if arguments:
         legacy_project = find_named_project(ctx, arguments[0], workspace)
         if legacy_project is not None:
-            return legacy_project, arguments[1:]
+            return bind_project_context(ctx, legacy_project), arguments[1:]
 
-    return current_project(), arguments
+    return bind_project_context(ctx, current_project()), arguments

@@ -13,6 +13,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.history import build_finished_record
 from base_setup import artifacts, process, python_artifacts
 from base_setup.artifacts import merge_artifacts
 from base_setup.errors import ArtifactError
@@ -895,6 +896,38 @@ class ArtifactReconcileTests(unittest.TestCase):
 
 
 class EngineArtifactTests(unittest.TestCase):
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_explicit_manifest_populates_history_project_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            manifest_path.write_text(
+                "project:\n  name: demo\n\nartifacts: []\n",
+                encoding="utf-8",
+            )
+            outside = root / "outside"
+            outside.mkdir()
+            captured: list[tuple[object, ...]] = []
+
+            with (
+                mock.patch("base_cli.app.current_working_dir", return_value=outside),
+                mock.patch(
+                    "base_cli.app.write_finished_record",
+                    side_effect=lambda *args: captured.append(args),
+                ),
+            ):
+                status, _stdout, stderr = run_engine(
+                    ["--manifest", str(manifest_path), "--action", "route", "demo"]
+                )
+
+            self.assertEqual((status, stderr), (0, ""))
+            self.assertEqual(len(captured), 1)
+            record = build_finished_record(*captured[0])
+
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(root.resolve()))
+        self.assertEqual(record["manifest"], str(manifest_path.resolve()))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_discovers_manifest_from_start_dir(self) -> None:

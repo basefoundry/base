@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_cli.command_protocol import loads_records
+from base_cli.history import build_finished_record
 from base_projects import engine, project_discovery
 
 
@@ -776,6 +777,34 @@ class ProjectDiscoveryTests(unittest.TestCase):
             f"demo\t{project_root.resolve()}\t{(project_root / 'base_manifest.yaml').resolve()}"
             f"{base_route_fields(base_home, 'demo', trust_required=False)}\n",
         )
+
+    def test_projects_resolve_populates_history_project_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            write_manifest(project_root, "demo")
+            outside = workspace / "outside"
+            outside.mkdir()
+            captured: list[tuple[object, ...]] = []
+
+            with (
+                mock.patch("base_cli.app.current_working_dir", return_value=outside),
+                mock.patch(
+                    "base_cli.app.write_finished_record",
+                    side_effect=lambda *args: captured.append(args),
+                ),
+            ):
+                status, _stdout, stderr = run_engine(["resolve", "demo"], base_home)
+
+            self.assertEqual((status, stderr), (0, ""))
+            self.assertEqual(len(captured), 1)
+            record = build_finished_record(*captured[0])
+
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(project_root.resolve()))
+        self.assertEqual(record["manifest"], str((project_root / "base_manifest.yaml").resolve()))
 
     def test_projects_resolve_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
