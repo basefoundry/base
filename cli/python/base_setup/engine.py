@@ -83,6 +83,9 @@ def run(
     remote_network: bool,
 ) -> int:
     manifest_path = Path(manifest).resolve() if manifest else discover_manifest(Path(start_dir))
+    if manifest_path is not None:
+        ctx.manifest_path = manifest_path
+        ctx.project_root = manifest_path.parent
     if manifest_path is None:
         if project:
             ctx.log.error("No base_manifest.yaml found for project '%s'.", project)
