@@ -41,6 +41,7 @@ def _require_click():
     return click
 
 
+# pylint: disable=too-many-statements
 class App:
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
@@ -218,20 +219,23 @@ class App:
         if inherited_path is None and not dry_run and self.log_to_file:
             create_runtime_directory(layout.run_root, cache_root)
             try:
-                (layout.run_root / "run.json").write_text(
-                    json.dumps(
-                        {
-                            "run_id": run_id,
-                            "owner": runtime_owner,
-                            "cli": self.name,
-                            "status": "running",
-                            "started_at": utc_now().isoformat(timespec="seconds").replace("+00:00", "Z"),
-                        },
-                        sort_keys=True,
-                    )
-                    + "\n",
+                run_metadata = {
+                    "run_id": run_id,
+                    "owner": runtime_owner,
+                    "cli": self.name,
+                    "status": "running",
+                    "started_at": utc_now().isoformat(timespec="seconds").replace("+00:00", "Z"),
+                    "project": selected_project_name,
+                    "project_root": str(selected_project_root) if selected_project_root else None,
+                    "manifest": str(manifest_path) if manifest_path else None,
+                    "workspace_root": str(user_config.workspace.root) if user_config.workspace.root else None,
+                }
+                run_metadata_path = layout.run_root / "run.json"
+                run_metadata_path.write_text(
+                    json.dumps(run_metadata, sort_keys=True) + "\n",
                     encoding="utf-8",
                 )
+                run_metadata_path.chmod(0o600)
             except OSError:
                 pass
         if runtime_owner == "project" and selected_project_root is not None and not dry_run and self.log_to_file:
@@ -253,6 +257,7 @@ class App:
                         + "\n",
                         encoding="utf-8",
                     )
+                identity_path.chmod(0o600)
             except OSError:
                 pass
         logger = configure_logger(self.name, log_file, debug, quiet=quiet)

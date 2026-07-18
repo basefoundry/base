@@ -113,8 +113,10 @@ by individual Base components. This state is not tied to one diagnostic run.
 
 One directory per Base control-plane invocation. `run.json` is written at the
 start with `status: running` and finalized with timestamps, exit status,
-project metadata, and child references. `primary.log` contains top-level Base
-diagnostics. Normal command stdout remains stdout and is not captured here.
+project metadata, command arguments, and parent/child references when known.
+Run metadata and the primary log are private (`0600`). `primary.log` contains
+top-level Base diagnostics. Normal command stdout remains stdout and is not
+captured here.
 
 ### `projects/<project-id>/<checkout-id>/`
 
@@ -141,6 +143,18 @@ project run through the history index and `run.json` metadata.
 Temporary files scoped to one run and component. Successful runs remove these
 directories automatically unless retention is requested. Failed or interrupted
 runs retain them for diagnosis until cleanup removes the completed bundle.
+
+## Timestamps and permissions
+
+Persisted history, run metadata, primary logs, and Python CLI logs use UTC.
+Python CLI log lines include an explicit `UTC` marker; run IDs use UTC-based
+timestamps as well. `basectl history` keeps its existing UTC default and can
+render human-readable views in local time with `--local-time`.
+
+History and run artifacts are user-private by default. History and metadata
+files are created with mode `0600`; raw log files use the same mode. Directory
+permissions remain controlled by the host cache filesystem and do not change
+the ownership boundary described above.
 
 ## Runtime invariants
 

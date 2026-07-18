@@ -3,6 +3,29 @@
 load ./basectl_helpers.bash
 
 
+@test "basectl run bundle metadata and primary log are private" {
+    local cache_root="$TEST_TMPDIR/cache"
+    local run_root
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$cache_root" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            basectl_initialize_run_bundle || exit $?
+            printf "%s\n" "$BASE_CLI_RUN_ROOT"
+            basectl_finalize_run_bundle 0 || exit $?
+        '
+
+    [ "$status" -eq 0 ]
+    run_root="${lines[0]}"
+    [ -f "$run_root/run.json" ]
+    [ -f "$run_root/logs/primary.log" ]
+    [ "$(find "$run_root/run.json" -perm 600 -print)" = "$run_root/run.json" ]
+    [ "$(find "$run_root/logs/primary.log" -perm 600 -print)" = "$run_root/logs/primary.log" ]
+}
+
+
 @test "basectl prints help when no command is given in a non-interactive shell" {
     run_basectl
 

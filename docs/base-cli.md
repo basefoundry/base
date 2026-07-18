@@ -211,13 +211,14 @@ Every run gets two streams:
 
 | Stream | Destination | Level | Format |
 |---|---|---|---|
-| user | stderr | INFO by default, DEBUG with `--debug` | Base-style timestamp, level, source, message |
-| persistent | `ctx.log_file` when enabled | DEBUG | Base-style timestamp, level, source, message |
+| user | stderr | INFO by default, DEBUG with `--debug` | UTC timestamp, level, source, message |
+| persistent | `ctx.log_file` when enabled | DEBUG | UTC timestamp, level, source, message |
 
-Python user-facing logs should visually align with Bash `lib_std.sh` logs:
+Python user-facing logs should visually align with Bash `lib_std.sh` logs while
+making the timezone explicit:
 
 ```text
-2026-05-23 12:31:04 INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
+2026-05-23 19:31:04 UTC INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
 ```
 
 `base_cli` logs invocation metadata at DEBUG level:
