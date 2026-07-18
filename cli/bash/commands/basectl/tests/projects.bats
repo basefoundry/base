@@ -43,6 +43,9 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_history.record" ]]; then
+    exit 0
+fi
 printf '%s\n' "$*" > "${BASE_TEST_PROJECTS_LIST_STATE:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
     printf '[{"name":"base","path":"%s"}]\n' "${BASE_TEST_WORKSPACE:?}/base"
