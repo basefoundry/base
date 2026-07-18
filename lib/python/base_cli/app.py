@@ -216,6 +216,8 @@ class App:
             log=logger,
             user_config=user_config,
             dry_run=dry_run,
+            history_scope=os.environ.get("BASE_CLI_HISTORY_SCOPE", "primary"),
+            history_parent_run_id=os.environ.get("BASE_CLI_HISTORY_PARENT_RUN_ID") or None,
         )
 
 

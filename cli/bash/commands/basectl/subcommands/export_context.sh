@@ -126,6 +126,7 @@ base_export_context_subcommand_main() {
     resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
     project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
     manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
+    base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project for export-context."

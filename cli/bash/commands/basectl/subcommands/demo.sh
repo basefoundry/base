@@ -120,6 +120,7 @@ base_demo_subcommand_main() {
     route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
     uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
     trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
+    base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
     demo_script="${BASE_COMMAND_PROTOCOL_FIELDS[demo_script]}"
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 

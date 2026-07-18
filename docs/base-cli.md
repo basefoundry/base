@@ -128,6 +128,8 @@ ctx.base_home      # Path | None
 ctx.project_name   # selected project name, or None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
+ctx.history_scope  # primary or internal
+ctx.history_parent_run_id  # parent basectl invocation ID, or None
 ctx.workspace_root # configured workspace root, or None
 ctx.state_dir      # Base cache root / cli / <cli-name>
 ctx.log_dir        # state_dir/logs

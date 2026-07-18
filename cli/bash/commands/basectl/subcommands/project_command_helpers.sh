@@ -27,6 +27,12 @@ base_project_venv_dir() {
     printf '%s\n' "$HOME/.base.d/$project/.venv"
 }
 
+base_project_set_history_context() {
+    export BASE_CLI_HISTORY_PROJECT="$1"
+    export BASE_CLI_HISTORY_PROJECT_ROOT="$2"
+    export BASE_CLI_HISTORY_MANIFEST="$3"
+}
+
 base_project_venv_uses_project_local_default() {
     local project="$1"
     local project_root="${2:-}"

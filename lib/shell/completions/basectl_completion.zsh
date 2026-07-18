@@ -915,6 +915,7 @@ _base_basectl_completion() {
                 '--limit[Number of records]:count:' \
                 '--format[Output format]:format:(text json)' \
                 '--report[Print a privacy-conscious Markdown or JSON activity report]' \
+                '--include-internal[Include delegated internal steps in the output]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)

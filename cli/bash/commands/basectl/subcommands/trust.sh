@@ -87,7 +87,7 @@ base_trust_usage_error() {
 base_trust_subcommand_main() {
     local trust_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local args=()
+    local args=() project_name=""
 
     case "$trust_command" in
         ""|-h|--help|help)
@@ -120,6 +120,13 @@ base_trust_subcommand_main() {
                 ;;
         esac
     done
+
+    if [[ "$trust_command" != status || ${#args[@]} -gt 1 ]]; then
+        project_name="${args[1]:-}"
+    fi
+    if [[ -n "$project_name" && "$project_name" != -* ]]; then
+        export BASE_CLI_HISTORY_PROJECT="$project_name"
+    fi
 
     [[ -x "$wrapper" ]] || fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
     BASE_TRUST_ACTIVE_PROJECT="${BASE_PROJECT:-}" \

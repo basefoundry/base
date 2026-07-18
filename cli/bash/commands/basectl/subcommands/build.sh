@@ -74,6 +74,8 @@ base_build_run_target_record() {
     local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
     local command_to_run display_command
 
+    base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
+
     command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
 

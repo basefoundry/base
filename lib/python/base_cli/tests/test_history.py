@@ -109,6 +109,33 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(records, [record])
         self.assertEqual(history_mode, 0o600)
 
+    def test_write_primary_record_preserves_user_command_and_project_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir) / "cache"
+            project_root = Path(tmpdir) / "work" / "demo"
+            manifest = project_root / "base_manifest.yaml"
+            with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+                history_helpers.write_primary_record(
+                    command="test",
+                    argv=["basectl", "test", "demo"],
+                    started_at=history_helpers.utc_now(),
+                    exit_code=1,
+                    run_id="parent-1",
+                    project="demo",
+                    project_root=str(project_root),
+                    manifest=str(manifest),
+                )
+            record = read_history_records(cache_root)[0]
+
+        self.assertEqual(record["command"], "test")
+        self.assertEqual(record["raw_command"], "basectl")
+        self.assertEqual(record["scope"], "primary")
+        self.assertEqual(record["run_id"], "parent-1")
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(project_root.resolve()))
+        self.assertEqual(record["manifest"], str(manifest.resolve()))
+        self.assertEqual(record["status"], "error")
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_app_records_successful_command_history_with_redacted_metadata(self) -> None:
         app = base_cli.App(name="history-demo", version="0.1.0")
@@ -175,6 +202,33 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertIn("[REDACTED]", record["argv"])
         self.assertIn("https://[REDACTED]@example.invalid/path", record["argv"])
         self.assertNotIn("super-secret", json.dumps(record))
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_app_records_internal_scope_and_parent_run_id(self) -> None:
+        app = base_cli.App(name="history-internal")
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            self.assertEqual(ctx.history_scope, "internal")
+            self.assertEqual(ctx.history_parent_run_id, "parent-1")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir) / "home"
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "HOME": str(home),
+                    "BASE_CACHE_DIR": str(home / ".cache" / "base"),
+                    "BASE_CLI_HISTORY_SCOPE": "internal",
+                    "BASE_CLI_HISTORY_PARENT_RUN_ID": "parent-1",
+                },
+            ):
+                status = base_cli.run_app(app, [])
+            records = read_history_records(home / ".cache" / "base")
+
+        self.assertEqual(status, 0)
+        self.assertEqual(records[0]["scope"], "internal")
+        self.assertEqual(records[0]["parent_run_id"], "parent-1")
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_run_app_uses_explicit_argv_for_history_and_log_metadata(self) -> None:

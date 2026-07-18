@@ -20,6 +20,8 @@ from .redaction import REDACTED, is_secret_key, option_name_to_parameter, redact
 
 SCHEMA_VERSION = 1
 HISTORY_PATH = Path("history") / "runs.jsonl"
+HISTORY_SCOPE_PRIMARY = "primary"
+HISTORY_SCOPE_INTERNAL = "internal"
 
 
 def utc_now() -> datetime:
@@ -72,9 +74,50 @@ def build_finished_record(
         "workspace_root": compact_optional_path(context.workspace_root),
         "base_version": base_version(context.base_home),
         "shell": os.environ.get("SHELL"),
+        "scope": context.history_scope,
+        "parent_run_id": context.history_parent_run_id,
     }
     record.update({key: value for key, value in optional_fields.items() if value})
     return record
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def write_primary_record(
+    command: str,
+    argv: list[str],
+    started_at: datetime,
+    exit_code: int,
+    run_id: str,
+    project: str | None = None,
+    project_root: str | None = None,
+    manifest: str | None = None,
+    log_path: str | None = None,
+) -> None:
+    """Write the user-facing record for a Bash-dispatched command."""
+    ended_at = utc_now()
+    record: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "run_id": run_id,
+        "event": "finished",
+        "command": command,
+        "raw_command": "basectl",
+        "argv": redact_history_argv(argv, sensitive_options=set()),
+        "started_at": format_timestamp(started_at),
+        "ended_at": format_timestamp(ended_at),
+        "duration_ms": duration_ms(started_at, ended_at),
+        "exit_code": exit_code,
+        "status": "ok" if exit_code == 0 else "error",
+        "os": normalized_os(),
+        "scope": HISTORY_SCOPE_PRIMARY,
+    }
+    optional_fields = {
+        "project": project,
+        "project_root": compact_optional_path(Path(project_root)) if project_root else None,
+        "manifest": compact_optional_path(Path(manifest)) if manifest else None,
+        "log_path": compact_optional_path(Path(log_path)) if log_path else None,
+    }
+    record.update({key: value for key, value in optional_fields.items() if value})
+    write_history_record(record)
 
 
 def write_history_record(record: dict[str, Any]) -> None:

@@ -117,6 +117,7 @@ base_activate_subcommand_main() {
     route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
     uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
     trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
+    base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" ]] || {
         fatal_error "Unable to resolve project '$project'."

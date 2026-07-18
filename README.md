@@ -1113,13 +1113,15 @@ basectl history --command check --status error
 basectl history --format json
 basectl history --report
 basectl history --report --format json
+basectl history --include-internal
 ```
 
 `basectl history` reads the local history index at
-`<base-cache-root>/history/runs.jsonl`. History records are best-effort
-metadata for Python-backed Base commands with persistent logs; they point to raw
-logs instead of replacing them, and malformed history lines are ignored while
-listing recent runs. `--report` prints a privacy-conscious local activity
+`<base-cache-root>/history/runs.jsonl`. The default view shows one primary row
+per public `basectl` command; delegated Python and resolver steps remain linked
+as internal records and can be shown with `--include-internal`. History records
+point to raw logs instead of replacing them, and malformed history lines are
+ignored while listing recent runs. `--report` prints a privacy-conscious local activity
 summary with recent commands, failure counts, common failing command families,
 and log file locations. Reports do not include raw log contents, compact home
 paths to `~`, and redact secret-looking arguments and URL credentials. The

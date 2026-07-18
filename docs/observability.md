@@ -66,14 +66,15 @@ inspect with ordinary tools, and easy to recover when one line is malformed.
 
 History writes are best-effort:
 
-- write a final completion record when a Python-backed command with a
-  persistent log exits
+- write a primary completion record for a public `basectl` command
+- retain internal Python/helper completion records linked to that primary
+  invocation
 - never fail the user command because the history file cannot be written
 - ignore malformed history lines while warning in debug output
 
-The first implementation emits one `finished` record per recorded run. Shell-only
-commands and no-durable-write modes such as `ctx.dry_run` or
-`App(log_to_file=False)` do not create history records in this slice.
+The default `basectl history` view shows primary public-command records. Internal
+records remain in the local index and can be inspected with
+`basectl history --include-internal`.
 
 ## Record Shape
 
@@ -84,6 +85,7 @@ A history record should include:
   "schema_version": 1,
   "run_id": "20260610T101500_ab12cd",
   "event": "finished",
+  "scope": "primary",
   "command": "setup",
   "raw_command": "base_setup",
   "argv": ["basectl", "setup", "base"],
@@ -103,6 +105,10 @@ A history record should include:
   "profiles": ["dev"]
 }
 ```
+
+Primary records use `scope: "primary"` and represent the command the user
+invoked. Delegated records use `scope: "internal"` and carry that invocation's
+`run_id` in `parent_run_id`.
 
 Fields should be omitted when unknown instead of guessed.
 
@@ -172,6 +178,8 @@ Expected options:
 - `--format json` prints structured records for scripts.
 - `--report` prints a Markdown activity report by default.
 - `--report --format json` prints the same report as deterministic JSON.
+- `--include-internal` includes delegated resolver, routing, bootstrap, and
+  trust-gate records linked to each primary command.
 
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.

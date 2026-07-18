@@ -17,6 +17,7 @@ Options:
   --format <text|markdown|json>
                         Output format. Defaults to text, or Markdown with --report.
   --report              Print a privacy-conscious Markdown or JSON activity report.
+  --include-internal    Include delegated internal steps in the output.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -39,6 +40,10 @@ base_history_subcommand_main() {
                 shift
                 ;;
             --report)
+                args+=("$1")
+                shift
+                ;;
+            --include-internal)
                 args+=("$1")
                 shift
                 ;;
