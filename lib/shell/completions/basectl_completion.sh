@@ -766,7 +766,7 @@ _base_basectl_completion() {
             fi
             ;;
         history)
-            _base_basectl_completion_compgen "--project --command --status --limit --format --report --include-internal -v -h --help" "$cur"
+            _base_basectl_completion_compgen "--project --command --status --limit --format --report --include-internal --local-time -v -h --help" "$cur"
             ;;
         config)
             if ((COMP_CWORD == 2)); then

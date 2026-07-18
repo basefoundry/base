@@ -121,6 +121,7 @@ class BaseCliHistoryTests(unittest.TestCase):
                     started_at=history_helpers.utc_now(),
                     exit_code=1,
                     run_id="parent-1",
+                    scope=history_helpers.HISTORY_SCOPE_INTERNAL,
                     project="demo",
                     project_root=str(project_root),
                     manifest=str(manifest),
@@ -129,7 +130,7 @@ class BaseCliHistoryTests(unittest.TestCase):
 
         self.assertEqual(record["command"], "test")
         self.assertEqual(record["raw_command"], "basectl")
-        self.assertEqual(record["scope"], "primary")
+        self.assertEqual(record["scope"], "internal")
         self.assertEqual(record["run_id"], "parent-1")
         self.assertEqual(record["project"], "demo")
         self.assertEqual(record["project_root"], str(project_root.resolve()))

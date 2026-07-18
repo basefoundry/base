@@ -1,4 +1,4 @@
-"""Append a primary history record for a Bash-dispatched command."""
+"""Append a history record for a Bash-dispatched command."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--command", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--exit-code", required=True, type=int)
+    parser.add_argument("--scope", choices=("primary", "internal"), default="primary")
     parser.add_argument("--started-at")
     parser.add_argument("--project")
     parser.add_argument("--project-root")
@@ -37,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
         started_at=started_at,
         exit_code=options.exit_code,
         run_id=options.run_id,
+        scope=options.scope,
         project=options.project,
         project_root=options.project_root,
         manifest=options.manifest,

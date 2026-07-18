@@ -916,6 +916,7 @@ _base_basectl_completion() {
                 '--format[Output format]:format:(text json)' \
                 '--report[Print a privacy-conscious Markdown or JSON activity report]' \
                 '--include-internal[Include delegated internal steps in the output]' \
+                '--local-time[Render text and Markdown timestamps in local time; defaults to UTC]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         config)

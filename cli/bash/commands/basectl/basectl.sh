@@ -509,9 +509,10 @@ basectl_history_recordable_command() {
 basectl_history_record() {
     local command="$1"
     local exit_code="$2"
+    local scope="$3"
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local args=()
-    shift 2
+    shift 3
 
     basectl_history_recordable_command "$command" || return 0
     [[ -x "$wrapper" ]] || return 0
@@ -519,6 +520,7 @@ basectl_history_record() {
     args+=(--command "$command")
     args+=(--run-id "${BASE_CLI_HISTORY_PARENT_RUN_ID:-}")
     args+=(--exit-code "$exit_code")
+    args+=(--scope "$scope")
     if [[ -n "${BASE_CLI_HISTORY_STARTED_AT:-}" ]]; then
         args+=(--started-at "$BASE_CLI_HISTORY_STARTED_AT")
     fi
@@ -538,7 +540,7 @@ basectl_history_record() {
 
 basectl_main() {
     local base_debug=0 command="" command_status
-    local history_args=()
+    local history_args=() history_scope="${BASE_CLI_HISTORY_SCOPE:-primary}"
     local opt
 
     if [[ "${1:-}" == "help" ]]; then
@@ -673,7 +675,7 @@ basectl_main() {
             ;;
     esac
 
-    basectl_history_record "$command" "$command_status" "${history_args[@]}"
+    basectl_history_record "$command" "$command_status" "$history_scope" "${history_args[@]}"
     return "$command_status"
 }
 

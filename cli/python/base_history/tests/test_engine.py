@@ -107,12 +107,32 @@ class BaseHistoryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("TIME", stdout)
+        self.assertIn("TIME (UTC)", stdout)
         self.assertIn("COMMAND", stdout)
         self.assertIn("PROJECT", stdout)
         self.assertIn("check", stdout)
         self.assertIn("error", stdout)
         self.assertIn("missing", stdout)
+
+    def test_local_time_changes_text_label_but_json_remains_canonical(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(
+                cache_root,
+                history_record(
+                    "run-1",
+                    "check",
+                    ended_at="2026-06-10T10:15:00Z",
+                ),
+            )
+
+            status, stdout, stderr = invoke(["--local-time"], cache_root)
+            json_status, json_stdout, json_stderr = invoke(["--local-time", "--format", "json"], cache_root)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("TIME (LOCAL)", stdout)
+        self.assertEqual((json_status, json_stderr), (0, ""))
+        self.assertEqual(json.loads(json_stdout)[0]["ended_at"], "2026-06-10T10:15:00Z")
 
     def test_json_output_filters_history_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -189,6 +209,16 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertIn("History records: 0", stdout)
         self.assertIn("No command history records found.", stdout)
         self.assertIn(str(cache_root / "history" / "runs.jsonl"), stdout)
+
+    def test_markdown_report_labels_local_time_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("run-1", "check"))
+
+            status, stdout, stderr = invoke(["--report", "--local-time"], cache_root)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("| Time (LOCAL) | Command |", stdout)
 
     def test_report_json_summarizes_successful_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
