@@ -599,7 +599,7 @@ run_zsh_positional_completion() {
     )"
 
     [[ "$block" == *"--report"* ]]
-    [[ "$block" == *"--include-internal"* ]]
+    [[ "$block" != *"--include-internal"* ]]
     [[ "$block" == *"--oldest-first"* ]]
     [[ "$block" == *"--last"* ]]
     [[ "$block" == *"--since"* ]]

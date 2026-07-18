@@ -552,7 +552,7 @@ basectl_initialize_run_bundle() {
     export BASE_CLI_HISTORY_PARENT_RUN_ID="$run_id"
     printf '{"run_id":"%s","owner":"base","status":"running","started_at":"%s"}\n' \
         "$run_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" >"$run_root/run.json"
-    printf '%s basectl start run_id=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" "$run_id" >>"$BASE_CLI_PRIMARY_LOG"
+    : >"$BASE_CLI_PRIMARY_LOG"
     chmod 600 "$run_root/run.json" "$BASE_CLI_PRIMARY_LOG" || {
         basectl_error "Unable to secure Base run bundle '$run_root'. Check file permissions."
         return 1
@@ -564,9 +564,6 @@ basectl_finalize_run_bundle() {
 
     run_root="${BASE_CLI_RUN_ROOT:-}"
     [[ -n "$run_root" && -d "$run_root" ]] || return 0
-    printf '%s basectl finish status=%s exit_code=%s\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" \
-        "$([[ "$exit_code" == 0 ]] && printf ok || printf error)" "$exit_code" >>"${BASE_CLI_PRIMARY_LOG:-$run_root/logs/primary.log}"
     tmp_file="$run_root/run.json.tmp"
     printf '{"run_id":"%s","owner":"base","status":"%s","exit_code":%s,"started_at":"%s","ended_at":"%s"}\n' \
         "${BASE_CLI_RUN_ID:-$(basename -- "$run_root")}" \

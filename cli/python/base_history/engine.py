@@ -59,7 +59,6 @@ class HistoryOptions:
     limit: int
     output_format: str
     report: bool
-    include_internal: bool
     local_time: bool
     oldest_first: bool
     since: datetime | None
@@ -94,7 +93,6 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--limit", default="10", help="Maximum history records to list.")
 @base_cli.option("--format", "output_format", default="text", help="Output format: text, markdown, or json.")
 @base_cli.option("--report", is_flag=True, help="Print a privacy-conscious local activity report.")
-@base_cli.option("--include-internal", is_flag=True, help="Include delegated internal steps in the output.")
 @base_cli.option("--oldest-first", is_flag=True, help="Show the selected history window from oldest to newest.")
 @base_cli.option("--last", "last_window", help="Show records from the most recent duration, such as 2h or 7d.")
 @base_cli.option(
@@ -121,7 +119,6 @@ def run(
     limit: str,
     output_format: str,
     report: bool,
-    include_internal: bool,
     local_time: bool,
     oldest_first: bool,
     last_window: str | None,
@@ -137,7 +134,6 @@ def run(
             limit=parse_positive_int("--limit", limit),
             output_format=normalize_report_format(output_format) if report else normalize_format(output_format),
             report=report,
-            include_internal=include_internal,
             local_time=local_time,
             oldest_first=oldest_first,
             since=since,
@@ -306,8 +302,9 @@ def parse_timestamp(value: str) -> datetime:
 
 def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> list[HistoryRecord]:
     filtered = records
-    if not options.include_internal:
-        filtered = [record for record in filtered if record.scope != HISTORY_SCOPE_INTERNAL]
+    # Internal phases share their parent's run and primary log.  Ignore any
+    # legacy internal records so old caches do not reintroduce duplicate UX.
+    filtered = [record for record in filtered if record.scope != HISTORY_SCOPE_INTERNAL]
     if options.project:
         filtered = [record for record in filtered if record.project == options.project]
     if options.command:

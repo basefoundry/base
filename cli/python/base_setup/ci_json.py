@@ -13,6 +13,7 @@ import base_cli
 LOG_LINE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}\s+"
     r"\d{2}:\d{2}:\d{2}\s+"
+    r"(?:UTC|[+-]\d{4})?\s*"
     r"[A-Z]+\s+"
     r"\S+\s+"
     r"(?P<message>.*)$"

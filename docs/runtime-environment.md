@@ -119,7 +119,7 @@ the resulting directory tree.
 | --- | --- | --- | --- |
 | `BASE_CACHE_DIR` | User | Overrides the platform default Base cache root. | May be set before invoking Base. |
 | `BASE_CLI_RUNTIME_OWNER` | Base/project launcher | `base` for Base control-plane processes or `project` for a project-native process. | Do not set manually; launchers establish it. |
-| `BASE_CLI_RUN_ROOT` | Parent launcher | Points a Base-internal child at its parent run bundle so its raw log is placed under `logs/internal/`. Project launchers deliberately unset it before creating a project-owned bundle. | Do not set manually. |
+| `BASE_CLI_RUN_ROOT` | Parent launcher | Points a Base-internal child at its parent run bundle so it reuses the parent's run ID and `logs/primary.log`. Project launchers deliberately unset it before creating a project-owned bundle. | Do not set manually. |
 | `BASE_CLI_HISTORY_PARENT_RUN_ID` | Parent launcher | Links internal or project history records to the public Base invocation. | Do not set manually. |
 
 ## Project Runtime Variables

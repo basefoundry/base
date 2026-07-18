@@ -35,7 +35,10 @@ def write_finished_record(
     started_at: datetime,
     exit_code: int,
 ) -> None:
-    if context.dry_run or context.log_file is None:
+    # Base-dispatched child commands share the parent's run bundle and
+    # diagnostic stream.  Their completion is an implementation detail, so
+    # keep history at the public-invocation level as well.
+    if context.dry_run or context.log_file is None or context.history_scope == HISTORY_SCOPE_INTERNAL:
         return
     try:
         record = build_finished_record(context, argv, sensitive_options, started_at, exit_code)

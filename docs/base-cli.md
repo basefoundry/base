@@ -128,17 +128,17 @@ ctx.base_home      # Path | None
 ctx.project_name   # selected project name, or None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
-ctx.history_scope  # primary or internal
-ctx.history_parent_run_id  # parent basectl invocation ID, or None
+ctx.history_scope  # public history scope (internal children are not indexed)
+ctx.history_parent_run_id  # shared parent run ID, or None
 ctx.workspace_root # configured workspace root, or None
 ctx.runtime_owner  # base or project
 ctx.owner_root     # owner namespace root under the cache root
 ctx.run_root       # this invocation's run bundle
 ctx.state_dir      # owner_root (compatibility alias)
-ctx.log_dir        # run_root/logs or run_root/logs/internal/<cli-name>
+ctx.log_dir        # run_root/logs
 ctx.cache_dir      # owner_root/cache/components/<cli-name>
 ctx.temp_dir       # run_root/tmp/<cli-name>/<run-id>
-ctx.log_file       # primary.log or an internal component log, or None when disabled
+ctx.log_file       # run_root/logs/primary.log, or None when disabled
 ctx.config         # dict
 ctx.user_config    # typed user config from ~/.base.d/config.yaml
 ctx.environment    # str

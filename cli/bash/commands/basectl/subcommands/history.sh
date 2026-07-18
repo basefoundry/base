@@ -17,7 +17,6 @@ Options:
   --format <text|markdown|json>
                         Output format. Defaults to text, or Markdown with --report.
   --report              Print a privacy-conscious Markdown or JSON activity report.
-  --include-internal    Include delegated internal steps in the output.
   --oldest-first        Show the selected history window from oldest to newest.
   --last <duration>     Show records from the most recent duration, such as 2h or 7d.
   --since <time>        Include records at or after an ISO-8601 or short timestamp.
@@ -45,10 +44,6 @@ base_history_subcommand_main() {
                 shift
                 ;;
             --report)
-                args+=("$1")
-                shift
-                ;;
-            --include-internal)
                 args+=("$1")
                 shift
                 ;;

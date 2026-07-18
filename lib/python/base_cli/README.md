@@ -231,8 +231,9 @@ Important fields include:
 - `ctx.project_root`: directory containing the nearest `base_manifest.yaml`.
 - `ctx.workspace_root`: configured workspace root from `~/.base.d/config.yaml`.
 - `ctx.manifest_path`: nearest discovered Base manifest.
-- `ctx.history_scope`: whether this record is a primary or internal event.
-- `ctx.history_parent_run_id`: parent `basectl` invocation ID, when delegated.
+- `ctx.history_scope`: compatibility scope marker; delegated children are not
+  written as separate history events.
+- `ctx.history_parent_run_id`: shared parent `basectl` invocation ID, when delegated.
 - `ctx.runtime_owner`: `base` or `project`.
 - `ctx.owner_root`: owner namespace root under the Base cache root.
 - `ctx.run_root`: this invocation's run bundle.
@@ -240,7 +241,7 @@ Important fields include:
 - `ctx.log_dir`: run-bundle log directory.
 - `ctx.cache_dir`: persistent component cache directory.
 - `ctx.temp_dir`: per-run temp directory inside the bundle.
-- `ctx.log_file`: persistent log file for this run, or `None` when persistent
+- `ctx.log_file`: the run's shared `logs/primary.log`, or `None` when persistent
   logging is disabled.
 - `ctx.config`: merged configuration dictionary.
 - `ctx.user_config`: typed user configuration from `~/.base.d/config.yaml`.

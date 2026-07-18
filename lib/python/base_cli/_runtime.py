@@ -31,9 +31,9 @@ def runtime_layout(
     owner_root = runtime_owner_root(cache_root, owner, project_name, project_root)
     run_root = inherited_run_root or owner_root / "runs" / run_id
     state_dir = owner_root
+    # Every public invocation owns one run bundle and one diagnostic log.
+    # Child processes inherit that bundle instead of creating component logs.
     log_dir = run_root / "logs"
-    if inherited_run_root is not None:
-        log_dir = log_dir / "internal" / cli_name
     return RuntimeLayout(
         owner_root=owner_root,
         run_root=run_root,

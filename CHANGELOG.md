@@ -9,6 +9,10 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Consolidated each public invocation into one run ID, one `run.json`, and one
+  `logs/primary.log`; delegated Bash/Python phases now share the DEBUG-level
+  diagnostic stream and produce one history row. Legacy internal logs and
+  history rows are ignored by discovery and reporting.
 - Restored local-time defaults for interactive Python CLI logs so Bash and
   Python output from one local run share a clock. `--utc-wrapper` remains the
   explicit UTC mode, while persisted history, run metadata, and run IDs remain

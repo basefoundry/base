@@ -43,7 +43,7 @@ def test_runtime_layout_is_checkout_scoped_for_project_owner() -> None:
     assert layout.log_dir == layout.run_root / "logs"
 
 
-def test_runtime_layout_places_inherited_base_children_under_internal_logs() -> None:
+def test_runtime_layout_places_inherited_base_children_in_the_shared_logs_dir() -> None:
     runtime = importlib.import_module("base_cli._runtime")
     parent = Path("/tmp/base-cache/base/runs/parent")
     layout = runtime.runtime_layout(
@@ -54,7 +54,7 @@ def test_runtime_layout_places_inherited_base_children_under_internal_logs() -> 
     )
 
     assert layout.run_root == parent
-    assert layout.log_dir == parent / "logs" / "internal" / "base_projects"
+    assert layout.log_dir == parent / "logs"
     assert layout.temp_dir == parent / "tmp" / "base_projects" / "child"
 
 
