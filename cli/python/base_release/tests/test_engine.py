@@ -12,6 +12,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.history import build_finished_record
 from base_release import release_publish
 from base_release import release_readiness
 from base_release.engine import ReleaseError
@@ -192,7 +193,37 @@ class ReleaseUsageTests(unittest.TestCase):
         self.assertNotIn("base_release", stderr)
 
 
-class ReleaseEngineTests(unittest.TestCase):
+class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
+
+    def test_explicit_manifest_populates_history_project_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            project_root = root / "demo"
+            project_root.mkdir()
+            manifest_path = write_release_project(project_root)
+            outside = root / "outside"
+            outside.mkdir()
+            captured: list[tuple[object, ...]] = []
+
+            with (
+                mock.patch("base_cli.app.current_working_dir", return_value=outside),
+                mock.patch(
+                    "base_cli.app.write_finished_record",
+                    side_effect=lambda *args: captured.append(args),
+                ),
+            ):
+                status, _stdout, stderr = run_engine(
+                    ["notes", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    outside,
+                )
+
+            self.assertEqual((status, stderr), (0, ""))
+            self.assertEqual(len(captured), 1)
+            record = build_finished_record(*captured[0])
+
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(project_root.resolve()))
+        self.assertEqual(record["manifest"], str(manifest_path.resolve()))
 
     def test_check_json_reports_ready_findings_with_stable_envelope(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

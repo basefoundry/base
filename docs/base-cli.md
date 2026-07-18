@@ -125,6 +125,7 @@ registration.
 ctx.cli_name       # str
 ctx.run_id         # str
 ctx.base_home      # Path | None
+ctx.project_name   # selected project name, or None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
 ctx.workspace_root # configured workspace root, or None

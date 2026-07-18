@@ -38,6 +38,7 @@ class Context:
     base_home: Path | None = None
     project_root: Path | None = None
     manifest_path: Path | None = None
+    project_name: str | None = None
     user_config: UserConfig = field(default_factory=_default_user_config)
     cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
     workspace_root: Path | None = None
@@ -45,6 +46,12 @@ class Context:
 
     def on_cleanup(self, hook: Callable[[], None]) -> None:
         self.cleanup_hooks.append(hook)
+
+    def bind_project(self, project_name: str | None, project_root: Path, manifest_path: Path | None = None) -> None:
+        """Bind the selected project to this invocation's history context."""
+        self.project_name = project_name
+        self.project_root = project_root.resolve()
+        self.manifest_path = manifest_path.resolve() if manifest_path is not None else None
 
     def cleanup(self) -> None:
         for hook in self.cleanup_hooks:

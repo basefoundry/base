@@ -99,11 +99,13 @@ def build_release_context(ctx: base_cli.Context, args: ReleaseArguments) -> Rele
     if manifest_path is None:
         raise ReleaseError("No base_manifest.yaml was found. Pass --manifest <path>.")
     manifest_path = manifest_path.resolve()
+    ctx.bind_project(None, manifest_path.parent, manifest_path)
     manifest = read_manifest(manifest_path)
     if manifest.release is None:
         raise ReleaseError(f"{manifest_path}: manifest does not declare release metadata.")
 
     project_root = manifest_path.parent
+    ctx.bind_project(manifest.project_name, project_root, manifest_path)
     release = manifest.release
     return ReleaseContext(
         manifest_path=manifest_path,

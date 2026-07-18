@@ -125,6 +125,7 @@ def run(
     if manifest_path is None:
         ctx.log.error("No base_manifest.yaml found from the current directory upward.")
         return base_cli.ExitCode.USAGE_ERROR
+    ctx.bind_project(None, manifest_path.parent, manifest_path)
     try:
         body = body_from_manifest(
             manifest_path,

@@ -777,8 +777,7 @@ def resolve_named_project(ctx: base_cli.Context, project_name: str, workspace: s
 
 def bind_project_context(ctx: base_cli.Context, project: Project) -> Project:
     """Associate a resolved project with the invocation history context."""
-    ctx.project_root = project.root
-    ctx.manifest_path = project.manifest_path
+    ctx.bind_project(project.name, project.root, project.manifest_path)
     return project
 
 

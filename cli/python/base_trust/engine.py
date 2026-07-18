@@ -246,6 +246,7 @@ def resolve_trust_identity_for_require(
         return resolve_trust_identity(ctx, project_name, workspace)
 
     identity = compute_trust_identity_for_manifest(Path(manifest_path))
+    ctx.bind_project(identity.project_name, identity.project_root, identity.manifest_path)
     if identity.project_name != project_name:
         raise TrustError(
             f"Resolved manifest '{identity.manifest_path}' declares project '{identity.project_name}', "
