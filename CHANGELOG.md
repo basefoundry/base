@@ -7,6 +7,13 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Restored local-time defaults for interactive Python CLI logs so Bash and
+  Python output from one local run share a clock. `--utc-wrapper` remains the
+  explicit UTC mode, while persisted history, run metadata, and run IDs remain
+  canonical UTC; updated the cache, observability, and Base CLI documentation.
+
 ## [1.7.0] - 2026-07-17
 
 ### Added

@@ -35,7 +35,7 @@ class ConfigureLoggerTests(unittest.TestCase):
     def test_configure_logger_defaults_to_stderr_and_base_formatter(self) -> None:
         stream = io.StringIO()
 
-        with mock.patch.object(sys, "stderr", stream):
+        with mock.patch.object(sys, "stderr", stream), mock.patch.dict(os.environ, {"LOG_UTC": ""}):
             logger = base_cli.configure_logger("default-stream", None, debug=False)
             logger.info("hello default")
 
@@ -43,6 +43,16 @@ class ConfigureLoggerTests(unittest.TestCase):
         self.assertIsInstance(handler.formatter, BaseCliFormatter)
         self.assertIn("INFO", stream.getvalue())
         self.assertIn("hello default", stream.getvalue())
+        self.assertRegex(stream.getvalue(), r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [+-]\d{4} INFO")
+
+    def test_configure_logger_honors_log_utc(self) -> None:
+        stream = io.StringIO()
+
+        with mock.patch.dict(os.environ, {"LOG_UTC": "1"}):
+            logger = base_cli.configure_logger("utc-stream", None, debug=False, stream=stream)
+            logger.info("hello utc")
+
+        self.assertRegex(stream.getvalue(), r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC INFO")
 
     def test_configure_logger_uses_custom_formatter_for_file_handler(self) -> None:
         formatter = logging.Formatter("%(levelname)s:%(message)s")

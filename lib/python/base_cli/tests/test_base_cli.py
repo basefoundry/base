@@ -195,8 +195,19 @@ class BaseCliTests(unittest.TestCase):
 
         self.assertIn(f"{external.resolve()}:7 hello", formatted)
 
-    def test_base_cli_formatter_uses_utc_converter(self) -> None:
-        self.assertIs(BaseCliFormatter.converter, time.gmtime)
+    def test_base_cli_formatter_defaults_to_local_converter(self) -> None:
+        with mock.patch.dict(os.environ, {"LOG_UTC": ""}):
+            formatter = BaseCliFormatter()
+
+        self.assertFalse(formatter.use_utc)
+        self.assertIs(formatter.converter, time.localtime)
+
+    def test_base_cli_formatter_uses_utc_converter_when_requested(self) -> None:
+        with mock.patch.dict(os.environ, {"LOG_UTC": "1"}):
+            formatter = BaseCliFormatter()
+
+        self.assertTrue(formatter.use_utc)
+        self.assertIs(formatter.converter, time.gmtime)
 
     def test_config_precedence_excludes_implicit_system_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -581,7 +592,7 @@ class BaseCliTests(unittest.TestCase):
             from base_cli.testing import invoke
 
             stderr = io.StringIO()
-            with redirect_stderr(stderr):
+            with redirect_stderr(stderr), mock.patch.dict(os.environ, {"LOG_UTC": ""}):
                 result = invoke(app, ["--name", "Ada"], home=home)
 
             self.assertEqual(result.exit_code, 0, result.output)
@@ -599,7 +610,7 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(len(log_files), 1)
             self.assertEqual(log_files[0].stat().st_mode & 0o777, 0o600)
             self.assertFalse((home / ".base.d" / "cli").exists())
-            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC INFO\s+")
+            self.assertRegex(result.stderr, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} (?:UTC|[+-]\d{4}) INFO\s+")
             self.assertIn("hello Ada", result.stderr)
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")

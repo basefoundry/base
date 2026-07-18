@@ -282,7 +282,12 @@ Advanced tests and CI wrappers can call `base_cli.configure_logger(...,
 stream=..., formatter=...)` to capture user-facing logs or apply a custom
 formatter without replacing Base's logger setup. Leave those arguments as
 `None` to keep the default stderr stream and `BaseCliFormatter`. Base CLI log
-timestamps are rendered in UTC and include an explicit `UTC` marker.
+timestamps use the host's local timezone and include its numeric offset by
+default. When the wrapper sets `LOG_UTC=1` (for example via
+`basectl --utc-wrapper`), they use UTC and include an explicit `UTC` marker.
+
+This setting affects log presentation only. Run metadata, history records, and
+run IDs retain their canonical UTC representation.
 
 Commands that inspect runtime artifacts can use `base_cli.App(log_to_file=False)`
 to keep the standard context, `--debug`, and `--quiet` behavior without creating

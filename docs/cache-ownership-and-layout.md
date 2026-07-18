@@ -146,10 +146,14 @@ runs retain them for diagnosis until cleanup removes the completed bundle.
 
 ## Timestamps and permissions
 
-Persisted history, run metadata, primary logs, and Python CLI logs use UTC.
-Python CLI log lines include an explicit `UTC` marker; run IDs use UTC-based
-timestamps as well. `basectl history` keeps its existing UTC default and can
-render human-readable views in local time with `--local-time`.
+Persisted history, run metadata, and primary run lifecycle entries use UTC.
+Run IDs use UTC-based timestamps so bundle names remain sortable across hosts.
+Python CLI log streams (stderr and the per-run log file) use the host's local
+timezone by default, matching the Bash logger during local runs. The local
+offset is included in Python log lines. Pass `basectl --utc-wrapper ...` to set
+`LOG_UTC=1` and render both Bash and Python log streams in UTC for CI, support,
+or cross-machine diagnostics. `basectl history` keeps its existing UTC default
+and can render human-readable views in local time with `--local-time`.
 
 History and run artifacts are user-private by default. History and metadata
 files are created with mode `0600`; raw log files use the same mode. Directory

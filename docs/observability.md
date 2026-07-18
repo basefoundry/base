@@ -199,10 +199,15 @@ errors.
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.
 
-Raw Python CLI logs use UTC timestamps with an explicit `UTC` marker. The
-primary run log uses ISO-8601 UTC timestamps, and history JSON retains canonical
-UTC timestamps; only human-readable history/report views can opt into local
-time with `--local-time`.
+Raw Python CLI logs use the host's local timezone by default, with the local
+numeric offset included in each timestamp. This matches the Bash logger for a
+local run. `basectl --utc-wrapper ...` sets `LOG_UTC=1` and switches both log
+layers to UTC for CI, support, or cross-machine diagnostics.
+
+The primary run log uses ISO-8601 UTC timestamps, run IDs use UTC-based
+timestamps, and history JSON retains canonical UTC timestamps. Only
+human-readable history/report views can opt into local time with
+`--local-time`.
 
 `basectl logs last` bridges those surfaces for the common failure case. It reads
 the local history index, finds the latest failed run, prints command metadata,
