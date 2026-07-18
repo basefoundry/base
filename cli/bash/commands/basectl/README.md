@@ -91,7 +91,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl logs last` prints the latest failed command metadata and a bounded
   redacted log tail, with optional JSON output for local automation.
 - `basectl history` lists recent structured Base command runs from the local
-  history index and supports table, JSON, and privacy-conscious report output.
+  history index and supports table, JSON, privacy-conscious reports, chronological
+  ordering, and bounded time-window filters.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
 - `basectl trust status [project]` inspects one project's manifest command
   trust or all discovered command-bearing projects. `basectl trust

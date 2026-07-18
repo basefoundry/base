@@ -19,11 +19,11 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl history --project demo --command check --status error --limit 3 --format json --include-internal --local-time
+    run_basectl history --project demo --command check --status error --limit 3 --format json --include-internal --oldest-first --last 2h --since 2026-06-10 --until 2026-06-11 --local-time
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=base"* ]]
-    [[ "$output" == *"ARGS=--project demo --command check --status error --limit 3 --format json --include-internal --local-time"* ]]
+    [[ "$output" == *"ARGS=--project demo --command check --status error --limit 3 --format json --include-internal --oldest-first --last 2h --since 2026-06-10 --until 2026-06-11 --local-time"* ]]
 }
 
 @test "basectl history forwards report mode to the Python history layer" {
@@ -77,6 +77,10 @@ EOF
     [[ "$output" == *"--project <name>"* ]]
     [[ "$output" == *"--report"* ]]
     [[ "$output" == *"--include-internal"* ]]
+    [[ "$output" == *"--oldest-first"* ]]
+    [[ "$output" == *"--last <duration>"* ]]
+    [[ "$output" == *"--since <time>"* ]]
+    [[ "$output" == *"--until <time>"* ]]
     [[ "$output" == *"--local-time"* ]]
     [[ "$output" == *"--format <text|markdown|json>"* ]]
 }
@@ -92,6 +96,12 @@ EOF
 
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--limit' requires an argument."* ]]
+    [[ "$output" != *"FATAL"* ]]
+
+    run_basectl history --since
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--since' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 }
 

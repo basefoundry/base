@@ -18,6 +18,10 @@ Options:
                         Output format. Defaults to text, or Markdown with --report.
   --report              Print a privacy-conscious Markdown or JSON activity report.
   --include-internal    Include delegated internal steps in the output.
+  --oldest-first        Show the selected history window from oldest to newest.
+  --last <duration>     Show records from the most recent duration, such as 2h or 7d.
+  --since <time>        Include records at or after an ISO-8601 or short timestamp.
+  --until <time>        Exclude records at or after an ISO-8601 or short timestamp.
   --local-time          Render text and Markdown timestamps in the local timezone. Defaults to UTC.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -52,7 +56,11 @@ base_history_subcommand_main() {
                 args+=("$1")
                 shift
                 ;;
-            --project|--command|--status|--limit|--format)
+            --oldest-first)
+                args+=("$1")
+                shift
+                ;;
+            --project|--command|--status|--limit|--format|--last|--since|--until)
                 [[ -n "${2:-}" ]] || {
                     base_history_subcommand_usage >&2
                     print_error "Option '$1' requires an argument."
@@ -61,7 +69,7 @@ base_history_subcommand_main() {
                 args+=("$1" "$2")
                 shift 2
                 ;;
-            --project=*|--command=*|--status=*|--limit=*|--format=*)
+            --project=*|--command=*|--status=*|--limit=*|--format=*|--last=*|--since=*|--until=*)
                 args+=("$1")
                 shift
                 ;;

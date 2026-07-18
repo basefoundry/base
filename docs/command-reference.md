@@ -109,8 +109,8 @@ manifest trust.
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|json>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
-| `basectl history` | List recent user-facing Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>`, `--include-internal`, `--local-time` |
-| `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>`, `--local-time` |
+| `basectl history` | List recent user-facing Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--limit <count>`, `--format <text\|json>`, `--include-internal`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
+| `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name>`, `--lines <count>` |
 | `basectl clean` | Remove old Base runtime logs, temp files, and cache entries. | `--older-than <age>`, `--keep-last <count>`, `--dry-run` |
