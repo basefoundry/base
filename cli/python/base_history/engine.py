@@ -10,6 +10,8 @@ from typing import Any
 
 import base_cli
 from base_cli.history import HISTORY_PATH
+from base_cli.history import HISTORY_SCOPE_INTERNAL
+from base_cli.history import HISTORY_SCOPE_PRIMARY
 from base_cli.history import optional_int
 from base_cli.history import optional_string
 from base_cli.history import parse_finished_history_record_line
@@ -33,6 +35,7 @@ class HistoryRecord:
     ended_at: str
     sort_time: datetime
     log_path: str | None
+    scope: str
 
     @property
     def log_exists(self) -> bool:
@@ -54,6 +57,7 @@ class HistoryOptions:
     limit: int
     output_format: str
     report: bool
+    include_internal: bool
 
 
 @dataclass(frozen=True)
@@ -84,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--limit", default="10", help="Maximum history records to list.")
 @base_cli.option("--format", "output_format", default="text", help="Output format: text, markdown, or json.")
 @base_cli.option("--report", is_flag=True, help="Print a privacy-conscious local activity report.")
+@base_cli.option("--include-internal", is_flag=True, help="Include delegated internal steps in the output.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -93,6 +98,7 @@ def run(
     limit: str,
     output_format: str,
     report: bool,
+    include_internal: bool,
 ) -> int:
     try:
         options = HistoryOptions(
@@ -102,6 +108,7 @@ def run(
             limit=parse_positive_int("--limit", limit),
             output_format=normalize_report_format(output_format) if report else normalize_format(output_format),
             report=report,
+            include_internal=include_internal,
         )
     except ValueError as exc:
         ctx.log.error(str(exc))
@@ -202,6 +209,7 @@ def parse_history_line(line: str) -> HistoryRecord | None:
         ended_at=ended_at,
         sort_time=parse_timestamp(ended_at),
         log_path=optional_string(payload.get("log_path")),
+        scope=optional_string(payload.get("scope")) or HISTORY_SCOPE_PRIMARY,
     )
 
 
@@ -216,6 +224,8 @@ def parse_timestamp(value: str) -> datetime:
 
 def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> list[HistoryRecord]:
     filtered = records
+    if not options.include_internal:
+        filtered = [record for record in filtered if record.scope != HISTORY_SCOPE_INTERNAL]
     if options.project:
         filtered = [record for record in filtered if record.project == options.project]
     if options.command:

@@ -39,6 +39,8 @@ class Context:
     project_root: Path | None = None
     manifest_path: Path | None = None
     project_name: str | None = None
+    history_scope: str = "primary"
+    history_parent_run_id: str | None = None
     user_config: UserConfig = field(default_factory=_default_user_config)
     cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
     workspace_root: Path | None = None

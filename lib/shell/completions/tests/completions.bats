@@ -599,6 +599,7 @@ run_zsh_positional_completion() {
     )"
 
     [[ "$block" == *"--report"* ]]
+    [[ "$block" == *"--include-internal"* ]]
 }
 
 @test "Zsh release completion scopes inspection and publish options" {

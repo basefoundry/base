@@ -495,9 +495,50 @@ basectl_default_activate_project() {
     printf '%s\n' base
 }
 
+basectl_history_recordable_command() {
+    case "$1" in
+        ""|help|history|logs|version)
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
+basectl_history_record() {
+    local command="$1"
+    local exit_code="$2"
+    local wrapper="$BASE_HOME/bin/base-wrapper"
+    local args=()
+    shift 2
+
+    basectl_history_recordable_command "$command" || return 0
+    [[ -x "$wrapper" ]] || return 0
+
+    args+=(--command "$command")
+    args+=(--run-id "${BASE_CLI_HISTORY_PARENT_RUN_ID:-}")
+    args+=(--exit-code "$exit_code")
+    if [[ -n "${BASE_CLI_HISTORY_STARTED_AT:-}" ]]; then
+        args+=(--started-at "$BASE_CLI_HISTORY_STARTED_AT")
+    fi
+    if [[ -n "${BASE_CLI_HISTORY_PROJECT:-}" ]]; then
+        args+=(--project "$BASE_CLI_HISTORY_PROJECT")
+    fi
+    if [[ -n "${BASE_CLI_HISTORY_PROJECT_ROOT:-}" ]]; then
+        args+=(--project-root "$BASE_CLI_HISTORY_PROJECT_ROOT")
+    fi
+    if [[ -n "${BASE_CLI_HISTORY_MANIFEST:-}" ]]; then
+        args+=(--manifest "$BASE_CLI_HISTORY_MANIFEST")
+    fi
+
+    "$wrapper" --project base base_history.record "${args[@]}" -- basectl "$command" "$@" >/dev/null 2>&1 || true
+}
+
 
 basectl_main() {
-    local base_debug=0 command=""
+    local base_debug=0 command="" command_status
+    local history_args=()
     local opt
 
     if [[ "${1:-}" == "help" ]]; then
@@ -568,49 +609,58 @@ basectl_main() {
 
     command="${1:-}"
     [[ -n "$command" ]] && shift
+    history_args=("$@")
 
     basectl_reject_equals_option_values "$@" || return $?
     basectl_reject_private_standard_options "$@" || return $?
 
     basectl_get_base_home || return 1
+    if [[ -z "${BASE_CLI_HISTORY_PARENT_RUN_ID:-}" ]]; then
+        export BASE_CLI_HISTORY_PARENT_RUN_ID="basectl-${BASHPID:-$$}-${RANDOM}"
+    fi
+    export BASE_CLI_HISTORY_SCOPE=internal
+    BASE_CLI_HISTORY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
+    export BASE_CLI_HISTORY_STARTED_AT
     ((base_debug)) && basectl_enable_debug_logging
     log_debug "Running basectl command '${command:-<none>}' with args: $*"
 
     case "$command" in
-        activate)         basectl_do_activate "$@" ;;
-        check)            basectl_do_check "$@" ;;
-        test)             basectl_do_test "$@" ;;
-        export-context)   basectl_do_export_context "$@" ;;
-        devcontainer)     basectl_do_devcontainer "$@" ;;
-        devenv-report)    basectl_do_devenv_report "$@" ;;
-        build)            basectl_do_build "$@" ;;
-        demo)             basectl_do_demo "$@" ;;
-        run)              basectl_do_run "$@" ;;
-        repo)             basectl_do_repo "$@" ;;
-        ci)               basectl_do_ci "$@" ;;
-        release)          basectl_do_release "$@" ;;
-        prompt)           basectl_do_prompt "$@" ;;
-        docs)             basectl_do_docs "$@" ;;
-        clean)            basectl_do_clean "$@" ;;
-        logs)             basectl_do_logs "$@" ;;
-        history)          basectl_do_history "$@" ;;
-        config)           basectl_do_config "$@" ;;
-        trust)            basectl_do_trust "$@" ;;
-        doctor)           basectl_do_doctor "$@" ;;
-        gh)               basectl_do_gh "$@" ;;
-        onboard)          basectl_do_onboard "$@" ;;
-        setup)            basectl_do_setup "$@" ;;
-        help)             basectl_show_help ;;
-        projects)         basectl_do_projects "$@" ;;
-        workspace)        basectl_do_workspace "$@" ;;
-        update)           basectl_do_update "$@" ;;
-        update-profile)   basectl_do_update_profile "$@" ;;
-        version)          basectl_do_version "$@" ;;
+        activate)         basectl_do_activate "$@"; command_status=$? ;;
+        check)            basectl_do_check "$@"; command_status=$? ;;
+        test)             basectl_do_test "$@"; command_status=$? ;;
+        export-context)   basectl_do_export_context "$@"; command_status=$? ;;
+        devcontainer)     basectl_do_devcontainer "$@"; command_status=$? ;;
+        devenv-report)    basectl_do_devenv_report "$@"; command_status=$? ;;
+        build)            basectl_do_build "$@"; command_status=$? ;;
+        demo)             basectl_do_demo "$@"; command_status=$? ;;
+        run)              basectl_do_run "$@"; command_status=$? ;;
+        repo)             basectl_do_repo "$@"; command_status=$? ;;
+        ci)               basectl_do_ci "$@"; command_status=$? ;;
+        release)          basectl_do_release "$@"; command_status=$? ;;
+        prompt)           basectl_do_prompt "$@"; command_status=$? ;;
+        docs)             basectl_do_docs "$@"; command_status=$? ;;
+        clean)            basectl_do_clean "$@"; command_status=$? ;;
+        logs)             basectl_do_logs "$@"; command_status=$? ;;
+        history)          basectl_do_history "$@"; command_status=$? ;;
+        config)           basectl_do_config "$@"; command_status=$? ;;
+        trust)            basectl_do_trust "$@"; command_status=$? ;;
+        doctor)           basectl_do_doctor "$@"; command_status=$? ;;
+        gh)               basectl_do_gh "$@"; command_status=$? ;;
+        onboard)          basectl_do_onboard "$@"; command_status=$? ;;
+        setup)            basectl_do_setup "$@"; command_status=$? ;;
+        help)             basectl_show_help; command_status=$? ;;
+        projects)         basectl_do_projects "$@"; command_status=$? ;;
+        workspace)        basectl_do_workspace "$@"; command_status=$? ;;
+        update)           basectl_do_update "$@"; command_status=$? ;;
+        update-profile)   basectl_do_update_profile "$@"; command_status=$? ;;
+        version)          basectl_do_version "$@"; command_status=$? ;;
         "")
             if basectl_should_start_shell; then
                 BASE_ACTIVATE_PRESERVE_CWD=1 basectl_do_activate "$(basectl_default_activate_project)"
+                command_status=$?
             else
                 basectl_show_help
+                command_status=$?
             fi
             ;;
         *)
@@ -619,8 +669,12 @@ basectl_main() {
             else
                 basectl_usage_error "Unrecognized command: $command"
             fi
+            command_status=$?
             ;;
     esac
+
+    basectl_history_record "$command" "$command_status" "${history_args[@]}"
+    return "$command_status"
 }
 
 main() {

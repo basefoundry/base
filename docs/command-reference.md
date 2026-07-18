@@ -109,7 +109,7 @@ manifest trust.
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
 | `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|json>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
-| `basectl history` | List recent structured Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>` |
+| `basectl history` | List recent user-facing Base command history records. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--format <text\|json>`, `--include-internal` |
 | `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>` |
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name>`, `--lines <count>` |

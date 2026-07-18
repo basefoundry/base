@@ -231,6 +231,8 @@ Important fields include:
 - `ctx.project_root`: directory containing the nearest `base_manifest.yaml`.
 - `ctx.workspace_root`: configured workspace root from `~/.base.d/config.yaml`.
 - `ctx.manifest_path`: nearest discovered Base manifest.
+- `ctx.history_scope`: whether this record is a primary or internal event.
+- `ctx.history_parent_run_id`: parent `basectl` invocation ID, when delegated.
 - `ctx.state_dir`: per-CLI runtime directory under the Base cache root.
 - `ctx.log_dir`: persistent log directory.
 - `ctx.cache_dir`: persistent cache directory.
