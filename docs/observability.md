@@ -67,14 +67,13 @@ inspect with ordinary tools, and easy to recover when one line is malformed.
 History writes are best-effort:
 
 - write a primary completion record for a public `basectl` command
-- retain internal Python/helper completion records linked to that primary
-  invocation
+- keep delegated Python/helper completion details in the shared primary log,
+  rather than creating extra history rows
 - never fail the user command because the history file cannot be written
 - ignore malformed history lines while warning in debug output
 
-The default `basectl history` view shows primary public-command records. Internal
-records remain in the local index and can be inspected with
-`basectl history --include-internal`.
+`basectl history` shows one record per public invocation. Legacy internal rows
+are ignored so old caches do not reintroduce duplicate command entries.
 
 ## Record Shape
 
@@ -180,8 +179,8 @@ Expected options:
 - `--format json` prints structured records for scripts.
 - `--report` prints a Markdown activity report by default.
 - `--report --format json` prints the same report as deterministic JSON.
-- `--include-internal` includes delegated resolver, routing, bootstrap, and
-  trust-gate records linked to each primary command.
+- Delegated resolver, routing, bootstrap, and trust-gate phases are represented
+  in the parent run's single primary log, not as separate history records.
 - `--oldest-first` reverses the selected window from newest-to-oldest to
   oldest-to-newest; the default remains newest-first.
 - `--last <duration>` selects a relative window such as `30m`, `2h`, or `7d`.
@@ -199,10 +198,15 @@ errors.
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.
 
-Raw Python CLI logs use UTC timestamps with an explicit `UTC` marker. The
-primary run log uses ISO-8601 UTC timestamps, and history JSON retains canonical
-UTC timestamps; only human-readable history/report views can opt into local
-time with `--local-time`.
+Raw Python CLI logs use the host's local timezone by default, with the local
+numeric offset included in each timestamp. This matches the Bash logger for a
+local run. `basectl --utc-wrapper ...` sets `LOG_UTC=1` and switches both log
+layers to UTC for CI, support, or cross-machine diagnostics.
+
+The primary run log uses ISO-8601 UTC timestamps, run IDs use UTC-based
+timestamps, and history JSON retains canonical UTC timestamps. Only
+human-readable history/report views can opt into local time with
+`--local-time`.
 
 `basectl logs last` bridges those surfaces for the common failure case. It reads
 the local history index, finds the latest failed run, prints command metadata,

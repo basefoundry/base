@@ -13,9 +13,14 @@ from base_logs import engine
 
 
 def write_log(cache_root: Path, cli_name: str, run_id: str, text: str) -> Path:
-    path = cache_root / "base" / "runs" / run_id / "logs" / "internal" / cli_name / f"{run_id}.log"
+    run_root = cache_root / "base" / "runs" / run_id
+    path = run_root / "logs" / "primary.log"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+    (run_root / "run.json").write_text(
+        json.dumps({"run_id": run_id, "cli": cli_name}) + "\n",
+        encoding="utf-8",
+    )
     return path
 
 

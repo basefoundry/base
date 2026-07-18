@@ -444,18 +444,20 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
         logs_root = run_root / "logs"
         if not logs_root.is_dir():
             continue
-        for path in sorted(logs_root.rglob("*.log"), key=str):
+        # A run has exactly one persisted diagnostic stream.  Ignore legacy
+        # component logs so old cache contents cannot surface duplicate runs.
+        for path in sorted(logs_root.glob("primary.log"), key=str):
             if not path.is_file():
                 continue
-            history_status = history_status_for_log(history_statuses, run_id=path.stem, path=path)
-            raw_command = infer_raw_command_from_log_path(path)
+            history_status = history_status_for_log(history_statuses, run_id=run_root.name, path=path)
+            raw_command = raw_command_for_log(path)
             entries.append(
                 LogEntry(
                     command=history_status.command
                     if history_status is not None and history_status.command is not None
                     else infer_display_command(raw_command, path),
                     raw_command=raw_command,
-                    run_id=path.stem,
+                    run_id=run_root.name,
                     path=path,
                     timestamp=entry_timestamp(path),
                     status=history_status.status if history_status is not None else infer_status(path),
@@ -477,9 +479,21 @@ def runtime_run_roots(cache_root: Path) -> list[Path]:
 
 
 def infer_raw_command_from_log_path(path: Path) -> str:
-    if path.parent.name == "logs":
-        return "basectl"
-    return path.parent.name
+    return "basectl" if path.parent.name == "logs" else path.parent.name
+
+
+def raw_command_for_log(path: Path) -> str:
+    """Resolve the command identity without encoding it in the log filename."""
+    metadata_path = path.parent.parent / "run.json"
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError):
+        metadata = {}
+    if isinstance(metadata, dict):
+        value = optional_string(metadata.get("raw_command")) or optional_string(metadata.get("cli"))
+        if value:
+            return value
+    return infer_raw_command_from_log_path(path)
 
 
 def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
@@ -558,7 +572,8 @@ def first_lines(path: Path, limit: int) -> list[str]:
 
 
 def entry_timestamp(path: Path) -> datetime:
-    match = RUN_ID_RE.match(path.stem)
+    run_id = path.parent.parent.name if path.name == "primary.log" else path.stem
+    match = RUN_ID_RE.match(run_id)
     if match is not None:
         try:
             return datetime.strptime(match.group("stamp"), "%Y%m%dT%H%M%S")

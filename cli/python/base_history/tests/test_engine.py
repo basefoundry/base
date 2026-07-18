@@ -257,21 +257,16 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual(payload[0]["status"], "error")
         self.assertFalse(payload[0]["log_exists"])
 
-    def test_history_hides_internal_records_unless_requested(self) -> None:
+    def test_history_hides_legacy_internal_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             write_history_line(cache_root, history_record("primary", "test"))
             write_history_line(cache_root, history_record("child", "projects", scope="internal"))
 
             status, stdout, stderr = invoke([], cache_root)
-            trace_status, trace_stdout, trace_stderr = invoke(["--include-internal"], cache_root)
-
         self.assertEqual((status, stderr), (0, ""))
         self.assertIn("test", stdout)
         self.assertNotIn("projects", stdout)
-        self.assertEqual((trace_status, trace_stderr), (0, ""))
-        self.assertIn("test", trace_stdout)
-        self.assertIn("projects", trace_stdout)
 
     def test_empty_history_set_is_not_an_error_for_table_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

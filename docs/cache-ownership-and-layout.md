@@ -58,12 +58,7 @@ With the cache root set to `~/Library/Caches/base`, the clean layout is:
 │       └── <base-run-id>/
 │           ├── run.json
 │           ├── logs/
-│           │   ├── primary.log
-│           │   └── internal/
-│           │       ├── base_setup/
-│           │       │   └── <child-run-id>.log
-│           │       └── base_projects/
-│           │           └── <child-run-id>.log
+│           │   └── primary.log
 │           └── tmp/
 │               └── <component>/<child-run-id>/
 └── projects/
@@ -76,8 +71,7 @@ With the cache root set to `~/Library/Caches/base`, the clean layout is:
     │           └── <project-run-id>/
     │               ├── run.json
     │               ├── logs/
-    │               │   ├── primary.log
-    │               │   └── internal/
+    │               │   └── primary.log
     │               └── tmp/
     ├── banyanlabs/
     │   └── <checkout-id>/...
@@ -85,9 +79,9 @@ With the cache root set to `~/Library/Caches/base`, the clean layout is:
         └── <checkout-id>/...
 ```
 
-There is deliberately no top-level `cli/` directory. Internal component names
-are meaningful only inside a run's `logs/internal/` or persistent component
-cache. They are not ownership roots.
+There is deliberately no top-level `cli/` directory. Component names are
+meaningful only inside persistent component caches; they are not ownership
+roots or separate log identities.
 
 ## Directory meanings
 
@@ -114,8 +108,10 @@ by individual Base components. This state is not tied to one diagnostic run.
 One directory per Base control-plane invocation. `run.json` is written at the
 start with `status: running` and finalized with timestamps, exit status,
 project metadata, command arguments, and parent/child references when known.
-Run metadata and the primary log are private (`0600`). `primary.log` contains
-top-level Base diagnostics. Normal command stdout remains stdout and is not
+Run metadata and the primary log are private (`0600`). `primary.log` is the
+single diagnostic stream for the invocation. Bash and Python children append
+to this same file, which always captures DEBUG-level diagnostics even when the
+terminal is showing INFO. Normal command stdout remains stdout and is not
 captured here.
 
 ### `projects/<project-id>/<checkout-id>/`
@@ -134,8 +130,8 @@ caches.
 
 ### Project `runs/`
 
-Run-oriented bundles for project-native commands. A project run can have its
-own primary log and internal child logs. The parent Base run references the
+Run-oriented bundles for project-native commands. Each project invocation also
+has one run ID and one `logs/primary.log`; the parent Base run references the
 project run through the history index and `run.json` metadata.
 
 ### `tmp/`
@@ -146,10 +142,14 @@ runs retain them for diagnosis until cleanup removes the completed bundle.
 
 ## Timestamps and permissions
 
-Persisted history, run metadata, primary logs, and Python CLI logs use UTC.
-Python CLI log lines include an explicit `UTC` marker; run IDs use UTC-based
-timestamps as well. `basectl history` keeps its existing UTC default and can
-render human-readable views in local time with `--local-time`.
+Persisted history, run metadata, and primary run lifecycle entries use UTC.
+Run IDs use UTC-based timestamps so bundle names remain sortable across hosts.
+Python CLI log streams (stderr and the per-run log file) use the host's local
+timezone by default, matching the Bash logger during local runs. The local
+offset is included in Python log lines. Pass `basectl --utc-wrapper ...` to set
+`LOG_UTC=1` and render both Bash and Python log streams in UTC for CI, support,
+or cross-machine diagnostics. `basectl history` keeps its existing UTC default
+and can render human-readable views in local time with `--local-time`.
 
 History and run artifacts are user-private by default. History and metadata
 files are created with mode `0600`; raw log files use the same mode. Directory

@@ -915,7 +915,6 @@ _base_basectl_completion() {
                 '--limit[Number of records]:count:' \
                 '--format[Output format]:format:(text json)' \
                 '--report[Print a privacy-conscious Markdown or JSON activity report]' \
-                '--include-internal[Include delegated internal steps in the output]' \
                 '--oldest-first[Show the selected history window from oldest to newest]' \
                 '--last[Show records from the most recent duration]:duration:' \
                 '--since[Include records at or after a timestamp]:time:' \

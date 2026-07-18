@@ -1113,7 +1113,6 @@ basectl history --command check --status error
 basectl history --format json
 basectl history --report
 basectl history --report --format json
-basectl history --include-internal
 basectl history --oldest-first
 basectl history --last 2h --oldest-first
 basectl history --since 2026-07-17 --until 2026-07-18
@@ -1124,11 +1123,11 @@ basectl history --local-time
 `<base-cache-root>/base/history/runs.jsonl`. Each invocation also has a
 run-oriented bundle under `<base-cache-root>/base/runs/<run-id>/`, while
 project-native commands use `<base-cache-root>/projects/<project>/<checkout>/`.
-The default view shows one primary row
-per public `basectl` command; delegated Python and resolver steps remain linked
-as internal records and can be shown with `--include-internal`. History records
-point to raw logs instead of replacing them, and malformed history lines are
-ignored while listing recent runs. `--report` prints a privacy-conscious local activity
+The default view shows one row per public `basectl` command. Delegated Python
+and resolver steps share that invocation's run ID and `logs/primary.log`; they
+are not separate history records. History records point to raw logs instead of
+replacing them, and malformed or legacy internal rows are ignored while listing
+recent runs. `--report` prints a privacy-conscious local activity
 summary with recent commands, failure counts, common failing command families,
 and log file locations. Use `--oldest-first` for chronological display,
 `--last 2h` for a relative window, or `--since`/`--until` for explicit bounds.

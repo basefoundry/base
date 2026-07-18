@@ -82,10 +82,11 @@ def _secure_log_file_open_flags(mode: str) -> int:
 
 
 class BaseCliFormatter(logging.Formatter):
-    def __init__(self) -> None:
-        super().__init__(datefmt="%Y-%m-%d %H:%M:%S UTC")
-
-    converter = time.gmtime
+    def __init__(self, *, use_utc: bool | None = None) -> None:
+        self.use_utc = use_utc if use_utc is not None else os.environ.get("LOG_UTC") == "1"
+        datefmt = "%Y-%m-%d %H:%M:%S UTC" if self.use_utc else "%Y-%m-%d %H:%M:%S %z"
+        super().__init__(datefmt=datefmt)
+        self.converter = time.gmtime if self.use_utc else time.localtime
 
     def format(self, record: logging.LogRecord) -> str:
         timestamp = self.formatTime(record, self.datefmt)

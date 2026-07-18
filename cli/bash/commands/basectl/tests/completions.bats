@@ -331,7 +331,7 @@ EOF
     [[ "$output" == *"logs_options=--command --limit --path --tail --open --lines"* ]]
     [[ "$output" == *"logs_last_options=--command --lines --format"* ]]
     [[ "$output" == *"logs_commands=last"* ]]
-    [[ "$output" == *"history_options=--project --command --status --limit --format --report --include-internal --oldest-first --last --since --until --local-time"* ]]
+    [[ "$output" == *"history_options=--project --command --status --limit --format --report --oldest-first --last --since --until --local-time"* ]]
     [[ "$output" == *"trust_commands=status allow revoke"* ]]
     [[ "$output" == *"trust_projects=base demo"* ]]
     [[ "$output" == *"trust_status_options=--workspace --format"* ]]

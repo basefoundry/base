@@ -12,7 +12,7 @@ from ._runtime import create_runtime_directory, prune_log_files, runtime_layout
 from .config import load_config, read_user_config
 from .context import Context, reset_current_context, set_current_context
 from .exit_codes import ExitCode
-from .history import utc_now, write_finished_record
+from .history import HISTORY_SCOPE_INTERNAL, utc_now, write_finished_record
 from .logging import configure_logger, log_invocation
 from .paths import (
     base_cache_root,
@@ -31,6 +31,24 @@ _STANDARD_OPTION_KEYS = ("debug", "quiet", "environment", "config", "keep_temp",
 _GROUP_STANDARD_OPTIONS_KEY = "base_cli_standard_options"
 DISPLAY_COMMAND_ENV = "BASE_CLI_DISPLAY_COMMAND"
 _INVOCATION_ARGV: ContextVar[list[str] | None] = ContextVar("base_cli_invocation_argv", default=None)
+
+
+def _default_log_file(layout: Any, inherited_path: Path | None) -> Path:
+    if inherited_path is not None:
+        return Path(
+            os.environ.get(
+                "BASE_CLI_PRIMARY_LOG",
+                str(layout.log_dir / "primary.log"),
+            )
+        ).expanduser()
+    return layout.log_dir / "primary.log"
+
+
+def _history_scope(inherited_path: Path | None) -> str:
+    return os.environ.get(
+        "BASE_CLI_HISTORY_SCOPE",
+        HISTORY_SCOPE_INTERNAL if inherited_path is not None else "primary",
+    )
 
 
 def _require_click():
@@ -170,7 +188,6 @@ class App:
 
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options
-        run_id = make_run_id()
         manifest_override = os.environ.get("BASE_CLI_PROJECT_MANIFEST")
         manifest_path = (
             Path(manifest_override).expanduser().resolve()
@@ -195,6 +212,8 @@ class App:
         )
         inherited_run_root = os.environ.get("BASE_CLI_RUN_ROOT") if runtime_owner == "base" else None
         inherited_path = Path(inherited_run_root).expanduser().resolve() if inherited_run_root else None
+        inherited_run_id = os.environ.get("BASE_CLI_RUN_ID") if inherited_path is not None else None
+        run_id = inherited_run_id or (inherited_path.name if inherited_path is not None else make_run_id())
         layout = runtime_layout(
             cache_root,
             self.name,
@@ -214,7 +233,7 @@ class App:
             for directory in (layout.log_dir, layout.cache_dir, layout.temp_dir):
                 create_runtime_directory(directory, cache_root)
             if log_file is None:
-                log_file = layout.log_dir / (f"{self.name}-{run_id}.log" if inherited_path else "primary.log")
+                log_file = _default_log_file(layout, inherited_path)
             create_runtime_directory(log_file.parent, cache_root)
         if inherited_path is None and not dry_run and self.log_to_file:
             create_runtime_directory(layout.run_root, cache_root)
@@ -289,7 +308,7 @@ class App:
             log=logger,
             user_config=user_config,
             dry_run=dry_run,
-            history_scope=os.environ.get("BASE_CLI_HISTORY_SCOPE", "primary"),
+            history_scope=_history_scope(inherited_path),
             history_parent_run_id=os.environ.get("BASE_CLI_HISTORY_PARENT_RUN_ID") or None,
         )
 

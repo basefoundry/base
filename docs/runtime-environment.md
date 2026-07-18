@@ -119,7 +119,7 @@ the resulting directory tree.
 | --- | --- | --- | --- |
 | `BASE_CACHE_DIR` | User | Overrides the platform default Base cache root. | May be set before invoking Base. |
 | `BASE_CLI_RUNTIME_OWNER` | Base/project launcher | `base` for Base control-plane processes or `project` for a project-native process. | Do not set manually; launchers establish it. |
-| `BASE_CLI_RUN_ROOT` | Parent launcher | Points a Base-internal child at its parent run bundle so its raw log is placed under `logs/internal/`. Project launchers deliberately unset it before creating a project-owned bundle. | Do not set manually. |
+| `BASE_CLI_RUN_ROOT` | Parent launcher | Points a Base-internal child at its parent run bundle so it reuses the parent's run ID and `logs/primary.log`. Project launchers deliberately unset it before creating a project-owned bundle. | Do not set manually. |
 | `BASE_CLI_HISTORY_PARENT_RUN_ID` | Parent launcher | Links internal or project history records to the public Base invocation. | Do not set manually. |
 
 ## Project Runtime Variables
@@ -169,6 +169,7 @@ These variables are involved in normal shell startup rather than the full
 | `BASE_ENABLE_ZSH_DEFAULTS` | Base | Generated preference controlling optional Base Zsh defaults. | Change with `basectl update-profile --defaults` or `--no-defaults`, not by editing files directly. |
 | `BASE_DEBUG` | User | Enables debug traces in Base-managed shell startup snippets and the runtime Bash rcfile. | Safe to set in `~/.baserc` or as a one-off environment variable. |
 | `LOG_DEBUG` | Base wrapper compatibility | Internal debug signal exported by wrapper/debug paths before the full runtime exists. The Python config layer treats `1` or `true` as a fallback for `BASE_CLI_LOG_LEVEL=debug` when `BASE_CLI_LOG_LEVEL` is unset. | Do not set directly; use wrapper debug flags or `BASE_CLI_LOG_LEVEL=debug` for Python CLI logs. |
+| `LOG_UTC` | Base wrapper compatibility | When set to `1`, switches Bash and Python CLI log presentation to UTC. It is set by `basectl --utc-wrapper`; persisted metadata is UTC regardless. | Prefer `basectl --utc-wrapper` for one-off CI or diagnostic runs. |
 
 The ordinary Bash/Zsh dotfile snippets derive `BASE_HOME` and add
 `$BASE_HOME/bin` to `PATH` so `basectl` is available in new terminals. When a

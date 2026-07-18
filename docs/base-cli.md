@@ -128,17 +128,17 @@ ctx.base_home      # Path | None
 ctx.project_name   # selected project name, or None
 ctx.project_root   # Path | None
 ctx.manifest_path  # Path | None
-ctx.history_scope  # primary or internal
-ctx.history_parent_run_id  # parent basectl invocation ID, or None
+ctx.history_scope  # public history scope (internal children are not indexed)
+ctx.history_parent_run_id  # shared parent run ID, or None
 ctx.workspace_root # configured workspace root, or None
 ctx.runtime_owner  # base or project
 ctx.owner_root     # owner namespace root under the cache root
 ctx.run_root       # this invocation's run bundle
 ctx.state_dir      # owner_root (compatibility alias)
-ctx.log_dir        # run_root/logs or run_root/logs/internal/<cli-name>
+ctx.log_dir        # run_root/logs
 ctx.cache_dir      # owner_root/cache/components/<cli-name>
 ctx.temp_dir       # run_root/tmp/<cli-name>/<run-id>
-ctx.log_file       # primary.log or an internal component log, or None when disabled
+ctx.log_file       # run_root/logs/primary.log, or None when disabled
 ctx.config         # dict
 ctx.user_config    # typed user config from ~/.base.d/config.yaml
 ctx.environment    # str
@@ -211,15 +211,23 @@ Every run gets two streams:
 
 | Stream | Destination | Level | Format |
 |---|---|---|---|
-| user | stderr | INFO by default, DEBUG with `--debug` | UTC timestamp, level, source, message |
-| persistent | `ctx.log_file` when enabled | DEBUG | UTC timestamp, level, source, message |
+| user | stderr | INFO by default, DEBUG with `--debug` | Local timestamp (or UTC with `--utc-wrapper`), level, source, message |
+| persistent | `ctx.log_file` when enabled | DEBUG | Local timestamp (or UTC with `--utc-wrapper`), level, source, message |
 
-Python user-facing logs should visually align with Bash `lib_std.sh` logs while
-making the timezone explicit:
+Python user-facing logs default to the host's local timezone so a local run has
+one clock throughout the Bash and Python layers. The local offset is included
+in each timestamp; `--utc-wrapper` sets `LOG_UTC=1` and switches both layers to
+UTC for CI, support, or cross-machine diagnostics:
 
 ```text
+2026-05-23 12:31:04 -0700 INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
 2026-05-23 19:31:04 UTC INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
 ```
+
+The timestamp policy for persisted data is separate: `run.json`, history
+records, primary run lifecycle entries, and UTC-based run IDs remain in UTC.
+This keeps machine-readable metadata stable while keeping interactive logs
+natural to read on the local machine.
 
 `base_cli` logs invocation metadata at DEBUG level:
 

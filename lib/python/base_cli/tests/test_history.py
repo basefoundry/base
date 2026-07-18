@@ -223,31 +223,40 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertNotIn("super-secret", json.dumps(record))
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
-    def test_app_records_internal_scope_and_parent_run_id(self) -> None:
+    def test_app_reuses_parent_run_and_does_not_record_internal_history(self) -> None:
         app = base_cli.App(name="history-internal")
+
+        seen = {}
 
         @app.command()
         def main(ctx: base_cli.Context) -> None:
             self.assertEqual(ctx.history_scope, "internal")
             self.assertEqual(ctx.history_parent_run_id, "parent-1")
+            seen["run_id"] = ctx.run_id
+            seen["log_file"] = ctx.log_file
 
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir) / "home"
+            run_root = home / ".cache" / "base" / "base" / "runs" / "parent-1"
+            primary_log = run_root / "logs" / "primary.log"
             with mock.patch.dict(
                 os.environ,
                 {
                     "HOME": str(home),
                     "BASE_CACHE_DIR": str(home / ".cache" / "base"),
+                    "BASE_CLI_RUN_ROOT": str(run_root),
+                    "BASE_CLI_RUN_ID": "parent-1",
+                    "BASE_CLI_PRIMARY_LOG": str(primary_log),
                     "BASE_CLI_HISTORY_SCOPE": "internal",
                     "BASE_CLI_HISTORY_PARENT_RUN_ID": "parent-1",
                 },
             ):
                 status = base_cli.run_app(app, [])
-            records = read_history_records(home / ".cache" / "base")
 
         self.assertEqual(status, 0)
-        self.assertEqual(records[0]["scope"], "internal")
-        self.assertEqual(records[0]["parent_run_id"], "parent-1")
+        self.assertEqual(seen["run_id"], "parent-1")
+        self.assertEqual(seen["log_file"], primary_log)
+        self.assertFalse((home / ".cache" / "base" / "base" / "history" / "runs.jsonl").exists())
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_project_owner_uses_checkout_scoped_run_bundle(self) -> None:
