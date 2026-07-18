@@ -137,7 +137,14 @@ def find_log_retention_candidates(
                 run_dirs.append((path, run_metadata_mtime(path)))
             except OSError:
                 continue
-        retained = {path for path, _mtime in sorted(run_dirs, key=lambda item: (item[1], item[0].name), reverse=True)[:keep_count]}
+        retained = {
+            path
+            for path, _mtime in sorted(
+                run_dirs,
+                key=lambda item: (item[1], item[0].name),
+                reverse=True,
+            )[:keep_count]
+        }
         candidates.extend(
             CleanCandidate(path=path, category="run", age_seconds=int(time.time() - mtime))
             for path, mtime in run_dirs

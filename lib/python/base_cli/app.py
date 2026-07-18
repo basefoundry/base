@@ -189,7 +189,9 @@ class App:
         cache_root = base_cache_root()
         runtime_owner = normalize_runtime_owner()
         selected_project_root = runtime_project_root() or project_root
-        selected_project_name = runtime_project_name() or (selected_project_root.name if selected_project_root else None)
+        selected_project_name = runtime_project_name() or (
+            selected_project_root.name if selected_project_root else None
+        )
         inherited_run_root = os.environ.get("BASE_CLI_RUN_ROOT") if runtime_owner == "base" else None
         inherited_path = Path(inherited_run_root).expanduser().resolve() if inherited_run_root else None
         layout = runtime_layout(

@@ -444,7 +444,7 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
         logs_root = run_root / "logs"
         if not logs_root.is_dir():
             continue
-        for path in sorted(logs_root.rglob("*.log"), key=lambda item: str(item)):
+        for path in sorted(logs_root.rglob("*.log"), key=str):
             if not path.is_file():
                 continue
             history_status = history_status_for_log(history_statuses, run_id=path.stem, path=path)

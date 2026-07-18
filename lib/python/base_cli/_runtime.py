@@ -17,6 +17,7 @@ class RuntimeLayout:
     temp_dir: Path
 
 
+# pylint: disable=too-many-arguments
 def runtime_layout(
     cache_root: Path,
     cli_name: str,

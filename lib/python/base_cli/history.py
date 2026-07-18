@@ -170,7 +170,7 @@ def update_run_metadata(run_root: Path, record: dict[str, Any]) -> None:
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         metadata_path.write_text(json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8")
     except (OSError, TypeError, ValueError):
-        return
+        pass
 
 
 def append_history_line(path: Path, line: str) -> None:
