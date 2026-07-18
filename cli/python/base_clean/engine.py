@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import time
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     "--older-than",
     help="Remove runtime artifacts older than an age such as 30d, 12h, 45m, or 60s.",
 )
-@base_cli.option("--keep-last", help="Keep the newest N log files per CLI log directory.")
+@base_cli.option("--keep-last", help="Keep the newest N run bundles per owner namespace.")
 @base_cli.option("--dry-run", is_flag=True, help="Print what would be removed without deleting anything.")
 def run(ctx: base_cli.Context, older_than: str | None, keep_last: str | None, dry_run: bool) -> int:
     if not older_than and not keep_last:
@@ -107,19 +108,12 @@ def parse_keep_last(value: str) -> int:
 
 
 def find_clean_candidates(cache_root: Path, cutoff: float, logger: object | None = None) -> list[CleanCandidate]:
-    cli_root = cache_root / "cli"
-    if logger is not None:
-        logger.debug("Scanning Base CLI runtime root '%s'.", cli_root)
-    if not cli_root.is_dir():
-        return []
-
     candidates: list[CleanCandidate] = []
-    for cli_dir in sorted(cli_root.iterdir(), key=lambda path: path.name):
-        if not cli_dir.is_dir():
-            continue
-        candidates.extend(find_category_candidates(cli_dir / "logs", "log", cutoff, logger))
-        candidates.extend(find_category_candidates(cli_dir / "tmp", "temp", cutoff, logger))
-        candidates.extend(find_category_candidates(cli_dir / "cache", "cache", cutoff, logger))
+    for owner_root in runtime_owner_roots(cache_root):
+        if logger is not None:
+            logger.debug("Scanning runtime owner root '%s'.", owner_root)
+        candidates.extend(find_category_candidates(owner_root / "runs", "run", cutoff, logger))
+        candidates.extend(find_category_candidates(owner_root / "cache" / "components", "cache", cutoff, logger))
     return sorted(candidates, key=lambda candidate: str(candidate.path))
 
 
@@ -128,18 +122,55 @@ def find_log_retention_candidates(
     keep_count: int,
     logger: object | None = None,
 ) -> list[CleanCandidate]:
-    cli_root = cache_root / "cli"
-    if logger is not None:
-        logger.debug("Scanning Base CLI log retention root '%s'.", cli_root)
-    if not cli_root.is_dir():
-        return []
-
     candidates: list[CleanCandidate] = []
-    for cli_dir in sorted(cli_root.iterdir(), key=lambda path: path.name):
-        if not cli_dir.is_dir():
+    for owner_root in runtime_owner_roots(cache_root):
+        runs_root = owner_root / "runs"
+        if logger is not None:
+            logger.debug("Scanning run retention artifacts in '%s'.", runs_root)
+        if not runs_root.is_dir():
             continue
-        candidates.extend(find_log_retention_candidates_for_dir(cli_dir / "logs", keep_count, logger))
+        run_dirs = []
+        for path in sorted(runs_root.iterdir(), key=lambda item: item.name):
+            if not path.is_dir() or run_is_running(path):
+                continue
+            try:
+                run_dirs.append((path, run_metadata_mtime(path)))
+            except OSError:
+                continue
+        retained = {
+            path
+            for path, _mtime in sorted(
+                run_dirs,
+                key=lambda item: (item[1], item[0].name),
+                reverse=True,
+            )[:keep_count]
+        }
+        candidates.extend(
+            CleanCandidate(path=path, category="run", age_seconds=int(time.time() - mtime))
+            for path, mtime in run_dirs
+            if path not in retained
+        )
     return sorted(candidates, key=lambda candidate: str(candidate.path))
+
+
+def runtime_owner_roots(cache_root: Path) -> list[Path]:
+    roots = []
+    base_root = cache_root / "base"
+    if base_root.is_dir():
+        roots.append(base_root)
+    roots.extend(path for path in sorted((cache_root / "projects").glob("*/*"), key=str) if path.is_dir())
+    return roots
+
+
+def run_is_running(run_root: Path) -> bool:
+    metadata = run_root / "run.json"
+    if not metadata.is_file():
+        return False
+    try:
+        payload = json.loads(metadata.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(payload, dict) and payload.get("status") == "running"
 
 
 def find_log_retention_candidates_for_dir(
@@ -190,12 +221,22 @@ def find_category_candidates(
     candidates = []
     for path in sorted(category_root.iterdir(), key=lambda item: item.name):
         try:
-            mtime = path.stat().st_mtime
+            mtime = run_metadata_mtime(path) if category == "run" else path.stat().st_mtime
         except OSError:
             continue
         if mtime < cutoff:
             candidates.append(CleanCandidate(path=path, category=category, age_seconds=int(time.time() - mtime)))
     return candidates
+
+
+def run_metadata_mtime(path: Path) -> float:
+    metadata = path / "run.json"
+    try:
+        if metadata.is_file():
+            return metadata.stat().st_mtime
+        return path.stat().st_mtime
+    except OSError:
+        return path.stat().st_mtime
 
 
 def remove_path(path: Path) -> None:

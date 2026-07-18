@@ -70,8 +70,8 @@ class BaseConfigCommandTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertEqual(json.loads(result.stdout), {})
-            log_dir = home / ".cache" / "base" / "cli" / "base_config" / "logs"
-            self.assertEqual(len(tuple(log_dir.glob("*.log"))), 1)
+            log_dir = home / ".cache" / "base" / "base" / "runs"
+            self.assertEqual(len(tuple(log_dir.rglob("*.log"))), 1)
             history_path = home / ".cache" / "base" / HISTORY_PATH
             history_record = json.loads(history_path.read_text(encoding="utf-8").splitlines()[-1])
             self.assertEqual(history_record["raw_command"], "base_config")

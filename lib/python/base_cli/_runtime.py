@@ -4,22 +4,43 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from .paths import runtime_owner_root
+
 
 @dataclass(frozen=True)
 class RuntimeLayout:
+    owner_root: Path
+    run_root: Path
     state_dir: Path
     log_dir: Path
     cache_dir: Path
     temp_dir: Path
 
 
-def runtime_layout(cache_root: Path, cli_name: str, run_id: str) -> RuntimeLayout:
-    state_dir = cache_root / "cli" / cli_name
+# pylint: disable=too-many-arguments
+def runtime_layout(
+    cache_root: Path,
+    cli_name: str,
+    run_id: str,
+    *,
+    owner: str = "base",
+    project_name: str | None = None,
+    project_root: Path | None = None,
+    inherited_run_root: Path | None = None,
+) -> RuntimeLayout:
+    owner_root = runtime_owner_root(cache_root, owner, project_name, project_root)
+    run_root = inherited_run_root or owner_root / "runs" / run_id
+    state_dir = owner_root
+    log_dir = run_root / "logs"
+    if inherited_run_root is not None:
+        log_dir = log_dir / "internal" / cli_name
     return RuntimeLayout(
+        owner_root=owner_root,
+        run_root=run_root,
         state_dir=state_dir,
-        log_dir=state_dir / "logs",
-        cache_dir=state_dir / "cache",
-        temp_dir=state_dir / "tmp" / run_id,
+        log_dir=log_dir,
+        cache_dir=owner_root / "cache" / "components" / cli_name,
+        temp_dir=run_root / "tmp" / cli_name / run_id,
     )
 
 
@@ -37,7 +58,7 @@ def prune_log_files(
     logger: logging.Logger,
 ) -> None:
     candidates: list[tuple[str, Path]] = []
-    for path in log_dir.glob("*.log"):
+    for path in log_dir.rglob("*.log"):
         if _same_path(path, current_log_file):
             continue
         candidates.append((path.name, path))

@@ -85,6 +85,9 @@ base_project_activate_environment() {
     export BASE_PROJECT_ROOT="$project_root"
     export BASE_PROJECT_MANIFEST="$manifest_path"
     export BASE_PROJECT_VENV_DIR="$venv_dir"
+    export BASE_CLI_PROJECT_NAME="$project"
+    export BASE_CLI_PROJECT_ROOT="$project_root"
+    export BASE_CLI_PROJECT_MANIFEST="$manifest_path"
 
     if [[ -d "$venv_dir/bin" ]]; then
         PATH="$venv_dir/bin:$PATH"
@@ -149,7 +152,16 @@ base_project_run_shell_command() {
 
     # Bash assigns the word after `bash -c <command>` to `$0`; use a stable
     # sentinel so delegated extra args start at `$1` and populate `$@`.
-    (cd "$working_dir" && bash -c "$command_to_run" "$command_name" "$@")
+    (
+        export BASE_CLI_RUNTIME_OWNER=project
+        export BASE_CLI_PROJECT_ROOT="${BASE_PROJECT_ROOT:-$working_dir}"
+        export BASE_CLI_PROJECT_NAME="${BASE_PROJECT:-$(basename -- "$working_dir")}"
+        export BASE_CLI_PROJECT_MANIFEST="${BASE_PROJECT_MANIFEST:-}"
+        # A project command gets its own owner-scoped bundle. Keep the parent
+        # history ID, but do not let it write raw logs into Base's bundle.
+        unset BASE_CLI_RUN_ROOT BASE_CLI_RUN_ID BASE_CLI_PRIMARY_LOG
+        cd "$working_dir" && bash -c "$command_to_run" "$command_name" "$@"
+    )
 }
 
 base_validate_command_runner() {

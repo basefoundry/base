@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import os
 import sys
 from contextvars import ContextVar
@@ -19,6 +20,9 @@ from .paths import (
     discover_manifest,
     make_run_id,
     normalize_cli_name,
+    normalize_runtime_owner,
+    runtime_project_name,
+    runtime_project_root,
     resolve_base_home,
 )
 from .redaction import parameter_name_from_decls
@@ -166,7 +170,12 @@ class App:
     def _create_context(self, standard: dict[str, Any], sensitive_options: set[str], dry_run: bool = False) -> Context:
         del sensitive_options
         run_id = make_run_id()
-        manifest_path = discover_manifest(current_working_dir())
+        manifest_override = os.environ.get("BASE_CLI_PROJECT_MANIFEST")
+        manifest_path = (
+            Path(manifest_override).expanduser().resolve()
+            if manifest_override
+            else discover_manifest(current_working_dir())
+        )
         project_root = manifest_path.parent if manifest_path is not None else None
         explicit_config = Path(standard["config"]).expanduser() if standard.get("config") else None
         user_config = read_user_config()
@@ -178,7 +187,22 @@ class App:
         keep_temp = bool(standard.get("keep_temp") or config.get("keep_temp"))
 
         cache_root = base_cache_root()
-        layout = runtime_layout(cache_root, self.name, run_id)
+        runtime_owner = normalize_runtime_owner()
+        selected_project_root = runtime_project_root() or project_root
+        selected_project_name = runtime_project_name() or (
+            selected_project_root.name if selected_project_root else None
+        )
+        inherited_run_root = os.environ.get("BASE_CLI_RUN_ROOT") if runtime_owner == "base" else None
+        inherited_path = Path(inherited_run_root).expanduser().resolve() if inherited_run_root else None
+        layout = runtime_layout(
+            cache_root,
+            self.name,
+            run_id,
+            owner=runtime_owner,
+            project_name=selected_project_name,
+            project_root=selected_project_root,
+            inherited_run_root=inherited_path,
+        )
 
         log_file = Path(standard["log_file"]).expanduser() if standard.get("log_file") else None
         uses_default_log_file = log_file is None
@@ -189,20 +213,64 @@ class App:
             for directory in (layout.log_dir, layout.cache_dir, layout.temp_dir):
                 create_runtime_directory(directory, cache_root)
             if log_file is None:
-                log_file = layout.log_dir / f"{run_id}.log"
+                log_file = layout.log_dir / (f"{self.name}-{run_id}.log" if inherited_path else "primary.log")
             create_runtime_directory(log_file.parent, cache_root)
+        if inherited_path is None and not dry_run and self.log_to_file:
+            create_runtime_directory(layout.run_root, cache_root)
+            try:
+                (layout.run_root / "run.json").write_text(
+                    json.dumps(
+                        {
+                            "run_id": run_id,
+                            "owner": runtime_owner,
+                            "cli": self.name,
+                            "status": "running",
+                            "started_at": utc_now().isoformat(timespec="seconds").replace("+00:00", "Z"),
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            except OSError:
+                pass
+        if runtime_owner == "project" and selected_project_root is not None and not dry_run and self.log_to_file:
+            try:
+                create_runtime_directory(layout.owner_root, cache_root)
+                identity_path = layout.owner_root / "identity.json"
+                if not identity_path.exists():
+                    identity_path.write_text(
+                        json.dumps(
+                            {
+                                "schema_version": 1,
+                                "project": selected_project_name,
+                                "project_root": str(selected_project_root),
+                                "manifest": str(manifest_path) if manifest_path is not None else None,
+                                "checkout_id": layout.owner_root.name,
+                            },
+                            sort_keys=True,
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+            except OSError:
+                pass
         logger = configure_logger(self.name, log_file, debug, quiet=quiet)
         logger.debug("cli=%s run_id=%s environment=%s", self.name, run_id, environment)
         if self.max_log_files is not None and uses_default_log_file and log_file is not None:
-            prune_log_files(layout.log_dir, log_file, self.max_log_files, logger)
+            prune_log_files(layout.owner_root / "runs", log_file, self.max_log_files, logger)
 
         return Context(
             cli_name=self.name,
             run_id=run_id,
+            runtime_owner=runtime_owner,
+            owner_root=layout.owner_root,
+            run_root=layout.run_root,
             base_home=resolve_base_home(),
-            project_root=project_root,
+            project_root=selected_project_root,
             workspace_root=user_config.workspace.root,
             manifest_path=manifest_path,
+            project_name=selected_project_name,
             state_dir=layout.state_dir,
             log_dir=layout.log_dir,
             cache_dir=layout.cache_dir,

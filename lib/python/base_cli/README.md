@@ -233,10 +233,13 @@ Important fields include:
 - `ctx.manifest_path`: nearest discovered Base manifest.
 - `ctx.history_scope`: whether this record is a primary or internal event.
 - `ctx.history_parent_run_id`: parent `basectl` invocation ID, when delegated.
-- `ctx.state_dir`: per-CLI runtime directory under the Base cache root.
-- `ctx.log_dir`: persistent log directory.
-- `ctx.cache_dir`: persistent cache directory.
-- `ctx.temp_dir`: per-run temp directory.
+- `ctx.runtime_owner`: `base` or `project`.
+- `ctx.owner_root`: owner namespace root under the Base cache root.
+- `ctx.run_root`: this invocation's run bundle.
+- `ctx.state_dir`: owner root (compatibility alias).
+- `ctx.log_dir`: run-bundle log directory.
+- `ctx.cache_dir`: persistent component cache directory.
+- `ctx.temp_dir`: per-run temp directory inside the bundle.
 - `ctx.log_file`: persistent log file for this run, or `None` when persistent
   logging is disabled.
 - `ctx.config`: merged configuration dictionary.
@@ -292,17 +295,16 @@ Commands running with `ctx.dry_run` also skip default `logs/`, `cache/`, and
 explicit file so tests and diagnostics can inspect dry-run logs when needed.
 
 For Python-backed commands with persistent logs, `base_cli.App` also writes a
-best-effort final history record to `<base-cache-root>/history/runs.jsonl`.
+best-effort final history record to `<base-cache-root>/base/history/runs.jsonl`.
 History records contain redacted command metadata, timing, exit status, project
 context when known, and a pointer to the raw log file. History writes are local
 only and do not fail the user command when the index cannot be updated.
 
 High-frequency tools can set `base_cli.App(max_log_files=<count>)` to keep at
-most that many default persistent log files for the CLI. Retention runs during
-startup after the current run's default log file is resolved, and the current
-run's log file is never pruned. Default log pruning uses the timestamp-prefixed
-run ID in each log filename rather than filesystem modification time. The
-policy is skipped for `ctx.dry_run`,
+most that many default persistent log files across the owner's run bundles.
+Retention runs during startup after the current run's default log file is
+resolved, and the current run's log file is never pruned. The policy is skipped
+for `ctx.dry_run`,
 `log_to_file=False`, and explicit `--log-file` paths so no-durable-write modes
 and caller-selected log locations stay under caller control. Use this as a
 small guardrail for busy local tools; `basectl clean` remains the broader
@@ -384,25 +386,15 @@ actionable message.
 
 ## Runtime Directories
 
-On macOS, current runtime state is rooted at `~/Library/Caches/base`:
-
-```text
-~/Library/Caches/base/cli/<cli-name>/
-  logs/
-  cache/
-  tmp/<run-id>/
-```
-
-On Linux and other non-macOS platforms, the default is `~/.cache/base`. Use
-`BASE_CACHE_DIR` to override the root for tests, CI, or unusual local
-environments.
-
-`logs/` and `cache/` are runtime artifacts that can be pruned with
-`basectl clean --older-than <age>`. Logs can also be pruned with
-`basectl clean --keep-last <count>`, which keeps the newest log files per CLI log
-directory. `tmp/<run-id>/` is deleted automatically after the command returns
-unless `--keep-temp` is set; retained temp entries can also be pruned by
-`basectl clean`.
+Runtime state is rooted at `~/Library/Caches/base` on macOS and `~/.cache/base`
+elsewhere. `BASE_CACHE_DIR` overrides the root. See
+[`docs/cache-ownership-and-layout.md`](../../../docs/cache-ownership-and-layout.md)
+for the owner-aware layout. Base control-plane commands use `base/`; a
+Base-compliant project's own commands use `projects/<project>/<checkout-id>/`.
+Each invocation is a run bundle containing `run.json`, `logs/`, and `tmp/`,
+while persistent component caches live in the owner's `cache/components/`.
+`basectl clean --older-than <age>` removes old bundles and component caches;
+`--keep-last <count>` retains the newest completed bundles per owner.
 
 Use `ctx.on_cleanup()` for cleanup work that should happen even when helper code
 does not own the main command wrapper:

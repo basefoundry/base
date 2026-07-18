@@ -13,7 +13,7 @@ from base_history import engine
 
 
 def write_history_line(cache_root: Path, payload: dict | str) -> None:
-    path = cache_root / "history" / "runs.jsonl"
+    path = cache_root / "base" / "history" / "runs.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     text = payload if isinstance(payload, str) else json.dumps(payload)
     with path.open("a", encoding="utf-8") as handle:
@@ -291,7 +291,7 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertIn("# Base Local Activity Report", stdout)
         self.assertIn("History records: 0", stdout)
         self.assertIn("No command history records found.", stdout)
-        self.assertIn(str(cache_root / "history" / "runs.jsonl"), stdout)
+        self.assertIn(str(cache_root / "base" / "history" / "runs.jsonl"), stdout)
 
     def test_markdown_report_labels_local_time_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -328,7 +328,7 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(
             payload["history_path"],
-            str((cache_root / "history" / "runs.jsonl").resolve(strict=False)),
+            str((cache_root / "base" / "history" / "runs.jsonl").resolve(strict=False)),
         )
         self.assertEqual(payload["summary"]["record_count"], 1)
         self.assertEqual(payload["summary"]["failure_count"], 0)

@@ -1120,8 +1120,11 @@ basectl history --since 2026-07-17 --until 2026-07-18
 basectl history --local-time
 ```
 
-`basectl history` reads the local history index at
-`<base-cache-root>/history/runs.jsonl`. The default view shows one primary row
+`basectl history` reads the local Base history index at
+`<base-cache-root>/base/history/runs.jsonl`. Each invocation also has a
+run-oriented bundle under `<base-cache-root>/base/runs/<run-id>/`, while
+project-native commands use `<base-cache-root>/projects/<project>/<checkout>/`.
+The default view shows one primary row
 per public `basectl` command; delegated Python and resolver steps remain linked
 as internal records and can be shown with `--include-internal`. History records
 point to raw logs instead of replacing them, and malformed history lines are
@@ -1169,9 +1172,9 @@ unless `--yes` is supplied, creates an annotated tag, pushes the tag, and
 creates the GitHub Release from the matching changelog section. Homebrew tap
 updates remain a manual handoff printed by the command.
 
-Use `--keep-last <count>` to retain the newest log files per CLI log directory
-while pruning older logs. This retention mode applies only to `*.log` files;
-temp and cache artifacts continue to use `--older-than`.
+Use `--keep-last <count>` to retain the newest completed run bundles per owner
+namespace. `--older-than` removes completed bundles and persistent component
+caches by age; active bundles and durable `~/.base.d` state are never removed.
 
 Use `basectl doctor` when you want a human-oriented diagnosis with suggested
 fixes. Each finding includes a stable identifier that automation can use

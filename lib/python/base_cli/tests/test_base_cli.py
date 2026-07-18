@@ -583,7 +583,9 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
             self.assertTrue(seen["cache_dir"].is_dir())
-            log_dir = home / ".cache" / "base" / "cli" / "demo" / "logs"
+            log_dir = home / ".cache" / "base" / "base" / "runs" / next(
+                path.name for path in (home / ".cache" / "base" / "base" / "runs").iterdir()
+            ) / "logs"
             self.assertTrue(log_dir.is_dir())
             log_files = tuple(log_dir.glob("*.log"))
             self.assertEqual(len(log_files), 1)
@@ -841,7 +843,7 @@ class BaseCliTests(unittest.TestCase):
 
             expected_cache_root = home / ".cache" / "base"
             self.assertEqual(result.exit_code, 0, result.output)
-            self.assertEqual(seen["state_dir"], expected_cache_root / "cli" / "cache-default")
+            self.assertEqual(seen["state_dir"], expected_cache_root / "base")
             self.assertTrue(expected_cache_root.is_dir())
             self.assertFalse(inherited_cache.exists())
 
@@ -877,7 +879,7 @@ class BaseCliTests(unittest.TestCase):
 
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertEqual(seen["home"], override_home)
-            self.assertEqual(seen["state_dir"], override_cache / "cli" / "cache-override")
+            self.assertEqual(seen["state_dir"], override_cache / "base")
             self.assertTrue(override_cache.is_dir())
             self.assertFalse((home / ".cache" / "base").exists())
 
@@ -925,9 +927,8 @@ class BaseCliTests(unittest.TestCase):
                 self.assertTrue(seen["debug"])
                 self.assertTrue(seen["temp_dir"].exists())
                 self.assertEqual(seen["log_file"], log_file)
-                self.assertEqual(
-                    seen["temp_dir"].parents[1],
-                    home / ".cache" / "base" / "cli" / "secret-tool",
+                self.assertTrue(
+                    seen["temp_dir"].is_relative_to(home / ".cache" / "base" / "base" / "runs")
                 )
                 self.assertEqual(seen["manifest_path"], manifest_path.resolve())
                 self.assertEqual(seen["project_root"], project.resolve())

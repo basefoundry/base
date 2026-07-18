@@ -95,7 +95,7 @@ def resolve_active_project(project_name: str) -> Project | None:
 
 def project_cache_path(workspace_root: Path) -> Path:
     workspace_key = hashlib.sha256(str(workspace_root).encode("utf-8")).hexdigest()[:24]
-    return base_cache_root() / "projects" / f"{workspace_key}.json"
+    return base_cache_root() / "base" / "cache" / "discovery" / f"{workspace_key}.json"
 
 
 def read_project_cache(workspace_root: Path, entries: tuple[ManifestEntry, ...]) -> tuple[Project, ...] | None:
