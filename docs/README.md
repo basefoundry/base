@@ -72,6 +72,8 @@ reference. The filename should answer "what is this about?"
   apt-backed setup path, and bootstrap boundaries.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
+- [Cache Ownership And Layout](cache-ownership-and-layout.md) defines the
+  clean-slate Base-versus-project cache boundary and proposed run bundles.
 - [Base Bash Libraries](base-bash-libs.md) documents the standalone
   `base-bash-libs` package, Base's external reusable-library consumption path,
   Homebrew/core readiness path, and the post-migration boundary.

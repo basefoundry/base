@@ -184,6 +184,12 @@ readonly by Base.
 | `BASE_INSTALL_DIR` | `install.sh` | Overrides the default source install directory. |
 | `BASE_BOOTSTRAP_MODE` | `bootstrap.sh` | Selects bootstrap mode when no command-line mode overrides it. |
 
+The clean-slate ownership boundary and proposed run-oriented layout for
+`BASE_CACHE_DIR` are documented in
+[Cache Ownership And Layout](cache-ownership-and-layout.md). That document is
+currently a design contract; the runtime still uses the existing layout until
+the implementation work lands.
+
 Additional setup and bootstrap `BASE_SETUP_*`, `BASE_BOOTSTRAP_*`, and
 `BASE_INSTALL_*` variables exist for tests, CI, and narrow command overrides.
 Those are command-specific inputs, not shell runtime contract variables.
