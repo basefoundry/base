@@ -88,6 +88,7 @@ def write_primary_record(
     started_at: datetime,
     exit_code: int,
     run_id: str,
+    scope: str = HISTORY_SCOPE_PRIMARY,
     project: str | None = None,
     project_root: str | None = None,
     manifest: str | None = None,
@@ -108,7 +109,7 @@ def write_primary_record(
         "exit_code": exit_code,
         "status": "ok" if exit_code == 0 else "error",
         "os": normalized_os(),
-        "scope": HISTORY_SCOPE_PRIMARY,
+        "scope": scope,
     }
     optional_fields = {
         "project": project,

@@ -81,6 +81,23 @@ load ./basectl_helpers.bash
     [[ "$output" != *"unexpected run"* ]]
 }
 
+@test "basectl onboard preserves the selected project for history" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/onboard.sh"
+            base_onboard_run_command() { return 0; }
+            base_onboard_subcommand_main bankbuddy --dry-run --no-profile
+            printf "history_project=%s history_root=%s history_manifest=%s\\n" \
+                "${BASE_CLI_HISTORY_PROJECT:-}" "${BASE_CLI_HISTORY_PROJECT_ROOT:-}" "${BASE_CLI_HISTORY_MANIFEST:-}"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"history_project=bankbuddy history_root= history_manifest="* ]]
+}
+
 @test "basectl onboard rejects multiple projects" {
     run env \
         HOME="$TEST_HOME" \

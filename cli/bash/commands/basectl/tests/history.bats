@@ -19,11 +19,11 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl history --project demo --command check --status error --limit 3 --format json --include-internal
+    run_basectl history --project demo --command check --status error --limit 3 --format json --include-internal --local-time
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=base"* ]]
-    [[ "$output" == *"ARGS=--project demo --command check --status error --limit 3 --format json --include-internal"* ]]
+    [[ "$output" == *"ARGS=--project demo --command check --status error --limit 3 --format json --include-internal --local-time"* ]]
 }
 
 @test "basectl history forwards report mode to the Python history layer" {
@@ -77,6 +77,7 @@ EOF
     [[ "$output" == *"--project <name>"* ]]
     [[ "$output" == *"--report"* ]]
     [[ "$output" == *"--include-internal"* ]]
+    [[ "$output" == *"--local-time"* ]]
     [[ "$output" == *"--format <text|markdown|json>"* ]]
 }
 

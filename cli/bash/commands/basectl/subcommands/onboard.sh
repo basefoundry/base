@@ -120,6 +120,29 @@ base_onboard_execute() {
     base_onboard_run_command "$@"
 }
 
+base_onboard_set_history_context() {
+    local project="$1"
+    local manifest_path python_bin resolved_name resolved_root
+
+    export BASE_CLI_HISTORY_PROJECT="$project"
+    unset BASE_CLI_HISTORY_PROJECT_ROOT BASE_CLI_HISTORY_MANIFEST
+    if [[ "$project" == base ]]; then
+        export BASE_CLI_HISTORY_PROJECT_ROOT="$BASE_HOME"
+        export BASE_CLI_HISTORY_MANIFEST="$BASE_HOME/base_manifest.yaml"
+        return 0
+    fi
+
+    # Onboarding can run before the Base venv exists, so context resolution is
+    # best effort. The delegated setup/check commands will resolve it later.
+    setup_ensure_cached_paths
+    python_bin="$(setup_base_venv_python_bin "$_BASE_SETUP_VENV_DIR_CACHE")" || return 0
+    if setup_resolve_project_manifest "$project" "$python_bin" resolved_name resolved_root manifest_path; then
+        export BASE_CLI_HISTORY_PROJECT="$resolved_name"
+        export BASE_CLI_HISTORY_PROJECT_ROOT="$resolved_root"
+        export BASE_CLI_HISTORY_MANIFEST="$manifest_path"
+    fi
+}
+
 base_onboard_subcommand_main() {
     local dry_run=0
     local no_profile=0
@@ -187,6 +210,10 @@ base_onboard_subcommand_main() {
     check_args=(check "$project")
     setup_args=(setup "$project")
     doctor_args=(doctor "$project")
+
+    # Keep the onboarding record associated with the selected project even
+    # though its checklist delegates to several other basectl commands.
+    base_onboard_set_history_context "$project"
 
     if setup_profiles_enabled; then
         check_args+=(--profile "$(setup_profiles_csv)")

@@ -18,6 +18,7 @@ Options:
                         Output format. Defaults to text, or Markdown with --report.
   --report              Print a privacy-conscious Markdown or JSON activity report.
   --include-internal    Include delegated internal steps in the output.
+  --local-time          Render text and Markdown timestamps in the local timezone. Defaults to UTC.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 
@@ -44,6 +45,10 @@ base_history_subcommand_main() {
                 shift
                 ;;
             --include-internal)
+                args+=("$1")
+                shift
+                ;;
+            --local-time)
                 args+=("$1")
                 shift
                 ;;

@@ -180,6 +180,9 @@ Expected options:
 - `--report --format json` prints the same report as deterministic JSON.
 - `--include-internal` includes delegated resolver, routing, bootstrap, and
   trust-gate records linked to each primary command.
+- Text and Markdown timestamps are labeled `TIME (UTC)`/`Time (UTC)` by default.
+  `--local-time` renders those views in the host's local timezone; JSON keeps
+  canonical UTC timestamps for stable automation.
 
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.

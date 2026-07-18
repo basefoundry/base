@@ -58,6 +58,7 @@ class HistoryOptions:
     output_format: str
     report: bool
     include_internal: bool
+    local_time: bool
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,11 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--format", "output_format", default="text", help="Output format: text, markdown, or json.")
 @base_cli.option("--report", is_flag=True, help="Print a privacy-conscious local activity report.")
 @base_cli.option("--include-internal", is_flag=True, help="Include delegated internal steps in the output.")
+@base_cli.option(
+    "--local-time",
+    is_flag=True,
+    help="Render text and Markdown timestamps in local time; defaults to UTC.",
+)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -99,6 +105,7 @@ def run(
     output_format: str,
     report: bool,
     include_internal: bool,
+    local_time: bool,
 ) -> int:
     try:
         options = HistoryOptions(
@@ -109,6 +116,7 @@ def run(
             output_format=normalize_report_format(output_format) if report else normalize_format(output_format),
             report=report,
             include_internal=include_internal,
+            local_time=local_time,
         )
     except ValueError as exc:
         ctx.log.error(str(exc))
@@ -121,7 +129,7 @@ def run(
         if options.output_format == "json":
             print(json.dumps(history_report_to_json(history_report), indent=2, sort_keys=True))
         else:
-            print_history_report_markdown(history_report)
+            print_history_report_markdown(history_report, local_time=options.local_time)
         return base_cli.ExitCode.SUCCESS
 
     if options.output_format == "json":
@@ -130,7 +138,7 @@ def run(
     if not records:
         print(f"No Base command history found under {cache_root / HISTORY_PATH}.")
         return base_cli.ExitCode.SUCCESS
-    print_history_table(records)
+    print_history_table(records, local_time=options.local_time)
     return base_cli.ExitCode.SUCCESS
 
 
@@ -235,11 +243,12 @@ def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> lis
     return filtered
 
 
-def print_history_table(records: list[HistoryRecord]) -> None:
-    print(f"{'TIME':<19}  {'COMMAND':<12}  {'PROJECT':<12}  {'STATUS':<6}  {'EXIT':<4}  LOG")
+def print_history_table(records: list[HistoryRecord], *, local_time: bool = False) -> None:
+    time_label = "TIME (LOCAL)" if local_time else "TIME (UTC)"
+    print(f"{time_label:<19}  {'COMMAND':<12}  {'PROJECT':<12}  {'STATUS':<6}  {'EXIT':<4}  LOG")
     for record in records:
         print(
-            f"{display_time(record):<19}  "
+            f"{display_time(record, local_time=local_time):<19}  "
             f"{record.command:<12}  "
             f"{display_project(record):<12}  "
             f"{record.status:<6}  "
@@ -248,10 +257,11 @@ def print_history_table(records: list[HistoryRecord]) -> None:
         )
 
 
-def display_time(record: HistoryRecord) -> str:
+def display_time(record: HistoryRecord, *, local_time: bool = False) -> str:
     if record.sort_time == datetime.min.replace(tzinfo=timezone.utc):
         return "?"
-    return f"{record.sort_time:%Y-%m-%d %H:%M:%S}"
+    rendered = record.sort_time.astimezone() if local_time else record.sort_time.astimezone(timezone.utc)
+    return f"{rendered:%Y-%m-%d %H:%M:%S}"
 
 
 def display_project(record: HistoryRecord) -> str:
@@ -389,7 +399,7 @@ def compact_report_home_text(value: str) -> str:
     return value
 
 
-def print_history_report_markdown(report: HistoryReport) -> None:
+def print_history_report_markdown(report: HistoryReport, *, local_time: bool = False) -> None:
     print("# Base Local Activity Report")
     print()
     print(f"- History index: `{sanitize_report_path(str(report.history_path))}`")
@@ -423,12 +433,13 @@ def print_history_report_markdown(report: HistoryReport) -> None:
 
     print("## Recent Commands")
     print()
-    print("| Time | Command | Project | Status | Exit | Log |")
+    time_label = "Time (LOCAL)" if local_time else "Time (UTC)"
+    print(f"| {time_label} | Command | Project | Status | Exit | Log |")
     print("| --- | --- | --- | --- | --- | --- |")
     for record in report.records:
         print(
             "| "
-            f"{markdown_cell(display_time(record))} | "
+            f"{markdown_cell(display_time(record, local_time=local_time))} | "
             f"`{markdown_cell(record.command)}` | "
             f"{markdown_cell(display_project(record))} | "
             f"{markdown_cell(record.status)} | "
@@ -441,7 +452,7 @@ def print_history_report_markdown(report: HistoryReport) -> None:
         print("## Failure Details")
         print()
         for record in report.failures:
-            print(f"- `{sanitize_report_text(record.command)}` at {display_time(record)}")
+            print(f"- `{sanitize_report_text(record.command)}` at {display_time(record, local_time=local_time)}")
             print(f"  - status: {sanitize_report_text(record.status)}")
             print(f"  - exit: {display_exit_code(record)}")
             print(f"  - log: {display_report_log_path(record)}")

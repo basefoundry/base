@@ -587,7 +587,7 @@ run_zsh_positional_completion() {
     [[ "$block" == *"--config"* ]]
 }
 
-@test "Zsh history completion includes report option" {
+@test "Zsh history completion includes report and local-time options" {
     local block
 
     block="$(
@@ -600,6 +600,7 @@ run_zsh_positional_completion() {
 
     [[ "$block" == *"--report"* ]]
     [[ "$block" == *"--include-internal"* ]]
+    [[ "$block" == *"--local-time"* ]]
 }
 
 @test "Zsh release completion scopes inspection and publish options" {

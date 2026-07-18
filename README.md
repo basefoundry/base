@@ -1114,6 +1114,7 @@ basectl history --format json
 basectl history --report
 basectl history --report --format json
 basectl history --include-internal
+basectl history --local-time
 ```
 
 `basectl history` reads the local history index at
@@ -1123,7 +1124,9 @@ as internal records and can be shown with `--include-internal`. History records
 point to raw logs instead of replacing them, and malformed history lines are
 ignored while listing recent runs. `--report` prints a privacy-conscious local activity
 summary with recent commands, failure counts, common failing command families,
-and log file locations. Reports do not include raw log contents, compact home
+and log file locations. Text and Markdown timestamps use UTC by default;
+`--local-time` renders those views in the host's local timezone. JSON retains
+canonical UTC timestamps. Reports do not include raw log contents, compact home
 paths to `~`, and redact secret-looking arguments and URL credentials. The
 broader local diagnostic report model is described in
 [docs/observability.md](docs/observability.md).
