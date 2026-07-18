@@ -171,6 +171,8 @@ def base_setup_action(argv: list[str]) -> str | None:
 
 
 def project_name(context: Context) -> str | None:
+    if context.project_name:
+        return context.project_name
     if context.manifest_path is None:
         return None
     try:

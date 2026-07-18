@@ -11,6 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.history import build_finished_record
 from base_cli.testing import invoke
 
 
@@ -95,6 +96,39 @@ def init_git_repo(project_root: Path, origin: str) -> str:
 
 
 class ManifestCommandTrustTests(unittest.TestCase):
+    def test_require_explicit_manifest_populates_history_project_metadata(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project_root = root / "work" / "demo"
+            manifest_path = write_manifest(project_root)
+            outside = root / "outside"
+            outside.mkdir()
+            captured: list[tuple[object, ...]] = []
+
+            with mock.patch(
+                "base_cli.app.write_finished_record",
+                side_effect=lambda *args: captured.append(args),
+            ):
+                result = invoke(
+                    engine.app,
+                    ["require", "demo", "--manifest", str(manifest_path)],
+                    home=home,
+                    cwd=outside,
+                    env={"BASE_HOME": str(root / "base")},
+                )
+
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Manifest-declared commands are not allowed", result.stderr)
+            self.assertEqual(len(captured), 1)
+            record = build_finished_record(*captured[0])
+
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(project_root.resolve()))
+        self.assertEqual(record["manifest"], str(manifest_path.resolve()))
+
     def test_engine_reexports_trust_store_helpers(self) -> None:
         from base_trust import engine, trust_store
 

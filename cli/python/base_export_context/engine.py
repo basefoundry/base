@@ -72,6 +72,12 @@ def run(
         print_bundle=print_bundle,
         list_files=list_files,
     )
+    manifest_path = options.project_root / "base_manifest.yaml"
+    ctx.bind_project(
+        options.project_name,
+        options.project_root,
+        manifest_path if manifest_path.is_file() else None,
+    )
     validation_error = validate_options(options, raw_output_format=output_format)
     if validation_error is not None:
         ctx.log.error(validation_error)

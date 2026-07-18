@@ -84,8 +84,7 @@ def run(
 ) -> int:
     manifest_path = Path(manifest).resolve() if manifest else discover_manifest(Path(start_dir))
     if manifest_path is not None:
-        ctx.manifest_path = manifest_path
-        ctx.project_root = manifest_path.parent
+        ctx.bind_project(None, manifest_path.parent, manifest_path)
     if manifest_path is None:
         if project:
             ctx.log.error("No base_manifest.yaml found for project '%s'.", project)
@@ -95,6 +94,7 @@ def run(
 
     try:
         base_manifest = read_manifest(manifest_path)
+        ctx.bind_project(base_manifest.project_name, manifest_path.parent, manifest_path)
         validate_project_name(base_manifest, project)
         manifest_action = ManifestAction(action, dry_run, output_format, write, remote_network)
         if action == "route":

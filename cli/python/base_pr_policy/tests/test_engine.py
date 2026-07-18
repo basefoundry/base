@@ -1,10 +1,45 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest import mock
 
+from base_cli.history import build_finished_record
+from base_cli.testing import invoke
 from base_pr_policy import engine
 from base_pr_policy.engine import PrPolicyInputs, render_pr_body
 from base_setup.github_manifest import GithubPrConfig, GithubPrRequiredSectionsConfig
+
+
+def test_explicit_manifest_populates_history_project_metadata(tmp_path) -> None:
+    project_root = tmp_path / "demo"
+    project_root.mkdir()
+    manifest_path = project_root / "base_manifest.yaml"
+    manifest_path.write_text(
+        "project:\n  name: demo\ngithub:\n  pr:\n    required_sections:\n      default: [Summary]\n",
+        encoding="utf-8",
+    )
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    captured = []
+
+    with mock.patch(
+        "base_cli.app.write_finished_record",
+        side_effect=lambda *args: captured.append(args),
+    ):
+        result = invoke(
+            engine.app,
+            ["body", "--manifest", str(manifest_path)],
+            home=tmp_path / "home",
+            cwd=outside,
+            env={"BASE_HOME": str(project_root)},
+        )
+
+    assert result.exit_code == 0, result.output
+    assert len(captured) == 1
+    record = build_finished_record(*captured[0])
+    assert record["project"] == "demo"
+    assert record["project_root"] == str(project_root.resolve())
+    assert record["manifest"] == str(manifest_path.resolve())
 
 
 def test_main_rejects_equals_form_options(capsys) -> None:

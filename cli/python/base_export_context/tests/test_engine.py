@@ -9,6 +9,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_cli.history import build_finished_record
 from base_export_context import engine
 
 
@@ -32,6 +33,46 @@ def invoke_engine(args: list[str], project_root: Path) -> tuple[int, str, str]:
 
 
 class ExportContextTests(unittest.TestCase):
+    def test_explicit_project_root_populates_history_project_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            project_root = root / "demo"
+            project_root.mkdir()
+            (project_root / "base_manifest.yaml").write_text(
+                "project:\n  name: demo\nartifacts: []\n",
+                encoding="utf-8",
+            )
+            write_context_file(project_root, "PROJECT.md", "Project\n")
+            outside = root / "outside"
+            outside.mkdir()
+            captured: list[tuple[object, ...]] = []
+
+            with (
+                mock.patch("base_cli.app.current_working_dir", return_value=outside),
+                mock.patch(
+                    "base_cli.app.write_finished_record",
+                    side_effect=lambda *args: captured.append(args),
+                ),
+            ):
+                status, _stdout, stderr = invoke_engine(
+                    [
+                        "--project-name",
+                        "demo",
+                        "--project-root",
+                        str(project_root),
+                        "--list-files",
+                    ],
+                    project_root,
+                )
+
+            self.assertEqual((status, stderr), (0, ""))
+            self.assertEqual(len(captured), 1)
+            record = build_finished_record(*captured[0])
+
+        self.assertEqual(record["project"], "demo")
+        self.assertEqual(record["project_root"], str(project_root.resolve()))
+        self.assertEqual(record["manifest"], str((project_root / "base_manifest.yaml").resolve()))
+
     def test_main_reports_unknown_option_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir) / "demo"
