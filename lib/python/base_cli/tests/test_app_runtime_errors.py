@@ -44,6 +44,6 @@ class AppRuntimeErrorTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         self.assertIn("Error:", error)
         self.assertIn("Unable to create Base runtime directory", error)
-        self.assertIn(str(cache_root / "cli" / "cache-failure" / "logs"), error)
+        self.assertIn(str(cache_root / "base" / "runs"), error)
         self.assertIn("BASE_CACHE_DIR", error)
         self.assertNotIn("Traceback", error)

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import hashlib
 import os
+import re
 import sys
 import time
 import uuid
@@ -56,6 +58,53 @@ def normalize_cli_name(name: str) -> str:
     if "." in stem:
         stem = stem.rsplit(".", 1)[0]
     return stem.replace(" ", "-")
+
+
+def normalize_runtime_owner(value: str | None = None) -> str:
+    """Return the runtime owner namespace for a command invocation."""
+    owner = (value or os.environ.get("BASE_CLI_RUNTIME_OWNER") or "base").strip().lower()
+    if owner not in {"base", "project"}:
+        raise ValueError("BASE_CLI_RUNTIME_OWNER must be 'base' or 'project'.")
+    return owner
+
+
+def runtime_project_name(value: str | None = None) -> str | None:
+    name = (value or os.environ.get("BASE_CLI_PROJECT_NAME") or "").strip()
+    return name or None
+
+
+def runtime_project_root(value: Path | str | None = None) -> Path | None:
+    candidate = value or os.environ.get("BASE_CLI_PROJECT_ROOT")
+    if not candidate:
+        return None
+    return Path(candidate).expanduser().resolve()
+
+
+def runtime_slug(value: str, fallback: str = "unnamed") -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip()).strip(".-_").lower()
+    return normalized or fallback
+
+
+def checkout_id(project_root: Path | None) -> str | None:
+    if project_root is None:
+        return None
+    digest = hashlib.sha256(str(project_root.expanduser().resolve()).encode("utf-8")).hexdigest()
+    return digest[:12]
+
+
+def runtime_owner_root(
+    cache_root: Path,
+    owner: str = "base",
+    project_name: str | None = None,
+    project_root: Path | None = None,
+) -> Path:
+    normalized_owner = normalize_runtime_owner(owner)
+    if normalized_owner == "base":
+        return cache_root / "base"
+
+    name = runtime_slug(project_name or "unnamed")
+    checkout = checkout_id(project_root) or "unknown"
+    return cache_root / "projects" / name / checkout
 
 
 def discover_manifest(start: Path) -> Path | None:

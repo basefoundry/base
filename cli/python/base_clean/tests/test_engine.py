@@ -35,83 +35,71 @@ class BaseCleanTests(unittest.TestCase):
     def test_find_clean_candidates_only_includes_old_runtime_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
-            old_log = cache_root / "cli" / "demo" / "logs" / "old.log"
-            new_log = cache_root / "cli" / "demo" / "logs" / "new.log"
-            old_temp = cache_root / "cli" / "demo" / "tmp" / "old-run"
-            old_cache = cache_root / "cli" / "demo" / "cache" / "old-cache"
+            old_run = cache_root / "base" / "runs" / "old-run"
+            new_run = cache_root / "base" / "runs" / "new-run"
+            old_log = old_run / "logs" / "old.log"
+            new_log = new_run / "logs" / "new.log"
+            old_cache = cache_root / "base" / "cache" / "components" / "old-cache"
             durable_state = cache_root / "durable-state" / ".base.d" / "cli" / "demo" / "logs" / "durable.log"
 
-            old_temp.mkdir(parents=True)
+            old_run.mkdir(parents=True)
+            (new_run / "logs").mkdir(parents=True)
             old_cache.mkdir(parents=True)
             old_log.parent.mkdir(parents=True, exist_ok=True)
             durable_state.parent.mkdir(parents=True)
             for path in (old_log, new_log, durable_state):
                 path.write_text("x", encoding="utf-8")
+            (old_run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
+            (new_run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
 
             old_time = time.time() - 40 * 24 * 60 * 60
             new_time = time.time()
-            for path in (old_log, old_temp, old_cache, durable_state):
+            for path in (old_run / "run.json", old_cache, durable_state):
                 os.utime(path, (old_time, old_time))
-            os.utime(new_log, (new_time, new_time))
+            os.utime(new_run / "run.json", (new_time, new_time))
 
             candidates = engine.find_clean_candidates(cache_root, time.time() - 30 * 24 * 60 * 60)
 
         self.assertEqual(
             [(candidate.category, candidate.path.name) for candidate in candidates],
-            [("cache", "old-cache"), ("log", "old.log"), ("temp", "old-run")],
+            [("cache", "old-cache"), ("run", "old-run")],
         )
 
     def test_find_clean_candidates_logs_examined_directories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
-            (cache_root / "cli" / "demo" / "logs").mkdir(parents=True)
+            (cache_root / "base" / "runs").mkdir(parents=True)
             logger = mock.Mock()
 
             engine.find_clean_candidates(cache_root, time.time(), logger)
 
-        logger.debug.assert_any_call("Scanning Base CLI runtime root '%s'.", cache_root / "cli")
-        logger.debug.assert_any_call(
-            "Scanning %s runtime artifacts in '%s'.",
-            "log",
-            cache_root / "cli" / "demo" / "logs",
-        )
-        logger.debug.assert_any_call(
-            "Scanning %s runtime artifacts in '%s'.",
-            "temp",
-            cache_root / "cli" / "demo" / "tmp",
-        )
+        logger.debug.assert_any_call("Scanning runtime owner root '%s'.", cache_root / "base")
         logger.debug.assert_any_call(
             "Scanning %s runtime artifacts in '%s'.",
             "cache",
-            cache_root / "cli" / "demo" / "cache",
+            cache_root / "base" / "cache" / "components",
         )
 
     def test_find_log_retention_candidates_keeps_newest_logs_per_cli(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
-            demo_logs = cache_root / "cli" / "demo" / "logs"
-            other_logs = cache_root / "cli" / "other" / "logs"
-            demo_logs.mkdir(parents=True)
-            other_logs.mkdir(parents=True)
-            demo_old = demo_logs / "demo-1.log"
-            demo_middle = demo_logs / "demo-2.log"
-            demo_new = demo_logs / "demo-3.log"
-            demo_notes = demo_logs / "notes.txt"
-            other_old = other_logs / "other-1.log"
-            other_new = other_logs / "other-2.log"
-            for path in (demo_old, demo_middle, demo_new, demo_notes, other_old, other_new):
-                path.write_text("x", encoding="utf-8")
+            runs = cache_root / "base" / "runs"
+            demo_old, demo_middle, demo_new = (runs / name for name in ("demo-1", "demo-2", "demo-3"))
+            other_old, other_new = (runs / name for name in ("other-1", "other-2"))
+            for path in (demo_old, demo_middle, demo_new, other_old, other_new):
+                (path / "run.json").parent.mkdir(parents=True, exist_ok=True)
+                (path / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
 
             now = time.time()
             for offset, path in enumerate((demo_old, demo_middle, demo_new, other_old, other_new), start=1):
                 timestamp = now - (10 - offset)
-                os.utime(path, (timestamp, timestamp))
+                os.utime(path / "run.json", (timestamp, timestamp))
 
             candidates = engine.find_log_retention_candidates(cache_root, keep_count=1)
 
         self.assertEqual(
             [(candidate.category, candidate.path.name) for candidate in candidates],
-            [("log", "demo-1.log"), ("log", "demo-2.log"), ("log", "other-1.log")],
+            [("run", "demo-1"), ("run", "demo-2"), ("run", "demo-3"), ("run", "other-1")],
         )
 
     def test_remove_path_removes_files_and_directories(self) -> None:
@@ -132,11 +120,13 @@ class BaseCleanTests(unittest.TestCase):
     def test_clean_dry_run_reports_without_removing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir) / "cache-root"
-            old_log = cache_root / "cli" / "demo" / "logs" / "old.log"
+            old_run = cache_root / "base" / "runs" / "old-run"
+            old_log = old_run / "logs" / "old.log"
             old_log.parent.mkdir(parents=True)
             old_log.write_text("x", encoding="utf-8")
+            (old_run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
             old_time = time.time() - 40 * 24 * 60 * 60
-            os.utime(old_log, (old_time, old_time))
+            os.utime(old_run / "run.json", (old_time, old_time))
 
             with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
                 result = engine.main(["--older-than", "30d", "--dry-run"])
@@ -147,11 +137,13 @@ class BaseCleanTests(unittest.TestCase):
     def test_clean_removes_old_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir) / "cache-root"
-            old_log = cache_root / "cli" / "demo" / "logs" / "old.log"
+            old_run = cache_root / "base" / "runs" / "old-run"
+            old_log = old_run / "logs" / "old.log"
             old_log.parent.mkdir(parents=True)
             old_log.write_text("x", encoding="utf-8")
+            (old_run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
             old_time = time.time() - 40 * 24 * 60 * 60
-            os.utime(old_log, (old_time, old_time))
+            os.utime(old_run / "run.json", (old_time, old_time))
 
             with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
                 result = engine.main(["--older-than", "30d"])
@@ -162,37 +154,42 @@ class BaseCleanTests(unittest.TestCase):
     def test_clean_keep_last_removes_old_logs_but_keeps_latest(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir) / "cache-root"
-            logs_dir = cache_root / "cli" / "demo" / "logs"
-            logs_dir.mkdir(parents=True)
-            old_log = logs_dir / "old.log"
-            new_log = logs_dir / "new.log"
-            for path in (old_log, new_log):
+            runs_dir = cache_root / "base" / "runs"
+            old_run = runs_dir / "old-run"
+            new_run = runs_dir / "new-run"
+            old_log = old_run / "logs" / "old.log"
+            new_log = new_run / "logs" / "new.log"
+            for path, run in ((old_log, old_run), (new_log, new_run)):
+                path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("x", encoding="utf-8")
+                (run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
             now = time.time()
-            os.utime(old_log, (now - 10, now - 10))
-            os.utime(new_log, (now, now))
+            os.utime(old_run / "run.json", (now - 10, now - 10))
+            os.utime(new_run / "run.json", (now, now))
 
             with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
                 result = engine.main(["--keep-last", "1"])
 
             self.assertEqual(result, 0)
-            self.assertFalse(old_log.exists())
+            self.assertFalse(old_run.exists())
             self.assertTrue(new_log.exists())
 
     def test_clean_deduplicates_age_and_retention_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir) / "cache-root"
-            old_log = cache_root / "cli" / "demo" / "logs" / "old.log"
+            old_run = cache_root / "base" / "runs" / "old-run"
+            old_log = old_run / "logs" / "old.log"
             old_log.parent.mkdir(parents=True)
             old_log.write_text("x", encoding="utf-8")
+            (old_run / "run.json").write_text('{"status":"ok"}\n', encoding="utf-8")
             old_time = time.time() - 40 * 24 * 60 * 60
-            os.utime(old_log, (old_time, old_time))
+            os.utime(old_run / "run.json", (old_time, old_time))
 
             with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
                 result = engine.main(["--older-than", "30d", "--keep-last", "1"])
 
             self.assertEqual(result, 0)
-            self.assertFalse(old_log.exists())
+            self.assertFalse(old_run.exists())
 
     def test_clean_invalid_older_than_returns_usage_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

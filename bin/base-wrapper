@@ -108,7 +108,11 @@ main() {
 
     BASE_HOME="$base_home"
     BASE_PROJECT="$project"
-    export BASE_HOME BASE_PROJECT
+    # This wrapper always launches Base's control-plane Python packages. The
+    # selected project only chooses the virtual environment; it must not move
+    # Base-owned runtime artifacts into a project's namespace.
+    BASE_CLI_RUNTIME_OWNER=base
+    export BASE_HOME BASE_PROJECT BASE_CLI_RUNTIME_OWNER
 
     python_bin="${BASE_PROJECT_VENV_DIR:-$HOME/.base.d/$project/.venv}/bin/python"
     [[ -x "$python_bin" ]] || base_wrapper_die "Project virtual environment Python was not found at '$python_bin'. Run 'basectl setup'."

@@ -192,7 +192,7 @@ def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandO
     if options.path_only or options.tail or options.open_file:
         ctx.log.error("No Base CLI logs found.")
         return base_cli.ExitCode.FAILURE
-    print(f"No Base CLI logs found under {cache_root / 'cli'}.")
+    print(f"No Base CLI logs found under {cache_root / 'base' / 'runs'} or {cache_root / 'projects'}.")
     return base_cli.ExitCode.SUCCESS
 
 
@@ -438,20 +438,17 @@ def recent_logs(cache_root: Path, command_filter: str | None = None) -> list[Log
 
 
 def discover_log_entries(cache_root: Path) -> list[LogEntry]:
-    cli_root = cache_root / "cli"
-    if not cli_root.is_dir():
-        return []
-
     history_statuses = read_history_log_statuses(cache_root)
     entries: list[LogEntry] = []
-    for logs_dir in sorted(cli_root.glob("*/logs"), key=str):
-        if not logs_dir.is_dir():
+    for run_root in runtime_run_roots(cache_root):
+        logs_root = run_root / "logs"
+        if not logs_root.is_dir():
             continue
-        raw_command = logs_dir.parent.name
-        for path in sorted(logs_dir.glob("*.log"), key=lambda item: item.name):
+        for path in sorted(logs_root.rglob("*.log"), key=lambda item: str(item)):
             if not path.is_file():
                 continue
             history_status = history_status_for_log(history_statuses, run_id=path.stem, path=path)
+            raw_command = infer_raw_command_from_log_path(path)
             entries.append(
                 LogEntry(
                     command=history_status.command
@@ -466,6 +463,23 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
                 )
             )
     return entries
+
+
+def runtime_run_roots(cache_root: Path) -> list[Path]:
+    roots: list[Path] = []
+    roots.extend(path for path in sorted((cache_root / "base" / "runs").glob("*"), key=str) if path.is_dir())
+    roots.extend(
+        path
+        for path in sorted((cache_root / "projects").glob("*/*/runs/*"), key=str)
+        if path.is_dir()
+    )
+    return roots
+
+
+def infer_raw_command_from_log_path(path: Path) -> str:
+    if path.parent.name == "logs":
+        return "basectl"
+    return path.parent.name
 
 
 def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:

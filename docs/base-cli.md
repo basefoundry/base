@@ -131,11 +131,14 @@ ctx.manifest_path  # Path | None
 ctx.history_scope  # primary or internal
 ctx.history_parent_run_id  # parent basectl invocation ID, or None
 ctx.workspace_root # configured workspace root, or None
-ctx.state_dir      # Base cache root / cli / <cli-name>
-ctx.log_dir        # state_dir/logs
-ctx.cache_dir      # state_dir/cache
-ctx.temp_dir       # state_dir/tmp/<run-id>
-ctx.log_file       # log_dir/<run-id>.log, or None when persistent logging is disabled
+ctx.runtime_owner  # base or project
+ctx.owner_root     # owner namespace root under the cache root
+ctx.run_root       # this invocation's run bundle
+ctx.state_dir      # owner_root (compatibility alias)
+ctx.log_dir        # run_root/logs or run_root/logs/internal/<cli-name>
+ctx.cache_dir      # owner_root/cache/components/<cli-name>
+ctx.temp_dir       # run_root/tmp/<cli-name>/<run-id>
+ctx.log_file       # primary.log or an internal component log, or None when disabled
 ctx.config         # dict
 ctx.user_config    # typed user config from ~/.base.d/config.yaml
 ctx.environment    # str
@@ -157,19 +160,20 @@ artifact management.
 
 ## State Directories
 
-Base separates durable user state from disposable runtime artifacts.
-Durable config and project virtual environments live under `~/.base.d`.
-Per-run CLI logs, caches, and temp directories live under the Base runtime
-cache root.
+Base separates durable user state from disposable runtime artifacts. Durable
+config and project virtual environments live under `~/.base.d`. Per-run logs
+and temp directories live in owner-aware bundles under the Base runtime cache
+root.
 
 ```text
 <base-cache-root>/
-  cli/
-    <cli-name>/
-      logs/
-        <run-id>.log
-      cache/
-      tmp/
+  base/
+    history/runs.jsonl
+    runs/<run-id>/{run.json,logs/,tmp/}
+    cache/components/<cli-name>/
+  projects/<project>/<checkout-id>/
+    runs/<run-id>/{run.json,logs/,tmp/}
+    cache/components/<cli-name>/
         <run-id>/
 ```
 
@@ -187,9 +191,8 @@ Directory lifecycle:
 
 | Directory | Created | Removed |
 |---|---|---|
-| `logs/` | before command execution | never by default |
-| `cache/` | before command execution | explicit CLI logic only |
-| `tmp/<run-id>/` | before command execution | after command execution unless kept |
+| `run.json`, `logs/`, `tmp/` | before command execution | run-bundle cleanup |
+| `cache/components/` | when a component needs it | explicit CLI cleanup |
 
 Commands running with `ctx.dry_run` skip default `logs/`, `cache/`, and
 `tmp/<run-id>/` creation unless an explicit log file is supplied.

@@ -13,14 +13,14 @@ from base_logs import engine
 
 
 def write_log(cache_root: Path, cli_name: str, run_id: str, text: str) -> Path:
-    path = cache_root / "cli" / cli_name / "logs" / f"{run_id}.log"
+    path = cache_root / "base" / "runs" / run_id / "logs" / "internal" / cli_name / f"{run_id}.log"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
 
 
 def write_history_line(cache_root: Path, payload: dict | str) -> None:
-    path = cache_root / "history" / "runs.jsonl"
+    path = cache_root / "base" / "history" / "runs.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     text = payload if isinstance(payload, str) else json.dumps(payload)
     with path.open("a", encoding="utf-8") as handle:
@@ -299,7 +299,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                     status="ok",
                     exit_code=0,
                     ended_at="2026-06-01T01:01:00Z",
-                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "ok.log"),
+                    log_path=str(cache_root / "base" / "runs" / "ok-run" / "logs" / "primary.log"),
                 ),
             )
             write_history_line(
@@ -338,7 +338,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                     "20260601T010000_aaaaaaaa",
                     status="ok",
                     exit_code=0,
-                    log_path=str(cache_root / "cli" / "base_setup" / "logs" / "ok.log"),
+                    log_path=str(cache_root / "base" / "runs" / "ok-run" / "logs" / "primary.log"),
                 ),
             )
 
@@ -351,7 +351,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
     def test_last_reports_missing_log_with_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
-            missing_log = cache_root / "cli" / "base_setup" / "logs" / "missing.log"
+            missing_log = cache_root / "base" / "runs" / "missing-run" / "logs" / "primary.log"
             write_history_line(
                 cache_root,
                 history_record(
@@ -468,7 +468,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertIn("No Base CLI logs found", stdout)
         self.assertIn(" DEBUG ", stderr)
         self.assertIn("cli=base_logs", stderr)
-        self.assertFalse((cache_root / "cli" / "base_logs").exists())
+        self.assertFalse((cache_root / "base" / "runs").exists())
 
     def test_path_errors_when_no_log_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

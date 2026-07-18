@@ -45,6 +45,9 @@ class Context:
     cleanup_hooks: list[Callable[[], None]] = field(default_factory=list)
     workspace_root: Path | None = None
     quiet: bool = False
+    runtime_owner: str = "base"
+    owner_root: Path | None = None
+    run_root: Path | None = None
 
     def on_cleanup(self, hook: Callable[[], None]) -> None:
         self.cleanup_hooks.append(hook)

@@ -109,6 +109,19 @@ script path. They describe the script being dispatched, not the user's project.
 | `BASE_BASH_COMMAND_SCRIPT` | Base | Physical path of the dispatched Bash script. | Do not set. Readonly before the command script is sourced. |
 | `BASE_BASH_BOOTSTRAP_SOURCE` | Base | Internal transient override used while `base_init.sh` loads the Bash stdlib so `__SCRIPT_DIR__` resolves to the command script. | Do not set. It is unset immediately after bootstrap and is not part of the public runtime contract. |
 
+## Cache And Run Variables
+
+The cache root is user-tunable; ownership and run identity are assigned by the
+launcher. See [Cache Ownership And Layout](cache-ownership-and-layout.md) for
+the resulting directory tree.
+
+| Variable | Owner | Meaning and impact | User changes |
+| --- | --- | --- | --- |
+| `BASE_CACHE_DIR` | User | Overrides the platform default Base cache root. | May be set before invoking Base. |
+| `BASE_CLI_RUNTIME_OWNER` | Base/project launcher | `base` for Base control-plane processes or `project` for a project-native process. | Do not set manually; launchers establish it. |
+| `BASE_CLI_RUN_ROOT` | Parent launcher | Points a Base-internal child at its parent run bundle so its raw log is placed under `logs/internal/`. Project launchers deliberately unset it before creating a project-owned bundle. | Do not set manually. |
+| `BASE_CLI_HISTORY_PARENT_RUN_ID` | Parent launcher | Links internal or project history records to the public Base invocation. | Do not set manually. |
+
 ## Project Runtime Variables
 
 Project runtime variables are set after Base resolves a project from an
@@ -184,11 +197,10 @@ readonly by Base.
 | `BASE_INSTALL_DIR` | `install.sh` | Overrides the default source install directory. |
 | `BASE_BOOTSTRAP_MODE` | `bootstrap.sh` | Selects bootstrap mode when no command-line mode overrides it. |
 
-The clean-slate ownership boundary and proposed run-oriented layout for
+The clean-slate ownership boundary and implemented run-oriented layout for
 `BASE_CACHE_DIR` are documented in
 [Cache Ownership And Layout](cache-ownership-and-layout.md). That document is
-currently a design contract; the runtime still uses the existing layout until
-the implementation work lands.
+the runtime contract for the owner-aware cache tree.
 
 Additional setup and bootstrap `BASE_SETUP_*`, `BASE_BOOTSTRAP_*`, and
 `BASE_INSTALL_*` variables exist for tests, CI, and narrow command overrides.

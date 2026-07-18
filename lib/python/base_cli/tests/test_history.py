@@ -15,7 +15,7 @@ from base_cli import history as history_helpers
 
 
 def read_history_records(cache_root: Path) -> list[dict]:
-    history_path = cache_root / "history" / "runs.jsonl"
+    history_path = cache_root / "base" / "history" / "runs.jsonl"
     return [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines()]
 
 
@@ -72,7 +72,7 @@ class BaseCliHistoryTests(unittest.TestCase):
                     with mock.patch("base_cli.history.os.write", wraps=real_os_write) as os_write:
                         history_helpers.write_history_record(record)
 
-            history_path = cache_root / "history" / "runs.jsonl"
+            history_path = cache_root / "base" / "history" / "runs.jsonl"
             payloads = [call.args[1] for call in os_write.call_args_list]
             history_mode = history_path.stat().st_mode & 0o777
 
@@ -103,7 +103,7 @@ class BaseCliHistoryTests(unittest.TestCase):
                 with mock.patch("base_cli.history._fcntl", None):
                     history_helpers.write_history_record(record)
 
-            history_mode = (cache_root / "history" / "runs.jsonl").stat().st_mode & 0o777
+            history_mode = (cache_root / "base" / "history" / "runs.jsonl").stat().st_mode & 0o777
             records = read_history_records(cache_root)
 
         self.assertEqual(records, [record])
@@ -199,7 +199,10 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(record["exit_code"], 0)
         self.assertEqual(record["status"], "ok")
         self.assertTrue(record["duration_ms"] >= 0)
-        self.assertTrue(record["log_path"].startswith("~/.cache/base/cli/history-demo/logs/"))
+        self.assertTrue(record["log_path"].startswith("~/.cache/base/base/runs/"))
+        self.assertTrue(record["log_path"].endswith("/logs/primary.log"))
+        self.assertEqual(record["owner"], "base")
+        self.assertTrue(record["bundle_path"].startswith("~/.cache/base/base/runs/"))
         self.assertIn("[REDACTED]", record["argv"])
         self.assertIn("https://[REDACTED]@example.invalid/path", record["argv"])
         self.assertNotIn("super-secret", json.dumps(record))
@@ -230,6 +233,44 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(records[0]["scope"], "internal")
         self.assertEqual(records[0]["parent_run_id"], "parent-1")
+
+    @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
+    def test_project_owner_uses_checkout_scoped_run_bundle(self) -> None:
+        app = base_cli.App(name="project-native")
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            self.assertEqual(ctx.runtime_owner, "project")
+            self.assertEqual(ctx.project_name, "demo")
+            self.assertTrue(ctx.owner_root.parts[-2] == "demo")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir) / "home"
+            project = home / "work" / "demo"
+            home.mkdir()
+            project.mkdir(parents=True)
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "BASE_CLI_RUNTIME_OWNER": "project",
+                    "BASE_CLI_PROJECT_NAME": "demo",
+                    "BASE_CLI_PROJECT_ROOT": str(project),
+                },
+            ):
+                from base_cli.testing import invoke
+
+                result = invoke(
+                    app,
+                    [],
+                    home=home,
+                    cwd=project,
+                    manifest={"project": {"name": "demo"}},
+                )
+            records = read_history_records(home / ".cache" / "base")
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(records[0]["owner"], "project")
+        self.assertIn("/projects/demo/", records[0]["bundle_path"])
 
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_run_app_uses_explicit_argv_for_history_and_log_metadata(self) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import datetime, timezone
 
 import base_cli
@@ -25,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--project")
     parser.add_argument("--project-root")
     parser.add_argument("--manifest")
+    parser.add_argument("--owner", default=os.environ.get("BASE_CLI_RUNTIME_OWNER", "base"))
+    parser.add_argument("--bundle-path")
     parser.add_argument("argv", nargs=argparse.REMAINDER)
     options = parser.parse_args(argv)
 
@@ -42,7 +45,9 @@ def main(argv: list[str] | None = None) -> int:
         project=options.project,
         project_root=options.project_root,
         manifest=options.manifest,
-        log_path=child_log_path(options.run_id, options.exit_code),
+        log_path=None,
+        owner=options.owner,
+        bundle_path=options.bundle_path,
     )
     return base_cli.ExitCode.SUCCESS
 

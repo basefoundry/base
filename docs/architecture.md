@@ -613,8 +613,8 @@ keeps discovery predictable, but repeated YAML parsing still shows up in
 project-aware commands and shell completion.
 
 The implemented cache is intentionally narrow. Base stores discovered project
-metadata under the runtime cache root in `projects/`, keyed by the resolved
-workspace path. On each discovery run it still checks the immediate workspace
+metadata under `base/cache/discovery/`, keyed by the resolved workspace path.
+On each discovery run it still checks the immediate workspace
 children, but it reuses cached project names and paths when the manifest path,
 mtime, and size set is unchanged. A new checkout, manifest edit, or manifest
 removal changes that key data and forces a fresh parse.

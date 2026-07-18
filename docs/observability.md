@@ -58,7 +58,7 @@ Those questions need a structured index in addition to raw log discovery.
 Base writes a structured command history index under the Base cache root:
 
 ```text
-<base-cache-root>/history/runs.jsonl
+<base-cache-root>/base/history/runs.jsonl
 ```
 
 Each line is one JSON object. JSON Lines keeps writes append-only, easy to
@@ -98,7 +98,9 @@ A history record should include:
   "duration_ms": 12000,
   "exit_code": 0,
   "status": "ok",
-  "log_path": "~/Library/Caches/base/cli/base_setup/logs/20260610T101500_ab12cd.log",
+  "owner": "base",
+  "bundle_path": "~/Library/Caches/base/base/runs/20260610T101500_ab12cd",
+  "log_path": "~/Library/Caches/base/base/runs/20260610T101500_ab12cd/logs/primary.log",
   "base_version": "0.4.0",
   "os": "macos",
   "shell": "bash",
@@ -142,18 +144,18 @@ metadata and generated reports.
 
 ## Retention
 
-History belongs to the same local cache lifecycle as runtime logs. `basectl
-clean` should eventually understand history records and remove or compact
-records whose log files have been pruned.
+History belongs to the same local cache lifecycle as runtime logs. Cleanup
+removes run bundles but deliberately retains the append-only history index, so
+history can show that a recorded log or bundle is missing.
 
 The retention contract should be:
 
-- `basectl clean --older-than <age>` removes history records older than the age
-  when their corresponding logs are also eligible for removal.
-- `basectl clean --keep-last <count>` keeps history records for the retained log
-  files and prunes older records for that command family.
-- Orphaned history records may remain temporarily when cleanup cannot match the
-  log path safely, but `basectl history` should mark missing logs clearly.
+- `basectl clean --older-than <age>` removes completed run bundles and component
+  caches older than the age.
+- `basectl clean --keep-last <count>` retains the newest completed bundles per
+  owner namespace.
+- History records remain even when cleanup removes their referenced bundle, and
+  `basectl history` can mark those logs as missing.
 - Durable user state under `~/.base.d` is never cleaned by history retention.
 
 ## Shipped Commands

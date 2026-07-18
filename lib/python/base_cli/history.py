@@ -19,7 +19,7 @@ from .redaction import REDACTED, is_secret_key, option_name_to_parameter, redact
 
 
 SCHEMA_VERSION = 1
-HISTORY_PATH = Path("history") / "runs.jsonl"
+HISTORY_PATH = Path("base") / "history" / "runs.jsonl"
 HISTORY_SCOPE_PRIMARY = "primary"
 HISTORY_SCOPE_INTERNAL = "internal"
 
@@ -40,6 +40,8 @@ def write_finished_record(
     try:
         record = build_finished_record(context, argv, sensitive_options, started_at, exit_code)
         write_history_record(record)
+        if context.run_root is not None and context.run_root.name == context.run_id:
+            update_run_metadata(context.run_root, record)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         context.log.debug("Unable to write command history record: %s", exc)
 
@@ -65,6 +67,8 @@ def build_finished_record(
         "exit_code": exit_code,
         "status": "ok" if exit_code == 0 else "error",
         "log_path": compact_path(context.log_file),
+        "owner": context.runtime_owner,
+        "bundle_path": compact_path(context.run_root or context.state_dir),
         "os": normalized_os(),
     }
     optional_fields = {
@@ -93,6 +97,8 @@ def write_primary_record(
     project_root: str | None = None,
     manifest: str | None = None,
     log_path: str | None = None,
+    owner: str = "base",
+    bundle_path: str | None = None,
 ) -> None:
     """Write the user-facing record for a Bash-dispatched command."""
     ended_at = utc_now()
@@ -111,14 +117,22 @@ def write_primary_record(
         "os": normalized_os(),
         "scope": scope,
     }
+    resolved_bundle = Path(bundle_path).expanduser() if bundle_path else runtime_bundle_path()
+    resolved_log = Path(log_path).expanduser() if log_path else (
+        resolved_bundle / "logs" / "primary.log" if resolved_bundle is not None else None
+    )
     optional_fields = {
         "project": project,
         "project_root": compact_optional_path(Path(project_root)) if project_root else None,
         "manifest": compact_optional_path(Path(manifest)) if manifest else None,
-        "log_path": compact_optional_path(Path(log_path)) if log_path else None,
+        "log_path": compact_optional_path(resolved_log),
+        "owner": owner,
+        "bundle_path": compact_optional_path(resolved_bundle),
     }
     record.update({key: value for key, value in optional_fields.items() if value})
     write_history_record(record)
+    if resolved_bundle is not None:
+        update_run_metadata(resolved_bundle, record)
 
 
 def write_history_record(record: dict[str, Any]) -> None:
@@ -126,6 +140,37 @@ def write_history_record(record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     append_history_line(path, f"{json.dumps(record, sort_keys=True)}\n")
     path.chmod(0o600)
+
+
+def runtime_bundle_path() -> Path | None:
+    value = os.environ.get("BASE_CLI_RUN_ROOT")
+    if not value:
+        return None
+    return Path(value).expanduser().resolve(strict=False)
+
+
+def update_run_metadata(run_root: Path, record: dict[str, Any]) -> None:
+    metadata_path = run_root / "run.json"
+    metadata: dict[str, Any] = {}
+    try:
+        if metadata_path.is_file():
+            loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                metadata = loaded
+        metadata.update(
+            {
+                "run_id": record.get("run_id"),
+                "owner": record.get("owner", metadata.get("owner", "base")),
+                "status": record.get("status"),
+                "exit_code": record.get("exit_code"),
+                "ended_at": record.get("ended_at"),
+                "command": record.get("command"),
+            }
+        )
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        metadata_path.write_text(json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8")
+    except (OSError, TypeError, ValueError):
+        return
 
 
 def append_history_line(path: Path, line: str) -> None:

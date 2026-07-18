@@ -506,6 +506,71 @@ basectl_history_recordable_command() {
     esac
 }
 
+basectl_args_request_help() {
+    local argument
+    for argument in "$@"; do
+        [[ "$argument" == "-h" || "$argument" == "--help" ]] && return 0
+    done
+    return 1
+}
+
+basectl_cache_root() {
+    if [[ -n "${BASE_CACHE_DIR:-}" ]]; then
+        printf '%s\n' "${BASE_CACHE_DIR%/}"
+        return 0
+    fi
+    if [[ "$(uname -s 2>/dev/null || true)" == Darwin ]]; then
+        printf '%s\n' "$HOME/Library/Caches/base"
+    else
+        printf '%s\n' "$HOME/.cache/base"
+    fi
+}
+
+basectl_initialize_run_bundle() {
+    local cache_root run_id run_root
+
+    if [[ -n "${BASE_CLI_RUN_ROOT:-}" ]]; then
+        export BASE_CLI_RUNTIME_OWNER=base
+        export BASE_CLI_RUN_ID="${BASE_CLI_RUN_ID:-$(basename -- "$BASE_CLI_RUN_ROOT")}"
+        export BASE_CLI_PRIMARY_LOG="${BASE_CLI_PRIMARY_LOG:-$BASE_CLI_RUN_ROOT/logs/primary.log}"
+        export BASE_CLI_HISTORY_PARENT_RUN_ID="${BASE_CLI_HISTORY_PARENT_RUN_ID:-$BASE_CLI_RUN_ID}"
+        return 0
+    fi
+
+    cache_root="$(basectl_cache_root)"
+    run_id="$(date -u +%Y%m%dT%H%M%S 2>/dev/null || true)_${BASHPID:-$$}_${RANDOM}"
+    run_root="$cache_root/base/runs/$run_id"
+    mkdir -p "$run_root/logs" "$run_root/tmp" || {
+        basectl_error "Unable to create Base run bundle '$run_root'. Check BASE_CACHE_DIR permissions."
+        return 1
+    }
+
+    export BASE_CLI_RUNTIME_OWNER=base
+    export BASE_CLI_RUN_ID="$run_id"
+    export BASE_CLI_RUN_ROOT="$run_root"
+    export BASE_CLI_PRIMARY_LOG="$run_root/logs/primary.log"
+    export BASE_CLI_HISTORY_PARENT_RUN_ID="$run_id"
+    printf '{"run_id":"%s","owner":"base","status":"running","started_at":"%s"}\n' \
+        "$run_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" >"$run_root/run.json"
+    printf '%s basectl start run_id=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" "$run_id" >>"$BASE_CLI_PRIMARY_LOG"
+}
+
+basectl_finalize_run_bundle() {
+    local exit_code="$1" run_root tmp_file
+
+    run_root="${BASE_CLI_RUN_ROOT:-}"
+    [[ -n "$run_root" && -d "$run_root" ]] || return 0
+    printf '%s basectl finish status=%s exit_code=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" \
+        "$([[ "$exit_code" == 0 ]] && printf ok || printf error)" "$exit_code" >>"${BASE_CLI_PRIMARY_LOG:-$run_root/logs/primary.log}"
+    tmp_file="$run_root/run.json.tmp"
+    printf '{"run_id":"%s","owner":"base","status":"%s","exit_code":%s,"started_at":"%s","ended_at":"%s"}\n' \
+        "${BASE_CLI_RUN_ID:-$(basename -- "$run_root")}" \
+        "$([[ "$exit_code" == 0 ]] && printf ok || printf error)" "$exit_code" \
+        "${BASE_CLI_HISTORY_STARTED_AT:-}" \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" >"$tmp_file" && mv -f "$tmp_file" "$run_root/run.json"
+}
+
 basectl_history_record() {
     local command="$1"
     local exit_code="$2"
@@ -521,6 +586,10 @@ basectl_history_record() {
     args+=(--run-id "${BASE_CLI_HISTORY_PARENT_RUN_ID:-}")
     args+=(--exit-code "$exit_code")
     args+=(--scope "$scope")
+    args+=(--owner "${BASE_CLI_RUNTIME_OWNER:-base}")
+    if [[ -n "${BASE_CLI_RUN_ROOT:-}" ]]; then
+        args+=(--bundle-path "$BASE_CLI_RUN_ROOT")
+    fi
     if [[ -n "${BASE_CLI_HISTORY_STARTED_AT:-}" ]]; then
         args+=(--started-at "$BASE_CLI_HISTORY_STARTED_AT")
     fi
@@ -539,7 +608,7 @@ basectl_history_record() {
 
 
 basectl_main() {
-    local base_debug=0 command="" command_status
+    local base_debug=0 command="" command_status run_bundle_enabled=1
     local history_args=() history_scope="${BASE_CLI_HISTORY_SCOPE:-primary}"
     local opt
 
@@ -615,10 +684,12 @@ basectl_main() {
 
     basectl_reject_equals_option_values "$@" || return $?
     basectl_reject_private_standard_options "$@" || return $?
+    basectl_args_request_help "$@" && run_bundle_enabled=0
+    basectl_history_recordable_command "$command" || run_bundle_enabled=0
 
     basectl_get_base_home || return 1
-    if [[ -z "${BASE_CLI_HISTORY_PARENT_RUN_ID:-}" ]]; then
-        export BASE_CLI_HISTORY_PARENT_RUN_ID="basectl-${BASHPID:-$$}-${RANDOM}"
+    if ((run_bundle_enabled)); then
+        basectl_initialize_run_bundle || return 1
     fi
     export BASE_CLI_HISTORY_SCOPE=internal
     BASE_CLI_HISTORY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
@@ -675,7 +746,10 @@ basectl_main() {
             ;;
     esac
 
-    basectl_history_record "$command" "$command_status" "$history_scope" "${history_args[@]}"
+    if ((run_bundle_enabled)); then
+        basectl_finalize_run_bundle "$command_status"
+        basectl_history_record "$command" "$command_status" "$history_scope" "${history_args[@]}"
+    fi
     return "$command_status"
 }
 

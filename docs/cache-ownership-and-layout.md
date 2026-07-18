@@ -1,8 +1,7 @@
 # Base Cache Ownership And Layout
 
-> **STATUS** — Proposed runtime contract. This document defines the clean-slate
-> layout that will be implemented next; the current `cli/` layout is not part
-> of this contract.
+> **STATUS** — Implemented clean-slate runtime contract. The legacy `cli/`
+> layout is intentionally unsupported; a cleared cache starts with this tree.
 
 This document establishes the ownership boundary for files under
 `BASE_CACHE_DIR`. Base owns the control-plane runtime. A Base-compliant project
