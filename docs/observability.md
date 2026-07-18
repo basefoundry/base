@@ -180,9 +180,19 @@ Expected options:
 - `--report --format json` prints the same report as deterministic JSON.
 - `--include-internal` includes delegated resolver, routing, bootstrap, and
   trust-gate records linked to each primary command.
+- `--oldest-first` reverses the selected window from newest-to-oldest to
+  oldest-to-newest; the default remains newest-first.
+- `--last <duration>` selects a relative window such as `30m`, `2h`, or `7d`.
+- `--since <time>` and `--until <time>` select a bounded window. Values accept
+  ISO-8601 or `YYYY-MM-DD[ HH:MM[:SS]]`; short values use the host timezone,
+  while explicit offsets or `Z` take precedence. `--until` is exclusive.
 - Text and Markdown timestamps are labeled `TIME (UTC)`/`Time (UTC)` by default.
   `--local-time` renders those views in the host's local timezone; JSON keeps
   canonical UTC timestamps for stable automation.
+
+Time filters are applied before ordering and `--limit`. `--last` cannot be
+combined with `--since` or `--until`, and invalid or reversed ranges are usage
+errors.
 
 `basectl logs` should remain the command for opening or tailing raw log files.
 `basectl history` should point to logs, not replace them.

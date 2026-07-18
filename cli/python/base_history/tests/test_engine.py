@@ -134,6 +134,89 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual((json_status, json_stderr), (0, ""))
         self.assertEqual(json.loads(json_stdout)[0]["ended_at"], "2026-06-10T10:15:00Z")
 
+    def test_oldest_first_reverses_only_the_selected_recent_window(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("old", "check", ended_at="2026-06-10T10:00:00Z"))
+            write_history_line(cache_root, history_record("middle", "check", ended_at="2026-06-10T10:10:00Z"))
+            write_history_line(cache_root, history_record("new", "check", ended_at="2026-06-10T10:20:00Z"))
+
+            status, stdout, stderr = invoke(["--oldest-first", "--limit", "2", "--format", "json"], cache_root)
+            payload = json.loads(stdout)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertEqual([record["run_id"] for record in payload], ["middle", "new"])
+
+    def test_time_filters_support_explicit_bounds_and_exclusive_until(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("before", "check", ended_at="2026-06-10T09:59:59Z"))
+            write_history_line(cache_root, history_record("start", "check", ended_at="2026-06-10T10:00:00Z"))
+            write_history_line(cache_root, history_record("inside", "check", ended_at="2026-06-10T10:30:00Z"))
+            write_history_line(cache_root, history_record("end", "check", ended_at="2026-06-10T11:00:00Z"))
+
+            status, stdout, stderr = invoke(
+                [
+                    "--since",
+                    "2026-06-10T10:00:00Z",
+                    "--until",
+                    "2026-06-10T11:00:00Z",
+                    "--oldest-first",
+                    "--format",
+                    "json",
+                ],
+                cache_root,
+            )
+            payload = json.loads(stdout)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertEqual([record["run_id"] for record in payload], ["start", "inside"])
+
+    def test_last_duration_uses_current_time_as_an_exclusive_upper_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("included", "check", ended_at="2026-06-10T10:00:00Z"))
+            write_history_line(cache_root, history_record("excluded", "check", ended_at="2026-06-10T10:15:00Z"))
+            current_time = engine.datetime(2026, 6, 10, 10, 15, tzinfo=engine.timezone.utc)
+
+            with mock.patch("base_history.engine.utc_now", return_value=current_time):
+                status, stdout, stderr = invoke(["--last", "15m", "--format", "json"], cache_root)
+            payload = json.loads(stdout)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertEqual([record["run_id"] for record in payload], ["included"])
+
+    def test_short_time_forms_are_parsed_in_the_host_timezone(self) -> None:
+        parsed = engine.parse_history_bound("--since", "2026-06-10 10:15")
+
+        self.assertEqual(parsed.tzinfo, engine.timezone.utc)
+        self.assertEqual(parsed.minute, 15)
+
+    def test_invalid_time_filters_report_usage_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            last_status, _last_stdout, last_stderr = invoke(
+                ["--last", "2h", "--since", "2026-06-10T10:00:00Z"], Path(tmpdir)
+            )
+            malformed_status, _malformed_stdout, malformed_stderr = invoke(
+                ["--since", "tomorrow"], Path(tmpdir)
+            )
+            reversed_status, _reversed_stdout, reversed_stderr = invoke(
+                [
+                    "--since",
+                    "2026-06-10T11:00:00Z",
+                    "--until",
+                    "2026-06-10T10:00:00Z",
+                ],
+                Path(tmpdir),
+            )
+
+        self.assertEqual(last_status, 2)
+        self.assertIn("cannot be combined", last_stderr)
+        self.assertEqual(malformed_status, 2)
+        self.assertIn("must be ISO-8601", malformed_stderr)
+        self.assertEqual(reversed_status, 2)
+        self.assertIn("must be earlier", reversed_stderr)
+
     def test_json_output_filters_history_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

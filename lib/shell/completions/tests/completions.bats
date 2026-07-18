@@ -587,7 +587,7 @@ run_zsh_positional_completion() {
     [[ "$block" == *"--config"* ]]
 }
 
-@test "Zsh history completion includes report and local-time options" {
+@test "Zsh history completion includes report, ordering, and time options" {
     local block
 
     block="$(
@@ -600,6 +600,10 @@ run_zsh_positional_completion() {
 
     [[ "$block" == *"--report"* ]]
     [[ "$block" == *"--include-internal"* ]]
+    [[ "$block" == *"--oldest-first"* ]]
+    [[ "$block" == *"--last"* ]]
+    [[ "$block" == *"--since"* ]]
+    [[ "$block" == *"--until"* ]]
     [[ "$block" == *"--local-time"* ]]
 }
 

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from base_cli.history import parse_finished_history_record_line
 from base_cli.history import parse_positive_int
 from base_cli.history import redact_history_argv
 from base_cli.history import redact_history_text
+from base_cli.history import utc_now
 from base_cli.paths import base_cache_root
 
 
@@ -59,6 +61,9 @@ class HistoryOptions:
     report: bool
     include_internal: bool
     local_time: bool
+    oldest_first: bool
+    since: datetime | None
+    until: datetime | None
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,18 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--format", "output_format", default="text", help="Output format: text, markdown, or json.")
 @base_cli.option("--report", is_flag=True, help="Print a privacy-conscious local activity report.")
 @base_cli.option("--include-internal", is_flag=True, help="Include delegated internal steps in the output.")
+@base_cli.option("--oldest-first", is_flag=True, help="Show the selected history window from oldest to newest.")
+@base_cli.option("--last", "last_window", help="Show records from the most recent duration, such as 2h or 7d.")
+@base_cli.option(
+    "--since",
+    "since_value",
+    help="Include records at or after a timestamp; accepts ISO-8601 or YYYY-MM-DD[ HH:MM[:SS]].",
+)
+@base_cli.option(
+    "--until",
+    "until_value",
+    help="Exclude records at or after a timestamp; accepts ISO-8601 or YYYY-MM-DD[ HH:MM[:SS]].",
+)
 @base_cli.option(
     "--local-time",
     is_flag=True,
@@ -106,8 +123,13 @@ def run(
     report: bool,
     include_internal: bool,
     local_time: bool,
+    oldest_first: bool,
+    last_window: str | None,
+    since_value: str | None,
+    until_value: str | None,
 ) -> int:
     try:
+        since, until = resolve_time_window(last_window, since_value, until_value)
         options = HistoryOptions(
             project=project_filter,
             command=command_filter,
@@ -117,6 +139,9 @@ def run(
             report=report,
             include_internal=include_internal,
             local_time=local_time,
+            oldest_first=oldest_first,
+            since=since,
+            until=until,
         )
     except ValueError as exc:
         ctx.log.error(str(exc))
@@ -164,6 +189,54 @@ def normalize_report_format(value: str) -> str:
     return normalized
 
 
+def resolve_time_window(
+    last_window: str | None,
+    since_value: str | None,
+    until_value: str | None,
+) -> tuple[datetime | None, datetime | None]:
+    if last_window and (since_value or until_value):
+        raise ValueError("Options '--last' and '--since/--until' cannot be combined.")
+
+    if last_window:
+        now = utc_now()
+        return now - parse_duration("--last", last_window), now
+
+    since = parse_history_bound("--since", since_value) if since_value else None
+    until = parse_history_bound("--until", until_value) if until_value else None
+    if since is not None and until is not None and since >= until:
+        raise ValueError("Option '--since' must be earlier than '--until'.")
+    return since, until
+
+
+def parse_duration(option: str, value: str) -> timedelta:
+    units = {"d": 24 * 60 * 60, "h": 60 * 60, "m": 60, "s": 1}
+    normalized = value.strip()
+    if not re.fullmatch(r"[0-9]+[dhmsDHMS]", normalized) or int(normalized[:-1]) <= 0:
+        raise ValueError(f"Option '{option}' must be a positive duration such as 30m, 2h, or 7d.")
+    return timedelta(seconds=int(normalized[:-1]) * units[normalized[-1].lower()])
+
+
+def parse_history_bound(option: str, value: str) -> datetime:
+    normalized = value.strip()
+    parsed: datetime | None = None
+    for date_format in ("%Y-%m-%d", "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            parsed = datetime.strptime(normalized, date_format)
+            break
+        except ValueError:
+            continue
+    if parsed is None:
+        try:
+            parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(
+                f"Option '{option}' must be ISO-8601 or YYYY-MM-DD[ HH:MM[:SS]] with an optional timezone."
+            ) from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.now().astimezone().tzinfo or timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def recent_history(
     cache_root: Path,
     options: HistoryOptions | None = None,
@@ -175,7 +248,8 @@ def recent_history(
     sorted_records = sorted(records, key=lambda record: (record.sort_time, record.run_id), reverse=True)
     if options is None:
         return sorted_records
-    return sorted_records[: options.limit]
+    selected = sorted_records[: options.limit]
+    return list(reversed(selected)) if options.oldest_first else selected
 
 
 def read_history_records(cache_root: Path, logger: Any | None = None) -> list[HistoryRecord]:
@@ -240,6 +314,10 @@ def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> lis
         filtered = [record for record in filtered if record.command == options.command]
     if options.status:
         filtered = [record for record in filtered if record.status == options.status]
+    if options.since is not None:
+        filtered = [record for record in filtered if record.sort_time >= options.since]
+    if options.until is not None:
+        filtered = [record for record in filtered if record.sort_time < options.until]
     return filtered
 
 
