@@ -102,7 +102,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
   provided, project manifest artifacts with suggested fixes.
 - `basectl doctor explain <finding-id>` prints local, deterministic guidance
   for selected stable finding IDs, with optional JSON output.
-- `basectl gh` manages GitHub issues, pull requests, branch naming, repository
+- `basectl gh` manages GitHub authentication, issues, pull requests, branch naming, repository
   hygiene, and GitHub Project metadata using Base's opinionated workflow. It
   uses standard GitHub-style issue categories such as `bug`, `enhancement`,
   `documentation`, `ci`, and `security`, and derives branch names from those
@@ -111,6 +111,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   repository from `--repo`/`-R`, then `GH_REPO`, then `origin`. Issue creation
   is unassigned by default unless `--assignee` is passed or
   `.github/base-project.yml` sets `project.issue_defaults.assignee`.
+  `basectl gh auth status` reports the active credential state without printing
+  token values. `basectl gh auth refresh --scope project` explicitly refreshes
+  stored credentials and requests the Project scope when needed. Refresh does
+  not modify `GH_TOKEN`, `GITHUB_TOKEN`, or their Enterprise variants; when one
+  is set, it takes precedence and must be unset or rotated at its source.
   Prefer this command for Base repository GitHub workflows when it supports the
   task.
 - `basectl onboard` guides first-run setup around existing setup, check,

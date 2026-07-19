@@ -269,6 +269,14 @@ EOF
             COMP_CWORD=2; \
             _base_basectl_completion; \
             printf "gh_areas=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh auth ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "gh_auth_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh auth refresh --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "gh_auth_refresh_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl gh project ""); \
             COMP_CWORD=3; \
             _base_basectl_completion; \
@@ -351,7 +359,9 @@ EOF
     [[ "$output" == *"ci_check_options=--ci --profile --format --manifest --remote-network"* ]]
     [[ "$output" == *"ci_doctor_projects=base demo"* ]]
     [[ "$output" == *"ci_doctor_options=--ci --profile --format --manifest --remote-network --no-color"* ]]
-    [[ "$output" == *"gh_areas=issue pr branch worktree project"* ]]
+    [[ "$output" == *"gh_areas=auth issue pr branch worktree project"* ]]
+    [[ "$output" == *"gh_auth_commands=status refresh"* ]]
+    [[ "$output" == *"gh_auth_refresh_options=--hostname --scope --scopes --clipboard --help"* ]]
     [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
     [[ "$output" == *"gh_project_configure_options=--project --owner --schema --config --copy-fields-from --initiative-option --repo --replace-project --dry-run"* ]]
     [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --config --status --priority --area --initiative --size --dry-run"* ]]

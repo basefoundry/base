@@ -507,7 +507,11 @@ run_zsh_positional_completion() {
 
     run_zsh_positional_completion basectl gh ""
     [ "$status" -eq 0 ]
-    [[ "$output" == *"positional=2:gh area:(issue pr branch worktree project)"* ]]
+    [[ "$output" == *"positional=2:gh area:(auth issue pr branch worktree project)"* ]]
+
+    run_zsh_positional_completion basectl gh auth ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:auth command:(status refresh)"* ]]
 
     run_zsh_positional_completion basectl gh issue ""
     [ "$status" -eq 0 ]

@@ -790,9 +790,23 @@ _base_basectl_completion() {
             ;;
         gh)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "issue pr branch worktree project" "$cur"
+                _base_basectl_completion_compgen "auth issue pr branch worktree project" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
+                auth)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "status refresh" "$cur"
+                    else
+                        case "${COMP_WORDS[3]:-}" in
+                        status)
+                            _base_basectl_completion_compgen "--hostname -h --help" "$cur"
+                            ;;
+                        refresh)
+                            _base_basectl_completion_compgen "--hostname --scope --scopes --clipboard -h --help" "$cur"
+                            ;;
+                        esac
+                    fi
+                    ;;
                 issue)
                     if ((COMP_CWORD == 3)); then
                         _base_basectl_completion_compgen "list create start readiness" "$cur"
