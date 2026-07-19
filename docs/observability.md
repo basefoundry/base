@@ -72,8 +72,13 @@ History writes are best-effort:
 - never fail the user command because the history file cannot be written
 - ignore malformed history lines while warning in debug output
 
-`basectl history` shows one record per public invocation. Legacy internal rows
-are ignored so old caches do not reintroduce duplicate command entries.
+`basectl history` shows one record per accepted public command invocation.
+Top-level command and wrapper-syntax errors are rejected before persistent
+runtime state is initialized, so they do not create a run bundle or history
+record. Once a recognized command is accepted, its run remains observable even
+if leaf-level argument validation, environment checks, or execution later
+fails. Legacy internal rows are ignored so old caches do not reintroduce
+duplicate command entries.
 
 ## Record Shape
 
