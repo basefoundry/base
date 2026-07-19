@@ -75,8 +75,9 @@ equals-form values such as `--name=Ada` before Click parses arguments.
 These are direct package options. Public `basectl` launchers expose `-v` for
 command-level debug logs and command-specific flags from
 `basectl <command> --help`; they do not expose `--debug`, `--quiet`,
-`--log-file`, `--config`, `--environment`, or `--keep-temp` as public
-`basectl` options.
+`--log-file`, `--config`, or `--environment` as public `basectl` options.
+The wrapper-level `basectl --keep-temp <command>` option preserves the
+complete temporary tree for that run.
 
 ## Command Registration
 

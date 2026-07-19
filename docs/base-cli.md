@@ -191,7 +191,7 @@ Directory lifecycle:
 
 | Directory | Created | Removed |
 |---|---|---|
-| `run.json`, `logs/`, `tmp/` | before command execution | run-bundle cleanup |
+| `run.json`, `logs/`, `tmp/` | before command execution | run-bundle cleanup; `tmp/` is removed unless `--keep-temp` is requested |
 | `cache/components/` | when a component needs it | explicit CLI cleanup |
 
 Commands running with `ctx.dry_run` skip default `logs/`, `cache/`, and
@@ -352,8 +352,9 @@ arguments.
 These are direct Python package options. Public `basectl` launchers expose
 `-v` for command-level debug logs and command-specific flags from
 `basectl <command> --help`; they do not expose `--debug`, `--quiet`,
-`--log-file`, `--config`, `--environment`, or `--keep-temp` as public
-`basectl` options.
+`--log-file`, `--config`, or `--environment` as public `basectl` options.
+The wrapper-level `basectl --keep-temp <command>` option explicitly preserves
+the complete temporary tree for that run.
 
 ## Interrupt And Cleanup
 
@@ -362,7 +363,7 @@ register them on import. Cleanup should:
 
 1. call user cleanup hooks
 2. flush and close log handlers
-3. remove `ctx.temp_dir` unless `keep_temp` is true
+3. remove `ctx.temp_dir` and empty temporary parents unless `keep_temp` is true
 
 CLI authors can register hooks:
 

@@ -121,6 +121,7 @@ Wrapper options:
   --debug-wrapper    Enable DEBUG logging before the Base runtime is loaded.
   --verbose-wrapper  Enable verbose runtime argument handling before dispatch.
   --utc-wrapper      Print wrapper/runtime log timestamps in UTC.
+  --keep-temp        Preserve temporary run files after the command completes.
   --color            Preserve color-aware wrapper argument handling.
 
 Notes:
@@ -131,12 +132,14 @@ Notes:
     Base rejects `--option=value` syntax before command delegation. Arguments
     after `--` belong to the delegated project command.
   - Use `-v` for command-level debug logs. Python package standard options such
-    as `--debug`, `--quiet`, `--log-file`, `--config`, `--environment`, and
-    `--keep-temp` are not public `basectl` options.
+    as `--debug`, `--quiet`, `--log-file`, `--config`, and `--environment` are
+    not public `basectl` options.
   - Invoking `basectl` with no command starts a Base runtime shell for the
     nearest project manifest above the current directory, preserving that
     directory. If no manifest is found, it falls back to project `base`. In
     non-interactive shells it prints this help text.
+  - Use `--keep-temp` before the command name to preserve the complete run
+    temporary tree; temporary files are removed by default.
   - Use `--debug-wrapper` when debugging startup before command dispatch or
     Base runtime initialization.
 EOF
@@ -643,6 +646,9 @@ basectl_finalize_run_bundle() {
         "${BASE_CLI_HISTORY_STARTED_AT:-}" \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" >"$tmp_file" && mv -f "$tmp_file" "$run_root/run.json"
     chmod 600 "$run_root/run.json" "${BASE_CLI_PRIMARY_LOG:-$run_root/logs/primary.log}" || return 1
+    if [[ "${BASE_CLI_KEEP_TEMP:-}" != true ]]; then
+        rm -rf -- "$run_root/tmp"
+    fi
 }
 
 basectl_history_record() {
@@ -682,7 +688,12 @@ basectl_history_record() {
 
 
 basectl_main() {
-    local base_debug=0 command="" command_status run_bundle_enabled=1
+    local base_debug=0 keep_temp=0 command="" command_status run_bundle_enabled=1
+
+    while [[ "${1:-}" == --keep-temp ]]; do
+        keep_temp=1
+        shift
+    done
     local history_args=() history_scope="${BASE_CLI_HISTORY_SCOPE:-primary}"
     local opt
 
@@ -752,6 +763,11 @@ basectl_main() {
     done
     shift $((OPTIND - 1))
 
+    while [[ "${1:-}" == --keep-temp ]]; do
+        keep_temp=1
+        shift
+    done
+
     command="${1:-}"
     [[ -n "$command" ]] && shift
     history_args=("$@")
@@ -762,6 +778,9 @@ basectl_main() {
     basectl_history_recordable_command "$command" || run_bundle_enabled=0
 
     basectl_get_base_home || return 1
+    if ((keep_temp)); then
+        export BASE_CLI_KEEP_TEMP=true
+    fi
     if ((run_bundle_enabled)); then
         basectl_initialize_run_bundle "$command" "$@" || return 1
     fi

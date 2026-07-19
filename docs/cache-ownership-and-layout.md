@@ -140,9 +140,11 @@ project run through the history index and `run.json` metadata.
 
 ### `tmp/`
 
-Temporary files scoped to one run and component. Successful runs remove these
-directories automatically unless retention is requested. Failed or interrupted
-runs retain them for diagnosis until cleanup removes the completed bundle.
+Temporary files scoped to one run and component. Base removes the complete
+`tmp/` tree, including empty component parents, after every run by default.
+Pass the explicit `--keep-temp` wrapper option to preserve the complete tree
+for diagnosis. Run metadata, history, and `primary.log` are retained
+independently of this choice.
 
 ## Timestamps and permissions
 

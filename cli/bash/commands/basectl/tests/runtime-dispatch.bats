@@ -46,6 +46,60 @@ load ./basectl_helpers.bash
 }
 
 
+@test "basectl removes the complete temp tree by default" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_TMPDIR="$TEST_TMPDIR" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            BASE_CACHE_DIR="$BASE_TEST_TMPDIR/cache" basectl_initialize_run_bundle setup base-demo || exit $?
+            mkdir -p "$BASE_CLI_RUN_ROOT/tmp/base_setup"
+            printf "temporary\n" >"$BASE_CLI_RUN_ROOT/tmp/base_setup/file.txt"
+            run_root="$BASE_CLI_RUN_ROOT"
+            basectl_finalize_run_bundle 0 || exit $?
+            printf "run_root=%s\n" "$run_root"
+            [[ ! -e "$run_root/tmp" ]]
+        '
+
+    [ "$status" -eq 0 ]
+}
+
+
+@test "basectl preserves the complete temp tree when explicitly requested" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_TMPDIR="$TEST_TMPDIR" \
+        BASE_CLI_KEEP_TEMP=true \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            BASE_CACHE_DIR="$BASE_TEST_TMPDIR/cache" basectl_initialize_run_bundle setup base-demo || exit $?
+            mkdir -p "$BASE_CLI_RUN_ROOT/tmp/base_setup"
+            printf "temporary\n" >"$BASE_CLI_RUN_ROOT/tmp/base_setup/file.txt"
+            run_root="$BASE_CLI_RUN_ROOT"
+            basectl_finalize_run_bundle 0 || exit $?
+            [[ -f "$run_root/tmp/base_setup/file.txt" ]]
+        '
+
+    [ "$status" -eq 0 ]
+}
+
+
+@test "basectl exposes keep-temp as a wrapper option" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_get_base_home() { return 0; }
+            basectl_do_version() { printf "keep=%s\n" "${BASE_CLI_KEEP_TEMP:-}"; }
+            basectl_main --keep-temp version
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "keep=true" ]
+}
+
+
 @test "basectl prints help when no command is given in a non-interactive shell" {
     run_basectl
 
