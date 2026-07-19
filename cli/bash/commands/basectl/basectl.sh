@@ -526,12 +526,83 @@ basectl_cache_root() {
     fi
 }
 
+basectl_runtime_slug() {
+    local value="${1,,}" slug="" char
+    local index
+
+    for ((index = 0; index < ${#value}; index++)); do
+        char="${value:index:1}"
+        case "$char" in
+            [a-z0-9._-]) slug+="$char" ;;
+            *)
+                [[ -n "$slug" && "${slug: -1}" != "-" ]] && slug+="-"
+                ;;
+        esac
+    done
+    while [[ "$slug" == -* ]]; do slug="${slug#-}"; done
+    while [[ "$slug" == *- ]]; do slug="${slug%-}"; done
+    [[ -n "$slug" ]] || slug="run"
+    printf '%s\n' "${slug:0:40}"
+}
+
+basectl_run_bundle_project() {
+    local command="$1"
+    local argument option_value=0
+    shift
+
+    case "$command" in
+        setup|check|doctor|test|build|demo|run|activate|export-context|devcontainer|devenv-report|onboard|update)
+            ;;
+        trust)
+            [[ "${1:-}" == status || "${1:-}" == allow || "${1:-}" == revoke ]] && shift
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    for argument in "$@"; do
+        if ((option_value)); then
+            option_value=0
+            continue
+        fi
+        case "$argument" in
+            --manifest|--format|--profile|--environment|--config|--log-file|--project|--workspace|--path|--target|--version|--command|--status|--older-than|--keep-last|--since|--until|--last|--lines)
+                option_value=1
+                ;;
+            --*=*|--*|-*)
+                ;;
+            *)
+                basectl_runtime_slug "$argument"
+                return 0
+                ;;
+        esac
+    done
+}
+
+basectl_run_bundle_label() {
+    local command_slug project_slug
+    command_slug="$(basectl_runtime_slug "${1:-run}")"
+    shift || true
+    project_slug="$(basectl_run_bundle_project "$command_slug" "$@")"
+    if [[ -n "$project_slug" ]]; then
+        printf '%s__%s\n' "$command_slug" "$project_slug"
+    else
+        printf '%s\n' "$command_slug"
+    fi
+}
+
 basectl_initialize_run_bundle() {
-    local cache_root run_id run_root
+    local command="${1:-run}" cache_root run_id run_root label
+    shift || true
 
     if [[ -n "${BASE_CLI_RUN_ROOT:-}" ]]; then
         export BASE_CLI_RUNTIME_OWNER=base
-        export BASE_CLI_RUN_ID="${BASE_CLI_RUN_ID:-$(basename -- "$BASE_CLI_RUN_ROOT")}"
+        if [[ -z "${BASE_CLI_RUN_ID:-}" ]]; then
+            BASE_CLI_RUN_ID="$(basename -- "$BASE_CLI_RUN_ROOT")"
+            BASE_CLI_RUN_ID="${BASE_CLI_RUN_ID%%__*}"
+            export BASE_CLI_RUN_ID
+        fi
         export BASE_CLI_PRIMARY_LOG="${BASE_CLI_PRIMARY_LOG:-$BASE_CLI_RUN_ROOT/logs/primary.log}"
         export BASE_CLI_HISTORY_PARENT_RUN_ID="${BASE_CLI_HISTORY_PARENT_RUN_ID:-$BASE_CLI_RUN_ID}"
         return 0
@@ -539,7 +610,8 @@ basectl_initialize_run_bundle() {
 
     cache_root="$(basectl_cache_root)"
     run_id="$(date -u +%Y%m%dT%H%M%S 2>/dev/null || true)_${BASHPID:-$$}_${RANDOM}"
-    run_root="$cache_root/base/runs/$run_id"
+    label="$(basectl_run_bundle_label "$command" "$@")"
+    run_root="$cache_root/base/runs/${run_id}__${label}"
     mkdir -p "$run_root/logs" "$run_root/tmp" || {
         basectl_error "Unable to create Base run bundle '$run_root'. Check BASE_CACHE_DIR permissions."
         return 1
@@ -691,7 +763,7 @@ basectl_main() {
 
     basectl_get_base_home || return 1
     if ((run_bundle_enabled)); then
-        basectl_initialize_run_bundle || return 1
+        basectl_initialize_run_bundle "$command" "$@" || return 1
     fi
     export BASE_CLI_HISTORY_SCOPE=internal
     BASE_CLI_HISTORY_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"

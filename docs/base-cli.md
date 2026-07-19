@@ -169,10 +169,10 @@ root.
 <base-cache-root>/
   base/
     history/runs.jsonl
-    runs/<run-id>/{run.json,logs/,tmp/}
+    runs/<run-id>__<command>__<project>/{run.json,logs/,tmp/}
     cache/components/<cli-name>/
   projects/<project>/<checkout-id>/
-    runs/<run-id>/{run.json,logs/,tmp/}
+    runs/<run-id>__<command>__<project>/{run.json,logs/,tmp/}
     cache/components/<cli-name>/
         <run-id>/
 ```

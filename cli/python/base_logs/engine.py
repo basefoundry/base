@@ -28,7 +28,7 @@ from base_cli.redaction import REDACTED
 from base_cli.redaction import redact_text_value
 
 
-RUN_ID_RE = re.compile(r"^(?P<stamp>\d{8}T\d{6})_[A-Za-z0-9]+$")
+RUN_ID_RE = re.compile(r"^(?P<stamp>\d{8}T\d{6})_[A-Za-z0-9]+(?:__.*)?$")
 LOG_SECRET_ASSIGNMENT_RE = re.compile(
     r"(?P<key>\b[A-Za-z_][A-Za-z0-9_.-]*)=(?P<value>[^\s,;]+)",
     re.IGNORECASE,
@@ -449,7 +449,8 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
         for path in sorted(logs_root.glob("primary.log"), key=str):
             if not path.is_file():
                 continue
-            history_status = history_status_for_log(history_statuses, run_id=run_root.name, path=path)
+            run_id = canonical_run_id(run_root)
+            history_status = history_status_for_log(history_statuses, run_id=run_id, path=path)
             raw_command = raw_command_for_log(path)
             entries.append(
                 LogEntry(
@@ -457,7 +458,7 @@ def discover_log_entries(cache_root: Path) -> list[LogEntry]:
                     if history_status is not None and history_status.command is not None
                     else infer_display_command(raw_command, path),
                     raw_command=raw_command,
-                    run_id=run_root.name,
+                    run_id=run_id,
                     path=path,
                     timestamp=entry_timestamp(path),
                     status=history_status.status if history_status is not None else infer_status(path),
@@ -484,16 +485,24 @@ def infer_raw_command_from_log_path(path: Path) -> str:
 
 def raw_command_for_log(path: Path) -> str:
     """Resolve the command identity without encoding it in the log filename."""
-    metadata_path = path.parent.parent / "run.json"
-    try:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    except (OSError, TypeError, ValueError):
-        metadata = {}
-    if isinstance(metadata, dict):
-        value = optional_string(metadata.get("raw_command")) or optional_string(metadata.get("cli"))
-        if value:
-            return value
+    metadata = run_metadata(path.parent.parent)
+    value = optional_string(metadata.get("raw_command")) or optional_string(metadata.get("cli"))
+    if value:
+        return value
     return infer_raw_command_from_log_path(path)
+
+
+def run_metadata(run_root: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads((run_root / "run.json").read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def canonical_run_id(run_root: Path) -> str:
+    value = optional_string(run_metadata(run_root).get("run_id"))
+    return value or run_root.name.split("__", 1)[0]
 
 
 def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
@@ -572,7 +581,7 @@ def first_lines(path: Path, limit: int) -> list[str]:
 
 
 def entry_timestamp(path: Path) -> datetime:
-    run_id = path.parent.parent.name if path.name == "primary.log" else path.stem
+    run_id = canonical_run_id(path.parent.parent) if path.name == "primary.log" else path.stem.split("__", 1)[0]
     match = RUN_ID_RE.match(run_id)
     if match is not None:
         try:

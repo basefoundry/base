@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from .paths import runtime_owner_root
+from .paths import runtime_owner_root, runtime_run_directory_name
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ def runtime_layout(
     inherited_run_root: Path | None = None,
 ) -> RuntimeLayout:
     owner_root = runtime_owner_root(cache_root, owner, project_name, project_root)
-    run_root = inherited_run_root or owner_root / "runs" / run_id
+    run_root = inherited_run_root or owner_root / "runs" / runtime_run_directory_name(run_id, cli_name, project_name)
     state_dir = owner_root
     # Every public invocation owns one run bundle and one diagnostic log.
     # Child processes inherit that bundle instead of creating component logs.

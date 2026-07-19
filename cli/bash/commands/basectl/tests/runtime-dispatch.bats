@@ -26,6 +26,26 @@ load ./basectl_helpers.bash
 }
 
 
+@test "basectl labels run bundle directories without changing the run ID" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_TMPDIR="$TEST_TMPDIR" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            printf "label=%s\n" "$(basectl_run_bundle_label setup base-demo)"
+            BASE_CACHE_DIR="$BASE_TEST_TMPDIR/cache" basectl_initialize_run_bundle setup base-demo || exit $?
+            printf "run_id=%s\n" "$BASE_CLI_RUN_ID"
+            printf "run_root=%s\n" "$BASE_CLI_RUN_ROOT"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"label=setup__base-demo"* ]]
+    [[ "$output" == *"run_root="*"__setup__base-demo" ]]
+    run_id="$(printf '%s\n' "$output" | sed -n 's/^run_id=//p')"
+    [[ "$run_id" != *"__"* ]]
+}
+
+
 @test "basectl prints help when no command is given in a non-interactive shell" {
     run_basectl
 
