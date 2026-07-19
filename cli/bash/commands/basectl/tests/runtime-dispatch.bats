@@ -26,6 +26,49 @@ load ./basectl_helpers.bash
 }
 
 
+@test "basectl rejects unknown commands before creating persistent runtime state" {
+    local cache_root="$TEST_TMPDIR/cache"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$cache_root" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            basectl_main invalid
+        '
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unrecognized command: invalid"* ]]
+    [ ! -e "$cache_root/base/runs" ]
+    [ ! -e "$cache_root/base/history/runs.jsonl" ]
+}
+
+
+@test "basectl keeps a run bundle for a recognized command failure" {
+    local cache_root="$TEST_TMPDIR/cache"
+    local run_root
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$cache_root" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_do_setup() { return 7; }
+            basectl_history_record() { :; }
+            basectl_main setup
+        '
+
+    [ "$status" -eq 7 ]
+    run_root="$(find "$cache_root/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$run_root" ]
+    [ -f "$run_root/run.json" ]
+    [ -f "$run_root/logs/primary.log" ]
+}
+
+
 @test "basectl labels run bundle directories without changing the run ID" {
     run env \
         BASE_HOME="$BASE_REPO_ROOT" \

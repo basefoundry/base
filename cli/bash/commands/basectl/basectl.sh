@@ -509,6 +509,24 @@ basectl_history_recordable_command() {
     esac
 }
 
+basectl_validate_command() {
+    local command="${1:-}"
+
+    case "$command" in
+        ""|activate|check|test|export-context|devcontainer|devenv-report|build|demo|run|repo|ci|release|prompt|docs|clean|logs|history|config|trust|doctor|gh|onboard|setup|help|projects|workspace|update|update-profile|version)
+            return 0
+            ;;
+        *)
+            if [[ -f "$command" ]]; then
+                basectl_bare_script_usage_error "$command"
+            else
+                basectl_usage_error "Unrecognized command: $command"
+            fi
+            return $?
+            ;;
+    esac
+}
+
 basectl_args_request_help() {
     local argument
     for argument in "$@"; do
@@ -778,6 +796,7 @@ basectl_main() {
     basectl_history_recordable_command "$command" || run_bundle_enabled=0
 
     basectl_get_base_home || return 1
+    basectl_validate_command "$command" || return $?
     if ((keep_temp)); then
         export BASE_CLI_KEEP_TEMP=true
     fi
@@ -830,11 +849,7 @@ basectl_main() {
             fi
             ;;
         *)
-            if [[ -f "$command" ]]; then
-                basectl_bare_script_usage_error "$command"
-            else
-                basectl_usage_error "Unrecognized command: $command"
-            fi
+            basectl_validate_command "$command"
             command_status=$?
             ;;
     esac
