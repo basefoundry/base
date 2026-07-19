@@ -16,6 +16,8 @@ source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_branch_worktree.sh"
 base_gh_usage() {
     cat <<'EOF'
 Usage:
+  basectl gh auth status [--hostname <host>]
+  basectl gh auth refresh [--hostname <host>] [--scope <scope>]... [--scopes <scope,...>] [--clipboard]
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
@@ -54,6 +56,9 @@ Issue categories:
 
 Notes:
   - This command requires the GitHub CLI (`gh`) for GitHub operations.
+  - `auth status` reports credential state without displaying token values.
+  - `auth refresh` updates stored credentials only. Environment tokens such as
+    `GH_TOKEN` take precedence and must be rotated or unset separately.
   - Issues are unassigned unless --assignee is passed or .github/base-project.yml
     sets project.issue_defaults.assignee.
   - When the GitHub repo is known, issue create also adds the issue to the
@@ -67,6 +72,207 @@ Notes:
   - Pull request implementation work should happen in a dedicated worktree.
   - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
 EOF
+}
+
+base_gh_auth_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh auth status [--hostname <host>]
+  basectl gh auth refresh [--hostname <host>] [--scope <scope>]... [--scopes <scope,...>] [--clipboard]
+
+Purpose:
+  Inspect GitHub authentication safely or refresh the stored credential for an
+  active account.
+
+Options:
+  --hostname <host>       GitHub host. Defaults to github.com.
+  --scope <scope>         Additional OAuth scope; repeat this option as needed.
+  --scopes <scope,...>    Comma-separated additional OAuth scopes.
+  --clipboard             Copy the one-time OAuth device code to the clipboard.
+  -h, --help              Show this help text.
+
+Notes:
+  - Refresh is explicit and may open the GitHub browser/device authorization flow.
+  - Refresh changes stored credentials only. GH_TOKEN/GITHUB_TOKEN (or their
+    Enterprise variants) override stored credentials for the active process.
+  - If the stored credential is invalid, run `gh auth login -h <host>` first.
+EOF
+}
+
+base_gh_auth_environment_token_name() {
+    local hostname="${1:-github.com}"
+
+    case "$hostname" in
+        github.com|*.ghe.com)
+            if [[ -n "${GH_TOKEN:-}" ]]; then
+                printf '%s\n' GH_TOKEN
+                return 0
+            fi
+            if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+                printf '%s\n' GITHUB_TOKEN
+                return 0
+            fi
+            ;;
+        *)
+            if [[ -n "${GH_ENTERPRISE_TOKEN:-}" ]]; then
+                printf '%s\n' GH_ENTERPRISE_TOKEN
+                return 0
+            fi
+            if [[ -n "${GITHUB_ENTERPRISE_TOKEN:-}" ]]; then
+                printf '%s\n' GITHUB_ENTERPRISE_TOKEN
+                return 0
+            fi
+            ;;
+    esac
+
+    return 1
+}
+
+base_gh_auth_environment_warning() {
+    local hostname="${1:-github.com}"
+    local token_name
+
+    token_name="$(base_gh_auth_environment_token_name "$hostname")" || return 1
+    log_warn "GitHub CLI is using $token_name from the environment. Stored credentials and 'basectl gh auth refresh' will not affect commands until this variable is unset or rotated at its source."
+    return 0
+}
+
+base_gh_auth_status() {
+    local hostname="${1:-github.com}"
+    local output
+    local status=0
+
+    base_gh_require_command gh || return 1
+    base_gh_auth_environment_warning "$hostname" || true
+    output="$(gh auth status --hostname "$hostname" 2>&1)" || status=$?
+    [[ -z "$output" ]] || printf '%s\n' "$output"
+    ((status == 0)) && return 0
+
+    if grep -Eqi 'lookup .*api\.[^[:space:]]+|error connecting|no such host|network' <<<"$output"; then
+        log_warn "Unable to reach GitHub while checking authentication. Verify network or DNS and retry."
+    elif grep -Eqi 'not logged in|invalid|failed to log in|bad credentials|401' <<<"$output"; then
+        log_warn "GitHub authentication is unavailable for '$hostname'. Run 'gh auth login -h $hostname'."
+    fi
+
+    return "$status"
+}
+
+base_gh_auth_status_command() {
+    local hostname="github.com"
+
+    while (($#)); do
+        case "$1" in
+            --hostname)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_usage_error base_gh_auth_usage "Option '$1' requires a host argument."
+                    return $?
+                }
+                hostname="$2"
+                shift
+                ;;
+            -h|--help)
+                base_gh_auth_usage
+                return 0
+                ;;
+            *)
+                base_gh_usage_error base_gh_auth_usage "Unknown auth status option '$1'."
+                return $?
+                ;;
+        esac
+        shift
+    done
+
+    base_gh_auth_status "$hostname"
+}
+
+base_gh_auth_refresh_command() {
+    local hostname="github.com"
+    local clipboard=0
+    local scope
+    local scopes_csv=""
+    local token_name
+    local args
+    local status=0
+
+    while (($#)); do
+        case "$1" in
+            --hostname)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_usage_error base_gh_auth_usage "Option '$1' requires a host argument."
+                    return $?
+                }
+                hostname="$2"
+                shift
+                ;;
+            --scope)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_usage_error base_gh_auth_usage "Option '--scope' requires a scope argument."
+                    return $?
+                }
+                scope="$2"
+                [[ -n "$scopes_csv" ]] && scopes_csv+=,
+                scopes_csv+="$scope"
+                shift
+                ;;
+            --scopes)
+                [[ -n "${2:-}" ]] || {
+                    base_gh_usage_error base_gh_auth_usage "Option '--scopes' requires a scope argument."
+                    return $?
+                }
+                [[ -n "$scopes_csv" ]] && scopes_csv+=,
+                scopes_csv+="$2"
+                shift
+                ;;
+            --clipboard)
+                clipboard=1
+                ;;
+            -h|--help)
+                base_gh_auth_usage
+                return 0
+                ;;
+            *)
+                base_gh_usage_error base_gh_auth_usage "Unknown auth refresh option '$1'."
+                return $?
+                ;;
+        esac
+        shift
+    done
+
+    token_name="$(base_gh_auth_environment_token_name "$hostname")" || true
+    if [[ -n "$token_name" ]]; then
+        base_gh_error "Cannot refresh the stored GitHub credential while $token_name is set."
+        log_warn "Unset $token_name for this process or rotate the environment token at its source, then retry."
+        return 2
+    fi
+
+    base_gh_require_command gh || return 1
+    args=(auth refresh --hostname "$hostname")
+    [[ -z "$scopes_csv" ]] || args+=(--scopes "$scopes_csv")
+    ((clipboard)) && args+=(--clipboard)
+    base_gh_run "${args[@]}" || status=$?
+    ((status == 0)) || return "$status"
+    printf "GitHub credentials refreshed for '%s'.\n" "$hostname"
+}
+
+base_gh_do_auth() {
+    local command="${1:-}"
+    shift || true
+
+    case "$command" in
+        status)
+            base_gh_auth_status_command "$@"
+            ;;
+        refresh)
+            base_gh_auth_refresh_command "$@"
+            ;;
+        -h|--help|help|"")
+            base_gh_auth_usage
+            ;;
+        *)
+            base_gh_usage_error base_gh_auth_usage "Unknown gh auth command '$command'."
+            return $?
+            ;;
+    esac
 }
 
 base_gh_issue_usage() {
@@ -443,7 +649,18 @@ base_gh_report_command_failure() {
 }
 
 base_gh_run() {
-    gh_run "$@"
+    local status=0
+
+    gh_run "$@" || status=$?
+    ((status == 0)) && return 0
+
+    base_gh_auth_environment_warning github.com || true
+    if [[ "${1:-}" == project ]]; then
+        log_warn "GitHub Project operations require the 'project' scope for stored OAuth credentials."
+        log_warn "Run 'basectl gh auth refresh --scope project' if the stored credential is active."
+    fi
+
+    return "$status"
 }
 
 base_gh_args_request_help() {
@@ -1349,6 +1566,7 @@ base_gh_issue_create() {
     printf '%s\n' "$issue_output"
 
     if ((configure_project)) && [[ -n "$github_repo" ]]; then
+        base_gh_auth_environment_warning github.com || true
         issue_number="$(base_gh_issue_number_from_output "$issue_output")" || {
             base_gh_error "Unable to determine created issue number from gh output."
             return 1
@@ -1611,6 +1829,8 @@ base_gh_do_project() {
         return 0
     fi
 
+    base_gh_auth_environment_warning github.com || true
+
     [[ -x "$wrapper" ]] || {
         base_gh_error "Base Python wrapper '$wrapper' is missing or is not executable."
         return 1
@@ -1623,6 +1843,7 @@ base_gh_subcommand_main() {
     shift || true
 
     case "$area" in
+        auth) base_gh_do_auth "$@" ;;
         issue) base_gh_do_issue "$@" ;;
         pr) base_gh_do_pr "$@" ;;
         project) base_gh_do_project "$@" ;;

@@ -13,6 +13,55 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+write_auth_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${BASE_GH_TEST_STATE_DIR:?}/gh-calls"
+case "$*" in
+    "auth status --hostname github.com")
+        printf 'Logged in to github.com account codeforester (keyring)\nToken scopes: gist, repo, project\n'
+        exit 0
+        ;;
+    auth\ refresh\ --hostname\ github.com*)
+        printf 'OAuth refresh complete\n'
+        exit 0
+        ;;
+esac
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+write_auth_network_failure_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status --hostname github.com" ]]; then
+    printf 'error connecting to api.github.com: lookup api.github.com: no such host\n' >&2
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
+write_project_scope_failure_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "project" ]]; then
+    printf 'error: missing required scopes [read:project]\n' >&2
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
 add_github_origin() {
     git -C "$1" remote add origin https://github.com/basefoundry/base.git
 }
@@ -239,6 +288,99 @@ run_gh_subcommand() {
     [ "$status" -eq 0 ]
 }
 
+@test "basectl gh auth status reports stored credential state" {
+    write_auth_gh_mock
+
+    run_gh_subcommand auth status
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Logged in to github.com account codeforester (keyring)"* ]]
+    [[ "$output" == *"Token scopes: gist, repo, project"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == "auth status --hostname github.com" ]]
+}
+
+@test "basectl gh auth refresh combines repeatable scopes and forwards them" {
+    write_auth_gh_mock
+
+    run_gh_subcommand auth refresh --scope project --scope read:org
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub credentials refreshed for 'github.com'."* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == "auth refresh --hostname github.com --scopes project,read:org" ]]
+}
+
+@test "basectl gh auth refresh refuses to hide an environment token override" {
+    write_auth_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_CWD="$TEST_HOME" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        GH_TOKEN="test-token" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$BASE_GH_TEST_CWD"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main auth refresh --scope project
+        ' bash
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Cannot refresh the stored GitHub credential while GH_TOKEN is set."* ]]
+    [ ! -f "$TEST_STATE_DIR/gh-calls" ]
+}
+
+@test "basectl gh auth status warns when an environment token overrides storage" {
+    write_auth_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_CWD="$TEST_HOME" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        GH_TOKEN="test-token" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$BASE_GH_TEST_CWD"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main auth status
+        ' bash
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitHub CLI is using GH_TOKEN from the environment"* ]]
+}
+
+@test "basectl gh auth status distinguishes network failures from auth failures" {
+    write_auth_network_failure_gh_mock
+
+    run_gh_subcommand auth status
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to reach GitHub while checking authentication"* ]]
+    [[ "$output" != *"Run 'gh auth login"* ]]
+}
+
+@test "basectl gh project failures suggest the auth scope refresh" {
+    write_project_scope_failure_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_run project item-list 10
+        ' bash
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"missing required scopes [read:project]"* ]]
+    [[ "$output" == *"basectl gh auth refresh --scope project"* ]]
+}
+
 @test "basectl gh default branch and repo inference delegate to reusable gh helpers" {
     run env \
         HOME="$TEST_HOME" \
@@ -286,6 +428,8 @@ run_gh_subcommand() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"basectl gh auth status"* ]]
+    [[ "$output" == *"basectl gh auth refresh"* ]]
     [[ "$output" == *"basectl gh issue start <number>"* ]]
     [[ "$output" == *"basectl gh project doctor --project <title>"* ]]
     [[ "$output" == *"basectl gh project configure --project <title>"* ]]
@@ -294,6 +438,19 @@ run_gh_subcommand() {
     [[ "$output" != *"basectl gh todo"* ]]
     [[ "$output" == *"<category>/<issue>-<YYYYMMDD>-<slug>"* ]]
     [[ "$output" == *"sets project.issue_defaults.assignee"* ]]
+}
+
+@test "basectl gh auth prints command-scoped help" {
+    run_basectl gh auth --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl gh auth status [--hostname <host>]"* ]]
+    [[ "$output" == *"--scope <scope>"* ]]
+    [[ "$output" == *"GH_TOKEN/GITHUB_TOKEN"* ]]
+
+    run_basectl gh auth refresh --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Additional OAuth scope"* ]]
 }
 
 @test "basectl gh issue prints area help" {

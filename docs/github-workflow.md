@@ -203,6 +203,23 @@ basectl gh project issue set-fields 604 --repo basefoundry/base --project base -
 
 ## Preferred GitHub Interface
 
+Use the Base auth wrapper when diagnosing or repairing local GitHub CLI access:
+
+```bash
+basectl gh auth status
+basectl gh auth refresh --scope project
+```
+
+`auth status` reports credential state without exposing token values and
+distinguishes network failures from unavailable login. `auth refresh` updates
+the stored GitHub CLI credential and can request additional scopes, but it does
+not change `GH_TOKEN`, `GITHUB_TOKEN`, or the corresponding Enterprise
+variables. Those environment tokens take precedence over stored credentials;
+rotate or unset them at their source before refreshing the stored credential.
+
+Keep login and refresh explicit. Ordinary `basectl gh` commands should report
+an actionable login or scope hint rather than silently starting an OAuth flow.
+
 Use `basectl gh` as the preferred interface for Base repository GitHub
 workflows when it supports the operation.
 

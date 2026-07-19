@@ -953,15 +953,39 @@ _base_basectl_completion() {
             ;;
         gh)
             case "${words[3]:-}" in
+                auth)
+                    case "${words[4]:-}" in
+                        status)
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
+                                '3:auth command:(status refresh)' \
+                                '--hostname[GitHub host]:host:' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        refresh)
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
+                                '3:auth command:(status refresh)' \
+                                '--hostname[GitHub host]:host:' \
+                                '--scope[Additional OAuth scope]:scope:' \
+                                '--scopes[Comma-separated OAuth scopes]:scopes:' \
+                                '--clipboard[Copy the one-time OAuth device code]' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                        *)
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
+                                '3:auth command:(status refresh)' \
+                                '(-h --help)'{-h,--help}'[Show help text]'
+                            ;;
+                    esac
+                    ;;
                 issue)
                     case "${words[4]:-}" in
                         list)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:issue command:(list create start readiness)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         create)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:issue command:(list create start readiness)' \
                                 '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                                 '--title[Issue title]:title:' \
@@ -976,7 +1000,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         start)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:issue command:(list create start readiness)' \
                                 '4:issue number:' \
                                 '--category[Issue category]:category:(bug enhancement documentation ci security)' \
@@ -985,7 +1009,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         readiness)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:issue command:(list create start readiness)' \
                                 '4:issue number:' \
                                 '--repo[GitHub repository]:repo:' \
@@ -995,7 +1019,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:issue command:(list create start readiness)' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
@@ -1003,37 +1027,37 @@ _base_basectl_completion() {
                     ;;
                 pr)
                     if [[ "${words[4]:-}" == create ]]; then
-                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                        _arguments '2:gh area:(auth issue pr branch worktree project)' \
                             '3:pr command:(create status checks ready merge)' \
                             '--no-fixes[Do not add an issue-closing line derived from the branch]' \
                             '(-h --help)'{-h,--help}'[Show help text]'
                     else
-                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                        _arguments '2:gh area:(auth issue pr branch worktree project)' \
                             '3:pr command:(create status checks ready merge)' \
                             '(-h --help)'{-h,--help}'[Show help text]'
                     fi
                     ;;
                 branch)
                     if [[ "${words[4]:-}" == stale ]]; then
-                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                        _arguments '2:gh area:(auth issue pr branch worktree project)' \
                             '3:branch command:(stale prune)' \
                             '--days[Stale threshold in days]:days:' \
                             '--format[Output format]:format:(text json)' \
                             '(-h --help)'{-h,--help}'[Show help text]'
                     elif [[ "${words[4]:-}" == prune ]]; then
-                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                        _arguments '2:gh area:(auth issue pr branch worktree project)' \
                             '3:branch command:(stale prune)' \
                             '--dry-run[Show planned deletions]' \
                             '--yes[Apply branch pruning]' \
                             '--remote[Prune stale remote tracking refs]' \
                             '(-h --help)'{-h,--help}'[Show help text]'
                     else
-                        _arguments '2:gh area:(issue pr branch worktree project)' \
+                        _arguments '2:gh area:(auth issue pr branch worktree project)' \
                             '3:branch command:(stale prune)'
                     fi
                     ;;
                 worktree)
-                    _arguments '2:gh area:(issue pr branch worktree project)' \
+                    _arguments '2:gh area:(auth issue pr branch worktree project)' \
                         '3:worktree command:(prune)' \
                         '--dry-run[Show planned removals]' \
                         '--yes[Apply worktree pruning]' \
@@ -1042,7 +1066,7 @@ _base_basectl_completion() {
                 project)
                     case "${words[4]:-}" in
                         doctor)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
@@ -1050,7 +1074,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         configure)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:project command:(doctor configure issue)' \
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
@@ -1064,7 +1088,7 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         issue)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:project command:(doctor configure issue)' \
                                 '4:issue command:(set-fields)' \
                                 '5:issue number:' \
@@ -1081,13 +1105,13 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         *)
-                            _arguments '2:gh area:(issue pr branch worktree project)' \
+                            _arguments '2:gh area:(auth issue pr branch worktree project)' \
                                 '3:project command:(doctor configure issue)'
                             ;;
                     esac
                     ;;
                 *)
-                    _arguments '2:gh area:(issue pr branch worktree project)'
+                    _arguments '2:gh area:(auth issue pr branch worktree project)'
                     ;;
             esac
             ;;
