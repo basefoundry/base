@@ -43,7 +43,7 @@ def write_finished_record(
     try:
         record = build_finished_record(context, argv, sensitive_options, started_at, exit_code)
         write_history_record(record)
-        if context.run_root is not None and context.run_root.name == context.run_id:
+        if context.run_root is not None:
             update_run_metadata(context.run_root, record)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         context.log.debug("Unable to write command history record: %s", exc)

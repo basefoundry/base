@@ -55,7 +55,7 @@ With the cache root set to `~/Library/Caches/base`, the clean layout is:
 │   │       ├── base_setup/
 │   │       └── base_github_projects/
 │   └── runs/
-│       └── <base-run-id>/
+    │       └── <base-run-id>__<command>__<project>/
 │           ├── run.json
 │           ├── logs/
 │           │   └── primary.log
@@ -68,7 +68,7 @@ With the cache root set to `~/Library/Caches/base`, the clean layout is:
     │       ├── cache/
     │       │   └── components/
     │       └── runs/
-    │           └── <project-run-id>/
+    │           └── <project-run-id>__<command>__<project>/
     │               ├── run.json
     │               ├── logs/
     │               │   └── primary.log
@@ -105,7 +105,11 @@ by individual Base components. This state is not tied to one diagnostic run.
 
 ### `base/runs/`
 
-One directory per Base control-plane invocation. `run.json` is written at the
+One directory per Base control-plane invocation. The directory name starts
+with the canonical run ID and adds sanitized command/project labels for manual
+inspection, for example `20260719T052536_37996_8494__setup__base`. The labels
+are filesystem display context only; `run.json`, history, and CLI output retain
+the canonical run ID without the suffix. `run.json` is written at the
 start with `status: running` and finalized with timestamps, exit status,
 project metadata, command arguments, and parent/child references when known.
 Run metadata and the primary log are private (`0600`). `primary.log` is the
@@ -136,9 +140,11 @@ project run through the history index and `run.json` metadata.
 
 ### `tmp/`
 
-Temporary files scoped to one run and component. Successful runs remove these
-directories automatically unless retention is requested. Failed or interrupted
-runs retain them for diagnosis until cleanup removes the completed bundle.
+Temporary files scoped to one run and component. Base removes the complete
+`tmp/` tree, including empty component parents, after every run by default.
+Pass the explicit `--keep-temp` wrapper option to preserve the complete tree
+for diagnosis. Run metadata, history, and `primary.log` are retained
+independently of this choice.
 
 ## Timestamps and permissions
 

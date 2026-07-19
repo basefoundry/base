@@ -11,8 +11,9 @@ syntax.
 
 `basectl` exposes `-v` as the public command-level debug switch. Direct
 `base_cli` package standard options such as `--debug`, `--quiet`, `--log-file`,
-`--config`, `--environment`, and `--keep-temp` are private to Python package
-execution and are rejected by `basectl`.
+`--config` and `--environment` are private to Python package execution and are
+rejected by `basectl`. Use `basectl --keep-temp <command>` when temporary run
+files must be preserved for diagnosis; they are removed by default.
 
 ## Stability Tiers
 

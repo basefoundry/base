@@ -41,6 +41,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--debug-wrapper"* ]]
     [[ "$output" == *"--verbose-wrapper"* ]]
     [[ "$output" == *"--utc-wrapper"* ]]
+    [[ "$output" == *"--keep-temp"* ]]
     [[ "$output" == *"--color"* ]]
 }
 

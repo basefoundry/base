@@ -104,6 +104,25 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertEqual([entry.path for entry in entries], [new_path, old_path])
         self.assertEqual([entry.command for entry in entries], ["clean", "projects"])
 
+    def test_readable_bundle_name_does_not_change_canonical_run_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            run_id = "20260601T010000_aaaaaaaa"
+            run_root = cache_root / "base" / "runs" / f"{run_id}__setup__demo"
+            log_path = run_root / "logs" / "primary.log"
+            log_path.parent.mkdir(parents=True)
+            log_path.write_text("INFO setup\n", encoding="utf-8")
+            (run_root / "run.json").write_text(
+                json.dumps({"run_id": run_id, "cli": "base_setup"}) + "\n",
+                encoding="utf-8",
+            )
+
+            entries = engine.recent_logs(cache_root)
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].run_id, run_id)
+        self.assertEqual(entries[0].timestamp.strftime("%Y%m%dT%H%M%S"), "20260601T010000")
+
     def test_base_setup_command_is_inferred_from_action(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

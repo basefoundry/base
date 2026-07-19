@@ -14,11 +14,11 @@ def test_runtime_layout_names_base_cli_directories() -> None:
     layout = runtime.runtime_layout(Path("/tmp/base-cache"), "demo", "run-123")
 
     assert layout.owner_root == Path("/tmp/base-cache/base")
-    assert layout.run_root == Path("/tmp/base-cache/base/runs/run-123")
+    assert layout.run_root == Path("/tmp/base-cache/base/runs/run-123__demo")
     assert layout.state_dir == Path("/tmp/base-cache/base")
-    assert layout.log_dir == Path("/tmp/base-cache/base/runs/run-123/logs")
+    assert layout.log_dir == Path("/tmp/base-cache/base/runs/run-123__demo/logs")
     assert layout.cache_dir == Path("/tmp/base-cache/base/cache/components/demo")
-    assert layout.temp_dir == Path("/tmp/base-cache/base/runs/run-123/tmp/demo/run-123")
+    assert layout.temp_dir == Path("/tmp/base-cache/base/runs/run-123__demo/tmp/demo/run-123")
 
 
 def test_runtime_helpers_stay_out_of_public_api() -> None:
@@ -39,7 +39,7 @@ def test_runtime_layout_is_checkout_scoped_for_project_owner() -> None:
 
     assert layout.owner_root.parent.parent == Path("/tmp/base-cache/projects")
     assert layout.owner_root.parent.name == "banyanlabs"
-    assert layout.run_root == layout.owner_root / "runs" / "run-123"
+    assert layout.run_root == layout.owner_root / "runs" / "run-123__native-cli__banyanlabs"
     assert layout.log_dir == layout.run_root / "logs"
 
 

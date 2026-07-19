@@ -598,6 +598,8 @@ class BaseCliTests(unittest.TestCase):
             self.assertEqual(result.exit_code, 0, result.output)
             self.assertEqual(seen["name"], "Ada")
             self.assertFalse(seen["temp_dir"].exists())
+            self.assertFalse(seen["temp_dir"].parent.exists())
+            self.assertFalse(seen["temp_dir"].parent.parent.exists())
             self.assertTrue(seen["cache_dir"].is_dir())
             log_dir = home / ".cache" / "base" / "base" / "runs" / next(
                 path.name for path in (home / ".cache" / "base" / "base" / "runs").iterdir()
@@ -945,6 +947,7 @@ class BaseCliTests(unittest.TestCase):
                 self.assertEqual(seen["token"], "super-secret")
                 self.assertTrue(seen["debug"])
                 self.assertTrue(seen["temp_dir"].exists())
+                self.assertTrue(seen["temp_dir"].parent.exists())
                 self.assertEqual(seen["log_file"], log_file)
                 self.assertTrue(
                     seen["temp_dir"].is_relative_to(home / ".cache" / "base" / "base" / "runs")

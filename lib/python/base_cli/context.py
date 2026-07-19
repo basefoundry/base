@@ -67,6 +67,11 @@ class Context:
         if not self.keep_temp and self.temp_dir.exists():
             try:
                 shutil.rmtree(self.temp_dir)
+                for parent in (self.temp_dir.parent, self.temp_dir.parent.parent):
+                    try:
+                        parent.rmdir()
+                    except OSError:
+                        break
             except OSError as exc:
                 self.log.warning("Temp directory cleanup failed for '%s': %s", self.temp_dir, exc)
         for handler in list(self.log.handlers):
