@@ -1136,8 +1136,8 @@ setup_run_project_artifact_layer() {
                 "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
         elif [[ "$action" == check ]]; then
             setup_run_project_pre_venv_layer precheck text "$manifest_path" "$project" "$resolved_root" "$project_venv_dir" "$remote_network" || true
-            log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
-            log_warn "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
+            log_error "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
+            log_error "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
         else
             log_warn "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
             log_warn "$(setup_recovery_project_venv "$project" "$resolved_root" "$project_venv_dir")"
@@ -1172,7 +1172,7 @@ setup_run_project_artifact_layer() {
         return "$exit_code"
     fi
     if ((exit_code)) && [[ "$action" == check ]]; then
-        log_warn "Python project check layer found missing requirements."
+        log_error "Python project check layer found missing requirements."
         return "$exit_code"
     fi
     if ((exit_code)); then
@@ -1255,10 +1255,16 @@ setup_print_check_text_results() {
                     log_debug "${_BASE_SETUP_CHECK_DEBUG_MESSAGES[$i]}"
                 fi
                 ;;
-            warn|error)
+            warn)
                 log_warn "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
                 if [[ -n "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" ]]; then
                     log_warn "${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
+                fi
+                ;;
+            error)
+                log_error "${_BASE_SETUP_CHECK_MESSAGES[$i]}"
+                if [[ -n "${_BASE_SETUP_CHECK_RECOVERIES[$i]}" ]]; then
+                    log_error "${_BASE_SETUP_CHECK_RECOVERIES[$i]}"
                 fi
                 ;;
             *)
@@ -1339,11 +1345,11 @@ setup_run_check() {
 
     setup_record_project_check_result "$project" error
     if [[ -n "$project" ]]; then
-        log_warn "Base CLI environment or project '$project' check found missing requirements."
-        log_warn "Run 'basectl setup $project' to reconcile the missing requirements."
+        log_error "Base CLI environment or project '$project' check found missing requirements."
+        log_error "Run 'basectl setup $project' to reconcile the missing requirements."
     else
-        log_warn "Base CLI environment check found missing requirements."
-        log_warn "Run 'basectl setup' to reconcile the missing requirements."
+        log_error "Base CLI environment check found missing requirements."
+        log_error "Run 'basectl setup' to reconcile the missing requirements."
     fi
     return 1
 }

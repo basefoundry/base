@@ -34,10 +34,13 @@ def print_check_results(
         )
     elif output_format == "text":
         for check in checks:
-            if check.ok:
+            status = doctor_status(check)
+            if status == "warn":
+                ctx.log.warning(check.message)
+            elif status == "ok":
                 ctx.log.info(check.message)
             else:
-                ctx.log.warning(check.message)
+                ctx.log.error(check.message)
     else:
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
         return base_cli.ExitCode.USAGE_ERROR
