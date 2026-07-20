@@ -661,15 +661,19 @@ def normalize_command_filter(value: str) -> str:
 
 
 def print_log_table(entries: list[LogEntry]) -> None:
-    print(f"{'TIME':<19}  {'COMMAND':<12}  {'RUN ID':<24}  {'STATUS':<6}  PATH")
-    for entry in entries:
-        print(
-            f"{entry.timestamp:%Y-%m-%d %H:%M:%S}  "
-            f"{entry.command:<12}  "
-            f"{entry.run_id:<24}  "
-            f"{entry.status:<6}  "
-            f"{compact_path(entry.path)}"
-        )
+    columns = (
+        ("TIME", "time"),
+        ("COMMAND", "command"),
+        ("RUN ID", "run_id"),
+        ("STATUS", "status"),
+        ("PATH", "path"),
+    )
+    base_cli.render_records(
+        log_output_records(entries),
+        requested_format="text",
+        columns=columns,
+        minimum_widths=(19, 12, 24, 6),
+    )
 
 
 def log_output_columns() -> tuple[tuple[str, str], ...]:

@@ -54,6 +54,7 @@ def resolve_output_format(
     return normalized
 
 
+# pylint: disable=too-many-arguments
 def render_records(
     records: Iterable[Mapping[str, Any]],
     *,
@@ -61,13 +62,15 @@ def render_records(
     columns: Sequence[tuple[str, str]],
     stream: TextIO | None = None,
     footer: str | None = None,
+    minimum_widths: Sequence[int] | None = None,
 ) -> str:
     """Render records according to the shared public output contract.
 
     The returned string is also written to *stream* when supplied (or stdout
     when omitted).  JSON and YAML retain the mapping shape supplied by the
     caller; delimited formats use the explicit ``columns`` order and never
-    emit a header or footer.
+    emit a header or footer. ``minimum_widths`` applies only to terminal table
+    columns; values can still expand beyond those widths.
     """
 
     target = stream if stream is not None else sys.stdout
@@ -94,7 +97,7 @@ def render_records(
         target.write(yaml.safe_dump(record_list, sort_keys=False, allow_unicode=True))
         return resolved
 
-    _write_table(target, record_list, columns, footer)
+    _write_table(target, record_list, columns, footer, minimum_widths)
     return resolved
 
 
@@ -169,13 +172,21 @@ def _write_table(
     records: Sequence[Mapping[str, Any]],
     columns: Sequence[tuple[str, str]],
     footer: str | None,
+    minimum_widths: Sequence[int] | None,
 ) -> None:
+    selected_minimums = minimum_widths or ()
+    if len(selected_minimums) > len(columns):
+        raise ValueError("minimum_widths cannot contain more entries than columns")
+
     if not records:
         if footer:
             stream.write(f"{footer}\n")
         return
 
-    widths = [len(header) for header, _key in columns]
+    widths = [
+        max(len(header), selected_minimums[index] if index < len(selected_minimums) else 0)
+        for index, (header, _key) in enumerate(columns)
+    ]
     rows: list[list[str]] = []
     for record in records:
         row = [_cell_value(record.get(key)) for _header, key in columns]

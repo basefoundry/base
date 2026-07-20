@@ -280,6 +280,36 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertIn("clean", stdout)
         self.assertIn("20260601T010000_aaaaaaaa", stdout)
 
+    def test_table_expands_columns_for_long_command_and_run_id(self) -> None:
+        stdout = TerminalStringIO()
+        entries = [
+            engine.LogEntry(
+                command="export-context",
+                raw_command="base_export_context",
+                run_id="20260718T192921_abcdefghijkl",
+                path=Path("/tmp/short.log"),
+                timestamp=engine.datetime(2026, 7, 18, 19, 29, 21, tzinfo=engine.timezone.utc),
+                status="ok",
+            ),
+            engine.LogEntry(
+                command="check",
+                raw_command="base_setup",
+                run_id="20260718T192922_a",
+                path=Path("/tmp/longer.log"),
+                timestamp=engine.datetime(2026, 7, 18, 19, 29, 22, tzinfo=engine.timezone.utc),
+                status="error",
+            ),
+        ]
+
+        with redirect_stdout(stdout):
+            engine.print_log_table(entries)
+
+        lines = stdout.getvalue().splitlines()
+        path_column = lines[0].index("PATH")
+        self.assertEqual(lines[1].index(engine.compact_path(entries[0].path)), path_column)
+        self.assertEqual(lines[2].index(engine.compact_path(entries[1].path)), path_column)
+        self.assertIn("TIME", lines[0])
+
     def test_path_prints_most_recent_matching_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

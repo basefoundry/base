@@ -350,16 +350,13 @@ def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> lis
 
 def print_history_table(records: list[HistoryRecord], *, local_time: bool = False) -> None:
     time_label = "TIME (LOCAL)" if local_time else "TIME (UTC)"
-    print(f"{time_label:<19}  {'COMMAND':<12}  {'PROJECT':<12}  {'STATUS':<6}  {'EXIT':<4}  LOG")
-    for record in records:
-        print(
-            f"{display_time(record, local_time=local_time):<19}  "
-            f"{record.command:<12}  "
-            f"{display_project(record):<12}  "
-            f"{record.status:<6}  "
-            f"{display_exit_code(record):<4}  "
-            f"{display_log_path(record)}"
-        )
+    columns = ((time_label, "time"), *history_output_columns()[1:])
+    base_cli.render_records(
+        history_output_records(records, local_time=local_time),
+        requested_format="text",
+        columns=columns,
+        minimum_widths=(19, 12, 12, 6, 4),
+    )
 
 
 def history_output_columns() -> tuple[tuple[str, str], ...]:
