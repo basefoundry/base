@@ -891,17 +891,17 @@ _base_basectl_completion() {
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         logs)
-            if [[ "${words[3]:-}" == last ]]; then
-                _arguments '2:logs command:(last)' \
-                    '--command[Filter by command]:command:' \
+            if [[ "${words[3]:-}" == last-failed ]]; then
+                _arguments '2:logs command:(last-failed)' \
+                    '--command[Select latest failure by command]:command:' \
                     '--lines[Maximum log-tail lines]:count:' \
                     '--format[Output format]:format:(text csv tsv yaml json)' \
                     '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             else
-                _arguments '2:logs command:(last)' \
-                    '--command[Filter by command]:command:' \
+                _arguments '2:logs command:(last-failed)' \
+                    '--command[Filter by command list]:command:' \
                     '--limit[Number of entries]:count:' \
-                    '--path[Print most recent log path]' \
+                    '--latest[Print newest matching log path]' \
                     '--tail[Tail and follow most recent log]' \
                     '--open[Open most recent log]' \
                     '--lines[Lines to show before following]:count:' \

@@ -7,6 +7,11 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ## [Unreleased]
 
+### Changed
+
+- Refined basectl logs with comma-separated --command filters, the
+  --latest path action, and the explicit last-failed report command.
+
 ### Fixed
 
 - Kept `basectl history` and `basectl logs` terminal tables aligned when command,

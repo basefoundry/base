@@ -153,7 +153,7 @@ load ./basectl_helpers.bash
         "repo installer-template" "ci setup" "ci check" "ci doctor"
         "release check" "release plan" "release notes" "release publish"
         "prompt list" "prompt product-self-review" "docs" "clean" "logs"
-        "logs last" "history" "config path" "config show" "config doctor" "gh issue list"
+        "logs last-failed" "history" "config path" "config show" "config doctor" "gh issue list"
         "gh issue create" "gh issue readiness" "gh issue start" "gh pr create"
         "gh pr status" "gh pr checks" "gh pr ready" "gh pr merge"
         "gh project doctor" "gh project configure" "gh project issue set-fields"

@@ -153,7 +153,7 @@ Run:
 ```bash
 basectl check
 basectl doctor
-basectl logs --path
+basectl logs --latest
 basectl logs --command setup
 ```
 
@@ -161,7 +161,7 @@ Accept the health checks when:
 
 - `basectl check` exits zero
 - `basectl doctor` reports no error findings
-- `basectl logs --path` prints the log directory path
+- `basectl logs --latest` prints the newest matching log path
 - `basectl logs --command setup` can read recent setup logs without a traceback
 
 `basectl test base` is safe to run from a Homebrew-managed Base install, but it
@@ -253,7 +253,7 @@ basectl check
 basectl doctor
 basectl check base
 basectl doctor base
-basectl logs --path
+basectl logs --latest
 basectl logs --command setup
 basectl test base
 basectl demo base -- --non-interactive

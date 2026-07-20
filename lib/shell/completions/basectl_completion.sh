@@ -507,7 +507,7 @@ _base_basectl_completion_format_values() {
         trust:allow|trust:revoke|workspace:clone|workspace:pull|workspace:init|workspace:configure|release:plan|release:notes|logs:|build:|run:)
             format_values="text json"
             ;;
-        release:check|logs:last|trust:status)
+        release:check|logs:last-failed|trust:status)
             format_values="text csv tsv yaml json"
             ;;
     esac
@@ -798,11 +798,11 @@ _base_basectl_completion() {
             ;;
         logs)
             if ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then
-                _base_basectl_completion_compgen "last" "$cur"
-            elif [[ "${COMP_WORDS[2]:-}" == last ]]; then
+                _base_basectl_completion_compgen "last-failed" "$cur"
+            elif [[ "${COMP_WORDS[2]:-}" == last-failed ]]; then
                 _base_basectl_completion_compgen "--command --lines --format -v -h --help" "$cur"
             else
-                _base_basectl_completion_compgen "--command --limit --path --tail --open --lines -v -h --help" "$cur"
+                _base_basectl_completion_compgen "--command --limit --latest --tail --open --lines -v -h --help" "$cur"
             fi
             ;;
         history)

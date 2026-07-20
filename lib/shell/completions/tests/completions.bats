@@ -354,7 +354,7 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help prompt-list prompt list
     assert_bash_completion_options_match_help prompt-render prompt product-self-review
     assert_bash_completion_options_match_help logs logs
-    assert_bash_completion_options_match_help logs-last logs last
+    assert_bash_completion_options_match_help logs-last-failed logs last-failed
     assert_bash_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_bash_completion_options_match_help gh-branch-stale gh branch stale
     assert_bash_completion_options_match_help gh-branch-prune gh branch prune
@@ -379,7 +379,7 @@ run_zsh_positional_completion() {
     assert_zsh_completion_options_match_help prompt-list prompt list
     assert_zsh_completion_options_match_help prompt-render prompt product-self-review
     assert_zsh_completion_options_match_help logs logs
-    assert_zsh_completion_options_match_help logs-last logs last
+    assert_zsh_completion_options_match_help logs-last-failed logs last-failed
     assert_zsh_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_zsh_completion_options_match_help gh-branch-stale gh branch stale
     assert_zsh_completion_options_match_help gh-branch-prune gh branch prune
@@ -529,7 +529,7 @@ run_zsh_positional_completion() {
 
     run_zsh_positional_completion basectl logs ""
     [ "$status" -eq 0 ]
-    [[ "$output" == *"positional=2:logs command:(last)"* ]]
+    [[ "$output" == *"positional=2:logs command:(last-failed)"* ]]
 
     run_zsh_positional_completion basectl config ""
     [ "$status" -eq 0 ]

@@ -113,13 +113,13 @@ manifest trust.
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network`, `--no-color` |
 | `basectl doctor explain <finding-id>` | Print local, deterministic guidance for a stable finding ID. | `--format <text\|json>` |
 | `basectl ci setup\|check\|doctor [project]` | Compatibility alias for the corresponding `--ci` mode command. | Same options, help, validation, and exit codes as the target command. |
-| `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
-| `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
+| `basectl logs` | List recent Base CLI runtime logs. | `--command <name[,name...]>`, `--limit <count>` |
+| `basectl logs last-failed` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name[,name...]>`, `--lines <count>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl logs --latest` | Print the newest matching log path only. | `--command <name[,name...]>` |
 | `basectl history` | List one record per public Base command invocation. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--limit <count>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
 | `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
-| `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
-| `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name>`, `--lines <count>` |
+| `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name[,name...]>` |
+| `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name[,name...]>`, `--lines <count>` |
 | `basectl clean` | Remove old Base runtime logs, temp files, and cache entries. | `--older-than <age>`, `--keep-last <count>`, `--dry-run` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |

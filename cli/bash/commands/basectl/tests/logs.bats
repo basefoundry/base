@@ -20,12 +20,12 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl logs --command check --limit 3 --path
+    run_basectl logs --command check,doctor --limit 3 --latest
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"BASE_PROJECT=base"* ]]
     [[ "$output" == *"DISPLAY=basectl logs"* ]]
-    [[ "$output" == *"ARGS=--command check --limit 3 --path"* ]]
+    [[ "$output" == *"ARGS=--command check,doctor --limit 3 --latest"* ]]
 }
 
 @test "basectl logs forwards verbose flag to the Python logs layer" {
@@ -43,13 +43,13 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl logs -v --path
+    run_basectl logs -v --latest
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"ARGS=--debug --path"* ]]
+    [[ "$output" == *"ARGS=--debug --latest"* ]]
 }
 
-@test "basectl logs last forwards action and format to the Python logs layer" {
+@test "basectl logs last-failed forwards action and format to the Python logs layer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     mkdir -p "$(dirname "$python_bin")"
@@ -64,10 +64,10 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl logs last --format json --lines 5
+    run_basectl logs last-failed --format json --lines 5
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"ARGS=last --format json --lines 5"* ]]
+    [[ "$output" == *"ARGS=last-failed --format json --lines 5"* ]]
 }
 
 @test "basectl logs prints help without requiring the Base Python venv" {
@@ -76,17 +76,18 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl logs [options]"* ]]
-    [[ "$output" == *"basectl logs last"* ]]
-    [[ "$output" == *"--command <name>"* ]]
-    [[ "$output" == *"--path"* ]]
+    [[ "$output" == *"basectl logs last-failed"* ]]
+    [[ "$output" == *"--command <name[,name...]>"* ]]
+    [[ "$output" == *"--latest"* ]]
+    [[ "$output" != *"--path"* ]]
     [[ "$output" != *"--format <format>"* ]]
 }
 
-@test "basectl logs last prints focused help" {
-    run_basectl logs last --help
+@test "basectl logs last-failed prints focused help" {
+    run_basectl logs last-failed --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl logs last [options]"* ]]
+    [[ "$output" == *"basectl logs last-failed [options]"* ]]
     [[ "$output" == *"--format <format>"* ]]
     [[ "$output" == *"--lines <count>"* ]]
     [[ "$output" != *"--limit"* ]]
@@ -108,7 +109,7 @@ EOF
     [[ "$output" == *"ERROR: Option '--limit' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 
-    run_basectl logs last --format
+    run_basectl logs last-failed --format
 
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--format' requires an argument."* ]]
