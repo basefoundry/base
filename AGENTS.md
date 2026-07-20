@@ -80,6 +80,21 @@ Before modifying files in this repository, classify the request.
 - After merge, sync `main`, remove the worktree, and delete local and remote
   branches.
 
+### Superseded Pull Request Closure
+
+- If a pull request is closed because another pull request supersedes it,
+  closure and cleanup are one operation. Do not leave the head branch as a
+  user follow-up.
+- Verify that the replacement pull request contains the work, add a closing
+  comment linking it, close the superseded pull request, delete its remote head
+  branch, remove agent-created local branches and worktrees, and verify that
+  the branch and worktree are gone.
+- Do not delete a user-owned or dirty worktree without explicit approval. If a
+  cleanup step fails, keep ownership of the blocker and report it as unfinished
+  work rather than handing the cleanup back to the user.
+- Ordinary closed pull requests are not automatically branch-cleanup
+  candidates; use this flow only when supersession has been established.
+
 See `docs/github-workflow.md` for the full policy, including PR body sections,
 milestones, GitHub Projects, and cleanup rules.
 

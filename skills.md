@@ -37,6 +37,24 @@ requests for Base.
 - See `docs/github-workflow.md` for the full policy, including milestones and
   GitHub Projects.
 
+## Close a superseded pull request
+
+Use this workflow when a pull request will not merge because another pull
+request carries its implementation. Treat the close decision and branch
+cleanup as one operation for every AI tool and human contributor:
+
+- verify that the replacement pull request contains the superseded work;
+- add a closing comment linking the replacement pull request;
+- close the superseded pull request and delete its remote head branch;
+- remove agent-created local branches and worktrees, then verify cleanup;
+- preserve user-owned or dirty worktrees unless the user explicitly approves
+  their removal; and
+- keep ownership of any failed cleanup instead of making it a user follow-up.
+
+Do not apply this cleanup to an ordinary closed pull request without an
+established replacement. See `docs/github-workflow.md` for the detailed close,
+delete, and verification procedure.
+
 ## Debug and verify Base behavior
 
 Use this workflow when investigating failed Base commands, broken setup/check/

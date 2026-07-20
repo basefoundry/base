@@ -52,6 +52,7 @@ jobs:
           grep -q '^## Add or change artifact setup$' skills.md
           grep -q '^## Change shell startup behavior$' skills.md
           grep -q '^## Release or Homebrew-facing changes$' skills.md
+          grep -q '^## Close a superseded pull request$' skills.md
 
   create:
     name: Create skills.md PR

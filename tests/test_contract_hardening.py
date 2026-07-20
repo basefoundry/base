@@ -69,6 +69,34 @@ def test_active_project_guidance_uses_repo_named_project_language() -> None:
     assert "use that title only as the migration source" in issue_metadata_section
 
 
+def test_superseded_pr_cleanup_guidance_is_shared_across_ai_tools() -> None:
+    agents = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skills = (REPO_ROOT / "skills.md").read_text(encoding="utf-8")
+    workflow = GITHUB_WORKFLOW_DOC.read_text(encoding="utf-8")
+    ai_context = (REPO_ROOT / ".ai-context" / "WORKFLOWS.md").read_text(encoding="utf-8")
+    copilot = (REPO_ROOT / ".github" / "copilot-instructions.md").read_text(encoding="utf-8")
+
+    normalized = {
+        "agents": " ".join(agents.split()),
+        "skills": " ".join(skills.split()),
+        "workflow": " ".join(workflow.split()),
+        "ai_context": " ".join(ai_context.split()),
+    }
+    for text in normalized.values():
+        assert "replacement" in text
+        assert "cleanup" in text
+
+    assert "closing comment" in normalized["agents"]
+    assert "delete its remote head branch" in normalized["agents"]
+    assert "agent-created local branches and worktrees" in normalized["skills"]
+    assert "user-owned or dirty worktree" in normalized["workflow"]
+    assert "cleanup step fails" in normalized["workflow"]
+    assert "gh pr close <number>" in normalized["workflow"]
+    assert "gh api --method DELETE" in normalized["workflow"]
+
+    assert "superseded-PR close-and-cleanup rule in `AGENTS.md`" in copilot
+
+
 def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> None:
     text = CONTRACTS_DOC.read_text(encoding="utf-8")
 

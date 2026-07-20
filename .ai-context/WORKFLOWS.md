@@ -131,6 +131,13 @@ should include:
 The issue owns milestone and Project tracking. PRs should inherit relevant
 labels but should not be added as duplicate Project items by default.
 
+When a PR is closed because another PR supersedes it, the agent owns the full
+close-and-cleanup operation: verify the replacement, link it in the closing
+comment, delete the remote head branch, remove agent-created local branches and
+worktrees, and verify cleanup. Preserve user-owned or dirty worktrees unless
+the user explicitly approves removal, and do not hand failed cleanup back as a
+user task.
+
 ## Validation
 
 Prefer the narrowest check that proves the change, then broaden when shared
