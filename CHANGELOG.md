@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Render blocking `basectl check` findings, remediation lines, and failure
+  summaries as `ERROR` in text output while preserving `WARN` for non-blocking
+  findings.
 - Finalized `basectl activate` run bundles and history after the runtime shell
   exits, while isolating commands entered in the shell from the activation run
   context.

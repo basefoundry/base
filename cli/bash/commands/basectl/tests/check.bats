@@ -53,6 +53,8 @@ load ./setup_helpers.bash
 
 @test "basectl check warns when Homebrew reports outdated Xcode Command Line Tools" {
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local warning_recovery_line
+    local warning_line
 
     create_brew_stub
     create_xcode_stubs
@@ -67,6 +69,10 @@ load ./setup_helpers.bash
     run_base_command check
 
     [ "$status" -eq 0 ]
+    warning_line="$(printf '%s\n' "$output" | grep -F "Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete.")"
+    warning_recovery_line="$(printf '%s\n' "$output" | grep -F "Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'.")"
+    [[ "$warning_line" == *"WARN"* ]]
+    [[ "$warning_recovery_line" == *"WARN"* ]]
     [[ "$output" == *"Xcode Command Line Tools are installed, but Homebrew reports they are outdated or incomplete."* ]]
     [[ "$output" == *"Update Xcode Command Line Tools from Software Update, or reinstall them with 'xcode-select --install'."* ]]
     [[ "$output" == *"Base CLI environment check passed."* ]]
@@ -417,6 +423,10 @@ EOF
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
     local workspace="$TEST_TMPDIR/workspace"
     local resolved_demo_root
+    local project_venv_error_line
+    local project_venv_recovery_error_line
+    local summary_error_line
+    local summary_recovery_error_line
 
     create_brew_stub
     create_xcode_stubs
@@ -432,6 +442,14 @@ EOF
     run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
 
     [ "$status" -eq 1 ]
+    project_venv_error_line="$(printf '%s\n' "$output" | grep -F "Virtual environment is missing at '$resolved_demo_root/.venv'.")"
+    project_venv_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment.")"
+    summary_error_line="$(printf '%s\n' "$output" | grep -F "Base CLI environment or project 'demo' check found missing requirements.")"
+    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup demo' to reconcile the missing requirements.")"
+    [[ "$project_venv_error_line" == *"ERROR"* ]]
+    [[ "$project_venv_recovery_error_line" == *"ERROR"* ]]
+    [[ "$summary_error_line" == *"ERROR"* ]]
+    [[ "$summary_recovery_error_line" == *"ERROR"* ]]
     [ -f "$record_path" ]
     grep -Fq '"project": "demo"' "$record_path"
     grep -Fq '"command": "basectl check"' "$record_path"
@@ -441,6 +459,29 @@ EOF
         return 1
     fi
     [[ "$output" == *"Virtual environment is missing at '$resolved_demo_root/.venv'."* ]]
+}
+
+@test "basectl check reports a failing healthy project check layer as an error" {
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local project_check_error_line
+    local workspace="$TEST_TMPDIR/workspace"
+
+    create_brew_stub
+    create_xcode_stubs
+    touch "$TEST_STATE_DIR/xcode-installed"
+    mkdir -p "$TEST_TMPDIR/CommandLineTools" "$workspace/demo"
+    touch "$TEST_STATE_DIR/python-installed"
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$base_venv_dir"
+    BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$workspace/demo/.venv" 1
+
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
+
+    [ "$status" -eq 1 ]
+    project_check_error_line="$(printf '%s\n' "$output" | grep -F "Python project check layer found missing requirements.")"
+    [[ "$project_check_error_line" == *"ERROR"* ]]
 }
 
 @test "basectl check uv-managed project does not require historical Base project venv" {
@@ -956,9 +997,22 @@ EOF
 }
 
 @test "basectl check fails when required components are missing" {
+    local homebrew_error_line
+    local homebrew_recovery_error_line
+    local summary_error_line
+    local summary_recovery_error_line
+
     run_base_command check
 
     [ "$status" -eq 1 ]
+    homebrew_error_line="$(printf '%s\n' "$output" | grep -F "Homebrew is not installed.")"
+    homebrew_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/.")"
+    summary_error_line="$(printf '%s\n' "$output" | grep -F "Base CLI environment check found missing requirements.")"
+    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup' to reconcile the missing requirements.")"
+    [[ "$homebrew_error_line" == *"ERROR"* ]]
+    [[ "$homebrew_recovery_error_line" == *"ERROR"* ]]
+    [[ "$summary_error_line" == *"ERROR"* ]]
+    [[ "$summary_recovery_error_line" == *"ERROR"* ]]
     [[ "$output" == *"Homebrew is not installed."* ]]
     [[ "$output" == *"Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."* ]]
     [[ "$output" == *"Xcode Command Line Tools are not installed."* ]]

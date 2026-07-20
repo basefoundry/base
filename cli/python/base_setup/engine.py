@@ -17,6 +17,7 @@ from base_devenv.report import build_devenv_report
 from base_devenv.report import dumps_devenv_report_json
 from base_devenv.report import print_devenv_report_text
 
+from .checks import ArtifactCheck
 from .checks import check_to_json
 from .checks import checks_payload_to_json
 from .checks import checks_status
@@ -249,6 +250,20 @@ def read_default_manifest(ctx: base_cli.Context) -> BaseManifest:
     return read_manifest(default_manifest_path)
 
 
+def log_check_text_result(ctx: base_cli.Context, check: ArtifactCheck) -> None:
+    status = doctor_status(check)
+    if status == "warn":
+        log_result = ctx.log.warning
+    elif status == "ok":
+        log_result = ctx.log.info
+    else:
+        log_result = ctx.log.error
+
+    log_result(check.message)
+    if check.fix:
+        log_result("Fix: %s", check.fix)
+
+
 def check_manifest(
     ctx: base_cli.Context,
     default_manifest: BaseManifest,
@@ -267,12 +282,7 @@ def check_manifest(
     elif output_format == "text":
         ctx.log.info("Checking project '%s' manifest requirements.", manifest.project_name)
         for check in checks:
-            if check.ok:
-                ctx.log.info(check.message)
-            else:
-                ctx.log.warning(check.message)
-                if check.fix:
-                    ctx.log.warning("Fix: %s", check.fix)
+            log_check_text_result(ctx, check)
     else:
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
         return base_cli.ExitCode.USAGE_ERROR
@@ -292,12 +302,7 @@ def check_pre_venv_manifest(
         print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
     elif output_format == "text":
         for check in checks:
-            if check.ok:
-                ctx.log.info(check.message)
-            else:
-                ctx.log.warning(check.message)
-                if check.fix:
-                    ctx.log.warning("Fix: %s", check.fix)
+            log_check_text_result(ctx, check)
     else:
         ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
         return base_cli.ExitCode.USAGE_ERROR
