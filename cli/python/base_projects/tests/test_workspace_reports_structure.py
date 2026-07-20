@@ -31,7 +31,7 @@ class WorkspaceReportStructureTests(unittest.TestCase):
         engine_source = Path(engine.__file__).read_text(encoding="utf-8")
 
         self.assertNotIn("workspace_reports import", engine_source)
-        self.assertIn("workspace_report_json import dumps_json", engine_source)
+        self.assertIn("workspace_report_json import workspace_status_to_json", engine_source)
         self.assertIn("workspace_report_text import print_workspace_doctor", engine_source)
         self.assertIn("workspace_checks import workspace_project_check_results", engine_source)
         self.assertIn("workspace_statuses import workspace_project_statuses", engine_source)

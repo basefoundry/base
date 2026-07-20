@@ -12,6 +12,11 @@ from unittest import mock
 from base_projects import engine
 
 
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
 def write_manifest(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "base_manifest.yaml").write_text(
@@ -72,7 +77,7 @@ def invoke_engine(
     home: Path,
     user_config: str | None = None,
 ) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    stdout = TerminalStringIO()
     stderr = io.StringIO()
     if user_config is not None:
         config_path = home / ".base.d" / "config.yaml"
