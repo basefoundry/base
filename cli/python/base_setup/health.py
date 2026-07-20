@@ -9,14 +9,22 @@ from .manifest import PortHealthConfig
 
 
 def check_required_env(manifest: BaseManifest) -> list[ArtifactCheck]:
-    return [check_required_env_var(env_name) for env_name in manifest.health.required_env]
+    activation_hint = ""
+    if manifest.activate.source:
+        activation_hint = (
+            f", or run 'basectl activate {manifest.project_name}' if the project activation provides it"
+        )
+    return [
+        check_required_env_var(env_name, activation_hint=activation_hint)
+        for env_name in manifest.health.required_env
+    ]
 
 
 def check_required_ports(manifest: BaseManifest) -> list[ArtifactCheck]:
     return [check_required_port(port_config) for port_config in manifest.health.required_ports]
 
 
-def check_required_env_var(env_name: str) -> ArtifactCheck:
+def check_required_env_var(env_name: str, *, activation_hint: str = "") -> ArtifactCheck:
     if os.environ.get(env_name, ""):
         return ArtifactCheck(
             name=env_name,
@@ -29,7 +37,7 @@ def check_required_env_var(env_name: str) -> ArtifactCheck:
         name=env_name,
         ok=False,
         message=f"Environment variable '{env_name}' is not set or is empty.",
-        fix=f"Set {env_name} in your shell, .env, or secrets manager.",
+        fix=f"Set {env_name} in your shell, .env, or secrets manager{activation_hint}.",
         finding_id="BASE-H001",
     )
 

@@ -19,6 +19,7 @@ from base_setup.manifest import HealthConfig
 from base_setup.manifest import IdeConfig
 from base_setup.manifest import PortHealthConfig
 from base_setup.manifest import PythonConfig
+from base_setup.manifest_model import ActivateConfig
 from base_setup.manifest import read_manifest
 from base_setup.python_policy import PythonInterpreter
 from base_setup.registry import get_artifact_definition
@@ -344,6 +345,33 @@ class ProjectCheckTests(unittest.TestCase):
             "Set BASE_TEST_REQUIRED_EMPTY in your shell, .env, or secrets manager.",
         )
         self.assertNotIn("super-secret-value", output)
+
+        activation_manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+            activate=ActivateConfig(source=(".base/activate.sh",)),
+            health=HealthConfig(required_env=("BASE_TEST_ACTIVATION_ENV",)),
+        )
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("BASE_TEST_ACTIVATION_ENV", None)
+            activation_stdout = io.StringIO()
+            with redirect_stdout(activation_stdout):
+                activation_status = engine.check_manifest(
+                    fake_context(),
+                    default_manifest,
+                    activation_manifest,
+                    output_format="json",
+                )
+        activation_payload = json.loads(activation_stdout.getvalue())
+        with self.subTest("activation hint"):
+            self.assertEqual(activation_status, 1)
+            self.assertEqual(
+                activation_payload["checks"][0]["fix"],
+                "Set BASE_TEST_ACTIVATION_ENV in your shell, .env, or secrets manager, "
+                "or run 'basectl activate demo' if the project activation provides it.",
+            )
 
 
     def test_check_manifest_reports_required_ports(self) -> None:

@@ -445,7 +445,7 @@ EOF
     project_venv_error_line="$(printf '%s\n' "$output" | grep -F "Virtual environment is missing at '$resolved_demo_root/.venv'.")"
     project_venv_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup demo --recreate-venv' to back up and recreate the project virtual environment.")"
     summary_error_line="$(printf '%s\n' "$output" | grep -F "Base CLI environment or project 'demo' check found missing requirements.")"
-    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup demo' to reconcile the missing requirements.")"
+    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Review the specific Fix lines above and rerun 'basectl check demo' after resolving the missing requirements.")"
     [[ "$project_venv_error_line" == *"ERROR"* ]]
     [[ "$project_venv_recovery_error_line" == *"ERROR"* ]]
     [[ "$summary_error_line" == *"ERROR"* ]]
@@ -1008,7 +1008,7 @@ EOF
     homebrew_error_line="$(printf '%s\n' "$output" | grep -F "Homebrew is not installed.")"
     homebrew_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/.")"
     summary_error_line="$(printf '%s\n' "$output" | grep -F "Base CLI environment check found missing requirements.")"
-    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Run 'basectl setup' to reconcile the missing requirements.")"
+    summary_recovery_error_line="$(printf '%s\n' "$output" | grep -F "Review the specific Fix lines above and rerun 'basectl check' after resolving the missing requirements.")"
     [[ "$homebrew_error_line" == *"ERROR"* ]]
     [[ "$homebrew_recovery_error_line" == *"ERROR"* ]]
     [[ "$summary_error_line" == *"ERROR"* ]]
@@ -1023,7 +1023,7 @@ EOF
     [[ "$output" == *"Virtual environment is missing at '$TEST_HOME/.base.d/base/.venv'."* ]]
     [[ "$output" == *"Run 'basectl setup --recreate-venv' to back up and recreate the Base virtual environment."* ]]
     [[ "$output" == *"Base CLI environment check found missing requirements."* ]]
-    [[ "$output" == *"Run 'basectl setup' to reconcile the missing requirements."* ]]
+    [[ "$output" == *"Review the specific Fix lines above and rerun 'basectl check' after resolving the missing requirements."* ]]
 }
 
 @test "basectl check rejects unsupported output formats" {
