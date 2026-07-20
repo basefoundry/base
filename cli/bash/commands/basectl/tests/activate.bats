@@ -3,7 +3,69 @@
 load ./basectl_helpers.bash
 
 
-@test "basectl activate resolves a project and execs a project subshell" {
+setup_activate_lifecycle_fixture() {
+    ACTIVATE_CACHE_ROOT="$TEST_TMPDIR/cache"
+    ACTIVATE_HISTORY_STATE="$TEST_TMPDIR/activate-history-state"
+    ACTIVATE_SHELL_STATE="$TEST_TMPDIR/activate-shell-state"
+    ACTIVATE_SHELL_STATUS="$1"
+    ACTIVATE_WORKSPACE="$TEST_TMPDIR/workspace"
+    ACTIVATE_BASE_PYTHON="$TEST_HOME/.base.d/base/.venv/bin/python"
+    ACTIVATE_PROJECT_PYTHON="$ACTIVATE_WORKSPACE/demo/.venv/bin/python"
+    ACTIVATE_SHELL="$TEST_TMPDIR/fake-bash"
+
+    unset \
+        BASE_CLI_RUNTIME_OWNER \
+        BASE_CLI_RUN_ID \
+        BASE_CLI_RUN_ROOT \
+        BASE_CLI_PRIMARY_LOG \
+        BASE_CLI_HISTORY_PARENT_RUN_ID \
+        BASE_CLI_HISTORY_STARTED_AT \
+        BASE_CLI_HISTORY_SCOPE \
+        BASE_CLI_HISTORY_PROJECT \
+        BASE_CLI_HISTORY_PROJECT_ROOT \
+        BASE_CLI_HISTORY_MANIFEST \
+        BASE_CLI_PROJECT_NAME \
+        BASE_CLI_PROJECT_ROOT \
+        BASE_CLI_PROJECT_MANIFEST
+
+    mkdir -p "$(dirname "$ACTIVATE_BASE_PYTHON")" "$(dirname "$ACTIVATE_PROJECT_PYTHON")" \
+        "$ACTIVATE_WORKSPACE/demo"
+    cat > "$ACTIVATE_BASE_PYTHON" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_history.record" ]]; then
+    printf '%s\n' "$*" >> "${BASE_TEST_ACTIVATE_HISTORY_STATE:?}"
+    exit 0
+fi
+printf 'unexpected activate lifecycle python args: %s\n' "$*" >&2
+exit 1
+EOF
+    cp "$ACTIVATE_BASE_PYTHON" "$ACTIVATE_PROJECT_PYTHON"
+    cat > "$ACTIVATE_SHELL" <<'EOF'
+#!/usr/bin/env bash
+grep -Fq '"status":"running"' "${BASE_CLI_RUN_ROOT:?}/run.json" || exit 97
+[[ ! -s "${BASE_TEST_ACTIVATE_HISTORY_STATE:?}" ]] || exit 98
+"$BASH" -c 'trap "exit 42" INT; kill -s INT "$$"; exit 99'
+[[ $? -eq 42 ]] || exit 99
+{
+    printf 'run-status=running\n'
+    printf 'history-before-exit=absent\n'
+    printf 'int-disposition=catchable\n'
+} > "${BASE_TEST_ACTIVATE_SHELL_STATE:?}"
+
+exit "$BASE_TEST_ACTIVATE_SHELL_STATUS"
+EOF
+    chmod +x "$ACTIVATE_BASE_PYTHON" "$ACTIVATE_PROJECT_PYTHON" "$ACTIVATE_SHELL"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$ACTIVATE_WORKSPACE/demo/base_manifest.yaml"
+    ACTIVATE_WORKSPACE="$(cd "$ACTIVATE_WORKSPACE" && pwd -P)"
+}
+
+
+@test "basectl activate resolves a project and launches a project subshell" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
     local project_python="$workspace/demo/.venv/bin/python"
@@ -51,6 +113,84 @@ EOF
     [[ "$output" == *"BASE_PROJECT_MANIFEST=$workspace/demo/base_manifest.yaml"* ]]
     [[ "$output" == *"BASE_PROJECT_VENV_DIR=$workspace/demo/.venv"* ]]
     [[ "$output" == *"PWD=$workspace/demo"* ]]
+}
+
+@test "basectl activate finalizes a successful runtime shell and records primary project history" {
+    local run_root run_id run_json history_call
+
+    setup_activate_lifecycle_fixture 0
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_CACHE_DIR="$ACTIVATE_CACHE_ROOT" \
+        BASE_ACTIVATE_SHELL="$ACTIVATE_SHELL" \
+        BASE_TEST_ACTIVATE_HISTORY_STATE="$ACTIVATE_HISTORY_STATE" \
+        BASE_TEST_ACTIVATE_SHELL_STATE="$ACTIVATE_SHELL_STATE" \
+        BASE_TEST_ACTIVATE_SHELL_STATUS="$ACTIVATE_SHELL_STATUS" \
+        BASE_TEST_PROJECT_ROOT="$ACTIVATE_WORKSPACE/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 0 ]
+    grep -Fqx "run-status=running" "$ACTIVATE_SHELL_STATE"
+    grep -Fqx "history-before-exit=absent" "$ACTIVATE_SHELL_STATE"
+    grep -Fqx "int-disposition=catchable" "$ACTIVATE_SHELL_STATE"
+    run_root="$(find "$ACTIVATE_CACHE_ROOT/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$run_root" ]
+    run_id="$(basename -- "$run_root")"
+    run_id="${run_id%%__*}"
+    run_json="$(cat "$run_root/run.json")"
+    [[ "$run_json" == *'"status":"ok"'* ]]
+    [[ "$run_json" == *'"exit_code":0'* ]]
+    [ -f "$ACTIVATE_HISTORY_STATE" ]
+    [ "$(wc -l < "$ACTIVATE_HISTORY_STATE")" -eq 1 ]
+    history_call="$(cat "$ACTIVATE_HISTORY_STATE")"
+    [[ "$history_call" == *"-m base_history.record --command activate "* ]]
+    [[ "$history_call" == *" --run-id $run_id "* ]]
+    [[ "$history_call" == *" --exit-code 0 --scope primary --owner base "* ]]
+    [[ "$history_call" == *" --bundle-path $run_root "* ]]
+    [[ "$history_call" == *" --project demo --project-root $ACTIVATE_WORKSPACE/demo "* ]]
+    [[ "$history_call" == *" --manifest $ACTIVATE_WORKSPACE/demo/base_manifest.yaml "* ]]
+    [[ "$history_call" == *" -- basectl activate demo" ]]
+}
+
+@test "basectl activate propagates and records a failed runtime shell exit" {
+    local run_root run_id run_json history_call
+
+    setup_activate_lifecycle_fixture 23
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_CACHE_DIR="$ACTIVATE_CACHE_ROOT" \
+        BASE_ACTIVATE_SHELL="$ACTIVATE_SHELL" \
+        BASE_TEST_ACTIVATE_HISTORY_STATE="$ACTIVATE_HISTORY_STATE" \
+        BASE_TEST_ACTIVATE_SHELL_STATE="$ACTIVATE_SHELL_STATE" \
+        BASE_TEST_ACTIVATE_SHELL_STATUS="$ACTIVATE_SHELL_STATUS" \
+        BASE_TEST_PROJECT_ROOT="$ACTIVATE_WORKSPACE/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 23 ]
+    grep -Fqx "run-status=running" "$ACTIVATE_SHELL_STATE"
+    grep -Fqx "history-before-exit=absent" "$ACTIVATE_SHELL_STATE"
+    grep -Fqx "int-disposition=catchable" "$ACTIVATE_SHELL_STATE"
+    run_root="$(find "$ACTIVATE_CACHE_ROOT/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$run_root" ]
+    run_id="$(basename -- "$run_root")"
+    run_id="${run_id%%__*}"
+    run_json="$(cat "$run_root/run.json")"
+    [[ "$run_json" == *'"status":"error"'* ]]
+    [[ "$run_json" == *'"exit_code":23'* ]]
+    [ -f "$ACTIVATE_HISTORY_STATE" ]
+    [ "$(wc -l < "$ACTIVATE_HISTORY_STATE")" -eq 1 ]
+    history_call="$(cat "$ACTIVATE_HISTORY_STATE")"
+    [[ "$history_call" == *"-m base_history.record --command activate "* ]]
+    [[ "$history_call" == *" --run-id $run_id "* ]]
+    [[ "$history_call" == *" --exit-code 23 --scope primary --owner base "* ]]
+    [[ "$history_call" == *" --bundle-path $run_root "* ]]
+    [[ "$history_call" == *" --project demo --project-root $ACTIVATE_WORKSPACE/demo "* ]]
+    [[ "$history_call" == *" --manifest $ACTIVATE_WORKSPACE/demo/base_manifest.yaml "* ]]
+    [[ "$history_call" == *" -- basectl activate demo" ]]
 }
 
 @test "basectl activate honors BASE_PROJECT_VENV_DIR override" {
@@ -309,7 +449,7 @@ EOF
     [[ "$output" == *"interactive Base Bash runtime shell"* ]]
 }
 
-@test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before exec" {
+@test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before launch" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
     local project_python="$workspace/demo/.venv/bin/python"

@@ -147,5 +147,5 @@ base_activate_subcommand_main() {
     if ! base_activate_shell_is_bash "$activate_shell"; then
         fatal_error "basectl activate requires Bash. BASE_ACTIVATE_SHELL='$activate_shell' is not supported. Unset BASE_ACTIVATE_SHELL to use the default Bash runtime shell."
     fi
-    exec "$activate_shell" --rcfile "$shell_rc"
+    "$activate_shell" --rcfile "$shell_rc"
 }

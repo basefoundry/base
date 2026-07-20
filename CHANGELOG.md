@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Finalized `basectl activate` run bundles and history after the runtime shell
+  exits, while isolating commands entered in the shell from the activation run
+  context.
 - Show the names and retention reasons for ordinary unmerged branches during
   local and GitHub remote branch pruning.
 - Reported GitHub merge-verification failures separately from unmerged branches

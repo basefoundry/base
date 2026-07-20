@@ -215,9 +215,17 @@ shell, but activation itself is Bash so Base can load the Bash standard library,
 project virtual environment, manifest-declared `activate.source` scripts, and
 runtime prompt consistently.
 
+The activated shell inherits the `activate` invocation's run context only while
+its rcfile performs startup, so startup diagnostics stay in the activation run
+bundle. The rcfile clears launcher-only run and history variables before the
+prompt; recordable `basectl` commands entered interactively therefore follow the
+normal policy for independent run bundles and history rows. When the shell
+exits, the waiting activation launcher finalizes the activation bundle with the
+shell's exit status and records the single `activate` history row.
+
 `BASE_ACTIVATE_SHELL` may point to a different Bash executable, such as a
 Homebrew-managed Bash. It must not point to Zsh or another non-Bash shell. Base
-rejects non-Bash values before exec so users see a direct configuration error
+rejects non-Bash values before launch so users see a direct configuration error
 instead of a Bash-rcfile failure from the target shell.
 
 Zsh-specific aliases, options, completions, and prompt customizations are not
