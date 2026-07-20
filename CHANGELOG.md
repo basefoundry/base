@@ -9,6 +9,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Reported GitHub merge-verification failures separately from unmerged branches
+  during branch and worktree pruning, while retaining every unverified cleanup
+  candidate and returning a nonzero status for incomplete prune scans.
 - Consolidated each public invocation into one run ID, one `run.json`, and one
   `logs/primary.log`; delegated Bash/Python phases now share the DEBUG-level
   diagnostic stream and produce one history row. Legacy internal logs and
