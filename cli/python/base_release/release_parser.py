@@ -77,9 +77,10 @@ def parse_release_option(
     if arg == "--format":
         require_check_option(command, "--format")
         state.output_format = read_release_option_value(arguments, index, "--format")
-        if state.output_format not in ("text", "json"):
+        if state.output_format not in base_cli.PUBLIC_OUTPUT_FORMATS:
             raise ReleaseUsageError(
-                f"Unsupported release check format '{state.output_format}'. Expected text or json."
+                f"Unsupported release check format '{state.output_format}'. Expected one of: "
+                f"{', '.join(base_cli.PUBLIC_OUTPUT_FORMATS)}."
             )
         return index + 2
     if arg == "--dry-run":
@@ -117,7 +118,7 @@ def selected_release_check_format(arguments: tuple[str, ...]) -> str:
     for index, argument in enumerate(arguments):
         if argument == "--format" and index + 1 < len(arguments):
             candidate = arguments[index + 1]
-            if candidate in ("text", "json"):
+            if candidate in base_cli.PUBLIC_OUTPUT_FORMATS:
                 selected = candidate
     return selected
 
@@ -126,7 +127,7 @@ def print_usage(file: TextIO = sys.stdout) -> None:
     command = base_cli.delegated_display_command("base_release")
     print(
         f"""Usage:
-  {command} check --version <version> [--manifest <path>] [--format <text|json>]
+  {command} check --version <version> [--manifest <path>] [--format <text|csv|tsv|yaml|json>]
   {command} plan --version <version> [--manifest <path>]
   {command} notes --version <version> [--manifest <path>]
   {command} publish --version <version> [--manifest <path>] [--dry-run] [--yes]

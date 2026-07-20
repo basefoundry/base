@@ -43,7 +43,7 @@ def pushd(path: Path):
 
 
 def run_engine(args: list[str], cwd: Path, extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    stdout = TerminalStringIO()
     stderr = io.StringIO()
     env = {
         "BASE_CLI_DISPLAY_COMMAND": "",
@@ -58,6 +58,11 @@ def run_engine(args: list[str], cwd: Path, extra_env: dict[str, str] | None = No
             with pushd(cwd), redirect_stdout(stdout), redirect_stderr(stderr):
                 status = main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 def write_release_project(
@@ -135,7 +140,7 @@ class ReleaseUsageTests(unittest.TestCase):
     def test_json_usage_error_stays_structured_after_later_invalid_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = run_engine(
-                ["check", "--format", "json", "--format", "yaml"],
+                ["check", "--format", "json", "--format", "xml"],
                 Path(tmpdir),
                 {"BASE_CLI_DISPLAY_COMMAND": "basectl release"},
             )

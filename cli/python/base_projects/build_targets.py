@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
@@ -100,6 +99,12 @@ def build_targets_for_project(
     target_names: tuple[str, ...],
     output_format: str = "text",
 ) -> int:
+    if output_format != "command-protocol":
+        try:
+            base_cli.resolve_output_format(output_format)
+        except base_cli.OutputFormatError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.USAGE_ERROR
     try:
         manifest = read_manifest(project.manifest_path)
         targets = selected_build_targets(project, manifest, target_names)
@@ -161,6 +166,12 @@ def list_build_targets_for_project(
     project: ProjectLike,
     output_format: str = "text",
 ) -> int:
+    if output_format != "command-protocol":
+        try:
+            base_cli.resolve_output_format(output_format)
+        except base_cli.OutputFormatError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.USAGE_ERROR
     try:
         manifest = read_manifest(project.manifest_path)
         targets = all_build_targets(project, manifest)
@@ -168,44 +179,55 @@ def list_build_targets_for_project(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "command-protocol":
-        records = [
-            build_target_record(
-                project,
-                manifest,
-                target_name,
-                target_config,
-                working_dir,
-                manifest_command_trust_required=False,
-            )
-            for target_name, target_config, working_dir in targets
-        ]
-        print(dumps_records("build-target", records))
-    elif output_format == "json":
-        print(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "project": {
-                        "name": project.name,
-                        "root": str(project.root),
-                        "manifest_path": str(project.manifest_path),
-                    },
-                    "targets": [
-                        {
-                            "name": target_name,
-                            "working_dir": str(working_dir),
-                            "command": target_config.command,
-                            "description": target_config.description,
-                            "runner": target_config.runner,
-                        }
-                        for target_name, target_config, working_dir in targets
-                    ],
-                },
-                indent=2,
-            )
+    records = [
+        build_target_record(
+            project,
+            manifest,
+            target_name,
+            target_config,
+            working_dir,
+            manifest_command_trust_required=False,
         )
-    elif output_format == "text":
+        for target_name, target_config, working_dir in targets
+    ]
+    if output_format == "command-protocol":
+        print(dumps_records("build-target", records))
+    elif output_format in {"json", "yaml"}:
+        base_cli.render_document(
+            {
+                "schema_version": 1,
+                "project": {
+                    "name": project.name,
+                    "root": str(project.root),
+                    "manifest_path": str(project.manifest_path),
+                },
+                "targets": [
+                    {
+                        "name": target_name,
+                        "working_dir": str(working_dir),
+                        "command": target_config.command,
+                        "description": target_config.description,
+                        "runner": target_config.runner,
+                    }
+                    for target_name, target_config, working_dir in targets
+                ],
+            },
+            requested_format=output_format,
+        )
+    elif output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            records,
+            requested_format=output_format,
+            columns=(
+                ("PROJECT", "project_name"),
+                ("TARGET", "target_name"),
+                ("WORKING DIR", "working_dir"),
+                ("COMMAND", "command"),
+                ("DESCRIPTION", "description"),
+                ("RUNNER", "runner"),
+            ),
+        )
+    else:
         for target_name, target_config, working_dir in targets:
             print_build_target(
                 project,
@@ -215,9 +237,6 @@ def list_build_targets_for_project(
                 working_dir,
                 manifest_command_trust_required=False,
             )
-    else:
-        ctx.log.error("Unsupported build-target-list output format '%s'.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 

@@ -82,7 +82,7 @@ EOF
     [[ "$output" == *"--since <time>"* ]]
     [[ "$output" == *"--until <time>"* ]]
     [[ "$output" == *"--local-time"* ]]
-    [[ "$output" == *"--format <text|markdown|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
 }
 
 @test "basectl history reports missing option arguments as usage errors" {

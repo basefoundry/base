@@ -91,7 +91,12 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--command", "command_filter", help="Filter by basectl command name.")
 @base_cli.option("--status", "status_filter", help="Filter by status: ok, warn, or error.")
 @base_cli.option("--limit", default="10", help="Maximum history records to list.")
-@base_cli.option("--format", "output_format", default="text", help="Output format: text, markdown, or json.")
+@base_cli.option(
+    "--format",
+    "output_format",
+    default="text",
+    help="Output format: text, csv, tsv, yaml, or json.",
+)
 @base_cli.option("--report", is_flag=True, help="Print a privacy-conscious local activity report.")
 @base_cli.option("--oldest-first", is_flag=True, help="Show the selected history window from oldest to newest.")
 @base_cli.option("--last", "last_window", help="Show records from the most recent duration, such as 2h or 7d.")
@@ -110,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
     is_flag=True,
     help="Render text and Markdown timestamps in local time; defaults to UTC.",
 )
-# pylint: disable=too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-arguments,too-many-branches,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
     project_filter: str | None,
@@ -149,6 +154,17 @@ def run(
         history_report = build_history_report(cache_root, records)
         if options.output_format == "json":
             print(json.dumps(history_report_to_json(history_report), indent=2, sort_keys=True))
+        elif options.output_format in {"csv", "tsv", "yaml"} or not base_cli.is_terminal():
+            report_payload = history_report_to_json(history_report)
+            if options.output_format == "yaml":
+                base_cli.render_document(report_payload, requested_format="yaml")
+            else:
+                base_cli.render_document(
+                    report_payload,
+                    requested_format="tsv" if options.output_format == "markdown" else options.output_format,
+                    records_key="recent",
+                    columns=history_output_columns(),
+                )
         else:
             print_history_report_markdown(history_report, local_time=options.local_time)
         return base_cli.ExitCode.SUCCESS
@@ -157,9 +173,19 @@ def run(
         print(json.dumps([record.to_json() for record in records], indent=2))
         return base_cli.ExitCode.SUCCESS
     if not records:
-        print(f"No Base command history found under {cache_root / HISTORY_PATH}.")
+        if options.output_format == "yaml":
+            base_cli.render_records([], requested_format="yaml", columns=history_output_columns())
+        elif options.output_format not in {"csv", "tsv"} and base_cli.is_terminal():
+            print(f"No Base command history found under {cache_root / HISTORY_PATH}.")
         return base_cli.ExitCode.SUCCESS
-    print_history_table(records, local_time=options.local_time)
+    if options.output_format in {"csv", "tsv", "yaml"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            history_output_records(records, local_time=options.local_time),
+            requested_format=options.output_format,
+            columns=history_output_columns(),
+        )
+    else:
+        print_history_table(records, local_time=options.local_time)
     return base_cli.ExitCode.SUCCESS
 
 
@@ -171,17 +197,21 @@ def normalize_optional_filter(value: str | None) -> str | None:
 
 def normalize_format(value: str) -> str:
     normalized = value.strip().lower()
-    if normalized not in {"text", "json"}:
-        raise ValueError(f"Unsupported output format '{value}'. Expected one of: text, json.")
+    if normalized not in base_cli.PUBLIC_OUTPUT_FORMATS:
+        raise ValueError(
+            f"Unsupported output format '{value}'. Expected one of: {', '.join(base_cli.PUBLIC_OUTPUT_FORMATS)}."
+        )
     return normalized
 
 
 def normalize_report_format(value: str) -> str:
     normalized = value.strip().lower()
     if normalized == "text":
-        return "markdown"
-    if normalized not in {"markdown", "json"}:
-        raise ValueError(f"Unsupported report output format '{value}'. Expected one of: markdown, json.")
+        return "text"
+    if normalized not in {"markdown", *base_cli.PUBLIC_OUTPUT_FORMATS}:
+        raise ValueError(
+            f"Unsupported report output format '{value}'. Expected one of: text, csv, tsv, yaml, json."
+        )
     return normalized
 
 
@@ -330,6 +360,31 @@ def print_history_table(records: list[HistoryRecord], *, local_time: bool = Fals
             f"{display_exit_code(record):<4}  "
             f"{display_log_path(record)}"
         )
+
+
+def history_output_columns() -> tuple[tuple[str, str], ...]:
+    return (
+        ("TIME", "time"),
+        ("COMMAND", "command"),
+        ("PROJECT", "project"),
+        ("STATUS", "status"),
+        ("EXIT", "exit"),
+        ("LOG", "log"),
+    )
+
+
+def history_output_records(records: list[HistoryRecord], *, local_time: bool = False) -> list[dict[str, Any]]:
+    return [
+        {
+            "time": display_time(record, local_time=local_time),
+            "command": record.command,
+            "project": display_project(record),
+            "status": record.status,
+            "exit": display_exit_code(record),
+            "log": display_log_path(record),
+        }
+        for record in records
+    ]
 
 
 def display_time(record: HistoryRecord, *, local_time: bool = False) -> str:

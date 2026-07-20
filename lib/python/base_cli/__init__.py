@@ -6,7 +6,15 @@ from .context import Context, get_current_context
 from .exit_codes import ExitCode
 from .inspection import inspection_envelope, render_inspection_json
 from .logging import configure_logger, log_critical, log_debug, log_error, log_info, log_warning
-from .output import OutputFormatError, is_terminal, output_format_choices, render_records, resolve_output_format
+from .output import (
+    OutputFormatError,
+    PUBLIC_OUTPUT_FORMATS,
+    is_terminal,
+    output_format_choices,
+    render_document,
+    render_records,
+    resolve_output_format,
+)
 
 __all__ = [
     "App",
@@ -27,9 +35,11 @@ __all__ = [
     "log_info",
     "log_warning",
     "OutputFormatError",
+    "PUBLIC_OUTPUT_FORMATS",
     "is_terminal",
     "output_format_choices",
     "option",
+    "render_document",
     "render_records",
     "resolve_output_format",
     "run_app",

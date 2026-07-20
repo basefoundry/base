@@ -120,28 +120,38 @@ def build_release_context(ctx: base_cli.Context, args: ReleaseArguments) -> Rele
 
 def release_check_command(ctx: ReleaseContext, *, output_format: str = "text") -> int:
     findings = release_findings(ctx)
+    inspection_status = release_inspection_status(findings)
+    payload = {
+        "schema_version": 1,
+        "command": "release check",
+        "status": inspection_status,
+        "data": {
+            "project": ctx.manifest.project_name,
+            "version": ctx.version,
+            "tag_name": ctx.tag_name,
+            "manifest_path": str(ctx.manifest_path),
+            "findings": [
+                {"status": finding.status, "name": finding.name, "message": finding.message}
+                for finding in findings
+            ],
+        },
+        "error": None,
+    }
     if output_format == "json":
-        inspection_status = release_inspection_status(findings)
-        print(
-            render_inspection_json(
-                command="release check",
-                status=inspection_status,
-                data={
-                    "project": ctx.manifest.project_name,
-                    "version": ctx.version,
-                    "tag_name": ctx.tag_name,
-                    "manifest_path": str(ctx.manifest_path),
-                    "findings": [
-                        {"status": finding.status, "name": finding.name, "message": finding.message}
-                        for finding in findings
-                    ],
-                },
-            ),
-            end="",
-        )
+        print(render_inspection_json(command="release check", status=inspection_status, data=payload["data"]), end="")
         if inspection_status == "error":
             return base_cli.ExitCode.FAILURE
         return base_cli.ExitCode.SUCCESS
+    if output_format == "yaml":
+        base_cli.render_document(payload, requested_format="yaml")
+        return base_cli.ExitCode.FAILURE if inspection_status == "error" else base_cli.ExitCode.SUCCESS
+    if output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            payload["data"]["findings"],
+            requested_format=output_format,
+            columns=(("STATUS", "status"), ("NAME", "name"), ("MESSAGE", "message")),
+        )
+        return base_cli.ExitCode.FAILURE if inspection_status == "error" else base_cli.ExitCode.SUCCESS
     print(f"\nRelease check for {ctx.manifest.project_name} v{ctx.version}\n")
     for finding in findings:
         print(f"{finding.status:<5}  {finding.name:<14}  {finding.message}")

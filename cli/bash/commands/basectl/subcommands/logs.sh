@@ -7,7 +7,7 @@ base_logs_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl logs [options]
-  basectl logs last [--command <name>] [--lines <count>] [--format text|json]
+  basectl logs last [--command <name>] [--lines <count>] [--format text|csv|tsv|yaml|json]
 
 Options:
   --command <name>  Filter by basectl command or Python CLI name.
@@ -16,7 +16,7 @@ Options:
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.
-  --format <format> Output format for "logs last": text or json. Defaults to text.
+  --format <format> Output format: text, csv, tsv, yaml, or json. Defaults to text.
   -v                Enable DEBUG logging for this subcommand.
   -h, --help        Show this help text.
 
@@ -60,7 +60,7 @@ Purpose:
 Options:
   --command <name>   Filter by basectl command or Python CLI name.
   --lines <count>    Maximum log-tail lines to print. Defaults to 40.
-  --format <format>  Output format: text or json. Defaults to text.
+  --format <format>  Output format: text, csv, tsv, yaml, or json. Defaults to text.
   -v                 Enable DEBUG logging for this subcommand.
   -h, --help         Show this help text.
 EOF

@@ -314,9 +314,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" run demo --list
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Commands for project 'demo'"* ]]
-    [[ "$output" == *"test"*"pytest tests/"* ]]
-    [[ "$output" == *"dev"*"uvicorn app:app --reload"* ]]
+    [[ "$output" == *$'demo\ttest\tpytest tests/\t'* ]]
+    [[ "$output" == *$'demo\tdev\tuvicorn app:app --reload\t'* ]]
 }
 
 @test "basectl run --list can resolve nearest project" {
@@ -351,8 +350,7 @@ EOF
         ' bash "$workspace/demo" "$BASE_REPO_ROOT/bin/basectl" run --list
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Commands for project 'demo'"* ]]
-    [[ "$output" == *"dev"*"uvicorn app:app --reload"* ]]
+    [[ "$output" == *$'demo\tdev\tuvicorn app:app --reload\t'* ]]
 }
 
 @test "basectl run resolves a current-project command from a nested directory" {

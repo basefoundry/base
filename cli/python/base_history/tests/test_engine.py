@@ -52,12 +52,17 @@ def history_record(
 
 
 def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    stdout = TerminalStringIO()
     stderr = io.StringIO()
     with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
         with redirect_stdout(stdout), redirect_stderr(stderr):
             status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 class BaseHistoryTests(unittest.TestCase):
@@ -421,16 +426,18 @@ class BaseHistoryTests(unittest.TestCase):
     def test_invalid_options_report_usage_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             status, stdout, stderr = invoke(["--limit", "0"], Path(tmpdir))
-            format_status, _format_stdout, format_stderr = invoke(["--format", "yaml"], Path(tmpdir))
-            report_status, _report_stdout, report_stderr = invoke(["--report", "--format", "yaml"], Path(tmpdir))
+            format_status, format_stdout, format_stderr = invoke(["--format", "yaml"], Path(tmpdir))
+            report_status, report_stdout, report_stderr = invoke(["--report", "--format", "yaml"], Path(tmpdir))
 
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Option '--limit' must be greater than zero", stderr)
-        self.assertEqual(format_status, 2)
-        self.assertIn("Unsupported output format 'yaml'", format_stderr)
-        self.assertEqual(report_status, 2)
-        self.assertIn("Unsupported report output format 'yaml'", report_stderr)
+        self.assertEqual(format_status, 0)
+        self.assertEqual(format_stderr, "")
+        self.assertEqual(report_status, 0)
+        self.assertEqual(report_stderr, "")
+        self.assertIn("[]", format_stdout)
+        self.assertIn("schema_version", report_stdout)
 
     def test_click_usage_errors_use_delegated_display_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
