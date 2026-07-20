@@ -130,9 +130,12 @@ def render_document(
         target.write(yaml.safe_dump(dict(document), sort_keys=False, allow_unicode=True))
         return resolved
 
-    raw_records = document.get(records_key) if records_key else None
-    if isinstance(raw_records, list):
-        records = [record for record in raw_records if isinstance(record, Mapping)]
+    if records_key:
+        candidate = document.get(records_key)
+        if isinstance(candidate, list):
+            records = [record for record in candidate if isinstance(record, Mapping)]
+        else:
+            records = [document]
     else:
         records = [document]
     selected_columns = columns or _document_columns(records)
