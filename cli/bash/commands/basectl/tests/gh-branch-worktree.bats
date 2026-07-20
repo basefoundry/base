@@ -93,6 +93,36 @@ load ./basectl_helpers.bash
     [[ "$output" == *"global=preexisting"* ]]
 }
 
+@test "basectl gh branch prune keeps failure status when 256 verifications fail" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            git() {
+                local index
+                case "$1 $2" in
+                    "branch --show-current")
+                        printf "master\n"
+                        ;;
+                    "branch --format=%(refname:short)")
+                        for ((index = 1; index <= 256; index++)); do
+                            printf "unverified-%s\n" "$index"
+                        done
+                        ;;
+                    *)
+                        return 99
+                        ;;
+                esac
+            }
+            base_gh_branch_cleanup_merged() { return 2; }
+            base_gh_branch_prune_local 1 master >/dev/null
+        '
+
+    [ "$status" -eq 1 ]
+}
+
 @test "basectl gh branch prune falls back to main when default branch is unknown" {
     local repo
 
@@ -412,6 +442,85 @@ EOF
     ! git -C "$repo" ls-remote --exit-code --heads origin squash-remote >/dev/null
 }
 
+@test "basectl gh branch prune --remote reports GitHub merge verification failures" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c lookup-failure >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" push -u origin lookup-failure >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" branch -D lookup-failure >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head lookup-failure --state merged --json number --jq length" ]]; then
+    printf 'failed to connect to api.github.com\n' >&2
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -e -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote
+        ' bash "$repo"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"failed to connect to api.github.com"* ]]
+    [[ "$output" == *"SKIP   origin/lookup-failure  GitHub merge verification unavailable; remote branch retained"* ]]
+    [[ "$output" == *"Summary: 0 would delete remotely, 0 skipped worktree, 0 skipped unmerged, 1 failed."* ]]
+    [[ "$output" == *"Resolve the reported failures and rerun before using --yes."* ]]
+    git -C "$repo" ls-remote --exit-code --heads origin lookup-failure >/dev/null
+}
+
+@test "basectl gh branch prune --remote fails closed when gh is unavailable" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c unverified-remote >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" push -u origin unverified-remote >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" branch -D unverified-remote >/dev/null 2>&1
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        "$BASH" -e -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_prune_github_ready() { return 1; }
+            base_gh_subcommand_main branch prune --remote
+        ' bash "$repo"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: GitHub merge verification requires the GitHub CLI 'gh' on PATH."* ]]
+    [[ "$output" == *"SKIP   GitHub merge verification unavailable; remote branches retained"* ]]
+    [[ "$output" == *"Summary: 0 would delete remotely, 0 skipped worktree, 0 skipped unmerged, 1 failed."* ]]
+    [[ "$output" == *"Resolve the reported failures and rerun before using --yes."* ]]
+    git -C "$repo" ls-remote --exit-code --heads origin unverified-remote >/dev/null
+}
+
 @test "basectl gh branch prune --remote skips branches attached to worktrees" {
     local repo remote worktree
 
@@ -499,6 +608,51 @@ EOF
     [[ "$output" == *"DELETE squash-work"* ]]
     [[ "$output" == *"Summary: 1 deleted, 0 skipped worktree, 0 skipped upstream, 0 failed."* ]]
     ! git -C "$repo" show-ref --verify --quiet refs/heads/squash-work
+}
+
+@test "basectl gh branch prune reports GitHub merge verification failures" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c lookup-failure >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" switch master >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head lookup-failure --state merged --json number --jq length" ]]; then
+    printf 'failed to connect to api.github.com\n' >&2
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -e -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune
+        ' bash "$repo"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"failed to connect to api.github.com"* ]]
+    [[ "$output" == *"SKIP   lookup-failure  GitHub merge verification unavailable; local branch retained"* ]]
+    [[ "$output" == *"Summary: 0 would delete, 0 skipped worktree, 0 skipped upstream, 1 failed."* ]]
+    [[ "$output" == *"Resolve the reported failures and rerun before using --yes."* ]]
+    git -C "$repo" show-ref --verify --quiet refs/heads/lookup-failure
 }
 
 @test "basectl gh worktree prune defaults to dry-run" {
@@ -604,9 +758,21 @@ EOF
     git -C "$repo" switch master >/dev/null
     git -C "$repo" worktree add "$worktree" unmerged-work >/dev/null 2>&1
 
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "pr list --head unmerged-work --state merged --json number --jq length" ]]; then
+    printf '0\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$1"
             source "$BASE_HOME/base_init.sh"
@@ -615,10 +781,57 @@ EOF
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"SKIP   "*"/unmerged-worktree (unmerged-work)  branch is not confirmed merged into master or a merged GitHub PR"* ]]
+    [[ "$output" == *"SKIP   "*"/unmerged-worktree (unmerged-work)  branch is not merged into master or a merged GitHub PR"* ]]
     [[ "$output" == *"Summary: 0 removed, 1 skipped current/default, 0 skipped dirty, 1 skipped unmerged, 0 failed."* ]]
     [ -d "$worktree" ]
     git -C "$repo" show-ref --verify --quiet refs/heads/unmerged-work
+}
+
+@test "basectl gh worktree prune reports GitHub merge verification failures" {
+    local repo worktree
+
+    repo="$TEST_TMPDIR/repo"
+    worktree="$TEST_TMPDIR/lookup-failure-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" switch -c lookup-failure >/dev/null
+    printf 'topic\n' > "$repo/topic.txt"
+    commit_all "$repo" "Topic commit"
+    git -C "$repo" switch master >/dev/null
+    git -C "$repo" worktree add "$worktree" lookup-failure >/dev/null 2>&1
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head lookup-failure --state merged --json number --jq length" ]]; then
+    printf 'failed to connect to api.github.com\n' >&2
+    exit 1
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -e -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"failed to connect to api.github.com"* ]]
+    [[ "$output" == *"SKIP   "*"/lookup-failure-worktree (lookup-failure)  GitHub merge verification unavailable; worktree retained"* ]]
+    [[ "$output" == *"Summary: 0 removed, 1 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 1 failed."* ]]
+    [ -d "$worktree" ]
+    git -C "$repo" show-ref --verify --quiet refs/heads/lookup-failure
 }
 
 @test "basectl gh worktree prune removes squash-merged worktrees confirmed by GitHub" {
