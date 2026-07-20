@@ -225,7 +225,7 @@ EOF
         BASE_TEST_TRUST_STATE="$state_file" \
         "$BASE_REPO_ROOT/bin/basectl" run demo --list
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Commands for project 'demo'"* ]]
+    [[ "$output" == *$'demo\tdev\ttouch "$BASE_TEST_TRUST_STATE"; exit 7\t'* ]]
 
     run env \
         HOME="$TEST_HOME" \
@@ -234,7 +234,7 @@ EOF
         BASE_TEST_TRUST_STATE="$state_file" \
         "$BASE_REPO_ROOT/bin/basectl" build demo --list
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Build targets for project 'demo'"* ]]
+    [[ "$output" == *$'demo\tapi\t'* ]]
 
     run env \
         HOME="$TEST_HOME" \

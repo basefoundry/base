@@ -55,17 +55,17 @@ full compatibility contract.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl projects list` | Discover Base-managed projects under the workspace root. | `--workspace <path>`, `--format <text\|json>` |
+| `basectl projects list` | Discover Base-managed projects under the workspace root. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--workspace <path>`, `--no-cd` |
 | `basectl test [project]` | Run the project's declared test command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl run [project] <command>` | Run a named manifest command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
+| `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl build [project] [target...]` | Run declared build targets, or `build.default` when no target is provided. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl build [project] --list` | List build targets declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
+| `basectl build [project] --list` | List build targets declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl demo [project]` | Run a project-owned demo script. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
-| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|json>` |
+| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>` |
 | `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |
 
@@ -108,9 +108,9 @@ manifest trust.
 | `basectl doctor explain <finding-id>` | Print local, deterministic guidance for a stable finding ID. | `--format <text\|json>` |
 | `basectl ci setup\|check\|doctor [project]` | Compatibility alias for the corresponding `--ci` mode command. | Same options, help, validation, and exit codes as the target command. |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name>`, `--limit <count>` |
-| `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|json>` |
+| `basectl logs last` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name>`, `--lines <count>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl logs --path` | Print the newest matching log path only. | `--command <name>` |
-| `basectl history` | List one record per public Base command invocation. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--limit <count>`, `--format <text\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
+| `basectl history` | List one record per public Base command invocation. | `--project <name>`, `--command <name>`, `--status <ok\|warn\|error>`, `--limit <count>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
 | `basectl history --report` | Print a local Markdown or JSON activity report from history and log metadata. | `--limit <count>`, `--format <markdown\|json>`, `--oldest-first`, `--last <duration>`, `--since <time>`, `--until <time>`, `--local-time` |
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name>`, `--lines <count>` |
@@ -123,11 +123,11 @@ manifest trust.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace onboarding` | Summarize expected-repository first-day state and next actions without cloning or setup. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
-| `basectl workspace agent-brief` | Report local baseline, agent-guidance, AI-context, environment, and validation evidence for expected and extra Base-managed repositories without mutation or network calls. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|json>` |
+| `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace check` | Run read-only checks across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace doctor` | Run read-only diagnostics across workspace projects. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace onboarding` | Summarize expected-repository first-day state and next actions without cloning or setup. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace agent-brief` | Report local baseline, agent-guidance, AI-context, environment, and validation evidence for expected and extra Base-managed repositories without mutation or network calls. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Missing-repository materialization is GitHub-only today because this path delegates to `repo clone`. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace pull` | Explicitly fetch and validate a canonical workspace manifest source before updating the local workspace manifest. Uses `workspace.manifest_source` and `workspace.manifest` from user config unless flags are supplied. | `--source <url-or-path>`, `--manifest <path>`, `--dry-run` |
 | `basectl workspace init <workspace-source>` | Initialize a workspace from a workspace configuration repository, update local workspace config, and optionally materialize member repositories. | `--owner <owner>`, `--path <path>`, `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
@@ -165,7 +165,7 @@ daily project loop commands from the local checkout.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl release check --version <version>` | Inspect release readiness without publishing. Stable inspection JSON uses the shared v1 envelope. | `--manifest <path>`, `--format <text\|json>` |
+| `basectl release check --version <version>` | Inspect release readiness without publishing. Stable inspection JSON uses the shared v1 envelope. | `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl release plan --version <version>` | Print the release plan and downstream handoff details. | `--manifest <path>` |
 | `basectl release notes --version <version>` | Extract release notes for the requested version. | `--manifest <path>` |
 | `basectl release publish --version <version>` | Create the annotated Git tag and GitHub Release after checks pass. | `--manifest <path>`, `--dry-run`, `--yes` |
