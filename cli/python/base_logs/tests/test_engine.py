@@ -63,7 +63,7 @@ def history_record(  # pylint: disable=too-many-arguments
 
 
 def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    stdout = TerminalStringIO()
     stderr = io.StringIO()
     with mock.patch.dict(
         os.environ,
@@ -72,6 +72,11 @@ def invoke(args: list[str], cache_root: Path) -> tuple[int, str, str]:
         with redirect_stdout(stdout), redirect_stderr(stderr):
             status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
+
+
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
@@ -526,16 +531,16 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertEqual(format_stdout, "")
         self.assertIn("Unsupported output format 'xml'", format_stderr)
 
-    def test_json_format_is_only_supported_for_last(self) -> None:
+    def test_json_format_is_supported_for_recent_logs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             write_log(cache_root, "base_clean", "20260601T010000_aaaaaaaa", "INFO clean\n")
 
             status, stdout, stderr = invoke(["--format", "json"], cache_root)
 
-        self.assertEqual(status, 2)
-        self.assertEqual(stdout, "")
-        self.assertIn("only supported with `basectl logs last`", stderr)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn('"command":"clean"', stdout)
 
     def test_invalid_count_options_report_usage_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -296,7 +296,7 @@ EOF
     [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
     [[ "$output" == *"Output format for the workspace command. Defaults to text."* ]]
 
     run_basectl workspace agent-brief --help
@@ -305,7 +305,7 @@ EOF
     [[ "$output" == *"basectl workspace agent-brief [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
     [[ "$output" == *"Output format for the agent brief. Defaults to text."* ]]
     [[ "$output" == *"without cloning, setup, or network calls"* ]]
 
@@ -313,13 +313,13 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
 
     run_basectl workspace doctor --help
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl workspace <status|check|doctor> [options]"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
 
     run_basectl workspace onboarding --help
 
@@ -327,7 +327,7 @@ EOF
     [[ "$output" == *"basectl workspace onboarding [options]"* ]]
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
     [[ "$output" == *"Output format for the onboarding summary. Defaults to text."* ]]
 
     run_basectl workspace clone --help

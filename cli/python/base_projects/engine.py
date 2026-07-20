@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import base_cli
@@ -48,7 +48,6 @@ from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_init import workspace_init_command
 from base_projects.workspace_pull_command import workspace_pull_command
 from base_projects.workspace_onboarding import workspace_onboarding_summary
-from base_projects.workspace_report_json import dumps_json
 from base_projects.workspace_report_json import workspace_check_to_json
 from base_projects.workspace_report_json import workspace_doctor_to_json
 from base_projects.workspace_report_json import workspace_agent_brief_to_json
@@ -256,8 +255,7 @@ def workspace_status_command(
     output_format: str = "text",
     workspace_manifest: str | None = None,
 ) -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -270,10 +268,22 @@ def workspace_status_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(dumps_json(workspace_status_to_json(workspace_root, statuses, manifest)))
-    else:
-        print_workspace_status(workspace_root, statuses, manifest)
+    if not emit_workspace_report(
+        ctx,
+        workspace_status_to_json(workspace_root, statuses, manifest),
+        output_format,
+        records_key="projects",
+        columns=(
+            ("PROJECT", "name"),
+            ("STATUS", "status"),
+            ("PATH", "path"),
+            ("VENV", "venv"),
+            ("MANIFEST", "manifest"),
+            ("LAST CHECK", "last_check"),
+        ),
+        text_renderer=lambda: print_workspace_status(workspace_root, statuses, manifest),
+    ):
+        return base_cli.ExitCode.USAGE_ERROR
 
     if any(project.status == "error" for project in statuses):
         return base_cli.ExitCode.FAILURE
@@ -286,8 +296,7 @@ def workspace_check_command(
     output_format: str = "text",
     workspace_manifest: str | None = None,
 ) -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -298,10 +307,15 @@ def workspace_check_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(dumps_json(workspace_check_to_json(workspace_root, results, manifest)))
-    else:
-        print_workspace_check(workspace_root, results, manifest)
+    if not emit_workspace_report(
+        ctx,
+        workspace_check_to_json(workspace_root, results, manifest),
+        output_format,
+        records_key="projects",
+        columns=(("PROJECT", "name"), ("STATUS", "status"), ("PATH", "path"), ("MANIFEST", "manifest")),
+        text_renderer=lambda: print_workspace_check(workspace_root, results, manifest),
+    ):
+        return base_cli.ExitCode.USAGE_ERROR
 
     if any(result.status == "error" for result in results):
         return base_cli.ExitCode.FAILURE
@@ -314,8 +328,7 @@ def workspace_doctor_command(
     output_format: str = "text",
     workspace_manifest: str | None = None,
 ) -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -326,10 +339,15 @@ def workspace_doctor_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(dumps_json(workspace_doctor_to_json(workspace_root, results, manifest)))
-    else:
-        print_workspace_doctor(workspace_root, results, manifest)
+    if not emit_workspace_report(
+        ctx,
+        workspace_doctor_to_json(workspace_root, results, manifest),
+        output_format,
+        records_key="projects",
+        columns=(("PROJECT", "name"), ("STATUS", "status"), ("PATH", "path"), ("MANIFEST", "manifest")),
+        text_renderer=lambda: print_workspace_doctor(workspace_root, results, manifest),
+    ):
+        return base_cli.ExitCode.USAGE_ERROR
 
     return min(workspace_error_count(results), 125)
 
@@ -340,8 +358,7 @@ def workspace_onboarding_command(
     output_format: str = "text",
     workspace_manifest: str | None = None,
 ) -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -355,10 +372,21 @@ def workspace_onboarding_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(dumps_json(workspace_onboarding_to_json(summary)))
-    else:
-        print_workspace_onboarding(summary)
+    if not emit_workspace_report(
+        ctx,
+        workspace_onboarding_to_json(summary),
+        output_format,
+        records_key="repositories",
+        columns=(
+            ("REPOSITORY", "repository"),
+            ("REQUIRED", "required"),
+            ("STATUS", "status"),
+            ("PATH", "path"),
+            ("VENV", "venv"),
+        ),
+        text_renderer=lambda: print_workspace_onboarding(summary),
+    ):
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
@@ -368,8 +396,7 @@ def workspace_agent_brief_command(
     output_format: str = "text",
     workspace_manifest: str | None = None,
 ) -> int:
-    if output_format not in ("text", "json"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
 
     try:
@@ -383,11 +410,57 @@ def workspace_agent_brief_command(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(dumps_json(workspace_agent_brief_to_json(brief)))
-    else:
-        print_workspace_agent_brief(brief)
+    if not emit_workspace_report(
+        ctx,
+        workspace_agent_brief_to_json(brief),
+        output_format,
+        records_key="repositories",
+        columns=(
+            ("REPOSITORY", "repository"),
+            ("PROJECT", "project"),
+            ("PATH", "path"),
+            ("SCOPE", "scope"),
+            ("HANDOFF", "handoff_status"),
+            ("VENV", "venv"),
+        ),
+        text_renderer=lambda: print_workspace_agent_brief(brief),
+    ):
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
+
+
+def validate_report_format(ctx: base_cli.Context, output_format: str) -> bool:
+    try:
+        base_cli.resolve_output_format(output_format)
+    except base_cli.OutputFormatError as exc:
+        ctx.log.error(str(exc))
+        return False
+    return True
+
+
+# pylint: disable=too-many-arguments
+def emit_workspace_report(
+    ctx: base_cli.Context,
+    document: dict,
+    output_format: str,
+    *,
+    records_key: str,
+    columns: Sequence[tuple[str, str]],
+    text_renderer: Callable[[], None],
+) -> bool:
+    try:
+        resolved = base_cli.render_document(
+            document,
+            requested_format=output_format,
+            records_key=records_key,
+            columns=columns,
+        )
+    except base_cli.OutputFormatError as exc:
+        ctx.log.error(str(exc))
+        return False
+    if resolved == "text":
+        text_renderer()
+    return True
 
 
 def log_workspace_status_discovery(
@@ -647,6 +720,12 @@ def list_run_commands_command(
     workspace: str | None,
     output_format: str = "text",
 ) -> int:
+    if output_format != "command-protocol":
+        try:
+            base_cli.resolve_output_format(output_format)
+        except base_cli.OutputFormatError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.USAGE_ERROR
     try:
         if project_name:
             project = resolve_named_project(ctx, project_name, workspace)
@@ -662,45 +741,52 @@ def list_run_commands_command(
         ctx.log.error("Project '%s' does not declare runnable commands in '%s'.", project.name, project.manifest_path)
         return base_cli.ExitCode.FAILURE
 
+    records = [
+        named_command_record(
+            project.name,
+            project.root,
+            project.manifest_path,
+            command_name,
+            command_config,
+        )
+        for command_name, command_config in commands.items()
+    ]
     if output_format == "command-protocol":
         print(
-            dumps_records(
-                "named-command",
-                [
-                    named_command_record(
-                        project.name,
-                        project.root,
-                        project.manifest_path,
-                        command_name,
-                        command_config,
-                    )
+            dumps_records("named-command", records)
+        )
+    elif output_format in {"json", "yaml"}:
+        base_cli.render_document(
+            {
+                "schema_version": 1,
+                "project": {
+                    "name": project.name,
+                    "root": str(project.root),
+                    "manifest_path": str(project.manifest_path),
+                },
+                "commands": [
+                    {
+                        "name": command_name,
+                        "command": command_config.command,
+                        "runner": command_config.runner,
+                    }
                     for command_name, command_config in commands.items()
                 ],
-            )
+            },
+            requested_format=output_format,
         )
-    elif output_format == "json":
-        print(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "project": {
-                        "name": project.name,
-                        "root": str(project.root),
-                        "manifest_path": str(project.manifest_path),
-                    },
-                    "commands": [
-                        {
-                            "name": command_name,
-                            "command": command_config.command,
-                            "runner": command_config.runner,
-                        }
-                        for command_name, command_config in commands.items()
-                    ],
-                },
-                indent=2,
-            )
+    elif output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            records,
+            requested_format=output_format,
+            columns=(
+                ("PROJECT", "project_name"),
+                ("COMMAND", "command_name"),
+                ("COMMAND LINE", "command"),
+                ("RUNNER", "runner"),
+            ),
         )
-    elif output_format == "text":
+    else:
         for command_name, command_config in commands.items():
             print(
                 _named_command_output(
@@ -711,9 +797,6 @@ def list_run_commands_command(
                     command_config,
                 )
             )
-    else:
-        ctx.log.error("Unsupported run-commands output format '%s'.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 

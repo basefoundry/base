@@ -19,7 +19,7 @@ Options:
   --project <name>    Select a project explicitly; required for a current command named like a project.
   --dry-run           Print the resolved command without running it.
   --list              List runnable commands for a project. Defaults to the nearest project.
-  --format <format>   List output format: text or json. Defaults to text.
+  --format <format>   List output format: text, csv, tsv, yaml, or json. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -43,6 +43,10 @@ base_run_print_command_record() {
     local command_text="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
     local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
+    if [[ ! -t 1 ]]; then
+        printf '%s\t%s\t%s\t%s\n' "$resolved_name" "$command_name" "$command_text" "$command_runner"
+        return 0
+    fi
     if ((printed_header == 0)); then
         printf "Commands for project '%s'\n\n" "$resolved_name"
         printed_header=1
@@ -69,8 +73,8 @@ base_run_list_commands() {
         command_args+=("$project")
     fi
 
-    if [[ "$output_format" == "json" ]]; then
-        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format json
+    if [[ "$output_format" != "text" ]]; then
+        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format "$output_format"
         return $?
     fi
 
@@ -152,8 +156,8 @@ base_run_subcommand_main() {
         esac
     done
 
-    [[ "$output_format" == "text" || "$output_format" == "json" ]] || {
-        base_run_usage_error "Unsupported run format '$output_format'. Expected text or json."
+    [[ "$output_format" == "text" || "$output_format" == "csv" || "$output_format" == "tsv" || "$output_format" == "yaml" || "$output_format" == "json" ]] || {
+        base_run_usage_error "Unsupported run format '$output_format'. Expected text, csv, tsv, yaml, or json."
         return $?
     }
     if [[ "$list_commands" == "1" ]]; then

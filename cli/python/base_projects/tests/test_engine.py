@@ -67,6 +67,11 @@ def write_versioned_python_bin(python_bin: Path, version: str) -> None:
 _engine_homes: list[Path] = []
 
 
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
 def base_route_fields(
     base_home: Path,
     project: str,
@@ -204,7 +209,8 @@ def invoke_engine(
     user_config: str | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    workspace_commands = {"status", "check", "doctor", "onboarding", "agent-brief", "run-commands"}
+    stdout = TerminalStringIO() if any(argument in workspace_commands for argument in args) else io.StringIO()
     stderr = io.StringIO()
     if user_config is not None:
         config_path = home / ".base.d" / "config.yaml"

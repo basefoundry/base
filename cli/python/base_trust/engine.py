@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -48,10 +47,17 @@ def main(argv: list[str] | None = None) -> int:
     "--workspace",
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
 )
-@base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
+@base_cli.option(
+    "--format",
+    "output_format",
+    default="text",
+    help="Output format: text, csv, tsv, yaml, or json.",
+)
 def status_command(ctx: base_cli.Context, project: str | None, workspace: str | None, output_format: str) -> int:
-    if output_format not in {"text", "json"}:
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json.", output_format)
+    try:
+        base_cli.resolve_output_format(output_format)
+    except base_cli.OutputFormatError as exc:
+        ctx.log.error(str(exc))
         return base_cli.ExitCode.USAGE_ERROR
 
     if project is None:
@@ -65,8 +71,17 @@ def status_command(ctx: base_cli.Context, project: str | None, workspace: str | 
         return base_cli.ExitCode.FAILURE
 
     trust_status = ManifestCommandTrustStore().status(identity)
+    payload = status_payload(trust_status)
     if output_format == "json":
-        print(json.dumps(status_payload(trust_status), indent=2, sort_keys=True))
+        base_cli.render_document(payload, requested_format="json")
+    elif output_format == "yaml":
+        base_cli.render_document(payload, requested_format="yaml")
+    elif output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            [trust_output_record(payload)],
+            requested_format=output_format,
+            columns=trust_output_columns(),
+        )
     else:
         print_status_text(trust_status, surfaces)
     return base_cli.ExitCode.SUCCESS
@@ -166,16 +181,21 @@ def workspace_status_command(ctx: base_cli.Context, workspace: str | None, outpu
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "projects": [status_payload(trust_status) for trust_status, _surfaces in statuses],
+    }
     if output_format == "json":
-        print(
-            json.dumps(
-                {
-                    "schema_version": SCHEMA_VERSION,
-                    "projects": [status_payload(trust_status) for trust_status, _surfaces in statuses],
-                },
-                indent=2,
-                sort_keys=True,
-            )
+        base_cli.render_document(payload, requested_format="json")
+        return base_cli.ExitCode.SUCCESS
+    if output_format == "yaml":
+        base_cli.render_document(payload, requested_format="yaml")
+        return base_cli.ExitCode.SUCCESS
+    if output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            [trust_output_record(status_payload(trust_status)) for trust_status, _surfaces in statuses],
+            requested_format=output_format,
+            columns=trust_output_columns(),
         )
         return base_cli.ExitCode.SUCCESS
 
@@ -271,6 +291,16 @@ def status_payload(trust_status: TrustStatus) -> dict[str, Any]:
         if isinstance(changed_project, dict) and isinstance(changed_project.get("manifest_sha256"), str):
             payload["recorded_manifest_sha256"] = changed_project["manifest_sha256"]
     return payload
+
+
+def trust_output_columns() -> tuple[tuple[str, str], ...]:
+    return (("PROJECT", "project"), ("STATUS", "status"), ("REASON", "reason"))
+
+
+def trust_output_record(payload: dict[str, Any]) -> dict[str, Any]:
+    project = payload.get("project")
+    project_name = project.get("name", "-") if isinstance(project, dict) else "-"
+    return {"project": project_name, "status": payload.get("status", "-"), "reason": payload.get("reason", "-")}
 
 
 def allow_command_text(identity: ManifestCommandTrustIdentity) -> str:

@@ -60,8 +60,13 @@ def write_workspace_manifest(path: Path) -> None:
     )
 
 
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
 def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
-    stdout = io.StringIO()
+    stdout = TerminalStringIO()
     stderr = io.StringIO()
     env = {
         "HOME": str(home),

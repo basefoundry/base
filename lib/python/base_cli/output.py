@@ -98,11 +98,66 @@ def render_records(
     return resolved
 
 
+def render_document(
+    document: Mapping[str, Any],
+    *,
+    requested_format: str | None,
+    records_key: str | None = None,
+    columns: Sequence[tuple[str, str]] | None = None,
+    stream: TextIO | None = None,
+) -> str:
+    """Render a structured report or leave terminal text to its existing renderer.
+
+    Structured formats preserve the complete document.  Delimited output uses
+    the selected record list (or the document itself) and never emits report
+    prose, headers, or footers.  A terminal ``text`` request returns ``text``
+    without writing so the caller can keep its established human report.
+    """
+
+    target = stream if stream is not None else sys.stdout
+    resolved = resolve_output_format(requested_format, stream=target)
+    if resolved == "text":
+        return resolved
+    if resolved == "json":
+        target.write(json.dumps(dict(document), indent=2))
+        target.write("\n")
+        return resolved
+    if resolved == "yaml":
+        try:
+            import yaml
+        except ImportError as exc:  # pragma: no cover - environment guard
+            raise RuntimeError("PyYAML is required for YAML output.") from exc
+        target.write(yaml.safe_dump(dict(document), sort_keys=False, allow_unicode=True))
+        return resolved
+
+    raw_records = document.get(records_key) if records_key else None
+    if isinstance(raw_records, list):
+        records = [record for record in raw_records if isinstance(record, Mapping)]
+    else:
+        records = [document]
+    selected_columns = columns or _document_columns(records)
+    render_records(
+        records,
+        requested_format=resolved,
+        columns=selected_columns,
+        stream=target,
+    )
+    return resolved
+
+
+def _document_columns(records: Sequence[Mapping[str, Any]]) -> list[tuple[str, str]]:
+    if not records:
+        return []
+    return [(str(key).upper(), str(key)) for key in records[0]]
+
+
 def _cell_value(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, separators=(",", ":"))
     return str(value)
 
 

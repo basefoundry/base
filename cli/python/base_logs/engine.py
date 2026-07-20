@@ -117,7 +117,12 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--tail", is_flag=True, help="Tail and follow the most recent matching log.")
 @base_cli.option("--open", "open_file", is_flag=True, help="Open the most recent matching log in PAGER or EDITOR.")
 @base_cli.option("--lines", default="40", help="Line count to show before following.")
-@base_cli.option("--format", "output_format", default="text", help="Output format for logs last: text or json.")
+@base_cli.option(
+    "--format",
+    "output_format",
+    default="text",
+    help="Output format: text, csv, tsv, yaml, or json.",
+)
 @base_cli.argument("action", required=False)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
@@ -149,7 +154,7 @@ def run(
         output_format=normalized_format,
     )
     selected_actions = sum(1 for selected in (path_only, tail, open_file) if selected)
-    validation_error = logs_command_validation_error(action, normalized_format, selected_actions)
+    validation_error = logs_command_validation_error(action, selected_actions)
     if validation_error is not None:
         ctx.log.error(validation_error)
         return base_cli.ExitCode.USAGE_ERROR
@@ -161,13 +166,11 @@ def run(
     return run_recent_logs(ctx, cache_root, options)
 
 
-def logs_command_validation_error(action: str | None, output_format: str, selected_actions: int) -> str | None:
+def logs_command_validation_error(action: str | None, selected_actions: int) -> str | None:
     if action is not None and action != "last":
         return f"Unknown logs command '{action}'. Supported commands: last."
     if action == "last" and selected_actions > 0:
         return "`basectl logs last` does not accept --path, --tail, or --open."
-    if action is None and output_format != "text":
-        return "Option '--format' is only supported with `basectl logs last`."
     if action is None and selected_actions > 1:
         return "Choose only one of --path, --tail, or --open."
     return None
@@ -183,8 +186,10 @@ def run_recent_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommand
 
 def normalize_logs_format(value: str) -> str:
     normalized = value.strip().lower()
-    if normalized not in {"text", "json"}:
-        raise ValueError(f"Unsupported output format '{value}'. Expected one of: text, json.")
+    if normalized not in base_cli.PUBLIC_OUTPUT_FORMATS:
+        raise ValueError(
+            f"Unsupported output format '{value}'. Expected one of: {', '.join(base_cli.PUBLIC_OUTPUT_FORMATS)}."
+        )
     return normalized
 
 
@@ -192,7 +197,14 @@ def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandO
     if options.path_only or options.tail or options.open_file:
         ctx.log.error("No Base CLI logs found.")
         return base_cli.ExitCode.FAILURE
-    print(f"No Base CLI logs found under {cache_root / 'base' / 'runs'} or {cache_root / 'projects'}.")
+    if options.output_format == "json":
+        print("[]")
+    elif options.output_format == "yaml":
+        base_cli.render_records([], requested_format="yaml", columns=log_output_columns())
+    elif options.output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        return base_cli.ExitCode.SUCCESS
+    else:
+        print(f"No Base CLI logs found under {cache_root / 'base' / 'runs'} or {cache_root / 'projects'}.")
     return base_cli.ExitCode.SUCCESS
 
 
@@ -206,7 +218,15 @@ def run_with_entries(entries: list[LogEntry], options: LogCommandOptions) -> int
     if options.open_file:
         return open_log(newest.path)
 
-    print_log_table(entries[: options.limit])
+    selected = entries[: options.limit]
+    if options.output_format in {"csv", "tsv", "yaml", "json"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            log_output_records(selected),
+            requested_format=options.output_format,
+            columns=log_output_columns(),
+        )
+    else:
+        print_log_table(selected)
     return base_cli.ExitCode.SUCCESS
 
 
@@ -227,6 +247,18 @@ def run_last_failure(ctx: base_cli.Context, cache_root: Path, options: LogComman
                     sort_keys=True,
                 )
             )
+        elif options.output_format == "yaml":
+            base_cli.render_document(
+                {
+                    "schema_version": 1,
+                    "found": False,
+                    "history_path": redact_history_text(str(history_path)),
+                    "message": "No failed Base command history found.",
+                },
+                requested_format="yaml",
+            )
+        elif options.output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+            return base_cli.ExitCode.SUCCESS
         else:
             print(f"No failed Base command history found under {history_path}.")
         return base_cli.ExitCode.SUCCESS
@@ -234,6 +266,14 @@ def run_last_failure(ctx: base_cli.Context, cache_root: Path, options: LogComman
     tail = last_failure_tail(record, options.lines)
     if options.output_format == "json":
         print(json.dumps(last_failure_to_json(record, tail), indent=2, sort_keys=True))
+    elif options.output_format == "yaml":
+        base_cli.render_document(last_failure_to_json(record, tail), requested_format="yaml")
+    elif options.output_format in {"csv", "tsv"} or not base_cli.is_terminal():
+        base_cli.render_records(
+            [last_failure_output_record(record)],
+            requested_format=options.output_format,
+            columns=last_failure_output_columns(),
+        )
     else:
         print_last_failure_text(record, tail)
     return base_cli.ExitCode.SUCCESS
@@ -630,6 +670,55 @@ def print_log_table(entries: list[LogEntry]) -> None:
             f"{entry.status:<6}  "
             f"{compact_path(entry.path)}"
         )
+
+
+def log_output_columns() -> tuple[tuple[str, str], ...]:
+    return (
+        ("TIME", "time"),
+        ("COMMAND", "command"),
+        ("RUN ID", "run_id"),
+        ("STATUS", "status"),
+        ("EXIT", "exit"),
+        ("PATH", "path"),
+    )
+
+
+def log_output_records(entries: list[LogEntry]) -> list[dict[str, Any]]:
+    return [
+        {
+            "time": f"{entry.timestamp:%Y-%m-%d %H:%M:%S}",
+            "command": entry.command,
+            "run_id": entry.run_id,
+            "status": entry.status,
+            "exit": entry.exit_code if entry.exit_code is not None else "-",
+            "path": compact_path(entry.path),
+        }
+        for entry in entries
+    ]
+
+
+def last_failure_output_columns() -> tuple[tuple[str, str], ...]:
+    return (
+        ("TIME", "time"),
+        ("COMMAND", "command"),
+        ("PROJECT", "project"),
+        ("STATUS", "status"),
+        ("EXIT", "exit"),
+        ("RUN ID", "run_id"),
+        ("LOG", "log"),
+    )
+
+
+def last_failure_output_record(record: LastFailureRecord) -> dict[str, Any]:
+    return {
+        "time": display_last_value(record.ended_at),
+        "command": redact_history_text(record.command),
+        "project": redact_history_text(record.project) if record.project else "-",
+        "status": redact_history_text(record.status),
+        "exit": record.exit_code if record.exit_code is not None else "-",
+        "run_id": redact_history_text(record.run_id),
+        "log": display_last_log_path(record),
+    }
 
 
 def tail_log(path: Path, lines: int) -> int:

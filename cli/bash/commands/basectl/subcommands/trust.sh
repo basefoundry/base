@@ -12,7 +12,8 @@ Usage:
 
 Options:
   --workspace <path>            Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
-  --format <text|json>          Output format for status. Defaults to text.
+  --format <text|csv|tsv|yaml|json>
+                                Output format for status. Defaults to text.
   --manifest-sha256 <sha256>    Expected manifest SHA-256 for allow.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
@@ -37,7 +38,8 @@ Purpose:
 
 Options:
   --workspace <path>    Workspace directory to scan.
-  --format <text|json>  Output format. Defaults to text.
+  --format <text|csv|tsv|yaml|json>
+                        Output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
 EOF

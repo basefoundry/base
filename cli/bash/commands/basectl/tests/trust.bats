@@ -19,7 +19,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl trust status [project] [options]"* ]]
-    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"--format <text|csv|tsv|yaml|json>"* ]]
     [[ "$output" != *"--manifest-sha256"* ]]
     [[ "$output" != *"basectl trust revoke"* ]]
 

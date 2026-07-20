@@ -253,9 +253,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" build demo --list
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Build targets for project 'demo'"* ]]
-    [[ "$output" == *"api"* ]]
-    [[ "$output" == *"Build API"* ]]
+    [[ "$output" == *$'demo\tapi\t'* ]]
+    [[ "$output" == *$'\tBuild API\t'* ]]
 }
 
 @test "basectl build --list shows runner without wrapping target descriptions" {
@@ -287,7 +286,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" build demo --list
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Build API [runner: uv]"* ]]
+    [[ "$output" == *$'demo\tapi\t'* ]]
+    [[ "$output" == *$'\tBuild API\tuv'* ]]
     [[ "$output" != *"uv run -- Build API"* ]]
 }
 

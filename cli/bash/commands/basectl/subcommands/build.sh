@@ -19,7 +19,7 @@ Options:
   --project <name>    Select a project explicitly; required for a current target named like a project.
   --dry-run           Print resolved build commands without running them.
   --list              List build targets for a project.
-  --format <format>   List output format: text or json. Defaults to text.
+  --format <format>   List output format: text, csv, tsv, yaml, or json. Defaults to text.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -46,6 +46,11 @@ base_build_print_target_record() {
     local description="${BASE_COMMAND_PROTOCOL_FIELDS[description]}"
     local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
+    if [[ ! -t 1 ]]; then
+        printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$resolved_name" "$target_name" "$working_dir" "$build_command" "$description" "$command_runner"
+        return 0
+    fi
     if ((printed_header == 0)); then
         printf "Build targets for project '%s'\n\n" "$resolved_name"
         printed_header=1
@@ -115,8 +120,8 @@ base_build_list_targets() {
         command_args+=("$project")
     fi
 
-    if [[ "$output_format" == "json" ]]; then
-        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format json
+    if [[ "$output_format" != "text" ]]; then
+        "$wrapper" --project base base_projects "${command_args[@]}" "${args[@]}" --dry-run --format "$output_format"
         return $?
     fi
 
@@ -196,8 +201,8 @@ base_build_subcommand_main() {
         esac
     done
 
-    [[ "$output_format" == "text" || "$output_format" == "json" ]] || {
-        base_build_usage_error "Unsupported build format '$output_format'. Expected text or json."
+    [[ "$output_format" == "text" || "$output_format" == "csv" || "$output_format" == "tsv" || "$output_format" == "yaml" || "$output_format" == "json" ]] || {
+        base_build_usage_error "Unsupported build format '$output_format'. Expected text, csv, tsv, yaml, or json."
         return $?
     }
 

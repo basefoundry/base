@@ -297,9 +297,9 @@ class ManifestCommandTrustTests(unittest.TestCase):
         )
         self.assertNotIn("metadata-only", result.stdout)
         self.assertEqual(text_result.exit_code, 0, text_result.output)
-        self.assertIn("trust is allowed for project 'allowed'", text_result.stdout)
-        self.assertIn("manifest changed", text_result.stdout)
-        self.assertIn("trust is blocked for project 'fresh'", text_result.stdout)
+        self.assertIn("allowed\tallowed\tallowed", text_result.stdout)
+        self.assertIn("changed\tblocked\tmanifest_changed", text_result.stdout)
+        self.assertIn("fresh\tblocked\tnot_allowed", text_result.stdout)
         self.assertNotIn("metadata-only", text_result.stdout)
 
     def test_status_for_project_without_commands_keeps_json_v1_and_omits_text_guidance(self) -> None:
@@ -330,7 +330,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertEqual(payload["reason"], "not_allowed")
         self.assertIn("allow_command", payload)
         self.assertEqual(text_result.exit_code, 0, text_result.output)
-        self.assertIn("trust is not required", text_result.stdout)
+        self.assertIn("docs\tblocked\tnot_allowed", text_result.stdout)
         self.assertNotIn("trust allow", text_result.stdout)
 
     def test_workspace_status_adds_context_projects_only_for_implicit_workspace(self) -> None:
@@ -429,15 +429,16 @@ class ManifestCommandTrustTests(unittest.TestCase):
             workspace = root / "work"
             manifest_path = write_all_command_surfaces_manifest(workspace / "demo")
 
-            result = invoke(
-                engine.app,
-                ["status", "demo", "--workspace", str(workspace)],
-                home=home,
-                env={"BASE_HOME": str(workspace / "base")},
-            )
+            with mock.patch("base_cli.is_terminal", return_value=True):
+                result = invoke(
+                    engine.app,
+                    ["status", "demo", "--workspace", str(workspace)],
+                    home=home,
+                    env={"BASE_HOME": str(workspace / "base")},
+                )
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Review first:", result.stdout)
+        self.assertIn("Manifest command trust is blocked for project 'demo'.", result.stdout)
         self.assertIn("basectl run demo --list", result.stdout)
         self.assertIn("basectl build demo --list", result.stdout)
         self.assertIn("basectl test demo --dry-run", result.stdout)
@@ -461,15 +462,16 @@ class ManifestCommandTrustTests(unittest.TestCase):
             )
             current_digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
 
-            result = invoke(
-                engine.app,
-                ["status", "demo", "--workspace", str(workspace)],
-                home=home,
-                env={"BASE_HOME": str(workspace / "base")},
-            )
+            with mock.patch("base_cli.is_terminal", return_value=True):
+                result = invoke(
+                    engine.app,
+                    ["status", "demo", "--workspace", str(workspace)],
+                    home=home,
+                    env={"BASE_HOME": str(workspace / "base")},
+                )
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("manifest changed", result.stdout)
+        self.assertIn("Manifest command trust is blocked for project 'demo': manifest changed.", result.stdout)
         self.assertIn(f"Recorded Manifest SHA-256: {identity.manifest_sha256}", result.stdout)
         self.assertIn(f"Manifest SHA-256: {current_digest}", result.stdout)
         self.assertIn("basectl test demo --dry-run", result.stdout)
