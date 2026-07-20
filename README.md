@@ -1092,8 +1092,8 @@ Show recent Base CLI logs with:
 
 ```bash
 basectl logs
-basectl logs --command check
-basectl logs --path
+basectl logs --command setup,check
+basectl logs --latest
 basectl logs --open
 basectl logs --tail
 basectl logs -v

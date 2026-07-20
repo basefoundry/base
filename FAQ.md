@@ -361,8 +361,8 @@ the workspace.
 
 Use `basectl logs` to list recent command runs and `basectl logs --tail` to
 follow the newest log in real time. Filter by command name with
-`basectl logs --command setup`, print only the matching path with
-`basectl logs --path`, or open the newest matching log with
+`basectl logs --command setup,check`, print only the newest matching path with
+`basectl logs --latest`, or open the newest matching log with
 `basectl logs --open`. Base stores logs under the Base cache root, normally
 `~/Library/Caches/base` on macOS, so they do not accumulate under `~/.base.d`.
 Use command verbosity such as `basectl -v setup` when you want a new run to

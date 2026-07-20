@@ -7,12 +7,12 @@ base_logs_subcommand_usage() {
     cat <<'EOF'
 Usage:
   basectl logs [options]
-  basectl logs last [--command <name>] [--lines <count>] [--format text|csv|tsv|yaml|json]
+  basectl logs last-failed [--command <name[,name...]>] [--lines <count>] [--format text|csv|tsv|yaml|json]
 
 Options:
-  --command <name>  Filter by basectl command or Python CLI name.
+  --command <name[,name...]>  Filter by one or more commands (comma-separated).
   --limit <count>   Number of recent log entries to list. Defaults to 10.
-  --path            Print the most recent matching log path only.
+  --latest          Print the newest matching log path only.
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.
@@ -21,7 +21,7 @@ Options:
   -h, --help        Show this help text.
 
 Surface recent Base CLI runtime logs from the Base cache root.
-"logs last" prints the latest failed command metadata and a bounded redacted log tail.
+"logs last-failed" prints the latest failed command metadata and a bounded redacted log tail.
 EOF
 }
 
@@ -29,18 +29,18 @@ base_logs_recent_usage() {
     cat <<'EOF'
 Usage:
   basectl logs [options]
-  basectl logs last [options]
+  basectl logs last-failed [options]
 
 Purpose:
   List recent Base CLI runtime logs, or inspect the newest matching log.
 
 Commands:
-  last  Print the latest failed command metadata and a bounded redacted log tail.
+  last-failed  Print the latest failed command metadata and a bounded redacted log tail.
 
 Options:
-  --command <name>  Filter by basectl command or Python CLI name.
+  --command <name[,name...]>  Filter by one or more commands (comma-separated).
   --limit <count>   Number of recent log entries to list. Defaults to 10.
-  --path            Print the most recent matching log path only.
+  --latest          Print the newest matching log path only.
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.
@@ -49,16 +49,16 @@ Options:
 EOF
 }
 
-base_logs_last_usage() {
+base_logs_last_failed_usage() {
     cat <<'EOF'
 Usage:
-  basectl logs last [options]
+  basectl logs last-failed [options]
 
 Purpose:
   Print the latest failed command metadata and a bounded redacted log tail.
 
 Options:
-  --command <name>   Filter by basectl command or Python CLI name.
+  --command <name[,name...]>  Select the latest failure for one or more commands.
   --lines <count>    Maximum log-tail lines to print. Defaults to 40.
   --format <format>  Output format: text, csv, tsv, yaml, or json. Defaults to text.
   -v                 Enable DEBUG logging for this subcommand.
@@ -69,6 +69,7 @@ EOF
 base_logs_help_target() {
     local expect_value=0
     local argument
+    local target=recent
 
     for argument in "$@"; do
         if ((expect_value)); then
@@ -79,13 +80,17 @@ base_logs_help_target() {
             --command|--limit|--lines|--format)
                 expect_value=1
                 ;;
-            last)
-                printf 'last\n'
-                return 0
+            last-failed)
+                target=last-failed
+                ;;
+            -* )
+                ;;
+            *)
+                target="unknown:$argument"
                 ;;
         esac
     done
-    printf 'recent\n'
+    printf '%s\n' "$target"
 }
 
 base_logs_args_request_help() {
@@ -102,14 +107,25 @@ base_logs_args_request_help() {
 base_logs_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local args=()
+    local help_target
 
     if base_logs_args_request_help "$@"; then
-        if [[ "$(base_logs_help_target "$@")" == last ]]; then
-            base_logs_last_usage
-        else
-            base_logs_recent_usage
-        fi
-        return 0
+        help_target="$(base_logs_help_target "$@")"
+        case "$help_target" in
+            last-failed)
+                base_logs_last_failed_usage
+                return 0
+                ;;
+            recent)
+                base_logs_recent_usage
+                return 0
+                ;;
+            unknown:*)
+                base_logs_subcommand_usage >&2
+                print_error "Unknown logs command '${help_target#unknown:}'. Supported commands: last-failed."
+                return 2
+                ;;
+        esac
     fi
 
     while (($# > 0)); do
@@ -131,7 +147,7 @@ base_logs_subcommand_main() {
                 args+=("$1" "$2")
                 shift 2
                 ;;
-            --command=*|--limit=*|--lines=*|--format=*|--path|--tail|--open)
+            --command=*|--limit=*|--lines=*|--format=*|--latest|--tail|--open)
                 args+=("$1")
                 shift
                 ;;

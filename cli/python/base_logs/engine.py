@@ -53,7 +53,7 @@ class LogEntry:
 class LogCommandOptions:
     command_filter: str | None
     limit: int
-    path_only: bool
+    latest_only: bool
     tail: bool
     open_file: bool
     lines: int
@@ -111,9 +111,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
-@base_cli.option("--command", "command_filter", help="Filter by basectl command or Python CLI name.")
+@base_cli.option("--command", "command_filter", help="Filter by command names (comma-separated).")
 @base_cli.option("--limit", default="10", help="Maximum log entries to list.")
-@base_cli.option("--path", "path_only", is_flag=True, help="Print the most recent matching log path only.")
+@base_cli.option("--latest", "latest_only", is_flag=True, help="Print the newest matching log path only.")
 @base_cli.option("--tail", is_flag=True, help="Tail and follow the most recent matching log.")
 @base_cli.option("--open", "open_file", is_flag=True, help="Open the most recent matching log in PAGER or EDITOR.")
 @base_cli.option("--lines", default="40", help="Line count to show before following.")
@@ -130,13 +130,14 @@ def run(
     action: str | None,
     command_filter: str | None,
     limit: str,
-    path_only: bool,
+    latest_only: bool,
     tail: bool,
     open_file: bool,
     lines: str,
     output_format: str,
 ) -> int:
     try:
+        normalize_command_filters(command_filter)
         limit_value = parse_positive_int("--limit", limit)
         line_count = parse_positive_int("--lines", lines)
         normalized_format = normalize_logs_format(output_format)
@@ -147,32 +148,32 @@ def run(
     options = LogCommandOptions(
         command_filter=command_filter,
         limit=limit_value,
-        path_only=path_only,
+        latest_only=latest_only,
         tail=tail,
         open_file=open_file,
         lines=line_count,
         output_format=normalized_format,
     )
-    selected_actions = sum(1 for selected in (path_only, tail, open_file) if selected)
+    selected_actions = sum(1 for selected in (latest_only, tail, open_file) if selected)
     validation_error = logs_command_validation_error(action, selected_actions)
     if validation_error is not None:
         ctx.log.error(validation_error)
         return base_cli.ExitCode.USAGE_ERROR
 
     cache_root = base_cache_root()
-    if action == "last":
+    if action == "last-failed":
         return run_last_failure(ctx, cache_root, options)
 
     return run_recent_logs(ctx, cache_root, options)
 
 
 def logs_command_validation_error(action: str | None, selected_actions: int) -> str | None:
-    if action is not None and action != "last":
-        return f"Unknown logs command '{action}'. Supported commands: last."
-    if action == "last" and selected_actions > 0:
-        return "`basectl logs last` does not accept --path, --tail, or --open."
+    if action is not None and action != "last-failed":
+        return f"Unknown logs command '{action}'. Supported commands: last-failed."
+    if action == "last-failed" and selected_actions > 0:
+        return "`basectl logs last-failed` does not accept --latest, --tail, or --open."
     if action is None and selected_actions > 1:
-        return "Choose only one of --path, --tail, or --open."
+        return "Choose only one of --latest, --tail, or --open."
     return None
 
 
@@ -194,7 +195,7 @@ def normalize_logs_format(value: str) -> str:
 
 
 def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandOptions) -> int:
-    if options.path_only or options.tail or options.open_file:
+    if options.latest_only or options.tail or options.open_file:
         ctx.log.error("No Base CLI logs found.")
         return base_cli.ExitCode.FAILURE
     if options.output_format == "json":
@@ -210,7 +211,7 @@ def report_no_logs(ctx: base_cli.Context, cache_root: Path, options: LogCommandO
 
 def run_with_entries(entries: list[LogEntry], options: LogCommandOptions) -> int:
     newest = entries[0]
-    if options.path_only:
+    if options.latest_only:
         print(newest.path)
         return base_cli.ExitCode.SUCCESS
     if options.tail:
@@ -285,16 +286,13 @@ def latest_failed_history_record(
     logger: Any | None = None,
 ) -> LastFailureRecord | None:
     records = read_failed_history_records(cache_root, logger=logger)
-    if command_filter:
-        normalized = normalize_command_filter(command_filter)
+    command_filters = normalize_command_filters(command_filter)
+    if command_filters:
         records = [
             record
             for record in records
-            if normalize_command_filter(record.command) == normalized
-            or (
-                record.raw_command is not None
-                and normalize_command_filter(record.raw_command) == normalized
-            )
+            if command_matches(record.command, command_filters)
+            or (record.raw_command is not None and command_matches(record.raw_command, command_filters))
         ]
     if not records:
         return None
@@ -466,13 +464,13 @@ def last_failure_to_json(record: LastFailureRecord, tail: LogTail) -> dict[str, 
 
 def recent_logs(cache_root: Path, command_filter: str | None = None) -> list[LogEntry]:
     entries = list(discover_log_entries(cache_root))
-    if command_filter:
-        normalized = normalize_command_filter(command_filter)
+    command_filters = normalize_command_filters(command_filter)
+    if command_filters:
         entries = [
             entry
             for entry in entries
-            if normalize_command_filter(entry.command) == normalized
-            or normalize_command_filter(entry.raw_command) == normalized
+            if command_matches(entry.command, command_filters)
+            or command_matches(entry.raw_command, command_filters)
         ]
     return sorted(entries, key=lambda entry: (entry.timestamp, entry.path.name), reverse=True)
 
@@ -656,8 +654,24 @@ def last_nonempty_line(path: Path) -> str | None:
 
 
 def normalize_command_filter(value: str) -> str:
-    normalized = value.removeprefix("base_")
+    normalized = value.strip().lower().removeprefix("base_")
     return normalized.replace("_", "-")
+
+
+def normalize_command_filters(value: str | None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    parts = value.split(",")
+    if any(not part.strip() for part in parts):
+        raise ValueError("Option '--command' expects comma-separated command names without empty entries.")
+    normalized = tuple(dict.fromkeys(normalize_command_filter(part) for part in parts))
+    if not normalized or any(not command for command in normalized):
+        raise ValueError("Option '--command' expects at least one command name.")
+    return normalized
+
+
+def command_matches(value: str, command_filters: tuple[str, ...]) -> bool:
+    return normalize_command_filter(value) in command_filters
 
 
 def print_log_table(entries: list[LogEntry]) -> None:

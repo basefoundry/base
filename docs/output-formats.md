@@ -2,7 +2,7 @@
 
 Base report commands share one output contract. The contract applies to
 `basectl projects list`, workspace reports, lifecycle listings, trust status,
-release checks, and the `history` and `logs last` reports.
+release checks, and the `history` and `logs last-failed` reports.
 
 When `--format` is omitted, or when `--format text` is selected, Base checks
 whether stdout is an interactive terminal:
@@ -54,7 +54,7 @@ documented order:
 | `trust status` | `PROJECT`, `STATUS`, `REASON` |
 | `release check` | `STATUS`, `NAME`, `MESSAGE` |
 | `history` | `TIME`, `COMMAND`, `PROJECT`, `STATUS`, `EXIT`, `LOG` |
-| `logs last` | `TIME`, `COMMAND`, `PROJECT`, `STATUS`, `EXIT`, `RUN ID`, `LOG` |
+| `logs last-failed` | `TIME`, `COMMAND`, `PROJECT`, `STATUS`, `EXIT`, `RUN ID`, `LOG` |
 
 CSV and TSV values are emitted in this order without a header. CSV applies
 standard quoting when a value contains a comma, quote, or newline; TSV keeps

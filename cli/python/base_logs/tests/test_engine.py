@@ -146,9 +146,11 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
 
             entries = engine.recent_logs(cache_root)
             check_entries = engine.recent_logs(cache_root, command_filter="check")
+            setup_and_check_entries = engine.recent_logs(cache_root, command_filter="setup, check")
 
         self.assertEqual({entry.path: entry.command for entry in entries}, {check_path: "check", setup_path: "setup"})
         self.assertEqual([entry.path for entry in check_entries], [check_path])
+        self.assertEqual({entry.path for entry in setup_and_check_entries}, {check_path, setup_path})
 
     def test_status_comes_from_last_log_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -316,8 +318,8 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
             older = write_log(cache_root, "base_clean", "20260601T010000_aaaaaaaa", "INFO clean\n")
             newer = write_log(cache_root, "base_projects", "20260601T010100_bbbbbbbb", "INFO projects\n")
 
-            status, stdout, stderr = invoke(["--path"], cache_root)
-            filter_status, filter_stdout, filter_stderr = invoke(["--command", "clean", "--path"], cache_root)
+            status, stdout, stderr = invoke(["--latest"], cache_root)
+            filter_status, filter_stdout, filter_stderr = invoke(["--command", "clean", "--latest"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -326,7 +328,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertEqual(filter_stderr, "")
         self.assertEqual(filter_stdout.strip(), str(older))
 
-    def test_last_prints_latest_failed_history_record_with_redacted_tail(self) -> None:
+    def test_last_failed_prints_latest_failed_history_record_with_redacted_tail(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             older_log = write_log(cache_root, "base_setup", "20260601T010000_aaaaaaaa", "old failure\n")
@@ -371,7 +373,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 ),
             )
 
-            status, stdout, stderr = invoke(["last", "--lines", "2"], cache_root)
+            status, stdout, stderr = invoke(["last-failed", "--lines", "2"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -388,7 +390,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertIn("https://[REDACTED]@example.com/repo.git", stdout)
         self.assertIn("--github-token [REDACTED]", stdout)
 
-    def test_last_reports_no_failure_state(self) -> None:
+    def test_last_failed_reports_no_failure_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             write_history_line(
@@ -401,13 +403,13 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 ),
             )
 
-            status, stdout, stderr = invoke(["last"], cache_root)
+            status, stdout, stderr = invoke(["last-failed"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertIn("No failed Base command history found", stdout)
 
-    def test_last_reports_missing_log_with_metadata(self) -> None:
+    def test_last_failed_reports_missing_log_with_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             missing_log = cache_root / "base" / "runs" / "missing-run" / "logs" / "primary.log"
@@ -420,7 +422,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 ),
             )
 
-            status, stdout, stderr = invoke(["last"], cache_root)
+            status, stdout, stderr = invoke(["last-failed"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -430,7 +432,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertNotIn("plain-secret", stdout)
         self.assertIn("API_KEY=[REDACTED]", stdout)
 
-    def test_last_json_output_has_stable_shape_and_redacted_tail(self) -> None:
+    def test_last_failed_json_output_has_stable_shape_and_redacted_tail(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             log_path = write_log(
@@ -448,7 +450,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 ),
             )
 
-            status, stdout, stderr = invoke(["last", "--format", "json", "--lines", "1"], cache_root)
+            status, stdout, stderr = invoke(["last-failed", "--format", "json", "--lines", "1"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -465,9 +467,9 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertNotIn("db-secret", stdout)
         self.assertNotIn("token-secret", stdout)
 
-    def test_last_json_reports_no_failure_without_error(self) -> None:
+    def test_last_failed_json_reports_no_failure_without_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            status, stdout, stderr = invoke(["last", "--format", "json"], Path(tmpdir))
+            status, stdout, stderr = invoke(["last-failed", "--format", "json"], Path(tmpdir))
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -476,7 +478,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertFalse(payload["found"])
         self.assertIn("history_path", payload)
 
-    def test_last_can_filter_failures_by_command(self) -> None:
+    def test_last_failed_can_filter_failures_by_command_list(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
             check_log = write_log(cache_root, "base_setup", "20260601T010000_aaaaaaaa", "check failed\n")
@@ -502,13 +504,21 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 ),
             )
 
-            status, stdout, stderr = invoke(["last", "--command", "check"], cache_root)
+            status, stdout, stderr = invoke(["last-failed", "--command", "setup, release"], cache_root)
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Command: check", stdout)
-        self.assertIn("check failed", stdout)
-        self.assertNotIn("release failed", stdout)
+        self.assertIn("Command: release", stdout)
+        self.assertIn("release failed", stdout)
+        self.assertNotIn("check failed", stdout)
+
+    def test_command_filter_rejects_empty_list_members(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status, stdout, stderr = invoke(["--command", "check,,release"], Path(tmpdir))
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("without empty entries", stderr)
 
     def test_empty_log_set_is_not_an_error_for_table_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -529,9 +539,9 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertIn("cli=base_logs", stderr)
         self.assertFalse((cache_root / "base" / "runs").exists())
 
-    def test_path_errors_when_no_log_matches(self) -> None:
+    def test_latest_errors_when_no_log_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            status, stdout, stderr = invoke(["--path"], Path(tmpdir))
+            status, stdout, stderr = invoke(["--latest"], Path(tmpdir))
 
         self.assertEqual(status, 1)
         self.assertEqual(stdout, "")
@@ -542,24 +552,36 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
             cache_root = Path(tmpdir)
             write_log(cache_root, "base_clean", "20260601T010000_aaaaaaaa", "INFO clean\n")
 
-            status, stdout, stderr = invoke(["--path", "--open"], cache_root)
+            status, stdout, stderr = invoke(["--latest", "--open"], cache_root)
 
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
         self.assertIn("Choose only one", stderr)
 
-    def test_last_rejects_file_actions_and_unknown_formats(self) -> None:
+    def test_last_failed_rejects_file_actions_and_unknown_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
-            status, stdout, stderr = invoke(["last", "--path"], cache_root)
-            format_status, format_stdout, format_stderr = invoke(["last", "--format", "xml"], cache_root)
+            status, stdout, stderr = invoke(["last-failed", "--latest"], cache_root)
+            format_status, format_stdout, format_stderr = invoke(["last-failed", "--format", "xml"], cache_root)
 
         self.assertEqual(status, 2)
         self.assertEqual(stdout, "")
-        self.assertIn("does not accept --path", stderr)
+        self.assertIn("does not accept --latest", stderr)
         self.assertEqual(format_status, 2)
         self.assertEqual(format_stdout, "")
         self.assertIn("Unsupported output format 'xml'", format_stderr)
+
+    def test_old_logs_names_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            action_status, action_stdout, action_stderr = invoke(["last"], Path(tmpdir))
+            option_status, option_stdout, option_stderr = invoke(["--path"], Path(tmpdir))
+
+        self.assertEqual(action_status, 2)
+        self.assertEqual(action_stdout, "")
+        self.assertIn("Unknown logs command 'last'", action_stderr)
+        self.assertEqual(option_status, 2)
+        self.assertEqual(option_stdout, "")
+        self.assertIn("No such option '--path'", option_stderr)
 
     def test_json_format_is_supported_for_recent_logs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

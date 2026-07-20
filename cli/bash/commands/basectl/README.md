@@ -88,7 +88,7 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl clean --keep-last <count>` keeps the newest log files per CLI log directory.
 - `basectl logs` lists recent Base CLI runtime logs and can print, open, or tail
   the newest matching log file.
-- `basectl logs last` prints the latest failed command metadata and a bounded
+- `basectl logs last-failed` prints the latest failed command metadata and a bounded
   redacted log tail, with optional JSON output for local automation.
 - `basectl history` lists recent structured Base command runs from the local
   history index and supports table, JSON, privacy-conscious reports, chronological
