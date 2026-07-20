@@ -473,6 +473,40 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(json.loads(stdout), [{"name": "demo", "path": str((workspace / "demo").resolve())}])
 
+    def test_projects_list_supports_csv_format(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "custom"
+            base_home = Path(tmpdir) / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(
+                ["list", "--workspace", str(workspace), "--format", "csv"],
+                base_home,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout, f"demo,{(workspace / 'demo').resolve()}\n")
+
+    def test_projects_list_supports_yaml_format(self) -> None:
+        import yaml
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "custom"
+            base_home = Path(tmpdir) / "base"
+            base_home.mkdir()
+            write_manifest(workspace / "demo", "demo")
+
+            status, stdout, stderr = run_engine(
+                ["list", "--workspace", str(workspace), "--format", "yaml"],
+                base_home,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(yaml.safe_load(stdout), [{"name": "demo", "path": str((workspace / "demo").resolve())}])
+
     def test_workspace_status_reports_manifest_and_venv_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

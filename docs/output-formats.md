@@ -22,6 +22,12 @@ results are represented as no rows for delimited output and an empty list for
 JSON/YAML. Diagnostics and errors are written to stderr so that structured
 stdout remains safe for automation.
 
+## `basectl projects list`
+
+The table and delimited forms use the columns `PROJECT` then `PATH`. CSV and
+TSV contain those two fields without a header. JSON and YAML contain a list of
+objects with `name` and `path` keys, preserving the existing JSON shape.
+
 The internal `command-protocol` format is a private Base-to-Base interface and
 is not part of the public output-format choices. Artifact-producing commands,
 such as `export-context --format markdown|zip`, keep their command-specific

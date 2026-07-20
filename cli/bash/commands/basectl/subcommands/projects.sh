@@ -10,7 +10,7 @@ Usage:
 
 Options:
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
-  --format <format>   Output format for list: text or json.
+  --format <format>   Output format for list: text, csv, tsv, yaml, or json.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
