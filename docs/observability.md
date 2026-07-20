@@ -42,6 +42,14 @@ explanation, and broader future report generation.
 files, and prints a table with command, run id, status, and path. It also
 supports opening, tailing, or printing the newest matching log path.
 
+The human-readable `logs` and `history` tables share Base's output renderer.
+Columns retain compact minimum widths and expand to fit the selected values, so
+long commands, project names, and run IDs do not shift later cells away from
+their headers. Paths remain in the final, unpadded column. History uses
+`TIME (UTC)` by default and `TIME (LOCAL)` with `--local-time`; the log-list
+column remains labeled `TIME` because legacy entries can fall back to local
+file modification times.
+
 This is useful when the user already knows they need raw logs. It is less useful
 when they want to answer questions such as:
 

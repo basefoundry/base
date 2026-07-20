@@ -119,6 +119,40 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertIn("error", stdout)
         self.assertIn("missing", stdout)
 
+    def test_text_table_expands_columns_for_long_command_and_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(
+                cache_root,
+                history_record(
+                    "long",
+                    "export-context",
+                    project="base-bash-libs",
+                    ended_at="2026-06-10T10:16:00Z",
+                    log_path="~/logs/long.log",
+                ),
+            )
+            write_history_line(
+                cache_root,
+                history_record(
+                    "short",
+                    "check",
+                    ended_at="2026-06-10T10:15:00Z",
+                    log_path="~/logs/short.log",
+                ),
+            )
+
+            status, stdout, stderr = invoke([], cache_root)
+
+        self.assertEqual((status, stderr), (0, ""))
+        lines = stdout.splitlines()
+        log_column = lines[0].index("LOG")
+        self.assertEqual(next(line for line in lines if "~/logs/long.log" in line).index("~/logs/long.log"), log_column)
+        self.assertEqual(
+            next(line for line in lines if "~/logs/short.log" in line).index("~/logs/short.log"),
+            log_column,
+        )
+
     def test_local_time_changes_text_label_but_json_remains_canonical(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
