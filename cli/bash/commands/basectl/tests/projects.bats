@@ -146,6 +146,7 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl projects list [options]"* ]]
     [[ "$output" == *"--format <format>"* ]]
+    [[ "$output" == *"text, csv, tsv, yaml, or json"* ]]
 }
 
 @test "basectl projects reports unknown command as a usage error" {
@@ -165,7 +166,7 @@ EOF
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
-    printf 'ERROR: Unsupported output format '\''xml'\''. Expected one of: text, json.\n' >&2
+    printf 'ERROR: Unsupported output format '\''xml'\''. Expected one of: text, csv, tsv, yaml, json.\n' >&2
     exit 2
 fi
 printf 'unexpected projects list python args: %s\n' "$*" >&2

@@ -83,7 +83,12 @@ def main(argv: list[str] | None = None) -> int:
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
 )
 @base_cli.option("--project", "project_name", help="Select a project explicitly.")
-@base_cli.option("--format", "output_format", default="text", help="Output format: text or json.")
+@base_cli.option(
+    "--format",
+    "output_format",
+    default="text",
+    help="Output format: text, csv, tsv, yaml, or json.",
+)
 @base_cli.option("--manifest", "workspace_manifest", help="Local workspace manifest to read.")
 @base_cli.option("--source", "workspace_manifest_source", help="Canonical workspace manifest source URL or path.")
 @base_cli.option("--path", "workspace_config_path", help="Workspace configuration repository checkout path.")
@@ -203,9 +208,12 @@ def build_target_list_project_command(
 
 
 def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_format: str = "text") -> int:
-    if output_format not in ("text", "json", "command-protocol"):
-        ctx.log.error("Unsupported output format '%s'. Expected one of: text, json, command-protocol.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
+    if output_format != "command-protocol":
+        try:
+            base_cli.resolve_output_format(output_format)
+        except base_cli.OutputFormatError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.USAGE_ERROR
 
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
@@ -214,14 +222,6 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    if output_format == "json":
-        print(
-            json.dumps(
-                [{"name": project.name, "path": str(project.root)} for project in projects],
-                separators=(",", ":"),
-            )
-        )
-        return base_cli.ExitCode.SUCCESS
     if output_format == "command-protocol":
         print(
             dumps_records(
@@ -237,8 +237,16 @@ def list_projects_command(ctx: base_cli.Context, workspace: str | None, output_f
         )
         return base_cli.ExitCode.SUCCESS
 
-    for project in projects:
-        print(f"{project.name}\t{project.root}")
+    try:
+        base_cli.render_records(
+            ({"name": project.name, "path": str(project.root)} for project in projects),
+            requested_format=output_format,
+            columns=(("PROJECT", "name"), ("PATH", "path")),
+            footer=f"{len(projects)} project(s).",
+        )
+    except base_cli.OutputFormatError as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.USAGE_ERROR
     return base_cli.ExitCode.SUCCESS
 
 
