@@ -174,11 +174,154 @@ EOF
     [[ "$output" == *"demo:$venv_dir"* ]]
 }
 
+@test "Base runtime shell releases activation invocation context after startup" {
+    local project_root="$TEST_TMPDIR/demo"
+    local venv_dir="$TEST_TMPDIR/demo-venv"
+    local activation_run_root="$TEST_TMPDIR/activation-run"
+    local activation_log="$activation_run_root/logs/primary.log"
+    local history_state="$TEST_TMPDIR/runtime-history-state"
+    local nested_run_root nested_run_json history_call variable
+
+    mkdir -p "$project_root" "$venv_dir/bin" "$activation_run_root/logs" "$activation_run_root/tmp"
+    touch "$project_root/base_manifest.yaml" "$activation_log"
+    printf '%s\n' '{"run_id":"activation-run-id","owner":"base","status":"running","started_at":"2026-07-20T00:00:00Z"}' > "$activation_run_root/run.json"
+    cat > "$venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+export VIRTUAL_ENV
+EOF
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+    printf 'startup-run-root=%s\n' "${BASE_CLI_RUN_ROOT:-unset}" >&2
+    printf 'startup-primary-log=%s\n' "${BASE_CLI_PRIMARY_LOG:-unset}" >&2
+    printf 'startup-history-scope=%s\n' "${BASE_CLI_HISTORY_SCOPE:-unset}" >&2
+    base_test_protocol_begin activation-source 0
+    base_test_protocol_end
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
+    printf 'demo\t%s/demo\n' "${BASE_TEST_WORKSPACE:?}"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_history.record" ]]; then
+    printf '%s\n' "$*" >> "${BASE_TEST_RUNTIME_HISTORY_STATE:?}"
+    exit 0
+fi
+printf 'unexpected base_projects args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/user-cache" \
+        BASE_CLI_LOG_LEVEL=warning \
+        BASE_TEST_RUNTIME_HISTORY_STATE="$history_state" \
+        BASE_TEST_WORKSPACE="$TEST_TMPDIR" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_PROJECT_VENV_DIR="$venv_dir" \
+        BASE_CLI_RUNTIME_OWNER=base \
+        BASE_CLI_RUN_ID=activation-run-id \
+        BASE_CLI_RUN_ROOT="$activation_run_root" \
+        BASE_CLI_PRIMARY_LOG="$activation_log" \
+        BASE_CLI_KEEP_TEMP=true \
+        BASE_CLI_HISTORY_PARENT_RUN_ID=activation-run-id \
+        BASE_CLI_HISTORY_STARTED_AT=2026-07-20T00:00:00Z \
+        BASE_CLI_HISTORY_SCOPE=internal \
+        BASE_CLI_HISTORY_PROJECT=demo \
+        BASE_CLI_HISTORY_PROJECT_ROOT="$project_root" \
+        BASE_CLI_HISTORY_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_CLI_PROJECT_NAME=demo \
+        BASE_CLI_PROJECT_ROOT="$project_root" \
+        BASE_CLI_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            for variable in \
+                BASE_CLI_RUNTIME_OWNER \
+                BASE_CLI_RUN_ID \
+                BASE_CLI_RUN_ROOT \
+                BASE_CLI_PRIMARY_LOG \
+                BASE_CLI_HISTORY_PARENT_RUN_ID \
+                BASE_CLI_HISTORY_STARTED_AT \
+                BASE_CLI_HISTORY_SCOPE \
+                BASE_CLI_HISTORY_PROJECT \
+                BASE_CLI_HISTORY_PROJECT_ROOT \
+                BASE_CLI_HISTORY_MANIFEST \
+                BASE_CLI_PROJECT_NAME \
+                BASE_CLI_PROJECT_ROOT \
+                BASE_CLI_PROJECT_MANIFEST; do \
+                if declare -p "$variable" >/dev/null 2>&1; then \
+                    printf "body-%s=set:%s\n" "$variable" "${!variable}"; \
+                else \
+                    printf "body-%s=unset\n" "$variable"; \
+                fi; \
+            done; \
+            printf "body-BASE_PROJECT=%s\n" "$BASE_PROJECT"; \
+            printf "body-BASE_PROJECT_ROOT=%s\n" "$BASE_PROJECT_ROOT"; \
+            printf "body-BASE_PROJECT_MANIFEST=%s\n" "$BASE_PROJECT_MANIFEST"; \
+            printf "body-BASE_PROJECT_VENV_DIR=%s\n" "$BASE_PROJECT_VENV_DIR"; \
+            printf "body-BASE_CACHE_DIR=%s\n" "$BASE_CACHE_DIR"; \
+            printf "body-BASE_CLI_LOG_LEVEL=%s\n" "$BASE_CLI_LOG_LEVEL"; \
+            printf "body-BASE_CLI_KEEP_TEMP=%s\n" "$BASE_CLI_KEEP_TEMP"; \
+            "$BASE_HOME/bin/basectl" projects list --workspace "$BASE_TEST_WORKSPACE"; \
+            printf "nested-status=%s\n" "$?"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"startup-run-root=$activation_run_root"* ]]
+    [[ "$output" == *"startup-primary-log=$activation_log"* ]]
+    [[ "$output" == *"startup-history-scope=internal"* ]]
+    for variable in \
+        BASE_CLI_RUNTIME_OWNER \
+        BASE_CLI_RUN_ID \
+        BASE_CLI_RUN_ROOT \
+        BASE_CLI_PRIMARY_LOG \
+        BASE_CLI_HISTORY_PARENT_RUN_ID \
+        BASE_CLI_HISTORY_STARTED_AT \
+        BASE_CLI_HISTORY_SCOPE \
+        BASE_CLI_HISTORY_PROJECT \
+        BASE_CLI_HISTORY_PROJECT_ROOT \
+        BASE_CLI_HISTORY_MANIFEST \
+        BASE_CLI_PROJECT_NAME \
+        BASE_CLI_PROJECT_ROOT \
+        BASE_CLI_PROJECT_MANIFEST; do
+        [[ "$output" == *"body-$variable=unset"* ]]
+    done
+    [[ "$output" == *"body-BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"body-BASE_PROJECT_ROOT=$project_root"* ]]
+    [[ "$output" == *"body-BASE_PROJECT_MANIFEST=$project_root/base_manifest.yaml"* ]]
+    [[ "$output" == *"body-BASE_PROJECT_VENV_DIR=$venv_dir"* ]]
+    [[ "$output" == *"body-BASE_CACHE_DIR=$TEST_TMPDIR/user-cache"* ]]
+    [[ "$output" == *"body-BASE_CLI_LOG_LEVEL=warning"* ]]
+    [[ "$output" == *"body-BASE_CLI_KEEP_TEMP=true"* ]]
+    [[ "$output" == *$'demo\t'"$TEST_TMPDIR/demo"* ]]
+    [[ "$output" == *"nested-status=0"* ]]
+
+    grep -Fq '"status":"running"' "$activation_run_root/run.json"
+    nested_run_root="$(find "$TEST_TMPDIR/user-cache/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$nested_run_root" ]
+    [ "$(find "$TEST_TMPDIR/user-cache/base/runs" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
+    nested_run_json="$(cat "$nested_run_root/run.json")"
+    [[ "$nested_run_json" == *'"status":"ok"'* ]]
+    [[ "$nested_run_json" == *'"exit_code":0'* ]]
+    [ "$(wc -l < "$history_state")" -eq 1 ]
+    history_call="$(cat "$history_state")"
+    [[ "$history_call" == *"-m base_history.record --command projects "* ]]
+    [[ "$history_call" == *" --scope primary --owner base --bundle-path $nested_run_root "* ]]
+    [[ "$history_call" != *"$activation_run_root"* ]]
+}
+
 @test "Base runtime shell reports activation source resolution failures clearly" {
     local project_root="$TEST_TMPDIR/demo"
     local venv_dir="$TEST_TMPDIR/demo-venv"
+    local activation_run_root="$TEST_TMPDIR/failed-activation-run"
+    local activation_log="$activation_run_root/logs/primary.log"
 
-    mkdir -p "$project_root" "$venv_dir/bin"
+    mkdir -p "$project_root" "$venv_dir/bin" "$activation_run_root/logs" "$activation_run_root/tmp"
+    touch "$activation_log"
+    printf '%s\n' '{"run_id":"failed-activation-run-id","owner":"base","status":"running","started_at":"2026-07-20T00:00:00Z"}' > "$activation_run_root/run.json"
     cat > "$venv_dir/bin/activate" <<'EOF'
 VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
 export VIRTUAL_ENV
@@ -201,13 +344,26 @@ EOF
         BASE_PROJECT_ROOT="$project_root" \
         BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
         BASE_PROJECT_VENV_DIR="$venv_dir" \
+        BASE_CLI_RUNTIME_OWNER=base \
+        BASE_CLI_RUN_ID=failed-activation-run-id \
+        BASE_CLI_RUN_ROOT="$activation_run_root" \
+        BASE_CLI_PRIMARY_LOG="$activation_log" \
+        BASE_CLI_HISTORY_PARENT_RUN_ID=failed-activation-run-id \
+        BASE_CLI_HISTORY_STARTED_AT=2026-07-20T00:00:00Z \
+        BASE_CLI_HISTORY_SCOPE=internal \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c 'printf "shell-continued\n"'
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "shell-continued\n"; \
+            printf "body-run-root=%s\n" "${BASE_CLI_RUN_ROOT-unset}"; \
+            printf "body-history-scope=%s\n" "${BASE_CLI_HISTORY_SCOPE-unset}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"activate.source[1]"* ]]
     [[ "$output" == *".base/missing.sh"* ]]
     [[ "$output" == *"ERROR: Unable to resolve project activation scripts for 'demo'."* ]]
+    [[ "$output" == *"shell-continued"* ]]
+    [[ "$output" == *"body-run-root=unset"* ]]
+    [[ "$output" == *"body-history-scope=unset"* ]]
 }
 
 @test "Base runtime shell loads base_init before user bashrc and owns final prompt" {

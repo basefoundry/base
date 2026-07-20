@@ -244,4 +244,29 @@ _base_runtime_main() {
     _base_runtime_debug "complete"
 }
 
-_base_runtime_main || return $?
+_base_runtime_release_launcher_context() {
+    unset \
+        BASE_CLI_RUNTIME_OWNER \
+        BASE_CLI_RUN_ID \
+        BASE_CLI_RUN_ROOT \
+        BASE_CLI_PRIMARY_LOG \
+        BASE_CLI_HISTORY_PARENT_RUN_ID \
+        BASE_CLI_HISTORY_STARTED_AT \
+        BASE_CLI_HISTORY_SCOPE \
+        BASE_CLI_HISTORY_PROJECT \
+        BASE_CLI_HISTORY_PROJECT_ROOT \
+        BASE_CLI_HISTORY_MANIFEST \
+        BASE_CLI_PROJECT_NAME \
+        BASE_CLI_PROJECT_ROOT \
+        BASE_CLI_PROJECT_MANIFEST
+}
+
+_base_runtime_entrypoint() {
+    local status=0
+
+    _base_runtime_main || status=$?
+    _base_runtime_release_launcher_context
+    return "$status"
+}
+
+_base_runtime_entrypoint || return $?

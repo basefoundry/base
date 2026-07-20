@@ -118,6 +118,13 @@ to this same file, which always captures DEBUG-level diagnostics even when the
 terminal is showing INFO. Normal command stdout remains stdout and is not
 captured here.
 
+An interactive `basectl activate` bundle remains `running` while the runtime
+shell is open. Shell startup inherits that bundle's run context for its
+diagnostics, but Base clears the context before the prompt so commands entered
+in the shell follow the normal independent run and history policy for recordable
+commands. The activation bundle is finalized and recorded after the runtime
+shell exits.
+
 ### `projects/<project-id>/<checkout-id>/`
 
 The runtime namespace for one canonical project checkout. The project ID comes
