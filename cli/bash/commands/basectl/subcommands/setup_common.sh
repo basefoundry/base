@@ -1346,10 +1346,10 @@ setup_run_check() {
     setup_record_project_check_result "$project" error
     if [[ -n "$project" ]]; then
         log_error "Base CLI environment or project '$project' check found missing requirements."
-        log_error "Run 'basectl setup $project' to reconcile the missing requirements."
+        log_error "Review the specific Fix lines above and rerun 'basectl check $project' after resolving the missing requirements."
     else
         log_error "Base CLI environment check found missing requirements."
-        log_error "Run 'basectl setup' to reconcile the missing requirements."
+        log_error "Review the specific Fix lines above and rerun 'basectl check' after resolving the missing requirements."
     fi
     return 1
 }

@@ -14,6 +14,9 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Replaced the generic setup-only summary after failed checks with guidance to
+  follow each finding's fix and rerun the check; activation-backed environment
+  checks now mention project activation.
 - Kept `basectl history` and `basectl logs` terminal tables aligned when command,
   project, or run-ID values exceed their compact minimum widths.
 - Render blocking `basectl check` findings, remediation lines, and failure
