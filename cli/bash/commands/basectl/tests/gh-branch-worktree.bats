@@ -253,6 +253,51 @@ load ./basectl_helpers.bash
     git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
 }
 
+@test "basectl gh branch prune reports ordinary unmerged local branches" {
+    local repo remote
+
+    repo="$TEST_TMPDIR/repo"
+    remote="$TEST_TMPDIR/remote.git"
+    create_tracked_repo_with_upstream "$repo" "$remote" "README.md" "hello"
+    git -C "$repo" switch -c unmerged-work >/dev/null
+    printf 'topic change\n' >> "$repo/README.md"
+    commit_all "$repo" "Topic change"
+    git -C "$repo" push -u origin unmerged-work >/dev/null 2>&1
+    git -C "$repo" switch master >/dev/null
+
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$*" == "pr list --head unmerged-work --state merged --json number --jq length" ]]; then
+    printf '0\n'
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main branch prune --remote --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SKIP   unmerged-work  not confirmed merged into master or through a merged GitHub PR; local branch retained"* ]]
+    [[ "$output" == *"SKIP   origin/unmerged-work  no merged GitHub PR found for this branch; remote branch retained"* ]]
+    [[ "$output" == *"Summary: 0 deleted remotely, 0 skipped worktree, 1 skipped unmerged, 0 failed."* ]]
+    git -C "$repo" show-ref --verify --quiet refs/heads/unmerged-work
+    git -C "$repo" ls-remote --exit-code --heads origin unmerged-work >/dev/null
+}
+
 @test "basectl gh branch prune --remote prints remote tracking refs separately" {
     local repo remote
 

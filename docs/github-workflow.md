@@ -421,10 +421,10 @@ candidates, reports branches attached to worktrees as skipped, and treats
 `--remote` as GitHub remote branch cleanup plus stale `origin/*` tracking-ref
 cleanup. Because Base usually uses squash merges, pruning checks GitHub PR state
 when Git ancestry does not prove the merge. A successful GitHub query with no
-merged PR keeps the branch as an ordinary unmerged skip. If the GitHub query
-cannot complete, pruning retains the branch or worktree, reports the underlying
-verification error, counts the incomplete check as a failure, and exits nonzero
-instead of classifying it as unmerged.
+merged PR keeps the branch as an ordinary unmerged skip and prints the retained
+branch name. If the GitHub query cannot complete, pruning retains the branch or
+worktree, reports the underlying verification error, counts the incomplete check
+as a failure, and exits nonzero instead of classifying it as unmerged.
 
 Remote branch pruning is deliberately conservative. Base deletes a GitHub branch
 only when GitHub confirms a merged pull request for that exact branch name. It

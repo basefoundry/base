@@ -250,6 +250,8 @@ base_gh_branch_prune_local() {
             merge_status=$?
         fi
         if ((merge_status == 1)); then
+            printf 'SKIP   %s  not confirmed merged into %s or through a merged GitHub PR; local branch retained\n' \
+                "$branch" "$default_branch"
             continue
         fi
         if ((merge_status != 0)); then
@@ -335,6 +337,8 @@ base_gh_branch_prune_github_branches() {
             merge_status=$?
         fi
         if ((merge_status == 1)); then
+            printf 'SKIP   origin/%s  no merged GitHub PR found for this branch; remote branch retained\n' \
+                "$branch"
             skipped_unmerged=$((skipped_unmerged + 1))
             continue
         fi

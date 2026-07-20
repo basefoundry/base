@@ -9,6 +9,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Show the names and retention reasons for ordinary unmerged branches during
+  local and GitHub remote branch pruning.
 - Reported GitHub merge-verification failures separately from unmerged branches
   during branch and worktree pruning, while retaining every unverified cleanup
   candidate and returning a nonzero status for incomplete prune scans.
