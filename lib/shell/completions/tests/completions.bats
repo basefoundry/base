@@ -387,6 +387,40 @@ run_zsh_positional_completion() {
     assert_zsh_completion_options_match_help gh-project-configure gh project configure
 }
 
+@test "format completions expose public values and preserve exceptions" {
+    local public_values=$'text\ncsv\ntsv\nyaml\njson'
+    local legacy_values=$'text\njson'
+    local report_values=$'markdown\njson'
+    local artifact_values=$'markdown\nzip'
+    local specs
+
+    run bash_completion_candidates basectl projects list --format ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "$public_values" ]
+
+    run bash_completion_candidates basectl history --report --format ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "$report_values" ]
+
+    run bash_completion_candidates basectl setup --format ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "$legacy_values" ]
+
+    run bash_completion_candidates basectl export-context --format ""
+    [ "$status" -eq 0 ]
+    [ "$output" = "$artifact_values" ]
+
+    command -v zsh >/dev/null 2>&1 || return 0
+    specs="$(zsh_completion_specs basectl projects list --format "")"
+    [[ "$specs" == *"format:(text csv tsv yaml json)"* ]]
+    specs="$(zsh_completion_specs basectl setup --format "")"
+    [[ "$specs" == *"format:(text json)"* ]]
+    specs="$(zsh_completion_specs basectl export-context --format "")"
+    [[ "$specs" == *"format:(markdown zip)"* ]]
+    specs="$(zsh_completion_specs basectl history --report --format "")"
+    [[ "$specs" == *"format:(markdown json)"* ]]
+}
+
 @test "Bash help completion mirrors command and nested leaf candidates" {
     local direct nested
 

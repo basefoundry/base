@@ -505,7 +505,7 @@ _base_basectl_completion() {
         projects)
             _arguments '2:projects command:(list)' \
                 '--workspace[Workspace directory to scan]:path:_files' \
-                '--format[Output format]:format:(text json)' \
+                '--format[Output format]:format:(text csv tsv yaml json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         trust)
@@ -514,7 +514,7 @@ _base_basectl_completion() {
                     _arguments '2:trust command:(status allow revoke)' \
                         '3::Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
-                        '--format[Output format]:format:(text json)' \
+                        '--format[Output format]:format:(text csv tsv yaml json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 allow)
@@ -544,7 +544,7 @@ _base_basectl_completion() {
                     _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull init configure)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
-                        '--format[Output format]:format:(text json)' \
+                        '--format[Output format]:format:(text csv tsv yaml json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 clone)
@@ -659,7 +659,7 @@ _base_basectl_completion() {
                 '--project[Select a project explicitly]:Base project:->projects' \
                 '--dry-run[Print resolved build commands without running them]' \
                 '--list[List build targets]' \
-                '--format[List output format]:format:(text json)' \
+                '--format[List output format]:format:(text csv tsv yaml json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Project or build target:->build_values' '*:Build target:->build_values'
             if [[ "$state" == projects ]]; then
@@ -683,7 +683,7 @@ _base_basectl_completion() {
                 '--project[Select a project explicitly]:Base project:->projects' \
                 '--dry-run[Print the resolved command without running it]' \
                 '--list[List runnable project commands]' \
-                '--format[List output format]:format:(text json)' \
+                '--format[List output format]:format:(text csv tsv yaml json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Project or command:->run_values' '3:Project command:->run_values'
             if [[ "$state" == projects ]]; then
@@ -862,7 +862,7 @@ _base_basectl_completion() {
                     _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
-                        '--format[Output format]:format:(text json)' \
+                        '--format[Output format]:format:(text csv tsv yaml json)' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 plan|notes)
@@ -895,7 +895,7 @@ _base_basectl_completion() {
                 _arguments '2:logs command:(last)' \
                     '--command[Filter by command]:command:' \
                     '--lines[Maximum log-tail lines]:count:' \
-                    '--format[Output format]:format:(text json)' \
+                    '--format[Output format]:format:(text csv tsv yaml json)' \
                     '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
             else
                 _arguments '2:logs command:(last)' \
@@ -909,18 +909,33 @@ _base_basectl_completion() {
             fi
             ;;
         history)
-            _arguments '--project[Filter by Base project]:project:' \
-                '--command[Filter by command]:command:' \
-                '--status[Filter by status]:status:(ok warn error)' \
-                '--limit[Number of records]:count:' \
-                '--format[Output format]:format:(text json)' \
-                '--report[Print a privacy-conscious Markdown or JSON activity report]' \
-                '--oldest-first[Show the selected history window from oldest to newest]' \
-                '--last[Show records from the most recent duration]:duration:' \
-                '--since[Include records at or after a timestamp]:time:' \
-                '--until[Exclude records at or after a timestamp]:time:' \
-                '--local-time[Render text and Markdown timestamps in local time; defaults to UTC]' \
-                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            if (( ${words[(I)--report]} )); then
+                _arguments '--project[Filter by Base project]:project:' \
+                    '--command[Filter by command]:command:' \
+                    '--status[Filter by status]:status:(ok warn error)' \
+                    '--limit[Number of records]:count:' \
+                    '--format[Output format]:format:(markdown json)' \
+                    '--report[Print a privacy-conscious Markdown or JSON activity report]' \
+                    '--oldest-first[Show the selected history window from oldest to newest]' \
+                    '--last[Show records from the most recent duration]:duration:' \
+                    '--since[Include records at or after a timestamp]:time:' \
+                    '--until[Exclude records at or after a timestamp]:time:' \
+                    '--local-time[Render text and Markdown timestamps in local time; defaults to UTC]' \
+                    '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            else
+                _arguments '--project[Filter by Base project]:project:' \
+                    '--command[Filter by command]:command:' \
+                    '--status[Filter by status]:status:(ok warn error)' \
+                    '--limit[Number of records]:count:' \
+                    '--format[Output format]:format:(text csv tsv yaml json)' \
+                    '--report[Print a privacy-conscious Markdown or JSON activity report]' \
+                    '--oldest-first[Show the selected history window from oldest to newest]' \
+                    '--last[Show records from the most recent duration]:duration:' \
+                    '--since[Include records at or after a timestamp]:time:' \
+                    '--until[Exclude records at or after a timestamp]:time:' \
+                    '--local-time[Render text and Markdown timestamps in local time; defaults to UTC]' \
+                    '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            fi
             ;;
         config)
             _arguments '2:config command:(path show doctor)' \
