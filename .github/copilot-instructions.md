@@ -21,6 +21,9 @@ For implementation work, use Base's issue-backed workflow:
   architecture, command surface, manifest model, release status, or durable
   workflow guidance.
 
+For a pull request superseded by another pull request, follow the
+superseded-PR close-and-cleanup rule in `AGENTS.md` before ending the session.
+
 Follow `CONTRIBUTING.md` for contribution flow and `STANDARDS.md` for coding
 standards. Prefer existing Base helpers, structured parsers, and local command
 patterns over new one-off conventions.

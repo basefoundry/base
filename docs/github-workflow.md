@@ -438,6 +438,55 @@ a merged GitHub PR, then deletes the now-free local branch when safe. Resolve an
 reported GitHub verification failures and rerun the preview before applying it
 with `--yes`.
 
+## Superseded Pull Requests
+
+A pull request closed because another pull request supersedes it has a
+different lifecycle from an ordinary abandoned or rejected pull request. The
+agent that makes the supersession decision owns the cleanup; it must not leave
+the branch as a follow-up task for the user.
+
+Before closing, verify that the replacement pull request carries the work and
+record the relationship in the closing comment, for example:
+
+```text
+Superseded by #1700. The implementation and follow-up fixes landed there.
+```
+
+For an open pull request, the GitHub CLI can perform the close and remote head
+branch deletion together:
+
+```bash
+gh pr close <number> \
+  --comment "Superseded by #<replacement>. The implementation landed there." \
+  --delete-branch
+```
+
+`basectl gh` does not currently provide a dedicated PR-close wrapper, so raw
+`gh` is the supported fallback for this operation. If the pull request was
+already closed, delete its remote head ref only after the same replacement
+verification:
+
+```bash
+gh api --method DELETE \
+  repos/<owner>/<repo>/git/refs/heads/<head-branch>
+```
+
+Then remove the agent-created local branch and worktree when they are not
+current, user-owned, or dirty. Do not remove a user-owned or dirty worktree
+without explicit approval. Verify the result before ending the task:
+
+```bash
+git worktree list
+git branch --list <head-branch>
+git ls-remote --heads origin <head-branch>
+```
+
+All three checks should show that no agent-owned branch or worktree remains.
+If any cleanup step fails, report the exact blocker and continue to own the
+follow-up; do not present it as routine cleanup the user must perform. Ordinary
+closed pull requests are not candidates for this flow unless a replacement has
+been explicitly established.
+
 ## Pull Requests
 
 Base pull requests are issue-backed by default. The issue is the planning
