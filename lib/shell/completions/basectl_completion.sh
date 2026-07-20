@@ -430,7 +430,7 @@ _base_basectl_completion_lifecycle_candidates() {
         return 0
     fi
     if [[ "$previous" == --format ]]; then
-        _base_basectl_completion_compgen "text json" "$current"
+        _base_basectl_completion_compgen "text csv tsv yaml json" "$current"
         return 0
     fi
     if [[ "$current" == -* ]]; then
@@ -477,6 +477,42 @@ _base_basectl_completion_compgen() {
     while IFS= read -r candidate; do
         COMPREPLY+=("$candidate")
     done < <(compgen -W "$words" -- "$current")
+}
+
+_base_basectl_completion_format_values() {
+    local command="${COMP_WORDS[1]:-}"
+    local subcommand="${COMP_WORDS[2]:-}"
+    local format_values="text json"
+    local index
+
+    case "$command" in
+        projects|build|run|release|logs|trust|workspace)
+            format_values="text csv tsv yaml json"
+            ;;
+        history)
+            format_values="text csv tsv yaml json"
+            for ((index = 2; index < COMP_CWORD; index += 1)); do
+                if [[ "${COMP_WORDS[index]:-}" == "--report" ]]; then
+                    format_values="markdown json"
+                    break
+                fi
+            done
+            ;;
+        export-context)
+            format_values="markdown zip"
+            ;;
+    esac
+
+    case "$command:$subcommand" in
+        trust:allow|trust:revoke|workspace:clone|workspace:pull|workspace:init|workspace:configure|release:plan|release:notes|logs:|build:|run:)
+            format_values="text json"
+            ;;
+        release:check|logs:last|trust:status)
+            format_values="text csv tsv yaml json"
+            ;;
+    esac
+
+    printf '%s\n' "$format_values"
 }
 
 _base_basectl_completion_profiles() {
@@ -577,6 +613,10 @@ _base_basectl_completion() {
     fi
 
     command="${COMP_WORDS[1]:-}"
+    if [[ "${COMP_WORDS[COMP_CWORD - 1]:-}" == "--format" ]]; then
+        _base_basectl_completion_compgen "$(_base_basectl_completion_format_values)" "$cur"
+        return 0
+    fi
     case "$command" in
         activate)
             _base_basectl_completion_project_or_options \

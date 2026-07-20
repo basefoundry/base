@@ -9,6 +9,12 @@ Base rejects `--option=value` syntax before command delegation. Arguments after
 `--` belong to the delegated project command and may use that command's native
 syntax.
 
+For report commands documented with `text|csv|tsv|yaml|json`, an omitted
+`--format` (or `--format text`) is a pretty table on a terminal and headerless
+TSV when stdout is redirected. See [Output formats](output-formats.md) for
+stable field order, JSON/YAML compatibility, stderr behavior, and the
+command-specific exceptions.
+
 `basectl` exposes `-v` as the public command-level debug switch. Direct
 `base_cli` package standard options such as `--debug`, `--quiet`, `--log-file`,
 `--config` and `--environment` are private to Python package execution and are
