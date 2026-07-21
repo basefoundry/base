@@ -231,7 +231,10 @@ metadata and says that the recorded log file is missing.
 For recent-log inspection, `--command <name[,name...]>` accepts a comma-separated
 OR filter such as `--command setup,check`; each name is normalized in the same
 way as a single command filter. `--latest` prints only the newest matching log
-path, while `--tail` and `--open` operate on that same newest matching log.
+path, while `--tail` and `--open` operate on that same newest matching log. These
+actions are mutually exclusive: `--latest` is path-only and cannot be combined
+with `--tail` or `--open`; use either consuming action by itself when you want to
+read or follow the newest log.
 
 The report mode summarizes selected recent history records with:
 
