@@ -845,17 +845,19 @@ setup_print_doctor_finding() {
     local name="$3"
     local message="$4"
     local fix="${5:-}"
-    local color label padding reset
+    local color fix_indent label padding reset
 
     if setup_doctor_visual_status_enabled; then
         IFS=$'\t' read -r label color padding <<<"$(setup_doctor_status_visual_parts "$status")"
         reset=$'\033[0m'
         printf '%b%s%b%s  %-9s  %-26s  %s\n' "$color" "$label" "$reset" "$padding" "$finding_id" "$name" "$message"
+        fix_indent=9
     else
         printf '%-5s  %-9s  %-26s  %s\n' "$status" "$finding_id" "$name" "$message"
+        fix_indent=7
     fi
     if [[ -n "$fix" ]]; then
-        printf '       Fix: %s\n' "$fix"
+        printf '%*sFix: %s\n' "$fix_indent" '' "$fix"
     fi
 }
 

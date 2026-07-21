@@ -215,7 +215,6 @@ base_doctor_run_ci_runtime_text() {
     fi
 
     setup_print_runtime_chain_summary
-    printf '\n'
 
     base_doctor_print_collected_check_results
     if setup_profiles_enabled; then
@@ -228,20 +227,19 @@ base_doctor_run_ci_runtime_text() {
         errors=$((errors + $?))
     fi
 
-    printf '\n'
     if ((errors == 0)); then
         if [[ -n "$project" ]]; then
-            printf "Base CI doctor found no blocking issues for project '%s'.\n" "$project"
+            log_info "Base CI doctor found no blocking issues for project '$project'."
         else
-            printf 'Base CI doctor found no blocking issues.\n'
+            log_info 'Base CI doctor found no blocking issues.'
         fi
         return 0
     fi
 
     if [[ -n "$project" ]]; then
-        printf "Base CI doctor found %s blocking issue(s) for project '%s'.\n" "$errors" "$project"
+        log_info "Base CI doctor found $errors blocking issue(s) for project '$project'."
     else
-        printf 'Base CI doctor found %s blocking issue(s).\n' "$errors"
+        log_info "Base CI doctor found $errors blocking issue(s)."
     fi
     return 1
 }
@@ -391,7 +389,6 @@ base_doctor_subcommand_main() {
     fi
 
     setup_print_runtime_chain_summary
-    printf '\n'
 
     BASE_SETUP_XCODE_HOMEBREW_DIAGNOSTICS=true setup_collect_base_check_results warn || true
     errors="$(base_doctor_count_check_errors)"
@@ -406,20 +403,19 @@ base_doctor_subcommand_main() {
         errors=$((errors + $?))
     fi
 
-    printf '\n'
     if ((errors == 0)); then
         if [[ -n "$project" ]]; then
-            printf "Base doctor found no blocking issues for project '%s'.\n" "$project"
+            log_info "Base doctor found no blocking issues for project '$project'."
         else
-            printf 'Base doctor found no blocking issues.\n'
+            log_info 'Base doctor found no blocking issues.'
         fi
         return 0
     fi
 
     if [[ -n "$project" ]]; then
-        printf "Base doctor found %s blocking issue(s) for project '%s'.\n" "$errors" "$project"
+        log_info "Base doctor found $errors blocking issue(s) for project '$project'."
     else
-        printf 'Base doctor found %s blocking issue(s).\n' "$errors"
+        log_info "Base doctor found $errors blocking issue(s)."
     fi
     return 1
 }

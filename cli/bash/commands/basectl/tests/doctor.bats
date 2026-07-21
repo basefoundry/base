@@ -249,6 +249,11 @@ EOF
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
 
     create_doctor_success_stubs "$fake_bin" "$venv_python"
+    cat > "$fake_bin/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh version test\n'
+EOF
+    chmod +x "$fake_bin/gh"
     write_doctor_tty_script "$script" "$fake_bin" "xterm-256color" "" ""
 
     run_tty_script "$script"
@@ -257,6 +262,9 @@ EOF
     normalized="$(normalize_tty_output "$output")"
     [[ "$normalized" == *$'\033[0;32m✓ ok\033[0m'*"BASE-D001"*"Homebrew"*"Homebrew is installed."* ]]
     [[ "$normalized" == *$'\033[0;32m✓ ok\033[0m'*"BASE-D004"*"Base virtualenv"*"Virtual environment is healthy at"* ]]
+    [[ "$normalized" != *"GitHub CLI:"*$'\n\n'* ]]
+    [[ "$normalized" == *" INFO "*"Base doctor found no blocking issues."* ]]
+    [[ "$normalized" != *$'\n\n'*"Base doctor found no blocking issues."* ]]
 }
 
 @test "basectl doctor --no-color disables visual status indicators on a tty" {
@@ -655,7 +663,9 @@ EOF
     [[ "$output" == *"Base doctor"* ]]
     [[ "$output" == *"error"*"Homebrew"*"Homebrew is not installed."* ]]
     [[ "$output" == *"Fix: Run 'basectl setup' to install Homebrew, or install it manually from https://brew.sh/."* ]]
-    [[ "$output" == *"Base doctor found"*"blocking issue(s)."* ]]
+    [[ "$output" == *$'\n       Fix: Run '\''basectl setup'\'' to install Homebrew, or install it manually from https://brew.sh/.'* ]]
+    [[ "$output" == *" INFO "*"Base doctor found"*"blocking issue(s)."* ]]
+    [[ "$output" != *$'\n\n'*"Base doctor found"* ]]
 }
 
 @test "basectl doctor rejects unsupported BASE_PLATFORM before Homebrew probes" {
