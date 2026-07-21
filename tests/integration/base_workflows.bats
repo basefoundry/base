@@ -211,7 +211,8 @@ run_basectl_separate_stderr() {
 
     run_basectl doctor demo
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Base doctor for project 'demo'"* ]]
+    [[ "$output" != *"Base doctor for project 'demo'"* ]]
+    [[ "$output" != *"Project doctor: demo"* ]]
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
 }
 

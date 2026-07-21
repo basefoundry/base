@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -58,8 +59,31 @@ def doctor_status(check: ArtifactCheck) -> str:
     return check.status or ("ok" if check.ok else "error")
 
 
+def _doctor_visual_status_parts(status: str) -> tuple[str, str, str]:
+    if status == "ok":
+        return "✓ ok", "\033[0;32m", "   "
+    if status == "warn":
+        return "! warn", "\033[0;33m", " "
+    if status == "error":
+        return "✗ error", "\033[0;31m", ""
+    return status, "", ""
+
+
+def _doctor_visual_status_enabled(stream: Any) -> bool:
+    return (
+        os.environ.get("BASE_SETUP_DOCTOR_NO_COLOR") != "true"
+        and not os.environ.get("NO_COLOR")
+        and os.environ.get("TERM", "") not in {"", "dumb"}
+        and stream.isatty()
+    )
+
+
 def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
     stream = sys.stderr if status in {"error", "warn"} else sys.stdout
-    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}", file=stream)
+    if _doctor_visual_status_enabled(stream):
+        label, color, padding = _doctor_visual_status_parts(status)
+        print(f"{color}{label}\033[0m{padding}  {finding_id:<9}  {name:<26}  {message}", file=stream)
+    else:
+        print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}", file=stream)
     if fix:
         print(f"       Fix: {fix}", file=stream)

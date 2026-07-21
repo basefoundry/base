@@ -390,12 +390,6 @@ base_doctor_subcommand_main() {
         return $?
     fi
 
-    if [[ -n "$project" ]]; then
-        printf "Base doctor for project '%s'\n\n" "$project"
-    else
-        printf 'Base doctor\n\n'
-    fi
-
     setup_print_runtime_chain_summary
     printf '\n'
 
