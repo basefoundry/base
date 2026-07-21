@@ -166,6 +166,11 @@ The retention contract should be:
   caches older than the age.
 - `basectl clean --keep-last <count>` retains the newest completed bundles per
   owner namespace.
+- Per-run temporary data is diagnostic-only: `basectl` removes the complete
+  `tmp/` tree after every recognized command, regardless of success or failure,
+  unless `basectl --keep-temp <command>` (or the documented Python retention
+  setting) is used. Run metadata, history, and `logs/primary.log` remain
+  available either way.
 - History records remain even when cleanup removes their referenced bundle, and
   `basectl history` can mark those logs as missing.
 - Durable user state under `~/.base.d` is never cleaned by history retention.

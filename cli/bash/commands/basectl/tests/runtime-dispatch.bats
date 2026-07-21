@@ -69,6 +69,64 @@ load ./basectl_helpers.bash
 }
 
 
+@test "basectl removes temp data after a recognized command failure by default" {
+    local cache_root="$TEST_TMPDIR/cache"
+    local run_root
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$cache_root" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_do_setup() {
+                mkdir -p "$BASE_CLI_RUN_ROOT/tmp/base_setup"
+                printf "temporary\\n" >"$BASE_CLI_RUN_ROOT/tmp/base_setup/file.txt"
+                return 7
+            }
+            basectl_history_record() { :; }
+            basectl_main setup
+        '
+
+    [ "$status" -eq 7 ]
+    run_root="$(find "$cache_root/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$run_root" ]
+    [ ! -e "$run_root/tmp" ]
+    [ -f "$run_root/run.json" ]
+    [ -f "$run_root/logs/primary.log" ]
+}
+
+
+@test "basectl preserves temp data after a recognized command failure when requested" {
+    local cache_root="$TEST_TMPDIR/cache"
+    local run_root
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$cache_root" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            log_debug() { :; }
+            basectl_do_setup() {
+                mkdir -p "$BASE_CLI_RUN_ROOT/tmp/base_setup"
+                printf "temporary\\n" >"$BASE_CLI_RUN_ROOT/tmp/base_setup/file.txt"
+                return 7
+            }
+            basectl_history_record() { :; }
+            basectl_main --keep-temp setup
+        '
+
+    [ "$status" -eq 7 ]
+    run_root="$(find "$cache_root/base/runs" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+    [ -n "$run_root" ]
+    [ -f "$run_root/tmp/base_setup/file.txt" ]
+    [ -f "$run_root/run.json" ]
+    [ -f "$run_root/logs/primary.log" ]
+}
+
+
 @test "basectl labels run bundle directories without changing the run ID" {
     run env \
         BASE_HOME="$BASE_REPO_ROOT" \
