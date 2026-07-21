@@ -296,6 +296,26 @@ class BaseHistoryTests(unittest.TestCase):
         self.assertEqual(payload[0]["status"], "error")
         self.assertFalse(payload[0]["log_exists"])
 
+    def test_command_filter_accepts_comma_separated_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("check-run", "check", ended_at="2026-06-10T10:10:00Z"))
+            write_history_line(cache_root, history_record("doctor-run", "doctor", ended_at="2026-06-10T10:15:00Z"))
+            write_history_line(cache_root, history_record("setup-run", "setup", ended_at="2026-06-10T10:20:00Z"))
+
+            status, stdout, stderr = invoke(
+                ["--command", " CHECK, base_doctor ", "--format", "json"],
+                cache_root,
+            )
+            payload = json.loads(stdout)
+            invalid_status, invalid_stdout, invalid_stderr = invoke(["--command", "check,,doctor"], cache_root)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertEqual([record["run_id"] for record in payload], ["doctor-run", "check-run"])
+        self.assertEqual(invalid_status, 2)
+        self.assertEqual(invalid_stdout, "")
+        self.assertIn("without empty entries", invalid_stderr)
+
     def test_history_hides_legacy_internal_records(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)

@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import base_cli
+from base_cli.command_filters import command_matches
+from base_cli.command_filters import normalize_command_filters
 from base_cli.history import HISTORY_PATH
 from base_cli.history import HISTORY_SCOPE_INTERNAL
 from base_cli.history import HISTORY_SCOPE_PRIMARY
@@ -54,7 +56,7 @@ class HistoryRecord:
 @dataclass(frozen=True)
 class HistoryOptions:
     project: str | None
-    command: str | None
+    command: tuple[str, ...]
     status: str | None
     limit: int
     output_format: str
@@ -88,7 +90,11 @@ def main(argv: list[str] | None = None) -> int:
 
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.option("--project", "project_filter", help="Filter by Base project name.")
-@base_cli.option("--command", "command_filter", help="Filter by basectl command name.")
+@base_cli.option(
+    "--command",
+    "command_filter",
+    help="Filter by one or more basectl commands (comma-separated).",
+)
 @base_cli.option("--status", "status_filter", help="Filter by status: ok, warn, or error.")
 @base_cli.option("--limit", default="10", help="Maximum history records to list.")
 @base_cli.option(
@@ -134,7 +140,7 @@ def run(
         since, until = resolve_time_window(last_window, since_value, until_value)
         options = HistoryOptions(
             project=project_filter,
-            command=command_filter,
+            command=normalize_command_filters(command_filter),
             status=normalize_optional_filter(status_filter),
             limit=parse_positive_int("--limit", limit),
             output_format=normalize_report_format(output_format) if report else normalize_format(output_format),
@@ -338,7 +344,7 @@ def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> lis
     if options.project:
         filtered = [record for record in filtered if record.project == options.project]
     if options.command:
-        filtered = [record for record in filtered if record.command == options.command]
+        filtered = [record for record in filtered if command_matches(record.command, options.command)]
     if options.status:
         filtered = [record for record in filtered if record.status == options.status]
     if options.since is not None:

@@ -186,7 +186,9 @@ TIME                 COMMAND   PROJECT  STATUS  EXIT  LOG
 Expected options:
 
 - `--project <name>` filters by Base project name.
-- `--command <name>` filters by command.
+- `--command <name[,name...]>` filters by one or more commands using a
+  comma-separated OR list; names are trimmed, case-insensitive, and accept the
+  same `base_`/underscore normalization as log filters.
 - `--status <ok|warn|error>` filters by status.
 - `--limit <count>` limits the number of rows.
 - `--format json` prints structured records for scripts.

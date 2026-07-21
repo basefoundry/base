@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import base_cli
+from base_cli.command_filters import command_matches
+from base_cli.command_filters import normalize_command_filters
 from base_cli.history import HISTORY_PATH
 from base_cli.history import compact_path
 from base_cli.history import display_command
@@ -668,27 +670,6 @@ def last_nonempty_line(path: Path) -> str | None:
             if stripped:
                 last_line = stripped
     return last_line
-
-
-def normalize_command_filter(value: str) -> str:
-    normalized = value.strip().lower().removeprefix("base_")
-    return normalized.replace("_", "-")
-
-
-def normalize_command_filters(value: str | None) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    parts = value.split(",")
-    if any(not part.strip() for part in parts):
-        raise ValueError("Option '--command' expects comma-separated command names without empty entries.")
-    normalized = tuple(dict.fromkeys(normalize_command_filter(part) for part in parts))
-    if not normalized or any(not command for command in normalized):
-        raise ValueError("Option '--command' expects at least one command name.")
-    return normalized
-
-
-def command_matches(value: str, command_filters: tuple[str, ...]) -> bool:
-    return normalize_command_filter(value) in command_filters
 
 
 def print_log_table(entries: list[LogEntry]) -> None:

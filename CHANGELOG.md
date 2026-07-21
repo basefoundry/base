@@ -16,6 +16,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Made `basectl history --command` accept comma-separated command filters with
+  the same normalization and validation as `basectl logs --command`.
 - Replaced the generic setup-only summary after failed checks with guidance to
   follow each finding's fix and rerun the check; activation-backed environment
   checks now mention project activation.

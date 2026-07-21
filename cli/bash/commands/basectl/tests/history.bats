@@ -75,6 +75,8 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl history [options]"* ]]
     [[ "$output" == *"--project <name>"* ]]
+    [[ "$output" == *"--command <name[,name...]>"* ]]
+    [[ "$output" == *"one or more basectl commands (comma-separated)"* ]]
     [[ "$output" == *"--report"* ]]
     [[ "$output" != *"--include-internal"* ]]
     [[ "$output" == *"--oldest-first"* ]]
