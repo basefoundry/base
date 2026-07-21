@@ -30,6 +30,35 @@ source_project_command_helpers() {
     [ "$output" = "$TEST_TMPDIR/custom-venv" ]
 }
 
+@test "project command helper ignores venv overrides owned by another project" {
+    source_project_command_helpers
+
+    local project_root="$TEST_TMPDIR/demo"
+    local route_venv_dir="$project_root/.venv"
+    local inherited_venv_dir="$TEST_TMPDIR/base/.venv"
+
+    HOME="$TEST_HOME"
+    BASE_PROJECT=base
+    BASE_PROJECT_VENV_DIR="$inherited_venv_dir"
+
+    run base_project_venv_dir demo "$project_root" "$route_venv_dir"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$route_venv_dir" ]
+
+    run base_project_venv_fix demo "$project_root" "$route_venv_dir" true
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "Run 'uv sync' in '$project_root' first." ]
+
+    BASE_PROJECT=demo
+
+    run base_project_venv_dir demo "$project_root" "$route_venv_dir"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$inherited_venv_dir" ]
+}
+
 @test "project command helper resolves uv-managed project venv directories" {
     source_project_command_helpers
 

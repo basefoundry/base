@@ -4,12 +4,19 @@
 _base_project_command_helpers_sourced=1
 readonly _base_project_command_helpers_sourced
 
+base_project_venv_override_applies() {
+    local project="$1"
+
+    [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]] || return 1
+    [[ -z "${BASE_PROJECT:-}" || "${BASE_PROJECT:-}" == "$project" ]]
+}
+
 base_project_venv_dir() {
     local project="$1"
     local project_root="${2:-}"
     local route_venv_dir="${3:-}"
 
-    if [[ -n "${BASE_PROJECT_VENV_DIR:-}" ]]; then
+    if base_project_venv_override_applies "$project"; then
         printf '%s\n' "$BASE_PROJECT_VENV_DIR"
         return 0
     fi
@@ -47,11 +54,11 @@ base_project_venv_fix() {
     local venv_dir="${3:-}"
     local uses_uv_manager="${4:-false}"
 
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" && "$uses_uv_manager" == true ]]; then
+    if ! base_project_venv_override_applies "$project" && [[ "$uses_uv_manager" == true ]]; then
         printf "Run 'uv sync' in '%s' first." "$project_root"
         return 0
     fi
-    if [[ -z "${BASE_PROJECT_VENV_DIR:-}" ]] && base_project_venv_uses_project_local_default "$project" "$project_root" "$venv_dir"; then
+    if ! base_project_venv_override_applies "$project" && base_project_venv_uses_project_local_default "$project" "$project_root" "$venv_dir"; then
         printf "Run 'basectl setup %s' first. To keep using an external Base-managed virtual environment, set python.venv_location: external in base_manifest.yaml or export BASE_PROJECT_VENV_DIR." "$project"
         return 0
     fi

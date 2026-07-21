@@ -233,6 +233,48 @@ EOF
     [[ "$output" == *"BASE_PROJECT_VENV_DIR=$TEST_TMPDIR/custom-venv"* ]]
 }
 
+@test "basectl activate ignores a venv override owned by another active project" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local project_python="$workspace/demo/.venv/bin/python"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
+    base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_VENV_DIR=%s\n' "$BASE_PROJECT_VENV_DIR"
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: demo\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_bash" \
+        BASE_PROJECT=base \
+        BASE_PROJECT_VENV_DIR="$TEST_HOME/.base.d/base/.venv" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" activate demo
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"BASE_PROJECT_VENV_DIR=$workspace/demo/.venv"* ]]
+    [[ "$output" != *"BASE_PROJECT_VENV_DIR=$TEST_HOME/.base.d/base/.venv"* ]]
+}
+
 @test "basectl activate prefers uv project .venv when python manager is uv" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
