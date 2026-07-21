@@ -20,7 +20,6 @@ from base_devenv.report import print_devenv_report_text
 from .checks import ArtifactCheck
 from .checks import check_to_json
 from .checks import checks_payload_to_json
-from .checks import checks_status
 from .checks import doctor_status
 from .checks import print_doctor_finding
 from .errors import ArtifactError
@@ -334,8 +333,6 @@ def doctor_manifest(
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
 
     error_count = 0
-    output_stream = sys.stderr if checks_status(checks) != "ok" else sys.stdout
-    print(f"\nProject doctor: {manifest.project_name}\n", file=output_stream)
     for check in checks:
         status = doctor_status(check)
         if status == "error":

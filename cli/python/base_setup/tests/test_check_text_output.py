@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import io
+import os
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -11,6 +14,26 @@ from base_setup.tests.helpers import fake_context
 
 
 class ProjectCheckTextOutputTests(unittest.TestCase):
+    def test_doctor_finding_uses_shared_visual_status_format_on_tty(self) -> None:
+        class TtyBuffer(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        stdout = TtyBuffer()
+        with mock.patch.dict(os.environ, {"TERM": "xterm-256color"}, clear=True), redirect_stdout(stdout):
+            setup_checks.print_doctor_finding(
+                "ok",
+                "BASE-P040",
+                "demo-artifact",
+                "Project artifact check passed.",
+            )
+
+        self.assertEqual(
+            stdout.getvalue(),
+            "\033[0;32m✓ ok\033[0m     BASE-P040  demo-artifact               "
+            "Project artifact check passed.\n",
+        )
+
     def test_check_manifest_text_routes_findings_by_status_and_preserves_exit_status(self) -> None:
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),

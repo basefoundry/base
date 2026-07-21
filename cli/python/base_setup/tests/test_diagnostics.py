@@ -129,7 +129,7 @@ class ProjectCheckTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("Project doctor: demo", stderr.getvalue())
+        self.assertNotIn("Project doctor: demo", stderr.getvalue())
         self.assertIn("Fix: basectl setup demo", stderr.getvalue())
 
 
@@ -807,7 +807,7 @@ class IdeDiagnosticsTests(unittest.TestCase):
         error_output = stderr.getvalue()
         self.assertGreater(status, 0)
         self.assertEqual(output, "")
-        self.assertIn("Project doctor: demo", error_output)
+        self.assertNotIn("Project doctor: demo", error_output)
         self.assertIn("Cursor app", error_output)
         self.assertIn("github.copilot", error_output)
         self.assertIn("Cursor setting: editor.formatOnSave", error_output)

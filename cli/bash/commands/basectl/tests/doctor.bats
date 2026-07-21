@@ -961,7 +961,8 @@ EOF
         "$BASE_REPO_ROOT/bin/basectl" doctor demo
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Base doctor for project 'demo'"* ]]
+    [[ "$output" != *"Base doctor for project 'demo'"* ]]
+    [[ "$output" != *"Project doctor: demo"* ]]
     [[ "$output" != *"Resolved project 'demo' at '$workspace/demo'."* ]]
     [[ "$output" != *"Running Python project doctor layer."* ]]
     [[ "$output" == *"ok"*"demo-artifact"*"Project artifact check passed."* ]]
