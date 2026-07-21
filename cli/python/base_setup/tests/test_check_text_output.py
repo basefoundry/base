@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import unittest
+from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -32,6 +34,47 @@ class ProjectCheckTextOutputTests(unittest.TestCase):
             stdout.getvalue(),
             "\033[0;32m✓ ok\033[0m     BASE-P040  demo-artifact               "
             "Project artifact check passed.\n",
+        )
+
+    def test_doctor_finding_aligns_visual_fix_under_finding_id(self) -> None:
+        class TtyBuffer(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        stderr = TtyBuffer()
+        with (
+            mock.patch.dict(os.environ, {"TERM": "xterm-256color"}, clear=True),
+            redirect_stderr(stderr),
+        ):
+            setup_checks.print_doctor_finding(
+                "error",
+                "BASE-H001",
+                "BASE_DEMO_ENV",
+                "Environment variable is not set or is empty.",
+                "Set BASE_DEMO_ENV in your shell.",
+            )
+
+        finding_line, fix_line = stderr.getvalue().splitlines()
+        visible_finding_prefix = re.sub(r"\033\[[0-9;]*m", "", finding_line.split("BASE-H001", 1)[0])
+        fix_prefix = fix_line.split("Fix:", 1)[0]
+        self.assertEqual(len(visible_finding_prefix), len(fix_prefix))
+        self.assertTrue(fix_line.endswith("Fix: Set BASE_DEMO_ENV in your shell."))
+
+    def test_doctor_finding_aligns_plain_fix_under_finding_id(self) -> None:
+        stderr = io.StringIO()
+        with mock.patch.dict(os.environ, {}, clear=True), redirect_stderr(stderr):
+            setup_checks.print_doctor_finding(
+                "error",
+                "BASE-H001",
+                "BASE_DEMO_ENV",
+                "Environment variable is not set or is empty.",
+                "Set BASE_DEMO_ENV in your shell.",
+            )
+
+        finding_line, fix_line = stderr.getvalue().splitlines()
+        self.assertEqual(
+            len(finding_line.split("BASE-H001", 1)[0]),
+            len(fix_line.split("Fix:", 1)[0]),
         )
 
     def test_check_manifest_text_routes_findings_by_status_and_preserves_exit_status(self) -> None:
