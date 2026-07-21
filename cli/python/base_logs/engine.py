@@ -113,7 +113,12 @@ def main(argv: list[str] | None = None) -> int:
 @app.command(context_settings={"help_option_names": ["-h", "--help"]})
 @base_cli.option("--command", "command_filter", help="Filter by command names (comma-separated).")
 @base_cli.option("--limit", default="10", help="Maximum log entries to list.")
-@base_cli.option("--latest", "latest_only", is_flag=True, help="Print the newest matching log path only.")
+@base_cli.option(
+    "--latest",
+    "latest_only",
+    is_flag=True,
+    help="Print the newest matching log path only; use --tail or --open to consume it.",
+)
 @base_cli.option("--tail", is_flag=True, help="Tail and follow the most recent matching log.")
 @base_cli.option("--open", "open_file", is_flag=True, help="Open the most recent matching log in PAGER or EDITOR.")
 @base_cli.option("--lines", default="40", help="Line count to show before following.")
@@ -154,8 +159,7 @@ def run(
         lines=line_count,
         output_format=normalized_format,
     )
-    selected_actions = sum(1 for selected in (latest_only, tail, open_file) if selected)
-    validation_error = logs_command_validation_error(action, selected_actions)
+    validation_error = logs_command_validation_error(action, latest_only, tail, open_file)
     if validation_error is not None:
         ctx.log.error(validation_error)
         return base_cli.ExitCode.USAGE_ERROR
@@ -167,11 +171,24 @@ def run(
     return run_recent_logs(ctx, cache_root, options)
 
 
-def logs_command_validation_error(action: str | None, selected_actions: int) -> str | None:
+def logs_command_validation_error(
+    action: str | None,
+    latest_only: bool,
+    tail: bool,
+    open_file: bool,
+) -> str | None:
+    selected_actions = sum(1 for selected in (latest_only, tail, open_file) if selected)
     if action is not None and action != "last-failed":
         return f"Unknown logs command '{action}'. Supported commands: last-failed."
     if action == "last-failed" and selected_actions > 0:
         return "`basectl logs last-failed` does not accept --latest, --tail, or --open."
+    if action is None and latest_only and (tail or open_file):
+        return (
+            "`--latest` prints the newest matching log path only and cannot be combined with `--tail` or `--open`; "
+            "use `--tail` or `--open` alone to consume that log."
+        )
+    if action is None and tail and open_file:
+        return "Choose only one of --tail or --open."
     if action is None and selected_actions > 1:
         return "Choose only one of --latest, --tail, or --open."
     return None

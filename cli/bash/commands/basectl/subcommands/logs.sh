@@ -12,7 +12,7 @@ Usage:
 Options:
   --command <name[,name...]>  Filter by one or more commands (comma-separated).
   --limit <count>   Number of recent log entries to list. Defaults to 10.
-  --latest          Print the newest matching log path only.
+  --latest          Print the newest matching log path only. Use --tail or --open to consume it.
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.
@@ -40,7 +40,7 @@ Commands:
 Options:
   --command <name[,name...]>  Filter by one or more commands (comma-separated).
   --limit <count>   Number of recent log entries to list. Defaults to 10.
-  --latest          Print the newest matching log path only.
+  --latest          Print the newest matching log path only. Use --tail or --open to consume it.
   --tail            Tail and follow the most recent matching log.
   --open            Open the most recent matching log in PAGER or EDITOR.
   --lines <count>   Line count to show before following with --tail. Defaults to 40.

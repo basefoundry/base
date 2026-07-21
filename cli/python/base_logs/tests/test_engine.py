@@ -552,11 +552,21 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
             cache_root = Path(tmpdir)
             write_log(cache_root, "base_clean", "20260601T010000_aaaaaaaa", "INFO clean\n")
 
-            status, stdout, stderr = invoke(["--latest", "--open"], cache_root)
+            latest_status, latest_stdout, latest_stderr = invoke(["--latest", "--open"], cache_root)
+            tail_status, tail_stdout, tail_stderr = invoke(["--latest", "--tail"], cache_root)
+            both_status, both_stdout, both_stderr = invoke(["--tail", "--open"], cache_root)
 
-        self.assertEqual(status, 2)
-        self.assertEqual(stdout, "")
-        self.assertIn("Choose only one", stderr)
+        self.assertEqual(latest_status, 2)
+        self.assertEqual(latest_stdout, "")
+        self.assertIn("cannot be combined with `--tail` or `--open`", latest_stderr)
+        self.assertIn("use `--tail` or `--open` alone", latest_stderr)
+        self.assertEqual(tail_status, 2)
+        self.assertEqual(tail_stdout, "")
+        self.assertIn("cannot be combined with `--tail` or `--open`", tail_stderr)
+        self.assertIn("use `--tail` or `--open` alone", tail_stderr)
+        self.assertEqual(both_status, 2)
+        self.assertEqual(both_stdout, "")
+        self.assertIn("Choose only one of --tail or --open", both_stderr)
 
     def test_last_failed_rejects_file_actions_and_unknown_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
