@@ -129,7 +129,8 @@ are documented in `docs/inspection-json.md`.
 - `basectl clean` - remove old Base runtime logs, temp files, and cache entries.
 - `basectl logs` - list, print, open, or tail recent Base CLI runtime logs.
 - `basectl history` - list recent structured Base command runs from the local
-  history index, with `--format json` for scripts and `--report` for a
+  history index, with comma-separated OR filters such as
+  `--command check,doctor`, `--format json` for scripts, and `--report` for a
   privacy-conscious Markdown or JSON activity report.
 - `basectl config <path|show|doctor>` - inspect Base's machine-local user
   config.

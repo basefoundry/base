@@ -10,7 +10,7 @@ Usage:
 
 Options:
   --project <name>      Filter by Base project name.
-  --command <name>      Filter by basectl command name.
+  --command <name[,name...]>  Filter by one or more basectl commands (comma-separated).
   --status <ok|warn|error>
                         Filter by command status.
   --limit <count>       Number of recent history records to list. Defaults to 10.
