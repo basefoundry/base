@@ -18,6 +18,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 - Unified human-readable `basectl doctor` output across Base and project
   findings, including shared status styling and removal of redundant headings.
+- Tightened `basectl doctor` text spacing, aligned fix continuations, and
+  rendered final summaries as INFO logs.
 - Made `basectl history --command` accept comma-separated command filters with
   the same normalization and validation as `basectl logs --command`.
 - Replaced the generic setup-only summary after failed checks with guidance to
