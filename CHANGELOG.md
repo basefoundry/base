@@ -16,6 +16,8 @@ and Base versions are tracked in the repo-root `VERSION` file.
 
 ### Fixed
 
+- Prevented `basectl activate` from reusing a virtual environment override owned
+  by a different active project.
 - Unified human-readable `basectl doctor` output across Base and project
   findings, including shared status styling and removal of redundant headings.
 - Tightened `basectl doctor` text spacing, aligned fix continuations, and
