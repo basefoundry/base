@@ -82,8 +82,10 @@ def print_doctor_finding(status: str, finding_id: str, name: str, message: str, 
     stream = sys.stderr if status in {"error", "warn"} else sys.stdout
     if _doctor_visual_status_enabled(stream):
         label, color, padding = _doctor_visual_status_parts(status)
+        status_prefix = f"{label}{padding}  "
         print(f"{color}{label}\033[0m{padding}  {finding_id:<9}  {name:<26}  {message}", file=stream)
     else:
-        print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}", file=stream)
+        status_prefix = f"{status:<5}  "
+        print(f"{status_prefix}{finding_id:<9}  {name:<26}  {message}", file=stream)
     if fix:
-        print(f"       Fix: {fix}", file=stream)
+        print(f"{' ' * len(status_prefix)}Fix: {fix}", file=stream)
