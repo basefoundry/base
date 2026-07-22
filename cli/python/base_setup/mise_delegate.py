@@ -220,7 +220,7 @@ def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool)
 
     require_mise_trusted_for_setup(manifest, project_root, mise_path, mise_bin)
     ctx.log.info("Installing mise-managed tools from '%s'.", mise_path)
-    process.run_command(ctx, command, cwd=project_root)
+    process.run_command(ctx, command, cwd=project_root, echo_output=False)
 
 
 def require_mise_trusted_for_setup(

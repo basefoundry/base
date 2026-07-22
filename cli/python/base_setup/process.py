@@ -101,6 +101,7 @@ def run_command(
     command: list[str],
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
+    echo_output: bool = True,
 ) -> None:
     stdout_recorder = CommandOutputRecorder()
     stderr_recorder = CommandOutputRecorder()
@@ -116,12 +117,12 @@ def run_command(
         threads = (
             threading.Thread(
                 target=_tee_stream,
-                args=(ctx, stdout_pipe, sys.stdout, "stdout", stdout_recorder),
+                args=(ctx, stdout_pipe, sys.stdout if echo_output else None, "stdout", stdout_recorder),
                 daemon=True,
             ),
             threading.Thread(
                 target=_tee_stream,
-                args=(ctx, stderr_pipe, sys.stderr, "stderr", stderr_recorder),
+                args=(ctx, stderr_pipe, sys.stderr if echo_output else None, "stderr", stderr_recorder),
                 daemon=True,
             ),
         )
@@ -257,7 +258,7 @@ def _log_lines(ctx: base_cli.Context, label: str, text: str, pending: str) -> st
 def _tee_stream(
     ctx: base_cli.Context,
     stream: BinaryIO,
-    target: TextIO,
+    target: TextIO | None,
     label: str,
     recorder: CommandOutputRecorder,
 ) -> None:
@@ -267,7 +268,8 @@ def _tee_stream(
             chunk = os.read(stream.fileno(), 4096)
             if not chunk:
                 break
-            _write_bytes(target, chunk)
+            if target is not None:
+                _write_bytes(target, chunk)
             text = chunk.decode(errors="replace")
             recorder.append(text)
             pending = _log_lines(ctx, label, text, pending)

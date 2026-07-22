@@ -1049,6 +1049,29 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("Command stdout: install stdout", debug_messages)
         self.assertIn("Command stderr: install stderr", debug_messages)
 
+    def test_run_command_can_log_without_echoing_stdout_and_stderr(self) -> None:
+        ctx = fake_context()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "print('install stdout'); "
+                "print('install stderr', file=sys.stderr)"
+            ),
+        ]
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            process.run_command(ctx, command, echo_output=False)
+
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "")
+        debug_messages = [call.args[0] % call.args[1:] for call in ctx.log.debug.call_args_list]
+        self.assertIn("Command stdout: install stdout", debug_messages)
+        self.assertIn("Command stderr: install stderr", debug_messages)
+
 
     def test_run_command_failure_includes_bounded_stdout_and_stderr_tail(self) -> None:
         ctx = fake_context()
