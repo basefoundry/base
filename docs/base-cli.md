@@ -219,6 +219,10 @@ one clock throughout the Bash and Python layers. The local offset is included
 in each timestamp; `--utc-wrapper` sets `LOG_UTC=1` and switches both layers to
 UTC for CI, support, or cross-machine diagnostics:
 
+When `basectl --color` is used on a terminal, Python user-facing logs use the
+same level colors as Bash logs. Persistent log files remain plain text, and
+`NO_COLOR` disables colors.
+
 ```text
 2026-05-23 12:31:04 -0700 INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.
 2026-05-23 19:31:04 UTC INFO    cli/python/base_setup/engine.py:67 Reading Base manifest at '.../base_manifest.yaml'.

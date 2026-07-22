@@ -246,6 +246,10 @@ basectl_filter_runtime_args() {
                 export LOG_UTC=1
                 ;;
             --color)
+                # Propagate the explicit color choice to Python-backed child
+                # commands. The Bash stdlib consumes the flag itself, while
+                # Python logging needs an environment signal after delegation.
+                export BASE_CLI_COLOR=1
                 ;;
             *)
                 basectl_runtime_args+=("$1")

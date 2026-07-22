@@ -278,7 +278,9 @@ def helper() -> None:
 `--quiet` suppresses INFO output on the user-facing stream but still shows
 warnings and errors. `--debug` and `--quiet` cannot be used together. Persistent
 log files still receive DEBUG-level detail, including INFO messages suppressed
-from stderr.
+from stderr. When `basectl --color` is used on a terminal, the user-facing
+Python logs use the same level colors as Bash logs; persistent log files remain
+plain text. `NO_COLOR` disables colors.
 
 Advanced tests and CI wrappers can call `base_cli.configure_logger(...,
 stream=..., formatter=...)` to capture user-facing logs or apply a custom
