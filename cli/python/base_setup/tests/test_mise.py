@@ -140,7 +140,12 @@ class MiseTests(unittest.TestCase):
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
         run_installer.assert_called_once_with(ctx, remote_installers.MISE_REMOTE_INSTALLER, dry_run=False)
-        run_command.assert_called_once_with(ctx, [str(mise_path), "install"], cwd=project_root.resolve())
+        run_command.assert_called_once_with(
+            ctx,
+            [str(mise_path), "install"],
+            cwd=project_root.resolve(),
+            echo_output=False,
+        )
 
     def test_mise_requires_yes_before_linux_debian_bootstrap(self) -> None:
         ctx = fake_context()
@@ -178,7 +183,12 @@ class MiseTests(unittest.TestCase):
             ):
                 delegates.reconcile_mise(ctx, manifest, dry_run=False)
 
-        run_command.assert_called_once_with(ctx, ["mise", "install"], cwd=project_root.resolve())
+        run_command.assert_called_once_with(
+            ctx,
+            ["mise", "install"],
+            cwd=project_root.resolve(),
+            echo_output=False,
+        )
 
     def test_mise_setup_refuses_untrusted_project_config_before_install(self) -> None:
         ctx = fake_context()
