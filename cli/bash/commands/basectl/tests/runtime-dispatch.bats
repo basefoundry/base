@@ -482,6 +482,24 @@ EOF
     [[ "$output" == *"ARGS=-m base_setup --dry-run demo"* ]]
 }
 
+@test "basectl propagates --color to explicit Base scripts" {
+    local script_path="$TEST_TMPDIR/color-script"
+
+    cat > "$script_path" <<'EOF'
+main() {
+    printf 'BASE_CLI_COLOR=%s\n' "${BASE_CLI_COLOR:-unset}"
+}
+EOF
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" "$script_path" --color
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_CLI_COLOR=1"* ]]
+}
+
 @test "basectl treats path-like arguments as scripts before command names" {
     local script_path="$TEST_TMPDIR/demo-script"
 

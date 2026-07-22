@@ -170,6 +170,7 @@ These variables are involved in normal shell startup rather than the full
 | `BASE_DEBUG` | User | Enables debug traces in Base-managed shell startup snippets and the runtime Bash rcfile. | Safe to set in `~/.baserc` or as a one-off environment variable. |
 | `LOG_DEBUG` | Base wrapper compatibility | Internal debug signal exported by wrapper/debug paths before the full runtime exists. The Python config layer treats `1` or `true` as a fallback for `BASE_CLI_LOG_LEVEL=debug` when `BASE_CLI_LOG_LEVEL` is unset. | Do not set directly; use wrapper debug flags or `BASE_CLI_LOG_LEVEL=debug` for Python CLI logs. |
 | `LOG_UTC` | Base wrapper compatibility | When set to `1`, switches Bash and Python CLI log presentation to UTC. It is set by `basectl --utc-wrapper`; persisted metadata is UTC regardless. | Prefer `basectl --utc-wrapper` for one-off CI or diagnostic runs. |
+| `BASE_CLI_COLOR` | Base wrapper compatibility | Internal signal exported by `basectl --color` so Python-backed child commands use the same terminal log colors as Bash. | Do not set directly; use `basectl --color`. `NO_COLOR` still disables colors. |
 
 The ordinary Bash/Zsh dotfile snippets derive `BASE_HOME` and add
 `$BASE_HOME/bin` to `PATH` so `basectl` is available in new terminals. When a

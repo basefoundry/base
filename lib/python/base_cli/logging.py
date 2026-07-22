@@ -12,6 +12,15 @@ from .context import get_current_context
 from .paths import current_working_dir
 from .redaction import redact_argv
 
+_COLOR_RESET = "\033[0m"
+_LEVEL_COLORS = {
+    logging.DEBUG: "\033[0;36m",
+    logging.INFO: "\033[0;32m",
+    logging.WARNING: "\033[0;33m",
+    logging.ERROR: "\033[0;31m",
+    logging.CRITICAL: "\033[0;31m",
+}
+
 
 # pylint: disable=too-many-arguments
 def configure_logger(
@@ -30,15 +39,16 @@ def configure_logger(
         handler.close()
         logger.removeHandler(handler)
 
-    user_handler = logging.StreamHandler(stream)
+    user_stream = stream if stream is not None else sys.stderr
+    user_handler = logging.StreamHandler(user_stream)
     user_handler.setLevel(_user_stream_level(debug, quiet))
-    user_handler.setFormatter(_handler_formatter(formatter))
+    user_handler.setFormatter(_handler_formatter(formatter, use_color=_use_color(user_stream)))
     logger.addHandler(user_handler)
 
     if log_file is not None:
         file_handler = SecureLogFileHandler(log_file, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(_handler_formatter(formatter))
+        file_handler.setFormatter(_handler_formatter(formatter, use_color=False))
         logger.addHandler(file_handler)
     return logger
 
@@ -51,10 +61,19 @@ def _user_stream_level(debug: bool, quiet: bool) -> int:
     return logging.INFO
 
 
-def _handler_formatter(formatter: logging.Formatter | None) -> logging.Formatter:
+def _handler_formatter(formatter: logging.Formatter | None, *, use_color: bool) -> logging.Formatter:
     if formatter is not None:
         return formatter
-    return BaseCliFormatter()
+    return BaseCliFormatter(use_color=use_color)
+
+
+def _use_color(stream: TextIO) -> bool:
+    return (
+        os.environ.get("BASE_CLI_COLOR") == "1"
+        and "NO_COLOR" not in os.environ
+        and hasattr(stream, "isatty")
+        and stream.isatty()
+    )
 
 
 def secure_log_file_permissions(log_file: Path) -> None:
@@ -82,8 +101,9 @@ def _secure_log_file_open_flags(mode: str) -> int:
 
 
 class BaseCliFormatter(logging.Formatter):
-    def __init__(self, *, use_utc: bool | None = None) -> None:
+    def __init__(self, *, use_utc: bool | None = None, use_color: bool = False) -> None:
         self.use_utc = use_utc if use_utc is not None else os.environ.get("LOG_UTC") == "1"
+        self.use_color = use_color
         datefmt = "%Y-%m-%d %H:%M:%S UTC" if self.use_utc else "%Y-%m-%d %H:%M:%S %z"
         super().__init__(datefmt=datefmt)
         self.converter = time.gmtime if self.use_utc else time.localtime
@@ -92,7 +112,11 @@ class BaseCliFormatter(logging.Formatter):
         timestamp = self.formatTime(record, self.datefmt)
         source = _source_path(record)
         level = _level_name(record)
-        return f"{timestamp} {level:<7} {source}:{record.lineno} {record.getMessage()}"
+        line = f"{timestamp} {level:<7} {source}:{record.lineno} {record.getMessage()}"
+        if not self.use_color:
+            return line
+        color = _LEVEL_COLORS.get(record.levelno)
+        return f"{color}{line}{_COLOR_RESET}" if color else line
 
 
 def _level_name(record: logging.LogRecord) -> str:

@@ -14,6 +14,10 @@ from base_cli.logging import BaseCliFormatter
 
 
 class ConfigureLoggerTests(unittest.TestCase):
+    class _TtyStream(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
     def test_configure_logger_accepts_custom_stream(self) -> None:
         stream = io.StringIO()
         logger = base_cli.configure_logger("custom-stream", None, debug=False, stream=stream)
@@ -53,6 +57,43 @@ class ConfigureLoggerTests(unittest.TestCase):
             logger.info("hello utc")
 
         self.assertRegex(stream.getvalue(), r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC INFO")
+
+    def test_configure_logger_colors_python_user_stream_when_requested(self) -> None:
+        stream = self._TtyStream()
+
+        with mock.patch.dict(os.environ, {"BASE_CLI_COLOR": "1"}, clear=True):
+            logger = base_cli.configure_logger("color-stream", None, debug=False, stream=stream)
+            logger.info("hello color")
+
+        self.assertIn("\033[0;32m", stream.getvalue())
+        self.assertIn("hello color", stream.getvalue())
+        self.assertTrue(stream.getvalue().endswith("\033[0m\n"))
+
+    def test_configure_logger_keeps_persistent_logs_plain_when_user_stream_is_colored(self) -> None:
+        stream = self._TtyStream()
+
+        with tempfile.TemporaryDirectory() as tmpdir, mock.patch.dict(os.environ, {"BASE_CLI_COLOR": "1"}, clear=True):
+            log_file = Path(tmpdir) / "color.log"
+            logger = base_cli.configure_logger("color-file", log_file, debug=False, stream=stream)
+            logger.info("hello file")
+            for handler in logger.handlers:
+                handler.flush()
+
+            log_text = log_file.read_text(encoding="utf-8")
+
+        self.assertIn("\033[0;32m", stream.getvalue())
+        self.assertNotIn("\033[", log_text)
+        self.assertIn("hello file", log_text)
+
+    def test_configure_logger_honors_no_color_for_requested_user_stream(self) -> None:
+        stream = self._TtyStream()
+
+        with mock.patch.dict(os.environ, {"BASE_CLI_COLOR": "1", "NO_COLOR": "1"}, clear=True):
+            logger = base_cli.configure_logger("no-color-stream", None, debug=False, stream=stream)
+            logger.info("hello plain")
+
+        self.assertNotIn("\033[", stream.getvalue())
+        self.assertIn("hello plain", stream.getvalue())
 
     def test_configure_logger_uses_custom_formatter_for_file_handler(self) -> None:
         formatter = logging.Formatter("%(levelname)s:%(message)s")
