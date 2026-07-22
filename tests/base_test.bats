@@ -52,6 +52,32 @@ EOF
     chmod +x "$TEST_MOCKBIN/python"
 }
 
+create_python_env_stub() {
+    cat > "$TEST_MOCKBIN/python" <<'EOF'
+#!/usr/bin/env bash
+for name in \
+    BASE_CACHE_DIR \
+    BASE_CLI_RUNTIME_OWNER \
+    BASE_CLI_RUN_ID \
+    BASE_CLI_RUN_ROOT \
+    BASE_CLI_PRIMARY_LOG \
+    BASE_CLI_HISTORY_PARENT_RUN_ID \
+    BASE_CLI_HISTORY_SCOPE \
+    BASE_CLI_PROJECT_NAME \
+    BASE_CLI_PROJECT_ROOT \
+    BASE_CLI_PROJECT_MANIFEST \
+    BASE_CLI_DISPLAY_COMMAND \
+    BASE_CLI_LOG_LEVEL \
+    BASE_CLI_KEEP_TEMP \
+    BASE_CLI_ENVIRONMENT \
+    BASE_CLI_COLOR; do
+    printf '%s=%s\n' "$name" "${!name-__unset__}" >> "${BASE_TEST_STATE_DIR:?}/python-env.log"
+done
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/python"
+}
+
 create_bats_stub() {
     cat > "$TEST_MOCKBIN/bats" <<'EOF'
 #!/usr/bin/env bash
@@ -151,6 +177,56 @@ EOF
 
     [ "$status" -eq 0 ]
     grep -Fqx 'python -m pytest' "$TEST_STATE_DIR/python.log"
+    grep -Fqx 'preserve=__unset__' "$TEST_STATE_DIR/bats-env.log"
+    grep -Fqx 'shell=__unset__' "$TEST_STATE_DIR/bats-env.log"
+}
+
+@test "base-test clears inherited runtime context before Python and Bats" {
+    create_python_env_stub
+    create_bats_env_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_PYTHON="$TEST_MOCKBIN/python" \
+        BASE_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/inherited-cache" \
+        BASE_CLI_RUNTIME_OWNER=project \
+        BASE_CLI_RUN_ID=parent-run \
+        BASE_CLI_RUN_ROOT="$TEST_TMPDIR/parent-run" \
+        BASE_CLI_PRIMARY_LOG="$TEST_TMPDIR/parent-run/logs/primary.log" \
+        BASE_CLI_HISTORY_PARENT_RUN_ID=parent-run \
+        BASE_CLI_HISTORY_SCOPE=internal \
+        BASE_CLI_PROJECT_NAME=base \
+        BASE_CLI_PROJECT_ROOT="$BASE_REPO_ROOT" \
+        BASE_CLI_PROJECT_MANIFEST="$BASE_REPO_ROOT/base_manifest.yaml" \
+        BASE_CLI_DISPLAY_COMMAND="basectl test base" \
+        BASE_CLI_LOG_LEVEL=debug \
+        BASE_CLI_KEEP_TEMP=true \
+        BASE_CLI_ENVIRONMENT=dev \
+        BASE_CLI_COLOR=1 \
+        "$BASE_REPO_ROOT/bin/base-test"
+
+    [ "$status" -eq 0 ]
+    for variable in \
+        BASE_CACHE_DIR \
+        BASE_CLI_RUNTIME_OWNER \
+        BASE_CLI_RUN_ID \
+        BASE_CLI_RUN_ROOT \
+        BASE_CLI_PRIMARY_LOG \
+        BASE_CLI_HISTORY_PARENT_RUN_ID \
+        BASE_CLI_HISTORY_SCOPE \
+        BASE_CLI_PROJECT_NAME \
+        BASE_CLI_PROJECT_ROOT \
+        BASE_CLI_PROJECT_MANIFEST \
+        BASE_CLI_DISPLAY_COMMAND \
+        BASE_CLI_LOG_LEVEL \
+        BASE_CLI_KEEP_TEMP \
+        BASE_CLI_ENVIRONMENT \
+        BASE_CLI_COLOR; do
+        grep -Fqx "$variable=__unset__" "$TEST_STATE_DIR/python-env.log"
+    done
     grep -Fqx 'preserve=__unset__' "$TEST_STATE_DIR/bats-env.log"
     grep -Fqx 'shell=__unset__' "$TEST_STATE_DIR/bats-env.log"
 }
