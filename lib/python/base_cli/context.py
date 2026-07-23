@@ -5,7 +5,7 @@ import logging
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from .config import UserConfig, UserIdeConfig
 
@@ -31,7 +31,7 @@ class Context:
     cache_dir: Path
     temp_dir: Path
     log_file: Path | None
-    config: dict
+    config: dict[str, Any]
     environment: str
     debug: bool
     keep_temp: bool

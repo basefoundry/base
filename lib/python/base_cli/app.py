@@ -55,7 +55,7 @@ def _require_click():
     try:
         import click
     except ImportError as exc:
-        raise RuntimeError("Click is required for base_cli. Run 'basectl setup' to install it.") from exc
+        raise RuntimeError("Click is required for base_cli. Install it with 'pip install click'.") from exc
     return click
 
 

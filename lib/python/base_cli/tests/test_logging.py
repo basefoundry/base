@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 import base_cli
+import base_cli.logging as logging_module
 from base_cli.logging import BaseCliFormatter
 
 
@@ -149,3 +150,22 @@ class ConfigureLoggerTests(unittest.TestCase):
 
         self.assertTrue(all(mode == 0o600 for mode in observed_modes), observed_modes)
         self.assertEqual(final_mode, 0o600)
+
+    def test_configure_logger_opens_log_file_without_fchmod(self) -> None:
+        stream = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            log_file = Path(tmpdir) / "portable.log"
+            with mock.patch.object(logging_module.os, "fchmod", None):
+                logger = base_cli.configure_logger(
+                    "portable-log-file",
+                    log_file,
+                    debug=False,
+                    stream=stream,
+                )
+                logger.info("portable log")
+                for handler in logger.handlers:
+                    handler.flush()
+
+            self.assertIn("portable log", log_file.read_text(encoding="utf-8"))
+            self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)

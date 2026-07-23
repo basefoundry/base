@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest")
     parser.add_argument("--owner", default=os.environ.get("BASE_CLI_RUNTIME_OWNER", "base"))
     parser.add_argument("--bundle-path")
+    parser.add_argument("--raw-command", default="basectl")
     parser.add_argument("argv", nargs=argparse.REMAINDER)
     options = parser.parse_args(argv)
 
@@ -48,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         log_path=None,
         owner=options.owner,
         bundle_path=options.bundle_path,
+        raw_command=options.raw_command,
     )
     return base_cli.ExitCode.SUCCESS
 

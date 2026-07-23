@@ -52,6 +52,44 @@ HISTORY_PATH = Path("base") / "history" / "runs.jsonl"
 HISTORY_SCOPE_PRIMARY = "primary"
 HISTORY_SCOPE_INTERNAL = "internal"
 
+# Only these names are Base-owned Python entry points. A standalone caller
+# may legitimately choose a name beginning with ``base_`` and should not have
+# that name rewritten by the shared framework.
+_BASE_DISPLAY_COMMANDS = frozenset(
+    {
+        "base_activate",
+        "base_build",
+        "base_check",
+        "base_ci",
+        "base_clean",
+        "base_config",
+        "base_demo",
+        "base_dev",
+        "base_devcontainer",
+        "base_devenv",
+        "base_devenv_report",
+        "base_docs",
+        "base_export_context",
+        "base_gh",
+        "base_github_projects",
+        "base_history",
+        "base_logs",
+        "base_onboard",
+        "base_pr_policy",
+        "base_projects",
+        "base_prompt",
+        "base_release",
+        "base_repo",
+        "base_run",
+        "base_setup",
+        "base_test",
+        "base_trust",
+        "base_update",
+        "base_update_profile",
+        "base_workspace",
+    }
+)
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -131,6 +169,8 @@ def write_primary_record(
     log_path: str | None = None,
     owner: str = "base",
     bundle_path: str | None = None,
+    *,
+    raw_command: str = "basectl",
 ) -> None:
     """Write the user-facing record for a Bash-dispatched command."""
     ended_at = utc_now()
@@ -139,7 +179,7 @@ def write_primary_record(
         "run_id": run_id,
         "event": "finished",
         "command": command,
-        "raw_command": "basectl",
+        "raw_command": raw_command,
         "argv": redact_history_argv(argv, sensitive_options=set()),
         "started_at": format_timestamp(started_at),
         "ended_at": format_timestamp(ended_at),
@@ -261,7 +301,7 @@ def duration_ms(started_at: datetime, ended_at: datetime) -> int:
 def display_command(cli_name: str, argv: list[str]) -> str:
     if cli_name == "base_setup":
         return base_setup_action(argv) or "setup"
-    if cli_name.startswith("base_"):
+    if cli_name in _BASE_DISPLAY_COMMANDS:
         return cli_name.removeprefix("base_").replace("_", "-")
     return cli_name.replace("_", "-")
 

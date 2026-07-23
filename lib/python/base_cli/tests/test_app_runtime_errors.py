@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import os
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -10,9 +11,32 @@ from pathlib import Path
 from unittest import mock
 
 import base_cli
+from base_cli.testing import invoke
 
 
 class AppRuntimeErrorTests(unittest.TestCase):
+    def test_missing_click_error_recommends_pip_install(self) -> None:
+        app = base_cli.App(name="missing-click")
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with mock.patch.dict(sys.modules, {"click": None}):
+            with self.assertRaisesRegex(RuntimeError, r"Install it with 'pip install click'"):
+                _ = app.click_command
+
+    def test_testing_missing_click_error_recommends_pip_install(self) -> None:
+        app = base_cli.App(name="missing-click")
+
+        @app.command()
+        def main(ctx: base_cli.Context) -> None:
+            del ctx
+
+        with mock.patch.dict(sys.modules, {"click": None}):
+            with self.assertRaisesRegex(RuntimeError, r"Install it with 'pip install click'"):
+                invoke(app, [])
+
     @unittest.skipUnless(importlib.util.find_spec("click"), "Click is not installed")
     def test_run_app_reports_unwritable_cache_root_without_traceback(self) -> None:
         app = base_cli.App(name="cache-failure", version="0.1.0")

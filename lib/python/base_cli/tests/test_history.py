@@ -46,6 +46,9 @@ class BaseCliHistoryTests(unittest.TestCase):
                     )
                 )
                 self.assertEqual(history_helpers.display_command("base_setup", ["--action", "check"]), "check")
+                self.assertEqual(history_helpers.display_command("base_history", []), "history")
+                self.assertEqual(history_helpers.display_command("base_something", []), "base-something")
+                self.assertEqual(history_helpers.display_command("my_tool", []), "my-tool")
                 self.assertEqual(history_helpers.compact_path(inside_home), "~/logs/run.log")
                 self.assertEqual(
                     history_helpers.compact_path(outside_home),
@@ -132,13 +135,14 @@ class BaseCliHistoryTests(unittest.TestCase):
                     project_root=str(project_root),
                     manifest=str(manifest),
                     bundle_path=str(bundle),
+                    raw_command="base-history",
                 )
             record = read_history_records(cache_root)[0]
             metadata = json.loads((bundle / "run.json").read_text(encoding="utf-8"))
             metadata_mode = (bundle / "run.json").stat().st_mode & 0o777
 
         self.assertEqual(record["command"], "test")
-        self.assertEqual(record["raw_command"], "basectl")
+        self.assertEqual(record["raw_command"], "base-history")
         self.assertEqual(record["scope"], "internal")
         self.assertEqual(record["run_id"], "parent-1")
         self.assertEqual(record["project"], "demo")
@@ -148,7 +152,7 @@ class BaseCliHistoryTests(unittest.TestCase):
         self.assertEqual(metadata["project"], "demo")
         self.assertEqual(metadata["project_root"], str(project_root.resolve()))
         self.assertEqual(metadata["manifest"], str(manifest.resolve()))
-        self.assertEqual(metadata["raw_command"], "basectl")
+        self.assertEqual(metadata["raw_command"], "base-history")
         self.assertEqual(metadata["scope"], "internal")
         self.assertEqual(metadata_mode, 0o600)
 
