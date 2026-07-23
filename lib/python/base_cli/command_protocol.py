@@ -5,6 +5,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 
+__all__ = [
+    "CommandProtocolError",
+    "dumps_record",
+    "dumps_records",
+    "loads_records",
+]
+
+
 PROTOCOL_HEADER = "BASE_COMMAND_PROTOCOL_V1"
 MAX_RECORD_COUNT = 1_000_000
 

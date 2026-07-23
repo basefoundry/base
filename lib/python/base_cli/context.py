@@ -22,6 +22,8 @@ def _default_user_config() -> UserConfig:
 
 @dataclass
 class Context:
+    """Runtime state and cleanup hooks available to an active Base CLI command."""
+
     cli_name: str
     run_id: str
     state_dir: Path

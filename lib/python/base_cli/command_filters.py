@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 
+__all__ = [
+    "command_matches",
+    "normalize_command_filter",
+    "normalize_command_filters",
+]
+
+
 def normalize_command_filter(value: str) -> str:
     """Normalize one public or internal command name for matching."""
 

@@ -12,6 +12,15 @@ from .ide_schema import parse_ide_settings
 from .paths import base_state_root
 
 
+__all__ = [
+    "UserConfig",
+    "UserGithubConfig",
+    "UserIdeConfig",
+    "UserIdePreference",
+    "UserWorkspaceConfig",
+]
+
+
 @dataclass(frozen=True)
 class UserIdePreference:
     enabled: bool | None
