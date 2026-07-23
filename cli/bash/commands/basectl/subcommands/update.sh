@@ -31,7 +31,7 @@ Options:
 
 Purpose:
   Update a Base-managed project from Git, or update Base through Homebrew for
-  Homebrew installs, then run basectl setup for the selected project.
+  Homebrew installs. Git updates run setup when the selected project changes.
 
 Notes:
   - When project is omitted, Base updates project 'base'.
@@ -485,7 +485,7 @@ base_update_subcommand_main() {
 
     if ((dry_run)); then
         log_info "[DRY-RUN] Would update project '$resolved_project' repository at '$repo'."
-        log_info "[DRY-RUN] Would run 'basectl setup $resolved_project' after updating."
+        log_info "[DRY-RUN] Would run 'basectl setup $resolved_project' if the Git update changes the repository."
         return 0
     fi
 
@@ -504,11 +504,12 @@ base_update_subcommand_main() {
 
     if [[ "$before_revision" == "$after_revision" ]]; then
         log_info "Project '$resolved_project' repository is already up to date on '$update_branch' at '$after_revision'."
+        log_info "Skipping basectl setup $resolved_project because the repository did not change."
     else
         log_info "Project '$resolved_project' repository updated from '$before_revision' to '$after_revision' on '$update_branch'."
+        log_info "Running basectl setup $resolved_project after update."
+        base_update_run_setup "$base_home" "$resolved_project" || return $?
     fi
 
-    log_info "Running basectl setup $resolved_project after update."
-    base_update_run_setup "$base_home" "$resolved_project" || return $?
     log_info "Project '$resolved_project' update is complete."
 }

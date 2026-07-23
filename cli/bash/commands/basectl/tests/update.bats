@@ -20,6 +20,7 @@ assert_status() {
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl update [project] [options]"* ]]
     [[ "$output" == *"Update a Base-managed project from Git, or update Base through Homebrew"* ]]
+    [[ "$output" == *"Git updates run setup when the selected project changes."* ]]
     [[ "$output" == *"When project is omitted, Base updates project 'base'."* ]]
     [[ "$output" == *"Tracked project files must be clean"* ]]
     [[ "$output" == *"brew upgrade basefoundry/base/base"* ]]
@@ -41,7 +42,7 @@ assert_status() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would update project 'base' repository at '$BASE_REPO_ROOT'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup base' after updating."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup base' if the Git update changes the repository."* ]]
 }
 
 @test "basectl update dry-run resolves a named project" {
@@ -70,7 +71,7 @@ assert_status() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"[DRY-RUN] Would update project 'demo' repository at '$project_root'."* ]]
-    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup demo' after updating."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup demo' if the Git update changes the repository."* ]]
 }
 
 @test "basectl update rejects multiple project arguments" {
@@ -387,12 +388,20 @@ EOF
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$repo" \
+        BASE_TEST_AFTER_UPDATE="$TEST_TMPDIR/after-update" \
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
             base_update_source_git_library() { :; }
             git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
-            base_update_head_revision() { printf "%s\n" abc1234; }
+            base_update_head_revision() {
+                if [[ -f "$BASE_TEST_AFTER_UPDATE" ]]; then
+                    printf "%s\n" new5678
+                else
+                    touch "$BASE_TEST_AFTER_UPDATE"
+                    printf "%s\n" old1234
+                fi
+            }
             base_update_run_setup() { printf "setup ran\n"; }
             base_update_subcommand_main
         '
@@ -424,7 +433,7 @@ EOF
     [[ "$output" != *"setup should not run"* ]]
 }
 
-@test "basectl update reports already up-to-date repositories" {
+@test "basectl update skips setup for already up-to-date repositories" {
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
@@ -438,15 +447,15 @@ EOF
             base_update_source_git_library() { :; }
             git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
             base_update_head_revision() { printf "%s\n" abc1234; }
-            base_update_run_setup() { printf "setup ran\n"; }
+            base_update_run_setup() { printf "setup should not run\n"; return 99; }
             base_update_subcommand_main
         '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Updating project 'base' repository at '$BASE_REPO_ROOT'."* ]]
     [[ "$output" == *"Project 'base' repository is already up to date on 'master' at 'abc1234'."* ]]
-    [[ "$output" == *"Running basectl setup base after update."* ]]
-    [[ "$output" == *"setup ran"* ]]
+    [[ "$output" == *"Skipping basectl setup base because the repository did not change."* ]]
+    [[ "$output" != *"setup should not run"* ]]
     [[ "$output" == *"Project 'base' update is complete."* ]]
 }
 

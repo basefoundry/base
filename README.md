@@ -1613,9 +1613,10 @@ basectl update bankbuddy
 Omitting the project is equivalent to `basectl update base`. This command is
 intentionally conservative. In a source checkout, it only runs from the selected
 project repository's default branch, requires tracked project files to be clean,
-pulls the latest changes through Git, and then runs `basectl setup <project>`.
-Untracked files do not block the update; Git still stops the pull if an incoming
-tracked file would overwrite them.
+pulls the latest changes through Git, and runs `basectl setup <project>` only
+when the pull changes the checked-out revision. Untracked files do not block the
+update; Git still stops the pull if an incoming tracked file would overwrite
+them.
 
 In a Homebrew-managed install, the Base update path remains Base-only:
 `basectl update` runs the Base package upgrade,
