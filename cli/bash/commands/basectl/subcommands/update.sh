@@ -31,7 +31,8 @@ Options:
 
 Purpose:
   Update a Base-managed project from Git, or update Base through Homebrew for
-  Homebrew installs. Git updates run setup when the selected project changes.
+  Homebrew installs. Git updates run setup when the selected project changes;
+  Homebrew updates run setup when Base's installed version changes.
 
 Notes:
   - When project is omitted, Base updates project 'base'.
@@ -145,6 +146,64 @@ base_update_run_homebrew_upgrade() {
     local package="$1"
 
     brew upgrade "$package"
+}
+
+base_update_homebrew_installed_version_from_json() {
+    local info_json="$1"
+    local package="$2"
+    local python_bin
+
+    python_bin="$(base_update_json_python_bin)" || return 1
+    INFO_JSON="$info_json" INFO_PACKAGE="$package" "$python_bin" - <<'PY'
+import json
+import os
+import sys
+
+package = os.environ.get("INFO_PACKAGE", "")
+short_name = package.rsplit("/", 1)[-1] if package else ""
+
+try:
+    data = json.loads(os.environ["INFO_JSON"])
+except (KeyError, json.JSONDecodeError):
+    sys.exit(1)
+
+formulae = data.get("formulae", [])
+if not isinstance(formulae, list):
+    sys.exit(1)
+
+for formula in formulae:
+    if not isinstance(formula, dict):
+        continue
+    names = {name for name in (formula.get("name"), formula.get("full_name")) if isinstance(name, str)}
+    if package not in names and short_name not in names:
+        continue
+
+    linked_keg = formula.get("linked_keg")
+    if isinstance(linked_keg, str) and linked_keg:
+        print(linked_keg)
+        sys.exit(0)
+
+    installed_versions = [
+        entry.get("version")
+        for entry in formula.get("installed", [])
+        if isinstance(entry, dict) and isinstance(entry.get("version"), str) and entry.get("version")
+    ]
+    if installed_versions:
+        print(installed_versions[-1])
+        sys.exit(0)
+
+    sys.exit(1)
+
+sys.exit(1)
+PY
+}
+
+base_update_homebrew_installed_version() {
+    local package="$1"
+    local info_json
+
+    info_json="$(brew info --json=v2 --installed "$package" 2>/dev/null)" || return 1
+    base_update_homebrew_installed_version_from_json "$info_json" "$package"
 }
 
 base_update_homebrew_requires_tap_trust() {
@@ -282,6 +341,8 @@ base_update_run_homebrew_setup() {
 base_update_homebrew_install() {
     local base_home="$1"
     local dry_run="$2"
+    local after_version
+    local before_version
     local exit_code
     local package
 
@@ -290,7 +351,7 @@ base_update_homebrew_install() {
 
     if ((dry_run)); then
         log_info "[DRY-RUN] Would run: brew upgrade $package"
-        log_info "[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade with inherited Base environment cleared."
+        log_info "[DRY-RUN] Would run 'basectl setup' if the Homebrew upgrade changes Base's installed version, with inherited Base environment cleared."
         return 0
     fi
 
@@ -304,6 +365,11 @@ base_update_homebrew_install() {
         return 1
     fi
 
+    before_version="$(base_update_homebrew_installed_version "$package")" || {
+        log_error "Unable to determine installed Homebrew version for $package before upgrade."
+        return 1
+    }
+
     log_info "Running Homebrew upgrade for $package."
     base_update_run_homebrew_upgrade "$package"
     exit_code=$?
@@ -312,8 +378,19 @@ base_update_homebrew_install() {
         return "$exit_code"
     fi
 
-    log_info "Running basectl setup after Homebrew upgrade."
-    base_update_run_homebrew_setup "$base_home" "$package" || return $?
+    after_version="$(base_update_homebrew_installed_version "$package")" || {
+        log_error "Unable to determine installed Homebrew version for $package after upgrade."
+        return 1
+    }
+
+    if [[ "$before_version" == "$after_version" ]]; then
+        log_info "Homebrew Base version is unchanged at '$after_version' after upgrade."
+        log_info "Skipping basectl setup because the Homebrew Base version did not change."
+    else
+        log_info "Homebrew Base version changed from '$before_version' to '$after_version'."
+        log_info "Running basectl setup after Homebrew upgrade."
+        base_update_run_homebrew_setup "$base_home" "$package" || return $?
+    fi
 
     log_info "Base update is complete."
 }

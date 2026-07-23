@@ -20,7 +20,8 @@ assert_status() {
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl update [project] [options]"* ]]
     [[ "$output" == *"Update a Base-managed project from Git, or update Base through Homebrew"* ]]
-    [[ "$output" == *"Git updates run setup when the selected project changes."* ]]
+    [[ "$output" == *"Git updates run setup when the selected project changes;"* ]]
+    [[ "$output" == *"Homebrew updates run setup when Base's installed version changes."* ]]
     [[ "$output" == *"When project is omitted, Base updates project 'base'."* ]]
     [[ "$output" == *"Tracked project files must be clean"* ]]
     [[ "$output" == *"brew upgrade basefoundry/base/base"* ]]
@@ -144,7 +145,7 @@ assert_status() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
     [[ "$output" == *"[DRY-RUN] Would run: brew upgrade basefoundry/base/base"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade with inherited Base environment cleared."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' if the Homebrew upgrade changes Base's installed version, with inherited Base environment cleared."* ]]
     [[ "$output" != *"brew should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
 }
@@ -219,6 +220,27 @@ EOF
     [ "$status" -eq 0 ]
 }
 
+@test "base_update_homebrew_installed_version_from_json reads structured Homebrew versions" {
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+
+            linked_json="{\"formulae\":[{\"name\":\"base\",\"full_name\":\"basefoundry/base/base\",\"linked_keg\":\"1.8.0\",\"installed\":[{\"version\":\"1.7.0\"}]},{\"name\":\"base-bash-libs\",\"full_name\":\"basefoundry/base/base-bash-libs\",\"linked_keg\":\"1.3.0\",\"installed\":[{\"version\":\"1.3.0\"}]}],\"casks\":[]}"
+            fallback_json="{\"formulae\":[{\"name\":\"base\",\"full_name\":\"basefoundry/base/base\",\"linked_keg\":null,\"installed\":[{\"version\":\"1.7.0\"},{\"version\":\"1.8.0\"}]}],\"casks\":[]}"
+
+            [ "$(base_update_homebrew_installed_version_from_json "$linked_json" "basefoundry/base/base")" = "1.8.0" ]
+            [ "$(base_update_homebrew_installed_version_from_json "$fallback_json" "basefoundry/base/base")" = "1.8.0" ]
+            if base_update_homebrew_installed_version_from_json "{\"formulae\":[]}" "basefoundry/base/base"; then
+                exit 10
+            fi
+        '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "base_update_homebrew_prefix does not repeat identical base prefix probes" {
     local fake_bin="$TEST_TMPDIR/bin"
     local brew_log="$TEST_TMPDIR/brew.log"
@@ -250,10 +272,11 @@ EOF
     [ "$(cat "$brew_log")" = "--prefix base" ]
 }
 
-@test "basectl update runs exact Homebrew package upgrade and clears Base env for setup" {
+@test "basectl update runs Homebrew setup when Base version changes" {
     local fake_bin="$TEST_TMPDIR/bin"
     local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
     local brew_log="$TEST_TMPDIR/brew.log"
+    local brew_state="$TEST_TMPDIR/brew-state"
     local setup_log="$TEST_TMPDIR/setup.log"
 
     mkdir -p "$fake_bin" "$fake_base/bin"
@@ -261,6 +284,18 @@ EOF
 #!/usr/bin/env bash
 if [[ "\$1" == "config" ]]; then
     exit 0
+fi
+if [[ "\$1" == "info" && "\$2" == "--json=v2" && "\$3" == "--installed" ]]; then
+    printf '%s\n' "\$*" >> "$brew_log"
+    if [[ -f "$brew_state" ]]; then
+        printf '%s\n' '{"formulae":[{"name":"base","full_name":"basefoundry/base/base","linked_keg":"1.8.0","installed":[{"version":"1.8.0"}]}],"casks":[]}'
+    else
+        printf '%s\n' '{"formulae":[{"name":"base","full_name":"basefoundry/base/base","linked_keg":"1.7.0","installed":[{"version":"1.7.0"}]}],"casks":[]}'
+    fi
+    exit 0
+fi
+if [[ "\$1" == "upgrade" ]]; then
+    touch "$brew_state"
 fi
 printf '%s\n' "\$*" >> "$brew_log"
 exit 0
@@ -291,13 +326,61 @@ EOF
         '
 
     [ "$status" -eq 0 ]
-    [ "$(cat "$brew_log")" = "upgrade basefoundry/base/base" ]
+    [ "$(cat "$brew_log")" = $'info --json=v2 --installed basefoundry/base/base\nupgrade basefoundry/base/base\ninfo --json=v2 --installed basefoundry/base/base' ]
     [[ "$(cat "$setup_log")" == *"args=setup"* ]]
     [[ "$(cat "$setup_log")" == *"BASE_HOME=unset"* ]]
     [[ "$(cat "$setup_log")" == *"BASE_PROJECT=unset"* ]]
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
     [[ "$output" == *"Running Homebrew upgrade for basefoundry/base/base."* ]]
+    [[ "$output" == *"Homebrew Base version changed from '1.7.0' to '1.8.0'."* ]]
     [[ "$output" == *"Running basectl setup after Homebrew upgrade."* ]]
+    [[ "$output" == *"Base update is complete."* ]]
+}
+
+@test "basectl update skips Homebrew setup when Base version is unchanged" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
+    local brew_log="$TEST_TMPDIR/brew.log"
+
+    mkdir -p "$fake_bin" "$fake_base/bin"
+    cat > "$fake_bin/brew" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "config" ]]; then
+    exit 0
+fi
+if [[ "\$1" == "info" && "\$2" == "--json=v2" && "\$3" == "--installed" ]]; then
+    printf '%s\n' "\$*" >> "$brew_log"
+    printf '%s\n' '{"formulae":[{"name":"base","full_name":"basefoundry/base/base","linked_keg":"1.7.0","installed":[{"version":"1.7.0"}]}],"casks":[]}'
+    exit 0
+fi
+printf '%s\n' "\$*" >> "$brew_log"
+exit 0
+EOF
+    chmod +x "$fake_bin/brew"
+    touch "$fake_base/bin/basectl"
+    chmod +x "$fake_base/bin/basectl"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$fake_base" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            log_debug() { :; }
+            log_error() { printf "ERROR: %s\n" "$*"; }
+            log_info() { printf "INFO: %s\n" "$*"; }
+            log_warn() { printf "WARN: %s\n" "$*"; }
+            print_error() { printf "ERROR: %s\n" "$*"; }
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_run_homebrew_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$brew_log")" = $'info --json=v2 --installed basefoundry/base/base\nupgrade basefoundry/base/base\ninfo --json=v2 --installed basefoundry/base/base' ]
+    [[ "$output" == *"Homebrew Base version is unchanged at '1.7.0' after upgrade."* ]]
+    [[ "$output" == *"Skipping basectl setup because the Homebrew Base version did not change."* ]]
+    [[ "$output" != *"setup should not run"* ]]
     [[ "$output" == *"Base update is complete."* ]]
 }
 
@@ -307,6 +390,7 @@ EOF
     local cellar_base="$homebrew/Cellar/base/0.4.0/libexec"
     local opt_prefix="$homebrew/opt/base"
     local opt_base="$opt_prefix/libexec"
+    local brew_state="$TEST_TMPDIR/brew-state"
     local setup_log="$TEST_TMPDIR/setup.log"
 
     mkdir -p "$fake_bin" "$cellar_base/bin" "$opt_base/bin"
@@ -314,6 +398,21 @@ EOF
     chmod +x "$cellar_base/bin/basectl"
     cat > "$fake_bin/brew" <<EOF
 #!/usr/bin/env bash
+if [[ "\$1" == "config" ]]; then
+    exit 0
+fi
+if [[ "\$1" == "info" && "\$2" == "--json=v2" && "\$3" == "--installed" ]]; then
+    if [[ -f "$brew_state" ]]; then
+        printf '%s\n' '{"formulae":[{"name":"base","full_name":"basefoundry/base/base","linked_keg":"0.5.0","installed":[{"version":"0.5.0"}]}],"casks":[]}'
+    else
+        printf '%s\n' '{"formulae":[{"name":"base","full_name":"basefoundry/base/base","linked_keg":"0.4.0","installed":[{"version":"0.4.0"}]}],"casks":[]}'
+    fi
+    exit 0
+fi
+if [[ "\$1" == "upgrade" ]]; then
+    touch "$brew_state"
+    exit 0
+fi
 if [[ "\$1" == "--prefix" ]]; then
     printf '%s\n' "$opt_prefix"
     exit 0

@@ -1432,7 +1432,8 @@ brew upgrade --no-ask basefoundry/base/base
 Homebrew installs the Base files. `basectl setup` still prepares the local Base
 runtime under `~/.base.d/base/.venv`, and `basectl update-profile` adds Base to
 your shell startup path. When installed through Homebrew, `basectl update` for
-Base hands off to Homebrew and runs setup afterward. This is equivalent to:
+Base hands off to Homebrew and runs setup only when the installed Base version
+changes. The Homebrew handoff is equivalent to:
 
 ```bash
 brew upgrade --no-ask basefoundry/base/base
@@ -1620,9 +1621,10 @@ them.
 
 In a Homebrew-managed install, the Base update path remains Base-only:
 `basectl update` runs the Base package upgrade,
-`brew upgrade basefoundry/base/base`, and then runs `basectl setup base` with
-inherited Base environment variables cleared. `basectl update --dry-run` prints
-the Git or Homebrew handoff it would perform without changing files or packages.
+`brew upgrade basefoundry/base/base`, and runs `basectl setup base` with
+inherited Base environment variables cleared only when the installed Base version
+changes. `basectl update --dry-run` prints the Git or Homebrew handoff it would
+perform without changing files or packages.
 For manual Homebrew upgrades outside `basectl update`, prefer
 `brew upgrade --no-ask basefoundry/base/base` so Homebrew skips the preview
 prompt path on already-current installs. If Homebrew refuses to load
