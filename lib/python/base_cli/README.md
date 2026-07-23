@@ -36,6 +36,19 @@ The package follows these rules:
 - **Base-aware, Click-compatible**: command authors keep using familiar Click
   concepts such as options and arguments.
 
+## Public API
+
+The supported facade is `import base_cli`. It exports the command lifecycle
+(`App`, `Context`, `run_app`, decorators, and logging helpers), command filters,
+the structured command protocol helpers, and the user configuration types used
+by `Context.user_config`. The corresponding modules are also available as
+`base_cli.command_filters`, `base_cli.command_protocol`, and
+`base_cli.history`.
+
+Low-level implementation helpers are intentionally not included in the
+module `__all__` surfaces. Downstream code should use the documented facade or
+the explicitly supported symbols from those modules.
+
 ## Minimal Command
 
 ```python

@@ -61,6 +61,8 @@ def _require_click():
 
 # pylint: disable=too-many-statements
 class App:
+    """Define a Click-backed command with Base's shared runtime lifecycle."""
+
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
@@ -314,6 +316,8 @@ class App:
 
 
 def run_app(app: App, argv: list[str] | None = None) -> int:
+    """Run an :class:`App` and return its normalized process exit code."""
+
     try:
         click = _require_click()
     except RuntimeError as exc:

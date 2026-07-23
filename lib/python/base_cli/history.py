@@ -18,6 +18,35 @@ from .paths import base_cache_root
 from .redaction import REDACTED, is_secret_key, option_name_to_parameter, redact_argv, redact_text_value
 
 
+__all__ = [
+    "HISTORY_PATH",
+    "HISTORY_SCOPE_INTERNAL",
+    "HISTORY_SCOPE_PRIMARY",
+    "SCHEMA_VERSION",
+    "base_setup_action",
+    "base_version",
+    "build_finished_record",
+    "compact_home_text",
+    "compact_optional_path",
+    "compact_path",
+    "display_command",
+    "duration_ms",
+    "format_timestamp",
+    "optional_int",
+    "optional_string",
+    "parse_finished_history_record_line",
+    "parse_positive_int",
+    "project_name",
+    "redact_history_argv",
+    "redact_history_text",
+    "runtime_bundle_path",
+    "utc_now",
+    "write_finished_record",
+    "write_history_record",
+    "write_primary_record",
+]
+
+
 SCHEMA_VERSION = 1
 HISTORY_PATH = Path("base") / "history" / "runs.jsonl"
 HISTORY_SCOPE_PRIMARY = "primary"
