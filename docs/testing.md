@@ -57,7 +57,10 @@ Map each symptom to its likely ownership before changing code:
 Python engine and helper behavior lives under `cli/python/**/tests/` and
 `lib/python/**/tests/`. These tests should cover parsing, manifest merging,
 artifact decisions, JSON output, and error handling without launching public
-shell commands.
+shell commands. Monorepo-wide contract checks that inspect `STANDARDS.md`,
+scan all production packages, or invoke shell files live under the top-level
+`tests/` directory so they are not mistaken for tests of an installed Python
+distribution.
 
 Run them with:
 

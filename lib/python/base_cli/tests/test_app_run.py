@@ -35,7 +35,6 @@ class RunAppTests(unittest.TestCase):
                 {
                     "HOME": str(home),
                     "BASE_CACHE_DIR": str(home / ".cache" / "base"),
-                    "BASE_HOME": str(Path(__file__).resolve().parents[4]),
                 },
             ), redirect_stderr(stderr):
                 status = base_cli.run_app(app, [])
@@ -61,7 +60,6 @@ class RunAppTests(unittest.TestCase):
                 {
                     "HOME": str(home),
                     "BASE_CACHE_DIR": str(home / ".cache" / "base"),
-                    "BASE_HOME": str(Path(__file__).resolve().parents[4]),
                 },
             ):
                 with self.assertRaisesRegex(RuntimeError, "boom"):
@@ -86,7 +84,6 @@ class RunAppTests(unittest.TestCase):
                 {
                     "HOME": str(home),
                     "BASE_CACHE_DIR": str(home / ".cache" / "base"),
-                    "BASE_HOME": str(Path(__file__).resolve().parents[4]),
                 },
             ), redirect_stderr(stderr):
                 status = base_cli.run_app(app, ["--name=demo"])

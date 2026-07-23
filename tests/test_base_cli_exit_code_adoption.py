@@ -13,7 +13,7 @@ NON_EXIT_STATUS_RETURN_FUNCTIONS = {
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parents[4]
+    return Path(__file__).resolve().parents[1]
 
 
 def iter_production_python_files() -> list[Path]:
