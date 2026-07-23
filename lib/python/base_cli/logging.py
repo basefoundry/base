@@ -84,7 +84,9 @@ class SecureLogFileHandler(logging.FileHandler):
     def _open(self) -> TextIO:
         fd = os.open(self.baseFilename, _secure_log_file_open_flags(self.mode), 0o600)
         try:
-            os.fchmod(fd, 0o600)
+            fchmod = getattr(os, "fchmod", None)
+            if fchmod is not None:
+                fchmod(fd, 0o600)
             return open(fd, self.mode, encoding=self.encoding, errors=self.errors, closefd=True)
         except BaseException:
             os.close(fd)

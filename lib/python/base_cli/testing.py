@@ -30,7 +30,7 @@ def invoke(
     try:
         from click.testing import CliRunner
     except ImportError as exc:
-        raise RuntimeError("Click is required for base_cli.testing. Run 'basectl setup' to install it.") from exc
+        raise RuntimeError("Click is required for base_cli.testing. Install it with 'pip install click'.") from exc
 
     invoke_env = dict(env or {})
     if home is not None:
@@ -48,7 +48,10 @@ def _write_manifest_fixture(cwd: Path, manifest: Mapping[str, Any]) -> None:
     try:
         import yaml
     except ImportError as exc:
-        raise RuntimeError("PyYAML is required to write base_cli.testing manifest fixtures.") from exc
+        raise RuntimeError(
+            "PyYAML is required to write base_cli.testing manifest fixtures. "
+            "Install it with 'pip install PyYAML'."
+        ) from exc
 
     (cwd / "base_manifest.yaml").write_text(
         yaml.safe_dump(dict(manifest), sort_keys=False),

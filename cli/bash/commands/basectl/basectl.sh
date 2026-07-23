@@ -685,6 +685,7 @@ basectl_history_record() {
     args+=(--exit-code "$exit_code")
     args+=(--scope "$scope")
     args+=(--owner "${BASE_CLI_RUNTIME_OWNER:-base}")
+    args+=(--raw-command basectl)
     if [[ -n "${BASE_CLI_RUN_ROOT:-}" ]]; then
         args+=(--bundle-path "$BASE_CLI_RUN_ROOT")
     fi
