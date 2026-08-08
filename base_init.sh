@@ -339,7 +339,6 @@ base_init_source_command_protocol() {
 import_base_lib() {
     local relative_path="${1:-}"
     local lib_path
-    local lib_path
 
     [[ -n "$relative_path" ]] || base_std_fatal_error "import_base_lib: no library path provided."
     [[ "$relative_path" != /* ]] || base_std_fatal_error "import_base_lib: expected a path relative to '$BASE_BASH_LIBS_DIR', got '$relative_path'."
