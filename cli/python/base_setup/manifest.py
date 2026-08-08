@@ -191,6 +191,10 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         raise ManifestError(f"{path}: test.command must be a non-empty string when provided.")
     if mise is not None and (not isinstance(mise, str) or not mise.strip()):
         raise ManifestError(f"{path}: test.mise must be a non-empty string when provided.")
+    if command is not None and has_control_line_break(command):
+        raise ManifestError(f"{path}: test.command must not contain control line breaks.")
+    if mise is not None and has_control_line_break(mise):
+        raise ManifestError(f"{path}: test.mise must not contain control line breaks.")
     if command is not None and mise is not None:
         raise ManifestError(f"{path}: test must declare only one of command or mise.")
     if command is None and mise is None:

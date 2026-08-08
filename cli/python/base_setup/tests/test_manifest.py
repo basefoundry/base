@@ -1059,6 +1059,32 @@ class ManifestParsingTests(unittest.TestCase):
                 read_manifest(manifest_path)
 
 
+    def test_rejects_control_line_breaks_in_manifest_test_command_or_mise(self) -> None:
+        for field_name in ("command", "mise"):
+            for escaped_control_break in (r"\0", r"\n", r"\r"):
+                with self.subTest(field_name=field_name, escaped_control_break=escaped_control_break):
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        manifest_path = Path(tmpdir) / "base_manifest.yaml"
+                        manifest_path.write_text(
+                            "\n".join(
+                                [
+                                    "project:",
+                                    "  name: demo",
+                                    "test:",
+                                    f'  {field_name}: "test{escaped_control_break}command"',
+                                    "artifacts: []",
+                                ]
+                            ),
+                            encoding="utf-8",
+                        )
+
+                        with self.assertRaisesRegex(
+                            ManifestError,
+                            rf"test\.{field_name} must not contain control line breaks",
+                        ):
+                            read_manifest(manifest_path)
+
+
     def test_rejects_invalid_manifest_test_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             manifest_path = Path(tmpdir) / "base_manifest.yaml"
