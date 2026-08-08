@@ -387,14 +387,16 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertIn("workspace must be a mapping", stderr)
         self.assertNotIn("Traceback", stderr)
 
-    def test_discovers_projects_under_workspace_root(self) -> None:
+    def test_cached_project_discovery_sorts_projects(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
             write_manifest(workspace / "zeta", "zeta")
             write_manifest(workspace / "alpha", "alpha")
             (workspace / "notes").mkdir()
 
-            projects = project_discovery.discover_projects(workspace)
+            ctx = mock.Mock()
+            ctx.dry_run = True
+            projects = project_discovery.discover_projects_cached(ctx, workspace)
 
         self.assertEqual([project.name for project in projects], ["alpha", "zeta"])
 
@@ -1842,14 +1844,16 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("project must be a mapping", stderr)
 
-    def test_projects_list_rejects_duplicate_project_names(self) -> None:
+    def test_cached_project_discovery_rejects_duplicate_project_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)
             write_manifest(workspace / "one", "demo")
             write_manifest(workspace / "two", "demo")
 
             with self.assertRaisesRegex(engine.ProjectDiscoveryError, "Duplicate project names"):
-                project_discovery.discover_projects(workspace)
+                ctx = mock.Mock()
+                ctx.dry_run = True
+                project_discovery.discover_projects_cached(ctx, workspace)
 
 if __name__ == "__main__":
     unittest.main()

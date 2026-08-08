@@ -32,12 +32,6 @@ def current_project() -> Project:
     return read_project(manifest_path)
 
 
-def discover_projects(workspace_root: Path) -> tuple[Project, ...]:
-    entries = workspace_manifest_entries(workspace_root)
-    projects = tuple(read_project(entry.path) for entry in entries)
-    return validate_unique_project_names(tuple(sorted(projects)))
-
-
 def discover_projects_cached(ctx: base_cli.Context, workspace_root: Path) -> tuple[Project, ...]:
     start = time.perf_counter()
     entries = workspace_manifest_entries(workspace_root)
@@ -63,11 +57,6 @@ def discover_projects_cached(ctx: base_cli.Context, workspace_root: Path) -> tup
         elapsed_ms,
     )
     return projects
-
-
-def find_project(workspace_root: Path, project_name: str) -> Project:
-    projects = discover_projects(workspace_root)
-    return find_project_in_projects(projects, workspace_root, project_name)
 
 
 def find_project_in_projects(projects: tuple[Project, ...], workspace_root: Path, project_name: str) -> Project:
