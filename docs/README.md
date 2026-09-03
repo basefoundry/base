@@ -80,6 +80,9 @@ reference. The filename should answer "what is this about?"
   dispatch order, public launchers, and runtime shell behavior.
 - [Linux Support](linux-support.md) defines the Ubuntu/Debian runtime support,
   apt-backed setup path, and bootstrap boundaries.
+- [Native Windows Support Contract](windows-support.md) defines the proposed
+  PowerShell-first contract, staged parity model, compatibility matrix, and
+  boundaries for future native Windows work.
 - [Runtime Environment](runtime-environment.md) is the canonical reference for
   Base-managed environment variables, `~/.baserc`, and mutability rules.
 - [Shell Startup Files](shell-startup.md) documents the marked Bash/Zsh dotfile

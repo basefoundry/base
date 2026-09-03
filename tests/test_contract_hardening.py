@@ -253,6 +253,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Canonical positioning documentation",
         "Workspace agent-brief JSON schema",
         "Workspace update JSON schema",
+        "Native Windows support boundary",
     }
     for row in rows:
         assert row["Source of truth"], row

@@ -584,7 +584,9 @@ Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites
 Base owns. Linux setup remains narrower than macOS setup and should stay behind
 the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
-Windows is out of scope.
+Native Windows is planned but not supported yet. The staged target, compatibility
+matrix, and explicit feature deferrals are documented in
+[Native Windows Support Contract](docs/windows-support.md).
 
 The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
 be added for coverage, but the floor job should stay until Base intentionally

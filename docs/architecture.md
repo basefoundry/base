@@ -11,7 +11,9 @@ readiness, trust, onboarding, and handoff evidence needed to operate that repo
 set through one CLI interface. The current implementation support contract
 covers macOS plus narrow Ubuntu/Debian source-checkout runtime and apt-backed
 setup paths. Broader Linux distribution support, WSL, and Windows are not in
-scope today.
+scope today. Native Windows has a separate staged proposal in
+[Native Windows Support Contract](windows-support.md); it must not be treated as
+supported until its native launcher and command subset have passed that contract.
 
 The governing philosophy: **solve your own problem elegantly first**. Base is
 built for a specific workflow: multiple peer Git repositories under a shared

@@ -19,6 +19,8 @@ inventory -> prepare -> verify -> trust -> onboard -> hand off
 
 The `basectl` CLI provides the execution surface for that loop, including setup,
 diagnostics, project discovery, shell activation, test execution, and releases.
+Native Windows is a planned PowerShell-first target, not a current support tier;
+see [Native Windows Support Contract](windows-support.md) for the staged boundary.
 
 > The repo you check out once per workspace so all other repos become easier to
 > set up, test, and run.

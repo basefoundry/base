@@ -39,7 +39,8 @@ across every repository and external tool.
 
 Base remains macOS-primary. Ubuntu/Debian source-checkout runtime and apt-backed
 setup support are implemented, while broader Linux distribution support remains
-intentionally narrow and Windows is not currently in scope.
+intentionally narrow. Native Windows is not currently shipped; its proposed
+staged contract is maintained in [Native Windows Support Contract](windows-support.md).
 
 Major product work should improve the outcome loop. A broad command is not core
 merely because Base can expose it.
