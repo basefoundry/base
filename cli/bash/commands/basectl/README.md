@@ -281,11 +281,13 @@ such command directories exist. Optional utility CLIs such as `caff` and
   individual failures, skips missing optional repositories, treats missing
   required repositories as failures, and includes the active `BASE_HOME`
   checkout when it is the manifest's `base` target.
-- `basectl workspace configure` applies the existing `basectl repo configure`
-  repair path across discovered Base-managed projects, or across present
-  Base-managed repositories from a configured or explicit workspace manifest.
-  It supports `--dry-run`, skips missing or non-Base-managed repositories, and
-  continues after per-repo failures.
+- `basectl workspace configure` previews the existing `basectl repo configure`
+  repair path by default across discovered Base-managed projects, or across
+  present Base-managed repositories from a configured or explicit workspace
+  manifest. Use `--apply` to authorize changes; it prompts for confirmation
+  unless `--yes` is also supplied. `--yes` alone never authorizes changes.
+  The command skips missing or non-Base-managed repositories and continues
+  after per-repo failures.
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.

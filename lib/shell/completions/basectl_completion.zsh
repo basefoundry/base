@@ -585,6 +585,8 @@ _base_basectl_completion() {
                         '--workspace[Workspace directory to configure]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
                         '--dry-run[Show planned workspace configuration without applying repo changes]' \
+                        '--apply[Apply planned workspace configuration changes]' \
+                        '--yes[Skip confirmation; requires --apply]' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 setup)

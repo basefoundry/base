@@ -452,5 +452,5 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"commands=status check doctor onboarding agent-brief clone pull update init configure setup"* ]]
-    [[ "$output" == *"options=--workspace --manifest --dry-run"* ]]
+    [[ "$output" == *"options=--workspace --manifest --dry-run --apply --yes"* ]]
 }

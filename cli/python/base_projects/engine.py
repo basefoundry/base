@@ -108,8 +108,14 @@ def main(argv: list[str] | None = None) -> int:
     is_flag=True,
     help="Include optional workspace manifest repositories when cloning.",
 )
-@base_cli.option("--dry-run", is_flag=True, dry_run=True, help="Show planned clone or pull work without writing.")
-@base_cli.option("--yes", is_flag=True, help="Apply workspace setup changes that require confirmation.")
+@base_cli.option(
+    "--dry-run",
+    is_flag=True,
+    dry_run=True,
+    help="Show planned clone, pull, or configure work without writing.",
+)
+@base_cli.option("--apply", is_flag=True, help="Apply workspace configure changes after the plan is shown.")
+@base_cli.option("--yes", is_flag=True, help="Approve workspace setup or configure changes that require confirmation.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -123,6 +129,7 @@ def run(
     workspace_owner: str | None,
     include_optional: bool,
     dry_run: bool,
+    apply: bool,
     yes: bool,
 ) -> int:
     try:
@@ -139,6 +146,7 @@ def run(
                 workspace_owner=workspace_owner,
                 include_optional=include_optional,
                 dry_run=dry_run,
+                apply=apply,
                 yes=yes,
             ),
             project_command_actions(),

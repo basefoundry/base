@@ -654,7 +654,9 @@ basectl workspace setup
 ```
 
 Workspace commands are read-first and mutate only through explicit init, clone,
-pull, update, configure, or setup commands. `basectl workspace status` reports project manifest
+pull, update, configure, or setup commands. `workspace configure` additionally
+requires `--apply`; `--yes` only supplies confirmation after apply is authorized.
+`basectl workspace status` reports project manifest
 state, virtual environment state, and Git state across discovered projects,
 including invalid manifests without stopping the whole scan. With
 `workspace.manifest` or `--manifest <path>`, workspace commands also report
@@ -675,9 +677,10 @@ materializes missing expected repositories only when invoked
 directly. `basectl workspace pull` updates only the local workspace manifest
 after validating an explicit or configured source. `basectl workspace init`
 bootstraps a workspace from a workspace configuration repository and can
-materialize member repositories. `basectl workspace configure` applies the
-existing `repo configure` repair path across discovered Base-managed workspace
-repositories. `basectl workspace update` walks the manifest in order and runs
+materialize member repositories. `basectl workspace configure` previews the
+existing `repo configure` repair path by default and applies it only with
+`--apply` across discovered Base-managed workspace repositories.
+`basectl workspace update` walks the manifest in order and runs
 `git pull --ff-only` for present repositories, continuing after individual
 failures. It skips the active `BASE_HOME` control plane when that checkout is
 the manifest's `base` target; a separate workspace checkout is eligible for

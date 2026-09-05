@@ -42,6 +42,16 @@ def workspace_configure_from_options(
     ctx: base_cli.Context,
     options: Any,
 ) -> int:
+    apply_requested = getattr(options, "apply", False) is True
+    dry_run_requested = getattr(options, "dry_run", False) is True
+    yes_requested = getattr(options, "yes", False) is True
+    if apply_requested and dry_run_requested:
+        ctx.log.error("Options '--apply' and '--dry-run' cannot be used together.")
+        return base_cli.ExitCode.USAGE_ERROR
+    if yes_requested and not apply_requested:
+        ctx.log.error("Option '--yes' requires '--apply' for workspace configure.")
+        return base_cli.ExitCode.USAGE_ERROR
+
     if options.output_format != "text":
         ctx.log.error("Unsupported output format '%s'. Expected: text.", options.output_format)
         return base_cli.ExitCode.USAGE_ERROR
@@ -55,7 +65,13 @@ def workspace_configure_from_options(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    return workspace_configure_command(ctx, workspace_root, manifest, dry_run=options.dry_run)
+    return workspace_configure_command(
+        ctx,
+        workspace_root,
+        manifest,
+        dry_run=not apply_requested,
+        yes=yes_requested,
+    )
 
 
 def workspace_configure_command(
@@ -64,6 +80,7 @@ def workspace_configure_command(
     workspace_manifest: WorkspaceManifest | None,
     *,
     dry_run: bool,
+    yes: bool = False,
 ) -> int:
     if ctx.application_home is None:
         ctx.log.error("BASE_HOME is required to configure workspace repositories.")
@@ -72,6 +89,19 @@ def workspace_configure_command(
     basectl = ctx.application_home / "bin" / "basectl"
     targets = workspace_configure_targets(workspace_root, workspace_manifest)
     print_workspace_configure_header(workspace_root, workspace_manifest, len(targets))
+
+    if not dry_run:
+        print_workspace_configure_plan(targets)
+        if not yes:
+            if not sys.stdin.isatty():
+                ctx.log.error(
+                    "Workspace configure was not applied because confirmation is unavailable. "
+                    "Review the plan and rerun with '--apply --yes' in a non-interactive shell."
+                )
+                return base_cli.ExitCode.FAILURE
+            if not confirm_workspace_configure():
+                ctx.log.error("Workspace configure was not approved.")
+                return base_cli.ExitCode.FAILURE
 
     counts = WorkspaceConfigureCounts()
     for target in targets:
@@ -85,6 +115,25 @@ def workspace_configure_command(
         f"configured={counts.configured} skipped={counts.skipped} failed={counts.failed}."
     )
     return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
+
+
+def print_workspace_configure_plan(targets: tuple[WorkspaceConfigureTarget, ...]) -> None:
+    print("Workspace configure plan:")
+    for target in targets:
+        if target.skip_reason is not None:
+            print(f"  SKIP {target.skip_reason}.")
+        elif target.repo_spec is None:
+            print(f"  SKIP repository '{target.name}' has no supported GitHub origin remote.")
+        else:
+            print(f"  APPLY repository '{target.name}' at '{target.root}' for '{target.repo_spec}'.")
+
+
+def confirm_workspace_configure() -> bool:
+    try:
+        response = input("Apply this workspace configuration? [y/N] ")
+    except EOFError:
+        return False
+    return response.strip().lower() in {"y", "yes"}
 
 
 def workspace_configure_targets(

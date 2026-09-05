@@ -139,11 +139,13 @@ Options:
   --workspace <path>  Workspace directory to configure. Defaults to workspace.root, then BASE_HOME's parent.
   --manifest <path>   Local workspace manifest describing expected repositories.
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
-  --dry-run           Show planned workspace configuration without applying repo changes.
+  --dry-run           Show planned workspace configuration without applying repo changes (the default).
+  --apply             Apply the planned configuration changes. Prompts unless --yes is also supplied.
+  --yes               Skip the confirmation prompt. Requires --apply; it does not authorize changes by itself.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Apply or repair Base-managed GitHub repo configuration across workspace repositories.
+Plan or apply Base-managed GitHub repo configuration across workspace repositories.
 EOF
 }
 

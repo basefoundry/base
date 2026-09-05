@@ -457,6 +457,8 @@ EOF
     [[ "$output" == *"--workspace <path>"* ]]
     [[ "$output" == *"--manifest <path>"* ]]
     [[ "$output" == *"--dry-run"* ]]
+    [[ "$output" == *"--apply"* ]]
+    [[ "$output" == *"--yes"* ]]
     [[ "$output" != *"--format"* ]]
 
     run_basectl workspace setup --help

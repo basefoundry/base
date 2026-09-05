@@ -421,14 +421,21 @@ repositories. `--dry-run` forwards to each delegated `basectl repo clone`
 operation so the resolved repository specs, destinations, and conflicts can be
 reviewed before the filesystem changes.
 
-The configure path applies the existing single-repo repair behavior across the
+The configure path exposes the existing single-repo repair behavior across the
 workspace:
 
 ```bash
-basectl workspace configure --dry-run
 basectl workspace configure
+basectl workspace configure --apply
+basectl workspace configure --apply --yes
 basectl workspace configure --manifest ~/work/workspace.yaml --dry-run
 ```
+
+`workspace configure` is a dry-run by default. Use `--apply` to authorize
+changes; an interactive run asks for confirmation after printing the affected
+repositories. Use `--apply --yes` for a reviewed non-interactive run. `--yes`
+without `--apply` is rejected and never authorizes changes. The explicit
+`--dry-run` form remains supported as an alias for the default behavior.
 
 Without a manifest, Base scans discovered local Base-managed projects under the
 workspace root and delegates each supported GitHub checkout to
@@ -578,10 +585,11 @@ reports aggregate present, cloned, skipped, and failed counts.
 Timestamped delegated Base log records remain available in debug diagnostics
 rather than being rendered as indented failure details.
 
-`basectl workspace configure --manifest <path>` configures present Base-managed
-expected repositories through `basectl repo configure`. It skips missing
-repositories and present repositories without `base_manifest.yaml`, and exits
-nonzero only when a delegated configure command fails.
+`basectl workspace configure --manifest <path> --apply` configures present
+Base-managed expected repositories through `basectl repo configure`. Without
+`--apply`, it only previews the delegated calls. It skips missing repositories
+and present repositories without `base_manifest.yaml`, and exits nonzero only
+when a delegated configure command fails.
 
 The v1 implementation is intentionally still conservative. Clone, update,
 configure, and project setup are explicit; reset and authentication management

@@ -245,6 +245,8 @@ repos:
                     str(workspace),
                     "--manifest",
                     str(manifest_path),
+                    "--apply",
+                    "--yes",
                 ],
                 base_home,
                 home,
@@ -321,6 +323,8 @@ repos:
             workspace="workspace",
             workspace_manifest="workspace.yaml",
             dry_run=True,
+            apply=False,
+            yes=False,
         )
         workspace_root = Path("/tmp/shared-workspace")
         manifest = mock.Mock()
@@ -347,7 +351,112 @@ repos:
         resolve_workspace_root.assert_called_once_with(ctx, "workspace")
         effective_workspace_manifest.assert_called_once_with(ctx, "workspace.yaml")
         resolve_workspace_manifest.assert_called_once_with("workspace.yaml")
-        configure_command.assert_called_once_with(ctx, workspace_root, manifest, dry_run=True)
+        configure_command.assert_called_once_with(ctx, workspace_root, manifest, dry_run=True, yes=False)
+
+    def test_workspace_configure_defaults_to_dry_run(self) -> None:
+        ctx = mock.Mock()
+        options = mock.Mock(
+            output_format="text",
+            workspace="workspace",
+            workspace_manifest="workspace.yaml",
+            dry_run=False,
+            apply=False,
+            yes=False,
+        )
+        workspace_root = Path("/tmp/shared-workspace")
+        manifest = mock.Mock()
+
+        with (
+            mock.patch("base_projects.workspace_context.resolve_workspace_root", return_value=workspace_root),
+            mock.patch("base_projects.workspace_context.effective_workspace_manifest", return_value="workspace.yaml"),
+            mock.patch("base_projects.workspace_configure.resolve_workspace_manifest", return_value=manifest),
+            mock.patch(
+                "base_projects.workspace_configure.workspace_configure_command", return_value=0
+            ) as configure_command,
+        ):
+            status = workspace_configure.workspace_configure_from_options(ctx, options)
+
+        self.assertEqual(status, 0)
+        configure_command.assert_called_once_with(ctx, workspace_root, manifest, dry_run=True, yes=False)
+
+    def test_workspace_configure_rejects_yes_without_apply(self) -> None:
+        ctx = mock.Mock()
+        options = mock.Mock(
+            output_format="text",
+            workspace=None,
+            workspace_manifest=None,
+            dry_run=False,
+            apply=False,
+            yes=True,
+        )
+
+        status = workspace_configure.workspace_configure_from_options(ctx, options)
+
+        self.assertEqual(status, 2)
+        ctx.log.error.assert_called_once_with("Option '--yes' requires '--apply' for workspace configure.")
+
+    def test_workspace_configure_rejects_apply_with_dry_run(self) -> None:
+        ctx = mock.Mock()
+        options = mock.Mock(
+            output_format="text",
+            workspace=None,
+            workspace_manifest=None,
+            dry_run=True,
+            apply=True,
+            yes=False,
+        )
+
+        status = workspace_configure.workspace_configure_from_options(ctx, options)
+
+        self.assertEqual(status, 2)
+        ctx.log.error.assert_called_once_with("Options '--apply' and '--dry-run' cannot be used together.")
+
+    def test_workspace_configure_apply_requires_yes_in_noninteractive_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            state_file = root / "basectl-calls"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_fake_basectl(base_home, state_file)
+            write_manifest(workspace / "base", "base")
+            write_git_remote(workspace / "base", "git@github.com:basefoundry/base.git")
+            write_workspace_manifest(
+                manifest_path,
+                (
+                    "schema_version: 1\nworkspace:\n  name: demo-suite\nrepos:\n"
+                    "  - name: base\n    url: git@github.com:basefoundry/base.git\n"
+                ),
+            )
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "configure",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest_path),
+                    "--apply",
+                ],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("Workspace configure plan:", stdout)
+        self.assertIn("confirmation is unavailable", stderr)
+        self.assertFalse(state_file.exists())
+
+    def test_confirm_workspace_configure_accepts_yes(self) -> None:
+        class TerminalInput(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        with mock.patch("sys.stdin", TerminalInput("yes\n")):
+            self.assertTrue(workspace_configure.confirm_workspace_configure())
 
     def test_configure_workspace_repo_passes_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
