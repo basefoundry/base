@@ -16,6 +16,28 @@ readonly BASE_DOCS_URL="https://github.com/basefoundry/base#readme"
     [[ "$output" == *"Open the Base documentation home page on GitHub."* ]]
 }
 
+@test "basectl docs parses options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/docs-arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/docs.sh"
+            base_arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_docs_subcommand_main --show-url
+        '
+
+    [ "$status" -eq 2 ]
+    [ "$(cat "$state_file")" = "parsed_options positionals option_specs -- --show-url" ]
+}
+
 @test "basectl docs opens the GitHub README in the platform browser" {
     local state_file="$TEST_TMPDIR/docs-open-state"
 
@@ -67,4 +89,16 @@ EOF
     [ "$status" -eq 2 ]
     [[ "$output" == *"basectl docs [options]"* ]]
     [[ "$output" == *"Unknown docs option '--unknown'."* ]]
+}
+
+@test "basectl docs preserves duplicate flags and help precedence" {
+    run_basectl docs --show-url --show-url
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "$BASE_DOCS_URL" ]
+
+    run_basectl docs extra --help
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"The 'docs' command does not accept positional arguments."* ]]
 }
