@@ -21,7 +21,7 @@ ISSUE_BRANCH_POLICY_WORKFLOW = WORKFLOW_DIR / "issue-branch-policy.yml"
 ISSUE_BRANCH_POLICY_TEMPLATE = REPO_ROOT / "templates" / "issue-branch-policy.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
-BASE_BASH_LIBS_GA_COMMIT = "b4243765726c133499feeabdc50154f99c0fec12"
+BASE_BASH_LIBS_GA_COMMIT = "6792c29e546ed7a6230046e4d54bfa1474cd3b13"
 
 
 def workflow_files() -> list[Path]:
@@ -649,7 +649,7 @@ def test_reusable_base_check_workflow_contract() -> None:
     assert "args=(check --ci \"$BASE_CHECK_PROJECT\" --format \"$BASE_CHECK_OUTPUT_FORMAT\")" in run_commands
     assert "BASE_BASH_LIBS_DIR" in run_commands
     assert "basefoundry/base-bash-libs" in str(steps)
-    assert "b4243765726c133499feeabdc50154f99c0fec12" in str(steps)
+    assert BASE_BASH_LIBS_GA_COMMIT in str(steps)
     assert "${{ inputs.base-ref || github.workflow_sha }}" in str(steps)
     assert "uses: basefoundry/base/.github/workflows/base-check.yml@<base-ref-or-sha>" in ci_docs
     assert "| `setup-mode` | `source-checkout` |" in ci_docs
@@ -682,7 +682,7 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
         "basefoundry/base-cli",
         "basefoundry/base-bash-libs",
     ]
-    assert "b4243765726c133499feeabdc50154f99c0fec12" in str(steps)
+    assert BASE_BASH_LIBS_GA_COMMIT in str(steps)
     assert "v0.4.3" in str(steps)
 
     for command in (

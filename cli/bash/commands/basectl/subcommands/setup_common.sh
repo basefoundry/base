@@ -116,25 +116,27 @@ setup_interactive_consent_available() {
     base_std_is_interactive
 }
 
-setup_read_confirmation_response() {
-    local response
+setup_ask_confirmation() {
+    local prompt="$1"
+    local response input_fd status
 
     if response="$(setup_test_confirm_response)"; then
-        printf '%s\n' "$response"
-        return 0
+        exec {input_fd}< <(printf '%s' "$response")
+        base_std_ask_yes_no "$prompt" no "$input_fd"
+        status=$?
+        exec {input_fd}<&-
+        return "$status"
     fi
 
     if [[ -r /dev/tty ]]; then
-        IFS= read -r response </dev/tty || return 1
+        base_std_ask_yes_no "$prompt" no
     else
-        IFS= read -r response || return 1
+        base_std_ask_yes_no "$prompt" no 0
     fi
-    printf '%s\n' "$response"
 }
 
 setup_require_linux_debian_system_consent() {
     local reason="$1"
-    local response
 
     setup_yes_enabled && return 0
 
@@ -146,17 +148,9 @@ setup_require_linux_debian_system_consent() {
     if [[ -n "${BASE_SETUP_TEST_STATE_DIR:-}" ]]; then
         setup_allow_test_hooks && touch "$BASE_SETUP_TEST_STATE_DIR/linux-consent-prompted"
     fi
-    printf "Proceed with Ubuntu/Debian setup changes? [y/N] " >&2
-    response="$(setup_read_confirmation_response)" || base_std_fatal_error "Ubuntu/Debian setup was not approved."
-    case "${response,,}" in
-        y|yes)
-            setup_enable_yes
-            return 0
-            ;;
-        *)
-            base_std_fatal_error "Ubuntu/Debian setup was not approved."
-            ;;
-    esac
+    setup_ask_confirmation "Proceed with Ubuntu/Debian setup changes?" || \
+        base_std_fatal_error "Ubuntu/Debian setup was not approved."
+    setup_enable_yes
 }
 
 setup_enable_recreate_venv() {

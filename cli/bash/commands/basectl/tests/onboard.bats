@@ -154,7 +154,7 @@ load ./basectl_helpers.bash
 @test "basectl onboard reads prompts from terminal fd when stdin is redirected" {
     local tty_input="$TEST_TMPDIR/onboard-tty"
 
-    printf 'y\nn\n' > "$tty_input"
+    printf 'yn' > "$tty_input"
 
     run env \
         HOME="$TEST_HOME" \
@@ -177,7 +177,7 @@ load ./basectl_helpers.bash
 @test "basectl onboard accepted flow runs setup profile doctor and projects" {
     local tty_input="$TEST_TMPDIR/onboard-tty"
 
-    printf 'y\ny\ny\n' > "$tty_input"
+    printf 'yyy' > "$tty_input"
 
     run env \
         HOME="$TEST_HOME" \

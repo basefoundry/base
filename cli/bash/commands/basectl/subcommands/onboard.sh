@@ -53,42 +53,40 @@ base_onboard_run_command() {
     "$BASE_HOME/bin/basectl" "$@"
 }
 
-base_onboard_read_prompt_answer() {
-    local answer_var="$1"
+base_onboard_prompt() {
+    local prompt="$1"
     local tty_fd="${BASE_ONBOARD_TTY_FD:-}"
     local tty_path="${BASE_ONBOARD_TTY_PATH:-/dev/tty}"
-
-    [[ -n "$answer_var" ]] || return 1
+    local input_fd
+    local status
 
     if [[ -n "$tty_fd" ]]; then
-        [[ "$tty_fd" =~ ^[0-9]+$ ]] || return 1
-        IFS= read -r -u "$tty_fd" "${answer_var:?}"
+        [[ "$tty_fd" =~ ^[0-9]+$ ]] || {
+            printf '%s\n' "No interactive terminal is available; rerun with --yes to accept defaults." >&2
+            return 1
+        }
+        base_std_ask_yes_no "$prompt" no "$tty_fd"
         return $?
     fi
 
-    [[ -r "$tty_path" ]] || return 1
-    IFS= read -r "${answer_var:?}" < "$tty_path"
-}
+    if [[ "$tty_path" == /dev/tty ]]; then
+        if [[ ! -r "$tty_path" ]]; then
+            printf '%s\n' "No interactive terminal is available; rerun with --yes to accept defaults." >&2
+            return 1
+        fi
+        base_std_ask_yes_no "$prompt" no
+        return $?
+    fi
 
-base_onboard_prompt() {
-    local prompt="$1"
-    local answer
-
-    printf '%s [y/N] ' "$prompt"
-    if ! base_onboard_read_prompt_answer answer; then
+    if ! exec {input_fd}< "$tty_path"; then
         printf '\n'
         printf '%s\n' "No interactive terminal is available; rerun with --yes to accept defaults." >&2
         return 1
     fi
-
-    case "$answer" in
-        y|Y|yes|YES|Yes)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+    base_std_ask_yes_no "$prompt" no "$input_fd"
+    status=$?
+    exec {input_fd}<&-
+    return "$status"
 }
 
 base_onboard_confirm() {

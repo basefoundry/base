@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: b4243765726c133499feeabdc50154f99c0fec12
+          ref: 6792c29e546ed7a6230046e4d54bfa1474cd3b13
           path: .base/base-bash-libs
 
       - name: Checkout base-cli source
