@@ -49,6 +49,29 @@ run_setup_common_script() {
     [ "$output" = "$expected_pythonpath:/opt/example/python" ]
 }
 
+@test "setup_common delegates dry-run truthiness to the shared stdlib" {
+    run_setup_common_script '
+        for value in true 1 yes on; do
+            BASE_BASH_LIBS_DRY_RUN="$value"
+            setup_is_dry_run || {
+                printf "expected dry-run value to be enabled: %s\n" "$value" >&2
+                exit 1
+            }
+        done
+        for value in "" false 0 no off; do
+            BASE_BASH_LIBS_DRY_RUN="$value"
+            if setup_is_dry_run; then
+                printf "expected dry-run value to be disabled: %s\n" "$value" >&2
+                exit 1
+            fi
+        done
+        printf "dry-run truthiness is shared\n"
+    '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "dry-run truthiness is shared" ]
+}
+
 @test "setup_common parses explicit warning check results" {
     local result_file="$TEST_STATE_DIR/check.result"
 

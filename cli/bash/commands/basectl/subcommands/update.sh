@@ -397,32 +397,19 @@ base_update_homebrew_install() {
 
 base_update_current_branch() {
     local repo="$1"
-    git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null
+    local branch
+
+    base_git_get_current_branch "$repo" branch || return 1
+    [[ -n "$branch" ]] || return 1
+    printf '%s\n' "$branch"
 }
 
 base_update_default_branch() {
     local repo="$1"
     local default_branch
 
-    if default_branch="$(git -C "$repo" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
-        default_branch="${default_branch#origin/}"
-        if [[ -n "$default_branch" ]]; then
-            printf '%s\n' "$default_branch"
-            return 0
-        fi
-    fi
-
-    if git -C "$repo" show-ref --verify --quiet refs/heads/main; then
-        printf '%s\n' main
-        return 0
-    fi
-
-    if git -C "$repo" show-ref --verify --quiet refs/heads/master; then
-        printf '%s\n' master
-        return 0
-    fi
-
-    return 1
+    base_git_detect_default_branch "$repo" default_branch || return 1
+    printf '%s\n' "$default_branch"
 }
 
 base_update_worktree_clean() {
@@ -535,11 +522,13 @@ base_update_subcommand_main() {
 
     base_std_log_debug "Running 'basectl update' for project '$resolved_project'."
 
+    if [[ "$resolved_project" == base ]] && base_update_is_homebrew_install "$base_home"; then
+        base_update_homebrew_install "$base_home" "$dry_run"
+        return $?
+    fi
+
+    base_update_source_git_library || return 1
     branch="$(base_update_current_branch "$repo")" || {
-        if [[ "$resolved_project" == base ]] && base_update_is_homebrew_install "$base_home"; then
-            base_update_homebrew_install "$base_home" "$dry_run"
-            return $?
-        fi
         base_std_log_error "Project '$resolved_project' repository '$repo' is not a Git repository."
         return 1
     }
@@ -566,7 +555,6 @@ base_update_subcommand_main() {
         return 0
     fi
 
-    base_update_source_git_library || return 1
     before_revision="$(base_update_head_revision "$repo")" || {
         base_std_log_error "Unable to read current revision for project '$resolved_project'."
         return 1

@@ -80,7 +80,7 @@ setup_backup_timestamp() {
 }
 
 setup_is_dry_run() {
-    [[ "${BASE_BASH_LIBS_DRY_RUN-}" == true ]]
+    base_std_is_dry_run
 }
 
 setup_enable_yes() {

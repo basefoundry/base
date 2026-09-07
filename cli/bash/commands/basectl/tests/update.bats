@@ -457,7 +457,6 @@ EOF
             base_update_current_branch() { printf "%s\n" master; }
             base_update_default_branch() { printf "%s\n" master; }
             base_update_worktree_clean() { return 1; }
-            base_update_source_git_library() { printf "git library should not load\n"; return 99; }
             base_git_update_repo() { printf "git update should not run\n"; return 99; }
             base_update_run_setup() { printf "setup should not run\n"; return 99; }
             base_update_subcommand_main
@@ -465,7 +464,6 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Project 'base' repository has tracked local changes."* ]]
-    [[ "$output" != *"git library should not load"* ]]
     [[ "$output" != *"git update should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
 }
@@ -487,10 +485,12 @@ EOF
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$repo" \
+        BASE_BASH_LIBS_DIR="$TEST_TMPDIR/base-bash-libs/lib/bash" \
         BASE_TEST_AFTER_UPDATE="$TEST_TMPDIR/after-update" \
         bash -c '
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            import_base_lib git/lib_git.sh
             base_update_source_git_library() { :; }
             base_git_update_repo() { printf "git update repo=%s branch=%s\n" "$1" "$3"; }
             base_update_head_revision() {
@@ -530,6 +530,34 @@ EOF
     [[ "$output" == *"Project 'base' update only runs on default branch 'main'; current branch is 'feature/example'."* ]]
     [[ "$output" != *"clean should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
+}
+
+@test "basectl update uses a remote-only default branch" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf 'base\n' > "$repo/data.txt"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" update-ref refs/remotes/origin/main HEAD
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_UPDATE_REPO="$repo" \
+        BASE_BASH_LIBS_DIR="$(base_bash_libs_fixture_dir)" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_UPDATE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_UPDATE_REPO/base_manifest.yaml"
+            }
+            base_update_subcommand_main --dry-run
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project 'base' update only runs on default branch 'main'; current branch is 'master'."* ]]
 }
 
 @test "basectl update skips setup for already up-to-date repositories" {
