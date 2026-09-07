@@ -219,8 +219,10 @@ base_gh_branch_merged_to_ref() {
 }
 
 base_gh_prune_github_ready() {
+    local gh_path
+
     if [[ -z "${_base_gh_prune_github_ready+x}" ]]; then
-        if command -v gh >/dev/null 2>&1; then
+        if base_std_command_path gh_path gh && [[ -n "$gh_path" ]]; then
             _base_gh_prune_github_ready=1
         else
             _base_gh_prune_github_ready=0

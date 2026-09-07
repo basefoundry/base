@@ -647,13 +647,14 @@ base_gh_usage_error() {
 
 base_gh_require_command() {
     local command="$1"
+    local command_path
 
     if [[ "$command" == "gh" ]]; then
         base_gh_require_cli
         return $?
     fi
 
-    command -v "$command" >/dev/null 2>&1 || {
+    base_std_command_path command_path "$command" && [[ -n "$command_path" ]] || {
         base_gh_error "Required command '$command' was not found on PATH."
         return 1
     }

@@ -17,6 +17,9 @@ see [Release Process](release-process.md).
 For self-guided or live walkthrough material, see
 [Presentations](presentations/README.md).
 
+For the behavior boundaries of the Base Bash-libs dogfooding work, see the
+[Base Bash-libs Migration Matrix](base-bash-libs-migration-matrix.md).
+
 Base's product outcome is a local operating contract for deterministic readiness
 and handoff across independent Git repositories. The durable loop is
 inventory -> prepare -> verify -> trust -> onboard -> hand off. See [Why Base](why-base.md)

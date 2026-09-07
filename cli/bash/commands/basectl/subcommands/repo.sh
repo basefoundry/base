@@ -2138,6 +2138,7 @@ base_repo_clone_check_destination() {
 base_repo_clone_with_gh() {
     local clone_url="$4"
     local dry_run="$1"
+    local gh_path
     local parent
     local repo="$2"
     local status
@@ -2167,7 +2168,7 @@ base_repo_clone_with_gh() {
         return 0
     fi
 
-    command -v gh >/dev/null 2>&1 || {
+    base_std_command_path gh_path gh && [[ -n "$gh_path" ]] || {
         base_std_log_error "GitHub CLI 'gh' is required for repository clone."
         return 1
     }

@@ -57,6 +57,8 @@ setup_recovery_linux_github_cli() {
 }
 
 setup_find_linux_python_bin() {
+    local python_path
+
     if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" ]]; then
         setup_reject_test_hook_if_disallowed BASE_SETUP_PYTHON_BIN
         [[ -x "${BASE_SETUP_PYTHON_BIN}" ]] || return 1
@@ -64,8 +66,8 @@ setup_find_linux_python_bin() {
         return 0
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
-        command -v python3
+    if base_std_command_path python_path python3; then
+        printf '%s\n' "$python_path"
         return 0
     fi
 
@@ -90,9 +92,11 @@ setup_test_linux_tool_forced_missing() {
 
 setup_linux_command_path() {
     local command_name="$1"
+    local command_path
 
     setup_test_linux_tool_forced_missing "$command_name" && return 1
-    command -v "$command_name" 2>/dev/null
+    base_std_command_path command_path "$command_name" || return 1
+    printf '%s\n' "$command_path"
 }
 
 setup_linux_python_venv_available() {
@@ -300,10 +304,11 @@ setup_linux_debian_apt_prerequisite_command() {
 }
 
 setup_linux_debian_apt_prerequisites_installed() {
+    local command_path
     local package
     local status
 
-    command -v dpkg-query >/dev/null 2>&1 || return 1
+    base_std_command_path command_path dpkg-query || return 1
 
     for package in "$@"; do
         status="$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null)" || return 1
@@ -339,6 +344,7 @@ setup_run_linux_debian_apt_prerequisites() {
 
 setup_run_linux_debian_github_cli_prerequisite() {
     local arch
+    local command_path
     local keyring_tmp
     local source_tmp
 
@@ -362,8 +368,8 @@ setup_run_linux_debian_github_cli_prerequisite() {
     setup_require_linux_debian_system_consent \
         "Ubuntu/Debian setup can install apt packages, configure package repositories, and run platform bootstraps." || return $?
 
-    command -v curl >/dev/null 2>&1 || base_std_fatal_error "curl is required to install GitHub CLI 'gh' from its official Debian/Ubuntu apt repository."
-    command -v dpkg >/dev/null 2>&1 || base_std_fatal_error "dpkg is required to configure GitHub CLI's official Debian/Ubuntu apt repository."
+    base_std_command_path command_path curl || base_std_fatal_error "curl is required to install GitHub CLI 'gh' from its official Debian/Ubuntu apt repository."
+    base_std_command_path command_path dpkg || base_std_fatal_error "dpkg is required to configure GitHub CLI's official Debian/Ubuntu apt repository."
     arch="$(dpkg --print-architecture)" || base_std_fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
     [[ -n "$arch" ]] || base_std_fatal_error "Unable to read Debian architecture for GitHub CLI apt repository setup."
 

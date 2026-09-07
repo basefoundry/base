@@ -62,7 +62,7 @@ setup_recovery_python() {
 }
 
 setup_find_brew_bin() {
-    local candidate
+    local candidate brew_path
 
     if [[ -n "${BASE_SETUP_BREW_BIN+x}" ]]; then
         if [[ -x "${BASE_SETUP_BREW_BIN}" ]]; then
@@ -72,8 +72,8 @@ setup_find_brew_bin() {
         return 1
     fi
 
-    if command -v brew >/dev/null 2>&1; then
-        command -v brew
+    if base_std_command_path brew_path brew; then
+        printf '%s\n' "$brew_path"
         return 0
     fi
 
@@ -197,6 +197,7 @@ setup_log_homebrew_mutable_policy() {
 setup_fetch_homebrew_installer() {
     local installer_url="$1"
     local target="$2"
+    local curl_path
     local installer_path
 
     case "$installer_url" in
@@ -208,8 +209,8 @@ setup_fetch_homebrew_installer() {
             cp "$installer_url" "$target"
             ;;
         *)
-            command -v curl >/dev/null 2>&1 || return 127
-            curl -fsSL "$installer_url" -o "$target"
+            base_std_command_path curl_path curl || return 127
+            "$curl_path" -fsSL "$installer_url" -o "$target"
             ;;
     esac
 }
@@ -356,7 +357,7 @@ setup_install_python() {
 }
 
 setup_find_python_bin() {
-    local brew_bin formula prefix candidate
+    local brew_bin formula prefix candidate python_path
     local candidates=()
 
     if [[ -n "${BASE_SETUP_PYTHON_BIN:-}" ]]; then
@@ -396,8 +397,8 @@ setup_find_python_bin() {
         fi
     fi
 
-    if setup_allow_system_python && command -v python3 >/dev/null 2>&1; then
-        command -v python3
+    if setup_allow_system_python && base_std_command_path python_path python3; then
+        printf '%s\n' "$python_path"
         return 0
     fi
 
