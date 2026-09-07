@@ -57,8 +57,7 @@ base_projects_source_python() {
     local python_bin
     local base_pythonpath
 
-    python_bin="$(command -v python3 2>/dev/null || true)"
-    [[ -n "$python_bin" ]] || return 1
+    base_std_command_path python_bin python3 || return 1
 
     base_pythonpath="$(base_projects_source_pythonpath)"
     env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$base_pythonpath" \

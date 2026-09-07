@@ -288,6 +288,7 @@ setup_recovery_project_layer() {
 }
 
 setup_notify_completion() {
+    local command_path
     local exit_code="$1"
     local current_seconds
     local elapsed_seconds=0
@@ -297,7 +298,7 @@ setup_notify_completion() {
     setup_notifications_enabled || return 0
     setup_is_dry_run && return 0
     [[ "$OSTYPE" == darwin* ]] || return 0
-    if ! command -v osascript >/dev/null 2>&1; then
+    if ! base_std_command_path command_path osascript; then
         if setup_notifications_forced; then
             base_std_log_warn "Setup notification was requested, but 'osascript' is not available on this Mac."
         fi
@@ -330,7 +331,10 @@ end run' "$title" "$message" >/dev/null 2>&1 || true
 }
 
 setup_command_path() {
-    command -v "$1" 2>/dev/null || return 1
+    local command_path
+
+    base_std_command_path command_path "${1-}" || return 1
+    printf '%s\n' "$command_path"
 }
 
 setup_current_machine() {
@@ -338,11 +342,11 @@ setup_current_machine() {
 }
 
 setup_executable_architecture() {
-    local output path="$1"
+    local command_path output path="$1"
 
     [[ -n "$path" ]] || return 1
-    command -v file >/dev/null 2>&1 || return 1
-    output="$(file -L "$path" 2>/dev/null || true)"
+    base_std_command_path command_path file || return 1
+    output="$("$command_path" -L "$path" 2>/dev/null || true)"
     case "$output" in
         *x86_64*arm64*|*arm64*x86_64*)
             printf '%s\n' "universal"
@@ -479,12 +483,12 @@ setup_pythonpath() {
 }
 
 setup_diagnostics_python_bin() {
-    local candidate python_bin venv_dir
+    local candidate python_bin python_path venv_dir
     local candidates=()
 
     setup_ensure_cached_paths
-    if command -v python3 >/dev/null 2>&1; then
-        candidates+=("$(command -v python3)")
+    if base_std_command_path python_path python3; then
+        candidates+=("$python_path")
     fi
     if python_bin="$(setup_find_python_bin)"; then
         candidates+=("$python_bin")

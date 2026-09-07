@@ -15,9 +15,10 @@ readonly BASE_GITHUB_ACTIONS_INTEGRATION_ID
 BASE_REPO_GITHUB_REPO_CREATED=0
 
 base_repo_homebrew_gh_outdated() {
+    local brew_path
     local output=""
 
-    command -v brew >/dev/null 2>&1 || return 1
+    base_std_command_path brew_path brew && [[ -n "$brew_path" ]] || return 1
     HOMEBREW_NO_AUTO_UPDATE=1 brew list gh >/dev/null 2>&1 || return 1
     output="$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated gh 2>/dev/null || true)"
     printf '%s\n' "$output" | awk '$1 == "gh" { found = 1 } END { exit found ? 0 : 1 }'

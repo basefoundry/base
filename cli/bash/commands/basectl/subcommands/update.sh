@@ -217,15 +217,15 @@ base_update_homebrew_requires_tap_trust() {
 }
 
 base_update_json_python_bin() {
-    local candidate
+    local candidate python_path
 
     if [[ -n "${BASE_UPDATE_JSON_PYTHON:-}" && -x "${BASE_UPDATE_JSON_PYTHON:-}" ]]; then
         printf '%s\n' "$BASE_UPDATE_JSON_PYTHON"
         return 0
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
-        command -v python3
+    if base_std_command_path python_path python3; then
+        printf '%s\n' "$python_path"
         return 0
     fi
 
@@ -343,6 +343,7 @@ base_update_homebrew_install() {
     local dry_run="$2"
     local after_version
     local before_version
+    local brew_path
     local exit_code
     local package
 
@@ -355,7 +356,7 @@ base_update_homebrew_install() {
         return 0
     fi
 
-    if ! command -v brew >/dev/null 2>&1; then
+    if ! base_std_command_path brew_path brew || [[ -z "$brew_path" ]]; then
         base_std_log_error "Homebrew-managed Base install detected, but 'brew' is not available in PATH."
         return 1
     fi

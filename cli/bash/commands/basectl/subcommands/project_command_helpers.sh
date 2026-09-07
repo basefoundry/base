@@ -180,13 +180,17 @@ base_project_run_shell_command() {
 
 base_validate_command_runner() {
     local runner="$1"
+    local uv_path
 
     case "$runner" in
         "")
             return 0
             ;;
         uv)
-            if command -v uv >/dev/null 2>&1 || [[ -n "${HOME:-}" && -x "$HOME/.local/bin/uv" ]]; then
+            if base_std_command_path uv_path uv && [[ -n "$uv_path" ]]; then
+                return 0
+            fi
+            if [[ -n "${HOME:-}" && -x "$HOME/.local/bin/uv" ]]; then
                 return 0
             fi
             base_std_fatal_error "Command runner 'uv' is not available. Install uv or remove runner: uv from the project manifest."

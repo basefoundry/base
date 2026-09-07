@@ -26,10 +26,10 @@ base_docs_usage_error() {
 }
 
 base_docs_platform_opener() {
-    local opener
+    local opener opener_path
 
     for opener in open xdg-open wslview; do
-        if command -v "$opener" >/dev/null 2>&1; then
+        if base_std_command_path opener_path "$opener" && [[ -n "$opener_path" ]]; then
             printf '%s\n' "$opener"
             return 0
         fi
