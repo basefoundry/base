@@ -184,6 +184,14 @@ EOF
         PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -c '
             base_std_log_debug() { :; }
+            base_std_command_path() {
+                local result_name="$1"
+                local command_name="$2"
+                local command_path
+                command_path="$(type -P "$command_name" 2>/dev/null || true)"
+                printf -v "$result_name" '%s' "$command_path"
+                [[ -n "$command_path" ]]
+            }
             base_std_log_error() { printf "ERROR: %s\n" "$*"; }
             base_std_log_info() { printf "INFO: %s\n" "$*"; }
             base_std_log_warn() { printf "WARN: %s\n" "$*"; }
