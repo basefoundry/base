@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basefoundry.org/schemas/release-bom-v1.json",
+  "title": "Base ecosystem release BOM",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release", "components", "combinations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "version", "tag", "commit"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+        "tag": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/component"}
+    },
+    "combinations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/combination"}
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "version", "commit", "source_mode", "api_schema_version", "platforms", "required", "result", "evidence"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
+        "version": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_mode": {"enum": ["release", "tag", "moving"]},
+        "api_schema_version": {"type": "string", "minLength": 1},
+        "platforms": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "required": {"type": "boolean"},
+        "result": {"enum": ["passed", "failed", "not_tested"]},
+        "evidence": {"type": "string", "minLength": 1}
+      }
+    },
+    "combination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "participants", "platform", "required", "result", "evidence"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "participants": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "platform": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean"},
+        "result": {"enum": ["passed", "failed", "not_tested"]},
+        "evidence": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

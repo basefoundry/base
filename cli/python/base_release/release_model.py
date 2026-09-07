@@ -21,6 +21,7 @@ class ReleaseContext:
     tag_name: str
     version_file: Path
     changelog: Path
+    bom_path: Path | None = None
 
 
 @dataclass(frozen=True)

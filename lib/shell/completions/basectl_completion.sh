@@ -770,14 +770,17 @@ _base_basectl_completion() {
             if ((COMP_CWORD == 2)); then
                 _base_basectl_completion_compgen "check plan notes publish" "$cur"
             elif [[ "${COMP_WORDS[2]:-}" == "check" ]]; then
-                _base_basectl_completion_compgen "--version --manifest --format -h --help" "$cur"
+                _base_basectl_completion_compgen "--version --manifest --bom --format -h --help" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
-                    check|plan|notes)
+                    check)
+                        _base_basectl_completion_compgen "--version --manifest --bom -h --help" "$cur"
+                        ;;
+                    plan|notes)
                         _base_basectl_completion_compgen "--version --manifest -h --help" "$cur"
                         ;;
                     publish)
-                        _base_basectl_completion_compgen "--version --manifest --dry-run --yes -h --help" "$cur"
+                        _base_basectl_completion_compgen "--version --manifest --bom --dry-run --yes -h --help" "$cur"
                         ;;
                 esac
             fi

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "release": {
+    "repository": "basefoundry/base-bash-libs",
+    "version": "2.1.0",
+    "tag": "v2.1.0",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "components": [
+    {
+      "repository": "basefoundry/base-bash-libs",
+      "version": "2.1.0",
+      "tag": "v2.1.0",
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_mode": "release",
+      "api_schema_version": "2",
+      "platforms": ["macos-14", "ubuntu-24.04"],
+      "required": true,
+      "result": "passed",
+      "evidence": "run://tests/validate.sh"
+    },
+    {
+      "repository": "basefoundry/base",
+      "version": "1.8.0",
+      "tag": "v1.8.0",
+      "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_mode": "release",
+      "api_schema_version": "manifest-1",
+      "platforms": ["macos-14", "ubuntu-24.04"],
+      "required": true,
+      "result": "passed",
+      "evidence": "run://base-release-check"
+    }
+  ],
+  "combinations": [
+    {
+      "name": "released-base-bash-libs-with-base",
+      "participants": ["basefoundry/base-bash-libs", "basefoundry/base"],
+      "platform": "ubuntu-24.04",
+      "required": true,
+      "result": "passed",
+      "evidence": "run://ecosystem-release-train/123"
+    }
+  ]
+}

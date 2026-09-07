@@ -12,7 +12,7 @@ Usage:
   basectl release publish --version <version> [options]
 
 Subcommands:
-  check    Verify release readiness for version, changelog, Git, and GitHub.
+  check    Verify release readiness for version, changelog, Git, GitHub, and an optional BOM.
   plan     Show the release plan without creating tags or releases.
   notes    Print the changelog notes for the target version.
   publish  Tag the release and create the GitHub Release.
@@ -20,6 +20,7 @@ Subcommands:
 Options:
   --version <version>  Release version to inspect.
   --manifest <path>   Use a specific base_manifest.yaml path.
+  --bom <path>         Validate a release BOM during check or publish.
   --format <text|csv|tsv|yaml|json>
                       Select the release check output format.
   --dry-run           Print publish actions without creating tags or releases.
@@ -57,7 +58,7 @@ base_release_leaf_usage() {
     if [[ "$release_command" == "publish" ]]; then
         cat <<EOF
 Usage:
-  basectl release publish --version <version> [--manifest <path>] [--dry-run] [--yes]
+  basectl release publish --version <version> [--manifest <path>] [--bom <path>] [--dry-run] [--yes]
 
 Purpose:
   $purpose
@@ -65,6 +66,7 @@ Purpose:
 Options:
   --version <version>  Release version to publish.
   --manifest <path>    Use a specific base_manifest.yaml path.
+  --bom <path>         Validate a release BOM before publishing.
   --dry-run            Print publish actions without creating tags or releases.
   --yes                Publish without an interactive confirmation prompt.
   -h, --help           Show this help text.
@@ -75,7 +77,7 @@ EOF
     if [[ "$release_command" == "check" ]]; then
         cat <<EOF
 Usage:
-  basectl release check --version <version> [--manifest <path>] [--format <text|csv|tsv|yaml|json>]
+  basectl release check --version <version> [--manifest <path>] [--bom <path>] [--format <text|csv|tsv|yaml|json>]
 
 Purpose:
   $purpose
@@ -83,6 +85,7 @@ Purpose:
 Options:
   --version <version>  Release version to inspect.
   --manifest <path>    Use a specific base_manifest.yaml path.
+  --bom <path>         Validate a release BOM during the readiness check.
   --format <text|csv|tsv|yaml|json> Select the release check output format.
   -h, --help           Show this help text.
 EOF
