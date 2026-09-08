@@ -58,3 +58,35 @@ EOF
     [[ "$output" == *"ERROR: Option '--keep-last' requires an argument."* ]]
     [[ "$output" != *"FATAL"* ]]
 }
+
+@test "basectl clean validates owned options without changing Python pass-through argv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_clean" ]]; then
+    shift 2
+    printf 'ARGC=%s\n' "$#"
+    local_index=0
+    for argument in "$@"; do
+        printf 'ARG%s=<%s>\n' "$local_index" "$argument"
+        local_index=$((local_index + 1))
+    done
+    exit 0
+fi
+printf 'unexpected clean python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl clean --older-than --yes -- --python-flag --foreign-value
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGC=5"* ]]
+    [[ "$output" == *"ARG0=<--older-than>"* ]]
+    [[ "$output" == *"ARG1=<--yes>"* ]]
+    [[ "$output" == *"ARG2=<-->"* ]]
+    [[ "$output" == *"ARG3=<--python-flag>"* ]]
+    [[ "$output" == *"ARG4=<--foreign-value>"* ]]
+}

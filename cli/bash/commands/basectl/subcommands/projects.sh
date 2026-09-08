@@ -4,6 +4,7 @@ _base_projects_subcommand_sourced=1
 readonly _base_projects_subcommand_sourced
 
 source "$BASE_HOME/lib/base/base_cli_runtime.sh"
+import_base_lib arg/lib_arg.sh
 
 base_projects_subcommand_usage() {
     cat <<'EOF'
@@ -98,7 +99,11 @@ base_projects_run_list() {
 
 base_projects_subcommand_main() {
     local project_command="${1:-}"
-    local args=()
+    local args=() parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=("debug|flag|-v") positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -A parsed_options=()
 
     case "$project_command" in
         ""|-h|--help)
@@ -117,6 +122,7 @@ base_projects_subcommand_main() {
     while (($# > 0)); do
         case "$1" in
             -v)
+                parser_args+=("$1")
                 args+=(--debug)
                 shift
                 ;;
@@ -130,6 +136,11 @@ base_projects_subcommand_main() {
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_projects_usage_error "Could not parse projects list arguments."
+        return $?
+    fi
 
     base_projects_run_list "${args[@]}"
 }

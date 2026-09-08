@@ -3,6 +3,8 @@
 _base_clean_subcommand_sourced=1
 readonly _base_clean_subcommand_sourced
 
+import_base_lib arg/lib_arg.sh
+
 base_clean_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -27,7 +29,16 @@ base_clean_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
     local has_older_than=0
     local has_keep_last=0
-    local args=()
+    local args=() parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "debug|flag|-v"
+        "older_than|value|--older-than"
+        "keep_last|value|--keep-last"
+    )
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($# > 0)); do
         case "$1" in
@@ -36,6 +47,7 @@ base_clean_subcommand_main() {
                 return 0
                 ;;
             -v)
+                parser_args+=("$1")
                 args+=(--debug)
                 shift
                 ;;
@@ -52,6 +64,7 @@ base_clean_subcommand_main() {
                         base_std_print_error "Option '$1' requires an argument."
                         return 2
                     }
+                    parser_args+=("$1=$2")
                     args+=("$2")
                     shift 2
                 else
@@ -60,11 +73,13 @@ base_clean_subcommand_main() {
                 ;;
             --older-than=*)
                 has_older_than=1
+                parser_args+=("$1")
                 args+=("$1")
                 shift
                 ;;
             --keep-last=*)
                 has_keep_last=1
+                parser_args+=("$1")
                 args+=("$1")
                 shift
                 ;;
@@ -74,6 +89,15 @@ base_clean_subcommand_main() {
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_clean_subcommand_usage >&2
+        base_std_print_error "Could not parse clean arguments."
+        return 2
+    fi
+
+    has_older_than="${parsed_options[older_than]:-0}"
+    has_keep_last="${parsed_options[keep_last]:-0}"
 
     if (( ! has_older_than && ! has_keep_last )); then
         base_clean_subcommand_usage >&2
