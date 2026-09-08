@@ -157,6 +157,8 @@ jobs:
         run: |
           mkdir -p "$HOME/.base.d"
           {
+            printf '\nworkspace:\n'
+            printf '  root: %s\n' "$GITHUB_WORKSPACE/.."
             printf '\nide:\n'
             printf '  enabled: false\n'
           } >> "$HOME/.base.d/config.yaml"
