@@ -8,6 +8,8 @@ _base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 
 # shellcheck source=/dev/null
 source "$_base_project_command_helpers_path"
 
+import_base_lib arg/lib_arg.sh
+
 base_build_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -133,7 +135,18 @@ base_build_subcommand_main() {
     local project="" explicit_project="" wrapper resolve_output
     local dry_run=0 list_targets=0 environment_prepared=0
     local output_format="text"
-    local args=() extra_args=() targets=()
+    local args=() extra_args=() targets=() parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "debug|flag|-v"
+        "workspace|value|--workspace"
+        "project|value|--project"
+        "dry_run|flag|--dry-run"
+        "list_targets|flag|--list"
+        "format|value|--format"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -147,6 +160,7 @@ base_build_subcommand_main() {
                 return 0
                 ;;
             -v)
+                parser_args+=("$1")
                 args+=(--debug)
                 shift
                 ;;
@@ -155,10 +169,12 @@ base_build_subcommand_main() {
                     base_build_usage_error "Option '--workspace' requires an argument."
                     return $?
                 }
+                parser_args+=("--workspace=$2")
                 args+=(--workspace "$2")
                 shift 2
                 ;;
             --workspace=*)
+                parser_args+=("$1")
                 args+=("$1")
                 shift
                 ;;
@@ -172,14 +188,15 @@ base_build_subcommand_main() {
                     return $?
                 }
                 explicit_project="$2"
+                parser_args+=("--project=$2")
                 shift 2
                 ;;
             --dry-run)
-                dry_run=1
+                parser_args+=("$1")
                 shift
                 ;;
             --list)
-                list_targets=1
+                parser_args+=("$1")
                 shift
                 ;;
             --format)
@@ -187,7 +204,7 @@ base_build_subcommand_main() {
                     base_build_usage_error "Option '--format' requires an argument."
                     return $?
                 }
-                output_format="$2"
+                parser_args+=("--format=$2")
                 shift 2
                 ;;
             -*)
@@ -195,11 +212,22 @@ base_build_subcommand_main() {
                 return $?
                 ;;
             *)
-                targets+=("$1")
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_build_usage_error "Could not parse build arguments."
+        return $?
+    fi
+
+    targets=("${positionals[@]}")
+    explicit_project="${parsed_options[project]:-}"
+    dry_run="${parsed_options[dry_run]:-0}"
+    list_targets="${parsed_options[list_targets]:-0}"
+    output_format="${parsed_options[format]:-text}"
 
     [[ "$output_format" == "text" || "$output_format" == "csv" || "$output_format" == "tsv" || "$output_format" == "yaml" || "$output_format" == "json" ]] || {
         base_build_usage_error "Unsupported build format '$output_format'. Expected text, csv, tsv, yaml, or json."
