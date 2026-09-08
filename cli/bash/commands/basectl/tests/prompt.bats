@@ -14,6 +14,28 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--output <path>"* ]]
 }
 
+@test "basectl prompt parses options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/prompt-arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/prompt.sh"
+            base_arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_prompt_subcommand_main -v product-self-review --output --show-url
+        '
+
+    [ "$status" -eq 2 ]
+    [ "$(cat "$state_file")" = "parsed_options positionals option_specs -- -v product-self-review --output=--show-url" ]
+}
+
 @test "basectl prompt leaves scope output help to rendered prompts" {
     run_basectl prompt list --help
 
@@ -119,6 +141,35 @@ EOF
     [ "$(cat "$state_file")" = "product-self-review --output $output_path" ]
 }
 
+@test "basectl prompt preserves an option-looking output path" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local state_file="$TEST_TMPDIR/prompt-output-option-state"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
+    shift 2
+    printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
+    printf '# rendered prompt\n'
+    exit 0
+fi
+printf 'unexpected prompt python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROMPT_STATE="$state_file" \
+        "$BASE_REPO_ROOT/bin/basectl" prompt product-self-review --output --show-url
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"# rendered prompt"* ]]
+    [ "$(cat "$state_file")" = "product-self-review --output --show-url" ]
+}
+
 @test "basectl prompt list delegates to the Python prompt renderer" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
 
@@ -156,6 +207,8 @@ EOF
         BASE_HOME="$base_home" \
         BASE_REPO_ROOT="$BASE_REPO_ROOT" \
         bash -c '
+            source "$BASE_BASH_LIBS_DIR/std/lib_std.sh"
+            import_base_lib() { source "$BASE_BASH_LIBS_DIR/$1"; }
             source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/prompt.sh"
             base_prompt_subcommand_main list
         '

@@ -4,6 +4,8 @@
 _base_prompt_subcommand_sourced=1
 readonly _base_prompt_subcommand_sourced
 
+import_base_lib arg/lib_arg.sh
+
 base_prompt_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -63,11 +65,17 @@ base_prompt_usage_error() {
 
 base_prompt_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local debug=0
     local output_path=""
-    local prompt_args=()
+    local prompt_args=() parse_args=()
     local renderer_args=()
     local output_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "debug|flag|-v"
+        "output|value|--output"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -80,7 +88,7 @@ base_prompt_subcommand_main() {
                 return $?
                 ;;
             -v)
-                debug=1
+                parse_args+=("$1")
                 shift
                 ;;
             --output)
@@ -89,7 +97,11 @@ base_prompt_subcommand_main() {
                     base_prompt_usage_error "Option '--output' requires a path."
                     return $?
                 fi
-                output_path="$1"
+                # The legacy parser accepts any following token as the path,
+                # including one that looks like a recognized option. Encode
+                # the value with equals syntax so base_arg_parse preserves
+                # that contract instead of treating it as a missing value.
+                parse_args+=("--output=$1")
                 shift
                 ;;
             -*)
@@ -98,25 +110,32 @@ base_prompt_subcommand_main() {
                 ;;
             *)
                 prompt_args+=("$1")
+                parse_args+=("$1")
                 shift
                 ;;
         esac
     done
 
-    if ((${#prompt_args[@]} == 0)); then
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parse_args[@]}"; then
+        base_prompt_subcommand_usage >&2
+        return 2
+    fi
+
+    if ((${#positionals[@]} == 0)); then
         base_prompt_usage_error "The 'prompt' command requires 'list' or a prompt name."
         return $?
     fi
-    if ((${#prompt_args[@]} > 1)); then
+    if ((${#positionals[@]} > 1)); then
         base_prompt_usage_error "The 'prompt' command accepts exactly one argument."
         return $?
     fi
 
-    ((debug)) && renderer_args+=(--debug)
+    [[ "${parsed_options[debug]:-}" == "1" ]] && renderer_args+=(--debug)
+    output_path="${parsed_options[output]:-}"
     [[ -z "$output_path" ]] || output_args+=(--output "$output_path")
 
     [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
     BASE_CLI_DISPLAY_COMMAND="basectl prompt" \
         "$wrapper" --project base base_prompt \
-        "${renderer_args[@]}" "${prompt_args[@]}" "${output_args[@]}"
+        "${renderer_args[@]}" "${positionals[@]}" "${output_args[@]}"
 }
