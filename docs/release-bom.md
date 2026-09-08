@@ -17,7 +17,9 @@ release BOM contains:
 Required rows must use an immutable release or tag source, report `passed`, and
 include evidence. Moving-source rows are allowed only as advisory rows and do
 not block a release. The validator also rejects duplicate repositories, missing
-participants, mutable release identities, and version or commit mismatches.
+participants, a release repository absent from the component list or required
+combinations, single-repository combinations, mutable release identities, and
+version or commit mismatches.
 
 Validate and fingerprint a BOM locally:
 

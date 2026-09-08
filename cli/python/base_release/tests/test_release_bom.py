@@ -91,6 +91,34 @@ def test_required_failed_combination_is_rejected() -> None:
         validate_bom(document)
 
 
+def test_release_repository_must_be_a_declared_component() -> None:
+    document = valid_bom()
+    document["components"] = document["components"][1:]
+    with pytest.raises(ReleaseBomError, match="release.repository must be declared"):
+        validate_bom(document)
+
+
+def test_required_combination_must_include_release_repository() -> None:
+    document = valid_bom()
+    document["combinations"][0]["participants"] = ["basefoundry/base"]
+    with pytest.raises(ReleaseBomError, match="at least two repositories"):
+        validate_bom(document)
+
+    document["combinations"][0]["participants"] = ["basefoundry/base", "basefoundry/base-cli"]
+    with pytest.raises(ReleaseBomError, match="must include release.repository"):
+        validate_bom(document)
+
+
+def test_combinations_require_two_distinct_participants() -> None:
+    document = valid_bom()
+    document["combinations"][0]["participants"] = [
+        "basefoundry/base-bash-libs",
+        "basefoundry/base-bash-libs",
+    ]
+    with pytest.raises(ReleaseBomError, match="at least two repositories"):
+        validate_bom(document)
+
+
 def test_commit_and_version_mismatch_are_rejected() -> None:
     document = valid_bom()
     with pytest.raises(ReleaseBomError, match="does not match '2.2.0'"):
