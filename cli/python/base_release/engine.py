@@ -120,6 +120,7 @@ def build_release_context(ctx: base_cli.Context, args: ReleaseArguments) -> Rele
         tag_name=f"{release.tag_prefix}{args.version}",
         version_file=project_root / release.version_file,
         changelog=project_root / release.changelog,
+        bom_path=(manifest_path.parent / args.bom_path).resolve() if args.bom_path else None,
     )
 
 

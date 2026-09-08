@@ -33,7 +33,21 @@ load ./basectl_helpers.bash
 @test "basectl release leaves print scoped public help without Python runtime options" {
     local command
 
-    for command in check plan notes; do
+    run_basectl release check --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl release check --version <version> [--manifest <path>] [--bom <path>]"* ]]
+    [[ "$output" == *"--bom <path>"* ]]
+    [[ "$output" != *"--dry-run"* ]]
+    [[ "$output" != *"--yes"* ]]
+    [[ "$output" != *"--quiet"* ]]
+    [[ "$output" != *"--debug"* ]]
+    [[ "$output" != *"--environment"* ]]
+    [[ "$output" != *"--config"* ]]
+    [[ "$output" != *"--keep-temp"* ]]
+    [[ "$output" != *"--log-file"* ]]
+
+    for command in plan notes; do
         run_basectl release "$command" --help
 
         [ "$status" -eq 0 ]
@@ -53,7 +67,7 @@ load ./basectl_helpers.bash
     run_basectl release publish --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl release publish --version <version> [--manifest <path>] [--dry-run] [--yes]"* ]]
+    [[ "$output" == *"basectl release publish --version <version> [--manifest <path>] [--bom <path>] [--dry-run] [--yes]"* ]]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"--yes"* ]]
     [[ "$output" != *"--quiet"* ]]
@@ -116,5 +130,5 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"release_commands=check plan notes publish"* ]]
     [[ "$output" == *"release_check_options=--version --manifest"* ]]
-    [[ "$output" == *"release_publish_options=--version --manifest --dry-run --yes"* ]]
+    [[ "$output" == *"release_publish_options=--version --manifest --bom --dry-run --yes"* ]]
 }

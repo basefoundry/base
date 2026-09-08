@@ -9,6 +9,7 @@ from typing import Callable
 
 from base_setup.git_remote_parse import parse_origin_remote
 
+from .release_bom import ReleaseBomError, validate_bom_file
 from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
 
 CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
@@ -28,17 +29,36 @@ def release_findings(
     gh_cli_finding_func: Callable[[], ReleaseFinding] | None = None,
 ) -> tuple[ReleaseFinding, ...]:
     gh_check = gh_cli_finding_func or gh_cli_finding
+    provenance = inspect_release_provenance(ctx)
     findings: list[ReleaseFinding] = [
         ReleaseFinding("ok", "manifest", f"Release metadata found in {ctx.manifest_path}."),
         version_file_finding(ctx),
         changelog_finding(ctx),
         git_worktree_finding(ctx.manifest_path.parent),
-        *inspect_release_provenance(ctx).findings,
+        *provenance.findings,
+        bom_finding(ctx, provenance.commit_sha),
         gh_check(),
         local_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
         remote_tag_finding(ctx.manifest_path.parent, ctx.tag_name),
     ]
     return tuple(findings)
+
+
+def bom_finding(ctx: ReleaseContext, reviewed_commit: str | None) -> ReleaseFinding:
+    if ctx.bom_path is None:
+        return ReleaseFinding("ok", "bom", "No release BOM was requested for this check.")
+    if not ctx.bom_path.is_file():
+        return ReleaseFinding("error", "bom", f"Release BOM is missing: {ctx.bom_path}")
+    try:
+        validate_bom_file(
+            ctx.bom_path,
+            expected_repository=ctx.release.github.repository,
+            expected_version=ctx.version,
+            expected_commit=reviewed_commit,
+        )
+    except ReleaseBomError as exc:
+        return ReleaseFinding("error", "bom", str(exc))
+    return ReleaseFinding("ok", "bom", f"Release BOM is valid: {ctx.bom_path}.")
 
 
 def inspect_release_provenance(ctx: ReleaseContext) -> ReleaseProvenanceInspection:

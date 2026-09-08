@@ -130,7 +130,9 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   `basectl ci setup|check|doctor` remains a deprecated compatibility alias for
   the canonical lifecycle command with `--ci`.
 - `basectl release <check|plan|notes|publish>` - inspect release readiness,
-  print plans/notes, and publish guarded GitHub-side release artifacts.
+  print plans/notes, and publish guarded GitHub-side release artifacts. Pass
+  `--bom <path>` to `check` or `publish` for the cross-repository compatibility
+  gate; `bin/base-release-bom` validates and fingerprints the record.
 - `basectl gh <area> <command>` - manage GitHub issues, PRs, branches, repo
   hygiene, and Project metadata using Base conventions.
   - `basectl gh issue create` defaults to category `enhancement` when

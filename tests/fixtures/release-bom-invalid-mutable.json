@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "release": {
+    "repository": "basefoundry/base-bash-libs",
+    "version": "2.1.0",
+    "tag": "main",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "components": [],
+  "combinations": []
+}

@@ -867,6 +867,7 @@ _base_basectl_completion() {
                     _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
+                        '--bom[Validate an ecosystem release BOM]:path:_files' \
                         '--format[Output format]:format:(text csv tsv yaml json)' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -880,6 +881,7 @@ _base_basectl_completion() {
                     _arguments '2:release command:(check plan notes publish)' \
                         '--version[Release version]:version:' \
                         '--manifest[Use a specific manifest]:path:_files' \
+                        '--bom[Validate an ecosystem release BOM]:path:_files' \
                         '--dry-run[Print publish actions without creating tags or releases]' \
                         '--yes[Publish without an interactive confirmation prompt]' \
                         '(-h --help)'{-h,--help}'[Show help text]'

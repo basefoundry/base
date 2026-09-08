@@ -17,6 +17,7 @@ class ReleaseArguments:
     command: str
     version: str
     manifest_path: Path | None
+    bom_path: Path | None = None
     output_format: str = "text"
     dry_run: bool = False
     yes: bool = False
@@ -26,6 +27,7 @@ class ReleaseArguments:
 class ReleaseOptionState:
     version: str | None = None
     manifest_path: Path | None = None
+    bom_path: Path | None = None
     output_format: str = "text"
     dry_run: bool = False
     yes: bool = False
@@ -52,6 +54,7 @@ def parse_release_args(arguments: tuple[str, ...]) -> ReleaseArguments:
         command=command,
         version=state.version,
         manifest_path=state.manifest_path,
+        bom_path=state.bom_path,
         output_format=state.output_format,
         dry_run=state.dry_run,
         yes=state.yes,
@@ -73,6 +76,10 @@ def parse_release_option(
         return index + 2
     if arg == "--manifest":
         state.manifest_path = Path(read_release_option_value(arguments, index, "--manifest")).expanduser()
+        return index + 2
+    if arg == "--bom":
+        require_bom_option(command)
+        state.bom_path = Path(read_release_option_value(arguments, index, "--bom")).expanduser()
         return index + 2
     if arg == "--format":
         require_check_option(command, "--format")
@@ -111,6 +118,11 @@ def require_check_option(command: str, option_name: str) -> None:
         raise ReleaseUsageError(f"Option '{option_name}' is only supported by release check.")
 
 
+def require_bom_option(command: str) -> None:
+    if command not in {"check", "publish"}:
+        raise ReleaseUsageError("Option '--bom' is only supported by release check and release publish.")
+
+
 def selected_release_check_format(arguments: tuple[str, ...]) -> str:
     if not arguments or arguments[0] != "check":
         return "text"
@@ -127,10 +139,10 @@ def print_usage(file: TextIO = sys.stdout) -> None:
     command = base_cli.delegated_display_command("base_release")
     print(
         f"""Usage:
-  {command} check --version <version> [--manifest <path>] [--format <text|csv|tsv|yaml|json>]
+  {command} check --version <version> [--manifest <path>] [--bom <path>] [--format <text|csv|tsv|yaml|json>]
   {command} plan --version <version> [--manifest <path>]
   {command} notes --version <version> [--manifest <path>]
-  {command} publish --version <version> [--manifest <path>] [--dry-run] [--yes]
+  {command} publish --version <version> [--manifest <path>] [--bom <path>] [--dry-run] [--yes]
 
 Purpose:
   Inspect release readiness and guarded GitHub publishing for a Base-managed

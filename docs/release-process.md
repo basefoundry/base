@@ -68,6 +68,7 @@ The inspection commands are read-only:
 
 ```bash
 basectl release check --version X.Y.Z
+basectl release check --version X.Y.Z --bom path/to/release-bom.json
 basectl release check --version X.Y.Z --format json
 basectl release plan --version X.Y.Z
 basectl release notes --version X.Y.Z
@@ -89,9 +90,9 @@ with `error: null`.
 Publishing is guarded:
 
 ```bash
-basectl release publish --version X.Y.Z --dry-run
+basectl release publish --version X.Y.Z --bom path/to/release-bom.json --dry-run
 basectl release publish --version X.Y.Z
-basectl release publish --version X.Y.Z --yes
+basectl release publish --version X.Y.Z --bom path/to/release-bom.json --yes
 ```
 
 `publish` reuses the release checks, refuses existing tags or GitHub Releases,
