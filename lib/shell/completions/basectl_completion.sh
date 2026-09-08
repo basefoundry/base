@@ -773,9 +773,6 @@ _base_basectl_completion() {
                 _base_basectl_completion_compgen "--version --manifest --bom --format -h --help" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
-                    check)
-                        _base_basectl_completion_compgen "--version --manifest --bom -h --help" "$cur"
-                        ;;
                     plan|notes)
                         _base_basectl_completion_compgen "--version --manifest -h --help" "$cur"
                         ;;
