@@ -151,6 +151,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert 'git -C "$GITHUB_WORKSPACE/../base-demo" fetch --depth 1 origin "$BASE_DEMO_REF"' in compatibility_commands
     assert "--format json --no-notify --yes" in compatibility_commands
     assert 'base_demo_commit="$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"' in compatibility_commands
+    assert 'printf \'  root: %s\\n\' "$GITHUB_WORKSPACE/.."' in compatibility_commands
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
