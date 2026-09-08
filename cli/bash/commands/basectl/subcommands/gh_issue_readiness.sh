@@ -4,6 +4,8 @@
 _base_gh_issue_readiness_sourced=1
 readonly _base_gh_issue_readiness_sourced
 
+import_base_lib arg/lib_arg.sh
+
 base_gh_issue_readiness_required_sections() {
     printf '%s\n' \
         "Goal" \
@@ -126,6 +128,15 @@ base_gh_issue_readiness_reset() {
 
 base_gh_issue_readiness_parse_args() {
     local requested_format=""
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "repo|value|--repo"
+        "project_owner|value|--project-owner"
+        "project_number|value|--project-number"
+        "format|value|--format"
+    )
+    local -a parser_args=() positionals=()
+    local -A parsed_options=()
 
     base_inspection_find_output_format _BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT "$@"
 
@@ -143,6 +154,7 @@ base_gh_issue_readiness_parse_args() {
         base_gh_issue_readiness_format_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" "Invalid issue number '$_BASE_GH_ISSUE_READINESS_ISSUE'."
         return $?
     }
+    parser_args+=("$_BASE_GH_ISSUE_READINESS_ISSUE")
     shift
 
     while (($#)); do
@@ -153,6 +165,7 @@ base_gh_issue_readiness_parse_args() {
                     base_gh_issue_readiness_format_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" "Option '--repo' requires an argument."
                     return $?
                 }
+                parser_args+=("--repo=$2")
                 shift
                 ;;
             --project-owner)
@@ -161,6 +174,7 @@ base_gh_issue_readiness_parse_args() {
                     base_gh_issue_readiness_format_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" "Option '--project-owner' requires an argument."
                     return $?
                 }
+                parser_args+=("--project-owner=$2")
                 _BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED=1
                 shift
                 ;;
@@ -174,6 +188,7 @@ base_gh_issue_readiness_parse_args() {
                     base_gh_issue_readiness_format_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" "Invalid project number '$_BASE_GH_ISSUE_READINESS_PROJECT_NUMBER'."
                     return $?
                 }
+                parser_args+=("--project-number=$2")
                 _BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED=1
                 shift
                 ;;
@@ -191,6 +206,7 @@ base_gh_issue_readiness_parse_args() {
                         return $?
                         ;;
                 esac
+                parser_args+=("--format=$2")
                 _BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT="$requested_format"
                 shift
                 ;;
@@ -206,6 +222,20 @@ base_gh_issue_readiness_parse_args() {
         esac
         shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_issue_readiness_format_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" "Could not parse issue readiness arguments."
+        return $?
+    fi
+
+    _BASE_GH_ISSUE_READINESS_ISSUE="${positionals[0]}"
+    _BASE_GH_ISSUE_READINESS_REPOSITORY="${parsed_options[repo]:-}"
+    _BASE_GH_ISSUE_READINESS_PROJECT_OWNER="${parsed_options[project_owner]:-}"
+    _BASE_GH_ISSUE_READINESS_PROJECT_NUMBER="${parsed_options[project_number]:-}"
+    _BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT="${parsed_options[format]:-text}"
+    if [[ -n "${parsed_options[project_owner]+set}" || -n "${parsed_options[project_number]+set}" ]]; then
+        _BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED=1
+    fi
 
     if ((_BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED)) &&
         { [[ -z "$_BASE_GH_ISSUE_READINESS_PROJECT_OWNER" ]] || [[ -z "$_BASE_GH_ISSUE_READINESS_PROJECT_NUMBER" ]]; }; then
