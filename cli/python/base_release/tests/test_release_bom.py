@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
 
 from base_release.release_bom import ReleaseBomError, bom_digest, validate_bom
 from base_release.release_bom import load_bom, validate_bom_file
+from base_release.release_bom_cli import main
 
 
 SHA = "a" * 40
@@ -169,6 +172,39 @@ def test_digest_is_stable_for_mapping_order() -> None:
     reordered = json.loads(json.dumps(document))
     reordered["release"] = {key: document["release"][key] for key in reversed(document["release"])}
     assert bom_digest(document) == bom_digest(reordered)
+
+
+def test_assemble_writes_bytes_matching_reported_digest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    document = valid_bom()
+    component_paths = []
+    for index, component in enumerate(document["components"][:2]):
+        component_path = tmp_path / f"component-{index}.json"
+        component_path.write_text(json.dumps(component), encoding="utf-8")
+        component_paths.append(component_path)
+    output_path = tmp_path / "release-bom.json"
+    arguments = [
+        "base-release-bom",
+        "assemble",
+        "--repository",
+        document["release"]["repository"],
+        "--version",
+        document["release"]["version"],
+        "--commit",
+        document["release"]["commit"],
+    ]
+    for component_path in component_paths:
+        arguments.extend(("--component", str(component_path)))
+    arguments.extend(
+        (
+            "--combination",
+            json.dumps(document["combinations"][0]),
+            "--output",
+            str(output_path),
+        )
+    )
+    monkeypatch.setattr(sys, "argv", arguments)
+    assert main() == 0
+    assert hashlib.sha256(output_path.read_bytes()).hexdigest() == bom_digest(load_bom(output_path))
 
 
 def test_duplicate_component_and_unknown_participant_are_rejected() -> None:
