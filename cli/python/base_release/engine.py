@@ -196,6 +196,50 @@ def release_notes_command(ctx: ReleaseContext) -> int:
     return base_cli.ExitCode.SUCCESS
 
 
+def publish_and_verify_github_release(
+    ctx: ReleaseContext,
+    title: str,
+    notes: str,
+    expected_sha: str,
+) -> None:
+    project_root = ctx.manifest_path.parent
+    notes_path = write_temp_release_notes(notes)
+    try:
+        with TemporaryDirectory(prefix="base-release-assets-") as asset_directory:
+            bom_assets = (
+                write_release_bom_assets(ctx.bom_path, Path(asset_directory))
+                if ctx.bom_path is not None
+                else None
+            )
+            run_release_step(
+                [
+                    "gh",
+                    "release",
+                    "create",
+                    ctx.tag_name,
+                    "--verify-tag",
+                    "--repo",
+                    ctx.release.github.repository,
+                    "--title",
+                    title,
+                    "--notes-file",
+                    str(notes_path),
+                ],
+                cwd=project_root,
+            )
+            if bom_assets is not None:
+                upload_release_bom_assets(ctx, bom_assets)
+            verify_github_release(
+                ctx,
+                expected_sha,
+                expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
+            )
+            if bom_assets is not None:
+                print("Release BOM assets uploaded and verified: release-bom.json, release-bom.sha256")
+    finally:
+        notes_path.unlink(missing_ok=True)
+
+
 def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     title = render_release_title(ctx)
     findings = tuple(release_findings(ctx))
@@ -245,49 +289,14 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
             guidance=release_tag_push_recovery_guidance(ctx, title, remote_tag_state),
         ) from exc
 
-    notes_path = None
     try:
         verify_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
-        notes_path = write_temp_release_notes(notes)
-        with TemporaryDirectory(prefix="base-release-assets-") as asset_directory:
-            bom_assets = (
-                write_release_bom_assets(ctx.bom_path, Path(asset_directory))
-                if ctx.bom_path is not None
-                else None
-            )
-            run_release_step(
-                [
-                    "gh",
-                    "release",
-                    "create",
-                    ctx.tag_name,
-                    "--verify-tag",
-                    "--repo",
-                    ctx.release.github.repository,
-                    "--title",
-                    title,
-                    "--notes-file",
-                    str(notes_path),
-                ],
-                cwd=project_root,
-            )
-            if bom_assets is not None:
-                upload_release_bom_assets(ctx, bom_assets)
-            verify_github_release(
-                ctx,
-                expected_sha,
-                expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
-            )
-            if bom_assets is not None:
-                print("Release BOM assets uploaded and verified: release-bom.json, release-bom.sha256")
+        publish_and_verify_github_release(ctx, title, notes, expected_sha)
     except ReleaseError as exc:
         raise ReleaseError(
             str(exc),
             guidance=release_publish_recovery_guidance(ctx, title),
         ) from exc
-    finally:
-        if notes_path is not None:
-            notes_path.unlink(missing_ok=True)
 
     print(f"GitHub Release published: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
     print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
