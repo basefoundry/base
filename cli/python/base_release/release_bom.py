@@ -41,7 +41,7 @@ def validate_bom(
         raise ReleaseBomError("schema_version must be 1")
 
     release = _mapping(document, "release")
-    _repository(release, "repository", "release")
+    release_repository = _repository(release, "repository", "release")
     release_version = _string(release, "version", "release.version")
     release_tag = _string(release, "tag", "release.tag")
     release_commit = _commit(release, "commit", "release.commit")
@@ -100,11 +100,14 @@ def validate_bom(
                 raise ReleaseBomError(f"{path}.tag must be an immutable vX.Y.Z tag")
         if commit != commit.lower():
             raise ReleaseBomError(f"{path}.commit must use lowercase hexadecimal")
+    if release_repository not in component_repositories:
+        raise ReleaseBomError("release.repository must be declared in components")
 
     combinations = document.get("combinations")
     if not isinstance(combinations, list) or not combinations:
         raise ReleaseBomError("combinations must be a non-empty array")
     required_combination = False
+    required_release_combination = False
     for index, combination in enumerate(combinations):
         path = f"combinations[{index}]"
         row = _mapping_value(combination, path)
@@ -114,6 +117,8 @@ def validate_bom(
             raise ReleaseBomError(f"{path}.participants must be a non-empty array")
         if not all(isinstance(participant, str) for participant in participants):
             raise ReleaseBomError(f"{path}.participants must contain repository strings")
+        if len(set(participants)) < 2:
+            raise ReleaseBomError(f"{path}.participants must contain at least two repositories")
         unknown = sorted(set(participants) - component_repositories)
         if unknown:
             raise ReleaseBomError(f"{path}.participants references unknown components: {unknown}")
@@ -125,12 +130,16 @@ def validate_bom(
         evidence = _string(row, "evidence", f"{path}.evidence")
         if required:
             required_combination = True
+            if release_repository in participants:
+                required_release_combination = True
             if result != "passed":
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
             if not evidence:
                 raise ReleaseBomError(f"{path}.evidence is required")
     if not required_combination:
         raise ReleaseBomError("at least one required combination must be declared")
+    if not required_release_combination:
+        raise ReleaseBomError("at least one required combination must include release.repository")
 
 
 def validate_bom_file(
