@@ -129,6 +129,9 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install uv for base-demo validation
+        run: python -m pip install --disable-pip-version-check uv
+
       - name: Install Ubuntu prerequisites
         if: matrix.platform == 'ubuntu-24.04'
         run: |
@@ -146,6 +149,14 @@ jobs:
           "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
           "$HOME/.base.d/base/.venv/bin/python" -m pip install --no-deps "$GITHUB_WORKSPACE/.dependencies/base-cli"
           "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
+
+      - name: Disable project IDE setup in CI
+        run: |
+          mkdir -p "$HOME/.base.d"
+          {
+            printf '\nide:\n'
+            printf '  enabled: false\n'
+          } >> "$HOME/.base.d/config.yaml"
 
       - name: Prepare Base platform prerequisites on Ubuntu
         if: matrix.platform == 'ubuntu-24.04'
@@ -166,6 +177,10 @@ jobs:
         run: |
           set -euo pipefail
           ./bin/basectl setup --ci base --profile dev --yes --no-notify --format json
+          ./bin/basectl setup --ci base-demo \
+            --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
+            --format json --no-notify
+          (cd "$GITHUB_WORKSPACE/../base-demo" && uv sync --locked)
           ./bin/basectl check --ci base-demo \
             --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
             --format json
@@ -176,7 +191,7 @@ jobs:
           set -euo pipefail
           ./bin/basectl setup --ci base-demo \
             --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
-            --format json
+            --format json --no-notify
           (cd "$GITHUB_WORKSPACE/../base-demo" && uv sync --locked)
           ./bin/basectl check --ci base-demo \
             --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
