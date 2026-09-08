@@ -22,7 +22,7 @@ the Python project layer.
 | `update_profile.sh` | Base owns flags with mutually exclusive combinations and a command-specific usage-error format. | Migrated in #2140 through `base_arg_parse`; retain the preflight validation for left-to-right help and error precedence, then preserve conflict and error output. |
 | `test.sh`, `build.sh`, `demo.sh`, `run.sh` | Base parses project/setup flags, then passes arguments after `--` to a declared project command. | Defer; the `--` boundary and trust/runner behavior need dedicated tests. |
 | `clean.sh`, `logs.sh`, `projects.sh` | Bash recognizes only a subset of options and forwards the remaining grammar to the Python layer. | Defer; a strict shared parser would change pass-through behavior. |
-| `gh*.sh`, `repo*.sh`, `setup_diagnostics_fallback.sh` | Several nested commands have subcommand-specific grammars and forwarded GitHub/tool options. | Defer; migrate one leaf command at a time with runtime help baselines. |
+| `gh*.sh`, `repo*.sh`, `setup_diagnostics_fallback.sh` | Several nested commands have subcommand-specific grammars and forwarded GitHub/tool options. | The `gh issue readiness` leaf is migrated in #2144 through `base_arg_parse` with runtime-help and option-looking-value coverage; keep the remaining leaves on this tracking row for successive migrations. |
 
 Every parser migration must record accepted argv forms, duplicate-option
 behavior, `--` handling, status codes, stdout/stderr ownership, and help
