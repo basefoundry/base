@@ -200,7 +200,10 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["status"], "blocked")
         self.assertEqual(payload["reason"], "not_allowed")
-        self.assertEqual(payload["trust_scope"]["approval_basis"], "base_manifest.yaml_sha256")
+        self.assertEqual(
+            payload["trust_scope"]["approval_basis"],
+            "base_manifest.yaml_sha256+declared_test_requirements_sha256",
+        )
         self.assertTrue(payload["trust_scope"]["manifest_changes_invalidate"])
         self.assertFalse(payload["trust_scope"]["referenced_script_changes_invalidate"])
         self.assertFalse(payload["trust_scope"]["git_head_changes_invalidate"])
@@ -443,13 +446,52 @@ class ManifestCommandTrustTests(unittest.TestCase):
                 )
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Manifest command trust is blocked for project 'demo': manifest changed.", result.stdout)
+        self.assertIn(
+            "Manifest command trust is blocked for project 'demo': manifest or declared test requirements changed.",
+            result.stdout,
+        )
         self.assertIn(f"Recorded Manifest SHA-256: {identity.manifest_sha256}", result.stdout)
         self.assertIn(f"Manifest SHA-256: {current_digest}", result.stdout)
         self.assertIn("basectl test demo --dry-run", result.stdout)
         self.assertIn(
             f"basectl trust allow demo --manifest-sha256 {current_digest}",
             result.stdout,
+        )
+
+    def test_declared_test_requirements_changes_invalidate_manifest_trust(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            project_root = root / "work" / "demo"
+            manifest_path = self.manifest_factory.write(project_root)
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace(
+                    "  command: pytest tests/\n",
+                    "  command: pytest tests/\n  requirements: requirements-dev.txt\n",
+                ),
+                encoding="utf-8",
+            )
+            requirements_path = project_root / "requirements-dev.txt"
+            requirements_path.write_text("jsonschema==4.25.1\n", encoding="utf-8")
+            initial_identity = engine.compute_trust_identity_for_manifest(manifest_path)
+            store = engine.ManifestCommandTrustStore(home=home)
+            store.allow(initial_identity, base_version="9.9.9")
+
+            requirements_path.write_text("jsonschema==4.25.2\n", encoding="utf-8")
+            current_identity = engine.compute_trust_identity_for_manifest(manifest_path)
+            status = store.status(current_identity)
+            payload = engine.status_payload(status)
+
+        self.assertNotEqual(
+            current_identity.test_requirements_sha256,
+            initial_identity.test_requirements_sha256,
+        )
+        self.assertEqual(status.reason, "test_requirements_changed")
+        self.assertEqual(
+            payload["recorded_test_requirements_sha256"],
+            initial_identity.test_requirements_sha256,
         )
 
     def test_referenced_script_and_git_head_changes_do_not_invalidate_manifest_trust(self) -> None:

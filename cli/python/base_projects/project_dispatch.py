@@ -21,6 +21,7 @@ class WorkspaceCommandOptions:
     dry_run: bool = False
     apply: bool = False
     yes: bool = False
+    test_preflight: bool = False
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,7 @@ class ProjectCommandActions:
     current_project: Callable[[base_cli.Context, str], int]
     manifest_project: Callable[[base_cli.Context, str | None, str], int]
     resolve_project: Callable[[base_cli.Context, str | None, str | None, str], int]
-    test_command_project: Callable[[base_cli.Context, str | None, str | None, str], int]
+    test_command_project: Callable[[base_cli.Context, str | None, str | None, str, bool], int]
     demo_script_project: Callable[[base_cli.Context, str | None, str | None, str], int]
     activation_sources_project: Callable[[base_cli.Context, str | None, str | None, str], int]
     run_command_project: Callable[
@@ -255,7 +256,7 @@ def _handle_test_command(
     if options.project_name is not None and arguments:
         raise ProjectUsageError("Project command 'test-command' does not accept a positional project with --project.")
     project = options.project_name or optional_project_argument("test-command", arguments)
-    return actions.test_command_project(ctx, project, options.workspace, options.output_format)
+    return actions.test_command_project(ctx, project, options.workspace, options.output_format, options.test_preflight)
 
 
 def _handle_demo_script(

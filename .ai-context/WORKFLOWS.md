@@ -156,10 +156,12 @@ considering mutating installers.
 Project-originated IDE app, extension, and global user-setting mutations are a
 separate setup consent boundary. `basectl setup --dry-run` must be reviewed,
 and applying the plan requires `--allow-project-ide-mutations`; `--yes` alone
-does not authorize it. Manifest command trust remains bound to the
-`base_manifest.yaml` SHA-256 only, so status and execution guidance warns that
-referenced scripts, direct executable files, Git HEAD, and uncommitted working
-tree changes are not independently verified or invalidating inputs.
+does not authorize it. Manifest command trust is bound to the
+`base_manifest.yaml` SHA-256 and the declared local `test.requirements`
+SHA-256. Changes to either require re-approval; status and execution guidance
+still warns that referenced scripts, direct executable files, Git HEAD, and
+uncommitted working-tree changes are not independently verified or invalidating
+inputs.
 
 ## AI Context Maintenance
 

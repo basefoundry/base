@@ -1062,6 +1062,34 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn("__base_manifest_command_trust_required=true", stdout)
 
+    def test_projects_test_command_preflight_refuses_missing_test_requirements(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            project_root = workspace / "demo"
+            project_root.mkdir()
+            (project_root / "base_manifest.yaml").write_text(
+                "project:\n"
+                "  name: demo\n"
+                "test:\n"
+                "  command: pytest tests/\n"
+                "  requirements: requirements-dev.txt\n"
+                "artifacts: []\n",
+                encoding="utf-8",
+            )
+            (project_root / "requirements-dev.txt").write_text("jsonschema==4.25.1\n", encoding="utf-8")
+            (project_root / ".venv" / "bin").mkdir(parents=True)
+            (project_root / ".venv" / "bin" / "python").touch()
+
+            with mock.patch("base_setup.test_requirements.python_artifact_installed", return_value=False):
+                status, stdout, stderr = run_engine(["test-command", "demo", "--test-preflight"], base_home)
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("has missing or mismatched packages: jsonschema==4.25.1", stderr)
+        self.assertIn("Run 'basectl setup demo'", stderr)
+
     def test_projects_test_command_prints_python_route_metadata_for_inline_uv_manager(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workspace = Path(tmpdir)

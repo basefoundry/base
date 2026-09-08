@@ -29,6 +29,7 @@ class TestConfig:
     command: str | None = None
     mise: str | None = None
     runner: str | None = None
+    requirements: str | None = None
 
 
 @dataclass(frozen=True)
