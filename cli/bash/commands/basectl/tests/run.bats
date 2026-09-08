@@ -2,6 +2,28 @@
 
 load ./basectl_helpers.bash
 
+@test "basectl run parses owned options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/run-arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/run.sh"
+            base_arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_run_subcommand_main --workspace --show-url --project demo --format --json --list -v -- --verbose
+        '
+
+    [ "$status" -eq 2 ]
+    [ "$(cat "$state_file")" = "parsed_options positionals option_specs -- --workspace=--show-url --project=demo --format=--json --list -v" ]
+}
+
 
 @test "basectl run runs declared project command from project root" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"

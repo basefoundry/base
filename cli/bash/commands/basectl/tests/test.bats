@@ -3,6 +3,36 @@
 load ./basectl_helpers.bash
 
 
+@test "basectl test parses owned options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/test-arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/test.sh"
+            base_arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_test_subcommand_main --workspace --show-url --project demo --dry-run -v -- -k focused
+        '
+
+    [ "$status" -eq 2 ]
+    [ "$(cat "$state_file")" = "parsed_options positionals option_specs -- --workspace=--show-url --project=demo --dry-run -v" ]
+}
+
+@test "basectl test keeps positional validation ahead of later help" {
+    run_basectl test first second --help
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"The 'test' command accepts exactly one project name."* ]]
+}
+
+
 @test "basectl test runs declared project test command from project root" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"
