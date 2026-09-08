@@ -86,14 +86,12 @@ def validate_bom(
         result = _string(row, "result", f"{path}.result")
         if result not in RESULTS:
             raise ReleaseBomError(f"{path}.result must be one of: {', '.join(sorted(RESULTS))}")
-        evidence = _string(row, "evidence", f"{path}.evidence")
+        _string(row, "evidence", f"{path}.evidence")
         if required:
             if source_mode == "moving":
                 raise ReleaseBomError(f"{path} cannot require a moving source")
             if result != "passed":
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
-            if not evidence:
-                raise ReleaseBomError(f"{path}.evidence is required")
         if source_mode == "moving" and row.get("tag") is not None:
             raise ReleaseBomError(f"{path}.tag must be omitted for moving sources")
         if source_mode != "moving":
@@ -128,15 +126,13 @@ def validate_bom(
         result = _string(row, "result", f"{path}.result")
         if result not in RESULTS:
             raise ReleaseBomError(f"{path}.result must be one of: {', '.join(sorted(RESULTS))}")
-        evidence = _string(row, "evidence", f"{path}.evidence")
+        _string(row, "evidence", f"{path}.evidence")
         if required:
             required_combination = True
             if release_repository.casefold() in participant_keys:
                 required_release_combination = True
             if result != "passed":
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
-            if not evidence:
-                raise ReleaseBomError(f"{path}.evidence is required")
     if not required_combination:
         raise ReleaseBomError("at least one required combination must be declared")
     if not required_release_combination:
