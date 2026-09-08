@@ -1,8 +1,8 @@
 # Base Product Assessment
 
 Status: maintained product review artifact
-Last reviewed: 2026-09-01
-Base era reviewed: 1.8.0 + Unreleased
+Last reviewed: 2026-09-08
+Base era reviewed: 1.9.0 + Unreleased
 
 This document records a candid assessment of Base as a product and engineering
 effort. It is not marketing copy, and it should not drift into aspiration. When
