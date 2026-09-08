@@ -287,7 +287,7 @@ Run everything locally with `basectl test base` or `bin/base-test`.
 
 ## Current Status
 
-Base **1.8.0** (August 2026) covers: first-mile `bootstrap.sh`
+Base **1.9.0** (September 2026) covers: first-mile `bootstrap.sh`
 installation, setup, check, doctor, project discovery, workspace
 status/check/doctor/clone/pull/init/configure, `basectl onboard`, project activation
 (subshell), test execution, build targets, named commands, demo scripts,

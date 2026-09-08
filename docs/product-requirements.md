@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-08-15
-Base era reviewed: 1.8.0 + Unreleased
+Last reviewed: 2026-09-08
+Base era reviewed: 1.9.0 + Unreleased
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide
@@ -307,6 +307,11 @@ Review this PRD during each minor release line, before major product
 repositioning, and after meaningful external user feedback.
 
 ## Decision Log
+
+- 2026-09-08: Reviewed for the 1.9.0 release line. Base owns the
+  cross-repository compatibility BOM, while base-cli, base-bash-libs, and
+  base-demo remain independently versioned. Required release combinations are
+  validated on Ubuntu 24.04 and macOS 14 with immutable component refs.
 
 - 2026-08-15: Reviewed for the 1.8.0 release line and current Unreleased
   changes. Compatibility aliases, stable diagnostic separation, resilient

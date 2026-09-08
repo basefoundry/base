@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.8.0` is the current release. The repo-root `VERSION` file is updated
+Base `1.9.0` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR. `DEVELOPMENT_VERSION`
 records the numeric next development line; an untagged source checkout reports
 that line with a Git revision and `.dirty` when applicable, while tagged and
@@ -65,10 +65,10 @@ Recent trust and workspace updates are part of the current implementation:
 
 ## Active Development Direction
 
-The `v1.8.0` release is complete. Future work is tracked in GitHub Issues,
+The `v1.9.0` release is complete. Future work is tracked in GitHub Issues,
 with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
 broader prompt ergonomics, broader Linux distribution support, and broader
-setup policy work remaining outside the shipped 1.8.0 release contract.
+setup policy work remaining outside the shipped 1.9.0 release contract.
 
 The accepted product position is now a local operating contract for
 deterministic readiness and handoff within a project, from a single repository

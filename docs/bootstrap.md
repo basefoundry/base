@@ -183,14 +183,14 @@ Use this path when you want the published release without Homebrew. Keep both
 the installer script and the cloned checkout on the same immutable release ref:
 
 ```bash
-git clone --branch v1.8.0 https://github.com/basefoundry/base.git ~/work/base
+git clone --branch v1.9.0 https://github.com/basefoundry/base.git ~/work/base
 ~/work/base/bin/basectl setup
 ~/work/base/bin/basectl update-profile
 exec "$SHELL" -l
 ```
 
-The stable checkout reports `basectl 1.8.0`. For future releases, replace both
-occurrences of `v1.8.0` with the intended published tag.
+The stable checkout reports `basectl 1.9.0`. For future releases, replace the
+release version and tag with the intended published release.
 
 ### Source Checkout Install Recipe
 
@@ -221,8 +221,8 @@ or update Base and run setup/profile commands in one path. Pin the installer
 script and checkout together for a stable install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/v1.8.0/install.sh \
-  | bash -s -- --branch v1.8.0
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/v1.9.0/install.sh \
+  | bash -s -- --branch v1.9.0
 ```
 
 Use the `HEAD` installer only for an intentional contributor or dogfood
