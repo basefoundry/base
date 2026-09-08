@@ -19,7 +19,12 @@ include evidence. Moving-source rows are allowed only as advisory rows and do
 not block a release. The validator also rejects duplicate repositories, missing
 participants, a release repository absent from the component list or required
 combinations, single-repository combinations, mutable release identities, and
-version or commit mismatches.
+version or commit mismatches. Repository identity comparisons are
+case-insensitive, while repository values must still use the schema's owner/name
+form and commit values must be lowercase full SHAs.
+Repository identity comparisons are case-insensitive, while repository values
+must still use the schema's owner/name form and commit values must be lowercase
+full SHAs.
 
 Validate and fingerprint a BOM locally:
 

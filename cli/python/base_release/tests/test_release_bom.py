@@ -127,6 +127,43 @@ def test_commit_and_version_mismatch_are_rejected() -> None:
         validate_bom(document, expected_commit="d" * 40)
 
 
+def test_release_and_component_commits_must_be_lowercase() -> None:
+    document = valid_bom()
+    document["release"]["commit"] = SHA.upper()
+    with pytest.raises(ReleaseBomError, match="lowercase full 40-character SHA"):
+        validate_bom(document)
+
+    document = valid_bom()
+    document["components"][0]["commit"] = SHA.upper()
+    with pytest.raises(ReleaseBomError, match="lowercase full 40-character SHA"):
+        validate_bom(document)
+
+
+def test_repository_identity_matching_is_case_insensitive() -> None:
+    document = valid_bom()
+    document["release"]["repository"] = "BaseFoundry/Base-Bash-Libs"
+    document["components"][0]["repository"] = "BASEFOUNDRY/BASE-BASH-LIBS"
+    document["combinations"][0]["participants"][0] = "basefoundry/BASE-BASH-LIBS"
+    validate_bom(document, expected_repository="basefoundry/base-bash-libs")
+
+
+def test_repository_identity_rejects_malformed_owner_name_values() -> None:
+    for value in ("basefoundry/base/extra", "basefoundry/base libs", "/basefoundry/base"):
+        document = valid_bom()
+        document["components"][0]["repository"] = value
+        with pytest.raises(ReleaseBomError, match="must use owner/name format"):
+            validate_bom(document)
+
+
+def test_repository_duplicates_are_case_insensitive() -> None:
+    document = valid_bom()
+    duplicate = copy.deepcopy(document["components"][0])
+    duplicate["repository"] = duplicate["repository"].upper()
+    document["components"].append(duplicate)
+    with pytest.raises(ReleaseBomError, match="duplicated"):
+        validate_bom(document)
+
+
 def test_digest_is_stable_for_mapping_order() -> None:
     document = valid_bom()
     reordered = json.loads(json.dumps(document))
