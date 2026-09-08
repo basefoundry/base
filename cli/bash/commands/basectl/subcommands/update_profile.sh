@@ -8,6 +8,8 @@ _base_setup_common_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/
 # shellcheck source=/dev/null
 source "$_base_setup_common_path"
 
+import_base_lib arg/lib_arg.sh
+
 base_update_profile_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -315,41 +317,63 @@ base_update_profile_write_profile_conf() {
 }
 
 base_update_profile_subcommand_main() {
-    local enable_defaults=0
-    local disable_defaults=0
-    local remove_sections=0
-    local dry_run=0
+    local enable_defaults disable_defaults remove_sections dry_run
     local base_home
     local backup_timestamp
+    local arg
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "enable_defaults|flag|--defaults"
+        "disable_defaults|flag|--no-defaults"
+        "remove_sections|flag|--remove"
+        "dry_run|flag|--dry-run"
+        "debug|flag|-v"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
-    while (($#)); do
-        case "$1" in
-            --defaults)
-                enable_defaults=1
-                ;;
-            --no-defaults)
-                disable_defaults=1
-                ;;
-            --remove)
-                remove_sections=1
-                ;;
-            --dry-run)
-                dry_run=1
-                ;;
+    # Preserve the legacy left-to-right help and error precedence before the
+    # shared parser normalizes the option set.
+    for arg in "$@"; do
+        case "$arg" in
             -h|--help|help)
                 base_update_profile_subcommand_usage
                 return 0
                 ;;
+            --defaults)
+                ;;
+            --no-defaults)
+                ;;
+            --remove)
+                ;;
+            --dry-run)
+                ;;
             -v)
+                # Keep debug setup's historical position relative to help and
+                # later validation while still parsing the option below.
                 setup_enable_debug_logging
                 ;;
             *)
-                base_update_profile_usage_error "Unknown option '$1'."
+                base_update_profile_usage_error "Unknown option '$arg'."
                 return $?
                 ;;
         esac
-        shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
+        base_update_profile_usage_error "Could not parse update-profile arguments."
+        return $?
+    fi
+
+    if ((${#positionals[@]} > 0)); then
+        base_update_profile_usage_error "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+
+    enable_defaults="${parsed_options[enable_defaults]:-0}"
+    disable_defaults="${parsed_options[disable_defaults]:-0}"
+    remove_sections="${parsed_options[remove_sections]:-0}"
+    dry_run="${parsed_options[dry_run]:-0}"
 
     if ((enable_defaults && disable_defaults)); then
         base_update_profile_usage_error "Options '--defaults' and '--no-defaults' cannot be used together."

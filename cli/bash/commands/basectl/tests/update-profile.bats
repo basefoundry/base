@@ -44,6 +44,53 @@ base_std_fatal_error() { printf 'ERROR: %s\n' "$*" >&2; return 1; }
 EOF
 }
 
+@test "basectl update-profile parses options through reusable arg helper" {
+    local state_file="$TEST_TMPDIR/update-profile-arg-parse-state"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        BASE_TEST_ARG_PARSE_STATE="$state_file" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_arg_parse() {
+                printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
+                return 2
+            }
+            base_update_profile_subcommand_main -v --defaults --dry-run
+        '
+
+    [ "$status" -eq 2 ]
+    [ "$(cat "$state_file")" = "parsed_options positionals option_specs -- -v --defaults --dry-run" ]
+}
+
+@test "basectl update-profile preserves help precedence before parsing" {
+    run_base_command update-profile --defaults --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+    [[ "$output" == *"--defaults"* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
+}
+
+@test "basectl update-profile rejects positional arguments before mutation" {
+    run_base_command update-profile unexpected
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Unknown option 'unexpected'."* ]]
+    [[ "$output" == *"Run 'basectl update-profile --help' for usage."* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
+}
+
+@test "basectl update-profile accepts duplicate compatible flags" {
+    run_base_command update-profile --dry-run --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would update '$TEST_HOME/.base.d/profile.conf'."* ]]
+    [ ! -e "$TEST_HOME/.base.d/profile.conf" ]
+}
 
 @test "basectl update-profile creates Base-managed sections in all shell dotfiles" {
     run_base_command update-profile
