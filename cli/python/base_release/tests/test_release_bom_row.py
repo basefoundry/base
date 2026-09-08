@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -14,7 +13,6 @@ def test_base_release_bom_row_emits_the_base_release_contract(tmp_path: Path) ->
     commit = "a" * 40
     subprocess.run(
         [
-            sys.executable,
             str(ROOT / "bin" / "base-release-bom-row"),
             "--version",
             "1.9.0",
