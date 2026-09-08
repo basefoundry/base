@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [1.9.0] - 2026-09-08
+
 ### Added
 
 - Stability compatibility: added v1.8.0-provenance contract fixtures and a

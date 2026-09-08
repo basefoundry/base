@@ -3,7 +3,7 @@
 ![Tests](https://github.com/basefoundry/base/actions/workflows/tests.yml/badge.svg)
 ![Lint](https://github.com/basefoundry/base/actions/workflows/pylint.yml/badge.svg)
 ![Platform: macOS + Ubuntu/Debian](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu%2FDebian-lightgrey)
-![Version](https://img.shields.io/badge/version-1.8.0-blue)
+![Version](https://img.shields.io/badge/version-1.9.0-blue)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 > Base is an AI-ready Git-based, GitHub-primary workspace control plane for
@@ -469,8 +469,8 @@ installs from `~/work/base` (or a chosen path) and keeps profile integration
 opt-in. For a stable no-Homebrew install, pin the published release:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/basefoundry/base/v1.8.0/install.sh \
-  | bash -s -- --branch v1.8.0
+curl -fsSL https://raw.githubusercontent.com/basefoundry/base/v1.9.0/install.sh \
+  | bash -s -- --branch v1.9.0
 ```
 
 Contributor installs may explicitly follow `HEAD`/`main`. See the
@@ -522,7 +522,7 @@ the numeric next development line. A clean tagged release or packaged install
 reports the clean `VERSION`, while a mutable Git checkout—including a dirty
 checkout based on a release tag—reports
 `DEVELOPMENT_VERSION-dev+g<short-sha>` and appends `.dirty` when local changes
-are present. For example, Base `1.8.0` and mutable development code targeting
+are present. For example, Base `1.9.0` and mutable development code targeting
 `1.9.0` cannot report the same identity.
 
 Project-specific onboarding should live in project installers that call Base
@@ -624,7 +624,7 @@ The Base control-plane surface remains `basectl`.
 
 ## Current Status
 
-Base `1.8.0` is the current release. The implemented command surface covers
+Base `1.9.0` is the current release. The implemented command surface covers
 setup, checks, diagnostics, project discovery, project activation, project test
 execution, manifest-declared mise trust/missing-tool checks plus `mise install`
 and `mise run` delegation, cleanup, updates, onboarding, repository baseline
@@ -648,7 +648,9 @@ and dispatch contract, see [docs/execution-model.md](docs/execution-model.md).
 For ecosystem boundary and integration decisions, see
 [docs/tool-boundaries.md](docs/tool-boundaries.md).
 
-Release notes are tracked in [CHANGELOG.md](CHANGELOG.md), and upcoming work is
+The Base 1.9.0 release also owns the cross-repository compatibility BOM for the
+validated Base, base-cli, base-bash-libs, and base-demo combination on Ubuntu
+24.04 and macOS 14. Release notes are tracked in [CHANGELOG.md](CHANGELOG.md), and upcoming work is
 tracked in GitHub Issues using the workflow in
 [docs/github-workflow.md](docs/github-workflow.md).
 

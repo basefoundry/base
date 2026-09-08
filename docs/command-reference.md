@@ -1152,12 +1152,12 @@ See [docs/local-config.md](local-config.md).
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.8.0
-basectl release check --version 1.8.0 --format json
-basectl release plan --version 1.8.0
-basectl release notes --version 1.8.0
-basectl release publish --version 1.8.0 --dry-run
-basectl release publish --version 1.8.0 --yes
+basectl release check --version 1.9.0
+basectl release check --version 1.9.0 --format json
+basectl release plan --version 1.9.0
+basectl release notes --version 1.9.0
+basectl release publish --version 1.9.0 --dry-run
+basectl release publish --version 1.9.0 --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest
