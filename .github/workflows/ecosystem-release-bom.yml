@@ -147,17 +147,24 @@ jobs:
           "$HOME/.base.d/base/.venv/bin/python" -m pip install --no-deps "$GITHUB_WORKSPACE/.dependencies/base-cli"
           "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
 
+      - name: Prepare Base platform prerequisites on Ubuntu
+        if: matrix.platform == 'ubuntu-24.04'
+        run: ./bin/basectl setup --ci base --yes --no-notify --format json
+
+      - name: Prepare Base platform prerequisites on macOS
+        if: matrix.platform == 'macos-14'
+        run: ./bin/basectl setup --ci base --format json
+
       - name: Validate Base release stack
         run: |
           set -euo pipefail
           ./bin/basectl check --ci base --format json
-          env -u BASE_HOME ./bin/base-test
+          env -u BASE_HOME -u BASE_SETUP_NOTIFY ./bin/base-test
 
       - name: Validate Base and base-demo on Ubuntu
         if: matrix.platform == 'ubuntu-24.04'
         run: |
           set -euo pipefail
-          ./bin/basectl setup --ci base --yes --no-notify --format json
           ./bin/basectl setup --ci base --profile dev --yes --no-notify --format json
           ./bin/basectl check --ci base-demo \
             --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
@@ -167,7 +174,6 @@ jobs:
         if: matrix.platform == 'macos-14'
         run: |
           set -euo pipefail
-          ./bin/basectl setup --ci base --format json
           ./bin/basectl setup --ci base-demo \
             --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
             --format json
