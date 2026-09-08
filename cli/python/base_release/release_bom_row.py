@@ -8,6 +8,7 @@ from pathlib import Path
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 VERSION_RE = re.compile(r"^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$")
+EXIT_SUCCESS = 0
 
 
 def main() -> int:
@@ -36,7 +37,7 @@ def main() -> int:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(document, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-    return 0
+    return EXIT_SUCCESS
 
 
 if __name__ == "__main__":
