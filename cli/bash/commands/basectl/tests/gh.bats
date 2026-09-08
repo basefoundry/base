@@ -559,6 +559,18 @@ run_gh_subcommand() {
     [[ "$(cat "$TEST_STATE_DIR/gh-args")" != *"project item-list"* ]]
 }
 
+@test "basectl gh issue readiness parses the selected leaf through the shared helper" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    run_gh_subcommand issue readiness 123 --repo --format
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Issue #123 readiness: partial"* ]]
+    [[ "$output" == *"Repository: --format"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == *"issue view 123 --repo --format"* ]]
+}
+
 @test "basectl gh issue readiness reports missing body sections with fix hints" {
     write_issue_readiness_gh_mock
     write_incomplete_issue_readiness_body
