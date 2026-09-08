@@ -21,7 +21,7 @@ the Python project layer.
 | `docs.sh` | Base owns `--show-url`; `-h`, `--help`, and `help` exit immediately, while unknown options and positionals have distinct errors. A standalone `--` is an unknown option. | Migrated in this slice through `base_arg_parse`; retain the preflight validation because the shared parser intentionally normalizes `--` and does not own the command-specific error text. |
 | `update_profile.sh` | Base owns flags with mutually exclusive combinations and a command-specific usage-error format. | Migrated in #2140 through `base_arg_parse`; retain the preflight validation for left-to-right help and error precedence, then preserve conflict and error output. |
 | `test.sh`, `build.sh`, `demo.sh`, `run.sh` | Base parses project/setup flags, then passes arguments after `--` to a declared project command. | Defer; the `--` boundary and trust/runner behavior need dedicated tests. |
-| `clean.sh`, `logs.sh`, `projects.sh` | Bash recognizes only a subset of options and forwards the remaining grammar to the Python layer. | Defer; a strict shared parser would change pass-through behavior. |
+| `clean.sh`, `logs.sh`, `projects.sh` | Bash recognizes only a subset of options and forwards the remaining grammar to the Python layer. | Migrated in #2143 with a filtered `base_arg_parse` boundary for shell-owned options; preserve the full Python argv, including unknown options and arguments after `--`. |
 | `gh*.sh`, `repo*.sh`, `setup_diagnostics_fallback.sh` | Several nested commands have subcommand-specific grammars and forwarded GitHub/tool options. | Defer; migrate one leaf command at a time with runtime help baselines. |
 
 Every parser migration must record accepted argv forms, duplicate-option

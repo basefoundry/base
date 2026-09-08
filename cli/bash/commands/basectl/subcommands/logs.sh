@@ -3,6 +3,8 @@
 _base_logs_subcommand_sourced=1
 readonly _base_logs_subcommand_sourced
 
+import_base_lib arg/lib_arg.sh
+
 base_logs_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -106,8 +108,23 @@ base_logs_args_request_help() {
 
 base_logs_subcommand_main() {
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local args=()
+    local args=() parser_args=()
     local help_target
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "debug|flag|-v"
+        "command|value|--command"
+        "limit|value|--limit"
+        "latest|flag|--latest"
+        "tail|flag|--tail"
+        "open|flag|--open"
+        "lines|value|--lines"
+        "format|value|--format"
+    )
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -A parsed_options=()
 
     if base_logs_args_request_help "$@"; then
         help_target="$(base_logs_help_target "$@")"
@@ -135,6 +152,7 @@ base_logs_subcommand_main() {
                 return 0
                 ;;
             -v)
+                parser_args+=("$1")
                 args+=(--debug)
                 shift
                 ;;
@@ -144,10 +162,12 @@ base_logs_subcommand_main() {
                     base_std_print_error "Option '$1' requires an argument."
                     return 2
                 }
+                parser_args+=("$1=$2")
                 args+=("$1" "$2")
                 shift 2
                 ;;
             --command=*|--limit=*|--lines=*|--format=*|--latest|--tail|--open)
+                parser_args+=("$1")
                 args+=("$1")
                 shift
                 ;;
@@ -157,6 +177,12 @@ base_logs_subcommand_main() {
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_logs_subcommand_usage >&2
+        base_std_print_error "Could not parse logs arguments."
+        return 2
+    fi
 
     [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
     BASE_CLI_DISPLAY_COMMAND="basectl logs" "$wrapper" --project base base_logs "${args[@]}"

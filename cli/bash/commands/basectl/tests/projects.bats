@@ -182,3 +182,34 @@ EOF
     [[ "$output" == *"Unsupported output format 'xml'"* ]]
     [[ "$output" != *"Traceback"* ]]
 }
+
+@test "basectl projects validates shell-owned debug without changing Python pass-through argv" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
+    shift 3
+    printf 'ARGC=%s\n' "$#"
+    local_index=0
+    for argument in "$@"; do
+        printf 'ARG%s=<%s>\n' "$local_index" "$argument"
+        local_index=$((local_index + 1))
+    done
+    exit 0
+fi
+printf 'unexpected projects list python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl projects list -v -- --forwarded --value
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGC=4"* ]]
+    [[ "$output" == *"ARG0=<--debug>"* ]]
+    [[ "$output" == *"ARG1=<-->"* ]]
+    [[ "$output" == *"ARG2=<--forwarded>"* ]]
+    [[ "$output" == *"ARG3=<--value>"* ]]
+}
