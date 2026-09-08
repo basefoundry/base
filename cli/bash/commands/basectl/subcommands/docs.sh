@@ -3,6 +3,8 @@
 _base_docs_subcommand_sourced=1
 readonly _base_docs_subcommand_sourced
 
+import_base_lib arg/lib_arg.sh
+
 BASE_DOCS_URL="https://github.com/basefoundry/base#readme"
 readonly BASE_DOCS_URL
 
@@ -50,20 +52,21 @@ base_docs_open_url() {
 }
 
 base_docs_subcommand_main() {
-    local show_url=0
+    local arg
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=("show_url|flag|--show-url") positionals=()
+    local -A parsed_options=()
 
-    while (($#)); do
-        case "$1" in
+    for arg in "$@"; do
+        case "$arg" in
             -h|--help|help)
                 base_docs_subcommand_usage
                 return 0
                 ;;
             --show-url)
-                show_url=1
-                shift
                 ;;
-            -*)
-                base_docs_usage_error "Unknown docs option '$1'."
+            --|-*)
+                base_docs_usage_error "Unknown docs option '$arg'."
                 return $?
                 ;;
             *)
@@ -73,7 +76,12 @@ base_docs_subcommand_main() {
         esac
     done
 
-    if ((show_url)); then
+    if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
+        base_docs_usage_error "Could not parse docs arguments."
+        return $?
+    fi
+
+    if [[ "${parsed_options[show_url]:-}" == "1" ]]; then
         printf '%s\n' "$BASE_DOCS_URL"
         return 0
     fi

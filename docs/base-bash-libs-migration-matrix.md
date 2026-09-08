@@ -18,7 +18,7 @@ the Python project layer.
 | `devenv_report.sh` | Same ownership model as `devcontainer.sh`, without `--write`. | Already migrated; retain focused parser seam tests. |
 | `export_context.sh` | Base owns format, output, print, list, workspace, debug, and one optional project. | Already migrated; retain focused parser seam tests. |
 | `prompt.sh` | Base owns one prompt name plus `--output` and `-v`; help is prompt-name-sensitive. | Candidate for a later parser slice after error/help translation is specified. |
-| `docs.sh` | Base owns one flag and rejects both unknown options and positionals with distinct messages. | Candidate for a later parser slice; preserve the two error messages. |
+| `docs.sh` | Base owns `--show-url`; `-h`, `--help`, and `help` exit immediately, while unknown options and positionals have distinct errors. A standalone `--` is an unknown option. | Migrated in this slice through `base_arg_parse`; retain the preflight validation because the shared parser intentionally normalizes `--` and does not own the command-specific error text. |
 | `update_profile.sh` | Base owns flags with mutually exclusive combinations and a command-specific usage-error format. | Candidate for a later parser slice; preserve conflict and error output. |
 | `test.sh`, `build.sh`, `demo.sh`, `run.sh` | Base parses project/setup flags, then passes arguments after `--` to a declared project command. | Defer; the `--` boundary and trust/runner behavior need dedicated tests. |
 | `clean.sh`, `logs.sh`, `projects.sh` | Bash recognizes only a subset of options and forwards the remaining grammar to the Python layer. | Defer; a strict shared parser would change pass-through behavior. |
