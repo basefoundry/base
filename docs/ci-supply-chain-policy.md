@@ -12,6 +12,9 @@ under `.github/workflows/`.
   to immutable action code.
 - Pin sibling repository checkouts, including `basefoundry/base-bash-libs`, with
   an explicit full-SHA `ref`.
+- A manually dispatched compatibility workflow may use a validated input for a
+  component `ref`; that workflow must reject every value except a full
+  lowercase SHA before checkout.
 - Prefer shell steps over adding a new action when the command is simple and the
   runner already has the required tool or installs it through an approved
   package manager.

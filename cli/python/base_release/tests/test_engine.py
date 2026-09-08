@@ -3,6 +3,7 @@ from __future__ import annotations
 # Keep the release engine's end-to-end matrix together for readable workflow coverage.
 # pylint: disable=too-many-lines
 
+import hashlib
 import io
 import json
 import os
@@ -477,6 +478,79 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         verify_local.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
         verify_remote.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
         verify_github.assert_called_once()
+
+
+    def test_publish_with_bom_uploads_and_verifies_stable_release_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root)
+            bom_path = root / "candidate-bom.json"
+            bom_bytes = b'{"release":"base-1.9.0"}\n'
+            bom_path.write_bytes(bom_bytes)
+            commands: list[tuple[list[str], Path | None]] = []
+            uploaded_contents: dict[str, bytes] = {}
+
+            def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
+                commands.append((command, cwd))
+                if command[:3] == ["gh", "release", "upload"]:
+                    uploaded_contents[Path(command[4]).name] = Path(command[4]).read_bytes()
+                    uploaded_contents[Path(command[5]).name] = Path(command[5]).read_bytes()
+
+            with (
+                mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS),
+                mock.patch(
+                    "base_release.engine.github_release_finding",
+                    return_value=ReleaseFinding("ok", "github_release", "GitHub Release is available."),
+                    create=True,
+                ),
+                mock.patch("base_release.engine.require_release_provenance", return_value=READY_SHA),
+                mock.patch("base_release.engine.verify_local_annotated_tag"),
+                mock.patch("base_release.engine.verify_remote_annotated_tag"),
+                mock.patch("base_release.engine.verify_github_release") as verify_github,
+                mock.patch(
+                    "base_release.engine.run_release_step",
+                    side_effect=fake_run_release_step,
+                    create=True,
+                ),
+                mock.patch(
+                    "base_release.release_publish.run_release_step",
+                    side_effect=fake_run_release_step,
+                ),
+            ):
+                status, stdout, stderr = run_engine(
+                    [
+                        "publish",
+                        "--yes",
+                        "--version",
+                        "1.2.3",
+                        "--manifest",
+                        str(manifest_path),
+                        "--bom",
+                        str(bom_path),
+                    ],
+                    root,
+                )
+
+        self.assertEqual((status, stderr), (0, ""), stdout)
+        upload_commands = [command for command, _cwd in commands if command[:3] == ["gh", "release", "upload"]]
+        self.assertEqual(len(upload_commands), 1)
+        upload_command = upload_commands[0]
+        self.assertEqual(upload_command[0:4], ["gh", "release", "upload", "v1.2.3"])
+        self.assertEqual(upload_command[6:], ["--repo", "codeforester/demo", "--clobber"])
+        self.assertEqual(uploaded_contents["release-bom.json"], bom_bytes)
+        self.assertEqual(
+            uploaded_contents["release-bom.sha256"].decode(),
+            f"{hashlib.sha256(bom_bytes).hexdigest()}  release-bom.json\n",
+        )
+        verify_github.assert_called_once()
+        verify_context, verify_sha = verify_github.call_args.args
+        self.assertEqual(verify_context.manifest_path.parent, root.resolve())
+        self.assertEqual(verify_sha, READY_SHA)
+        self.assertEqual(
+            verify_github.call_args.kwargs["expected_assets"],
+            ("release-bom.json", "release-bom.sha256"),
+        )
+        self.assertIn("release-bom.json", stdout)
 
 
     def test_publish_yes_reports_recovery_when_github_release_create_fails_after_tag_push(self) -> None:

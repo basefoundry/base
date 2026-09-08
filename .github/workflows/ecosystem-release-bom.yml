@@ -1,0 +1,360 @@
+name: Ecosystem Release BOM
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_version:
+        description: Base release version owned by this BOM
+        required: true
+        default: "1.9.0"
+        type: string
+      base_ref:
+        description: Immutable Base full commit to validate
+        required: true
+        type: string
+      base_cli_version:
+        description: Released base-cli version
+        required: true
+        default: "0.4.3"
+        type: string
+      base_cli_ref:
+        description: Immutable base-cli full commit to validate
+        required: true
+        default: 8a93d22156ba75a99965f7c355f867acba630069
+        type: string
+      base_bash_libs_version:
+        description: Released base-bash-libs version
+        required: true
+        default: "2.1.0"
+        type: string
+      base_bash_libs_ref:
+        description: Immutable base-bash-libs full commit to validate
+        required: true
+        default: 36fec50c446dcea8c521a1ba3e7fee2394f169c0
+        type: string
+      base_demo_version:
+        description: Released base-demo version
+        required: true
+        default: "0.1.0"
+        type: string
+      base_demo_ref:
+        description: Immutable base-demo full commit to validate
+        required: true
+        default: b8ac2ae490e4965b8131195a11377fd0bd787daf
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compatibility:
+    name: Release stack (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-24.04
+            runner: ubuntu-24.04
+          - platform: macos-14
+            runner: macos-14
+    env:
+      BASE_CACHE_DIR: ${{ github.workspace }}/.base-cache
+      BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
+      BASE_CLI_SOURCE_DIR: ${{ github.workspace }}/.dependencies/base-cli/lib/python
+      BASE_SETUP_NOTIFY: "false"
+      BASE_DEMO_ENV: baseline
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - name: Validate immutable release refs
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+          BASE_CLI_REF: ${{ inputs.base_cli_ref }}
+          BASE_BASH_LIBS_REF: ${{ inputs.base_bash_libs_ref }}
+          BASE_DEMO_REF: ${{ inputs.base_demo_ref }}
+        run: |
+          set -euo pipefail
+          for value in "$BASE_REF" "$BASE_CLI_REF" "$BASE_BASH_LIBS_REF" "$BASE_DEMO_REF"; do
+            if [[ ! "$value" =~ ^[0-9a-f]{40}$ ]]; then
+              printf 'Release BOM refs must be full lowercase SHAs: %s\n' "$value" >&2
+              exit 2
+            fi
+          done
+
+      - name: Check out Base release candidate
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.base_ref }}
+          fetch-depth: 1
+
+      - name: Check out base-cli
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-cli
+          ref: ${{ inputs.base_cli_ref }}
+          path: .dependencies/base-cli
+          fetch-depth: 1
+
+      - name: Check out base-bash-libs
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-bash-libs
+          ref: ${{ inputs.base_bash_libs_ref }}
+          path: .dependencies/base-bash-libs
+          fetch-depth: 1
+
+      - name: Check out base-demo
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-demo
+          ref: ${{ inputs.base_demo_ref }}
+          path: .dependencies/base-demo
+          fetch-depth: 1
+
+      - name: Expose peer checkouts for workspace validation
+        run: |
+          set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"
+          ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"
+          ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.13"
+
+      - name: Install Ubuntu prerequisites
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats jq shellcheck python3-venv python3-pip
+
+      - name: Install macOS prerequisites
+        if: matrix.platform == 'macos-14'
+        run: brew install bash bats-core jq shellcheck
+
+      - name: Prepare Base runtime
+        run: |
+          set -euo pipefail
+          python -m venv "$HOME/.base.d/base/.venv"
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install --upgrade pip
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install --no-deps "$GITHUB_WORKSPACE/.dependencies/base-cli"
+          "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
+
+      - name: Validate Base release stack
+        run: |
+          set -euo pipefail
+          ./bin/basectl check --ci base --format json
+          env -u BASE_HOME ./bin/base-test
+
+      - name: Validate Base and base-demo on Ubuntu
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          set -euo pipefail
+          ./bin/basectl setup --ci base --yes --no-notify --format json
+          ./bin/basectl setup --ci base --profile dev --yes --no-notify --format json
+          ./bin/basectl check --ci base-demo \
+            --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
+            --format json
+
+      - name: Validate Base and base-demo on macOS
+        if: matrix.platform == 'macos-14'
+        run: |
+          set -euo pipefail
+          ./bin/basectl setup --ci base --format json
+          ./bin/basectl setup --ci base-demo \
+            --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
+            --format json
+          (cd "$GITHUB_WORKSPACE/../base-demo" && uv sync --locked)
+          ./bin/basectl check --ci base-demo \
+            --manifest "$GITHUB_WORKSPACE/../base-demo/base_manifest.yaml" \
+            --format json
+          ./bin/basectl trust allow base-demo --workspace "$GITHUB_WORKSPACE/.."
+          ./bin/basectl test base-demo --workspace "$GITHUB_WORKSPACE/.."
+          ./bin/basectl demo base-demo --workspace "$GITHUB_WORKSPACE/.." -- --non-interactive
+
+      - name: Write immutable compatibility evidence
+        run: |
+          set -euo pipefail
+          base_commit="$(git rev-parse HEAD)"
+          base_cli_commit="$(git -C .dependencies/base-cli rev-parse HEAD)"
+          base_bash_libs_commit="$(git -C .dependencies/base-bash-libs rev-parse HEAD)"
+          base_demo_commit="$(git -C .dependencies/base-demo rev-parse HEAD)"
+          evidence_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          jq -n \
+            --arg platform "${{ matrix.platform }}" \
+            --arg evidence "$evidence_url" \
+            --arg base_version "${{ inputs.base_version }}" \
+            --arg base_commit "$base_commit" \
+            --arg base_cli_version "${{ inputs.base_cli_version }}" \
+            --arg base_cli_commit "$base_cli_commit" \
+            --arg base_bash_libs_version "${{ inputs.base_bash_libs_version }}" \
+            --arg base_bash_libs_commit "$base_bash_libs_commit" \
+            --arg base_demo_version "${{ inputs.base_demo_version }}" \
+            --arg base_demo_commit "$base_demo_commit" \
+            '{
+              "result": "passed",
+              "platform": $platform,
+              "evidence": $evidence,
+              "components": {
+                "base": {"version": $base_version, "commit": $base_commit},
+                "base-cli": {"version": $base_cli_version, "commit": $base_cli_commit},
+                "base-bash-libs": {"version": $base_bash_libs_version, "commit": $base_bash_libs_commit},
+                "base-demo": {"version": $base_demo_version, "commit": $base_demo_commit}
+              }
+            }' > "$RUNNER_TEMP/release-stack-${{ matrix.platform }}.json"
+          cat "$RUNNER_TEMP/release-stack-${{ matrix.platform }}.json"
+
+      - name: Upload compatibility evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-stack-evidence-${{ matrix.platform }}
+          path: ${{ runner.temp }}/release-stack-${{ matrix.platform }}.json
+          if-no-files-found: error
+
+  assemble:
+    name: Assemble release BOM
+    needs: compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BOM_VERSION: ${{ inputs.base_version }}
+      BASE_CLI_VERSION: ${{ inputs.base_cli_version }}
+      BASE_BASH_LIBS_VERSION: ${{ inputs.base_bash_libs_version }}
+      BASE_DEMO_VERSION: ${{ inputs.base_demo_version }}
+
+    steps:
+      - name: Validate immutable release refs
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+          BASE_CLI_REF: ${{ inputs.base_cli_ref }}
+          BASE_BASH_LIBS_REF: ${{ inputs.base_bash_libs_ref }}
+          BASE_DEMO_REF: ${{ inputs.base_demo_ref }}
+        run: |
+          set -euo pipefail
+          for value in "$BASE_REF" "$BASE_CLI_REF" "$BASE_BASH_LIBS_REF" "$BASE_DEMO_REF"; do
+            if [[ ! "$value" =~ ^[0-9a-f]{40}$ ]]; then
+              printf 'Release BOM refs must be full lowercase SHAs: %s\n' "$value" >&2
+              exit 2
+            fi
+          done
+
+      - name: Check out Base release candidate
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.base_ref }}
+          fetch-depth: 1
+
+      - name: Check out component release refs
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-cli
+          ref: ${{ inputs.base_cli_ref }}
+          path: .dependencies/base-cli
+          fetch-depth: 1
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-bash-libs
+          ref: ${{ inputs.base_bash_libs_ref }}
+          path: .dependencies/base-bash-libs
+          fetch-depth: 1
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-demo
+          ref: ${{ inputs.base_demo_ref }}
+          path: .dependencies/base-demo
+          fetch-depth: 1
+
+      - name: Set up BOM tools
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.13"
+
+      - name: Download compatibility evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: release-stack-evidence-*
+          path: evidence
+          merge-multiple: true
+
+      - name: Assemble and validate Base-owned BOM
+        run: |
+          set -euo pipefail
+          for platform in ubuntu-24.04 macos-14; do
+            jq -e --arg platform "$platform" '.result == "passed" and .platform == $platform' \
+              "evidence/release-stack-$platform.json" >/dev/null
+          done
+
+          base_commit="$(git rev-parse HEAD)"
+          base_cli_commit="$(git -C .dependencies/base-cli rev-parse HEAD)"
+          base_bash_libs_commit="$(git -C .dependencies/base-bash-libs rev-parse HEAD)"
+          base_demo_commit="$(git -C .dependencies/base-demo rev-parse HEAD)"
+          mkdir -p "$RUNNER_TEMP/base-bom"
+
+          ./bin/base-release-bom-row \
+            --version "$BOM_VERSION" \
+            --commit "$base_commit" \
+            --evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --platform ubuntu-24.04 \
+            --platform macos-14 \
+            --output "$RUNNER_TEMP/base-bom/base-row.json"
+
+          jq -n \
+            --arg version "$BASE_CLI_VERSION" \
+            --arg commit "$base_cli_commit" \
+            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{repository:"basefoundry/base-cli",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:("base-cli-api@" + $version),platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
+            > "$RUNNER_TEMP/base-bom/base-cli-row.json"
+          bash_api_version="$(awk -F': ' '$1 == "manifest_version" {print $2; exit}' .dependencies/base-bash-libs/base_api_manifest.yaml)"
+          test -n "$bash_api_version"
+          jq -n \
+            --arg version "$BASE_BASH_LIBS_VERSION" \
+            --arg api_schema_version "base-bash-libs-api@$bash_api_version" \
+            --arg commit "$base_bash_libs_commit" \
+            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{repository:"basefoundry/base-bash-libs",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:$api_schema_version,platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
+            > "$RUNNER_TEMP/base-bom/base-bash-libs-row.json"
+          jq -n \
+            --arg version "$BASE_DEMO_VERSION" \
+            --arg commit "$base_demo_commit" \
+            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{repository:"basefoundry/base-demo",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:("base-demo-release@" + $version),platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
+            > "$RUNNER_TEMP/base-bom/base-demo-row.json"
+
+          bom="$RUNNER_TEMP/base-bom/release-bom.json"
+          ubuntu_evidence="$(jq -r '.evidence' evidence/release-stack-ubuntu-24.04.json)"
+          macos_evidence="$(jq -r '.evidence' evidence/release-stack-macos-14.json)"
+          ./bin/base-release-bom assemble \
+            --repository basefoundry/base \
+            --version "$BOM_VERSION" \
+            --commit "$base_commit" \
+            --component "$RUNNER_TEMP/base-bom/base-row.json" \
+            --component "$RUNNER_TEMP/base-bom/base-cli-row.json" \
+            --component "$RUNNER_TEMP/base-bom/base-bash-libs-row.json" \
+            --component "$RUNNER_TEMP/base-bom/base-demo-row.json" \
+            --combination "$(jq -cn --arg evidence "$ubuntu_evidence" '{name:"base-release-stack-ubuntu-24.04",participants:["basefoundry/base","basefoundry/base-cli","basefoundry/base-bash-libs","basefoundry/base-demo"],platform:"ubuntu-24.04",required:true,result:"passed",evidence:$evidence}')" \
+            --combination "$(jq -cn --arg evidence "$macos_evidence" '{name:"base-release-stack-macos-14",participants:["basefoundry/base","basefoundry/base-cli","basefoundry/base-bash-libs","basefoundry/base-demo"],platform:"macos-14",required:true,result:"passed",evidence:$evidence}')" \
+            --output "$bom"
+          digest="$(./bin/base-release-bom digest "$bom")"
+          actual_digest="$(sha256sum "$bom" | awk '{print $1}')"
+          test "$digest" = "$actual_digest"
+          printf '%s  release-bom.json\n' "$digest" > "$RUNNER_TEMP/base-bom/release-bom.sha256"
+          cat "$bom"
+          cat "$RUNNER_TEMP/base-bom/release-bom.sha256"
+
+      - name: Upload assembled Base release BOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: base-release-bom-${{ inputs.base_version }}
+          path: |
+            ${{ runner.temp }}/base-bom/release-bom.json
+            ${{ runner.temp }}/base-bom/release-bom.sha256
+          if-no-files-found: error

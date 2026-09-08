@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shlex
 import subprocess
 import sys
@@ -16,6 +17,8 @@ from .release_readiness import last_non_empty_line
 
 RELEASE_STEP_TIMEOUT_SECONDS = 120
 FULL_GIT_SHA_LENGTHS = frozenset((40, 64))
+RELEASE_BOM_ASSET_NAME = "release-bom.json"
+RELEASE_BOM_DIGEST_ASSET_NAME = "release-bom.sha256"
 RemoteTagState = Literal["absent", "intended", "conflict", "unavailable"]
 
 
@@ -34,7 +37,7 @@ def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
     )
     return (
         f"Release publish already created and pushed tag {ctx.tag_name}, "
-        "but GitHub Release creation or verification did not complete cleanly.\n"
+        "but GitHub Release creation, BOM asset upload, or verification did not complete cleanly.\n"
         "After confirming the pushed annotated tag resolves to the intended commit, complete the GitHub Release:\n"
         f"  {notes_command} > {shlex.quote(notes_file)}\n"
         f"  {create_release_command}\n"
@@ -166,7 +169,12 @@ def inspect_remote_annotated_tag(root: Path, tag_name: str, expected_sha: str) -
     return "intended" if peeled_sha == expected_sha else "conflict"
 
 
-def verify_github_release(ctx: ReleaseContext, expected_sha: str) -> None:
+def verify_github_release(
+    ctx: ReleaseContext,
+    expected_sha: str,
+    *,
+    expected_assets: tuple[str, ...] = (),
+) -> None:
     release_tag = capture_release_step(
         [
             "gh",
@@ -223,6 +231,29 @@ def verify_github_release(ctx: ReleaseContext, expected_sha: str) -> None:
             f"expected commit {expected_sha}."
         )
 
+    if expected_assets:
+        assets = capture_release_step(
+            [
+                "gh",
+                "release",
+                "view",
+                ctx.tag_name,
+                "--repo",
+                ctx.release.github.repository,
+                "--json",
+                "assets",
+                "--jq",
+                '[.assets[].name] | sort | join("\\n")',
+            ],
+            cwd=ctx.manifest_path.parent,
+        )
+        actual_assets = set(assets.splitlines())
+        missing_assets = sorted(set(expected_assets) - actual_assets)
+        if missing_assets:
+            raise ReleaseError(
+                f"GitHub Release {ctx.tag_name} is missing required assets: {', '.join(missing_assets)}."
+            )
+
 
 def parse_github_object(output: str, *, description: str) -> tuple[str, str]:
     object_type, separator, object_sha = output.strip().partition("\t")
@@ -241,3 +272,33 @@ def write_temp_release_notes(notes: str) -> Path:
         notes_file.write(notes)
         notes_file.write("\n")
         return Path(notes_file.name)
+
+
+def write_release_bom_assets(bom_path: Path, directory: Path) -> tuple[Path, Path]:
+    """Copy a validated BOM to stable asset names and write its byte digest."""
+    bom_bytes = bom_path.read_bytes()
+    bom_asset = directory / RELEASE_BOM_ASSET_NAME
+    digest_asset = directory / RELEASE_BOM_DIGEST_ASSET_NAME
+    bom_asset.write_bytes(bom_bytes)
+    digest_asset.write_text(
+        f"{hashlib.sha256(bom_bytes).hexdigest()}  {RELEASE_BOM_ASSET_NAME}\n",
+        encoding="utf-8",
+    )
+    return bom_asset, digest_asset
+
+
+def upload_release_bom_assets(ctx: ReleaseContext, assets: tuple[Path, Path]) -> None:
+    """Attach the BOM and its digest to the already-created GitHub Release."""
+    run_release_step(
+        [
+            "gh",
+            "release",
+            "upload",
+            ctx.tag_name,
+            *(str(asset) for asset in assets),
+            "--repo",
+            ctx.release.github.repository,
+            "--clobber",
+        ],
+        cwd=ctx.manifest_path.parent,
+    )

@@ -15,6 +15,13 @@ The release spans two repositories:
 - `basefoundry/homebrew-base` owns the Homebrew formula that installs published
   Base releases, plus the Homebrew bottle artifacts for supported macOS hosts.
 
+Base also owns the cross-repository release BOM. Releases of `base-cli`,
+`base-bash-libs`, or `base-demo` remain independently versioned and do not
+force a Base release. A Base release chooses the exact compatible component
+tags it will support and records those tags, commits, contract versions, and
+Ubuntu 24.04/macOS 14 validation evidence in its BOM. A later component release
+is eligible for a later Base BOM after the required compatibility checks pass.
+
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
 The formula points at a versioned tag archive and records that archive's
 `sha256`, so the archive must be available before the formula can be updated and
@@ -100,9 +107,10 @@ and rechecks the repository, branch, and full commit SHA immediately before its
 first mutation. It creates an annotated tag, verifies the local peeled SHA,
 pushes the tag, verifies the remote peeled SHA, and creates the GitHub Release
 with `--verify-tag` in the configured repository. The successful command then
-verifies GitHub's annotated tag object resolves to the same commit SHA. It does
-not update the Homebrew tap; it prints the tap handoff checklist when
-`release.homebrew` is declared.
+verifies GitHub's annotated tag object resolves to the same commit SHA. When
+`--bom` is supplied, it also uploads and verifies `release-bom.json` and
+`release-bom.sha256` as release assets. It does not update the Homebrew tap; it
+prints the tap handoff checklist when `release.homebrew` is declared.
 
 ## Base Release Checklist
 

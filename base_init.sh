@@ -299,14 +299,14 @@ base_init_bash_libs_version_is_supported() {
     local version="${1:-}"
 
     [[ "$version" =~ ^1[.][0-9]+[.][0-9]+$ ||
-        "$version" =~ ^2[.][0-9]+[.][0-9]+(-(alpha|beta|rc)[.](0|[1-9][0-9]*))?$ ]]
+        "$version" =~ ^2[.]([1-9][0-9]*)[.][0-9]+(-(alpha|beta|rc)[.](0|[1-9][0-9]*))?$ ]]
 }
 
 base_init_require_bash_libs_version() {
     local loaded_version="${BASE_BASH_LIBS_VERSION:-}"
 
     if ! base_init_bash_libs_version_is_supported "$loaded_version"; then
-        base_init_error "Base requires base-bash-libs 1.4.0 or a compatible release with the v2 API; loaded version is '$loaded_version'."
+        base_init_error "Base requires base-bash-libs 1.4.0 or a compatible v2.1 release; loaded version is '$loaded_version'."
         return 1
     fi
 
@@ -318,7 +318,7 @@ base_init_require_bash_libs_version() {
             fi
             ;;
         2.*)
-            # The v2 API is valid during the coordinated prerelease and GA
+            # The v2.1 API is valid during the coordinated prerelease and GA
             # window. Do not pass its prerelease form to the v1 numeric helper.
             ;;
     esac
