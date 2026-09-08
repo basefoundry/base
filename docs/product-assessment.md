@@ -549,7 +549,7 @@ The strongest shipped signals are:
   `--debug-wrapper`. The compatibility boundary is explicit instead of
   forcing users to choose between old scripts and the current command model.
 - The release line aligns the published `base-cli` provider with the current
-  0.4.3 release and consumes the `base-bash-libs` v2.0.0 GA release in CI and
+  0.4.3 release and consumes the `base-bash-libs` v2.1.0 GA release in CI and
   source-checkout coverage. That makes the shared framework boundary more
   reproducible without moving generic framework policy into Base.
 - `workspace check` and `workspace doctor` now have distinct readiness and

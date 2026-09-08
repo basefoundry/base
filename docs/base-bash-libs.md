@@ -131,7 +131,7 @@ diagnostics can report which external path won: `explicit`, `sibling`, or
 An explicit `BASE_BASH_LIBS_DIR` must contain `std/lib_std.sh`, and the loaded
 package must provide the v2 `base_` namespace. During the coordinated release
 train Base accepts the v2 API from the 1.4.0 development artifact; the final
-v2 cutover raises the minimum package version to 2.0.0. Base rejects stale
+v2.1 cutover raises the minimum package version to 2.1.0. Base rejects stale
 checkouts during runtime bootstrap with a direct diagnostic. If no explicit, sibling, or
 Homebrew source is available, Base fails during runtime bootstrap with an
 actionable install or checkout message. The variable is intended for tests and
@@ -173,7 +173,7 @@ The Base contract is external-required:
 - Homebrew Base consumes the Homebrew `base-bash-libs` package declared by the
   tap formula.
 - Base CI pins the source checkout to an immutable `base-bash-libs` commit. The
-  runtime contract is the v2 `base_` API, with the 2.0.0 version floor applied
+  runtime contract is the v2.1 `base_` API, with the 2.1.0 version floor applied
   at the final coordinated cutover.
 - `basectl check` and `basectl doctor` emit `BASE-D007` as ok when the external
   source is explicit, sibling, or Homebrew.

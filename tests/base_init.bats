@@ -119,10 +119,10 @@ EOF
     [[ "$output" == *"loaded version is '1.2.0'"* ]]
 }
 
-@test "base_init accepts v2 prerelease and GA base-bash-libs versions" {
+@test "base_init accepts v2.1 prerelease and GA base-bash-libs versions" {
     local version
 
-    for version in 2.0.0-alpha.1 2.0.0-beta.2 2.0.0-rc.1 2.0.0; do
+    for version in 2.1.0-alpha.1 2.1.0-beta.2 2.1.0-rc.1 2.1.0 2.2.0; do
         printf '%s\n' "$version" > "$TEST_TMPDIR/base-bash-libs/VERSION"
 
         run_base_init_script '
@@ -134,10 +134,22 @@ EOF
     done
 }
 
+@test "base_init rejects the incompatible v2.0 base-bash-libs release" {
+    printf '2.0.0\n' > "$TEST_TMPDIR/base-bash-libs/VERSION"
+
+    run_base_init_script '
+        base_home="$1"
+        source "$base_home/base_init.sh"
+    '
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"loaded version is '2.0.0'"* ]]
+}
+
 @test "base_init rejects malformed v2 prerelease versions" {
     local version
 
-    for version in 2.0.0-rc 2.0.0-gamma.1 3.0.0; do
+    for version in 2.1.0-rc 2.1.0-gamma.1 3.0.0; do
         printf '%s\n' "$version" > "$TEST_TMPDIR/base-bash-libs/VERSION"
 
         run_base_init_script '

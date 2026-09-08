@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-bash-libs
-          ref: 6792c29e546ed7a6230046e4d54bfa1474cd3b13
+          ref: 36fec50c446dcea8c521a1ba3e7fee2394f169c0
           path: .dependencies/base-bash-libs
 
       - name: Expose dependency checkouts as Base siblings

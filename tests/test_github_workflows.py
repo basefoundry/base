@@ -14,6 +14,7 @@ WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
 COPILOT_SETUP_WORKFLOW = WORKFLOW_DIR / "copilot-setup-steps.yml"
 BASE_CHECK_WORKFLOW = WORKFLOW_DIR / "base-check.yml"
+ECOSYSTEM_RELEASE_BOM_WORKFLOW = WORKFLOW_DIR / "ecosystem-release-bom.yml"
 BASE_DEMO_E2E_WORKFLOW = WORKFLOW_DIR / "base-demo-e2e.yml"
 TESTS_WORKFLOW = WORKFLOW_DIR / "tests.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
@@ -21,7 +22,7 @@ ISSUE_BRANCH_POLICY_WORKFLOW = WORKFLOW_DIR / "issue-branch-policy.yml"
 ISSUE_BRANCH_POLICY_TEMPLATE = REPO_ROOT / "templates" / "issue-branch-policy.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
-BASE_BASH_LIBS_GA_COMMIT = "6792c29e546ed7a6230046e4d54bfa1474cd3b13"
+BASE_BASH_LIBS_GA_COMMIT = "36fec50c446dcea8c521a1ba3e7fee2394f169c0"
 
 
 def workflow_files() -> list[Path]:
@@ -107,6 +108,40 @@ def test_all_workflow_action_uses_are_pinned_to_full_commit_sha() -> None:
     unpinned = workflow_action_references_without_full_sha()
 
     assert not unpinned, unpinned
+
+
+def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix() -> None:
+    workflow = load_workflow(ECOSYSTEM_RELEASE_BOM_WORKFLOW)
+    triggers = workflow.get("on") or workflow.get(True)
+    inputs = triggers["workflow_dispatch"]["inputs"]
+    compatibility = workflow["jobs"]["compatibility"]
+    assemble = workflow["jobs"]["assemble"]
+    platforms = {item["platform"] for item in compatibility["strategy"]["matrix"]["include"]}
+    run_commands = "\n".join(
+        step.get("run", "")
+        for job in workflow["jobs"].values()
+        for step in job.get("steps", [])
+        if isinstance(step, dict)
+    )
+
+    assert workflow["name"] == "Ecosystem Release BOM"
+    assert workflow["permissions"] == {"contents": "read"}
+    assert platforms == {"ubuntu-24.04", "macos-14"}
+    assert set(inputs) == {
+        "base_version",
+        "base_ref",
+        "base_cli_version",
+        "base_cli_ref",
+        "base_bash_libs_version",
+        "base_bash_libs_ref",
+        "base_demo_version",
+        "base_demo_ref",
+    }
+    assert assemble["needs"] == "compatibility"
+    assert "base-release-bom assemble" in run_commands
+    assert "base-release-bom-row" in run_commands
+    assert "release-bom.sha256" in run_commands
+    assert "^\u005b0-9a-f\u005d{40}$" in run_commands
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:

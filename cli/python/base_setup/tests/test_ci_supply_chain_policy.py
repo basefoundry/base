@@ -60,6 +60,9 @@ def test_base_bash_libs_ci_checkouts_are_pinned() -> None:
 
     assert checkouts, "CI must explicitly check out basefoundry/base-bash-libs where shell tests need it."
     for path, ref in checkouts:
+        if ref == "${{ inputs.base_bash_libs_ref }}":
+            assert path.name == "ecosystem-release-bom.yml"
+            continue
         assert FULL_SHA_RE.fullmatch(ref), f"{path}: base-bash-libs checkout must pin a full SHA."
 
 

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
+base_release_bom_row_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)" || exit 1
+base_release_bom_row_pythonpath="$base_release_bom_row_root/cli/python"
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    base_release_bom_row_pythonpath="$base_release_bom_row_pythonpath:$PYTHONPATH"
+fi
+PYTHONPATH="$base_release_bom_row_pythonpath" exec python3 -m base_release.release_bom_row "$@"
