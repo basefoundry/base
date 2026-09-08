@@ -8,6 +8,8 @@ _base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 
 # shellcheck source=/dev/null
 source "$_base_project_command_helpers_path"
 
+import_base_lib arg/lib_arg.sh
+
 base_test_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -35,8 +37,18 @@ base_test_subcommand_main() {
     local project="" explicit_project="" wrapper resolve_output resolved_name project_root manifest_path test_command command_runner
     local command_to_run display_command
     local dry_run=0
-    local args=() extra_args=()
+    local args=() extra_args=() parser_args=()
     local route_venv_dir uses_uv_manager trust_required
+    local positional_count=0
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "debug|flag|-v"
+        "workspace|value|--workspace"
+        "project|value|--project"
+        "dry_run|flag|--dry-run"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -50,6 +62,7 @@ base_test_subcommand_main() {
                 return 0
                 ;;
             -v)
+                parser_args+=("$1")
                 args+=(--debug)
                 shift
                 ;;
@@ -58,10 +71,12 @@ base_test_subcommand_main() {
                     base_test_usage_error "Option '--workspace' requires an argument."
                     return $?
                 }
+                parser_args+=("--workspace=$2")
                 args+=(--workspace "$2")
                 shift 2
                 ;;
             --workspace=*)
+                parser_args+=("$1")
                 args+=("$1")
                 shift
                 ;;
@@ -75,10 +90,11 @@ base_test_subcommand_main() {
                     return $?
                 }
                 explicit_project="$2"
+                parser_args+=("--project=$2")
                 shift 2
                 ;;
             --dry-run)
-                dry_run=1
+                parser_args+=("$1")
                 shift
                 ;;
             -*)
@@ -86,16 +102,32 @@ base_test_subcommand_main() {
                 return $?
                 ;;
             *)
-                if [[ -n "$project" ]]; then
+                positional_count=$((positional_count + 1))
+                if ((positional_count > 1)); then
                     base_test_usage_error "The 'test' command accepts exactly one project name."
                     return $?
                 fi
-                project="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
 
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_test_usage_error "Could not parse test arguments."
+        return $?
+    fi
+
+    if ((${#positionals[@]} > 1)); then
+        base_test_usage_error "The 'test' command accepts exactly one project name."
+        return $?
+    fi
+    if ((${#positionals[@]} == 1)); then
+        project="${positionals[0]}"
+    fi
+
+    explicit_project="${parsed_options[project]:-}"
+    dry_run="${parsed_options[dry_run]:-0}"
     [[ -z "$explicit_project" || -z "$project" ]] || {
         base_test_usage_error "The 'test' command does not accept a positional project with --project."
         return $?
