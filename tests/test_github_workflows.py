@@ -117,6 +117,11 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     compatibility = workflow["jobs"]["compatibility"]
     assemble = workflow["jobs"]["assemble"]
     platforms = {item["platform"] for item in compatibility["strategy"]["matrix"]["include"]}
+    compatibility_commands = "\n".join(
+        step.get("run", "")
+        for step in compatibility.get("steps", [])
+        if isinstance(step, dict)
+    )
     run_commands = "\n".join(
         step.get("run", "")
         for job in workflow["jobs"].values()
@@ -142,6 +147,10 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert "base-release-bom-row" in run_commands
     assert "release-bom.sha256" in run_commands
     assert "^\u005b0-9a-f\u005d{40}$" in run_commands
+    assert 'git init "$GITHUB_WORKSPACE/../base-demo"' in compatibility_commands
+    assert 'git -C "$GITHUB_WORKSPACE/../base-demo" fetch --depth 1 origin "$BASE_DEMO_REF"' in compatibility_commands
+    assert "--format json --no-notify --yes" in compatibility_commands
+    assert 'base_demo_commit="$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"' in compatibility_commands
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
