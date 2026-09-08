@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from .release_bom import ReleaseBomError, bom_digest, load_bom, validate_bom
+from .release_bom import ReleaseBomError, bom_digest, canonical_bom_bytes, load_bom, validate_bom
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -77,7 +77,7 @@ def main() -> int:
         else:
             assembled = assemble(args)
             args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(json.dumps(assembled, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            args.output.write_bytes(canonical_bom_bytes(assembled))
             print(f"release BOM assembled and validated: {args.output}")
             print(f"sha256: {bom_digest(assembled)}")
     except ReleaseBomError as exc:

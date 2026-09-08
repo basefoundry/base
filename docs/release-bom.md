@@ -38,7 +38,9 @@ bin/base-release-bom digest path/to/release-bom.json
 
 The release coordinator can assemble the complete record from repository-owned
 component rows and explicit combination results. Each combination is a JSON
-object; required combinations must already report `passed`:
+object; required combinations must already report `passed`. Assembly writes
+canonical deterministic bytes, so the printed digest matches `sha256sum` of the
+attached BOM artifact:
 
 ```bash
 bin/base-release-bom assemble \
