@@ -8,6 +8,7 @@ from typing import Any
 
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
 TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
 RESULTS = {"passed", "failed", "not_tested"}
 SOURCE_MODES = {"release", "tag", "moving"}
@@ -47,7 +48,7 @@ def validate_bom(
     release_commit = _commit(release, "commit", "release.commit")
     if not TAG_RE.fullmatch(release_tag) or release_tag != f"v{release_version}":
         raise ReleaseBomError("release.tag must be v<release.version>")
-    if expected_repository is not None and release["repository"] != expected_repository:
+    if expected_repository is not None and release_repository.casefold() != expected_repository.casefold():
         raise ReleaseBomError(
             f"release.repository {release['repository']!r} does not match {expected_repository!r}"
         )
@@ -66,14 +67,15 @@ def validate_bom(
         path = f"components[{index}]"
         row = _mapping_value(component, path)
         repository = _repository(row, "repository", path)
-        if repository in component_repositories:
+        repository_key = repository.casefold()
+        if repository_key in component_repositories:
             raise ReleaseBomError(f"{path}.repository is duplicated: {repository}")
-        component_repositories.add(repository)
+        component_repositories.add(repository_key)
         _string(row, "version", f"{path}.version")
         source_mode = _string(row, "source_mode", f"{path}.source_mode")
         if source_mode not in SOURCE_MODES:
             raise ReleaseBomError(f"{path}.source_mode must be one of: {', '.join(sorted(SOURCE_MODES))}")
-        commit = _commit(row, "commit", path)
+        _commit(row, "commit", path)
         required = _boolean(row, "required", path)
         _string(row, "api_schema_version", f"{path}.api_schema_version")
         platforms = row.get("platforms")
@@ -98,9 +100,7 @@ def validate_bom(
             tag = _string(row, "tag", f"{path}.tag")
             if not TAG_RE.fullmatch(tag):
                 raise ReleaseBomError(f"{path}.tag must be an immutable vX.Y.Z tag")
-        if commit != commit.lower():
-            raise ReleaseBomError(f"{path}.commit must use lowercase hexadecimal")
-    if release_repository not in component_repositories:
+    if release_repository.casefold() not in component_repositories:
         raise ReleaseBomError("release.repository must be declared in components")
 
     combinations = document.get("combinations")
@@ -117,9 +117,10 @@ def validate_bom(
             raise ReleaseBomError(f"{path}.participants must be a non-empty array")
         if not all(isinstance(participant, str) for participant in participants):
             raise ReleaseBomError(f"{path}.participants must contain repository strings")
-        if len(set(participants)) < 2:
+        if len(set(participant.casefold() for participant in participants)) < 2:
             raise ReleaseBomError(f"{path}.participants must contain at least two repositories")
-        unknown = sorted(set(participants) - component_repositories)
+        participant_keys = {participant.casefold() for participant in participants}
+        unknown = sorted(participant_keys - component_repositories)
         if unknown:
             raise ReleaseBomError(f"{path}.participants references unknown components: {unknown}")
         _string(row, "platform", f"{path}.platform")
@@ -130,7 +131,7 @@ def validate_bom(
         evidence = _string(row, "evidence", f"{path}.evidence")
         if required:
             required_combination = True
-            if release_repository in participants:
+            if release_repository.casefold() in participant_keys:
                 required_release_combination = True
             if result != "passed":
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
@@ -186,15 +187,15 @@ def _string(row: dict[str, Any], key: str, path: str) -> str:
 
 def _repository(row: dict[str, Any], key: str = "repository", path: str = "") -> str:
     value = _string(row, key, f"{path + '.' if path else ''}{key}")
-    if "/" not in value or value.startswith("/") or value.endswith("/"):
+    if not REPOSITORY_RE.fullmatch(value):
         raise ReleaseBomError(f"{path + '.' if path else ''}{key} must use owner/name format")
     return value
 
 
 def _commit(row: dict[str, Any], key: str, path: str) -> str:
     value = _string(row, key, f"{path}.{key}")
-    if not FULL_SHA_RE.fullmatch(value.lower()):
-        raise ReleaseBomError(f"{path}.{key} must be a full 40-character SHA")
+    if not FULL_SHA_RE.fullmatch(value):
+        raise ReleaseBomError(f"{path}.{key} must be a lowercase full 40-character SHA")
     return value
 
 
