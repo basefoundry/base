@@ -14,8 +14,8 @@ Options:
   --status <ok|warn|error>
                         Filter by command status.
   --limit <count>       Number of recent history records to list. Defaults to 10.
-  --format <text|csv|tsv|yaml|json>
-                        Output format. Defaults to text; --report keeps its terminal Markdown presentation.
+  --format <text|csv|tsv|yaml|json|markdown>
+                        Output format. Defaults to text; --report supports Markdown or JSON reports.
   --report              Print a privacy-conscious Markdown or JSON activity report.
   --oldest-first        Show the selected history window from oldest to newest.
   --last <duration>     Show records from the most recent duration, such as 2h or 7d.

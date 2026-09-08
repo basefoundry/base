@@ -1,0 +1,1834 @@
+{
+  "baseline_version": "1.8.0",
+  "baseline_exceptions": [
+    {
+      "command": "basectl repo init <name>",
+      "kind": "command_option_removed",
+      "option": "--copyright-holder",
+      "reason": "Retired before v1.9.0; new repositories use the Apache-2.0 default documented in the Unreleased changelog."
+    },
+    {
+      "finding_id": "BASE-D105",
+      "kind": "finding_meaning_changed",
+      "reason": "Clarified to identify GitHub CLI executable availability for authentication checks in the v1.9.0 development line."
+    },
+    {
+      "finding_id": "BASE-P142",
+      "kind": "finding_meaning_changed",
+      "reason": "Clarified the supported Python-manager interpretation in the v1.9.0 development line."
+    }
+  ],
+  "commands": {
+    "basectl activate <project>": {
+      "flags": {
+        "--no-cd": {
+          "takes_value": false
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl build [project] --list": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl build [project] [target...]": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl check [project]": {
+      "flags": {
+        "--ci": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--profile": {
+          "takes_value": true
+        },
+        "--remote-network": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl clean": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--keep-last": {
+          "takes_value": true
+        },
+        "--older-than": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl config doctor": {
+      "flags": {}
+    },
+    "basectl config path": {
+      "flags": {}
+    },
+    "basectl config show": {
+      "flags": {}
+    },
+    "basectl demo [project]": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl devcontainer [project]": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "--write": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl devenv-report [project]": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl docs": {
+      "flags": {
+        "--show-url": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl doctor [project]": {
+      "flags": {
+        "--ci": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--no-color": {
+          "takes_value": false
+        },
+        "--profile": {
+          "takes_value": true
+        },
+        "--remote-network": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl doctor explain <finding-id>": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        }
+      }
+    },
+    "basectl export-context [project]": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "markdown",
+            "zip"
+          ],
+          "takes_value": true
+        },
+        "--list-files": {
+          "takes_value": false
+        },
+        "--output": {
+          "takes_value": true
+        },
+        "--print": {
+          "takes_value": false
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh auth refresh": {
+      "flags": {
+        "--clipboard": {
+          "takes_value": false
+        },
+        "--hostname": {
+          "takes_value": true
+        },
+        "--scope": {
+          "takes_value": true
+        },
+        "--scopes": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh auth status": {
+      "flags": {
+        "--hostname": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh branch prune": {
+      "flags": {
+        "--closed-unmerged": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--remote": {
+          "takes_value": false
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl gh branch stale": {
+      "flags": {
+        "--days": {
+          "takes_value": true
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh issue create": {
+      "flags": {
+        "--allow-cross-repo": {
+          "takes_value": false
+        },
+        "--assignee": {
+          "takes_value": true
+        },
+        "--body": {
+          "takes_value": true
+        },
+        "--category": {
+          "enum": [
+            "bug",
+            "enhancement",
+            "documentation",
+            "ci",
+            "security"
+          ],
+          "takes_value": true
+        },
+        "--no-assignee": {
+          "takes_value": false
+        },
+        "--no-project": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--project-owner": {
+          "takes_value": true
+        },
+        "--repo": {
+          "takes_value": true
+        },
+        "--size": {
+          "enum": [
+            "T",
+            "S",
+            "M",
+            "L"
+          ],
+          "takes_value": true
+        },
+        "--title": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh issue list": {
+      "flags": {}
+    },
+    "basectl gh issue readiness <number>": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--project-number": {
+          "takes_value": true
+        },
+        "--project-owner": {
+          "takes_value": true
+        },
+        "--repo": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh issue start <number>": {
+      "flags": {
+        "--category": {
+          "takes_value": true
+        },
+        "--repo": {
+          "takes_value": true
+        },
+        "--title": {
+          "takes_value": true
+        },
+        "-R": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh pr create/status/checks/ready/merge": {
+      "flags": {
+        "--no-fixes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl gh project configure": {
+      "flags": {
+        "--config": {
+          "takes_value": true
+        },
+        "--copy-fields-from": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--initiative-option": {
+          "takes_value": true
+        },
+        "--owner": {
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--replace-project": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        },
+        "--schema": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl gh project doctor": {
+      "flags": {
+        "--owner": {
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--schema": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl gh project issue set-fields <number>": {
+      "flags": {
+        "--allow-cross-repo": {
+          "takes_value": false
+        },
+        "--config": {
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--repo": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl gh worktree prune": {
+      "flags": {
+        "--closed-unmerged": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl history": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--last": {
+          "takes_value": true
+        },
+        "--limit": {
+          "takes_value": true
+        },
+        "--local-time": {
+          "takes_value": false
+        },
+        "--oldest-first": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--since": {
+          "takes_value": true
+        },
+        "--status": {
+          "enum": [
+            "ok",
+            "warn",
+            "error"
+          ],
+          "takes_value": true
+        },
+        "--until": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl history --report": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "markdown",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--last": {
+          "takes_value": true
+        },
+        "--limit": {
+          "takes_value": true
+        },
+        "--local-time": {
+          "takes_value": false
+        },
+        "--oldest-first": {
+          "takes_value": false
+        },
+        "--since": {
+          "takes_value": true
+        },
+        "--until": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl logs": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        },
+        "--limit": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl logs --latest": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl logs --open": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl logs --tail": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        },
+        "--lines": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl logs last-failed": {
+      "flags": {
+        "--command": {
+          "takes_value": true
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--lines": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl onboard [project]": {
+      "flags": {
+        "--allow-project-ide-mutations": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--no-profile": {
+          "takes_value": false
+        },
+        "--profile": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl projects list": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl prompt list": {
+      "flags": {}
+    },
+    "basectl prompt product-self-review": {
+      "flags": {
+        "--output": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl release check --version <version>": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl release notes --version <version>": {
+      "flags": {
+        "--manifest": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl release plan --version <version>": {
+      "flags": {
+        "--manifest": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl release publish --version <version>": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl repo agent-guidance [path]": {
+      "flags": {
+        "--category": {
+          "takes_value": true
+        },
+        "--default-branch": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--issue": {
+          "takes_value": true
+        },
+        "--pr": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        },
+        "--repo-name": {
+          "takes_value": true
+        },
+        "--validation-command": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl repo check [path]": {
+      "flags": {
+        "--agent-guidance": {
+          "takes_value": false
+        },
+        "--agent-ready": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--release": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl repo clone <name-or-owner/name>": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--owner": {
+          "takes_value": true
+        },
+        "--path": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl repo configure [path]": {
+      "flags": {
+        "--copy-project-fields-from": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--initiative-option": {
+          "takes_value": true
+        },
+        "--no-project": {
+          "takes_value": false
+        },
+        "--no-protect-default-branch": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--project-owner": {
+          "takes_value": true
+        },
+        "--project-schema": {
+          "takes_value": true
+        },
+        "--release": {
+          "takes_value": false
+        },
+        "--replace-project": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl repo init <name>": {
+      "flags": {
+        "--agent-ready": {
+          "takes_value": false
+        },
+        "--category": {
+          "takes_value": true
+        },
+        "--copy-project-fields-from": {
+          "takes_value": true
+        },
+        "--description": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--initiative-option": {
+          "takes_value": true
+        },
+        "--issue": {
+          "takes_value": true
+        },
+        "--language": {
+          "takes_value": true
+        },
+        "--license": {
+          "takes_value": true
+        },
+        "--no-configure": {
+          "takes_value": false
+        },
+        "--no-project": {
+          "takes_value": false
+        },
+        "--no-protect-default-branch": {
+          "takes_value": false
+        },
+        "--path": {
+          "takes_value": true
+        },
+        "--pr": {
+          "takes_value": false
+        },
+        "--private": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--project-owner": {
+          "takes_value": true
+        },
+        "--project-schema": {
+          "takes_value": true
+        },
+        "--public": {
+          "takes_value": false
+        },
+        "--release": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl repo installer-template [path]": {
+      "flags": {
+        "--category": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--issue": {
+          "takes_value": true
+        },
+        "--pr": {
+          "takes_value": false
+        },
+        "--print": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl run [project] --list": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl run [project] <command>": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl setup --ci [project]": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--profile": {
+          "takes_value": true
+        },
+        "--recreate-venv": {
+          "takes_value": false
+        },
+        "--upgrade-pip": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl setup [project]": {
+      "flags": {
+        "--allow-project-ide-mutations": {
+          "takes_value": false
+        },
+        "--ci": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--no-notify": {
+          "takes_value": false
+        },
+        "--notify": {
+          "takes_value": false
+        },
+        "--profile": {
+          "takes_value": true
+        },
+        "--recreate-venv": {
+          "takes_value": false
+        },
+        "--upgrade-pip": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl test [project]": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl trust allow <project>": {
+      "flags": {
+        "--manifest-sha256": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl trust revoke <project>": {
+      "flags": {
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl trust status [project]": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl update [project]": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl update-profile": {
+      "flags": {
+        "--defaults": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--no-defaults": {
+          "takes_value": false
+        },
+        "--remove": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl version": {
+      "flags": {}
+    },
+    "basectl workspace agent-brief": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace check": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace clone": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--include-optional": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace configure": {
+      "flags": {
+        "--apply": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl workspace doctor": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace init <workspace-source>": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--include-optional": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--owner": {
+          "takes_value": true
+        },
+        "--path": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace onboarding": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace pull": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--source": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace setup": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl workspace status": {
+      "flags": {
+        "--format": {
+          "enum": [
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    },
+    "basectl workspace update": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--repos": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        }
+      }
+    }
+  },
+  "findings": {
+    "BASE-D001": "Homebrew availability and PATH refresh",
+    "BASE-D002": "Xcode Command Line Tools availability and Homebrew freshness",
+    "BASE-D003": "Base Python runtime availability",
+    "BASE-D004": "Base virtual environment integrity",
+    "BASE-D005": "Base `PyYAML` package availability",
+    "BASE-D006": "Base `click` package availability",
+    "BASE-D007": "Base reusable Bash library source readiness",
+    "BASE-D008": "Bash runtime version support",
+    "BASE-D009": "Python `venv` module support",
+    "BASE-D010": "Git CLI availability",
+    "BASE-D011": "GitHub CLI availability on Ubuntu/Debian",
+    "BASE-D012": "BATS availability on Ubuntu/Debian",
+    "BASE-D013": "ShellCheck availability on Ubuntu/Debian",
+    "BASE-D014": "jq availability on Ubuntu/Debian",
+    "BASE-D015": "Go availability on Ubuntu/Debian source checkouts",
+    "BASE-D101": "Unsupported prerequisite profile manager",
+    "BASE-D102": "Unsupported prerequisite profile version",
+    "BASE-D103": "Homebrew unavailable for prerequisite profile checks",
+    "BASE-D104": "Prerequisite profile Homebrew package presence and freshness",
+    "BASE-D105": "GitHub CLI executable availability for authentication checks",
+    "BASE-D106": "GitHub CLI authentication status",
+    "BASE-D107": "AI developer tool availability and version status",
+    "BASE-D108": "Multipass availability and version status for the `linux-lab` profile",
+    "BASE-H001": "Required environment variable presence; each variable is keyed by `(id, name)`.",
+    "BASE-H002": "Required TCP port listening/free state",
+    "BASE-P001": "Empty project manifest artifact set",
+    "BASE-P002": "Project manifest validity",
+    "BASE-P010": "Brewfile path validity",
+    "BASE-P011": "Brewfile platform or Homebrew availability",
+    "BASE-P012": "Brewfile dependency status",
+    "BASE-P020": "mise config path validity",
+    "BASE-P021": "mise CLI availability and setup bootstrap guidance",
+    "BASE-P022": "mise trust and missing-tool status",
+    "BASE-P030": "Unsupported artifact manager",
+    "BASE-P031": "Unsupported Homebrew artifact version",
+    "BASE-P032": "Homebrew unavailable for artifact checks",
+    "BASE-P033": "Homebrew artifact package presence and freshness",
+    "BASE-P034": "Platform system-package artifact presence",
+    "BASE-P040": "Python package artifact status in the project virtual environment",
+    "BASE-P050": "Project virtual environment readiness",
+    "BASE-P060": "Project demo declaration",
+    "BASE-P061": "Project demo script path and executable status",
+    "BASE-P070": "Build target working directory status",
+    "BASE-P080": "Project Git repository status",
+    "BASE-P081": "Project Git `origin` remote status",
+    "BASE-P082": "GitHub CLI authentication status for a GitHub-hosted project remote",
+    "BASE-P083": "Opt-in project Git `origin` remote reachability status",
+    "BASE-P100": "User config disables all IDE setup and checks",
+    "BASE-P101": "User config disables setup and checks for one IDE",
+    "BASE-P102": "User IDE setting conflicts with a project manifest setting",
+    "BASE-P110": "IDE CLI unavailable for extension checks",
+    "BASE-P111": "IDE extension listing failure",
+    "BASE-P112": "IDE extension install status",
+    "BASE-P120": "IDE settings file validity",
+    "BASE-P121": "IDE setting presence",
+    "BASE-P122": "IDE setting expected-value match",
+    "BASE-P123": "IDE setting value differs from the Base manifest",
+    "BASE-P130": "Homebrew unavailable for IDE app checks",
+    "BASE-P131": "IDE app install status",
+    "BASE-P132": "IDE CLI PATH status",
+    "BASE-P140": "`pyproject.toml` presence and metadata summary",
+    "BASE-P141": "`pyproject.toml` readability",
+    "BASE-P142": "`pyproject.toml` dependency metadata observed without an explicit supported Python manager",
+    "BASE-P143": "Unsupported `[tool.base]` configuration",
+    "BASE-P150": "uv CLI availability for uv-managed projects or uv command runners",
+    "BASE-P151": "uv-managed project `pyproject.toml` presence",
+    "BASE-P152": "uv-managed project `uv.lock` presence",
+    "BASE-P153": "Stale Base-managed project virtual environment ignored by a uv-managed project",
+    "BASE-P154": "uv-managed project virtual environment readiness",
+    "BASE-P155": "uv-managed project virtual environment synchronization",
+    "BASE-P160": "Manifest command executable availability",
+    "BASE-P161": "Manifest command project script path readiness",
+    "BASE-P170": "Project Python version requirement support window",
+    "BASE-P171": "Selected project Python interpreter availability",
+    "BASE-P172": "Actual inspectable project Python runtime: environment manager, virtualenv path, interpreter path, and Python minor version",
+    "BASE-W010": "Expected workspace repository presence",
+    "BASE-W011": "Discovered Base-managed project outside the workspace manifest",
+    "BASE-W012": "Present expected repository without a Base project manifest"
+  },
+  "format_version": 1,
+  "json_contracts": {
+    "diagnostic-v1": {
+      "$defs": {
+        "diagnostic-item": {
+          "properties": {
+            "details": {
+              "type": "object"
+            },
+            "fix": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "ok",
+                "warn",
+                "error"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "name",
+            "message",
+            "fix"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/diagnostic-item"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/diagnostic-item"
+          },
+          "type": "array"
+        },
+        "project": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "warn",
+            "error"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "status"
+      ],
+      "type": "object"
+    },
+    "inspection-v1": {
+      "properties": {
+        "command": {
+          "enum": [
+            "repo check",
+            "release check",
+            "gh issue readiness",
+            "gh branch stale"
+          ],
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        },
+        "error": {
+          "properties": {
+            "details": {
+              "type": "object"
+            },
+            "message": {
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "usage_error",
+                "environment_error",
+                "upstream_error",
+                "execution_error"
+              ],
+              "type": "string"
+            }
+          },
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "warn",
+            "error"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "command",
+        "status",
+        "data",
+        "error"
+      ],
+      "type": "object"
+    }
+  },
+  "schemas": {
+    "workspace-agent-brief.json": {
+      "$defs": {
+        "fileSignal": {
+          "properties": {
+            "missing_files": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "not_executable_files": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "complete",
+                "incomplete",
+                "not_applicable",
+                "unavailable",
+                "present",
+                "partial",
+                "missing"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "missing_files",
+            "not_executable_files"
+          ],
+          "type": "object"
+        },
+        "repository": {
+          "properties": {
+            "base_managed": {
+              "type": "boolean"
+            },
+            "default_branch": {
+              "type": "string"
+            },
+            "discovery_status": {
+              "enum": [
+                "present",
+                "missing"
+              ]
+            },
+            "expected": {
+              "type": "boolean"
+            },
+            "handoff_status": {
+              "enum": [
+                "missing_required",
+                "missing_optional",
+                "unmanaged",
+                "needs_manifest_repair",
+                "needs_baseline",
+                "needs_setup",
+                "needs_agent_guidance",
+                "ready"
+              ]
+            },
+            "manifest": {
+              "enum": [
+                "valid",
+                "invalid",
+                "missing",
+                "unknown"
+              ]
+            },
+            "manifest_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_actions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "path": {
+              "type": "string"
+            },
+            "project": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "repository": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "scope": {
+              "enum": [
+                "required",
+                "optional",
+                "local_only"
+              ]
+            },
+            "signals": {
+              "properties": {
+                "agent_guidance": {
+                  "$ref": "#/$defs/fileSignal"
+                },
+                "ai_context": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "present",
+                        "missing",
+                        "invalid",
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "baseline": {
+                  "$ref": "#/$defs/fileSignal"
+                },
+                "validation": {
+                  "$ref": "#/$defs/validationSignal"
+                }
+              },
+              "required": [
+                "baseline",
+                "agent_guidance",
+                "ai_context",
+                "validation"
+              ],
+              "type": "object"
+            },
+            "url": {
+              "type": "string"
+            },
+            "venv": {
+              "enum": [
+                "ready",
+                "present_unverified",
+                "not_applicable",
+                "missing",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "repository",
+            "project",
+            "path",
+            "expected",
+            "required",
+            "base_managed",
+            "scope",
+            "discovery_status",
+            "manifest_path",
+            "manifest",
+            "venv",
+            "handoff_status",
+            "signals",
+            "next_actions"
+          ],
+          "type": "object"
+        },
+        "validationSignal": {
+          "properties": {
+            "command": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source": {
+              "enum": [
+                "repo_baseline",
+                "manifest_test",
+                null
+              ]
+            },
+            "status": {
+              "enum": [
+                "available",
+                "unavailable"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "command",
+            "source"
+          ],
+          "type": "object"
+        },
+        "workspaceManifest": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "schema_version": {
+              "const": 1
+            }
+          },
+          "required": [
+            "path",
+            "name",
+            "schema_version"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "repositories": {
+          "items": {
+            "$ref": "#/$defs/repository"
+          },
+          "type": "array"
+        },
+        "repository_count": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_manifest": {
+          "$ref": "#/$defs/workspaceManifest"
+        }
+      },
+      "required": [
+        "schema_version",
+        "workspace",
+        "workspace_manifest",
+        "repository_count",
+        "repositories"
+      ],
+      "type": "object"
+    },
+    "workspace-update.json": {
+      "$defs": {
+        "counts": {
+          "properties": {
+            "failed": {
+              "type": "integer"
+            },
+            "planned": {
+              "type": "integer"
+            },
+            "skipped": {
+              "type": "integer"
+            },
+            "unchanged": {
+              "type": "integer"
+            },
+            "updated": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "planned",
+            "updated",
+            "unchanged",
+            "skipped",
+            "failed"
+          ],
+          "type": "object"
+        },
+        "repository": {
+          "properties": {
+            "action": {
+              "enum": [
+                "pull",
+                "skip"
+              ]
+            },
+            "detail": {
+              "type": "string"
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "fatal": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "planned",
+                "updated",
+                "unchanged",
+                "skipped",
+                "failed"
+              ]
+            }
+          },
+          "required": [
+            "repository",
+            "path",
+            "required",
+            "action",
+            "status",
+            "fatal"
+          ],
+          "type": "object"
+        },
+        "workspaceManifest": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "schema_version": {
+              "const": 1
+            }
+          },
+          "required": [
+            "path",
+            "name",
+            "schema_version"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "repositories": {
+          "items": {
+            "$ref": "#/$defs/repository"
+          },
+          "type": "array"
+        },
+        "repository_count": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "selected_repositories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_manifest": {
+          "$ref": "#/$defs/workspaceManifest"
+        }
+      },
+      "required": [
+        "schema_version",
+        "workspace",
+        "workspace_manifest",
+        "dry_run",
+        "selected_repositories",
+        "repository_count",
+        "repositories",
+        "counts"
+      ],
+      "type": "object"
+    }
+  }
+}

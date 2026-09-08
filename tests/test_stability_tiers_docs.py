@@ -31,6 +31,7 @@ def test_contract_registry_tracks_stability_tiers() -> None:
     text = CONTRACTS_DOC.read_text(encoding="utf-8")
 
     assert "Public command and JSON stability tiers" in text
+    assert "tests/stability_compatibility.py" in text
     assert "tests/test_stability_tiers_docs.py" in text
 
 

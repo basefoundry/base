@@ -10,6 +10,14 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Added
 
+- Stability compatibility: added v1.8.0-provenance contract fixtures and a
+  required CI check for stable command flags, JSON shapes, published schemas,
+  and doctor/check finding IDs. The accepted v1.9.0 development baseline
+  records the pre-existing retirement of `repo init --copyright-holder` and
+  the clarified meanings of `BASE-D105` and `BASE-P142`. The gate now probes
+  command help from the shipped Bash implementations, compares the accepted
+  fixture with v1.8.0 provenance, and rejects placeholder migration entries.
+
 - Published the Stable schema for `basectl workspace agent-brief --format json`
   at `docs/schemas/workspace-agent-brief.json` and added a CI contract test to
   prevent output drift.

@@ -125,6 +125,7 @@ def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
         job["name"]
         for job in workflow["jobs"].values()
     } == {
+        "Stable compatibility",
         "Python tests (${{ matrix.python-version }})",
         "BATS tests",
         "macOS smoke tests",
