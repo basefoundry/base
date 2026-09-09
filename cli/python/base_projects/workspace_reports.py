@@ -20,8 +20,10 @@ from base_projects.workspace_agent_brief import WorkspaceAgentBriefRepository
 from base_projects.workspace_agent_brief import workspace_agent_brief
 from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_onboarding import WorkspaceNextAction
 from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
 from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
+from base_projects.workspace_onboarding import workspace_onboarding_next_actions
 from base_projects.workspace_onboarding import workspace_onboarding_summary
 from base_projects.workspace_report_common import ProjectLastCheck
 from base_projects.workspace_report_common import missing_repo_fix
@@ -59,6 +61,7 @@ __all__ = (
     "WorkspaceAgentBrief",
     "WorkspaceAgentBriefRepository",
     "WorkspaceManifest",
+    "WorkspaceNextAction",
     "WorkspaceOnboardingRepository",
     "WorkspaceOnboardingSummary",
     "WorkspaceProjectCheckResult",
@@ -94,6 +97,7 @@ __all__ = (
     "workspace_manifest_project_statuses",
     "workspace_non_base_repo_check",
     "workspace_onboarding_summary",
+    "workspace_onboarding_next_actions",
     "workspace_onboarding_to_json",
     "workspace_project_check_result",
     "workspace_project_check_results",

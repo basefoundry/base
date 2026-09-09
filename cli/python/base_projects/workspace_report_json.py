@@ -11,6 +11,7 @@ from base_projects.workspace_agent_brief import WorkspaceAgentBriefRepository
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
 from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
+from base_projects.workspace_onboarding import workspace_onboarding_next_actions
 from base_projects.workspace_report_common import most_severe_status
 from base_projects.workspace_repository_url import redact_repository_url
 from base_setup.checks import ArtifactCheck
@@ -82,6 +83,7 @@ def workspace_onboarding_to_json(summary: WorkspaceOnboardingSummary) -> dict[st
         },
         "repository_count": len(summary.repositories),
         "repositories": [workspace_onboarding_item_to_json(repository) for repository in summary.repositories],
+        "next_actions": [next_action_to_json(action) for action in workspace_onboarding_next_actions(summary)],
     }
 
 
@@ -96,6 +98,15 @@ def workspace_agent_brief_to_json(brief: WorkspaceAgentBrief) -> dict[str, Any]:
         },
         "repository_count": len(brief.repositories),
         "repositories": [workspace_agent_brief_item_to_json(repository) for repository in brief.repositories],
+        "next_actions": [next_action_to_json(action) for action in brief.next_actions],
+    }
+
+
+def next_action_to_json(action: Any) -> dict[str, Any]:
+    return {
+        "order": action.order,
+        "description": action.description,
+        "commands": list(action.commands),
     }
 
 
@@ -159,6 +170,7 @@ def workspace_onboarding_item_to_json(repository: WorkspaceOnboardingRepository)
         "validation_command": repository.validation_command,
         "test_command": repository.test_command,
         "clone_command": repository.clone_command,
+        "trust_command": repository.trust_command,
     }
     if repository.url is not None:
         payload["url"] = redact_repository_url(repository.url)

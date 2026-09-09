@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from base_projects.workspace_manifest import WorkspaceManifest
+from base_projects.workspace_onboarding import WorkspaceNextAction
 from base_projects.workspace_onboarding import test_command_for_status
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_statuses import WorkspaceProjectStatus
@@ -85,6 +86,7 @@ class WorkspaceAgentBrief:
     workspace_root: Path
     workspace_manifest: WorkspaceManifest
     repositories: tuple[WorkspaceAgentBriefRepository, ...]
+    next_actions: tuple[WorkspaceNextAction, ...] = ()
 
 
 def workspace_agent_brief(
@@ -96,11 +98,36 @@ def workspace_agent_brief(
         workspace_manifest,
         probe_venv=False,
     )
+    repositories = tuple(agent_brief_repository_from_status(status) for status in statuses)
     return WorkspaceAgentBrief(
         workspace_root=workspace_root,
         workspace_manifest=workspace_manifest,
-        repositories=tuple(agent_brief_repository_from_status(status) for status in statuses),
+        repositories=repositories,
+        next_actions=agent_brief_next_actions(repositories),
     )
+
+
+def agent_brief_next_actions(
+    repositories: tuple[WorkspaceAgentBriefRepository, ...],
+) -> tuple[WorkspaceNextAction, ...]:
+    """Expose repository handoff actions in the same ordered shape as onboarding."""
+    actions: list[WorkspaceNextAction] = []
+    for repository in repositories:
+        commands = tuple(action for action in repository.next_actions if is_executable_action(action))
+        if not commands:
+            continue
+        actions.append(
+            WorkspaceNextAction(
+                order=len(actions) + 1,
+                description=f"Prepare repository {repository.repository}",
+                commands=commands,
+            )
+        )
+    return tuple(actions)
+
+
+def is_executable_action(action: str) -> bool:
+    return action.startswith(("basectl ", "cd ", "git "))
 
 
 def agent_brief_repository_from_status(status: WorkspaceProjectStatus) -> WorkspaceAgentBriefRepository:

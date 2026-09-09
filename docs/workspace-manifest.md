@@ -141,11 +141,18 @@ basectl workspace onboarding --manifest ~/work/base-workspace/workspace.yaml
 basectl workspace onboarding --manifest ~/work/base-workspace/workspace.yaml --format json
 ```
 
-The onboarding report is read-only. It prints clone commands for missing
-repositories when the manifest provides `repos[].url`, and it prints the
+The onboarding report is read-only. It prints a deterministic, numbered
+`next actions` sequence: clone required missing repositories, set up present
+repositories whose environments are not ready, trust new command-bearing
+manifests after review, and verify workspace health.
+The JSON report exposes the same sequence as `next_actions`; each entry has
+`order`, `description`, and a `commands` array. It prints clone commands for
+missing repositories when the manifest provides `repos[].url`, and it prints the
 standard Base setup and validation commands for repositories with valid project
 manifests. It does not clone repositories, run setup, create virtual
-environments, or execute project tests.
+environments, or execute project tests. The trust command is an approval
+instruction, not an automatic grant. Optional missing repositories do not
+create an action.
 
 `basectl workspace agent-brief --manifest <path>` is the local handoff summary
 for a human or coding agent. It includes every expected repository plus
@@ -168,6 +175,8 @@ ownership. The brief never executes those commands. It does not use GitHub,
 generate guidance or context files, clone repositories, or change setup state.
 The JSON contract is published at
 [`docs/schemas/workspace-agent-brief.json`](schemas/workspace-agent-brief.json).
+Its top-level `next_actions` field uses the same `order`, `description`, and
+`commands` shape and derives actions from repository handoff evidence.
 
 `basectl workspace clone --manifest <path>` uses the expected repository list
 as an explicit clone plan. It clones missing required GitHub repositories by

@@ -94,6 +94,8 @@ Options:
   -h, --help          Show this help text.
 
 Summarize first-day workspace onboarding from a workspace manifest without cloning or setup.
+Text output includes a prioritized, numbered next-actions sequence. JSON output
+includes next_actions entries with order, description, and executable commands.
 EOF
 }
 
@@ -113,6 +115,7 @@ Options:
   -h, --help          Show this help text.
 
 Report local repository readiness signals for an agent handoff without cloning, setup, or network calls.
+JSON output also includes prioritized next_actions entries for agent consumers.
 EOF
 }
 

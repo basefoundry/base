@@ -9,6 +9,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_trust.trust_store import ManifestCommandTrustStore
+from base_trust.trust_store import compute_trust_identity_for_manifest
 from base_projects import engine
 
 
@@ -29,11 +31,20 @@ def write_project_manifest(project_root: Path, name: str, test_command: str | No
     (project_root / "base_manifest.yaml").write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_ready_python_bin(home: Path, project: str) -> None:
-    python_bin = home / ".base.d" / project / ".venv" / "bin" / "python"
+def write_ready_python_bin(home: Path, project: str, project_root: Path | None = None) -> None:
+    python_bin = (
+        project_root / ".venv" / "bin" / "python"
+        if project_root is not None
+        else home / ".base.d" / project / ".venv" / "bin" / "python"
+    )
     python_bin.parent.mkdir(parents=True)
     python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
+
+
+def write_manifest_trust(home: Path, manifest_path: Path) -> None:
+    identity = compute_trust_identity_for_manifest(manifest_path)
+    ManifestCommandTrustStore(home).allow(identity, base_version="test")
 
 
 def write_workspace_manifest(path: Path) -> None:
@@ -136,7 +147,13 @@ class WorkspaceOnboardingTests(unittest.TestCase):
             write_project_manifest(workspace / "api", "api", "pytest tests/")
             write_project_manifest(workspace / "optional-tool", "optional-tool")
             for project in ("base", "docs", "api", "optional-tool"):
-                write_ready_python_bin(home, project)
+                write_ready_python_bin(
+                    home,
+                    project,
+                    None if project == "base" else workspace / project,
+                )
+            write_manifest_trust(home, workspace / "base" / "base_manifest.yaml")
+            write_manifest_trust(home, workspace / "api" / "base_manifest.yaml")
 
             status, stdout, stderr = invoke_engine(
                 [
@@ -159,6 +176,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["workspace_manifest"]["name"], "demo-suite")
         self.assertEqual(payload["repository_count"], 4)
+        self.assertEqual(payload["next_actions"], [])
         self.assertEqual(repositories["base"]["status"], "ready")
         self.assertEqual(repositories["base"]["discovery_status"], "present")
         self.assertEqual(repositories["base"]["path"], str((workspace / "base").resolve()))
@@ -202,6 +220,68 @@ class WorkspaceOnboardingTests(unittest.TestCase):
         self.assertIn("optional repository is missing; clone it only if this role needs it", stdout)
         self.assertIn(f"validate: cd {(workspace / 'base').resolve()} && basectl check", stdout)
         self.assertIn("test: ./bin/base-test", stdout)
+        self.assertIn("Workspace onboarding — next actions (3 steps to ready):", stdout)
+        self.assertIn(
+            f"basectl workspace check --workspace {workspace.resolve()} --manifest {manifest_path.resolve()}",
+            stdout,
+        )
+        self.assertIn("trust: basectl trust allow base --manifest-sha256", stdout)
+
+    def test_workspace_onboarding_json_orders_multiple_unconfigured_projects_before_verify(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_workspace_manifest(manifest_path)
+            write_project_manifest(workspace / "base", "base")
+            write_project_manifest(workspace / "docs", "docs")
+            write_project_manifest(workspace / "api", "api")
+            write_ready_python_bin(home, "base")
+
+            status, stdout, stderr = invoke_engine(
+                [
+                    "onboarding",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest_path),
+                    "--format",
+                    "json",
+                ],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(
+            payload["next_actions"],
+            [
+                {
+                    "order": 1,
+                    "description": "Set up unconfigured projects",
+                    "commands": [
+                        f"cd {(workspace / 'docs').resolve()} && basectl setup",
+                        f"cd {(workspace / 'api').resolve()} && basectl setup",
+                    ],
+                },
+                {
+                    "order": 2,
+                    "description": "Verify workspace health",
+                    "commands": [
+                        (
+                            f"basectl workspace check --workspace {workspace.resolve()} "
+                            f"--manifest {manifest_path.resolve()}"
+                        )
+                    ],
+                },
+            ],
+        )
 
     def test_workspace_onboarding_json_reports_partial_non_base_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
