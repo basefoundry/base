@@ -1159,6 +1159,68 @@ EOF
     [ "$(git -C "$repo" branch --show-current)" = "master" ]
 }
 
+@test "basectl gh issue start parses the selected leaf through the shared helper" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_arg_parse() {
+                local options_name="$1" positionals_name="$2"
+                shift 4
+                printf "%s\n" "$*" > "$BASE_GH_TEST_STATE_DIR/parser-args"
+                eval "$options_name=([category]=enhancement [title]=\"Prune merged branches\" [repo]=upstream/base)"
+                eval "$positionals_name=()"
+            }
+            base_gh_subcommand_main issue start 117 --category enhancement --title "Prune merged branches" -R upstream/base
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == "enhancement/117-"*"-prune-merged-branches"* ]]
+    [ "$(cat "$TEST_STATE_DIR/parser-args")" = "--category=enhancement --title=Prune merged branches --repo=upstream/base" ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == *"api repos/upstream/base/issues/117 --jq"* ]]
+}
+
+@test "basectl gh issue start reports a missing repository argument before GitHub lookup" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue start 117 --repo
+        ' bash "$repo"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--repo' requires a repository argument."* ]]
+    [ ! -f "$TEST_STATE_DIR/gh-calls" ]
+}
+
 @test "basectl gh issue start verifies an explicit category and title against the issue" {
     local repo
 
