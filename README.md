@@ -223,11 +223,21 @@ work/                          ← shared workspace root (`workspace.root`)
   infra/                       ← another peer repo that can opt into Base
 ```
 
+This directory shape does not prescribe one universal repository set. Each
+project owns its own `base_manifest.yaml`; a team that wants a shared
+repository inventory supplies a separate `workspace.yaml`, either as a local
+file or through a dedicated workspace-config repository. Base Foundry's
+maintainer inventory is kept in `base-workspace`, but normal Base installations
+do not need that private workspace configuration.
+
 Projects opt into Base with minimal coupling:
 
 - Base discovers projects in the shared workspace
 - projects expose a small contract through `base_manifest.yaml`
 - Base provides common orchestration on top
+
+See [Workspace Manifest](docs/workspace-manifest.md) for the ownership split,
+manifest sources, and workspace command behavior.
 
 ## Design Principles
 

@@ -17,6 +17,42 @@ manifest explicitly with `basectl workspace pull`. Pull supports local paths,
 sources by default, validates fetched content before writing, and does not
 mutate project repositories.
 
+## Project And Workspace Manifest Ownership
+
+Base uses two related but distinct manifest layers:
+
+| File | Owner | Answers | Normal location |
+| --- | --- | --- | --- |
+| `base_manifest.yaml` | Each participating project | How does this repository prepare, run, test, and report its local contract? | Inside that project repository |
+| `workspace.yaml` | A team or workspace owner | Which repositories belong together in this local workspace? | A local file or dedicated workspace-config repository |
+
+The `base` repository owns its own `base_manifest.yaml`, just like every other
+Base-managed project. A workspace manifest does not replace or extend that
+project manifest; it names the repository set around it.
+
+The Base Foundry maintainer workspace keeps its canonical `workspace.yaml` in
+the dedicated `base-workspace` configuration repository. That manifest is a
+maintainer workspace example, not a Base runtime dependency or a universal
+default for every Base installation. Other teams should use a local or
+team-owned workspace manifest that matches their own repository set.
+
+### Base ecosystem map
+
+The four primary Base repositories have different roles and dependency
+directions:
+
+| Repository | Role | Relationship |
+| --- | --- | --- |
+| `base` | Local operating contract for repository readiness, setup, trust, onboarding, and handoff | Consumes `base-cli` and externally resolved `base-bash-libs` during source/runtime operation |
+| `base-cli` | Standalone Python lifecycle framework for Click and Typer applications | Base is one consumer; other CLIs can consume it independently |
+| `base-bash-libs` | Standalone reusable Bash library package | Base resolves it from a sibling checkout, explicit source, or supported package |
+| `base-demo` | First-party downstream consumer and integration fixture | Exercises the Base ecosystem; it is not a runtime dependency of `base` |
+
+The dependency direction is therefore `base-cli` and `base-bash-libs` into
+`base`, with `base-demo` downstream of the stack. A workspace manifest may list
+all four for maintainer validation, but listing a repository does not make it a
+runtime dependency.
+
 ## Vocabulary
 
 `workspace.root` is a machine-local setting in `~/.base.d/config.yaml`. It tells
