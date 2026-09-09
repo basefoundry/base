@@ -14,6 +14,12 @@ No unreleased changes yet.
 
 ### Added
 
+- Published the Base-owned v1.9.0 ecosystem compatibility BOM, recording
+  immutable Base v1.9.0, `base-cli` 0.4.3, `base-bash-libs` 2.1.0, and
+  `base-demo` 0.1.0 pins. Required combinations passed on Ubuntu 24.04 and
+  macOS 14, with deterministic `release-bom.json` and `release-bom.sha256`
+  release artifacts.
+
 - Stability compatibility: added v1.8.0-provenance contract fixtures and a
   required CI check for stable command flags, JSON shapes, published schemas,
   and doctor/check finding IDs. The accepted v1.9.0 development baseline
@@ -36,6 +42,10 @@ No unreleased changes yet.
 
 ### Changed
 
+- Made `basectl workspace configure` preview-only unless `--apply` is given,
+  and added targeted project selection and stable JSON output to
+  `basectl workspace update`, with clearer clone summaries.
+
 - Added a top-level aggregate status to `basectl workspace status --format
   json`, using the existing `error`, `warn`, and `ok` precedence while
   preserving per-project fields.
@@ -46,9 +56,10 @@ No unreleased changes yet.
 - Documented stable release versus contributor source installation and made
   mutable source checkouts report the next development line with their Git
   revision instead of reusing the latest published version identity.
-- Aligned `basectl devcontainer` and `basectl devenv-report` option parsing
-  with the shared `arg_parse` contract while preserving their public options
-  and project validation.
+- Aligned public option parsing with the shared `arg_parse` contract across
+  lifecycle, documentation, prompt, update-profile, devcontainer,
+  devenv-report, and issue-readiness commands while preserving pass-through
+  boundaries, public options, and project validation.
 - Relicensed Base prospectively under Apache-2.0 starting with v1.9.0 to reduce
   adoption friction for companies with copyleft-averse license review. Existing
   MIT and AGPL releases retain their original licenses.
@@ -64,6 +75,16 @@ No unreleased changes yet.
   to approval.
 
 ### Fixed
+
+- Contained mutating workspace commands within the configured workspace root,
+  kept AI-context exports within project files, and redacted credentials and
+  secret parameters from workspace repository and manifest-source diagnostics.
+
+- Preserved inherited run-bundle and history ownership when delegated child
+  commands finish, so child commands no longer mutate parent metadata.
+
+- Validated release commit provenance before publication and added safe recovery
+  when a tag push fails after local tag creation.
 
 - Workspace init and pull now share one local `file://` parser that decodes
   spaces, Unicode, and literal percent signs exactly once while rejecting
