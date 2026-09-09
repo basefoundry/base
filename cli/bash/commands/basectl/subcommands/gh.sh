@@ -7,6 +7,7 @@ readonly _base_gh_subcommand_sourced
 import_base_lib git/lib_git.sh
 import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
+import_base_lib arg/lib_arg.sh
 
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 # shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
@@ -1343,7 +1344,16 @@ base_gh_pr_create() {
 
 base_gh_issue_start() {
     local issue="${1:-}" category="" issue_category="" github_repo="" title="" slug branch default_branch worktree_path
+    local option_value
     local repo_args=()
+    local parser_args=()
+    local -a option_specs=(
+        "category|value|--category"
+        "title|value|--title"
+        "repo|value|--repo"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
     local status
 
     [[ -n "$issue" ]] || {
@@ -1355,27 +1365,55 @@ base_gh_issue_start() {
     while (($#)); do
         case "$1" in
             --category)
-                category="${2:-}"
-                shift
+                if (($# > 1)); then
+                    parser_args+=("--category=$2")
+                    shift 2
+                else
+                    # Preserve the legacy empty-value behavior. The issue's
+                    # category remains authoritative when no value is given.
+                    parser_args+=("--category=")
+                    shift
+                fi
+                continue
+                ;;
+            --category=*)
+                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                return $?
                 ;;
             --title)
-                title="${2:-}"
-                shift
+                if (($# > 1)); then
+                    parser_args+=("--title=$2")
+                    shift 2
+                else
+                    # Preserve the legacy empty-value behavior so a missing
+                    # title still falls back to the issue title.
+                    parser_args+=("--title=")
+                    shift
+                fi
+                continue
+                ;;
+            --title=*)
+                base_gh_usage_error base_gh_issue_usage "Unknown option '$1'."
+                return $?
                 ;;
             --repo|-R)
                 if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
                     base_gh_usage_error base_gh_issue_usage "Option '$1' requires a repository argument."
                     return $?
                 fi
-                repo_args+=("$1" "$2")
-                shift
+                parser_args+=("--repo=$2")
+                shift 2
+                continue
                 ;;
             --repo=*|-R=*)
-                if [[ -z "${1#*=}" ]]; then
+                option_value="${1#*=}"
+                if [[ -z "$option_value" ]]; then
                     base_gh_usage_error base_gh_issue_usage "Option '${1%%=*}' requires a repository argument."
                     return $?
                 fi
-                repo_args+=("$1")
+                parser_args+=("--repo=$option_value")
+                shift
+                continue
                 ;;
             -h|--help)
                 base_gh_issue_start_usage
@@ -1386,8 +1424,23 @@ base_gh_issue_start() {
                 return $?
                 ;;
         esac
-        shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_issue_usage "Could not parse issue start arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_issue_usage "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+
+    category="${parsed_options[category]:-}"
+    title="${parsed_options[title]:-}"
+    github_repo="${parsed_options[repo]:-}"
+    if [[ -n "$github_repo" ]]; then
+        repo_args=(--repo "$github_repo")
+    fi
 
     base_github_issue_number_is_valid "$issue" || {
         base_gh_usage_error base_gh_issue_usage "Issue number must be a positive integer."
