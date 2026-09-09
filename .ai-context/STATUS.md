@@ -83,6 +83,11 @@ The Homebrew bottle and consumer upgrade contract has passed the #526 rehearsal.
 Supported macOS installs should continue to use bottled Homebrew packages, with
 source builds treated as fallback validation rather than the normal user path.
 
+The cross-repository platform, license, provider, and release-artifact policy is
+canonical in `docs/ecosystem-policy.md`. Base's coordinated release matrix is
+Ubuntu 24.04 and macOS 14; standalone component support does not expand the
+Base support claim, and published tags and assets are immutable.
+
 Recent released work includes:
 
 - Ubuntu/Debian runtime support through `BASE_PLATFORM=linux-debian`,
@@ -110,6 +115,7 @@ Recent released work includes:
 - release check, plan, and notes commands
 - local `.ai-context/` export bundles through `basectl export-context`
 - newcomer orientation presentation docs
+- ecosystem platform, license, provider, and release-policy contract
 - optional project Git remote reachability diagnostics
 - explicit `ai` prerequisite profile
 - explicit host-scoped `linux-lab` prerequisite profile for Multipass checks

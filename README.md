@@ -562,6 +562,7 @@ Key starting points:
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
 - [Project Demo Workflow](docs/project-demo-workflow.md)
+- [Ecosystem Platform, License, and Release Policy](docs/ecosystem-policy.md)
 
 ## Compatibility
 
@@ -584,7 +585,11 @@ Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites
 Base owns. Linux setup remains narrower than macOS setup and should stay behind
 the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
-Windows is out of scope.
+Windows is out of scope for Base. Existing Ubuntu/Debian-under-WSL2 guidance is
+read-only/development guidance, not part of the coordinated Base release
+matrix. See the [ecosystem platform, license, and release
+policy](docs/ecosystem-policy.md) for the boundary between Base and the
+standalone component repositories.
 
 The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
 be added for coverage, but the floor job should stay until Base intentionally
@@ -666,4 +671,6 @@ tracked in GitHub Issues using the workflow in
 
 ## License
 
-Base is licensed under Apache 2.0. See [LICENSE](LICENSE) for the license terms.
+Base is licensed under Apache-2.0 starting with v1.9.0. Earlier releases retain
+the license stated in their release documentation. See [LICENSE](LICENSE) for
+the current license terms.
