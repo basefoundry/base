@@ -21,6 +21,9 @@ force a Base release. A Base release chooses the exact compatible component
 tags it will support and records those tags, commits, contract versions, and
 Ubuntu 24.04/macOS 14 validation evidence in its BOM. A later component release
 is eligible for a later Base BOM after the required compatibility checks pass.
+See the [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md)
+for the shared platform boundaries, license history, provider precedence, and
+published-artifact immutability rule.
 
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
 The formula points at a versioned tag archive and records that archive's
