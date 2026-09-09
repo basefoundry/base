@@ -562,6 +562,7 @@ Key starting points:
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
 - [Project Demo Workflow](docs/project-demo-workflow.md)
+- [Ecosystem Platform, License, and Release Policy](docs/ecosystem-policy.md)
 
 ## Compatibility
 
@@ -584,9 +585,14 @@ Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites
 Base owns. Linux setup remains narrower than macOS setup and should stay behind
 the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
+For the current coordinated release matrix, Windows is out of scope for Base.
 Native Windows is planned but not supported yet. The staged target, compatibility
 matrix, and explicit feature deferrals are documented in
 [Native Windows Support Contract](docs/windows-support.md).
+Existing Ubuntu/Debian-under-WSL2 guidance is read-only/development guidance,
+not part of the coordinated Base release matrix. See the [ecosystem platform,
+license, and release policy](docs/ecosystem-policy.md) for the boundary between
+Base and the standalone component repositories.
 
 The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
 be added for coverage, but the floor job should stay until Base intentionally
@@ -666,6 +672,13 @@ validated Base, base-cli, base-bash-libs, and base-demo combination on Ubuntu
 tracked in GitHub Issues using the workflow in
 [docs/github-workflow.md](docs/github-workflow.md).
 
+Published Base, base-cli, and base-bash-libs releases can also trigger the
+issue-backed downstream pin workflow documented in
+[docs/release-process.md](docs/release-process.md). It opens reviewable
+base-demo bump PRs and leaves merging to the downstream checks and review.
+
 ## License
 
-Base is licensed under Apache 2.0. See [LICENSE](LICENSE) for the license terms.
+Base is licensed under Apache-2.0 starting with v1.9.0. Earlier releases retain
+the license stated in their release documentation. See [LICENSE](LICENSE) for
+the current license terms.

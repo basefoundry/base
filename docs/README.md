@@ -14,6 +14,9 @@ worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 For release preparation, tagging, GitHub Releases, and the Homebrew tap update,
 see [Release Process](release-process.md).
 
+For the canonical cross-repository platform, license, provider, and release
+immutability policy, see [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md).
+
 For self-guided or live walkthrough material, see
 [Presentations](presentations/README.md).
 

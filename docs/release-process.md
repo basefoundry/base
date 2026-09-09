@@ -21,6 +21,9 @@ force a Base release. A Base release chooses the exact compatible component
 tags it will support and records those tags, commits, contract versions, and
 Ubuntu 24.04/macOS 14 validation evidence in its BOM. A later component release
 is eligible for a later Base BOM after the required compatibility checks pass.
+See the [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md)
+for the shared platform boundaries, license history, provider precedence, and
+published-artifact immutability rule.
 
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
 The formula points at a versioned tag archive and records that archive's
@@ -111,6 +114,34 @@ verifies GitHub's annotated tag object resolves to the same commit SHA. When
 `--bom` is supplied, it also uploads and verifies `release-bom.json` and
 `release-bom.sha256` as release assets. It does not update the Homebrew tap; it
 prints the tap handoff checklist when `release.homebrew` is declared.
+
+## Downstream Version-Bump Automation
+
+The `Downstream Version Bumps` workflow checks published `base`, `base-cli`,
+and `base-bash-libs` releases and opens an issue-backed pull request in the
+known downstream consumer, `base-demo`. Base releases trigger the workflow
+immediately; an hourly schedule covers independently published component
+releases, and `repository_dispatch` plus `workflow_dispatch` are available for
+an explicit release notification or replay.
+
+Each run resolves the published `vX.Y.Z` tag to its full commit. Base bumps
+also resolve and record the `install.sh` SHA-256. The generated PR updates the
+downstream source, CI, documentation, and test assertions as one fail-closed
+change; a `base-cli` bump refreshes `uv.lock`. A marker containing the
+component, version, and commit makes reruns idempotent. The workflow never
+merges or force-updates a downstream branch; the downstream checks and normal
+review remain the merge gate.
+
+Cross-repository writes require the explicitly configured
+`BASE_DOWNSTREAM_TOKEN` Actions secret. It must be limited to the known
+downstream repositories with permission to create issues, branches, and pull
+requests. The workflow fails closed when the secret is absent and never uses
+the Base repository's read-only `GITHUB_TOKEN` as an implicit substitute.
+
+The automation covers released component pins only. It does not make a
+component release force a new Base release, update Homebrew, or treat a
+mutable source checkout as release evidence; those remain governed by the
+[ecosystem policy](ecosystem-policy.md) and the Base-owned BOM.
 
 ## Base Release Checklist
 

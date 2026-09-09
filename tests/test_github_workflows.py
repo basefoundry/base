@@ -16,6 +16,7 @@ COPILOT_SETUP_WORKFLOW = WORKFLOW_DIR / "copilot-setup-steps.yml"
 BASE_CHECK_WORKFLOW = WORKFLOW_DIR / "base-check.yml"
 ECOSYSTEM_RELEASE_BOM_WORKFLOW = WORKFLOW_DIR / "ecosystem-release-bom.yml"
 BASE_DEMO_E2E_WORKFLOW = WORKFLOW_DIR / "base-demo-e2e.yml"
+DOWNSTREAM_VERSION_BUMPS_WORKFLOW = WORKFLOW_DIR / "downstream-version-bumps.yml"
 TESTS_WORKFLOW = WORKFLOW_DIR / "tests.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
 ISSUE_BRANCH_POLICY_WORKFLOW = WORKFLOW_DIR / "issue-branch-policy.yml"
@@ -152,6 +153,35 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert "--format json --no-notify --yes" in compatibility_commands
     assert 'base_demo_commit="$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"' in compatibility_commands
     assert 'printf \'  root: %s\\n\' "$GITHUB_WORKSPACE/.."' in compatibility_commands
+
+
+def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_gated() -> None:
+    workflow = load_workflow(DOWNSTREAM_VERSION_BUMPS_WORKFLOW)
+    triggers = workflow.get("on") or workflow.get(True)
+    job = workflow["jobs"]["bump"]
+    run_commands = "\n".join(
+        step.get("run", "")
+        for step in job.get("steps", [])
+        if isinstance(step, dict)
+    )
+
+    assert workflow["name"] == "Downstream Version Bumps"
+    assert set(triggers) == {"release", "repository_dispatch", "schedule", "workflow_dispatch"}
+    assert triggers["release"] == {"types": ["published"]}
+    assert triggers["repository_dispatch"] == {"types": ["base-release-published"]}
+    assert triggers["schedule"] == [{"cron": "17 * * * *"}]
+    assert workflow["permissions"] == {"contents": "read"}
+    assert job["timeout-minutes"] == 20
+    assert job["permissions"] == {"contents": "read"}
+    assert job["env"]["GH_TOKEN"] == "${{ secrets.BASE_DOWNSTREAM_TOKEN }}"
+    assert "BASE_DOWNSTREAM_TOKEN is required" in run_commands
+    assert "gh auth setup-git" in run_commands
+    assert "base-release-bump:" in run_commands
+    assert "gh issue create" in run_commands
+    assert "gh pr create" in run_commands
+    assert "uv lock --upgrade-package base-cli" in run_commands
+    assert 'git -C "$clone_dir" push --set-upstream origin' in run_commands
+    assert "gh pr merge" not in run_commands
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
