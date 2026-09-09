@@ -4,6 +4,9 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
+from base_trust.trust_store import ManifestCommandTrustStore
+from base_trust.trust_store import compute_trust_identity
+from base_trust.trust_store import manifest_command_surfaces_from_manifest
 from base_projects.project_commands import test_command as manifest_test_command
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_repository_url import redact_repository_url
@@ -30,6 +33,7 @@ class WorkspaceOnboardingRepository:
     validation_command: str | None = None
     test_command: str | None = None
     clone_command: str | None = None
+    trust_command: str | None = None
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,13 @@ class WorkspaceOnboardingSummary:
     workspace_root: Path
     workspace_manifest: WorkspaceManifest
     repositories: tuple[WorkspaceOnboardingRepository, ...]
+
+
+@dataclass(frozen=True)
+class WorkspaceNextAction:
+    order: int
+    description: str
+    commands: tuple[str, ...]
 
 
 def workspace_onboarding_summary(
@@ -56,6 +67,101 @@ def workspace_onboarding_summary(
     )
 
 
+def workspace_onboarding_next_actions(
+    summary: WorkspaceOnboardingSummary,
+) -> tuple[WorkspaceNextAction, ...]:
+    """Build a deterministic, executable remediation sequence for a workspace."""
+    actions: list[WorkspaceNextAction] = []
+
+    missing_required = tuple(
+        repository
+        for repository in summary.repositories
+        if repository.required and repository.status == "missing_required"
+    )
+    if missing_required:
+        clone_commands = tuple(
+            repository.clone_command
+            for repository in missing_required
+            if repository.clone_command is not None
+        )
+        if not clone_commands:
+            clone_commands = (workspace_clone_command(summary),)
+        actions.append(
+            WorkspaceNextAction(
+                order=len(actions) + 1,
+                description="Clone missing repos",
+                commands=clone_commands,
+            )
+        )
+
+    setup_commands = tuple(
+        repository.setup_command
+        for repository in summary.repositories
+        if repository.setup_command is not None and repository.status == "needs_setup"
+    )
+    if setup_commands:
+        actions.append(
+            WorkspaceNextAction(
+                order=len(actions) + 1,
+                description="Set up unconfigured projects",
+                commands=setup_commands,
+            )
+        )
+
+    trust_commands = tuple(
+        repository.trust_command
+        for repository in summary.repositories
+        if repository.trust_command is not None
+    )
+    if trust_commands:
+        actions.append(
+            WorkspaceNextAction(
+                order=len(actions) + 1,
+                description="Trust new manifests",
+                commands=trust_commands,
+            )
+        )
+
+    if actions:
+        actions.append(
+            WorkspaceNextAction(
+                order=len(actions) + 1,
+                description="Verify workspace health",
+                commands=(workspace_check_command(summary),),
+            )
+        )
+
+    return tuple(actions)
+
+
+def workspace_clone_command(summary: WorkspaceOnboardingSummary) -> str:
+    return shlex.join(
+        [
+            "basectl",
+            "workspace",
+            "clone",
+            "--workspace",
+            str(summary.workspace_root),
+            "--manifest",
+            str(summary.workspace_manifest.path),
+        ]
+    )
+
+
+def workspace_check_command(summary: WorkspaceOnboardingSummary) -> str:
+    return shlex.join(
+        [
+            "basectl",
+            "workspace",
+            "check",
+            "--workspace",
+            str(summary.workspace_root),
+            "--manifest",
+            str(summary.workspace_manifest.path),
+        ]
+    )
+
+
 def onboarding_repository_from_status(status: WorkspaceProjectStatus) -> WorkspaceOnboardingRepository:
     repository = status.repository or status.root.name
     status_name = onboarding_status(status)
@@ -63,6 +169,7 @@ def onboarding_repository_from_status(status: WorkspaceProjectStatus) -> Workspa
     validation_command = validation_command_for_status(status)
     clone_command = clone_command_for_status(status)
     test_command = test_command_for_status(status)
+    trust_command = trust_command_for_status(status)
 
     return WorkspaceOnboardingRepository(
         repository=repository,
@@ -80,6 +187,7 @@ def onboarding_repository_from_status(status: WorkspaceProjectStatus) -> Workspa
         validation_command=validation_command,
         test_command=test_command,
         clone_command=clone_command,
+        trust_command=trust_command,
     )
 
 
@@ -123,6 +231,21 @@ def test_command_for_status(status: WorkspaceProjectStatus) -> str | None:
     if manifest.test is None:
         return None
     return manifest_test_command(manifest.test).command
+
+
+def trust_command_for_status(status: WorkspaceProjectStatus) -> str | None:
+    if status.manifest != "valid" or status.manifest_path is None:
+        return None
+    try:
+        manifest = read_manifest(status.manifest_path)
+        if not manifest_command_surfaces_from_manifest(manifest):
+            return None
+        identity = compute_trust_identity(manifest)
+    except (ManifestError, OSError):
+        return None
+    if ManifestCommandTrustStore().status(identity).is_allowed:
+        return None
+    return f"basectl trust allow {identity.project_name} --manifest-sha256 {identity.manifest_sha256}"
 
 
 def next_action_for_status(status: WorkspaceProjectStatus, status_name: str) -> str:

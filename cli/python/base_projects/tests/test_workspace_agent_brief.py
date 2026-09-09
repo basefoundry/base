@@ -175,6 +175,11 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
         self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["workspace_manifest"]["name"], "agent-suite")
         self.assertEqual(payload["repository_count"], 5)
+        self.assertTrue(payload["next_actions"])
+        self.assertEqual(
+            set(payload["next_actions"][0]),
+            {"order", "description", "commands"},
+        )
         self.assertEqual(repositories["ready"]["handoff_status"], "ready")
         self.assertEqual(repositories["ready"]["signals"]["baseline"]["status"], "complete")
         self.assertEqual(repositories["ready"]["signals"]["agent_guidance"]["status"], "complete")

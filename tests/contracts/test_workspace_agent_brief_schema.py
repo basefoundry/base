@@ -81,4 +81,5 @@ def test_workspace_agent_brief_command_matches_published_schema(tmp_path: Path) 
     jsonschema.Draft202012Validator.check_schema(schema)
     jsonschema.validate(payload, schema)
     assert payload["schema_version"] == 1
+    assert payload["next_actions"]
     assert payload["repositories"][0]["default_branch"] == "main"

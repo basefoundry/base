@@ -8,6 +8,7 @@ from base_projects.workspace_agent_brief import WorkspaceAgentBriefRepository
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_onboarding import WorkspaceOnboardingRepository
 from base_projects.workspace_onboarding import WorkspaceOnboardingSummary
+from base_projects.workspace_onboarding import workspace_onboarding_next_actions
 from base_setup.checks import doctor_status
 from base_setup.checks import print_doctor_finding
 
@@ -117,7 +118,17 @@ def print_workspace_onboarding(summary: WorkspaceOnboardingSummary) -> None:
             f"{repository.path}"
         )
 
-    print("\nNext actions:")
+    actions = workspace_onboarding_next_actions(summary)
+    if not actions:
+        print("\nNext actions: none; workspace is ready.")
+    else:
+        print(f"\nWorkspace onboarding — next actions ({len(actions)} steps to ready):")
+        for action in actions:
+            print(f"\n  {action.order}. {action.description}:")
+            for command in action.commands:
+                print(f"       {command}")
+
+    print("\nRepository action details:")
     for repository in summary.repositories:
         print_workspace_onboarding_action(repository)
 
@@ -132,6 +143,8 @@ def print_workspace_onboarding_action(repository: WorkspaceOnboardingRepository)
         print(f"  validate: {repository.validation_command}")
     if repository.test_command is not None:
         print(f"  test: {repository.test_command}")
+    if repository.trust_command is not None:
+        print(f"  trust: {repository.trust_command}")
 
 
 def print_workspace_agent_brief(brief: WorkspaceAgentBrief) -> None:
@@ -167,6 +180,13 @@ def print_workspace_agent_brief(brief: WorkspaceAgentBrief) -> None:
         "Readiness is structural and based on non-executing local file and manifest evidence; "
         ".ai-context is reported but is not required."
     )
+    if brief.next_actions:
+        print("\nPrioritized next actions:")
+        for action in brief.next_actions:
+            print(f"\n  {action.order}. {action.description}:")
+            for command in action.commands:
+                print(f"       {command}")
+
     print("\nNext actions:")
     for repository in brief.repositories:
         print_workspace_agent_brief_actions(repository)

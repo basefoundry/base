@@ -9,7 +9,8 @@
     "workspace",
     "workspace_manifest",
     "repository_count",
-    "repositories"
+    "repositories",
+    "next_actions"
   ],
   "properties": {
     "schema_version": {
@@ -29,6 +30,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/repository"
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nextAction"
       }
     }
   },
@@ -89,6 +96,25 @@
         },
         "source": {
           "enum": ["repo_baseline", "manifest_test", null]
+        }
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "required": ["order", "description", "commands"],
+      "properties": {
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
