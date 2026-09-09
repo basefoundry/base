@@ -7,29 +7,36 @@ from pathlib import Path
 
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
 VERSION_RE = re.compile(r"^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$")
 EXIT_SUCCESS = 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="bin/base-release-bom-row")
+    parser.add_argument("--repository", default="basefoundry/base")
     parser.add_argument("--version", required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--evidence", required=True)
+    parser.add_argument("--api-schema-version", default="manifest-1")
     parser.add_argument("--platform", action="append", dest="platforms", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if not REPOSITORY_RE.fullmatch(args.repository):
+        parser.error("--repository must use owner/name format")
     if not VERSION_RE.fullmatch(args.version):
         parser.error("--version must be a stable SemVer value")
     if not SHA_RE.fullmatch(args.commit):
         parser.error("--commit must be a lowercase full 40-character SHA")
+    if not args.api_schema_version.strip():
+        parser.error("--api-schema-version must be a non-empty value")
     document = {
-        "repository": "basefoundry/base",
+        "repository": args.repository,
         "version": args.version,
         "tag": f"v{args.version}",
         "commit": args.commit,
         "source_mode": "release",
-        "api_schema_version": "manifest-1",
+        "api_schema_version": args.api_schema_version,
         "platforms": sorted(set(args.platforms)),
         "required": True,
         "result": "passed",

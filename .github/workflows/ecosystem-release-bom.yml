@@ -47,7 +47,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref || github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}
   cancel-in-progress: false
 
 jobs:
@@ -110,22 +110,19 @@ jobs:
           fetch-depth: 1
 
       - name: Check out base-demo
-        env:
-          BASE_DEMO_REF: ${{ inputs.base_demo_ref }}
-        run: |
-          set -euo pipefail
-          git init "$GITHUB_WORKSPACE/../base-demo"
-          git -C "$GITHUB_WORKSPACE/../base-demo" remote add origin \
-            https://github.com/basefoundry/base-demo.git
-          git -C "$GITHUB_WORKSPACE/../base-demo" fetch --depth 1 origin "$BASE_DEMO_REF"
-          git -C "$GITHUB_WORKSPACE/../base-demo" checkout --detach FETCH_HEAD
-          git -C "$GITHUB_WORKSPACE/../base-demo" log -1 --oneline
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: basefoundry/base-demo
+          ref: ${{ inputs.base_demo_ref }}
+          path: .dependencies/base-demo
+          fetch-depth: 1
 
       - name: Expose peer checkouts for workspace validation
         run: |
           set -euo pipefail
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"
+          ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -304,6 +301,9 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install BOM YAML parser
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
+
       - name: Download compatibility evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
@@ -333,27 +333,35 @@ jobs:
             --platform macos-14 \
             --output "$RUNNER_TEMP/base-bom/base-row.json"
 
-          jq -n \
-            --arg version "$BASE_CLI_VERSION" \
-            --arg commit "$base_cli_commit" \
-            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{repository:"basefoundry/base-cli",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:("base-cli-api@" + $version),platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
-            > "$RUNNER_TEMP/base-bom/base-cli-row.json"
-          bash_api_version="$(awk -F': ' '$1 == "manifest_version" {print $2; exit}' .dependencies/base-bash-libs/base_api_manifest.yaml)"
+          ./bin/base-release-bom-row \
+            --repository basefoundry/base-cli \
+            --version "$BASE_CLI_VERSION" \
+            --commit "$base_cli_commit" \
+            --evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --api-schema-version "base-cli-api@$BASE_CLI_VERSION" \
+            --platform ubuntu-24.04 \
+            --platform macos-14 \
+            --output "$RUNNER_TEMP/base-bom/base-cli-row.json"
+          bash_api_version="$(python -c 'import sys, yaml; print(yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["manifest_version"])' .dependencies/base-bash-libs/base_api_manifest.yaml)"
           test -n "$bash_api_version"
-          jq -n \
-            --arg version "$BASE_BASH_LIBS_VERSION" \
-            --arg api_schema_version "base-bash-libs-api@$bash_api_version" \
-            --arg commit "$base_bash_libs_commit" \
-            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{repository:"basefoundry/base-bash-libs",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:$api_schema_version,platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
-            > "$RUNNER_TEMP/base-bom/base-bash-libs-row.json"
-          jq -n \
-            --arg version "$BASE_DEMO_VERSION" \
-            --arg commit "$base_demo_commit" \
-            --arg evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{repository:"basefoundry/base-demo",version:$version,tag:("v" + $version),commit:$commit,source_mode:"release",api_schema_version:("base-demo-release@" + $version),platforms:["macos-14","ubuntu-24.04"],required:true,result:"passed",evidence:$evidence}' \
-            > "$RUNNER_TEMP/base-bom/base-demo-row.json"
+          ./bin/base-release-bom-row \
+            --repository basefoundry/base-bash-libs \
+            --version "$BASE_BASH_LIBS_VERSION" \
+            --commit "$base_bash_libs_commit" \
+            --evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --api-schema-version "base-bash-libs-api@$bash_api_version" \
+            --platform ubuntu-24.04 \
+            --platform macos-14 \
+            --output "$RUNNER_TEMP/base-bom/base-bash-libs-row.json"
+          ./bin/base-release-bom-row \
+            --repository basefoundry/base-demo \
+            --version "$BASE_DEMO_VERSION" \
+            --commit "$base_demo_commit" \
+            --evidence "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --api-schema-version "base-demo-release@$BASE_DEMO_VERSION" \
+            --platform ubuntu-24.04 \
+            --platform macos-14 \
+            --output "$RUNNER_TEMP/base-bom/base-demo-row.json"
 
           bom="$RUNNER_TEMP/base-bom/release-bom.json"
           ubuntu_evidence="$(jq -r '.evidence' evidence/release-stack-ubuntu-24.04.json)"
