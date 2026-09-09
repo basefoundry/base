@@ -133,18 +133,36 @@ these features as deferred:
 - Homebrew and apt-backed artifacts;
 - any claim that Git Bash or WSL2 is an equivalent runtime.
 
-## Phase 1 Validation
+## Phase 0 Validation
 
-The Windows job should run on `windows-latest` and prove the contract boundary
-with no private credentials:
+The current `.github/workflows/windows-contract.yml` job is deliberately limited
+to the contract boundary and requires no private credentials. It currently:
 
 1. install the pinned Python test dependencies;
 2. run the documentation/contract tests;
 3. verify PowerShell, Python, and native Git discovery;
-4. parse `base_manifest.yaml` and exercise the pure-Python manifest and workspace
-   readers against paths containing spaces;
-5. validate that no test invokes Bash, WSL2, Homebrew, or apt.
+4. confirm that `base_manifest.yaml` exists and can be parsed by the test
+   dependency set.
 
-The job is a Phase 0 gate until the native launcher exists. It must be renamed
-and expanded when Phase 1 lands so the workflow cannot be mistaken for full
-Windows support.
+The Phase 0 job intentionally does not invoke a native Base launcher, exercise
+the pure-Python manifest or workspace readers against paths containing spaces,
+or assert that Bash, WSL2, Homebrew, and apt are absent. Those are Phase 1
+acceptance checks, not claims made by the current workflow.
+
+## Phase 1 Validation
+
+When the native launcher and read-only command subset land, rename and expand
+the Windows job to prove the actual native path with no private credentials:
+
+1. install or obtain Base through the documented clean-install route;
+2. invoke the PowerShell launcher for `check`, `doctor`, manifest/project
+   discovery, workspace inspection, and `setup --dry-run`;
+3. exercise the pure-Python manifest and workspace readers against paths
+   containing spaces and Unicode;
+4. validate native executable resolution, argument-array process execution,
+   environment propagation, and CRLF/LF handling;
+5. verify that the supported command subset does not depend on Bash, WSL2,
+   Homebrew, or apt.
+
+Until those checks pass, the workflow must remain named and documented as a
+Phase 0 contract gate and must not be mistaken for full Windows support.

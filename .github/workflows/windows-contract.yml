@@ -44,8 +44,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          if ($PSVersionTable.PSVersion.Major -lt 7) {
-            throw "The native Windows contract requires PowerShell 7 or newer."
+          $minimumPowerShell = [version]"7.4"
+          if ($PSVersionTable.PSVersion -lt $minimumPowerShell) {
+            throw "The native Windows contract requires PowerShell $minimumPowerShell or newer; found $($PSVersionTable.PSVersion)."
           }
           $git = Get-Command git -ErrorAction Stop
           $python = Get-Command python -ErrorAction Stop

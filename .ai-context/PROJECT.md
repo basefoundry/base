@@ -9,7 +9,10 @@
 - Linux posture: Ubuntu/Debian runtime support, source-checkout validation, and
   apt-backed setup are implemented and tested; broader Linux distribution
   support remains tracked in `docs/linux-support.md`.
-- Windows support is not currently in scope.
+- Native Windows is a staged future capability targeted for 1.10.0. The current
+  Phase 0 contract and CI are documented in `docs/windows-support.md`, but the
+  current release does not support native Windows; Git Bash and WSL2 are not
+  substitutes for that contract.
 
 Base is a local operating contract for developers and platform engineers who
 need deterministic local readiness and handoff within a project, whether that

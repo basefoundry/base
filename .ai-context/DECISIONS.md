@@ -12,7 +12,10 @@ architecture discussion.
   setup for conservative Base prerequisites are implemented. Broader Linux
   distribution and WSL support remain outside the current contract; keep
   platform details in `docs/linux-support.md`.
-- Windows support is not currently in scope.
+- Native Windows is a staged future capability targeted for 1.10.0. Phase 0 may
+  define and test the contract, but the native launcher and read-only command
+  subset remain deferred until their platform adapters exist. Git Bash is not a
+  native Windows tier, and WSL2 remains a Linux runtime path.
 - Base should solve the author's real multi-repo workflow elegantly while
   keeping single-repository project adoption low-friction; it should not become
   a broad general-purpose platform.
