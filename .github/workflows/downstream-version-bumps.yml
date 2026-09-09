@@ -1,0 +1,258 @@
+name: Downstream Version Bumps
+
+on:
+  release:
+    types: [published]
+  repository_dispatch:
+    types: [base-release-published]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component release to propagate, or all latest releases
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - base
+          - base-cli
+          - base-bash-libs
+      version:
+        description: Optional X.Y.Z release version for a single component
+        required: false
+        type: string
+      ref:
+        description: Optional full commit SHA for a single component
+        required: false
+        type: string
+      installer_sha256:
+        description: Optional Base install.sh SHA-256; computed when omitted
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: downstream-version-bumps
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Open downstream bump PRs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.BASE_DOWNSTREAM_TOKEN }}
+      TARGET_REPOSITORY: basefoundry/base-demo
+      EVENT_COMPONENT: ${{ github.event.client_payload.component || inputs.component || (github.event_name == 'release' && 'base') || 'all' }}
+      EVENT_VERSION: ${{ github.event.client_payload.version || inputs.version || (github.event_name == 'release' && github.event.release.tag_name) || '' }}
+      EVENT_REF: ${{ github.event.client_payload.ref || inputs.ref || '' }}
+      EVENT_INSTALLER_SHA256: ${{ github.event.client_payload.installer_sha256 || inputs.installer_sha256 || '' }}
+
+    steps:
+      - name: Check out Base automation
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Validate downstream automation credential
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::BASE_DOWNSTREAM_TOKEN is required to create issue-backed PRs in $TARGET_REPOSITORY."
+            echo "Set it with: gh secret set BASE_DOWNSTREAM_TOKEN --repo $GITHUB_REPOSITORY"
+            exit 1
+          fi
+          gh api user --jq .login >/dev/null
+          gh auth setup-git
+          gh api "repos/$TARGET_REPOSITORY" --jq .default_branch | grep -Fxq main
+
+      - name: Install release automation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.12.5
+
+      - name: Resolve and publish downstream bump PRs
+        env:
+          PYTHONPATH: cli/python
+        run: |
+          set -euo pipefail
+
+          components=(base base-cli base-bash-libs)
+          if [[ "$EVENT_COMPONENT" == "all" ]]; then
+            selected_components=("${components[@]}")
+          else
+            selected_components=("$EVENT_COMPONENT")
+          fi
+
+          case "$EVENT_COMPONENT" in
+            all|base|base-cli|base-bash-libs) ;;
+            *) echo "::error::Unsupported component: $EVENT_COMPONENT"; exit 2 ;;
+          esac
+
+          normalize_version() {
+            local version="$1"
+            version="${version#v}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "::error::Release tag/version must be vX.Y.Z or X.Y.Z: $1"
+              return 1
+            }
+            printf '%s\n' "$version"
+          }
+
+          resolve_latest_release() {
+            local component="$1"
+            gh api "repos/basefoundry/$component/releases/latest" \
+              --jq '[.tag_name, .html_url] | @tsv'
+          }
+
+          resolve_commit() {
+            local component="$1"
+            local tag="$2"
+            local commit
+            commit="$(gh api "repos/basefoundry/$component/commits/$tag" --jq .sha)"
+            [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "::error::Release tag $tag did not resolve to a full commit SHA for $component."
+              return 1
+            }
+            printf '%s\n' "$commit"
+          }
+
+          for component in "${selected_components[@]}"; do
+            version_input="$EVENT_VERSION"
+            ref_input="$EVENT_REF"
+            release_url=""
+            if [[ "$EVENT_COMPONENT" == "all" || -z "$version_input" ]]; then
+              IFS=$'\t' read -r tag release_url < <(resolve_latest_release "$component")
+              version_input="$tag"
+              ref_input="$(resolve_commit "$component" "$tag")"
+            else
+              version_input="$(normalize_version "$version_input")"
+              tag="v$version_input"
+              resolved_ref="$(resolve_commit "$component" "$tag")"
+              [[ -z "$ref_input" || "$ref_input" == "$resolved_ref" ]] || {
+                echo "::error::Provided ref $ref_input does not match $component $tag at $resolved_ref."
+                exit 2
+              }
+              ref_input="$resolved_ref"
+              release_url="https://github.com/basefoundry/$component/releases/tag/$tag"
+            fi
+
+            version="$(normalize_version "$version_input")"
+            tag="v$version"
+            [[ "$ref_input" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "::error::Resolved ref is not a full lowercase SHA: $ref_input"
+              exit 2
+            }
+
+            installer_sha256=""
+            if [[ "$component" == "base" ]]; then
+              installer_sha256="${EVENT_INSTALLER_SHA256:-}"
+              if [[ -z "$installer_sha256" ]]; then
+                installer_sha256="$(curl -fsSL "https://raw.githubusercontent.com/basefoundry/base/$tag/install.sh" | sha256sum | awk '{print $1}')"
+              fi
+              [[ "$installer_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+                echo "::error::Base installer checksum is not a full SHA-256: $installer_sha256"
+                exit 2
+              }
+            fi
+
+            marker="<!-- base-release-bump:$component:$version:$ref_input -->"
+            all_prs="$(gh api "repos/$TARGET_REPOSITORY/pulls?state=all&per_page=100")"
+            existing_url="$(jq -r --arg marker "$marker" '[.[] | select((.body // "") | contains($marker)) | .html_url] | .[0] // empty' <<<"$all_prs")"
+            if [[ -n "$existing_url" ]]; then
+              echo "$component $tag already has a tracked downstream PR: $existing_url"
+              continue
+            fi
+
+            issue_title="ci: consume $component $tag"
+            issue_body="$(printf '%s\n' \
+              "$marker" \
+              "" \
+              "## Summary" \
+              "" \
+              "Update base-demo's immutable $component release pin to $tag ($ref_input)." \
+              "" \
+              "## Issue" \
+              "" \
+              "This issue was opened by Base's downstream release automation." \
+              "Upstream release: https://github.com/basefoundry/$component/releases/tag/$tag" \
+              "Parent: basefoundry/base#2119" \
+              "" \
+              "## Validation" \
+              "" \
+              "The downstream repository's required validation workflow must pass before merge." \
+              "" \
+              "## Notes" \
+              "" \
+              "The release pin is intentionally updated in the documented source, CI, and test contract together.")"
+            issue_url="$(gh issue create --repo "$TARGET_REPOSITORY" --label ci --title "$issue_title" --body "$issue_body")"
+            issue_number="${issue_url##*/}"
+            [[ "$issue_number" =~ ^[0-9]+$ ]] || {
+              echo "::error::Could not parse issue number from $issue_url"
+              exit 1
+            }
+
+            clone_dir="$(mktemp -d)"
+            gh repo clone "$TARGET_REPOSITORY" "$clone_dir" -- --depth 1
+            branch="ci/${issue_number}-$(date -u +%Y%m%d)-bump-${component}-${version}"
+            git -C "$clone_dir" switch --create "$branch"
+
+            bump_args=(
+              --repo-dir "$clone_dir"
+              --component "$component"
+              --version "$version"
+              --commit "$ref_input"
+            )
+            if [[ "$component" == "base" ]]; then
+              bump_args+=(--installer-sha256 "$installer_sha256")
+            fi
+            python -m base_release.downstream_version_bump "${bump_args[@]}"
+
+            if [[ "$component" == "base-cli" ]]; then
+              (
+                cd "$clone_dir"
+                uv lock --upgrade-package base-cli
+              )
+            fi
+            git -C "$clone_dir" diff --check
+            if git -C "$clone_dir" diff --quiet; then
+              gh issue close "$issue_number" --repo "$TARGET_REPOSITORY" \
+                --comment "No files required an update; the downstream pin already matches $tag at $ref_input."
+              echo "$component $tag is already current in $TARGET_REPOSITORY."
+              continue
+            fi
+
+            git -C "$clone_dir" config user.name "github-actions[bot]"
+            git -C "$clone_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$clone_dir" add --all
+            git -C "$clone_dir" commit -m "ci: consume $component $tag"
+            git -C "$clone_dir" push --set-upstream origin "$branch"
+
+            pr_body="$(printf '%s\n' \
+              "$marker" \
+              "" \
+              "## Summary" \
+              "" \
+              "Update base-demo's immutable $component release pin to $tag ($ref_input)." \
+              "" \
+              "## Issue" \
+              "" \
+              "Closes #$issue_number" \
+              "Related to basefoundry/base#2119" \
+              "Upstream release: ${release_url:-https://github.com/basefoundry/$component/releases/tag/$tag}" \
+              "" \
+              "## Validation" \
+              "" \
+              "- git diff --check" \
+              "- Downstream repository validation is required before merge." \
+              "" \
+              "## Notes" \
+              "" \
+              "This PR was opened by Base's idempotent downstream release automation. It updates the source, CI, documentation, and test assertions that define this pin.")"
+            pr_url="$(gh pr create --repo "$TARGET_REPOSITORY" --base main --head "$branch" \
+              --title "$issue_title" --body "$pr_body")"
+            echo "Opened $pr_url"
+          done

@@ -137,6 +137,8 @@ Recent released work includes:
   dependency for a non-conflicting `basefoundry` core formula
 - documented that `basectl setup` should stay serial for mutating installers
   until a deterministic setup-plan/preflight layer exists
+- issue-backed downstream version-bump automation for published Base ecosystem
+  releases, with immutable pin updates and no automatic downstream merging
 
 ## Recent Merged Changes
 
@@ -155,6 +157,7 @@ Recent commits on `main` include:
 - setup parallelism evaluation with a conservative setup-plan-first decision
 - repository secret scanning, project IDE-mutation consent, closed-unmerged
   branch/worktree cleanup, and aggregate workspace status JSON
+- the downstream version-bump workflow and fail-closed `base-demo` pin updater
 
 ## Useful Orientation Links
 

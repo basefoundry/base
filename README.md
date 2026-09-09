@@ -669,6 +669,11 @@ validated Base, base-cli, base-bash-libs, and base-demo combination on Ubuntu
 tracked in GitHub Issues using the workflow in
 [docs/github-workflow.md](docs/github-workflow.md).
 
+Published Base, base-cli, and base-bash-libs releases can also trigger the
+issue-backed downstream pin workflow documented in
+[docs/release-process.md](docs/release-process.md). It opens reviewable
+base-demo bump PRs and leaves merging to the downstream checks and review.
+
 ## License
 
 Base is licensed under Apache-2.0 starting with v1.9.0. Earlier releases retain

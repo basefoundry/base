@@ -115,6 +115,34 @@ verifies GitHub's annotated tag object resolves to the same commit SHA. When
 `release-bom.sha256` as release assets. It does not update the Homebrew tap; it
 prints the tap handoff checklist when `release.homebrew` is declared.
 
+## Downstream Version-Bump Automation
+
+The `Downstream Version Bumps` workflow checks published `base`, `base-cli`,
+and `base-bash-libs` releases and opens an issue-backed pull request in the
+known downstream consumer, `base-demo`. Base releases trigger the workflow
+immediately; an hourly schedule covers independently published component
+releases, and `repository_dispatch` plus `workflow_dispatch` are available for
+an explicit release notification or replay.
+
+Each run resolves the published `vX.Y.Z` tag to its full commit. Base bumps
+also resolve and record the `install.sh` SHA-256. The generated PR updates the
+downstream source, CI, documentation, and test assertions as one fail-closed
+change; a `base-cli` bump refreshes `uv.lock`. A marker containing the
+component, version, and commit makes reruns idempotent. The workflow never
+merges or force-updates a downstream branch; the downstream checks and normal
+review remain the merge gate.
+
+Cross-repository writes require the explicitly configured
+`BASE_DOWNSTREAM_TOKEN` Actions secret. It must be limited to the known
+downstream repositories with permission to create issues, branches, and pull
+requests. The workflow fails closed when the secret is absent and never uses
+the Base repository's read-only `GITHUB_TOKEN` as an implicit substitute.
+
+The automation covers released component pins only. It does not make a
+component release force a new Base release, update Homebrew, or treat a
+mutable source checkout as release evidence; those remain governed by the
+[ecosystem policy](ecosystem-policy.md) and the Base-owned BOM.
+
 ## Base Release Checklist
 
 Complete these steps in `basefoundry/base`:
