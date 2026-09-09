@@ -270,6 +270,54 @@ CATALOG = catalog_by_id(
             related_commands=("basectl check <project>", "basectl run <project> <command> --dry-run"),
             docs=(RelatedDoc("Python Manifest - Command Runners", "docs/python-manifest.md#command-runners"),),
         ),
+        FindingExplanation(
+            finding_id="BASE-P180",
+            title="Declared project test requirements file",
+            summary=(
+                "Base could not validate the repository-local requirements file declared for the project test command."
+            ),
+            why_it_matters=(
+                "A test requirements file is an explicit part of the project test contract. Missing, external, "
+                "or unsupported inputs would make setup and test behavior differ across machines."
+            ),
+            likely_causes=(
+                "The path in `test.requirements` does not exist.",
+                "The path resolves outside the project root or uses unsupported pip requirement syntax.",
+                "A uv-managed project declared a requirements file instead of using its pyproject and lockfile."
+            ),
+            fix_steps=(
+                "Review `test.requirements` in `base_manifest.yaml`.",
+                "Keep the file inside the repository and use direct package names with optional `==` versions.",
+                "Run `basectl setup <project>` after correcting the declaration."
+            ),
+            related_commands=(
+                "basectl setup <project> --dry-run",
+                "basectl check <project>",
+                "basectl doctor <project>",
+            ),
+            docs=(RelatedDoc("Testing", "docs/testing.md"),),
+        ),
+        FindingExplanation(
+            finding_id="BASE-P181",
+            title="Project test requirements environment",
+            summary="The project virtual environment does not satisfy the requirements declared for its test command.",
+            why_it_matters=(
+                "Running a test command before its declared environment is ready produces late import or tool "
+                "errors. Base reports the missing packages before executing the command."
+            ),
+            likely_causes=(
+                "The project has not been set up after adding or changing `test.requirements`.",
+                "A package was removed or changed directly inside the project virtual environment.",
+                "The project virtual environment is missing or uses a different setup path."
+            ),
+            fix_steps=(
+                "Run `basectl setup <project>` to install the declared test requirements.",
+                "Run `basectl check <project>` and confirm `BASE-P181` reports `ok`.",
+                "Rerun the test command only after the environment check passes."
+            ),
+            related_commands=("basectl setup <project>", "basectl check <project>", "basectl test <project>"),
+            docs=(RelatedDoc("Testing", "docs/testing.md"),),
+        ),
     )
 )
 

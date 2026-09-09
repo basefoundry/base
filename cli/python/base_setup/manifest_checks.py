@@ -26,6 +26,7 @@ from .python_runtime import project_python_runtime_check
 from .setup_reconcile import effective_manifest_with_user_config
 from .setup_reconcile import project_runtime_argument
 from .setup_reconcile import setup_artifacts
+from .test_requirements import check_test_requirements
 from .uv import check_uv
 
 IDE_EXTENSION_PROFILE = "dev"
@@ -72,6 +73,9 @@ def manifest_checks(
     checks.extend(check_uv(effective_manifest))
     checks.extend(check_pyproject(effective_manifest))
     checks.extend(project_python_runtime_check(effective_manifest))
+    test_requirements_check = check_test_requirements(effective_manifest)
+    if test_requirements_check is not None:
+        checks.append(test_requirements_check)
 
     runtime_config = project_runtime_argument(effective_manifest)
     for artifact, definition in zip(artifacts, definitions, strict=True):

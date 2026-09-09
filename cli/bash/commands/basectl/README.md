@@ -192,8 +192,11 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `--category <name>` to offline `--pr --dry-run` previews.
 - `basectl test [project]` runs the project's manifest `test.command` or
   `test.mise` from the project root with Base project environment variables
-  exported. Use `basectl test <project> -- <args...>` to pass extra arguments
-  to the delegated test command.
+  exported. A project may declare a repository-local Python requirements file
+  as `test.requirements`; Base setup installs it, check/doctor verify it, and
+  test refuses to run until the project environment satisfies it. Use
+  `basectl test <project> -- <args...>` to pass extra arguments to the
+  delegated test command.
 - `basectl build [project] [target...]` runs manifest `build.targets` from
   each target's `working_dir`. With no targets, it runs `build.default`
   sequentially. Use `basectl build [project] --list` to inspect targets and

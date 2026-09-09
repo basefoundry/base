@@ -72,6 +72,7 @@ from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
+from base_setup.test_requirements import check_test_requirements
 
 
 app = base_cli_app(name="base_projects")
@@ -121,6 +122,11 @@ def main(argv: list[str] | None = None) -> int:
 )
 @base_cli.option("--apply", is_flag=True, help="Apply workspace configure changes after the plan is shown.")
 @base_cli.option("--yes", is_flag=True, help="Approve workspace setup or configure changes that require confirmation.")
+@base_cli.option(
+    "--test-preflight",
+    is_flag=True,
+    help="Check a project test requirements file before resolving its test command.",
+)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -137,6 +143,7 @@ def run(
     dry_run: bool,
     apply: bool,
     yes: bool,
+    test_preflight: bool,
 ) -> int:
     try:
         return dispatch_projects_command(
@@ -155,6 +162,7 @@ def run(
                 dry_run=dry_run,
                 apply=apply,
                 yes=yes,
+                test_preflight=test_preflight,
             ),
             project_command_actions(),
         )
@@ -585,6 +593,7 @@ def test_command_project_command(
     project_name: str | None,
     workspace: str | None,
     output_format: str = "text",
+    test_preflight: bool = False,
 ) -> int:
     try:
         if project_name:
@@ -606,6 +615,14 @@ def test_command_project_command(
             project.manifest_path,
         )
         return base_cli.ExitCode.FAILURE
+
+    if test_preflight:
+        check = check_test_requirements(manifest)
+        if check is not None and not check.ok:
+            ctx.log.error(check.message)
+            if check.fix:
+                ctx.log.error("Fix: %s", check.fix)
+            return base_cli.ExitCode.FAILURE
 
     command_config = test_command(manifest.test)
     if output_format == "command-protocol":

@@ -987,6 +987,21 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.test.command, "pytest tests/")
         self.assertIsNone(manifest.test.mise)
         self.assertIsNone(manifest.test.runner)
+        self.assertIsNone(manifest.test.requirements)
+
+
+    def test_reads_manifest_test_requirements_file(self) -> None:
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "test:",
+            "  command: pytest tests/",
+            "  requirements: requirements-dev.txt",
+            "artifacts: []",
+        )
+
+        assert manifest.test is not None
+        self.assertEqual(manifest.test.requirements, "requirements-dev.txt")
 
 
     def test_reads_manifest_test_command_runner(self) -> None:
@@ -1059,8 +1074,8 @@ class ManifestParsingTests(unittest.TestCase):
                 read_manifest(manifest_path)
 
 
-    def test_rejects_control_line_breaks_in_manifest_test_command_or_mise(self) -> None:
-        for field_name in ("command", "mise"):
+    def test_rejects_control_line_breaks_in_manifest_test_fields(self) -> None:
+        for field_name in ("command", "mise", "requirements"):
             for escaped_control_break in (r"\0", r"\n", r"\r"):
                 with self.subTest(field_name=field_name, escaped_control_break=escaped_control_break):
                     with tempfile.TemporaryDirectory() as tmpdir:

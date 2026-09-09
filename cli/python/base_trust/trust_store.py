@@ -13,19 +13,22 @@ from base_setup.git_commands import run_git
 from base_setup.git_remote_parse import parse_origin_remote
 from base_setup.manifest import BaseManifest
 from base_setup.manifest import read_manifest
+from base_setup.test_requirements import requirements_file_digest
 
 SCHEMA_VERSION = 1
 ALLOWED_COMMANDS = ["test", "run", "build", "demo", "activate"]
 TRUST_RELATIVE_ROOT = Path("trust") / "manifest-commands"
 TRUST_SCOPE_WARNING = (
-    "Approval is bound to the base_manifest.yaml SHA-256 only. Manifest changes "
-    "invalidate approval; referenced scripts, direct executable files, Git HEAD, "
-    "and uncommitted working-tree changes are not independently verified or bound "
-    "to approval. Re-review those inputs before execution after repository changes."
+    "Approval is bound to the base_manifest.yaml SHA-256 and declared local test "
+    "requirements SHA-256. Manifest or declared test requirements changes invalidate "
+    "approval; referenced scripts, direct executable files, Git HEAD, and uncommitted "
+    "working-tree changes are not independently verified or bound to approval. Re-review "
+    "those inputs before execution after repository changes."
 )
 TRUST_SCOPE = {
-    "approval_basis": "base_manifest.yaml_sha256",
+    "approval_basis": "base_manifest.yaml_sha256+declared_test_requirements_sha256",
     "manifest_changes_invalidate": True,
+    "declared_test_requirements_changes_invalidate": True,
     "referenced_script_changes_invalidate": False,
     "direct_executable_file_changes_invalidate": False,
     "git_head_changes_invalidate": False,
@@ -45,6 +48,7 @@ class ManifestCommandTrustIdentity:
     manifest_path: Path
     manifest_sha256: str
     identity_key: str
+    test_requirements_sha256: str | None = None
     git_root: Path | None = None
     origin: str | None = None
     head: str | None = None
@@ -56,6 +60,8 @@ class ManifestCommandTrustIdentity:
             "manifest": str(self.manifest_path),
             "manifest_sha256": self.manifest_sha256,
         }
+        if self.test_requirements_sha256 is not None:
+            payload["test_requirements_sha256"] = self.test_requirements_sha256
         if self.git_root is not None:
             payload["git_root"] = str(self.git_root)
         if self.origin is not None:
@@ -104,7 +110,7 @@ class ManifestCommandTrustStore:
         if changed_record is not None:
             return TrustStatus(
                 status="blocked",
-                reason="manifest_changed",
+                reason=trust_change_reason(identity, changed_record),
                 identity=identity,
                 changed_record=changed_record,
             )
@@ -196,15 +202,17 @@ def compute_trust_identity(manifest: BaseManifest) -> ManifestCommandTrustIdenti
     canonical_manifest = manifest.path.resolve()
     project_root = canonical_manifest.parent.resolve()
     manifest_sha256 = sha256_file(canonical_manifest)
+    requirements_sha256 = requirements_file_digest(manifest)
     git_root = git_repository_root(project_root)
     origin = git_origin(project_root)
     head = git_head(project_root)
-    identity_key = compute_identity_key(project_root, canonical_manifest, manifest_sha256)
+    identity_key = compute_identity_key(project_root, canonical_manifest, manifest_sha256, requirements_sha256)
     return ManifestCommandTrustIdentity(
         project_name=manifest.project_name,
         project_root=project_root,
         manifest_path=canonical_manifest,
         manifest_sha256=manifest_sha256,
+        test_requirements_sha256=requirements_sha256,
         identity_key=identity_key,
         git_root=git_root,
         origin=origin,
@@ -220,8 +228,13 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def compute_identity_key(project_root: Path, manifest_path: Path, manifest_sha256: str) -> str:
-    payload = "\0".join([str(project_root), str(manifest_path), manifest_sha256])
+def compute_identity_key(
+    project_root: Path,
+    manifest_path: Path,
+    manifest_sha256: str,
+    test_requirements_sha256: str | None = None,
+) -> str:
+    payload = "\0".join([str(project_root), str(manifest_path), manifest_sha256, test_requirements_sha256 or ""])
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -234,7 +247,21 @@ def identity_key_from_record(record: dict[str, Any]) -> str | None:
     digest = project.get("manifest_sha256")
     if not all(isinstance(value, str) and value for value in (root, manifest, digest)):
         return None
-    return compute_identity_key(Path(root), Path(manifest), digest)
+    requirements_digest = project.get("test_requirements_sha256")
+    if requirements_digest is not None and not isinstance(requirements_digest, str):
+        return None
+    return compute_identity_key(Path(root), Path(manifest), digest, requirements_digest)
+
+
+def trust_change_reason(identity: ManifestCommandTrustIdentity, record: dict[str, Any]) -> str:
+    project = record.get("project")
+    if not isinstance(project, dict):
+        return "manifest_changed"
+    if project.get("manifest_sha256") != identity.manifest_sha256:
+        return "manifest_changed"
+    if project.get("test_requirements_sha256") != identity.test_requirements_sha256:
+        return "test_requirements_changed"
+    return "manifest_changed"
 
 
 def git_repository_root(project_root: Path) -> Path | None:

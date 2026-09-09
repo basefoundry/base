@@ -74,6 +74,14 @@ work, do not inherit Base bootstrap packages into a project venv, and report
 workspace venv state as `not_applicable`. `project.languages` remains taxonomy.
 The broader runtime separation remains tracked in #1611.
 
+Manifest-declared test requirements are an explicit project-runtime contract.
+`test.requirements` is repository-relative and currently supports direct
+package names with optional exact `==` versions. Setup installs the file into
+the routed project environment; check, doctor, and test preflight fail closed
+for missing files, invalid declarations, or missing/mismatched packages.
+uv-managed projects keep dependency ownership in `pyproject.toml` and their
+lockfile instead of using this requirements-file path.
+
 When Bash needs metadata from `base_projects` or the `base_setup` route action,
 it requests the internal versioned `command-protocol` format. Records have
 explicit schemas, field names, string/boolean/null types, and hex-framed UTF-8

@@ -158,6 +158,26 @@ resolves to a source checkout. In a packaged install such as Homebrew,
 skips source-checkout-only BATS and integration tests with a message pointing
 back to the source checkout command above.
 
+### Declared test requirements
+
+A project can declare a repository-local Python requirements file alongside its
+test command:
+
+```yaml
+test:
+  command: pytest tests/
+  requirements: requirements-dev.txt
+```
+
+Base supports direct package names with optional exact `==` versions in this
+file. `basectl setup <project>` installs the file into the routed project
+virtual environment. `basectl check <project>` and `basectl doctor <project>`
+report missing packages as `BASE-P181`, while `basectl test <project>` performs
+the same read-only preflight and does not execute the test command until the
+environment is ready. Paths outside the project root, unsupported requirement
+syntax, and uv-managed projects using this field fail closed; uv projects
+should declare test dependencies in `pyproject.toml` and use `uv sync`.
+
 Base deliberately uses command-focused BATS regression coverage plus ShellCheck
 as the Bash equivalent instead of a line percentage. Contributors changing a
 public command or runtime branch must add or update a focused BATS assertion,

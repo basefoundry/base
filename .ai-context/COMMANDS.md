@@ -37,7 +37,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   `--format json` provides stable finding IDs for automation.
 - `basectl doctor [project]` - diagnose Base or project readiness and explain
   fixes.
-- `basectl test [project]` - run a project's declared test command.
+- `basectl test [project]` - run a project's declared test command. A
+  manifest may declare `test.requirements` as a repository-relative direct
+  requirements file; setup installs it, check/doctor report missing or
+  mismatched packages, and test preflights it before execution.
 - `basectl build [project] [target...]` - run declared build targets for the positional, explicit, or nearest project.
 - `basectl demo [project]` - run a declared interactive demo script.
 - `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.

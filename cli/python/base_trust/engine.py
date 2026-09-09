@@ -298,8 +298,11 @@ def status_payload(trust_status: TrustStatus) -> dict[str, Any]:
         payload["allow_command"] = allow_command_text(trust_status.identity)
     if trust_status.changed_record is not None:
         changed_project = trust_status.changed_record.get("project", {})
-        if isinstance(changed_project, dict) and isinstance(changed_project.get("manifest_sha256"), str):
-            payload["recorded_manifest_sha256"] = changed_project["manifest_sha256"]
+        if isinstance(changed_project, dict):
+            if isinstance(changed_project.get("manifest_sha256"), str):
+                payload["recorded_manifest_sha256"] = changed_project["manifest_sha256"]
+            if isinstance(changed_project.get("test_requirements_sha256"), str):
+                payload["recorded_test_requirements_sha256"] = changed_project["test_requirements_sha256"]
     return payload
 
 
@@ -333,8 +336,13 @@ def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> N
         print_trust_scope_warning()
         return
 
-    if trust_status.reason == "manifest_changed":
-        print(f"Manifest command trust is blocked for project '{identity.project_name}': manifest changed.")
+    if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
+        print(
+            f"Manifest command trust is blocked for project '{identity.project_name}': "
+            "manifest or declared test requirements changed."
+        )
+        if trust_status.reason == "test_requirements_changed":
+            print("Declared test requirements changed; review the requirements file before allowing commands.")
         changed_project = (trust_status.changed_record or {}).get("project", {})
         if isinstance(changed_project, dict) and changed_project.get("manifest_sha256"):
             print(f"Recorded Manifest SHA-256: {changed_project['manifest_sha256']}")
@@ -357,10 +365,10 @@ def print_blocked_command_text(
     stream: Any,
 ) -> None:
     identity = trust_status.identity
-    if trust_status.reason == "manifest_changed":
+    if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
         print(
             f"ERROR: Manifest command trust is blocked for project '{identity.project_name}': "
-            "manifest command contract changed.",
+            "manifest command or declared test requirements contract changed.",
             file=stream,
         )
     else:
@@ -371,11 +379,13 @@ def print_blocked_command_text(
         )
     print(f"Project root: {identity.project_root}", file=stream)
     print(f"Manifest: {identity.manifest_path}", file=stream)
-    if trust_status.reason == "manifest_changed":
+    if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
         changed_project = (trust_status.changed_record or {}).get("project", {})
         if isinstance(changed_project, dict) and changed_project.get("manifest_sha256"):
             print(f"Recorded Manifest SHA-256: {changed_project['manifest_sha256']}", file=stream)
     print(f"Manifest SHA-256: {identity.manifest_sha256}", file=stream)
+    if identity.test_requirements_sha256 is not None:
+        print(f"Test requirements SHA-256: {identity.test_requirements_sha256}", file=stream)
     if identity.origin is not None:
         print(f"Origin: {identity.origin}", file=stream)
     print(file=stream)
@@ -416,6 +426,8 @@ def print_identity(title: str, identity: ManifestCommandTrustIdentity) -> None:
     print(f"  Project root: {identity.project_root}")
     print(f"  Manifest: {identity.manifest_path}")
     print(f"  Manifest SHA-256: {identity.manifest_sha256}")
+    if identity.test_requirements_sha256 is not None:
+        print(f"  Test requirements SHA-256: {identity.test_requirements_sha256}")
     if identity.origin is not None:
         print(f"  Origin: {identity.origin}")
     if identity.head is not None:

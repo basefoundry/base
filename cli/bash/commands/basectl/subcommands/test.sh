@@ -169,6 +169,15 @@ base_test_subcommand_main() {
         return 0
     fi
 
+    resolve_output="$($wrapper --project base base_projects "${command_args[@]}" "${args[@]}" --format command-protocol --test-preflight)" || return $?
+    base_command_protocol_decode_one project-command "$resolve_output" || {
+        base_std_fatal_error "Unable to resolve test command for project '$project'."
+    }
+    test_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
+    command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    command_runner="${command_runner:-}"
+    command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+
     base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
     base_project_activate_environment \
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null

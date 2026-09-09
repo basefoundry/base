@@ -180,21 +180,26 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     if not isinstance(test_data, dict):
         raise ManifestError(f"{path}: test must be a mapping when provided.")
 
-    allowed_keys = {"command", "mise", "runner"}
+    allowed_keys = {"command", "mise", "runner", "requirements"}
     unknown_keys = sorted(set(test_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: test has unsupported keys: {', '.join(unknown_keys)}.")
 
     command = test_data.get("command")
     mise = test_data.get("mise")
+    requirements = test_data.get("requirements")
     if command is not None and (not isinstance(command, str) or not command.strip()):
         raise ManifestError(f"{path}: test.command must be a non-empty string when provided.")
     if mise is not None and (not isinstance(mise, str) or not mise.strip()):
         raise ManifestError(f"{path}: test.mise must be a non-empty string when provided.")
+    if requirements is not None and (not isinstance(requirements, str) or not requirements.strip()):
+        raise ManifestError(f"{path}: test.requirements must be a non-empty string when provided.")
     if command is not None and has_control_line_break(command):
         raise ManifestError(f"{path}: test.command must not contain control line breaks.")
     if mise is not None and has_control_line_break(mise):
         raise ManifestError(f"{path}: test.mise must not contain control line breaks.")
+    if requirements is not None and has_control_line_break(requirements):
+        raise ManifestError(f"{path}: test.requirements must not contain control line breaks.")
     if command is not None and mise is not None:
         raise ManifestError(f"{path}: test must declare only one of command or mise.")
     if command is None and mise is None:
@@ -204,6 +209,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         command=command.strip() if command is not None else None,
         mise=mise.strip() if mise is not None else None,
         runner=_read_optional_runner(path, "test.runner", test_data.get("runner")),
+        requirements=requirements.strip() if requirements is not None else None,
     )
 
 

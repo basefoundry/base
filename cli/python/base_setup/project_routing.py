@@ -84,6 +84,8 @@ def manifest_requires_project_python(manifest: BaseManifest) -> bool:
 
     if manifest.python_declared:
         return True
+    if manifest.test is not None and manifest.test.requirements is not None:
+        return True
     return any(artifact.artifact_type == "python-package" for artifact in manifest.artifacts)
 
 

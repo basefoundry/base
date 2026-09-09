@@ -22,6 +22,7 @@ from .ide_settings import reconcile_ide_settings
 from .manifest import BaseManifest
 from .project_routing import manifest_requires_project_python
 from .project_routing import route_for_manifest
+from .test_requirements import reconcile_test_requirements
 from .uv import manifest_uses_uv_project_manager
 from .uv import reconcile_uv_project
 
@@ -73,6 +74,8 @@ def reconcile_manifest(
             project_runtime_argument(effective_manifest),
             dry_run=dry_run,
         )
+
+    reconcile_test_requirements(ctx, effective_manifest, dry_run=dry_run)
 
     ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
