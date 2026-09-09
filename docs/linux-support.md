@@ -28,7 +28,9 @@ Base does not ship a Debian package, own every project runtime dependency, or
 claim support for every Linux distribution. Broader Linux families,
 non-Debian WSL distributions, native Windows, GUI IDE setup on Linux, and
 project-specific dependency ownership need separate product decisions and
-platform adapters.
+platform adapters. The proposed native Windows boundary is maintained in
+[Native Windows Support Contract](windows-support.md); it is not a WSL2
+extension of this Linux contract.
 
 ## Target Scope
 

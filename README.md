@@ -585,11 +585,14 @@ Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites
 Base owns. Linux setup remains narrower than macOS setup and should stay behind
 the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
-Windows is out of scope for Base. Existing Ubuntu/Debian-under-WSL2 guidance is
-read-only/development guidance, not part of the coordinated Base release
-matrix. See the [ecosystem platform, license, and release
-policy](docs/ecosystem-policy.md) for the boundary between Base and the
-standalone component repositories.
+For the current coordinated release matrix, Windows is out of scope for Base.
+Native Windows is planned but not supported yet. The staged target, compatibility
+matrix, and explicit feature deferrals are documented in
+[Native Windows Support Contract](docs/windows-support.md).
+Existing Ubuntu/Debian-under-WSL2 guidance is read-only/development guidance,
+not part of the coordinated Base release matrix. See the [ecosystem platform,
+license, and release policy](docs/ecosystem-policy.md) for the boundary between
+Base and the standalone component repositories.
 
 The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
 be added for coverage, but the floor job should stay until Base intentionally
