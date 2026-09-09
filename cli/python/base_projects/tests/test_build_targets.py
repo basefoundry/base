@@ -7,10 +7,14 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from base_cli_adapters.protocol import loads_records
+from base_projects.build_targets import BuildTargetError
+from base_projects.build_targets import resolve_build_target_working_dir
 from base_projects import engine
+from base_setup.manifest_model import BuildTargetConfig
 
 
 def write_manifest(project_root: Path, name: str) -> None:
@@ -94,6 +98,27 @@ def write_build_manifest_with_runner(project_root: Path, name: str) -> None:
     )
 
 
+def write_single_target_manifest(project_root: Path, name: str, working_dir: str) -> None:
+    project_root.mkdir(parents=True)
+    (project_root / "base_manifest.yaml").write_text(
+        "\n".join(
+            [
+                "project:",
+                f"  name: {name}",
+                "build:",
+                "  default:",
+                "    - target",
+                "  targets:",
+                "    target:",
+                f"      working_dir: {working_dir}",
+                "      command: echo test",
+                "artifacts: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_inline_uv_build_manifest(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True)
     (project_root / "services" / "api").mkdir(parents=True)
@@ -161,6 +186,127 @@ def uv_route_fields(project_root: Path, *, trust_required: bool = True) -> str:
         f"\t__base_manifest_command_trust_required={trust_value}"
     )
 
+
+class BuildTargetWorkingDirectoryTests(unittest.TestCase):
+    def test_resolve_build_target_working_dir_accepts_safe_nested_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            nested = project_root / "services" / "api"
+            nested.mkdir(parents=True)
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            resolved = resolve_build_target_working_dir(
+                project,
+                "api",
+                BuildTargetConfig(command="echo test", working_dir="services/api"),
+            )
+
+        self.assertEqual(resolved, nested.resolve())
+
+    def test_resolve_build_target_working_dir_rejects_absolute_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            with self.assertRaisesRegex(BuildTargetError, "must be a relative path"):
+                resolve_build_target_working_dir(
+                    project,
+                    "api",
+                    BuildTargetConfig(command="echo test", working_dir=str(project_root)),
+                )
+
+    def test_resolve_build_target_working_dir_rejects_parent_traversal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            with self.assertRaisesRegex(BuildTargetError, "resolves outside"):
+                resolve_build_target_working_dir(
+                    project,
+                    "api",
+                    BuildTargetConfig(command="echo test", working_dir="../outside"),
+                )
+
+    def test_resolve_build_target_working_dir_rejects_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            project_root = workspace / "demo"
+            outside = workspace / "outside"
+            project_root.mkdir()
+            outside.mkdir()
+            (project_root / "linked").symlink_to(outside, target_is_directory=True)
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            with self.assertRaisesRegex(BuildTargetError, "resolves outside"):
+                resolve_build_target_working_dir(
+                    project,
+                    "api",
+                    BuildTargetConfig(command="echo test", working_dir="linked"),
+                )
+
+    def test_resolve_build_target_working_dir_rejects_missing_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            with self.assertRaisesRegex(BuildTargetError, "does not exist"):
+                resolve_build_target_working_dir(
+                    project,
+                    "api",
+                    BuildTargetConfig(command="echo test", working_dir="missing"),
+                )
+
+    def test_resolve_build_target_working_dir_rejects_file_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo"
+            project_root.mkdir()
+            (project_root / "not-a-directory").write_text("fixture\n", encoding="utf-8")
+            project = SimpleNamespace(
+                root=project_root,
+                manifest_path=project_root / "base_manifest.yaml",
+            )
+
+            with self.assertRaisesRegex(BuildTargetError, "not a directory"):
+                resolve_build_target_working_dir(
+                    project,
+                    "api",
+                    BuildTargetConfig(command="echo test", working_dir="not-a-directory"),
+                )
+
+    def test_build_targets_reject_invalid_working_dir_without_command_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            base_home = workspace / "base"
+            base_home.mkdir()
+            write_single_target_manifest(workspace / "demo", "demo", "../outside")
+
+            status, stdout, stderr = run_engine(
+                ["build-targets", "demo", "--format", "command-protocol"],
+                base_home,
+            )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("resolves outside the project root", stderr)
+        self.assertNotIn("echo test", stderr)
 
 class BuildTargetTests(unittest.TestCase):
     def test_build_target_command_protocol_uses_explicit_typed_fields(self) -> None:
