@@ -78,8 +78,12 @@ basectl release check --version 1.9.0 \
 
 `release publish` accepts the same `--bom` option and refuses to publish when
 the BOM is missing, invalid, or does not match the reviewed release identity.
-When supplied, it uploads `release-bom.json` and `release-bom.sha256` to the
-GitHub Release and verifies both assets after publication. A BOM is
+The supplied BOM must be the exact canonical artifact produced by `assemble`;
+pretty-printed or hand-edited JSON is rejected so its byte digest remains bound
+to the reviewed artifact. `assemble` writes a matching `*.sha256` sidecar next
+to its output. When supplied, `release publish` uploads `release-bom.json` and
+`release-bom.sha256` to the GitHub Release and verifies both assets after
+publication. A BOM is
 intentionally opt-in for existing manifests so historical releases remain
 inspectable; Base 1.9.0 is the first Base release that requires this governed
 release path.

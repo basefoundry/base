@@ -205,6 +205,9 @@ def test_assemble_writes_bytes_matching_reported_digest(tmp_path: Path, monkeypa
     monkeypatch.setattr(sys, "argv", arguments)
     assert main() == 0
     assert hashlib.sha256(output_path.read_bytes()).hexdigest() == bom_digest(load_bom(output_path))
+    assert (tmp_path / "release-bom.sha256").read_text(encoding="utf-8") == (
+        f"{bom_digest(load_bom(output_path))}  release-bom.json\n"
+    )
 
 
 def test_duplicate_component_and_unknown_participant_are_rejected() -> None:
