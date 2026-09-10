@@ -9,7 +9,7 @@ from typing import Callable
 
 from base_setup.git_remote_parse import parse_origin_remote
 
-from .release_bom import ReleaseBomError, validate_bom_file
+from .release_bom import ReleaseBomError, canonical_bom_bytes, load_bom, validate_bom
 from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
 
 CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
@@ -50,8 +50,13 @@ def bom_finding(ctx: ReleaseContext, reviewed_commit: str | None) -> ReleaseFind
     if not ctx.bom_path.is_file():
         return ReleaseFinding("error", "bom", f"Release BOM is missing: {ctx.bom_path}")
     try:
-        validate_bom_file(
-            ctx.bom_path,
+        document = load_bom(ctx.bom_path)
+        if canonical_bom_bytes(document) != ctx.bom_path.read_bytes():
+            raise ReleaseBomError(
+                "Release BOM is not in canonical form; regenerate it with bin/base-release-bom assemble."
+            )
+        validate_bom(
+            document,
             expected_repository=ctx.release.github.repository,
             expected_version=ctx.version,
             expected_commit=reviewed_commit,
