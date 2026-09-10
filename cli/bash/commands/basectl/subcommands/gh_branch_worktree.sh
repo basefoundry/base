@@ -740,21 +740,30 @@ base_gh_branch_prune_remote_tracking_refs() {
 base_gh_branch_prune() {
     local dry_run=1 remote=0 include_closed_unmerged=0 default_branch status=0
     local dry_run_requested=0 yes_requested=0
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "dry_run|flag|--dry-run"
+        "yes|flag|--yes"
+        "remote|flag|--remote"
+        "closed_unmerged|flag|--closed-unmerged"
+    )
+    local -A parsed_options=()
 
     base_gh_branch_pr_state_cache_reset
     while (($#)); do
         case "$1" in
             --dry-run)
-                dry_run_requested=1
+                parser_args+=("$1")
                 ;;
             --yes)
-                yes_requested=1
+                parser_args+=("$1")
                 ;;
             --remote)
-                remote=1
+                parser_args+=("$1")
                 ;;
             --closed-unmerged)
-                include_closed_unmerged=1
+                parser_args+=("$1")
                 ;;
             -h|--help)
                 base_gh_branch_leaf_usage prune
@@ -767,6 +776,20 @@ base_gh_branch_prune() {
         esac
         shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_branch_usage "Could not parse branch prune arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_branch_usage "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+
+    dry_run_requested="${parsed_options[dry_run]:-0}"
+    yes_requested="${parsed_options[yes]:-0}"
+    remote="${parsed_options[remote]:-0}"
+    include_closed_unmerged="${parsed_options[closed_unmerged]:-0}"
 
     base_gh_validate_prune_mode base_gh_branch_usage "$dry_run_requested" "$yes_requested" || return $?
     ((yes_requested)) && dry_run=0
