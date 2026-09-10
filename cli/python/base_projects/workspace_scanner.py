@@ -3,13 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-
-class ProjectDiscoveryError(RuntimeError):
-    pass
-
-
-class ProjectNotFoundError(ProjectDiscoveryError):
-    pass
+from base_projects.workspace_context import resolve_workspace_repo_root
+from base_projects.workspace_errors import ProjectDiscoveryError
+from base_projects.workspace_errors import ProjectNotFoundError
 
 
 @dataclass(frozen=True)
@@ -31,8 +27,6 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
         # symlink that resolves outside the workspace is not an in-workspace
         # repository and must not be inspected as an undeclared extra.
         try:
-            from base_projects.workspace_context import resolve_workspace_repo_root
-
             resolve_workspace_repo_root(workspace_root, candidate.name)
         except ValueError:
             continue
@@ -61,8 +55,6 @@ def workspace_repository_paths(workspace_root: Path) -> tuple[Path, ...]:
         if not candidate.is_dir():
             continue
         try:
-            from base_projects.workspace_context import resolve_workspace_repo_root
-
             resolve_workspace_repo_root(workspace_root, candidate.name)
         except ValueError:
             continue

@@ -231,7 +231,7 @@ class WorkspaceUndeclaredRepositoryTests(unittest.TestCase):
             {str((workspace / "unlisted-one").resolve()), str((workspace / "unlisted-two").resolve())},
         )
 
-class WorkspaceCheckTests(unittest.TestCase):
+class WorkspaceSymlinkTests(unittest.TestCase):
     def test_workspace_check_matches_logical_symlink_names_and_skips_outside_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -280,6 +280,8 @@ class WorkspaceCheckTests(unittest.TestCase):
         self.assertEqual(set(projects_by_repo), {"api"})
         self.assertTrue(projects_by_repo["api"]["expected"])
 
+
+class WorkspaceCheckTests(unittest.TestCase):
     def test_workspace_check_records_ok_and_warning_results_for_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
