@@ -98,7 +98,7 @@ def workspace_project_check_results(
     if workspace_manifest is None:
         return tuple(
             workspace_project_check_result(entry, default_manifest)
-            for entry in workspace_manifest_entries(workspace_root)
+            for entry in workspace_manifest_entries(workspace_root, include_outside=False)
         )
     return workspace_manifest_project_check_results(workspace_root, workspace_manifest, default_manifest)
 
@@ -110,7 +110,7 @@ def workspace_manifest_project_check_results(
 ) -> tuple[WorkspaceProjectCheckResult, ...]:
     entries_by_repo = {
         entry.path.parent.name: entry
-        for entry in workspace_manifest_entries(workspace_root)
+        for entry in workspace_manifest_entries(workspace_root, include_outside=False)
     }
     repository_paths_by_name = {path.name: path for path in workspace_repository_paths(workspace_root)}
     results: list[WorkspaceProjectCheckResult] = []

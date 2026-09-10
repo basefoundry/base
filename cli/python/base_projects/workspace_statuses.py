@@ -47,7 +47,10 @@ def workspace_project_statuses(
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> tuple[WorkspaceProjectStatus, ...]:
     if workspace_manifest is None:
-        return tuple(workspace_project_status(entry) for entry in workspace_manifest_entries(workspace_root))
+        return tuple(
+            workspace_project_status(entry)
+            for entry in workspace_manifest_entries(workspace_root, include_outside=False)
+        )
     return workspace_manifest_project_statuses(workspace_root, workspace_manifest)
 
 
@@ -59,7 +62,7 @@ def workspace_manifest_project_statuses(
 ) -> tuple[WorkspaceProjectStatus, ...]:
     entries_by_repo = {
         entry.path.parent.name: entry
-        for entry in workspace_manifest_entries(workspace_root)
+        for entry in workspace_manifest_entries(workspace_root, include_outside=False)
     }
     statuses: list[WorkspaceProjectStatus] = []
 

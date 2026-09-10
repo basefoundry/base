@@ -15,7 +15,12 @@ class ManifestEntry:
     size: int
 
 
-def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...]:
+def workspace_manifest_entries(
+    workspace_root: Path,
+    *,
+    include_outside: bool = True,
+) -> tuple[ManifestEntry, ...]:
+    """Return manifest entries, optionally excluding outside-resolving symlinks."""
     if not workspace_root.is_dir():
         raise ProjectDiscoveryError(f"Workspace '{workspace_root}' is not a directory.")
 
@@ -29,7 +34,8 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
         try:
             resolve_workspace_repo_root(workspace_root, candidate.name)
         except ValueError:
-            continue
+            if not include_outside:
+                continue
         manifest_path = candidate / "base_manifest.yaml"
         if not manifest_path.is_file():
             continue
