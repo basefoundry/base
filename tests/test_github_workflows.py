@@ -129,16 +129,6 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         for step in job.get("steps", [])
         if isinstance(step, dict)
     )
-    compatibility_checkouts = [
-        step
-        for step in compatibility.get("steps", [])
-        if isinstance(step, dict) and step.get("uses", "").startswith("actions/checkout@")
-    ]
-    assemble_checkouts = [
-        step
-        for step in assemble.get("steps", [])
-        if isinstance(step, dict) and step.get("uses", "").startswith("actions/checkout@")
-    ]
 
     assert workflow["name"] == "Ecosystem Release BOM"
     assert workflow["permissions"] == {"contents": "read"}
@@ -154,7 +144,9 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "base_demo_ref",
     }
     assert assemble["needs"] == "compatibility"
-    assert workflow["concurrency"]["group"] == "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"
+    assert workflow["concurrency"]["group"] == (
+        "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"
+    )
     assert "base-release-bom assemble" in run_commands
     assert run_commands.count("base-release-bom-row") == 4
     assert "--repository basefoundry/base-cli" in run_commands
@@ -163,10 +155,11 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert "release-bom.sha256" in run_commands
     assert "^\u005b0-9a-f\u005d{40}$" in run_commands
     assert "awk -F': '" not in run_commands
-    assert any(step.get("with", {}).get("path") == ".dependencies/base-demo" for step in compatibility_checkouts)
-    assert any(step.get("with", {}).get("path") == ".dependencies/base-demo" for step in assemble_checkouts)
-    assert "yaml.safe_load" in run_commands
-    assert "Install BOM YAML parser" in str(assemble["steps"])
+    assert all(
+        any(step.get("with", {}).get("path") == ".dependencies/base-demo" for step in job["steps"])
+        for job in (compatibility, assemble)
+    )
+    assert "yaml.safe_load" in run_commands and "Install BOM YAML parser" in str(assemble["steps"])
     assert "--format json --no-notify --yes" in compatibility_commands
     assert 'base_demo_commit="$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"' in compatibility_commands
     assert 'printf \'  root: %s\\n\' "$GITHUB_WORKSPACE/.."' in compatibility_commands
