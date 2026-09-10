@@ -214,6 +214,7 @@ manifest trust.
 | `basectl workspace init <workspace-source>` | Initialize a workspace from a workspace configuration repository, update local workspace config, and optionally materialize member repositories. | `--owner <owner>`, `--path <path>`, `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace configure` | Preview the existing `repo configure` repair path by default across discovered Base-managed workspace repositories or an explicit workspace manifest. Use `--apply` to authorize changes; interactive runs prompt unless `--yes` is supplied. Skips missing, non-Base-managed, or non-GitHub repos and continues after per-repo failures. | `--workspace <path>`, `--manifest <path>`, `--dry-run`, `--apply`, `--yes` |
 | `basectl workspace setup` | Set up eligible repositories from a workspace manifest in manifest order by delegating to each repository's local `basectl setup` command. Skips ineligible repositories, continues after per-repo failures, and reports setup/skipped/failed counts. | `--workspace <path>`, `--manifest <path>`, `--dry-run`, `--yes` |
+| `basectl workspace test` | Run declared project test commands serially across workspace-manifest repositories. Projects without a declared test command are skipped; failures are reported per project and `--fail-fast` stops after the first failure. | `--workspace <path>`, `--manifest <path>`, `--projects <name[,name...]>`, `--fail-fast`, `--format <text\|json>` |
 
 ## Repository And GitHub Workflow
 
@@ -287,7 +288,7 @@ Current implemented commands include:
 - `basectl update-profile`
 - `basectl update`
 - `basectl projects list`
-- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup>`
+- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>`
 - `basectl trust status [project]`
 - `basectl trust <allow|revoke> <project>`
 - `basectl repo init <name>`

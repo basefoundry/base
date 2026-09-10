@@ -173,6 +173,10 @@ EOF
             COMP_CWORD=3; \
             _base_basectl_completion; \
             printf "workspace_setup_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl workspace test --); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "workspace_test_options=%s\n" "${COMPREPLY[*]}"; \
             COMP_WORDS=(basectl onboard --); \
             COMP_CWORD=2; \
             _base_basectl_completion; \
@@ -311,6 +315,7 @@ EOF
     [[ "$output" == *"workspace_init_options=--owner --path --workspace --manifest --include-optional --dry-run"* ]]
     [[ "$output" == *"workspace_configure_options=--workspace --manifest --dry-run"* ]]
     [[ "$output" == *"workspace_setup_options=--workspace --manifest --dry-run --yes"* ]]
+    [[ "$output" == *"workspace_test_options=--workspace --manifest --projects --fail-fast --format"* ]]
     [[ "$output" == *"onboard_options=--profile --dry-run --yes --allow-project-ide-mutations --no-profile"* ]]
     [[ "$output" == *"onboard_projects=base demo"* ]]
     [[ "$output" == *"onboard_profiles=dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab"* ]]
@@ -451,6 +456,6 @@ EOF
             printf "options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"commands=status check doctor onboarding agent-brief clone pull update init configure setup"* ]]
+    [[ "$output" == *"commands=status check doctor onboarding agent-brief clone pull update init configure setup test"* ]]
     [[ "$output" == *"options=--workspace --manifest --dry-run --apply --yes"* ]]
 }

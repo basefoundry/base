@@ -53,6 +53,7 @@ from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_init import workspace_init_command
 from base_projects.workspace_pull_command import workspace_pull_command
 from base_projects.workspace_setup import workspace_setup_from_options
+from base_projects.workspace_test import workspace_test_from_options
 from base_projects.workspace_update import workspace_update_from_options
 from base_projects.workspace_onboarding import workspace_onboarding_summary
 from base_projects.workspace_report_json import workspace_check_to_json
@@ -123,6 +124,16 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--apply", is_flag=True, help="Apply workspace configure changes after the plan is shown.")
 @base_cli.option("--yes", is_flag=True, help="Approve workspace setup or configure changes that require confirmation.")
 @base_cli.option(
+    "--projects",
+    "workspace_projects",
+    help="Comma-separated workspace project names to test.",
+)
+@base_cli.option(
+    "--fail-fast",
+    is_flag=True,
+    help="Stop workspace testing after the first project failure.",
+)
+@base_cli.option(
     "--test-preflight",
     is_flag=True,
     help="Check a project test requirements file before resolving its test command.",
@@ -143,6 +154,8 @@ def run(
     dry_run: bool,
     apply: bool,
     yes: bool,
+    workspace_projects: str | None,
+    fail_fast: bool,
     test_preflight: bool,
 ) -> int:
     try:
@@ -162,6 +175,8 @@ def run(
                 dry_run=dry_run,
                 apply=apply,
                 yes=yes,
+                workspace_projects=workspace_projects,
+                fail_fast=fail_fast,
                 test_preflight=test_preflight,
             ),
             project_command_actions(),
@@ -184,6 +199,7 @@ def project_command_actions() -> ProjectCommandActions:
         workspace_init=workspace_init_project_command,
         workspace_configure=workspace_configure_from_options,
         workspace_setup=workspace_setup_from_options,
+        workspace_test=workspace_test_from_options,
         workspace_update=workspace_update_from_options,
         current_project=current_project_command,
         manifest_project=manifest_project_command,

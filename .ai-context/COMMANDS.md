@@ -57,13 +57,13 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl docs` - open the Base documentation home page on GitHub.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
-- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup>` -
+- `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>` -
   inspect workspace status, checks, diagnostics, read-only first-day
   onboarding, and local agent-handoff readiness; explicitly clone expected
   repositories from a manifest; initialize a workspace from a workspace
   configuration repo; explicitly sync a local manifest from a configured
   canonical source; apply repo configuration across a workspace; or run local
-  project setup across eligible repositories.
+  project setup and declared tests across eligible repositories.
   - `workspace status`, `workspace check`, `workspace doctor`,
     `workspace onboarding`, and `workspace agent-brief` support `--format json`;
     `workspace update` also supports stable `--format json` output documented in
@@ -101,6 +101,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     without `--dry-run`, it skips ineligible repositories, continues after
     per-repo failures, and reports setup/skipped/failed counts. `--yes` forwards
     confirmation to each delegated setup command.
+  - `workspace test` runs declared project test commands serially in manifest
+    order. `--projects name[,name...]` selects a subset, `--fail-fast` stops
+    after the first failure, and `--format json` emits per-project results and
+    passed/failed/skipped counts. Projects without a declared test command are
+    skipped.
   - `workspace update --dry-run` previews the ordered Git pull plan; without
     `--dry-run`, it continues after per-repo failures and reports
     updated/unchanged/skipped/failed counts. JSON dry runs report `planned`
