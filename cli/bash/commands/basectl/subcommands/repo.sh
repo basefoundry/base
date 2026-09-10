@@ -2481,6 +2481,16 @@ base_repo_check() {
     local output_format="text" requested_format
     local release_contract=0
     local path=""
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "agent_guidance|flag|--agent-guidance"
+        "agent_ready|flag|--agent-ready"
+        "release|flag|--release"
+        "format|value|--format"
+        "verbose|flag|-v"
+    )
+    local -A parsed_options=()
     local status=0
 
     base_inspection_find_output_format output_format "$@"
@@ -2491,16 +2501,8 @@ base_repo_check() {
                 base_repo_check_usage
                 return 0
                 ;;
-            --agent-guidance)
-                agent_guidance=1
-                shift
-                ;;
-            --agent-ready)
-                agent_ready=1
-                shift
-                ;;
-            --release)
-                release_contract=1
+            --agent-guidance|--agent-ready|--release)
+                parser_args+=("$1")
                 shift
                 ;;
             --format)
@@ -2517,10 +2519,12 @@ base_repo_check() {
                         return $?
                         ;;
                 esac
+                parser_args+=("--format=$requested_format")
                 output_format="$requested_format"
                 shift 2
                 ;;
             -v)
+                parser_args+=("$1")
                 base_std_set_log_level DEBUG
                 export BASE_BASH_LIBS_LOG_DEBUG=1
                 shift
@@ -2530,15 +2534,30 @@ base_repo_check() {
                 return $?
                 ;;
             *)
-                if [[ -n "$path" ]]; then
-                    base_repo_check_format_error "$output_format" "The 'repo check' command accepts at most one path."
-                    return $?
-                fi
-                path="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_check_format_error "$output_format" "Could not parse repo check arguments."
+        return $?
+    fi
+    if [[ -n "${parsed_options[format]+set}" ]]; then
+        output_format="${parsed_options[format]}"
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_check_format_error "$output_format" "The 'repo check' command accepts at most one path."
+        return $?
+    fi
+
+    agent_guidance="${parsed_options[agent_guidance]:-0}"
+    agent_ready="${parsed_options[agent_ready]:-0}"
+    release_contract="${parsed_options[release]:-0}"
+    if ((${#positionals[@]} == 1)); then
+        path="${positionals[0]}"
+    fi
 
     [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
