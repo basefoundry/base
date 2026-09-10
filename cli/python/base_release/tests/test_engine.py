@@ -23,6 +23,7 @@ from base_release import release_readiness
 from base_release.engine import ReleaseError
 from base_release.engine import ReleaseFinding
 from base_release.engine import main
+from base_release.release_bom import canonical_bom_bytes
 
 
 READY_FINDINGS = (
@@ -74,6 +75,55 @@ def run_engine(args: list[str], cwd: Path, extra_env: dict[str, str] | None = No
 class TerminalStringIO(io.StringIO):
     def isatty(self) -> bool:
         return True
+
+
+def valid_release_bom_bytes(repository: str, version: str, commit: str) -> bytes:
+    document = {
+        "schema_version": 1,
+        "release": {
+            "repository": repository,
+            "version": version,
+            "tag": f"v{version}",
+            "commit": commit,
+        },
+        "components": [
+            {
+                "repository": repository,
+                "version": version,
+                "tag": f"v{version}",
+                "commit": commit,
+                "source_mode": "release",
+                "api_schema_version": "manifest-1",
+                "platforms": ["macos-14", "ubuntu-24.04"],
+                "required": True,
+                "result": "passed",
+                "evidence": "run://release/123",
+            },
+            {
+                "repository": "basefoundry/base-cli",
+                "version": "0.4.3",
+                "tag": "v0.4.3",
+                "commit": "b" * 40,
+                "source_mode": "release",
+                "api_schema_version": "base-cli-api@0.4.3",
+                "platforms": ["macos-14", "ubuntu-24.04"],
+                "required": True,
+                "result": "passed",
+                "evidence": "run://base-cli/123",
+            },
+        ],
+        "combinations": [
+            {
+                "name": "release-stack-ubuntu-24.04",
+                "participants": [repository, "basefoundry/base-cli"],
+                "platform": "ubuntu-24.04",
+                "required": True,
+                "result": "passed",
+                "evidence": "run://release/123",
+            }
+        ],
+    }
+    return canonical_bom_bytes(document)
 
 
 def add_origin(root: Path) -> None:
@@ -241,6 +291,49 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         self.assertIsNone(payload["error"])
         self.assertEqual(payload["data"]["findings"][1]["status"], "error")
 
+    def test_check_with_invalid_bom_reports_a_blocking_bom_finding(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root)
+            bom_path = root / "invalid-bom.json"
+            bom_path.write_text("{}\n", encoding="utf-8")
+
+            with (
+                mock.patch(
+                    "base_release.engine.gh_cli_finding",
+                    return_value=ReleaseFinding("ok", "gh", "GitHub CLI is authenticated."),
+                ),
+                mock.patch(
+                    "base_release.release_readiness.inspect_release_provenance",
+                    return_value=release_readiness.ReleaseProvenanceInspection(
+                        findings=READY_PROVENANCE_FINDINGS,
+                        commit_sha=READY_SHA,
+                    ),
+                ),
+            ):
+                status, stdout, stderr = run_engine(
+                    [
+                        "check",
+                        "--format",
+                        "json",
+                        "--version",
+                        "1.2.3",
+                        "--manifest",
+                        str(manifest_path),
+                        "--bom",
+                        str(bom_path),
+                    ],
+                    root,
+                )
+
+        self.assertEqual(status, 1, stderr)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        bom_findings = [finding for finding in payload["data"]["findings"] if finding["name"] == "bom"]
+        self.assertEqual(len(bom_findings), 1)
+        self.assertEqual(bom_findings[0]["status"], "error")
+        self.assertIn("schema_version", bom_findings[0]["message"])
+
     def test_check_json_warning_and_empty_findings_preserve_success_exit(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -402,6 +495,47 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         self.assertIn("Homebrew handoff required after GitHub release", stdout)
         run_step.assert_not_called()
 
+    def test_publish_with_invalid_bom_is_blocked_before_git_or_github_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root)
+            bom_path = root / "invalid-bom.json"
+            bom_path.write_text("{}\n", encoding="utf-8")
+
+            with (
+                mock.patch(
+                    "base_release.engine.gh_cli_finding",
+                    return_value=ReleaseFinding("ok", "gh", "GitHub CLI is authenticated."),
+                ),
+                mock.patch(
+                    "base_release.release_readiness.inspect_release_provenance",
+                    return_value=release_readiness.ReleaseProvenanceInspection(
+                        findings=READY_PROVENANCE_FINDINGS,
+                        commit_sha=READY_SHA,
+                    ),
+                ),
+                mock.patch("base_release.engine.run_release_step") as run_step,
+            ):
+                status, stdout, stderr = run_engine(
+                    [
+                        "publish",
+                        "--yes",
+                        "--version",
+                        "1.2.3",
+                        "--manifest",
+                        str(manifest_path),
+                        "--bom",
+                        str(bom_path),
+                    ],
+                    root,
+                )
+
+        self.assertEqual(status, 1, stderr)
+        self.assertEqual(stderr, "")
+        self.assertIn("Release publish blocked by readiness findings", stdout)
+        self.assertIn("error  bom", stdout)
+        run_step.assert_not_called()
+
     def test_publish_requires_yes_when_stdin_is_not_interactive(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -485,7 +619,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
             root = Path(tmpdir)
             manifest_path = self.manifest_factory.write_release(root)
             bom_path = root / "candidate-bom.json"
-            bom_bytes = b'{"release":"base-1.9.0"}\n'
+            bom_bytes = valid_release_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
             bom_path.write_bytes(bom_bytes)
             commands: list[tuple[list[str], Path | None]] = []
             uploaded_contents: dict[str, bytes] = {}
