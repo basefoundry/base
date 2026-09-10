@@ -652,7 +652,7 @@ _base_basectl_completion() {
             ;;
         workspace)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "status check doctor onboarding agent-brief clone pull update init configure setup" "$cur"
+                _base_basectl_completion_compgen "status check doctor onboarding agent-brief clone pull update init configure setup test" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                     status|check|doctor)
@@ -678,6 +678,9 @@ _base_basectl_completion() {
                         ;;
                     setup)
                         _base_basectl_completion_compgen "--workspace --manifest --dry-run --yes -v -h --help" "$cur"
+                        ;;
+                    test)
+                        _base_basectl_completion_compgen "--workspace --manifest --projects --fail-fast --format -v -h --help" "$cur"
                         ;;
                 esac
             fi

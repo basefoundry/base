@@ -168,7 +168,7 @@ def invoke_engine(
     user_config: str | None = None,
     extra_env: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
-    workspace_commands = {"status", "check", "doctor", "onboarding", "agent-brief", "run-commands"}
+    workspace_commands = {"status", "check", "doctor", "onboarding", "agent-brief", "run-commands", "test"}
     stdout = TerminalStringIO() if any(argument in workspace_commands for argument in args) else io.StringIO()
     stderr = io.StringIO()
     if user_config is not None:

@@ -40,6 +40,10 @@ compatibility surfaces, such as Dev Containers and Nix/devenv planning reports,
 are stable as commands but may keep individual classification details
 experimental while those ecosystems mature.
 
+`basectl workspace test` is Experimental. Its serial execution, selection,
+failure, skip, and JSON-report details may evolve while workspace-wide test
+orchestration matures.
+
 ## JSON And Schema-Versioned Output
 
 Base JSON intended for automation must carry a `schema_version` when the payload

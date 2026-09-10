@@ -175,6 +175,28 @@ Set up eligible repositories in a workspace manifest in manifest order.
 EOF
 }
 
+base_workspace_test_usage() {
+    cat <<'EOF'
+Usage:
+  basectl workspace test [options]
+
+Options:
+  --workspace <path>  Workspace directory to test. Defaults to workspace.root, then BASE_HOME's parent.
+  --manifest <path>   Local workspace manifest describing expected repositories.
+                      Overrides workspace.manifest from ~/.base.d/config.yaml.
+  --projects <name[,name...]>
+                      Test only the selected workspace projects, in manifest order.
+  --fail-fast         Stop after the first project failure.
+  --format <text|json>
+                      Output text or structured JSON. Defaults to text.
+  -v                  Enable DEBUG logging for this subcommand.
+  -h, --help          Show this help text.
+
+Run each selected project's declared test command serially.
+Projects without a declared test command are skipped.
+EOF
+}
+
 base_workspace_subcommand_usage() {
     case "${1:-}" in
         status|check|doctor)
@@ -204,10 +226,13 @@ base_workspace_subcommand_usage() {
         setup)
             base_workspace_setup_usage
             ;;
+        test)
+            base_workspace_test_usage
+            ;;
         *)
             cat <<'EOF'
 Usage:
-  basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup> [options]
+  basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test> [options]
 
 Commands:
   status     Show workspace status. Supports --format text|csv|tsv|yaml|json.
@@ -221,6 +246,7 @@ Commands:
   init       Initialize a workspace from a workspace configuration repository.
   configure  Apply repo configure across workspace repositories.
   setup      Set up eligible workspace repositories in manifest order.
+  test       Run declared project tests serially across selected repositories.
 
 Run `basectl workspace <command> --help` for command-specific options.
 EOF
@@ -244,7 +270,7 @@ base_workspace_subcommand_main() {
             base_workspace_subcommand_usage
             return 0
             ;;
-        status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup)
+        status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test)
             shift
             ;;
         *)

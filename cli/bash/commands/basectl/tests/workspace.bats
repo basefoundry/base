@@ -475,6 +475,17 @@ EOF
     [[ "$output" == *"ordered workspace setup plan"* ]]
     [[ "$output" != *"--format"* ]]
 
+    run_basectl workspace test --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl workspace test [options]"* ]]
+    [[ "$output" == *"--workspace <path>"* ]]
+    [[ "$output" == *"--manifest <path>"* ]]
+    [[ "$output" == *"--projects <name[,name...]>"* ]]
+    [[ "$output" == *"--fail-fast"* ]]
+    [[ "$output" == *"--format <text|json>"* ]]
+    [[ "$output" == *"declared test command"* ]]
+
     run_basectl workspace init --help
 
     [ "$status" -eq 0 ]
@@ -490,7 +501,7 @@ EOF
     run_basectl workspace help
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup> [options]"* ]]
+    [[ "$output" == *"basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test> [options]"* ]]
     [[ "$output" != *"Project virtual environment Python was not found"* ]]
 }
 

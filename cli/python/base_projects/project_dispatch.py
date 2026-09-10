@@ -14,6 +14,7 @@ class WorkspaceCommandOptions:
     project_name: str | None = None
     workspace_manifest: str | None = None
     workspace_repos: str | None = None
+    workspace_projects: str | None = None
     workspace_manifest_source: str | None = None
     workspace_config_path: str | None = None
     workspace_owner: str | None = None
@@ -21,6 +22,7 @@ class WorkspaceCommandOptions:
     dry_run: bool = False
     apply: bool = False
     yes: bool = False
+    fail_fast: bool = False
     test_preflight: bool = False
 
 
@@ -38,6 +40,7 @@ class ProjectCommandActions:
     workspace_init: Callable[[base_cli.Context, str, WorkspaceCommandOptions], int]
     workspace_configure: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
     workspace_setup: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
+    workspace_test: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
     current_project: Callable[[base_cli.Context, str], int]
     manifest_project: Callable[[base_cli.Context, str | None, str], int]
     resolve_project: Callable[[base_cli.Context, str | None, str | None, str], int]
@@ -217,6 +220,16 @@ def _handle_setup(
     return actions.workspace_setup(ctx, options)
 
 
+def _handle_test(
+    ctx: base_cli.Context,
+    arguments: tuple[str, ...],
+    options: WorkspaceCommandOptions,
+    actions: ProjectCommandActions,
+) -> int:
+    require_argument_count("test", arguments, 0, 0)
+    return actions.workspace_test(ctx, options)
+
+
 def _handle_current(
     ctx: base_cli.Context,
     arguments: tuple[str, ...],
@@ -339,6 +352,7 @@ SUPPORTED_PROJECT_COMMANDS = (
     "clone",
     "configure",
     "setup",
+    "test",
     "init",
     "test-command",
     "demo-script",
@@ -364,6 +378,7 @@ PROJECT_COMMAND_HANDLERS: dict[str, ProjectCommandHandler] = {
     "init": _handle_init,
     "configure": _handle_configure,
     "setup": _handle_setup,
+    "test": _handle_test,
     "current": _handle_current,
     "manifest": _handle_manifest,
     "resolve": _handle_resolve,
