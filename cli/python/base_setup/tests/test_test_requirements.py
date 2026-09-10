@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from base_setup.checks import ArtifactCheck
+from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_model import BaseManifest
 from base_setup.manifest_model import TestConfig as ManifestTestConfig
@@ -139,3 +141,63 @@ class TestRequirementsTests(unittest.TestCase):
             ],
             cwd=expected_root,
         )
+
+    def test_reconcile_installs_without_source_provider_and_verifies_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            requirements_path = root / "requirements-dev.txt"
+            requirements_path.write_text("jsonschema==4.25.1\n", encoding="utf-8")
+            python_bin = root / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.touch()
+            manifest = self.write_manifest(root)
+            ctx = fake_context()
+
+            with (
+                mock.patch.dict("os.environ", {"PYTHONPATH": "/stale/source/provider"}),
+                mock.patch("base_setup.test_requirements.process.run_command") as run_command,
+                mock.patch("base_setup.test_requirements.check_test_requirements", return_value=None) as check,
+            ):
+                reconcile_test_requirements(ctx, manifest, dry_run=False)
+
+        expected_root = root.resolve()
+        expected_python_bin = expected_root / ".venv" / "bin" / "python"
+        run_command.assert_called_once_with(
+            ctx,
+            [
+                str(expected_python_bin),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "-r",
+                str(requirements_path.resolve()),
+            ],
+            cwd=expected_root,
+            env=mock.ANY,
+        )
+        self.assertNotIn("PYTHONPATH", run_command.call_args.kwargs["env"])
+        check.assert_called_once_with(manifest)
+
+    def test_reconcile_reports_failed_postflight_verification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "requirements-dev.txt").write_text("jsonschema==4.25.1\n", encoding="utf-8")
+            python_bin = root / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.touch()
+            manifest = self.write_manifest(root)
+            failed_check = ArtifactCheck(
+                name="test requirements environment",
+                ok=False,
+                message="jsonschema==4.25.1 is missing",
+                fix="Run 'basectl setup demo'",
+                finding_id="BASE-P181",
+            )
+
+            with (
+                mock.patch("base_setup.test_requirements.process.run_command"),
+                mock.patch("base_setup.test_requirements.check_test_requirements", return_value=failed_check),
+            ):
+                with self.assertRaisesRegex(ArtifactError, "verification failed: jsonschema==4.25.1 is missing"):
+                    reconcile_test_requirements(fake_context(), manifest, dry_run=False)

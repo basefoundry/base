@@ -195,7 +195,19 @@ def reconcile_test_requirements(ctx: base_cli.Context, manifest: BaseManifest, d
         path.relative_to(route.project_root),
         route.project_venv_dir,
     )
-    process.run_command(ctx, command, cwd=route.project_root)
+    process.run_command(
+        ctx,
+        command,
+        cwd=route.project_root,
+        env=process.python_package_environment(),
+    )
+
+    check = check_test_requirements(manifest)
+    if check is not None and not check.ok:
+        raise ArtifactError(
+            f"Test requirements installation completed, but verification failed: {check.message} "
+            f"Fix: {check.fix}"
+        )
 
 
 __all__ = [
