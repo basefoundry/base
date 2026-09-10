@@ -83,6 +83,34 @@ load ./basectl_helpers.bash
     [[ "$output" == *"ERROR: --days must be a positive integer."* ]]
 }
 
+@test "basectl gh branch stale preserves duplicate values through the shared parser" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+
+    cd "$repo"
+    run_basectl gh branch stale \
+        --days 999999 --days 000 --format text --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"status":"warn"'* ]]
+    [[ "$output" == *'"days":0'* ]]
+}
+
+@test "basectl gh branch stale preserves rejection of equals-form options" {
+    run_basectl gh branch stale --days=0
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--days' uses unsupported equals syntax."* ]]
+
+    run_basectl gh branch stale --format=json
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--format' uses unsupported equals syntax."* ]]
+}
+
 @test "basectl gh prune rejects conflicting execution flags in either order" {
     local args command_args
 
