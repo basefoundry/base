@@ -13,6 +13,8 @@ from base_projects.workspace_checks import workspace_non_base_repo_check
 from base_projects.workspace_checks import workspace_project_check_result
 from base_projects.workspace_checks import workspace_project_check_results
 from base_projects.workspace_checks import workspace_repo_presence_check
+from base_projects.workspace_checks import workspace_undeclared_repo_check
+from base_projects.workspace_checks import workspace_undeclared_repo_check_result
 from base_projects.workspace_agent_brief import RepositoryFileSignal
 from base_projects.workspace_agent_brief import RepositoryValidationSignal
 from base_projects.workspace_agent_brief import WorkspaceAgentBrief
@@ -105,5 +107,7 @@ __all__ = (
     "workspace_project_statuses",
     "workspace_repo_check_details",
     "workspace_repo_presence_check",
+    "workspace_undeclared_repo_check",
+    "workspace_undeclared_repo_check_result",
     "workspace_status_to_json",
 )

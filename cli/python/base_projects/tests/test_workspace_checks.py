@@ -51,6 +51,19 @@ def write_ready_python_bin(python_bin: Path) -> None:
     python_bin.chmod(0o755)
 
 
+def write_git_repository(repository_root: Path) -> None:
+    repository_root.mkdir(parents=True)
+    (repository_root / ".git").mkdir()
+
+
+def write_bare_git_repository(repository_root: Path) -> None:
+    repository_root.mkdir(parents=True)
+    (repository_root / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+    (repository_root / "config").write_text("[core]\n\tbare = true\n", encoding="utf-8")
+    (repository_root / "objects").mkdir()
+    (repository_root / "refs").mkdir()
+
+
 def write_workspace_manifest(path: Path, repos: str | None = None) -> None:
     path.write_text(
         "\n".join(
@@ -109,6 +122,114 @@ def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, st
             status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
 
+
+class WorkspaceUndeclaredRepositoryTests(unittest.TestCase):
+    def test_workspace_doctor_does_not_report_declared_git_repositories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path, repos="  - name: base\n  - name: bare")
+            write_git_repository(workspace / "base")
+            write_bare_git_repository(workspace / "bare")
+
+            status, stdout, stderr = invoke_engine(
+                ["doctor", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        findings = [check for project in payload["projects"] for check in project["checks"]]
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertNotIn("BASE-W013", {check["id"] for check in findings})
+
+    def test_workspace_check_warns_without_failing_for_one_undeclared_git_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path, repos="  - name: base")
+            write_git_repository(workspace / "base")
+            write_git_repository(workspace / "unlisted")
+
+            status, stdout, stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        undeclared = [
+            check
+            for project in payload["projects"]
+            for check in project["checks"]
+            if check["id"] == "BASE-W013"
+        ]
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["status"], "warn")
+        self.assertEqual(len(undeclared), 1)
+        self.assertEqual(undeclared[0]["status"], "warn")
+        self.assertEqual(undeclared[0]["details"]["path"], str((workspace / "unlisted").resolve()))
+        self.assertIn("mark it as unmanaged", undeclared[0]["fix"])
+
+    def test_workspace_doctor_lists_two_undeclared_repository_paths_in_text_and_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_default_manifest(base_home)
+            write_workspace_manifest(manifest_path, repos="  - name: base")
+            write_git_repository(workspace / "base")
+            write_git_repository(workspace / "unlisted-one")
+            write_bare_git_repository(workspace / "unlisted-two")
+
+            text_status, text_stdout, text_stderr = invoke_engine(
+                ["doctor", "--workspace", str(workspace), "--manifest", str(manifest_path)],
+                base_home,
+                home,
+            )
+            json_status, json_stdout, json_stderr = invoke_engine(
+                ["doctor", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(json_stdout)
+        undeclared = [
+            check
+            for project in payload["projects"]
+            for check in project["checks"]
+            if check["id"] == "BASE-W013"
+        ]
+        self.assertEqual(text_status, 0)
+        self.assertIn("Workspace doctor:", text_stdout)
+        self.assertNotIn("BASE-W013", text_stdout)
+        self.assertIn(str((workspace / "unlisted-one").resolve()), text_stderr)
+        self.assertIn(str((workspace / "unlisted-two").resolve()), text_stderr)
+        self.assertEqual(json_status, 0)
+        self.assertEqual(json_stderr, "")
+        self.assertEqual(payload["status"], "warn")
+        self.assertEqual(
+            {check["details"]["path"] for check in undeclared},
+            {str((workspace / "unlisted-one").resolve()), str((workspace / "unlisted-two").resolve())},
+        )
 
 class WorkspaceCheckTests(unittest.TestCase):
     def test_workspace_check_records_ok_and_warning_results_for_status(self) -> None:

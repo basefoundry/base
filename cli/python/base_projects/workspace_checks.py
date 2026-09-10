@@ -18,6 +18,7 @@ from base_projects.workspace_report_common import workspace_repo_check_details
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_scanner import ManifestEntry
 from base_projects.workspace_scanner import workspace_manifest_entries
+from base_projects.workspace_scanner import workspace_repository_paths
 from base_setup.checks import ArtifactCheck
 from base_setup.checks import checks_status
 from base_setup.checks import doctor_status
@@ -111,14 +112,18 @@ def workspace_manifest_project_check_results(
         entry.path.parent.resolve().name: entry
         for entry in workspace_manifest_entries(workspace_root)
     }
+    repository_paths_by_name = {path.name: path for path in workspace_repository_paths(workspace_root)}
     results: list[WorkspaceProjectCheckResult] = []
 
     for repo in workspace_manifest.repos:
         entry = entries_by_repo.pop(repo.name, None)
+        repository_paths_by_name.pop(repo.name, None)
         results.append(workspace_expected_repo_check_result(workspace_root, repo, entry, default_manifest))
 
     for repo_name in sorted(entries_by_repo):
         results.append(workspace_extra_project_check_result(entries_by_repo[repo_name], default_manifest))
+    for repo_name in sorted(repository_paths_by_name):
+        results.append(workspace_undeclared_repo_check_result(repository_paths_by_name[repo_name]))
 
     return tuple(results)
 
@@ -296,6 +301,43 @@ def workspace_extra_project_check(result: WorkspaceProjectCheckResult) -> Artifa
             "expected": False,
             "present": True,
         },
+    )
+
+
+def workspace_undeclared_repo_check(root: Path) -> ArtifactCheck:
+    repository = root.name
+    return ArtifactCheck(
+        name="workspace_manifest_declaration",
+        ok=False,
+        message=f"Git repository '{repository}' is present at '{root}' but is not declared in the workspace manifest.",
+        fix=(
+            f"Add '{repository}' to the workspace manifest if it belongs in this workspace; "
+            "otherwise mark it as unmanaged in the workspace manifest or move it outside the workspace root."
+        ),
+        status="warn",
+        finding_id="BASE-W013",
+        details={
+            "repository": repository,
+            "path": str(root),
+            "expected": False,
+            "present": True,
+        },
+    )
+
+
+def workspace_undeclared_repo_check_result(root: Path) -> WorkspaceProjectCheckResult:
+    check = workspace_undeclared_repo_check(root)
+    return WorkspaceProjectCheckResult(
+        name=root.name,
+        root=root,
+        manifest_path=None,
+        manifest="missing",
+        status=checks_status((check,)),
+        checks=(check,),
+        expected=False,
+        required=False,
+        repo="present",
+        repository=root.name,
     )
 
 

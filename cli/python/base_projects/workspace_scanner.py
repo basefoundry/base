@@ -40,3 +40,31 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
         )
 
     return tuple(entries)
+
+
+def workspace_repository_paths(workspace_root: Path) -> tuple[Path, ...]:
+    """Return direct-child directories that look like Git repositories."""
+    if not workspace_root.is_dir():
+        raise ProjectDiscoveryError(f"Workspace '{workspace_root}' is not a directory.")
+
+    repositories: list[Path] = []
+    for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
+        if not candidate.is_dir():
+            continue
+        git_marker = candidate / ".git"
+        if git_marker.is_dir() or git_marker.is_file() or _looks_like_bare_repository(candidate):
+            repositories.append(candidate.resolve())
+
+    return tuple(repositories)
+
+
+def _looks_like_bare_repository(candidate: Path) -> bool:
+    """Recognize the stable on-disk markers created by ``git init --bare``."""
+    return all(
+        (
+            (candidate / "HEAD").is_file(),
+            (candidate / "config").is_file(),
+            (candidate / "objects").is_dir(),
+            (candidate / "refs").is_dir(),
+        )
+    )
