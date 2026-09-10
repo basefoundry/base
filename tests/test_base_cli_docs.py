@@ -13,6 +13,7 @@ INTERNAL_CONTEXT_FIELDS = {
     "_owns_temp_dir",
     "_owned_temp_identity",
     "_owned_temp_descriptor",
+    "_run_lease",
 }
 
 
