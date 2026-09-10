@@ -313,7 +313,7 @@ EOF
     run --separate-stderr env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -c '
             cd "$1"
             source "$BASE_HOME/base_init.sh"

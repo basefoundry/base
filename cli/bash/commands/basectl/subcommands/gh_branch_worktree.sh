@@ -13,21 +13,34 @@ base_gh_branch_stale() {
     local output_format="text" requested_format
     local refs_output status scope last_commit_json name_json data_json branches_joined envelope_status="ok"
     local branches_json=()
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "days|value|--days"
+        "format|value|--format"
+    )
+    local -A parsed_options=()
 
     base_inspection_find_output_format output_format "$@"
 
     while (($#)); do
         case "$1" in
             --days)
-                days="${2:-}"
-                shift
+                if (($# >= 2)); then
+                    parser_args+=("--days=$2")
+                    shift 2
+                else
+                    parser_args+=("--days=")
+                    shift
+                fi
+                continue
                 ;;
             --format)
                 [[ -n "${2:-}" ]] || {
                     base_gh_branch_stale_format_error "$output_format" "Option '--format' requires an argument."
                     return $?
                 }
-                requested_format="$2"
+                requested_format="${2:-}"
                 case "$requested_format" in
                     text|json)
                         ;;
@@ -36,8 +49,13 @@ base_gh_branch_stale() {
                         return $?
                         ;;
                 esac
-                output_format="$requested_format"
-                shift
+                parser_args+=("--format=$requested_format")
+                if (($# >= 2)); then
+                    shift 2
+                else
+                    shift
+                fi
+                continue
                 ;;
             -h|--help)
                 base_gh_branch_leaf_usage stale
@@ -48,8 +66,23 @@ base_gh_branch_stale() {
                 return $?
                 ;;
         esac
-        shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_branch_stale_format_error "$output_format" "Could not parse branch stale arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_branch_stale_format_error "$output_format" "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+
+    if [[ -n "${parsed_options[days]+set}" ]]; then
+        days="${parsed_options[days]}"
+    fi
+    if [[ -n "${parsed_options[format]+set}" ]]; then
+        output_format="${parsed_options[format]}"
+    fi
 
     [[ "$days" =~ ^[0-9]+$ ]] || {
         base_gh_branch_stale_format_error "$output_format" "--days must be a positive integer."
