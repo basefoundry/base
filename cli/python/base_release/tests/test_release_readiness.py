@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from base_release.release_bom import canonical_bom_bytes
 from base_release.release_readiness import bom_finding
 
 
@@ -68,18 +69,31 @@ def release_context(bom_path: Path | None):
     )
 
 
-def write_bom(path: Path, document: object) -> Path:
-    path.write_text(json.dumps(document), encoding="utf-8")
+def write_bom(path: Path, document: dict) -> Path:
+    path.write_bytes(canonical_bom_bytes(document))
     return path
 
 
-def test_bom_finding_accepts_a_valid_reviewed_bom(tmp_path: Path) -> None:
-    path = write_bom(tmp_path / "release-bom.json", valid_bom())
+def test_bom_finding_accepts_canonical_bom_bytes(tmp_path: Path) -> None:
+    path = tmp_path / "release-bom.json"
+    path.write_bytes(canonical_bom_bytes(valid_bom()))
 
     finding = bom_finding(release_context(path), BASE_COMMIT)
 
     assert finding.status == "ok"
     assert finding.name == "bom"
+
+
+def test_bom_finding_rejects_valid_but_noncanonical_bom_bytes(tmp_path: Path) -> None:
+    path = tmp_path / "release-bom.json"
+    path.write_text(json.dumps(valid_bom(), indent=2) + "\n", encoding="utf-8")
+
+    finding = bom_finding(release_context(path), BASE_COMMIT)
+
+    assert finding.status == "error"
+    assert finding.name == "bom"
+    assert "canonical form" in finding.message
+    assert "base-release-bom assemble" in finding.message
 
 
 def test_bom_finding_accepts_an_unrequested_bom() -> None:
