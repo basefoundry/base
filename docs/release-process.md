@@ -128,9 +128,11 @@ Each run resolves the published `vX.Y.Z` tag to its full commit. Base bumps
 also resolve and record the `install.sh` SHA-256. The generated PR updates the
 downstream source, CI, documentation, and test assertions as one fail-closed
 change; a `base-cli` bump refreshes `uv.lock`. A marker containing the
-component, version, and commit makes reruns idempotent. The workflow never
-merges or force-updates a downstream branch; the downstream checks and normal
-review remain the merge gate.
+component, version, and commit is deduplicated across downstream issues and
+pull requests. If a run fails after issue creation, it comments the failure on
+the preserved issue; a retry reuses that issue and repairs the partial state.
+The workflow never merges or force-updates a downstream branch; the downstream
+checks and normal review remain the merge gate.
 
 Cross-repository writes require the explicitly configured
 `BASE_DOWNSTREAM_TOKEN` Actions secret. It must be limited to the known
