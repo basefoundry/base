@@ -149,14 +149,21 @@ jobs:
 
             installer_sha256=""
             if [[ "$component" == "base" ]]; then
-              installer_sha256="${EVENT_INSTALLER_SHA256:-}"
-              if [[ -z "$installer_sha256" ]]; then
-                installer_sha256="$(curl -fsSL "https://raw.githubusercontent.com/basefoundry/base/$tag/install.sh" | sha256sum | awk '{print $1}')"
+              supplied_installer_sha256="${EVENT_INSTALLER_SHA256:-}"
+              if [[ -n "$supplied_installer_sha256" && ! "$supplied_installer_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+                echo "::error::Base installer checksum is not a full SHA-256: $supplied_installer_sha256"
+                exit 2
               fi
-              [[ "$installer_sha256" =~ ^[0-9a-f]{64}$ ]] || {
-                echo "::error::Base installer checksum is not a full SHA-256: $installer_sha256"
+              downloaded_installer_sha256="$(curl -fsSL "https://raw.githubusercontent.com/basefoundry/base/$tag/install.sh" | sha256sum | awk '{print $1}')"
+              [[ "$downloaded_installer_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+                echo "::error::Downloaded Base installer checksum is not a full SHA-256: $downloaded_installer_sha256"
                 exit 2
               }
+              if [[ -n "$supplied_installer_sha256" && "$supplied_installer_sha256" != "$downloaded_installer_sha256" ]]; then
+                echo "::error::Base $tag installer checksum mismatch: supplied $supplied_installer_sha256, downloaded release artifact is $downloaded_installer_sha256."
+                exit 2
+              fi
+              installer_sha256="$downloaded_installer_sha256"
             fi
 
             marker="<!-- base-release-bump:$component:$version:$ref_input -->"

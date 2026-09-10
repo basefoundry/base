@@ -187,6 +187,9 @@ def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_ga
     assert "BASE_DOWNSTREAM_TOKEN is required" in run_commands
     assert "gh auth setup-git" in run_commands
     assert "base-release-bump:" in run_commands
+    assert "downloaded_installer_sha256=\"$(curl -fsSL" in run_commands
+    assert "supplied $supplied_installer_sha256" in run_commands
+    assert "installer_sha256=\"$downloaded_installer_sha256\"" in run_commands
     assert "gh issue create" in run_commands
     assert "gh pr create" in run_commands
     assert "uv lock --upgrade-package base-cli" in run_commands
