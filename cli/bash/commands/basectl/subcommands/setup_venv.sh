@@ -281,7 +281,7 @@ setup_upgrade_pip_in_virtualenv() {
     }
 
     base_std_log_info "Upgrading pip in the $description virtual environment."
-    "$python_bin" -m pip install --disable-pip-version-check --upgrade pip || {
+    env -u PYTHONPATH "$python_bin" -m pip install --disable-pip-version-check --upgrade pip || {
         base_std_log_error "Unable to upgrade pip in the $description virtual environment."
         return 1
     }
@@ -325,7 +325,7 @@ setup_base_python_package_installed() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
-    "$python_bin" -m pip show "$package" >/dev/null 2>&1
+    env -u PYTHONPATH "$python_bin" -m pip show "$package" >/dev/null 2>&1
 }
 
 setup_install_base_python_package() {
@@ -348,7 +348,7 @@ setup_install_base_python_package() {
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || base_std_fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
     base_std_log_info "Installing Python package '$package' in the Base virtual environment."
-    "$python_bin" -m pip install --disable-pip-version-check "$package" ||
+    env -u PYTHONPATH "$python_bin" -m pip install --disable-pip-version-check "$package" ||
         base_std_fatal_error "Unable to install Python package '$package' in the Base virtual environment."
 }
 

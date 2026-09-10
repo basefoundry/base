@@ -519,6 +519,10 @@ EOF
     : > "$venv_dir/pyvenv.cfg"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    printf 'pip subprocess inherited PYTHONPATH: %s\n' "$PYTHONPATH" >&2
+    exit 1
+fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
     exit 1
 fi
@@ -533,6 +537,7 @@ EOF
 
     run env \
         HOME="$TEST_HOME" \
+        PYTHONPATH="$TEST_TMPDIR/stale-source-provider" \
         PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         OSTYPE=darwin24 \
         BASE_HOME="$BASE_REPO_ROOT" \

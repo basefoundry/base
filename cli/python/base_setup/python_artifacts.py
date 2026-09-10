@@ -95,7 +95,7 @@ def reconcile_python_artifacts(
     ctx.log.info("Installing Python artifacts into project virtual environment: %s.", names)
     command = pip_install_command(python_bin, requirements)
     try:
-        process.run_command(ctx, command)
+        process.run_command(ctx, command, env=process.python_package_environment())
     except ArtifactError as exc:
         if len(missing) == 1:
             raise
@@ -202,7 +202,11 @@ def reconcile_python_artifacts_sequential(
             )
             continue
         ctx.log.info("Installing Python artifact '%s' into project virtual environment.", definition.name)
-        process.run_command(ctx, pip_install_command(python_bin, (requirement,)))
+        process.run_command(
+            ctx,
+            pip_install_command(python_bin, (requirement,)),
+            env=process.python_package_environment(),
+        )
 
 
 def python_package_requirement(definition: ArtifactDefinition, version: str) -> str:
@@ -227,6 +231,7 @@ def python_artifact_installed(python_bin: Path, package: str, version: str) -> b
     try:
         completed = subprocess.run(
             command,
+            env=process.python_package_environment(),
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,

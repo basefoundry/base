@@ -54,9 +54,11 @@ class PythonVersionArtifactTests(unittest.TestCase):
                         "--disable-pip-version-check",
                         "requests",
                     ],
+                    env=mock.ANY,
                 ),
             ],
         )
+        self.assertNotIn("PYTHONPATH", run_command.call_args_list[1].kwargs["env"])
 
     def test_python_artifact_rejects_existing_venv_with_wrong_python_version(self) -> None:
         definition = get_artifact_definition("python-package", "requests")

@@ -776,6 +776,7 @@ class ArtifactReconcileTests(unittest.TestCase):
                 "--disable-pip-version-check",
                 "requests",
             ],
+            env=mock.ANY,
         )
 
     def test_reconcile_artifacts_batches_python_installs(self) -> None:
@@ -818,6 +819,7 @@ class ArtifactReconcileTests(unittest.TestCase):
                 "click==8.4.1",
                 "requests",
             ],
+            env=mock.ANY,
         )
 
     def test_reconcile_artifacts_retries_python_installs_sequentially_after_batch_failure(self) -> None:
@@ -864,6 +866,7 @@ class ArtifactReconcileTests(unittest.TestCase):
                         "click==8.4.1",
                         "requests",
                     ],
+                    env=mock.ANY,
                 ),
                 mock.call(
                     ctx,
@@ -875,6 +878,7 @@ class ArtifactReconcileTests(unittest.TestCase):
                         "--disable-pip-version-check",
                         "click==8.4.1",
                     ],
+                    env=mock.ANY,
                 ),
                 mock.call(
                     ctx,
@@ -886,6 +890,7 @@ class ArtifactReconcileTests(unittest.TestCase):
                         "--disable-pip-version-check",
                         "requests",
                     ],
+                    env=mock.ANY,
                 ),
             ],
         )

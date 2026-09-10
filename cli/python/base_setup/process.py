@@ -59,6 +59,20 @@ def command_exists(name: str) -> bool:
     return shutil.which(name) is not None
 
 
+def python_package_environment() -> dict[str, str]:
+    """Return an environment for package-manager subprocesses.
+
+    Base may add source-only providers such as a sibling ``base-cli`` checkout
+    to ``PYTHONPATH`` while running its control-plane packages.  pip must not
+    treat those source paths as installed distributions when it reconciles or
+    probes a virtual environment.
+    """
+
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    return environment
+
+
 def run_check(
     command: list[str],
     cwd: Path | None = None,
