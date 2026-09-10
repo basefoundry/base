@@ -7,6 +7,7 @@ readonly _base_repo_subcommand_sourced
 import_base_lib git/lib_git.sh
 import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
+import_base_lib arg/lib_arg.sh
 
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 # shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
@@ -2198,6 +2199,15 @@ base_repo_clone() {
     local spec=""
     local status
     local target
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "owner|value|--owner"
+        "path|value|--path"
+        "dry_run|flag|--dry-run"
+        "verbose|flag|-v"
+    )
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -2210,11 +2220,11 @@ base_repo_clone() {
                     base_repo_clone_usage_error "Option '--owner' requires an argument."
                     return $?
                 }
-                owner="$2"
+                parser_args+=("$1" "$2")
                 shift 2
                 ;;
             --owner=*)
-                owner="${1#--owner=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --path)
@@ -2222,20 +2232,19 @@ base_repo_clone() {
                     base_repo_clone_usage_error "Option '--path' requires an argument."
                     return $?
                 }
-                path="$2"
+                parser_args+=("$1" "$2")
                 shift 2
                 ;;
             --path=*)
-                path="${1#--path=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --dry-run)
-                dry_run=1
+                parser_args+=("$1")
                 shift
                 ;;
             -v)
-                base_std_set_log_level DEBUG
-                export BASE_BASH_LIBS_LOG_DEBUG=1
+                parser_args+=("$1")
                 shift
                 ;;
             -*)
@@ -2243,20 +2252,33 @@ base_repo_clone() {
                 return $?
                 ;;
             *)
-                if [[ -n "$spec" ]]; then
-                    base_repo_clone_usage_error "The 'repo clone' command accepts exactly one repository name."
-                    return $?
-                fi
-                spec="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
 
-    [[ -n "$spec" ]] || {
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_clone_usage_error "Could not parse repo clone arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} == 0)); then
         base_repo_clone_usage_error "Repository name is required."
         return $?
-    }
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_clone_usage_error "The 'repo clone' command accepts exactly one repository name."
+        return $?
+    fi
+
+    spec="${positionals[0]}"
+    owner="${parsed_options[owner]:-}"
+    path="${parsed_options[path]:-}"
+    dry_run="${parsed_options[dry_run]:-0}"
+    if [[ "${parsed_options[verbose]:-0}" == "1" ]]; then
+        base_std_set_log_level DEBUG
+        export BASE_BASH_LIBS_LOG_DEBUG=1
+    fi
 
     if [[ "$spec" == */* ]]; then
         [[ "$spec" != */*/* ]] || {
