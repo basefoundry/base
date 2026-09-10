@@ -109,7 +109,7 @@ def workspace_manifest_project_check_results(
     default_manifest: BaseManifest,
 ) -> tuple[WorkspaceProjectCheckResult, ...]:
     entries_by_repo = {
-        entry.path.parent.resolve().name: entry
+        entry.path.parent.name: entry
         for entry in workspace_manifest_entries(workspace_root)
     }
     repository_paths_by_name = {path.name: path for path in workspace_repository_paths(workspace_root)}
@@ -210,7 +210,7 @@ def workspace_extra_project_check_result(
         expected=False,
         required=False,
         repo="present",
-        repository=entry.path.parent.resolve().name,
+        repository=entry.path.parent.name,
     )
 
 

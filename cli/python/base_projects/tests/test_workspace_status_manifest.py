@@ -96,6 +96,53 @@ def invoke_engine(
 
 
 class WorkspaceStatusManifestTests(unittest.TestCase):
+    def test_workspace_status_matches_logical_symlink_names_and_skips_outside_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            outside = root / "outside"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            outside.mkdir()
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 1",
+                        "workspace:",
+                        "  name: symlink-suite",
+                        "repos:",
+                        "  - name: api",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            physical = root / "physical-api"
+            write_manifest(physical, "api")
+            (physical / ".git").mkdir()
+            (workspace / "api").symlink_to(physical, target_is_directory=True)
+            outside_project = outside / "physical-outside"
+            write_manifest(outside_project, "outside")
+            (workspace / "outside").symlink_to(outside_project, target_is_directory=True)
+
+            status, stdout, stderr = invoke_engine(
+                ["status", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        projects_by_repo = {project["repository"]: project for project in payload["projects"]}
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(set(projects_by_repo), {"api"})
+        self.assertEqual(projects_by_repo["api"]["expected"], True)
+        self.assertEqual(projects_by_repo["api"]["repo"], "present")
+
     def test_workspace_status_manifest_reports_expected_missing_and_extra_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

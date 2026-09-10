@@ -27,6 +27,15 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
     for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
         if not candidate.is_dir():
             continue
+        # Keep read-only discovery aligned with workspace mutation paths.  A
+        # symlink that resolves outside the workspace is not an in-workspace
+        # repository and must not be inspected as an undeclared extra.
+        try:
+            from base_projects.workspace_context import resolve_workspace_repo_root
+
+            resolve_workspace_repo_root(workspace_root, candidate.name)
+        except ValueError:
+            continue
         manifest_path = candidate / "base_manifest.yaml"
         if not manifest_path.is_file():
             continue
@@ -51,9 +60,15 @@ def workspace_repository_paths(workspace_root: Path) -> tuple[Path, ...]:
     for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
         if not candidate.is_dir():
             continue
+        try:
+            from base_projects.workspace_context import resolve_workspace_repo_root
+
+            resolve_workspace_repo_root(workspace_root, candidate.name)
+        except ValueError:
+            continue
         git_marker = candidate / ".git"
         if git_marker.is_dir() or git_marker.is_file() or _looks_like_bare_repository(candidate):
-            repositories.append(candidate.resolve())
+            repositories.append(candidate)
 
     return tuple(repositories)
 

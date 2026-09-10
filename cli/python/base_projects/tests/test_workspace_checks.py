@@ -232,6 +232,54 @@ class WorkspaceUndeclaredRepositoryTests(unittest.TestCase):
         )
 
 class WorkspaceCheckTests(unittest.TestCase):
+    def test_workspace_check_matches_logical_symlink_names_and_skips_outside_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            outside = root / "outside"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            outside.mkdir()
+            write_default_manifest(base_home)
+            manifest_path.write_text(
+                "\n".join(
+                    [
+                        "schema_version: 1",
+                        "workspace:",
+                        "  name: symlink-suite",
+                        "repos:",
+                        "  - name: api",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            physical = root / "physical-api"
+            write_shell_manifest(physical, "api")
+            (physical / ".git").mkdir()
+            (workspace / "api").symlink_to(physical, target_is_directory=True)
+            outside_project = outside / "physical-outside"
+            write_shell_manifest(outside_project, "outside")
+            (outside_project / ".git").mkdir()
+            (workspace / "outside").symlink_to(outside_project, target_is_directory=True)
+
+            status, stdout, stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        projects_by_repo = {project["repository"]: project for project in payload["projects"]}
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(set(projects_by_repo), {"api"})
+        self.assertTrue(projects_by_repo["api"]["expected"])
+
     def test_workspace_check_records_ok_and_warning_results_for_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
