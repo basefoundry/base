@@ -177,16 +177,21 @@ base_gh_auth_status() {
 
 base_gh_auth_status_command() {
     local hostname="github.com"
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=("hostname|value|--hostname")
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
             --hostname)
-                [[ -n "${2:-}" ]] || {
+                if (($# < 2)) || [[ -z "$2" ]]; then
                     base_gh_usage_error base_gh_auth_usage "Option '$1' requires a host argument."
                     return $?
-                }
-                hostname="$2"
-                shift
+                fi
+                parser_args+=("--hostname=$2")
+                shift 2
+                continue
                 ;;
             -h|--help)
                 base_gh_auth_usage
@@ -197,8 +202,18 @@ base_gh_auth_status_command() {
                 return $?
                 ;;
         esac
-        shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_auth_usage "Could not parse auth status arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_auth_usage "Unknown auth status option '${positionals[0]}'."
+        return $?
+    fi
+
+    hostname="${parsed_options[hostname]:-github.com}"
 
     base_gh_auth_status "$hostname"
 }
@@ -206,43 +221,53 @@ base_gh_auth_status_command() {
 base_gh_auth_refresh_command() {
     local hostname="github.com"
     local clipboard=0
-    local scope
     local scopes_csv=""
     local token_name
     local args
     local status=0
+    local scope_value
+    local -a parser_args=() positionals=() scope_values=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "hostname|value|--hostname"
+        "scope_values|repeatable|--scope"
+        "clipboard|flag|--clipboard"
+    )
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
             --hostname)
-                [[ -n "${2:-}" ]] || {
+                if (($# < 2)) || [[ -z "$2" ]]; then
                     base_gh_usage_error base_gh_auth_usage "Option '$1' requires a host argument."
                     return $?
-                }
-                hostname="$2"
-                shift
+                fi
+                parser_args+=("--hostname=$2")
+                shift 2
+                continue
                 ;;
             --scope)
-                [[ -n "${2:-}" ]] || {
+                if (($# < 2)) || [[ -z "$2" ]]; then
                     base_gh_usage_error base_gh_auth_usage "Option '--scope' requires a scope argument."
                     return $?
-                }
-                scope="$2"
-                [[ -n "$scopes_csv" ]] && scopes_csv+=,
-                scopes_csv+="$scope"
-                shift
+                fi
+                parser_args+=("--scope=$2")
+                shift 2
+                continue
                 ;;
             --scopes)
-                [[ -n "${2:-}" ]] || {
+                if (($# < 2)) || [[ -z "$2" ]]; then
                     base_gh_usage_error base_gh_auth_usage "Option '--scopes' requires a scope argument."
                     return $?
-                }
-                [[ -n "$scopes_csv" ]] && scopes_csv+=,
-                scopes_csv+="$2"
-                shift
+                fi
+                parser_args+=("--scope=$2")
+                shift 2
+                continue
                 ;;
             --clipboard)
-                clipboard=1
+                parser_args+=("--clipboard")
+                shift
+                continue
                 ;;
             -h|--help)
                 base_gh_auth_usage
@@ -253,7 +278,22 @@ base_gh_auth_refresh_command() {
                 return $?
                 ;;
         esac
-        shift
+    done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_auth_usage "Could not parse auth refresh arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_auth_usage "Unknown auth refresh option '${positionals[0]}'."
+        return $?
+    fi
+
+    hostname="${parsed_options[hostname]:-github.com}"
+    clipboard="${parsed_options[clipboard]:-0}"
+    for scope_value in "${scope_values[@]}"; do
+        [[ -n "$scopes_csv" ]] && scopes_csv+=,
+        scopes_csv+="$scope_value"
     done
 
     token_name="$(base_gh_auth_environment_token_name "$hostname")" || true

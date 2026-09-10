@@ -322,6 +322,15 @@ run_gh_subcommand() {
     [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == "auth status --hostname github.com" ]]
 }
 
+@test "basectl gh auth status forwards a custom hostname through the shared parser" {
+    write_gh_args_recorder
+
+    run_gh_subcommand auth status --hostname ghe.example.com
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == "auth status --hostname ghe.example.com" ]]
+}
+
 @test "basectl gh auth refresh combines repeatable scopes and forwards them" {
     write_auth_gh_mock
 
@@ -330,6 +339,33 @@ run_gh_subcommand() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"GitHub credentials refreshed for 'github.com'."* ]]
     [[ "$(cat "$TEST_STATE_DIR/gh-calls")" == "auth refresh --hostname github.com --scopes project,read:org" ]]
+}
+
+@test "basectl gh auth refresh preserves mixed scope order and clipboard forwarding" {
+    write_gh_args_recorder
+
+    run_gh_subcommand auth refresh \
+        --hostname ghe.example.com \
+        --scopes project,read:org \
+        --scope workflow \
+        --clipboard
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == "auth refresh --hostname ghe.example.com --scopes project,read:org,workflow --clipboard" ]]
+}
+
+@test "basectl gh auth refresh rejects a missing scope value" {
+    run_gh_subcommand auth refresh --scope
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--scope' requires a scope argument."* ]]
+}
+
+@test "basectl gh auth status preserves rejection of equals-form hostname options" {
+    run_gh_subcommand auth status --hostname=github.com
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unknown auth status option '--hostname=github.com'."* ]]
 }
 
 @test "basectl gh auth refresh refuses to hide an environment token override" {
