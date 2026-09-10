@@ -339,6 +339,31 @@ EOF
     [ ! -e "$repo_dir" ]
 }
 
+@test "basectl repo clone preserves shared parser duplicate values" {
+    local repo_dir="$TEST_TMPDIR/duplicate-options/base-demo"
+
+    run_basectl repo clone base-demo \
+        --owner ignored \
+        --owner codeforester \
+        --path "$TEST_TMPDIR/duplicate-options/ignored" \
+        --path "$repo_dir" \
+        --dry-run \
+        --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$(line_at "$output" 1)" = "[DRY-RUN] Would clone codeforester/base-demo (git@github.com:codeforester/base-demo.git) into $repo_dir." ]
+    [ "$(line_at "$output" 2)" = "[DRY-RUN] Would run: gh repo clone codeforester/base-demo $repo_dir" ]
+    [ ! -e "$repo_dir" ]
+}
+
+@test "basectl repo clone keeps help precedence over invalid repository input" {
+    run_basectl repo clone invalid/repository/name --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"basectl repo clone <name-or-owner/name> [options]"* ]]
+    [[ "$output" != *"Repository must be"* ]]
+}
+
 @test "basectl repo clone supports explicit owner slash repo and https clone protocol" {
     local repo_dir="$TEST_TMPDIR/custom/bankbuddy"
 
