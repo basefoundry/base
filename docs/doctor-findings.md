@@ -261,6 +261,7 @@ does not print credential-bearing remote URLs.
 | `BASE-W010` | Expected workspace repository presence |
 | `BASE-W011` | Discovered Base-managed project outside the workspace manifest |
 | `BASE-W012` | Present expected repository without a Base project manifest |
+| `BASE-W013` | Git repository present under the workspace root but absent from the workspace manifest |
 
 `BASE-W010` is emitted for every expected repository when workspace check or
 doctor runs with `--manifest <path>`. It is `error` when a required repository
@@ -273,6 +274,12 @@ workspace root but are not listed in the supplied workspace manifest.
 `BASE-W012` reports expected repositories that are present locally but do not
 contain `base_manifest.yaml`. This is an `ok` finding because workspace
 manifests do not require every repository to be Base-managed.
+
+`BASE-W013` reports each direct-child Git repository that is present under the
+workspace root but is not listed in the workspace manifest. It is a `warn`
+finding and does not fail workspace check or doctor. Add the repository to the
+manifest when it belongs in the workspace; otherwise mark it as unmanaged in
+the manifest or move it outside the workspace root.
 
 ## Health Findings
 

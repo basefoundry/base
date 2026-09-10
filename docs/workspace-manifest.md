@@ -579,8 +579,12 @@ for present Base-managed projects and renders check-oriented status, names, and
 messages in text output. `basectl workspace doctor --manifest <path>` renders
 the same read-only evidence as actionable findings with stable IDs and fix
 guidance. Both commands emit stable workspace findings for repository
-presence, outside-manifest discovered projects, and present repositories
-without a Base project manifest; their JSON diagnostic items remain compatible.
+presence, outside-manifest discovered projects, present repositories without a
+Base project manifest, and Git repositories present under the workspace root
+but absent from the manifest. The latter is a non-blocking warning for each
+undeclared repository; add it to `repos[]` when it belongs in the workspace, or
+mark it as unmanaged in the manifest or move it outside the workspace root.
+Their JSON diagnostic items remain compatible.
 
 `basectl workspace agent-brief --manifest <path>` reports one item per expected
 repository plus each extra locally discovered Base-managed project. JSON uses
