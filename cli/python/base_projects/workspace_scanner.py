@@ -5,7 +5,7 @@ from pathlib import Path
 
 from base_projects.workspace_context import resolve_workspace_repo_root
 from base_projects.workspace_errors import ProjectDiscoveryError
-from base_projects.workspace_errors import ProjectNotFoundError
+from base_projects.workspace_errors import ProjectNotFoundError  # pylint: disable=unused-import
 
 
 @dataclass(frozen=True)
