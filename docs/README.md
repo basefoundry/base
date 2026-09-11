@@ -59,6 +59,9 @@ reference. The filename should answer "what is this about?"
 - [Product Assessment](product-assessment.md) records the maintained assessment
   of Base's originality, usefulness, adoption potential, and creator/engineering
   skill evidence.
+- [Engineering Self-Critique](engineering-self-critique.md) explains how the
+  Base ecosystem separates product judgment, threat-model evidence, release
+  provenance, and adoption claims in public writing.
 - [Command Quick Reference](command-reference.md) is the one-page lookup table
   for the current `basectl` command surface and important flags.
 - [Output Formats](output-formats.md) defines the shared text and machine-readable

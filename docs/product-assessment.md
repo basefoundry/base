@@ -9,6 +9,9 @@ effort. It is not marketing copy, and it should not drift into aspiration. When
 Base evolves, this page should be revised against the current implementation,
 current docs, real usage, and known adoption evidence.
 
+For the public explanation of the review method and the boundaries of each
+evidence type, see [Engineering Self-Critique](engineering-self-critique.md).
+
 For the concise product fit page, see [Why Base](why-base.md). For the
 ecosystem boundary model, see [Tool Boundaries](tool-boundaries.md).
 
