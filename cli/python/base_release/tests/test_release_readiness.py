@@ -8,57 +8,12 @@ import pytest
 
 from base_release.release_bom import canonical_bom_bytes
 from base_release.release_readiness import bom_finding
+from base_release.tests._bom_fixtures import BASE_COMMIT, valid_bom
 
 
-BASE_COMMIT = "a" * 40
-
-
-def valid_bom(*, repository: str = "basefoundry/base", version: str = "1.9.0", commit: str = BASE_COMMIT) -> dict:
-    return {
-        "schema_version": 1,
-        "release": {
-            "repository": repository,
-            "version": version,
-            "tag": f"v{version}",
-            "commit": commit,
-        },
-        "components": [
-            {
-                "repository": repository,
-                "version": version,
-                "tag": f"v{version}",
-                "commit": commit,
-                "source_mode": "release",
-                "api_schema_version": "manifest-1",
-                "platforms": ["macos-14", "ubuntu-24.04"],
-                "required": True,
-                "result": "passed",
-                "evidence": "run://base/123",
-            },
-            {
-                "repository": "basefoundry/base-cli",
-                "version": "0.4.3",
-                "tag": "v0.4.3",
-                "commit": "b" * 40,
-                "source_mode": "release",
-                "api_schema_version": "base-cli-api@0.4.3",
-                "platforms": ["macos-14", "ubuntu-24.04"],
-                "required": True,
-                "result": "passed",
-                "evidence": "run://base-cli/123",
-            },
-        ],
-        "combinations": [
-            {
-                "name": "base-release-stack-ubuntu-24.04",
-                "participants": [repository, "basefoundry/base-cli"],
-                "platform": "ubuntu-24.04",
-                "required": True,
-                "result": "passed",
-                "evidence": "run://base/123",
-            }
-        ],
-    }
+def write_bom(path: Path, document: dict) -> Path:
+    path.write_bytes(canonical_bom_bytes(document))
+    return path
 
 
 def release_context(bom_path: Path | None):
@@ -67,11 +22,6 @@ def release_context(bom_path: Path | None):
         release=SimpleNamespace(github=SimpleNamespace(repository="basefoundry/base")),
         version="1.9.0",
     )
-
-
-def write_bom(path: Path, document: dict) -> Path:
-    path.write_bytes(canonical_bom_bytes(document))
-    return path
 
 
 def test_bom_finding_accepts_canonical_bom_bytes(tmp_path: Path) -> None:

@@ -23,7 +23,7 @@ from base_release import release_readiness
 from base_release.engine import ReleaseError
 from base_release.engine import ReleaseFinding
 from base_release.engine import main
-from base_release.release_bom import canonical_bom_bytes
+from base_release.tests._bom_fixtures import valid_bom_bytes
 
 
 READY_FINDINGS = (
@@ -75,55 +75,6 @@ def run_engine(args: list[str], cwd: Path, extra_env: dict[str, str] | None = No
 class TerminalStringIO(io.StringIO):
     def isatty(self) -> bool:
         return True
-
-
-def valid_release_bom_bytes(repository: str, version: str, commit: str) -> bytes:
-    document = {
-        "schema_version": 1,
-        "release": {
-            "repository": repository,
-            "version": version,
-            "tag": f"v{version}",
-            "commit": commit,
-        },
-        "components": [
-            {
-                "repository": repository,
-                "version": version,
-                "tag": f"v{version}",
-                "commit": commit,
-                "source_mode": "release",
-                "api_schema_version": "manifest-1",
-                "platforms": ["macos-14", "ubuntu-24.04"],
-                "required": True,
-                "result": "passed",
-                "evidence": "run://release/123",
-            },
-            {
-                "repository": "basefoundry/base-cli",
-                "version": "0.4.3",
-                "tag": "v0.4.3",
-                "commit": "b" * 40,
-                "source_mode": "release",
-                "api_schema_version": "base-cli-api@0.4.3",
-                "platforms": ["macos-14", "ubuntu-24.04"],
-                "required": True,
-                "result": "passed",
-                "evidence": "run://base-cli/123",
-            },
-        ],
-        "combinations": [
-            {
-                "name": "release-stack-ubuntu-24.04",
-                "participants": [repository, "basefoundry/base-cli"],
-                "platform": "ubuntu-24.04",
-                "required": True,
-                "result": "passed",
-                "evidence": "run://release/123",
-            }
-        ],
-    }
-    return canonical_bom_bytes(document)
 
 
 def add_origin(root: Path) -> None:
@@ -619,7 +570,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
             root = Path(tmpdir)
             manifest_path = self.manifest_factory.write_release(root)
             bom_path = root / "candidate-bom.json"
-            bom_bytes = valid_release_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
+            bom_bytes = valid_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
             bom_path.write_bytes(bom_bytes)
             commands: list[tuple[list[str], Path | None]] = []
             uploaded_contents: dict[str, bytes] = {}
