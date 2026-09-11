@@ -157,6 +157,9 @@ multi-repo workspace, and how it compares with adjacent tools, see
 For a candid maintained assessment of Base's originality, usefulness, adoption
 potential, and engineering evidence, see
 [Product Assessment](docs/product-assessment.md).
+For the public explanation of how Base separates self-critique, threat-model,
+release-provenance, and adoption evidence, see
+[Engineering Self-Critique](docs/engineering-self-critique.md).
 
 Common first-run and product questions are answered in [FAQ.md](FAQ.md).
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Report security
