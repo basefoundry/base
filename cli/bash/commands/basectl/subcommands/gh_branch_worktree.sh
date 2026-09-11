@@ -855,18 +855,26 @@ base_gh_worktree_prune() {
     local removed=0 skipped_current=0 skipped_dirty=0 skipped_unmerged=0 failed=0 candidates=0
     local closed_review=0 open_review=0 no_pr_review=0
     local dry_run_requested=0 yes_requested=0
+    local -a parser_args=() positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "dry_run|flag|--dry-run"
+        "yes|flag|--yes"
+        "closed_unmerged|flag|--closed-unmerged"
+    )
+    local -A parsed_options=()
 
     base_gh_branch_pr_state_cache_reset
     while (($#)); do
         case "$1" in
             --dry-run)
-                dry_run_requested=1
+                parser_args+=("$1")
                 ;;
             --yes)
-                yes_requested=1
+                parser_args+=("$1")
                 ;;
             --closed-unmerged)
-                include_closed_unmerged=1
+                parser_args+=("$1")
                 ;;
             --remote)
                 base_gh_usage_error base_gh_worktree_usage \
@@ -884,6 +892,19 @@ base_gh_worktree_prune() {
         esac
         shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_worktree_usage "Could not parse worktree prune arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_worktree_usage "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+
+    dry_run_requested="${parsed_options[dry_run]:-0}"
+    yes_requested="${parsed_options[yes]:-0}"
+    include_closed_unmerged="${parsed_options[closed_unmerged]:-0}"
 
     base_gh_validate_prune_mode base_gh_worktree_usage "$dry_run_requested" "$yes_requested" || return $?
     ((yes_requested)) && dry_run=0
