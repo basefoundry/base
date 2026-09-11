@@ -572,6 +572,10 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
             bom_path = root / "candidate-bom.json"
             bom_bytes = valid_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
             bom_path.write_bytes(bom_bytes)
+            bom_path.with_suffix(".sha256").write_text(
+                f"{hashlib.sha256(bom_bytes).hexdigest()}  {bom_path.name}\n",
+                encoding="utf-8",
+            )
             commands: list[tuple[list[str], Path | None]] = []
             uploaded_contents: dict[str, bytes] = {}
 
@@ -636,6 +640,23 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
             ("release-bom.json", "release-bom.sha256"),
         )
         self.assertIn("release-bom.json", stdout)
+
+
+    def test_publish_rejects_a_mismatched_bom_digest_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            bom_path = root / "candidate-bom.json"
+            bom_bytes = valid_release_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
+            bom_path.write_bytes(bom_bytes)
+            bom_path.with_suffix(".sha256").write_text(
+                f"{'0' * 64}  {bom_path.name}\n",
+                encoding="utf-8",
+            )
+            asset_directory = root / "assets"
+            asset_directory.mkdir()
+
+            with self.assertRaisesRegex(ReleaseError, "digest sidecar is invalid"):
+                release_publish.write_release_bom_assets(bom_path, asset_directory)
 
 
     def test_publish_yes_reports_recovery_when_github_release_create_fails_after_tag_push(self) -> None:

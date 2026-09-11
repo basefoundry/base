@@ -155,6 +155,8 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert "--repository basefoundry/base-bash-libs" in run_commands
     assert "--repository basefoundry/base-demo" in run_commands
     assert "release-bom.sha256" in run_commands
+    assert "sha256sum -c release-bom.sha256" in run_commands
+    assert "printf '%s  release-bom.json" not in run_commands
     assert "^\u005b0-9a-f\u005d{40}$" in run_commands
     assert "awk -F': '" not in run_commands
     assert all(

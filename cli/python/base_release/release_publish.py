@@ -12,6 +12,7 @@ from urllib.parse import quote
 import base_cli
 from base_setup import process
 
+from .release_bom import ReleaseBomError, read_bom_digest_sidecar
 from .release_model import ReleaseContext, ReleaseError
 from .release_readiness import last_non_empty_line
 
@@ -275,13 +276,20 @@ def write_temp_release_notes(notes: str) -> Path:
 
 
 def write_release_bom_assets(bom_path: Path, directory: Path) -> tuple[Path, Path]:
-    """Copy a validated BOM to stable asset names and write its byte digest."""
+    """Copy a validated BOM to stable asset names and reuse its digest sidecar."""
     bom_bytes = bom_path.read_bytes()
+    try:
+        digest = read_bom_digest_sidecar(bom_path, bom_bytes=bom_bytes)
+    except FileNotFoundError:
+        # Keep direct canonical-BOM callers working when they predate assemble's sidecar.
+        digest = hashlib.sha256(bom_bytes).hexdigest()
+    except ReleaseBomError as exc:
+        raise ReleaseError(f"Release BOM digest sidecar is invalid: {exc}") from exc
     bom_asset = directory / RELEASE_BOM_ASSET_NAME
     digest_asset = directory / RELEASE_BOM_DIGEST_ASSET_NAME
     bom_asset.write_bytes(bom_bytes)
     digest_asset.write_text(
-        f"{hashlib.sha256(bom_bytes).hexdigest()}  {RELEASE_BOM_ASSET_NAME}\n",
+        f"{digest}  {RELEASE_BOM_ASSET_NAME}\n",
         encoding="utf-8",
     )
     return bom_asset, digest_asset
