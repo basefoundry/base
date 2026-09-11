@@ -570,6 +570,28 @@ EOF
     [[ "$output" != *"--pr"* ]]
 }
 
+@test "basectl repo check preserves shared parser duplicate values" {
+    local repo_dir="$TEST_TMPDIR/check-parser"
+
+    run_basectl repo init check-parser \
+        --path "$repo_dir" \
+        --agent-ready \
+        --no-configure
+
+    [ "$status" -eq 0 ]
+
+    run_basectl repo check "$repo_dir" \
+        --format text \
+        --format json \
+        --agent-ready \
+        --agent-ready
+
+    [ "$status" -eq 0 ]
+    [[ "$(line_at "$output" 1)" == '{"schema_version":1,"command":"repo check"'* ]]
+    [[ "$output" == *'"checks":2'* ]]
+    [[ "$output" == *'"name":"agent_readiness"'* ]]
+}
+
 @test "basectl repo installer-template prints command-specific help" {
     run_basectl repo installer-template --help
 
