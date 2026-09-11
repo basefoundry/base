@@ -47,6 +47,34 @@ base_repo_init_reset() {
 }
 
 base_repo_init_parse_args() {
+    local -a parser_args=() positionals=() language_values=() initiative_option_values=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "path|value|--path"
+        "repo|value|--repo"
+        "issue|value|--issue"
+        "category|value|--category"
+        "pr|flag|--pr"
+        "agent_ready|flag|--agent-ready"
+        "release|flag|--release"
+        "language_values|repeatable|--language"
+        "description|value|--description"
+        "license|value|--license"
+        "private|flag|--private"
+        "public|flag|--public"
+        "no_configure|flag|--no-configure"
+        "no_protect_default_branch|flag|--no-protect-default-branch"
+        "project|value|--project"
+        "project_owner|value|--project-owner"
+        "project_schema|value|--project-schema"
+        "initiative_option_values|repeatable|--initiative-option"
+        "copy_project_fields_from|value|--copy-project-fields-from"
+        "no_project|flag|--no-project"
+        "dry_run|flag|--dry-run"
+        "verbose|flag|-v"
+    )
+    local -A parsed_options=()
+
     while (($#)); do
         case "$1" in
             -h|--help|help)
@@ -59,11 +87,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--path' requires an argument."
                     return $?
                 }
-                path="$2"
+                parser_args+=("--path=$2")
                 shift 2
                 ;;
             --path=*)
-                path="${1#--path=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --repo)
@@ -71,11 +99,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--repo' requires an argument."
                     return $?
                 }
-                github_repo="$2"
+                parser_args+=("--repo=$2")
                 shift 2
                 ;;
             --repo=*)
-                github_repo="${1#--repo=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --issue)
@@ -83,15 +111,15 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--issue' requires a positive integer argument."
                     return $?
                 }
-                issue="$2"
+                parser_args+=("--issue=$2")
                 shift 2
                 ;;
             --issue=*)
-                issue="${1#--issue=}"
-                [[ -n "$issue" ]] || {
+                [[ -n "${1#--issue=}" ]] || {
                     base_repo_init_usage_error "Option '--issue' requires a positive integer argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --category)
@@ -99,27 +127,27 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--category' requires an argument."
                     return $?
                 }
-                category="$2"
+                parser_args+=("--category=$2")
                 shift 2
                 ;;
             --category=*)
-                category="${1#--category=}"
-                [[ -n "$category" ]] || {
+                [[ -n "${1#--category=}" ]] || {
                     base_repo_init_usage_error "Option '--category' requires an argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --pr)
-                create_pr=1
+                parser_args+=("$1")
                 shift
                 ;;
             --agent-ready)
-                agent_ready=1
+                parser_args+=("$1")
                 shift
                 ;;
             --release)
-                configure_release=1
+                parser_args+=("$1")
                 shift
                 ;;
             --language)
@@ -127,56 +155,15 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--language' requires a comma-separated language list."
                     return $?
                 }
-                language_option="${2//[[:space:]]/}"
-                if [[ -z "$language_option" || "$language_option" == ,* || "$language_option" == *, || "$language_option" == *,,* ]]; then
-                    base_repo_init_usage_error "Option '--language' must not contain empty entries."
-                    return $?
-                fi
-                base_str_split language_fields "$language_option" ","
-                for language_field in "${language_fields[@]}"; do
-                    normalized_language="$(base_repo_normalize_language "$language_field" || true)"
-                    if [[ -z "$normalized_language" ]]; then
-                        base_repo_init_usage_error "Unsupported language '$language_field'. Expected one of: $(base_repo_supported_languages_display)."
-                        return $?
-                    fi
-                    language_seen=0
-                    for language in "${language_options[@]}"; do
-                        if [[ "$language" == "$normalized_language" ]]; then
-                            language_seen=1
-                            break
-                        fi
-                    done
-                    ((language_seen)) || language_options+=("$normalized_language")
-                done
+                parser_args+=("--language=$2")
                 shift 2
                 ;;
             --language=*)
-                language_option="${1#--language=}"
-                if [[ -z "$language_option" ]]; then
+                if [[ -z "${1#--language=}" ]]; then
                     base_repo_init_usage_error "Option '--language' requires a comma-separated language list."
                     return $?
                 fi
-                language_option="${language_option//[[:space:]]/}"
-                if [[ "$language_option" == ,* || "$language_option" == *, || "$language_option" == *,,* ]]; then
-                    base_repo_init_usage_error "Option '--language' must not contain empty entries."
-                    return $?
-                fi
-                base_str_split language_fields "$language_option" ","
-                for language_field in "${language_fields[@]}"; do
-                    normalized_language="$(base_repo_normalize_language "$language_field" || true)"
-                    if [[ -z "$normalized_language" ]]; then
-                        base_repo_init_usage_error "Unsupported language '$language_field'. Expected one of: $(base_repo_supported_languages_display)."
-                        return $?
-                    fi
-                    language_seen=0
-                    for language in "${language_options[@]}"; do
-                        if [[ "$language" == "$normalized_language" ]]; then
-                            language_seen=1
-                            break
-                        fi
-                    done
-                    ((language_seen)) || language_options+=("$normalized_language")
-                done
+                parser_args+=("$1")
                 shift
                 ;;
             --description)
@@ -184,7 +171,7 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--description' requires an argument."
                     return $?
                 }
-                description="$2"
+                parser_args+=("--description=$2")
                 shift 2
                 ;;
             --license)
@@ -192,33 +179,27 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--license' requires an SPDX identifier."
                     return $?
                 }
-                license_id="$2"
+                parser_args+=("--license=$2")
                 shift 2
                 ;;
             --license=*)
-                license_id="${1#--license=}"
-                [[ -n "$license_id" ]] || {
+                [[ -n "${1#--license=}" ]] || {
                     base_repo_init_usage_error "Option '--license' requires an SPDX identifier."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --private|--public)
-                requested_visibility="${1#--}"
-                if ((github_visibility_explicit)) && [[ "$github_visibility" != "$requested_visibility" ]]; then
-                    base_repo_init_usage_error "Options '--private' and '--public' cannot be used together."
-                    return $?
-                fi
-                github_visibility="$requested_visibility"
-                github_visibility_explicit=1
+                parser_args+=("$1")
                 shift
                 ;;
             --no-configure)
-                configure=0
+                parser_args+=("$1")
                 shift
                 ;;
             --no-protect-default-branch)
-                protect_default_branch=0
+                parser_args+=("$1")
                 shift
                 ;;
             --project)
@@ -226,11 +207,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--project' requires an argument."
                     return $?
                 }
-                project_title="$2"
+                parser_args+=("--project=$2")
                 shift 2
                 ;;
             --project=*)
-                project_title="${1#--project=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --project-owner)
@@ -238,11 +219,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--project-owner' requires an argument."
                     return $?
                 }
-                project_owner="$2"
+                parser_args+=("--project-owner=$2")
                 shift 2
                 ;;
             --project-owner=*)
-                project_owner="${1#--project-owner=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --project-schema)
@@ -250,11 +231,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--project-schema' requires an argument."
                     return $?
                 }
-                project_schema="$2"
+                parser_args+=("--project-schema=$2")
                 shift 2
                 ;;
             --project-schema=*)
-                project_schema="${1#--project-schema=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --initiative-option)
@@ -262,11 +243,11 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--initiative-option' requires an argument."
                     return $?
                 }
-                initiative_options+=("$2")
+                parser_args+=("--initiative-option=$2")
                 shift 2
                 ;;
             --initiative-option=*)
-                initiative_options+=("${1#--initiative-option=}")
+                parser_args+=("$1")
                 shift
                 ;;
             --copy-project-fields-from)
@@ -274,22 +255,23 @@ base_repo_init_parse_args() {
                     base_repo_init_usage_error "Option '--copy-project-fields-from' requires an argument."
                     return $?
                 }
-                copy_project_fields_from="$2"
+                parser_args+=("--copy-project-fields-from=$2")
                 shift 2
                 ;;
             --copy-project-fields-from=*)
-                copy_project_fields_from="${1#--copy-project-fields-from=}"
+                parser_args+=("$1")
                 shift
                 ;;
             --no-project)
-                configure_project=0
+                parser_args+=("$1")
                 shift
                 ;;
             --dry-run)
-                dry_run=1
+                parser_args+=("$1")
                 shift
                 ;;
             -v)
+                parser_args+=("$1")
                 base_std_set_log_level DEBUG
                 export BASE_BASH_LIBS_LOG_DEBUG=1
                 shift
@@ -299,15 +281,81 @@ base_repo_init_parse_args() {
                 return $?
                 ;;
             *)
-                if [[ -n "$name" ]]; then
-                    base_repo_init_usage_error "The 'repo init' command accepts exactly one repository name."
-                    return $?
-                fi
-                name="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_init_usage_error "Could not parse repo init arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_init_usage_error "The 'repo init' command accepts exactly one repository name."
+        return $?
+    fi
+
+    path="${parsed_options[path]:-}"
+    github_repo="${parsed_options[repo]:-}"
+    issue="${parsed_options[issue]:-}"
+    category="${parsed_options[category]:-}"
+    create_pr="${parsed_options[pr]:-0}"
+    agent_ready="${parsed_options[agent_ready]:-0}"
+    configure_release="${parsed_options[release]:-0}"
+    description="${parsed_options[description]:-}"
+    license_id="${parsed_options[license]:-Apache-2.0}"
+    configure=$((1 - ${parsed_options[no_configure]:-0}))
+    protect_default_branch=$((1 - ${parsed_options[no_protect_default_branch]:-0}))
+    project_title="${parsed_options[project]:-}"
+    project_owner="${parsed_options[project_owner]:-}"
+    project_schema="${parsed_options[project_schema]:-base-project}"
+    copy_project_fields_from="${parsed_options[copy_project_fields_from]:-}"
+    configure_project=$((1 - ${parsed_options[no_project]:-0}))
+    dry_run="${parsed_options[dry_run]:-0}"
+    requested_visibility=""
+    if [[ "${parsed_options[private]:-0}" == "1" ]]; then
+        requested_visibility=private
+    fi
+    if [[ "${parsed_options[public]:-0}" == "1" ]]; then
+        [[ -z "$requested_visibility" ]] || {
+            base_repo_init_usage_error "Options '--private' and '--public' cannot be used together."
+            return $?
+        }
+        requested_visibility=public
+    fi
+    if [[ -n "$requested_visibility" ]]; then
+        github_visibility="$requested_visibility"
+        github_visibility_explicit=1
+    fi
+    initiative_options=("${initiative_option_values[@]}")
+    language_options=()
+    for language_option in "${language_values[@]}"; do
+        language_option="${language_option//[[:space:]]/}"
+        if [[ -z "$language_option" || "$language_option" == ,* || "$language_option" == *, || "$language_option" == *,,* ]]; then
+            base_repo_init_usage_error "Option '--language' must not contain empty entries."
+            return $?
+        fi
+        base_str_split language_fields "$language_option" ","
+        for language_field in "${language_fields[@]}"; do
+            normalized_language="$(base_repo_normalize_language "$language_field" || true)"
+            if [[ -z "$normalized_language" ]]; then
+                base_repo_init_usage_error "Unsupported language '$language_field'. Expected one of: $(base_repo_supported_languages_display)."
+                return $?
+            fi
+            language_seen=0
+            for language in "${language_options[@]}"; do
+                if [[ "$language" == "$normalized_language" ]]; then
+                    language_seen=1
+                    break
+                fi
+            done
+            ((language_seen)) || language_options+=("$normalized_language")
+        done
+    done
+    if ((${#positionals[@]} == 1)); then
+        name="${positionals[0]}"
+    fi
 }
 
 base_repo_init_validate() {
