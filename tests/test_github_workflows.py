@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import re
 from pathlib import Path
 
