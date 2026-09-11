@@ -362,6 +362,21 @@ base_repo_agent_guidance() {
     local repo_name=""
     local root
     local validation_command="./tests/validate.sh"
+    local -a parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "repo|value|--repo"
+        "issue|value|--issue"
+        "category|value|--category"
+        "repo_name|value|--repo-name"
+        "default_branch|value|--default-branch"
+        "validation_command|value|--validation-command"
+        "pr|flag|--pr"
+        "dry_run|flag|--dry-run"
+        "verbose|flag|-v"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -369,97 +384,56 @@ base_repo_agent_guidance() {
                 base_repo_agent_guidance_usage
                 return 0
                 ;;
-            --repo)
+            --repo|--repo-name|--default-branch|--validation-command)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_agent_guidance_usage_error "Option '--repo' requires an argument."
+                    base_repo_agent_guidance_usage_error "Option '$1' requires an argument."
                     return $?
                 }
-                github_repo="$2"
+                parser_args+=("${1}=$2")
                 shift 2
-                ;;
-            --repo=*)
-                github_repo="${1#--repo=}"
-                shift
                 ;;
             --issue)
                 [[ -n "${2:-}" ]] || {
                     base_repo_agent_guidance_usage_error "Option '--issue' requires a positive integer argument."
                     return $?
                 }
-                issue="$2"
+                parser_args+=("--issue=$2")
                 shift 2
-                ;;
-            --issue=*)
-                issue="${1#--issue=}"
-                [[ -n "$issue" ]] || {
-                    base_repo_agent_guidance_usage_error "Option '--issue' requires a positive integer argument."
-                    return $?
-                }
-                shift
                 ;;
             --category)
                 [[ -n "${2:-}" ]] || {
                     base_repo_agent_guidance_usage_error "Option '--category' requires an argument."
                     return $?
                 }
-                category="$2"
+                parser_args+=("--category=$2")
                 shift 2
                 ;;
+            --repo=*|--repo-name=*|--default-branch=*|--validation-command=*)
+                parser_args+=("$1")
+                shift
+                ;;
+            --issue=*)
+                [[ -n "${1#--issue=}" ]] || {
+                    base_repo_agent_guidance_usage_error "Option '--issue' requires a positive integer argument."
+                    return $?
+                }
+                parser_args+=("$1")
+                shift
+                ;;
             --category=*)
-                category="${1#--category=}"
-                [[ -n "$category" ]] || {
+                [[ -n "${1#--category=}" ]] || {
                     base_repo_agent_guidance_usage_error "Option '--category' requires an argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
-            --repo-name)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_agent_guidance_usage_error "Option '--repo-name' requires an argument."
-                    return $?
-                }
-                repo_name="$2"
-                shift 2
-                ;;
-            --repo-name=*)
-                repo_name="${1#--repo-name=}"
-                shift
-                ;;
-            --default-branch)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_agent_guidance_usage_error "Option '--default-branch' requires an argument."
-                    return $?
-                }
-                default_branch="$2"
-                default_branch_explicit=1
-                shift 2
-                ;;
-            --default-branch=*)
-                default_branch="${1#--default-branch=}"
-                default_branch_explicit=1
-                shift
-                ;;
-            --validation-command)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_agent_guidance_usage_error "Option '--validation-command' requires an argument."
-                    return $?
-                }
-                validation_command="$2"
-                shift 2
-                ;;
-            --validation-command=*)
-                validation_command="${1#--validation-command=}"
-                shift
-                ;;
-            --pr)
-                create_pr=1
-                shift
-                ;;
-            --dry-run)
-                dry_run=1
+            --pr|--dry-run)
+                parser_args+=("$1")
                 shift
                 ;;
             -v)
+                parser_args+=("$1")
                 base_std_set_log_level DEBUG
                 export BASE_BASH_LIBS_LOG_DEBUG=1
                 shift
@@ -469,15 +443,33 @@ base_repo_agent_guidance() {
                 return $?
                 ;;
             *)
-                if [[ -n "$path" ]]; then
-                    base_repo_agent_guidance_usage_error "The 'repo agent-guidance' command accepts at most one path."
-                    return $?
-                fi
-                path="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_agent_guidance_usage_error "Could not parse repo agent-guidance arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_agent_guidance_usage_error "The 'repo agent-guidance' command accepts at most one path."
+        return $?
+    fi
+
+    github_repo="${parsed_options[repo]:-}"
+    issue="${parsed_options[issue]:-}"
+    category="${parsed_options[category]:-}"
+    repo_name="${parsed_options[repo_name]:-}"
+    default_branch="${parsed_options[default_branch]:-}"
+    default_branch_explicit="${parsed_options[default_branch]+1}"
+    validation_command="${parsed_options[validation_command]:-./tests/validate.sh}"
+    create_pr="${parsed_options[pr]:-0}"
+    dry_run="${parsed_options[dry_run]:-0}"
+    if ((${#positionals[@]} == 1)); then
+        path="${positionals[0]}"
+    fi
 
     [[ -n "$path" ]] || path="."
     root="$(base_repo_target_path "$path")"
