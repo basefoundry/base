@@ -788,6 +788,18 @@ run_gh_subcommand() {
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Repair branch pruning --label bug --assignee codeforester --repo codeforester/base" ]
 }
 
+@test "basectl gh issue create preserves shared parser duplicate values" {
+    write_gh_args_recorder
+
+    run_gh_subcommand issue create \
+        --category bug --category enhancement \
+        --title "First title" --title "Second title" \
+        --repo codeforester/base --no-project
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Second title --label enhancement --repo codeforester/base" ]
+}
+
 @test "basectl gh issue create announces default category without forcing an assignee" {
     write_gh_args_recorder
 

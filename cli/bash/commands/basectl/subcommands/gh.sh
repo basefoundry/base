@@ -1169,50 +1169,37 @@ base_gh_issue_create() {
     local project_size=""
     local project_title=""
     local title=""
+    local -a parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "category|value|--category"
+        "repo|value|--repo"
+        "title|value|--title"
+        "assignee|value|--assignee"
+        "no_assignee|flag|--no-assignee"
+        "body|value|--body"
+        "project|value|--project"
+        "project_owner|value|--project-owner"
+        "size|value|--size"
+        "no_project|flag|--no-project"
+        "allow_cross_repo|flag|--allow-cross-repo"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
-            --category)
-                category="${2:-}"
+            --category|--repo|--title|--assignee|--body|--project|--project-owner|--size)
+                [[ $# -ge 2 ]] || {
+                    base_gh_usage_error base_gh_issue_usage "Option '$1' requires an argument."
+                    return $?
+                }
+                parser_args+=("$1" "$2")
+                shift 2
+                ;;
+            --no-assignee|--no-project|--allow-cross-repo)
+                parser_args+=("$1")
                 shift
-                ;;
-            --repo)
-                github_repo="${2:-}"
-                shift
-                ;;
-            --title)
-                title="${2:-}"
-                shift
-                ;;
-            --assignee)
-                assignee="${2:-}"
-                assignee_explicit=1
-                shift
-                ;;
-            --no-assignee)
-                no_assignee=1
-                ;;
-            --body)
-                body="${2:-}"
-                shift
-                ;;
-            --project)
-                project_title="${2:-}"
-                shift
-                ;;
-            --project-owner)
-                project_owner="${2:-}"
-                shift
-                ;;
-            --size)
-                project_size="${2:-}"
-                shift
-                ;;
-            --no-project)
-                configure_project=0
-                ;;
-            --allow-cross-repo)
-                allow_cross_repo=1
                 ;;
             -h|--help)
                 base_gh_issue_create_usage
@@ -1223,8 +1210,32 @@ base_gh_issue_create() {
                 return $?
                 ;;
         esac
-        shift
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_gh_usage_error base_gh_issue_usage "Could not parse issue create arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_gh_usage_error base_gh_issue_usage "Unknown option '${positionals[0]}'."
+        return $?
+    fi
+    if [[ "${parsed_options[help]:-0}" == "1" ]]; then
+        base_gh_issue_create_usage
+        return 0
+    fi
+    category="${parsed_options[category]:-}"
+    github_repo="${parsed_options[repo]:-}"
+    title="${parsed_options[title]:-}"
+    assignee="${parsed_options[assignee]:-}"
+    assignee_explicit="${parsed_options[assignee]+1}"
+    no_assignee="${parsed_options[no_assignee]:-0}"
+    body="${parsed_options[body]:-}"
+    project_title="${parsed_options[project]:-}"
+    project_owner="${parsed_options[project_owner]:-}"
+    project_size="${parsed_options[size]:-}"
+    configure_project=$((1 - ${parsed_options[no_project]:-0}))
+    allow_cross_repo="${parsed_options[allow_cross_repo]:-0}"
 
     [[ -n "$title" ]] || {
         base_gh_usage_error base_gh_issue_usage "Missing required --title."
@@ -1387,6 +1398,7 @@ base_gh_issue_start() {
     local option_value
     local repo_args=()
     local parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
     local -a option_specs=(
         "category|value|--category"
         "title|value|--title"
