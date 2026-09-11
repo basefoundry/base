@@ -191,6 +191,10 @@ def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_ga
     assert "supplied $supplied_installer_sha256" in run_commands
     assert "installer_sha256=\"$downloaded_installer_sha256\"" in run_commands
     assert "gh issue create" in run_commands
+    assert "repos/$TARGET_REPOSITORY/issues?state=all&per_page=100" in run_commands
+    assert "gh issue reopen" in run_commands
+    assert "gh issue comment" in run_commands
+    assert "trap cleanup_issue_on_failure EXIT" in run_commands
     assert "gh pr create" in run_commands
     assert "uv lock --upgrade-package base-cli" in run_commands
     assert 'git -C "$clone_dir" push --set-upstream origin' in run_commands

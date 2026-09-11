@@ -120,6 +120,20 @@ jobs:
             printf '%s\n' "$commit"
           }
 
+          issue_number=""
+          issue_marker=""
+          cleanup_issue_on_failure() {
+            local status="$?"
+            if [[ "$status" -ne 0 && -n "${issue_number:-}" ]]; then
+              gh issue comment "$issue_number" --repo "$TARGET_REPOSITORY" --body "$(printf '%s\n' \
+                "Downstream version-bump automation failed after creating or reusing this issue." \
+                "The issue was preserved for retry; inspect the failed workflow run and rerun the automation." \
+                "Marker: $issue_marker")" || true
+            fi
+            exit "$status"
+          }
+          trap cleanup_issue_on_failure EXIT
+
           for component in "${selected_components[@]}"; do
             version_input="$EVENT_VERSION"
             ref_input="$EVENT_REF"
@@ -167,7 +181,9 @@ jobs:
             fi
 
             marker="<!-- base-release-bump:$component:$version:$ref_input -->"
-            all_prs="$(gh api "repos/$TARGET_REPOSITORY/pulls?state=all&per_page=100")"
+            issue_number=""
+            issue_marker="$marker"
+            all_prs="$(gh api --paginate "repos/$TARGET_REPOSITORY/pulls?state=all&per_page=100" | jq -s 'add')"
             existing_url="$(jq -r --arg marker "$marker" '[.[] | select((.body // "") | contains($marker)) | .html_url] | .[0] // empty' <<<"$all_prs")"
             if [[ -n "$existing_url" ]]; then
               echo "$component $tag already has a tracked downstream PR: $existing_url"
@@ -175,32 +191,45 @@ jobs:
             fi
 
             issue_title="ci: consume $component $tag"
-            issue_body="$(printf '%s\n' \
-              "$marker" \
-              "" \
-              "## Summary" \
-              "" \
-              "Update base-demo's immutable $component release pin to $tag ($ref_input)." \
-              "" \
-              "## Issue" \
-              "" \
-              "This issue was opened by Base's downstream release automation." \
-              "Upstream release: https://github.com/basefoundry/$component/releases/tag/$tag" \
-              "Parent: basefoundry/base#2119" \
-              "" \
-              "## Validation" \
-              "" \
-              "The downstream repository's required validation workflow must pass before merge." \
-              "" \
-              "## Notes" \
-              "" \
-              "The release pin is intentionally updated in the documented source, CI, and test contract together.")"
-            issue_url="$(gh issue create --repo "$TARGET_REPOSITORY" --label ci --title "$issue_title" --body "$issue_body")"
-            issue_number="${issue_url##*/}"
-            [[ "$issue_number" =~ ^[0-9]+$ ]] || {
-              echo "::error::Could not parse issue number from $issue_url"
-              exit 1
-            }
+            all_issues="$(gh api --paginate "repos/$TARGET_REPOSITORY/issues?state=all&per_page=100" | jq -s 'add')"
+            existing_issue="$(jq -r --arg marker "$marker" \
+              '[.[] | select((.pull_request? | not) and ((.body // "") | contains($marker))) | [.number, .state] | @tsv] | .[0] // empty' \
+              <<<"$all_issues")"
+            if [[ -n "$existing_issue" ]]; then
+              IFS=$'\t' read -r issue_number issue_state <<<"$existing_issue"
+              if [[ "$issue_state" == "closed" ]]; then
+                gh issue reopen "$issue_number" --repo "$TARGET_REPOSITORY"
+              fi
+              gh issue comment "$issue_number" --repo "$TARGET_REPOSITORY" --body \
+                "Retrying downstream version bump for $component $tag ($ref_input)."
+            else
+              issue_body="$(printf '%s\n' \
+                "$marker" \
+                "" \
+                "## Summary" \
+                "" \
+                "Update base-demo's immutable $component release pin to $tag ($ref_input)." \
+                "" \
+                "## Issue" \
+                "" \
+                "This issue was opened by Base's downstream release automation." \
+                "Upstream release: https://github.com/basefoundry/$component/releases/tag/$tag" \
+                "Parent: basefoundry/base#2119" \
+                "" \
+                "## Validation" \
+                "" \
+                "The downstream repository's required validation workflow must pass before merge." \
+                "" \
+                "## Notes" \
+                "" \
+                "The release pin is intentionally updated in the documented source, CI, and test contract together.")"
+              issue_url="$(gh issue create --repo "$TARGET_REPOSITORY" --label ci --title "$issue_title" --body "$issue_body")"
+              issue_number="${issue_url##*/}"
+              [[ "$issue_number" =~ ^[0-9]+$ ]] || {
+                echo "::error::Could not parse issue number from $issue_url"
+                exit 1
+              }
+            fi
 
             clone_dir="$(mktemp -d)"
             gh repo clone "$TARGET_REPOSITORY" "$clone_dir" -- --depth 1
@@ -228,6 +257,7 @@ jobs:
             if git -C "$clone_dir" diff --quiet; then
               gh issue close "$issue_number" --repo "$TARGET_REPOSITORY" \
                 --comment "No files required an update; the downstream pin already matches $tag at $ref_input."
+              issue_number=""
               echo "$component $tag is already current in $TARGET_REPOSITORY."
               continue
             fi
@@ -262,4 +292,5 @@ jobs:
             pr_url="$(gh pr create --repo "$TARGET_REPOSITORY" --base main --head "$branch" \
               --title "$issue_title" --body "$pr_body")"
             echo "Opened $pr_url"
+            issue_number=""
           done
