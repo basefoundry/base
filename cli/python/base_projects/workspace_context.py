@@ -5,7 +5,7 @@ from pathlib import Path
 import base_cli
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import read_workspace_manifest
-from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_projects.workspace_errors import ProjectDiscoveryError
 
 
 class WorkspacePathOutsideRootError(ValueError):

@@ -3,13 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-
-class ProjectDiscoveryError(RuntimeError):
-    pass
-
-
-class ProjectNotFoundError(ProjectDiscoveryError):
-    pass
+from base_projects.workspace_context import resolve_workspace_repo_root
+from base_projects.workspace_errors import ProjectDiscoveryError
+from base_projects.workspace_errors import ProjectNotFoundError  # pylint: disable=unused-import
 
 
 @dataclass(frozen=True)
@@ -19,7 +15,12 @@ class ManifestEntry:
     size: int
 
 
-def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...]:
+def workspace_manifest_entries(
+    workspace_root: Path,
+    *,
+    include_outside: bool = True,
+) -> tuple[ManifestEntry, ...]:
+    """Return manifest entries, optionally excluding outside-resolving symlinks."""
     if not workspace_root.is_dir():
         raise ProjectDiscoveryError(f"Workspace '{workspace_root}' is not a directory.")
 
@@ -27,6 +28,14 @@ def workspace_manifest_entries(workspace_root: Path) -> tuple[ManifestEntry, ...
     for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
         if not candidate.is_dir():
             continue
+        # Keep read-only discovery aligned with workspace mutation paths.  A
+        # symlink that resolves outside the workspace is not an in-workspace
+        # repository and must not be inspected as an undeclared extra.
+        try:
+            resolve_workspace_repo_root(workspace_root, candidate.name)
+        except ValueError:
+            if not include_outside:
+                continue
         manifest_path = candidate / "base_manifest.yaml"
         if not manifest_path.is_file():
             continue
@@ -51,9 +60,13 @@ def workspace_repository_paths(workspace_root: Path) -> tuple[Path, ...]:
     for candidate in sorted(workspace_root.iterdir(), key=lambda path: path.name):
         if not candidate.is_dir():
             continue
+        try:
+            resolve_workspace_repo_root(workspace_root, candidate.name)
+        except ValueError:
+            continue
         git_marker = candidate / ".git"
         if git_marker.is_dir() or git_marker.is_file() or _looks_like_bare_repository(candidate):
-            repositories.append(candidate.resolve())
+            repositories.append(candidate)
 
     return tuple(repositories)
 

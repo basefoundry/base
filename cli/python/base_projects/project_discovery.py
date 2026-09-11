@@ -35,7 +35,7 @@ def current_project() -> Project:
 
 def discover_projects_cached(ctx: base_cli.Context, workspace_root: Path) -> tuple[Project, ...]:
     start = time.perf_counter()
-    entries = workspace_manifest_entries(workspace_root)
+    entries = workspace_manifest_entries(workspace_root, include_outside=False)
     cached_projects = read_project_cache(workspace_root, entries)
     elapsed_ms = (time.perf_counter() - start) * 1000
     if cached_projects is not None:
