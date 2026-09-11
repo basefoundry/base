@@ -8,6 +8,7 @@ from base_release.release_bom import canonical_bom_bytes
 BASE_COMMIT = "a" * 40
 
 
+# pylint: disable=too-many-arguments
 def valid_bom(
     *,
     repository: str = "basefoundry/base",
