@@ -152,6 +152,19 @@ base_repo_installer_template() {
     local rel_path=""
     local repo_name=""
     local root=""
+    local -a parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "repo|value|--repo"
+        "issue|value|--issue"
+        "category|value|--category"
+        "print|flag|--print|--stdout"
+        "pr|flag|--pr"
+        "dry_run|flag|--dry-run"
+        "verbose|flag|-v"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -164,15 +177,15 @@ base_repo_installer_template() {
                     base_repo_installer_template_usage_error "Option '--repo' requires an argument."
                     return $?
                 }
-                github_repo="$2"
+                parser_args+=("--repo=$2")
                 shift 2
                 ;;
             --repo=*)
-                github_repo="${1#--repo=}"
-                [[ -n "$github_repo" ]] || {
+                [[ -n "${1#--repo=}" ]] || {
                     base_repo_installer_template_usage_error "Option '--repo' requires an argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --issue)
@@ -180,15 +193,15 @@ base_repo_installer_template() {
                     base_repo_installer_template_usage_error "Option '--issue' requires a positive integer argument."
                     return $?
                 }
-                issue="$2"
+                parser_args+=("--issue=$2")
                 shift 2
                 ;;
             --issue=*)
-                issue="${1#--issue=}"
-                [[ -n "$issue" ]] || {
+                [[ -n "${1#--issue=}" ]] || {
                     base_repo_installer_template_usage_error "Option '--issue' requires a positive integer argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --category)
@@ -196,30 +209,31 @@ base_repo_installer_template() {
                     base_repo_installer_template_usage_error "Option '--category' requires an argument."
                     return $?
                 }
-                category="$2"
+                parser_args+=("--category=$2")
                 shift 2
                 ;;
             --category=*)
-                category="${1#--category=}"
-                [[ -n "$category" ]] || {
+                [[ -n "${1#--category=}" ]] || {
                     base_repo_installer_template_usage_error "Option '--category' requires an argument."
                     return $?
                 }
+                parser_args+=("$1")
                 shift
                 ;;
             --print|--stdout)
-                print_template=1
+                parser_args+=("$1")
                 shift
                 ;;
             --pr)
-                create_pr=1
+                parser_args+=("$1")
                 shift
                 ;;
             --dry-run)
-                dry_run=1
+                parser_args+=("$1")
                 shift
                 ;;
             -v)
+                parser_args+=("$1")
                 base_std_set_log_level DEBUG
                 export BASE_BASH_LIBS_LOG_DEBUG=1
                 shift
@@ -229,15 +243,30 @@ base_repo_installer_template() {
                 return $?
                 ;;
             *)
-                if [[ -n "$path" ]]; then
-                    base_repo_installer_template_usage_error "The 'repo installer-template' command accepts at most one path."
-                    return $?
-                fi
-                path="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_installer_template_usage_error "Could not parse repo installer-template arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_installer_template_usage_error "The 'repo installer-template' command accepts at most one path."
+        return $?
+    fi
+
+    github_repo="${parsed_options[repo]:-}"
+    issue="${parsed_options[issue]:-}"
+    category="${parsed_options[category]:-}"
+    print_template="${parsed_options[print]:-0}"
+    create_pr="${parsed_options[pr]:-0}"
+    dry_run="${parsed_options[dry_run]:-0}"
+    if ((${#positionals[@]} == 1)); then
+        path="${positionals[0]}"
+    fi
 
     if ((print_template)); then
         if ((create_pr)); then
