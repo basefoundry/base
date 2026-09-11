@@ -12,6 +12,7 @@ REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
 TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
 RESULTS = {"passed", "failed", "not_tested"}
 SOURCE_MODES = {"release", "tag", "moving"}
+DIGEST_LINE_RE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<name>[^/\n]+)$")
 
 
 class ReleaseBomError(ValueError):
@@ -162,6 +163,39 @@ def canonical_bom_bytes(document: dict[str, Any]) -> bytes:
 
 def bom_digest(document: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_bom_bytes(document)).hexdigest()
+
+
+def bom_digest_sidecar_path(bom_path: Path) -> Path:
+    """Return the stable sidecar path for a BOM output path."""
+    if bom_path.suffix == ".json":
+        return bom_path.with_suffix(".sha256")
+    return bom_path.with_name(f"{bom_path.name}.sha256")
+
+
+def write_bom_digest_sidecar(bom_path: Path, digest: str | None = None) -> Path:
+    """Write the BOM's SHA-256 digest and referenced filename to its sidecar."""
+    if digest is None:
+        digest = hashlib.sha256(bom_path.read_bytes()).hexdigest()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ReleaseBomError("BOM digest must be a lowercase 64-character SHA-256 value")
+    sidecar_path = bom_digest_sidecar_path(bom_path)
+    sidecar_path.write_text(f"{digest}  {bom_path.name}\n", encoding="utf-8")
+    return sidecar_path
+
+
+def read_bom_digest_sidecar(bom_path: Path, *, bom_bytes: bytes | None = None) -> str:
+    """Validate and return a BOM digest sidecar's recorded digest."""
+    sidecar_path = bom_digest_sidecar_path(bom_path)
+    line = sidecar_path.read_text(encoding="utf-8").strip("\n")
+    match = DIGEST_LINE_RE.fullmatch(line)
+    if match is None or match.group("name") != bom_path.name:
+        raise ReleaseBomError(
+            f"BOM digest sidecar {sidecar_path} must contain '<sha256>  {bom_path.name}'"
+        )
+    actual_digest = hashlib.sha256(bom_bytes if bom_bytes is not None else bom_path.read_bytes()).hexdigest()
+    if match.group("digest") != actual_digest:
+        raise ReleaseBomError(f"BOM digest sidecar {sidecar_path} does not match {bom_path}")
+    return match.group("digest")
 
 
 def _mapping(document: dict[str, Any], key: str) -> dict[str, Any]:

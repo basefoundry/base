@@ -5,7 +5,14 @@ import json
 import sys
 from pathlib import Path
 
-from .release_bom import ReleaseBomError, bom_digest, canonical_bom_bytes, load_bom, validate_bom
+from .release_bom import (
+    ReleaseBomError,
+    bom_digest,
+    canonical_bom_bytes,
+    load_bom,
+    validate_bom,
+    write_bom_digest_sidecar,
+)
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -78,11 +85,7 @@ def main() -> int:
             assembled = assemble(args)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_bytes(canonical_bom_bytes(assembled))
-            digest_path = args.output.with_suffix(".sha256")
-            digest_path.write_text(
-                f"{bom_digest(assembled)}  {args.output.name}\n",
-                encoding="utf-8",
-            )
+            digest_path = write_bom_digest_sidecar(args.output, bom_digest(assembled))
             print(f"release BOM assembled and validated: {args.output}")
             print(f"sha256: {bom_digest(assembled)}")
             print(f"digest sidecar: {digest_path}")

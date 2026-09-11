@@ -8,8 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from base_release.release_bom import ReleaseBomError, bom_digest, validate_bom
-from base_release.release_bom import load_bom, validate_bom_file
+from base_release.release_bom import (
+    ReleaseBomError,
+    bom_digest,
+    bom_digest_sidecar_path,
+    load_bom,
+    read_bom_digest_sidecar,
+    validate_bom,
+    validate_bom_file,
+    write_bom_digest_sidecar,
+)
 from base_release.release_bom_cli import main
 
 
@@ -208,6 +216,21 @@ def test_assemble_writes_bytes_matching_reported_digest(tmp_path: Path, monkeypa
     assert (tmp_path / "release-bom.sha256").read_text(encoding="utf-8") == (
         f"{bom_digest(load_bom(output_path))}  release-bom.json\n"
     )
+
+
+def test_digest_sidecar_uses_unambiguous_path_and_rejects_mismatches(tmp_path: Path) -> None:
+    output_path = tmp_path / "bom.tar.gz"
+    output_path.write_bytes(b"canonical BOM bytes\n")
+
+    sidecar_path = write_bom_digest_sidecar(output_path)
+
+    assert sidecar_path == bom_digest_sidecar_path(output_path)
+    assert sidecar_path.name == "bom.tar.gz.sha256"
+    assert read_bom_digest_sidecar(output_path) == hashlib.sha256(output_path.read_bytes()).hexdigest()
+
+    sidecar_path.write_text(f"{'0' * 64}  bom.tar.gz\n", encoding="utf-8")
+    with pytest.raises(ReleaseBomError, match="does not match"):
+        read_bom_digest_sidecar(output_path)
 
 
 def test_duplicate_component_and_unknown_participant_are_rejected() -> None:

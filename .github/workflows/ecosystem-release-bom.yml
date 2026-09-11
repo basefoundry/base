@@ -377,10 +377,7 @@ jobs:
             --combination "$(jq -cn --arg evidence "$ubuntu_evidence" '{name:"base-release-stack-ubuntu-24.04",participants:["basefoundry/base","basefoundry/base-cli","basefoundry/base-bash-libs","basefoundry/base-demo"],platform:"ubuntu-24.04",required:true,result:"passed",evidence:$evidence}')" \
             --combination "$(jq -cn --arg evidence "$macos_evidence" '{name:"base-release-stack-macos-14",participants:["basefoundry/base","basefoundry/base-cli","basefoundry/base-bash-libs","basefoundry/base-demo"],platform:"macos-14",required:true,result:"passed",evidence:$evidence}')" \
             --output "$bom"
-          digest="$(./bin/base-release-bom digest "$bom")"
-          actual_digest="$(sha256sum "$bom" | awk '{print $1}')"
-          test "$digest" = "$actual_digest"
-          printf '%s  release-bom.json\n' "$digest" > "$RUNNER_TEMP/base-bom/release-bom.sha256"
+          (cd "$RUNNER_TEMP/base-bom" && sha256sum -c release-bom.sha256)
           cat "$bom"
           cat "$RUNNER_TEMP/base-bom/release-bom.sha256"
 

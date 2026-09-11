@@ -52,8 +52,9 @@ bin/base-release-bom digest path/to/release-bom.json
 For Base 1.9.0, the release coordinator assembles rows for Base, base-cli,
 base-bash-libs, and base-demo. The required release-stack combinations are
 tested on Ubuntu 24.04 and macOS 14; both must report `passed`. Each combination
-is a JSON object. Assembly writes canonical deterministic bytes, so the printed
-digest matches `sha256sum` of the attached BOM artifact:
+is a JSON object. Assembly writes canonical deterministic bytes and a matching
+digest sidecar, so the sidecar can be verified directly with `sha256sum` and
+the printed digest matches the attached BOM artifact:
 
 ```bash
 bin/base-release-bom assemble \
@@ -81,9 +82,11 @@ the BOM is missing, invalid, or does not match the reviewed release identity.
 The supplied BOM must be the exact canonical artifact produced by `assemble`;
 pretty-printed or hand-edited JSON is rejected so its byte digest remains bound
 to the reviewed artifact. `assemble` writes a matching `*.sha256` sidecar next
-to its output. When supplied, `release publish` uploads `release-bom.json` and
-`release-bom.sha256` to the GitHub Release and verifies both assets after
-publication. A BOM is
+to its output. When supplied, `release publish` validates and reuses that
+sidecar, then uploads `release-bom.json` and `release-bom.sha256` to the
+GitHub Release and verifies both assets after publication. Direct callers that
+supply a canonical BOM without a sidecar retain the compatibility fallback of
+having the stable publish asset generated from the BOM bytes. A BOM is
 intentionally opt-in for existing manifests so historical releases remain
 inspectable; Base 1.9.0 is the first Base release that requires this governed
 release path.
