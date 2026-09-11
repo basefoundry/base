@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -317,7 +318,18 @@ def trust_output_record(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def allow_command_text(identity: ManifestCommandTrustIdentity) -> str:
-    return f"basectl trust allow {identity.project_name} --manifest-sha256 {identity.manifest_sha256}"
+    return shlex.join(
+        [
+            "basectl",
+            "trust",
+            "allow",
+            identity.project_name,
+            "--manifest-sha256",
+            identity.manifest_sha256,
+            "--workspace",
+            str(identity.project_root.parent),
+        ]
+    )
 
 
 def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> None:
@@ -403,15 +415,28 @@ def print_review_guidance(
     *,
     stream: Any,
 ) -> None:
+    workspace = str(identity.project_root.parent)
     print("Review first:", file=stream)
     if "run" in surfaces:
-        print(f"  basectl run {identity.project_name} --list", file=stream)
+        print(
+            f"  {shlex.join(['basectl', 'run', identity.project_name, '--list', '--workspace', workspace])}",
+            file=stream,
+        )
     if "build" in surfaces:
-        print(f"  basectl build {identity.project_name} --list", file=stream)
+        print(
+            f"  {shlex.join(['basectl', 'build', identity.project_name, '--list', '--workspace', workspace])}",
+            file=stream,
+        )
     if "test" in surfaces:
-        print(f"  basectl test {identity.project_name} --dry-run", file=stream)
+        print(
+            f"  {shlex.join(['basectl', 'test', identity.project_name, '--dry-run', '--workspace', workspace])}",
+            file=stream,
+        )
     if "demo" in surfaces:
-        print(f"  basectl demo {identity.project_name} --dry-run", file=stream)
+        print(
+            f"  {shlex.join(['basectl', 'demo', identity.project_name, '--dry-run', '--workspace', workspace])}",
+            file=stream,
+        )
     if "activate" in surfaces:
         print(
             f"  Inspect activate.source entries in {identity.manifest_path} before running "

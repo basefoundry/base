@@ -211,7 +211,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertEqual(payload["project"]["manifest_sha256"], expected_digest)
         self.assertEqual(
             payload["allow_command"],
-            f"basectl trust allow demo --manifest-sha256 {expected_digest}",
+            f"basectl trust allow demo --manifest-sha256 {expected_digest} --workspace {workspace.resolve()}",
         )
 
     def test_workspace_status_reports_only_projects_with_executable_manifest_surfaces(self) -> None:
@@ -386,12 +386,15 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertIn("Manifest-declared commands are not allowed for project 'demo'", stderr.getvalue())
         self.assertIn(f"Manifest SHA-256: {expected_digest}", stderr.getvalue())
         self.assertIn("Review first:", stderr.getvalue())
-        self.assertIn("  basectl test demo --dry-run", stderr.getvalue())
+        self.assertIn(f"  basectl test demo --dry-run --workspace {workspace.resolve()}", stderr.getvalue())
         self.assertIn("Trust scope:", stderr.getvalue())
         self.assertIn("referenced scripts", stderr.getvalue())
         self.assertNotIn("  basectl run demo --list", stderr.getvalue())
         self.assertIn("Allow after review:", stderr.getvalue())
-        self.assertIn(f"  basectl trust allow demo --manifest-sha256 {expected_digest}", stderr.getvalue())
+        self.assertIn(
+            f"  basectl trust allow demo --manifest-sha256 {expected_digest} --workspace {workspace.resolve()}",
+            stderr.getvalue(),
+        )
 
     def test_status_guidance_covers_demo_and_manifest_backed_activation(self) -> None:
         from base_trust import engine
@@ -412,10 +415,10 @@ class ManifestCommandTrustTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("Manifest command trust is blocked for project 'demo'.", result.stdout)
-        self.assertIn("basectl run demo --list", result.stdout)
-        self.assertIn("basectl build demo --list", result.stdout)
-        self.assertIn("basectl test demo --dry-run", result.stdout)
-        self.assertIn("basectl demo demo --dry-run", result.stdout)
+        self.assertIn(f"basectl run demo --list --workspace {workspace.resolve()}", result.stdout)
+        self.assertIn(f"basectl build demo --list --workspace {workspace.resolve()}", result.stdout)
+        self.assertIn(f"basectl test demo --dry-run --workspace {workspace.resolve()}", result.stdout)
+        self.assertIn(f"basectl demo demo --dry-run --workspace {workspace.resolve()}", result.stdout)
         self.assertIn(f"Inspect activate.source entries in {manifest_path.resolve()}", result.stdout)
         self.assertIn("basectl trust allow demo --manifest-sha256", result.stdout)
         self.assertIn("Trust scope:", result.stdout)
@@ -452,9 +455,9 @@ class ManifestCommandTrustTests(unittest.TestCase):
         )
         self.assertIn(f"Recorded Manifest SHA-256: {identity.manifest_sha256}", result.stdout)
         self.assertIn(f"Manifest SHA-256: {current_digest}", result.stdout)
-        self.assertIn("basectl test demo --dry-run", result.stdout)
+        self.assertIn(f"basectl test demo --dry-run --workspace {workspace.resolve()}", result.stdout)
         self.assertIn(
-            f"basectl trust allow demo --manifest-sha256 {current_digest}",
+            f"basectl trust allow demo --manifest-sha256 {current_digest} --workspace {workspace.resolve()}",
             result.stdout,
         )
 
