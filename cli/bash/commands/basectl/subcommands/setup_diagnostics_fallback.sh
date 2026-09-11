@@ -7,6 +7,7 @@ readonly _base_setup_diagnostics_fallback_sourced
 # Keep JSON diagnostics available when the Python renderer cannot start. This
 # file is sourced by setup_common.sh after the check-result helpers; the
 # functions it calls are resolved when the fallback is invoked.
+import_base_lib arg/lib_arg.sh
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
 
 setup_diagnostics_fallback_payload_status() {
@@ -79,30 +80,26 @@ setup_diagnostics_fallback_record_warning() {
 
 setup_diagnostics_fallback_record_check() {
     local checked_at="" path="" project="" status="" tmp_path
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "project|value|--project"
+        "status|value|--status"
+        "checked_at|value|--checked-at"
+        "path|value|--output-path"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
-    while (($#)); do
-        case "$1" in
-            --project)
-                project="${2:-}"
-                shift 2
-                ;;
-            --status)
-                status="${2:-}"
-                shift 2
-                ;;
-            --checked-at)
-                checked_at="${2:-}"
-                shift 2
-                ;;
-            --output-path)
-                path="${2:-}"
-                shift 2
-                ;;
-            *)
-                base_std_fatal_error "Unsupported diagnostics fallback argument '$1'."
-                ;;
-        esac
-    done
+    if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
+        base_std_fatal_error "Unsupported diagnostics fallback argument '${1:-}'."
+    fi
+    if ((${#positionals[@]} > 0)); then
+        base_std_fatal_error "Unsupported diagnostics fallback argument '${positionals[0]}'."
+    fi
+    project="${parsed_options[project]:-}"
+    status="${parsed_options[status]:-}"
+    checked_at="${parsed_options[checked_at]:-}"
+    path="${parsed_options[path]:-}"
 
     case "$status" in
         ok|warn|error) ;;
@@ -142,33 +139,28 @@ setup_diagnostics_fallback_json() {
             ;;
         project-venv-check-json|project-venv-doctor-json)
             local fix="" message="" precheck_json="[]" project="" status="" item_json output_json aggregate_status
-            while (($#)); do
-                case "$1" in
-                    --project)
-                        project="${2:-}"
-                        shift 2
-                        ;;
-                    --status)
-                        status="${2:-}"
-                        shift 2
-                        ;;
-                    --message)
-                        message="${2:-}"
-                        shift 2
-                        ;;
-                    --fix)
-                        fix="${2:-}"
-                        shift 2
-                        ;;
-                    --precheck-json)
-                        precheck_json="${2:-[]}"
-                        shift 2
-                        ;;
-                    *)
-                        base_std_fatal_error "Unsupported diagnostics fallback argument '$1'."
-                        ;;
-                esac
-            done
+            # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+            local -a option_specs=(
+                "project|value|--project"
+                "status|value|--status"
+                "message|value|--message"
+                "fix|value|--fix"
+                "precheck_json|value|--precheck-json"
+            )
+            local -a positionals=()
+            local -A parsed_options=()
+
+            if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
+                base_std_fatal_error "Unsupported diagnostics fallback argument '${1:-}'."
+            fi
+            if ((${#positionals[@]} > 0)); then
+                base_std_fatal_error "Unsupported diagnostics fallback argument '${positionals[0]}'."
+            fi
+            project="${parsed_options[project]:-}"
+            status="${parsed_options[status]:-}"
+            message="${parsed_options[message]:-}"
+            fix="${parsed_options[fix]:-}"
+            precheck_json="${parsed_options[precheck_json]:-[]}"
             item_json="$(setup_diagnostics_fallback_project_venv_item "$status" "$message" "$fix")"
             setup_diagnostics_fallback_append_item output_json "$precheck_json" "$item_json"
             aggregate_status="$(setup_diagnostics_fallback_payload_status "$precheck_json")"
@@ -190,44 +182,66 @@ setup_diagnostics_fallback_json() {
             local result_file status="ok" item_json output_json
             local check_names=() check_statuses=() check_messages=() check_fixes=()
             local result_files=() embedded_keys=() embedded_values=() item_key="checks"
+            local -a parser_args=() positionals=()
+            # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+            local -a option_specs=(
+                "project|value|--project"
+                "check_names|repeatable|--check-name"
+                "check_statuses|repeatable|--check-status"
+                "check_messages|repeatable|--check-message"
+                "check_fixes|repeatable|--check-fix"
+                "result_files|repeatable|--check-result-file"
+                "embedded_keys|repeatable|--embedded-key"
+                "embedded_values|repeatable|--embedded-value"
+                "record_path|value|--record-path"
+                "checked_at|value|--checked-at"
+            )
+            local -A parsed_options=()
             local i
 
             [[ "$command" == doctor-json ]] && item_key="findings"
             while (($#)); do
                 case "$1" in
-                    --project)
-                        project="${2:-}"
+                    --project|--record-path|--checked-at)
+                        [[ $# -ge 2 ]] || base_std_fatal_error "Option '$1' requires an argument."
+                        parser_args+=("$1" "$2")
                         shift 2
                         ;;
                     --check|--finding)
-                        check_names+=("${2:-}")
-                        check_statuses+=("${3:-}")
-                        check_messages+=("${4:-}")
-                        check_fixes+=("${5:-}")
+                        [[ $# -ge 5 ]] || base_std_fatal_error "Option '$1' requires four arguments."
+                        parser_args+=(
+                            --check-name "$2"
+                            --check-status "$3"
+                            --check-message "$4"
+                            --check-fix "$5"
+                        )
                         shift 5
                         ;;
                     --check-result-file|--finding-result-file)
-                        result_files+=("${2:-}")
+                        [[ $# -ge 2 ]] || base_std_fatal_error "Option '$1' requires an argument."
+                        parser_args+=(--check-result-file "$2")
                         shift 2
                         ;;
                     --embedded-payload)
-                        embedded_keys+=("${2:-}")
-                        embedded_values+=("${3:-}")
+                        [[ $# -ge 3 ]] || base_std_fatal_error "Option '$1' requires two arguments."
+                        parser_args+=(--embedded-key "$2" --embedded-value "$3")
                         shift 3
-                        ;;
-                    --record-path)
-                        record_path="${2:-}"
-                        shift 2
-                        ;;
-                    --checked-at)
-                        checked_at="${2:-}"
-                        shift 2
                         ;;
                     *)
                         base_std_fatal_error "Unsupported diagnostics fallback argument '$1'."
                         ;;
                 esac
             done
+
+            if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+                base_std_fatal_error "Unsupported diagnostics fallback argument '${1:-}'."
+            fi
+            if ((${#positionals[@]} > 0)); then
+                base_std_fatal_error "Unsupported diagnostics fallback argument '${positionals[0]}'."
+            fi
+            project="${parsed_options[project]:-}"
+            record_path="${parsed_options[record_path]:-}"
+            checked_at="${parsed_options[checked_at]:-}"
 
             output_json='[]'
             for ((i = 0; i < ${#check_names[@]}; i++)); do
