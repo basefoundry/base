@@ -2590,6 +2590,24 @@ base_repo_configure() {
     local project_schema="base-project"
     local project_title=""
     local protect_default_branch=1
+    local -a parser_args=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
+    local -a option_specs=(
+        "repo|value|--repo"
+        "dry_run|flag|--dry-run"
+        "no_protect_default_branch|flag|--no-protect-default-branch"
+        "project|value|--project"
+        "project_owner|value|--project-owner"
+        "project_schema|value|--project-schema"
+        "initiative_options|repeatable|--initiative-option"
+        "copy_project_fields_from|value|--copy-project-fields-from"
+        "replace_project|flag|--replace-project"
+        "no_project|flag|--no-project"
+        "release|flag|--release"
+        "verbose|flag|-v"
+    )
+    local -a positionals=()
+    local -A parsed_options=()
 
     while (($#)); do
         case "$1" in
@@ -2597,99 +2615,24 @@ base_repo_configure() {
                 base_repo_configure_usage
                 return 0
                 ;;
-            --repo)
+            --repo|--project|--project-owner|--project-schema|--initiative-option|--copy-project-fields-from)
                 [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--repo' requires an argument."
+                    base_repo_configure_usage_error "Option '$1' requires an argument."
                     return $?
                 }
-                github_repo="$2"
+                parser_args+=("$1" "$2")
                 shift 2
                 ;;
-            --repo=*)
-                github_repo="${1#--repo=}"
+            --repo=*|--project=*|--project-owner=*|--project-schema=*|--initiative-option=*|--copy-project-fields-from=*)
+                parser_args+=("$1")
                 shift
                 ;;
-            --dry-run)
-                dry_run=1
-                shift
-                ;;
-            --no-protect-default-branch)
-                protect_default_branch=0
-                shift
-                ;;
-            --project)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                project_title="$2"
-                shift 2
-                ;;
-            --project=*)
-                project_title="${1#--project=}"
-                shift
-                ;;
-            --project-owner)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--project-owner' requires an argument."
-                    return $?
-                }
-                project_owner="$2"
-                shift 2
-                ;;
-            --project-owner=*)
-                project_owner="${1#--project-owner=}"
-                shift
-                ;;
-            --project-schema)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--project-schema' requires an argument."
-                    return $?
-                }
-                project_schema="$2"
-                shift 2
-                ;;
-            --project-schema=*)
-                project_schema="${1#--project-schema=}"
-                shift
-                ;;
-            --initiative-option)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--initiative-option' requires an argument."
-                    return $?
-                }
-                initiative_options+=("$2")
-                shift 2
-                ;;
-            --initiative-option=*)
-                initiative_options+=("${1#--initiative-option=}")
-                shift
-                ;;
-            --copy-project-fields-from)
-                [[ -n "${2:-}" ]] || {
-                    base_repo_configure_usage_error "Option '--copy-project-fields-from' requires an argument."
-                    return $?
-                }
-                copy_project_fields_from="$2"
-                shift 2
-                ;;
-            --copy-project-fields-from=*)
-                copy_project_fields_from="${1#--copy-project-fields-from=}"
-                shift
-                ;;
-            --replace-project)
-                replace_project=1
-                shift
-                ;;
-            --no-project)
-                configure_project=0
-                shift
-                ;;
-            --release)
-                configure_release=1
+            --dry-run|--no-protect-default-branch|--replace-project|--no-project|--release)
+                parser_args+=("$1")
                 shift
                 ;;
             -v)
+                parser_args+=("$1")
                 base_std_set_log_level DEBUG
                 export BASE_BASH_LIBS_LOG_DEBUG=1
                 shift
@@ -2699,15 +2642,34 @@ base_repo_configure() {
                 return $?
                 ;;
             *)
-                if [[ -n "$path" ]]; then
-                    base_repo_configure_usage_error "The 'repo configure' command accepts at most one path."
-                    return $?
-                fi
-                path="$1"
+                parser_args+=("$1")
                 shift
                 ;;
         esac
     done
+
+    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
+        base_repo_configure_usage_error "Could not parse repo configure arguments."
+        return $?
+    fi
+    if ((${#positionals[@]} > 1)); then
+        base_repo_configure_usage_error "The 'repo configure' command accepts at most one path."
+        return $?
+    fi
+
+    github_repo="${parsed_options[repo]:-}"
+    dry_run="${parsed_options[dry_run]:-0}"
+    protect_default_branch=$((1 - ${parsed_options[no_protect_default_branch]:-0}))
+    project_title="${parsed_options[project]:-}"
+    project_owner="${parsed_options[project_owner]:-}"
+    project_schema="${parsed_options[project_schema]:-base-project}"
+    copy_project_fields_from="${parsed_options[copy_project_fields_from]:-}"
+    replace_project="${parsed_options[replace_project]:-0}"
+    configure_project=$((1 - ${parsed_options[no_project]:-0}))
+    configure_release="${parsed_options[release]:-0}"
+    if ((${#positionals[@]} == 1)); then
+        path="${positionals[0]}"
+    fi
 
     [[ -n "$path" ]] || path="."
     path="$(base_repo_target_path "$path")"
