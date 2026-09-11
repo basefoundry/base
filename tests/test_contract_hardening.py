@@ -217,7 +217,9 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
     text = CONTRACTS_DOC.read_text(encoding="utf-8")
 
     expected_entries = {
-        "GitHub workflow policy": "tests/test_github_workflows.py",
+        "GitHub workflow policy": (
+            "`tests/test_github_workflows.py`, `tests/test_issue_branch_policy_workflow.py`"
+        ),
         "Workspace manifest repository URL policy": "cli/python/base_projects/tests/test_workspace_manifest.py",
         "Project installer template integrity": "cli/bash/commands/basectl/tests/repo.bats",
         "Base-owned remote shell installer policy": "tests/test_remote_installer_policy.py",
@@ -267,6 +269,7 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
 
     expected_commands = [
         "tests/test_github_workflows.py",
+        "tests/test_issue_branch_policy_workflow.py",
         "tests/test_remote_installer_policy.py",
         "cli/python/base_setup/tests/test_remote_installers.py",
         "cli/python/base_projects/tests/test_workspace_manifest.py",

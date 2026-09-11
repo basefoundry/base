@@ -14,6 +14,30 @@ WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 ISSUE_BRANCH_POLICY_WORKFLOW = WORKFLOW_DIR / "issue-branch-policy.yml"
 
 
+def load_workflow(path: Path) -> dict:
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict), f"{path} did not parse as a YAML mapping"
+    return payload
+
+
+def workflow_steps(path: Path) -> list[tuple[str, int, dict]]:
+    workflow = load_workflow(path)
+    jobs = workflow.get("jobs")
+    assert isinstance(jobs, dict), f"{path} jobs did not parse as a YAML mapping"
+
+    steps: list[tuple[str, int, dict]] = []
+    for job_name, job in jobs.items():
+        assert isinstance(job, dict), f"{path} job {job_name} did not parse as a YAML mapping"
+        job_steps = job.get("steps", [])
+        assert isinstance(job_steps, list), f"{path} job {job_name} steps did not parse as a list"
+        steps.extend(
+            (job_name, index, step)
+            for index, step in enumerate(job_steps)
+            if isinstance(step, dict)
+        )
+    return steps
+
+
 def _workflow_step_run_command(path: Path, job_name: str, step_name: str) -> str:
     workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
     steps = workflow["jobs"][job_name]["steps"]

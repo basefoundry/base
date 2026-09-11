@@ -48,4 +48,4 @@ jobs:
           PYTHONPATH: lib/python:cli/python
         run: |
           python -m compileall -q cli/python lib/python tests
-          python -m pytest tests/test_github_workflows.py tests/test_bootstrap_docs.py -q
+          python -m pytest tests/test_github_workflows.py tests/test_issue_branch_policy_workflow.py tests/test_bootstrap_docs.py -q
