@@ -36,7 +36,7 @@ run_step() {
     )
 }
 
-run_step "$PYTHON_BIN" -m pytest tests/test_github_workflows.py
+run_step "$PYTHON_BIN" -m pytest tests/test_github_workflows.py tests/test_issue_branch_policy_workflow.py
 run_step "$PYTHON_BIN" -m pytest tests/test_contract_hardening.py
 run_step "$PYTHON_BIN" -m pytest tests/test_remote_installer_policy.py
 run_step "$PYTHON_BIN" -m pytest cli/python/base_setup/tests/test_remote_installers.py

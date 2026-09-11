@@ -13,7 +13,7 @@ before treating the fix as complete.
 
 | Contract | Source of truth | Enforced by | Failure mode | Area |
 | --- | --- | --- | --- | --- |
-| GitHub workflow policy | [GitHub Workflow](github-workflow.md), [CI Supply Chain Policy](ci-supply-chain-policy.md), `.github/workflows/*.yml` | `tests/test_github_workflows.py` | Workflow permissions, concurrency, timeout, token, supported Python, or generated-guidance policy drift | CI |
+| GitHub workflow policy | [GitHub Workflow](github-workflow.md), [CI Supply Chain Policy](ci-supply-chain-policy.md), `.github/workflows/*.yml` | `tests/test_github_workflows.py`, `tests/test_issue_branch_policy_workflow.py` | Workflow permissions, concurrency, timeout, token, supported Python, or generated-guidance policy drift | CI |
 | Workspace manifest repository URL policy | [Workspace Manifest](workspace-manifest.md), `cli/python/base_projects/workspace_manifest.py` | `cli/python/base_projects/tests/test_workspace_manifest.py` | A documented accepted URL form is rejected, or an insecure `http://` repository URL passes silently | Workspace |
 | Workspace manifest source policy | [Workspace Manifest](workspace-manifest.md), `cli/python/base_projects/workspace_pull.py` | `cli/python/base_projects/tests/test_workspace_pull.py` | `workspace.manifest_source` accepts cleartext HTTP or overwrites a local manifest after an invalid fetch | Workspace |
 | Project installer template integrity | [Project Installers](project-installers.md), `templates/project-install.sh` | `cli/bash/commands/basectl/tests/repo.bats` | The maintained installer template downloads and executes a Base installer without honoring configured SHA-256 verification | Security |
