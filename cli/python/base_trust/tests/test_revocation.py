@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -80,25 +81,31 @@ def test_malformed_identity_record_cannot_remain_an_effective_approval(
     assert not store.status(identity).is_allowed
 
 
-def test_revoke_reports_deletion_errors_without_claiming_success(
-    tmp_path: Path, manifest_factory, monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("operation", ["delete", "list", "read"])
+def test_revoke_reports_store_errors_without_claiming_success(
+    tmp_path: Path, manifest_factory, monkeypatch: pytest.MonkeyPatch, operation: str,
 ) -> None:
     home = tmp_path / "home"
     workspace = tmp_path / "work"
     identity = engine.compute_trust_identity_for_manifest(manifest_factory.write(workspace / "demo"))
     store = engine.ManifestCommandTrustStore(home)
     record = store.allow(identity, base_version="fixture")
-    unlink = Path.unlink
+    owner, method = (os, "scandir") if operation == "list" else (
+        Path, "unlink" if operation == "delete" else "read_text",
+    )
+    original = getattr(owner, method)
+    denied = store.root if operation == "list" else record
 
     def refuse_record(path, *args, **kwargs):
-        if path == record:
-            raise PermissionError("fixture deletion denied")
-        return unlink(path, *args, **kwargs)
+        if str(path) == str(denied):
+            raise PermissionError("fixture store access denied")
+        return original(path, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "unlink", refuse_record)
-    result = invoke(engine.app, ["revoke", "demo", "--workspace", str(workspace)], home=home)
+    with monkeypatch.context() as patcher:
+        patcher.setattr(owner, method, refuse_record)
+        result = invoke(engine.app, ["revoke", "demo", "--workspace", str(workspace)], home=home)
     assert result.exit_code == 1
     assert "Unable to revoke" in result.stderr
-    assert "fixture deletion denied" in result.stderr
+    assert "fixture store access denied" in result.stderr
     assert "Revoked manifest command trust" not in result.stdout
     assert store.status(identity).is_allowed

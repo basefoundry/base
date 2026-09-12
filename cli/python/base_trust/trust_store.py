@@ -160,7 +160,13 @@ class ManifestCommandTrustStore:
     def revoke(self, identity: ManifestCommandTrustIdentity) -> bool:
         removed = False
         paths = {self.record_path(identity)}
-        for path in self.root.glob("*.json"):
+        try:
+            records = tuple(self.root.iterdir())
+        except FileNotFoundError:
+            return False
+        for path in records:
+            if path.suffix != ".json":
+                continue
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except (FileNotFoundError, UnicodeError, json.JSONDecodeError):
