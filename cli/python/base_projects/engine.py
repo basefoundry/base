@@ -7,6 +7,7 @@ import base_cli
 from base_cli_profile import base_cli_app
 from base_cli_adapters.protocol import dumps_record
 from base_cli_adapters.protocol import dumps_records
+from base_projects.test_preflight import project_test_preflight
 from base_projects.build_targets import build_targets_project_from_args
 from base_projects.build_targets import list_build_targets_from_args
 from base_projects.command_helpers import ProjectUsageError
@@ -73,7 +74,6 @@ from base_setup.demo import resolve_demo_script_path
 from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
-from base_setup.test_requirements import check_test_requirements
 
 
 app = base_cli_app(name="base_projects")
@@ -138,6 +138,10 @@ def main(argv: list[str] | None = None) -> int:
     is_flag=True,
     help="Check a project test requirements file before resolving its test command.",
 )
+@base_cli.option(
+    "--verify-project-runtime", is_flag=True,
+    help="Authorize project runtime and configuration execution for workspace check/doctor in this invocation.",
+)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -157,6 +161,7 @@ def run(
     workspace_projects: str | None,
     fail_fast: bool,
     test_preflight: bool,
+    verify_project_runtime: bool,
 ) -> int:
     try:
         return dispatch_projects_command(
@@ -178,6 +183,7 @@ def run(
                 workspace_projects=workspace_projects,
                 fail_fast=fail_fast,
                 test_preflight=test_preflight,
+                verify_project_runtime=verify_project_runtime,
             ),
             project_command_actions(),
         )
@@ -350,6 +356,7 @@ def workspace_check_command(
     workspace: str | None,
     output_format: str = "text",
     workspace_manifest: str | None = None,
+    verify_project_runtime: bool = False,
 ) -> int:
     if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
@@ -357,7 +364,9 @@ def workspace_check_command(
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
-        results = workspace_project_check_results(ctx, workspace_root, manifest)
+        results = workspace_project_check_results(
+            ctx, workspace_root, manifest, verify_project_runtime=verify_project_runtime,
+        )
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
@@ -398,6 +407,7 @@ def workspace_doctor_command(
     workspace: str | None,
     output_format: str = "text",
     workspace_manifest: str | None = None,
+    verify_project_runtime: bool = False,
 ) -> int:
     if not validate_report_format(ctx, output_format):
         return base_cli.ExitCode.USAGE_ERROR
@@ -405,7 +415,9 @@ def workspace_doctor_command(
     try:
         workspace_root = resolve_workspace_root(ctx, workspace)
         manifest = resolve_workspace_manifest(effective_workspace_manifest(ctx, workspace_manifest))
-        results = workspace_project_check_results(ctx, workspace_root, manifest)
+        results = workspace_project_check_results(
+            ctx, workspace_root, manifest, verify_project_runtime=verify_project_runtime,
+        )
     except (ProjectDiscoveryError, ManifestError, WorkspaceManifestError) as exc:
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
@@ -632,13 +644,8 @@ def test_command_project_command(
         )
         return base_cli.ExitCode.FAILURE
 
-    if test_preflight:
-        check = check_test_requirements(manifest)
-        if check is not None and not check.ok:
-            ctx.log.error(check.message)
-            if check.fix:
-                ctx.log.error("Fix: %s", check.fix)
-            return base_cli.ExitCode.FAILURE
+    if test_preflight and not project_test_preflight(ctx, manifest):
+        return base_cli.ExitCode.FAILURE
 
     command_config = test_command(manifest.test)
     if output_format == "command-protocol":

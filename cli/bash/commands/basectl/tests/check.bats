@@ -162,6 +162,8 @@ load ./setup_helpers.bash
 
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -409,7 +411,7 @@ EOF
     [ "$status" -eq 0 ]
     [ -f "$TEST_STATE_DIR/project-setup-python" ]
     actual_python="$(cat "$TEST_STATE_DIR/project-setup-python")"
-    [[ "$actual_python" == *"$demo_venv_dir/bin/python"* ]] || {
+    [[ "$actual_python" == *"$base_venv_dir/bin/python"* ]] || {
         printf 'actual project check python: %s\n' "$actual_python" >&3
         false
     }
@@ -548,7 +550,7 @@ EOF
     BASE_SETUP_TEST_WORKSPACE="$workspace" create_project_setup_venv_stub "$venv_dir"
     resolved_demo_root="$(cd "$workspace/demo" && pwd -P)"
 
-    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo
+    run_base_command BASE_SETUP_TEST_WORKSPACE="$workspace" check demo --verify-project-runtime
 
     [ "$status" -eq 1 ]
     project_venv_error_line="$(printf '%s\n' "$output" | grep -F "Virtual environment is missing at '$resolved_demo_root/.venv'.")"
@@ -1000,7 +1002,7 @@ EOF
         BASE_SETUP_TEST_PYTHON_PREFIX="$TEST_TMPDIR/python-prefix" \
         BASE_SETUP_TEST_WORKSPACE="$workspace" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/CommandLineTools" \
-        "$BASE_REPO_ROOT/bin/basectl" check demo --remote-network --format json
+        "$BASE_REPO_ROOT/bin/basectl" check demo --verify-project-runtime --remote-network --format json
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"schema_version": 1'* ]]

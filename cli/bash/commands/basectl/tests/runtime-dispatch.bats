@@ -801,6 +801,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 printf 'BASE_HOME=%s\n' "$BASE_HOME"
 printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
 printf 'PYTHONPATH=%s\n' "$PYTHONPATH"

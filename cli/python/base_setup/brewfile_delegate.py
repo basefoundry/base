@@ -11,9 +11,10 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import brewfile_delegates_supported, platform_label
+from .runtime_inspection import unverified_runtime_check
 
 
-def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
+def check_brewfile(manifest: BaseManifest, *, verify_project_runtime: bool = True) -> ArtifactCheck:
     try:
         brewfile_path = resolve_brewfile_path(manifest)
     except ArtifactError as exc:
@@ -47,6 +48,9 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P011",
         )
 
+    if not verify_project_runtime:
+        return unverified_runtime_check(manifest, "brewfile", "BASE-P012")
+
     try:
         ok = process.run_check(
             ["brew", "bundle", "check", f"--file={brewfile_path}"],
@@ -65,19 +69,11 @@ def check_brewfile(manifest: BaseManifest) -> ArtifactCheck:
             status="warn",
             finding_id="BASE-P012",
         )
-    if ok:
-        return ArtifactCheck(
-            name="brewfile",
-            ok=True,
-            message=f"Brewfile dependencies are satisfied for '{brewfile_path}'.",
-            fix="",
-            finding_id="BASE-P012",
-        )
     return ArtifactCheck(
         name="brewfile",
-        ok=False,
-        message=f"Brewfile dependencies are not satisfied for '{brewfile_path}'.",
-        fix=f"basectl setup {manifest.project_name}",
+        ok=ok,
+        message=f"Brewfile dependencies are {'satisfied' if ok else 'not satisfied'} for '{brewfile_path}'.",
+        fix="" if ok else f"basectl setup {manifest.project_name}",
         finding_id="BASE-P012",
     )
 
@@ -139,4 +135,3 @@ def homebrew_no_auto_update_env() -> dict[str, str]:
     env = os.environ.copy()
     env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
     return env
-

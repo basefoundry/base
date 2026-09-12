@@ -10,6 +10,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")" "$workspace/base" "$workspace/demo" "$workspace/notes"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" && "${4:-}" == "--workspace" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT" > "${BASE_TEST_PROJECTS_LIST_STATE:?}"
     printf '%s\t%s\n' base "$5/base"
@@ -43,6 +45,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_history.record" ]]; then
     exit 0
 fi
@@ -78,7 +82,9 @@ EOF
     mkdir -p "$workspace/base" "$workspace/demo"
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == "-c" ]]; then
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-c" || ( "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "--help" ) ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" && "${4:-}" == "--workspace" ]]; then
@@ -120,6 +126,8 @@ EOF
     mkdir -p "$workspace/base"
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-c" ]]; then
     exit 1
 fi
@@ -167,6 +175,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
     printf 'ERROR: Unsupported output format '\''xml'\''. Expected one of: text, csv, tsv, yaml, json.\n' >&2
     exit 2
@@ -189,6 +199,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
     shift 3
     printf 'ARGC=%s\n' "$#"

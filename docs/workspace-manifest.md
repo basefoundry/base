@@ -4,6 +4,11 @@ Base uses "workspace" in a precise way: a workspace is a local directory that
 contains sibling repositories. A workspace manifest is an optional local file
 that describes which repositories are expected to belong to that workspace.
 
+Project and workspace manifests must use UTF-8 encoding and string mapping
+keys, including nested mappings. Invalid input reports the manifest path and
+field location. Workspace reports identify invalid project members while
+continuing to inspect the other members.
+
 Workspace status, check, doctor, and clone commands can use a manifest when the
 user configures `workspace.manifest` in `~/.base.d/config.yaml` or supplies
 `--manifest <path>`. The command-line flag takes precedence over the configured

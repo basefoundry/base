@@ -33,6 +33,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false

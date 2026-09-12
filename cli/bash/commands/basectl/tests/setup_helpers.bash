@@ -186,6 +186,8 @@ EOF
 create_system_python3_stub() {
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 touch "${BASE_SETUP_TEST_STATE_DIR:?}/system-python-ran"
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then
     printf 'usage: python3 -m venv ENV_DIR\n'
@@ -197,6 +199,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -406,12 +410,16 @@ case "${1:-}" in
             mkdir -p "$python_prefix/bin"
             cat > "$python_prefix/bin/python3" <<'PYEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -585,12 +593,16 @@ case "${1:-}" in
             mkdir -p "$python_prefix/bin"
             cat > "$python_prefix/bin/python3" <<'PYEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -799,6 +811,8 @@ create_base_venv_stub() {
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -866,6 +880,8 @@ create_project_setup_venv_stub() {
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then

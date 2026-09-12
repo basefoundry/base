@@ -448,7 +448,7 @@ class MiseTests(unittest.TestCase):
             write_fake_mise(bin_dir, log_path, f"{project_root.resolve()}: trusted", "{}")
 
             with mock.patch.dict(os.environ, {"PATH": f"{bin_dir}:{os.environ['PATH']}"}):
-                checks = engine.manifest_checks(default_manifest, manifest)
+                checks = engine.manifest_checks(default_manifest, manifest, verify_project_runtime=True)
 
         self.assertIn("mise", [check.name for check in checks])
         mise_check = next(check for check in checks if check.name == "mise")

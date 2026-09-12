@@ -324,6 +324,86 @@ EOF
     [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
 }
 
+
+@test "public inspection keeps the project runtime unverified until explicitly requested" {
+    local command
+    cat > "$TEST_PROJECT_ROOT/base_manifest.yaml" <<'EOF'
+project:
+  name: demo
+python: {}
+test:
+  command: fake-test tests/
+  requirements: requirements.txt
+artifacts: []
+EOF
+    printf 'pip\n' > "$TEST_PROJECT_ROOT/requirements.txt"
+    cat > "$TEST_PROJECT_ROOT/.venv/bin/python" <<EOF
+#!/usr/bin/env bash
+printf probe >> "$TEST_STATE_DIR/project-runtime-probed"
+exec "$TEST_INTEGRATION_PYTHON" "\$@"
+EOF
+    chmod +x "$TEST_PROJECT_ROOT/.venv/bin/python"
+    for command in check doctor; do
+        run_basectl "$command" --ci --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"unverified"* ]]
+        [ ! -e "$TEST_STATE_DIR/project-runtime-probed" ]
+    done
+    run_basectl test demo
+    [ "$status" -eq 1 ]
+    [ ! -e "$TEST_STATE_DIR/project-runtime-probed" ]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+
+    run_basectl check --ci --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml" --verify-project-runtime --format json
+    [ "$status" -eq 0 ]
+    [ -e "$TEST_STATE_DIR/project-runtime-probed" ]
+}
+
+@test "inspection uses Base imports and runtime from an active project directory" {
+    local module command
+    local workspace="$TEST_TMPDIR/inspection-workspace"
+    local workspace_manifest="$TEST_TMPDIR/inspection-workspace.yaml"
+    mkdir -p "$workspace"
+    mv "$TEST_PROJECT_ROOT" "$workspace/demo"
+    TEST_PROJECT_ROOT="$workspace/demo"
+    cat > "$TEST_PROJECT_ROOT/base_manifest.yaml" <<'EOF'
+project:
+  name: demo
+python: {}
+test:
+  command: fake-test tests/
+artifacts: []
+EOF
+    printf 'schema_version: 1\nworkspace:\n  name: demo\nrepos:\n  - name: demo\n' > "$workspace_manifest"
+    for module in base_projects base_setup base_cli_adapters platform pip; do
+        printf 'open("%s", "w").close()\nraise RuntimeError("unexpected project import")\n' \
+            "$TEST_STATE_DIR/project-imported" > "$TEST_PROJECT_ROOT/$module.py"
+    done
+    cat > "$TEST_PROJECT_ROOT/.venv/bin/python" <<EOF
+#!/usr/bin/env bash
+printf probe >> "$TEST_STATE_DIR/project-runtime-probed"
+exec "$TEST_INTEGRATION_PYTHON" "\$@"
+EOF
+    chmod +x "$TEST_PROJECT_ROOT/.venv/bin/python"
+    export BASE_PROJECT=demo BASE_PROJECT_VENV_DIR="$TEST_PROJECT_ROOT/.venv"
+    cd "$TEST_PROJECT_ROOT"
+
+    run_basectl projects list --workspace "$workspace"
+    [ "$status" -eq 0 ]
+    for command in check doctor; do
+        run_basectl "$command" --ci --manifest ./base_manifest.yaml --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"unverified"* ]]
+    done
+    for command in status check doctor onboarding; do
+        run_basectl workspace "$command" --workspace "$workspace" --manifest "$workspace_manifest" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"unverified"* || "$output" == *"needs_verification"* ]]
+    done
+    [ ! -e "$TEST_STATE_DIR/project-runtime-probed" ]
+    [ ! -e "$TEST_STATE_DIR/project-imported" ]
+}
+
 @test "basectl update-profile dry-run does not write real shell startup files" {
     run_basectl update-profile --dry-run
     [ "$status" -eq 0 ]
@@ -419,5 +499,21 @@ EOF
     run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
     [ "$status" -eq 0 ]
     [[ "$output" == *'"last_check": null'* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
+
+@test "public diagnostics report invalid manifest encoding without a traceback" {
+    local command
+    printf 'project: \377\n' > "$TEST_PROJECT_ROOT/base_manifest.yaml"
+    for command in check doctor; do
+        run_basectl "$command" --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml" --format json
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"UTF-8"* ]]
+        [[ "$output" != *"Traceback"* ]]
+    done
+    run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"manifest": "invalid"'* ]]
+    [[ "$output" == *'"name": "base"'* ]]
     [[ "$output" != *"Traceback"* ]]
 }

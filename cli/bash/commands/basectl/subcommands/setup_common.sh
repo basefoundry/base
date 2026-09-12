@@ -58,7 +58,7 @@ setup_ensure_cached_paths() {
 setup_clear_run_state() {
     # Clear legacy lowercase state too so inherited environments cannot trigger
     # lib_std.sh dry-run behavior unless this command explicitly enables it.
-    unset BASE_BASH_LIBS_DRY_RUN BASE_SETUP_CHECK_STATUS_FILE BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_RECREATE_VENV BASE_SETUP_UPGRADE_PIP BASE_SETUP_YES BASE_SETUP_ALLOW_PROJECT_IDE_MUTATIONS
+    unset BASE_BASH_LIBS_DRY_RUN BASE_SETUP_CHECK_STATUS_FILE BASE_SETUP_PROFILE_ERROR BASE_SETUP_PROFILES BASE_SETUP_PROJECT_NAME BASE_SETUP_MANIFEST BASE_SETUP_REMOTE_NETWORK BASE_SETUP_VERIFY_PROJECT_RUNTIME BASE_SETUP_RECREATE_VENV BASE_SETUP_UPGRADE_PIP BASE_SETUP_YES BASE_SETUP_ALLOW_PROJECT_IDE_MUTATIONS
     setup_refresh_cached_paths
 }
 
@@ -496,14 +496,14 @@ setup_diagnostics_python_bin() {
     candidates+=("/usr/bin/python3")
     for candidate in "${candidates[@]}"; do
         if [[ -x "$candidate" ]] && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$candidate" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+            "$candidate" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.diagnostics --help >/dev/null 2>&1; then
             printf '%s\n' "$candidate"
             return 0
         fi
     done
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     if python_bin="$(setup_base_venv_python_bin "$venv_dir")" && env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -c 'import base_setup.diagnostics' >/dev/null 2>&1; then
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.diagnostics --help >/dev/null 2>&1; then
         printf '%s\n' "$python_bin"
         return 0
     fi
@@ -519,7 +519,7 @@ setup_run_diagnostics_json() {
     fi
     setup_ensure_cached_paths
     env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup.diagnostics "$@"
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.diagnostics "$@"
 }
 
 setup_base_check_metadata_fallback_finding_id() {
@@ -649,7 +649,7 @@ setup_base_check_metadata() {
     if python_bin="$(setup_diagnostics_python_bin)"; then
         setup_ensure_cached_paths
         if env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$python_bin" -m base_setup.diagnostics base-check-metadata "${args[@]}"; then
+            "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.diagnostics base-check-metadata "${args[@]}"; then
             return 0
         fi
     fi
@@ -670,7 +670,7 @@ setup_resolve_project_manifest() {
             setup_ensure_cached_paths
             protocol_output="$(
                 env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-                    "$python_bin" -m base_projects manifest "$BASE_SETUP_MANIFEST" --format command-protocol
+                    "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_projects manifest "$BASE_SETUP_MANIFEST" --format command-protocol
             )" || return $?
             base_command_protocol_decode_one project-reference "$protocol_output" || return 1
             result_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
@@ -691,7 +691,7 @@ setup_resolve_project_manifest() {
             setup_ensure_cached_paths
             protocol_output="$(
                 env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-                    "$python_bin" -m base_projects resolve "$requested_project" --format command-protocol
+                    "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_projects resolve "$requested_project" --format command-protocol
             )" || return 1
             base_command_protocol_decode_one project-route "$protocol_output" || return 1
             result_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
@@ -730,7 +730,7 @@ setup_resolve_project_route() {
 
     setup_ensure_cached_paths
     env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup --manifest "$manifest_path" --action route --format command-protocol "$project"
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup --manifest "$manifest_path" --action route --format command-protocol "$project"
 }
 
 setup_project_check_record_path() {
@@ -966,7 +966,7 @@ setup_run_project_pre_venv_layer() {
         BASE_PROJECT_MANIFEST="$manifest_path" \
         BASE_PROJECT_VENV_DIR="$project_venv_dir" \
         PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup "${args[@]}"
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup "${args[@]}"
 }
 
 setup_run_project_artifact_setup() {
@@ -1019,7 +1019,7 @@ setup_run_project_bootstrap_layer() {
             BASE_PROJECT_VENV_DIR="$project_venv_dir" \
             BASE_SETUP_RECREATE_PROJECT_VENV=true \
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$python_bin" -m base_setup "${args[@]}"
+            "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup "${args[@]}"
     else
         env "${project_env_args[@]}" \
             BASE_HOME="$BASE_HOME" \
@@ -1028,7 +1028,7 @@ setup_run_project_bootstrap_layer() {
             BASE_PROJECT_MANIFEST="$manifest_path" \
             BASE_PROJECT_VENV_DIR="$project_venv_dir" \
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$python_bin" -m base_setup "${args[@]}"
+            "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup "${args[@]}"
     fi
 }
 

@@ -15,6 +15,7 @@ from .python_artifacts import create_project_virtualenv
 from .python_artifacts import project_venv_recreate_enabled
 from .python_artifacts import python_artifact_installed
 from .project_routing import route_for_manifest
+from .runtime_inspection import unverified_runtime_check
 from .uv import manifest_uses_uv_project_manager
 
 
@@ -112,7 +113,7 @@ def read_test_requirements(manifest: BaseManifest) -> tuple[Path, tuple[Requirem
     return path, tuple(requirements)
 
 
-def check_test_requirements(manifest: BaseManifest) -> ArtifactCheck | None:
+def check_test_requirements(manifest: BaseManifest, *, verify_project_runtime: bool = True) -> ArtifactCheck | None:
     if manifest.test is None or manifest.test.requirements is None:
         return None
 
@@ -129,6 +130,12 @@ def check_test_requirements(manifest: BaseManifest) -> ArtifactCheck | None:
     if parsed is None:
         return None
     path, requirements = parsed
+    return check_requirements_environment(manifest, path, requirements, verify_project_runtime=verify_project_runtime)
+
+
+def check_requirements_environment(
+    manifest: BaseManifest, path: Path, requirements: tuple[RequirementSpec, ...], *, verify_project_runtime: bool,
+) -> ArtifactCheck:
     route = route_for_manifest(manifest)
     python_bin = route.project_venv_dir / "bin" / "python"
     if not python_bin.is_file():
@@ -141,6 +148,12 @@ def check_test_requirements(manifest: BaseManifest) -> ArtifactCheck | None:
             ),
             fix=f"Run 'basectl setup {manifest.project_name}' before running its tests.",
             finding_id=TEST_REQUIREMENTS_ENVIRONMENT_FINDING_ID,
+        )
+
+    if not verify_project_runtime:
+        return unverified_runtime_check(
+            manifest, "test requirements environment", TEST_REQUIREMENTS_ENVIRONMENT_FINDING_ID,
+            details={"requirements": str(path), "sha256": requirements_file_digest(manifest) or ""},
         )
 
     missing = [
