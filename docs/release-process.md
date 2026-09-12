@@ -68,7 +68,11 @@ release-prep PR moves them into a dated release section.
 
 Base-managed repositories can declare a `release:` section in
 `base_manifest.yaml` with the version file, changelog, tag prefix, GitHub
-repository, GitHub Release title, and optional Homebrew handoff metadata.
+repository, GitHub Release title, optional BOM enforcement, and optional
+Homebrew handoff metadata. Set `release.bom.required: true` when the release
+must use the governed cross-repository BOM path. When enabled, both
+`release check` and `release publish` require the exact BOM artifact through
+`--bom`.
 For an existing repository, `basectl repo configure --release --repo
 <owner/name>` adds the generic contract and a missing release guide without
 overwriting an existing declaration or guide. Use `basectl repo check --release`
@@ -101,7 +105,6 @@ Publishing is guarded:
 
 ```bash
 basectl release publish --version X.Y.Z --bom path/to/release-bom.json --dry-run
-basectl release publish --version X.Y.Z
 basectl release publish --version X.Y.Z --bom path/to/release-bom.json --yes
 ```
 
@@ -173,21 +176,41 @@ Complete these steps in `basefoundry/base`:
    `origin/main`. Do not publish from a feature branch, detached checkout,
    ahead/behind/diverged branch, stale remote-tracking ref, or a checkout whose
    `origin` does not match `release.github.repository`.
-7. Dry-run the guarded publish command:
+7. Dispatch the `Ecosystem Release BOM` workflow at the exact reviewed release
+   commit, wait for both required platform jobs to pass, and download the
+   `base-release-bom-X.Y.Z` artifact. Supply the exact component versions and
+   refs selected for this release:
 
    ```bash
-   basectl release publish --version X.Y.Z --dry-run
+   gh workflow run ecosystem-release-bom.yml \
+     --ref main \
+     -f base_version=X.Y.Z \
+     -f base_ref="$(git rev-parse HEAD)" \
+     -f base_cli_version=<version> -f base_cli_ref=<ref> \
+     -f base_bash_libs_version=<version> -f base_bash_libs_ref=<ref> \
+     -f base_demo_version=<version> -f base_demo_ref=<ref>
+   gh run download <run-id> --name base-release-bom-X.Y.Z \
+     --dir /private/tmp/base-release-bom-X.Y.Z
    ```
 
-8. Publish the GitHub-side release artifacts:
+8. Dry-run the guarded publish command with the downloaded BOM:
 
    ```bash
-   basectl release publish --version X.Y.Z
+   basectl release publish --version X.Y.Z \
+     --bom /private/tmp/base-release-bom-X.Y.Z/release-bom.json --dry-run
+   ```
+
+9. Publish the GitHub-side release artifacts with the same immutable BOM:
+
+   ```bash
+   basectl release publish --version X.Y.Z \
+     --bom /private/tmp/base-release-bom-X.Y.Z/release-bom.json
    ```
 
    Use `--yes` only when running from a trusted non-interactive release shell.
 
-9. Confirm the release tag and GitHub Release are visible on GitHub.
+10. Confirm the release tag, GitHub Release, and `release-bom.json` plus
+    `release-bom.sha256` assets are visible on GitHub.
 
 ## Homebrew Tap And Bottle Checklist
 

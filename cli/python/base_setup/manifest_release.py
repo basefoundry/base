@@ -5,6 +5,7 @@ from typing import Any
 
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import ReleaseConfig
+from base_setup.manifest_model import ReleaseBomConfig
 from base_setup.manifest_model import ReleaseGithubConfig
 from base_setup.manifest_model import ReleaseHomebrewConfig
 from base_setup.manifest_reader_common import read_optional_runner
@@ -20,7 +21,7 @@ def read_release_config(path: Path, release_data: Any) -> ReleaseConfig | None:
     if not isinstance(release_data, dict):
         raise ManifestError(f"{path}: release must be a mapping when provided.")
 
-    allowed_keys = {"version_file", "changelog", "tag_prefix", "github", "homebrew", "runner"}
+    allowed_keys = {"version_file", "changelog", "tag_prefix", "github", "bom", "homebrew", "runner"}
     unknown_keys = sorted(set(release_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: release has unsupported keys: {', '.join(unknown_keys)}.")
@@ -37,6 +38,7 @@ def read_release_config(path: Path, release_data: Any) -> ReleaseConfig | None:
     )
     tag_prefix = _read_release_string(path, "release.tag_prefix", release_data.get("tag_prefix", "v"))
     github = _read_release_github(path, release_data.get("github"))
+    bom = _read_release_bom(path, release_data.get("bom"))
     homebrew = _read_release_homebrew(path, release_data.get("homebrew"))
 
     return ReleaseConfig(
@@ -44,6 +46,7 @@ def read_release_config(path: Path, release_data: Any) -> ReleaseConfig | None:
         changelog=changelog,
         tag_prefix=tag_prefix,
         github=github,
+        bom=bom,
         homebrew=homebrew,
         runner=read_optional_runner(path, "release.runner", release_data.get("runner")),
     )
@@ -65,6 +68,23 @@ def _read_release_github(path: Path, github_data: Any) -> ReleaseGithubConfig:
         github_data.get("release_title", "{repository} v{version}"),
     )
     return ReleaseGithubConfig(repository=repository, release_title=release_title)
+
+
+def _read_release_bom(path: Path, bom_data: Any) -> ReleaseBomConfig | None:
+    if bom_data is None:
+        return None
+    if not isinstance(bom_data, dict):
+        raise ManifestError(f"{path}: release.bom must be a mapping when provided.")
+
+    allowed_keys = {"required"}
+    unknown_keys = sorted(set(bom_data) - allowed_keys)
+    if unknown_keys:
+        raise ManifestError(f"{path}: release.bom has unsupported keys: {', '.join(unknown_keys)}.")
+
+    required = bom_data.get("required", False)
+    if not isinstance(required, bool):
+        raise ManifestError(f"{path}: release.bom.required must be a boolean when provided.")
+    return ReleaseBomConfig(required=required)
 
 
 def _read_release_homebrew(path: Path, homebrew_data: Any) -> ReleaseHomebrewConfig | None:

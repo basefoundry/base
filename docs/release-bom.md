@@ -77,8 +77,10 @@ basectl release check --version 1.9.0 \
   --bom path/to/release-bom.json
 ```
 
-`release publish` accepts the same `--bom` option and refuses to publish when
-the BOM is missing, invalid, or does not match the reviewed release identity.
+`release publish` rejects a supplied BOM that is invalid or does not match the
+reviewed release identity. When the manifest sets `release.bom.required: true`,
+it also refuses to publish when `--bom` is missing. Manifests without that
+opt-in retain the backward-compatible optional BOM behavior.
 The supplied BOM must be the exact canonical artifact produced by `assemble`;
 pretty-printed or hand-edited JSON is rejected so its byte digest remains bound
 to the reviewed artifact. `assemble` writes a matching `*.sha256` sidecar next
@@ -86,7 +88,8 @@ to its output. When supplied, `release publish` validates and reuses that
 sidecar, then uploads `release-bom.json` and `release-bom.sha256` to the
 GitHub Release and verifies both assets after publication. Direct callers that
 supply a canonical BOM without a sidecar retain the compatibility fallback of
-having the stable publish asset generated from the BOM bytes. A BOM is
-intentionally opt-in for existing manifests so historical releases remain
-inspectable; Base 1.9.0 is the first Base release that requires this governed
-release path.
+having the stable publish asset generated from the BOM bytes. A BOM remains
+optional for manifests without the opt-in so historical releases remain
+inspectable; Base's own `base_manifest.yaml` requires this governed release
+path. Generate its artifact with the `Ecosystem Release BOM` workflow and pass
+the downloaded `release-bom.json` to both `release check` and `release publish`.

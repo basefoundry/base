@@ -16,10 +16,13 @@ def write_bom(path: Path, document: dict) -> Path:
     return path
 
 
-def release_context(bom_path: Path | None):
+def release_context(bom_path: Path | None, *, bom_required: bool = False):
     return SimpleNamespace(
         bom_path=bom_path,
-        release=SimpleNamespace(github=SimpleNamespace(repository="basefoundry/base")),
+        release=SimpleNamespace(
+            github=SimpleNamespace(repository="basefoundry/base"),
+            bom=SimpleNamespace(required=bom_required),
+        ),
         version="1.9.0",
     )
 
@@ -51,6 +54,15 @@ def test_bom_finding_accepts_an_unrequested_bom() -> None:
 
     assert finding.status == "ok"
     assert "No release BOM was requested" in finding.message
+
+
+def test_bom_finding_requires_bom_when_manifest_opts_in() -> None:
+    finding = bom_finding(release_context(None, bom_required=True), None)
+
+    assert finding.status == "error"
+    assert finding.name == "bom"
+    assert "release.bom.required" in finding.message
+    assert "--bom" in finding.message
 
 
 @pytest.mark.parametrize(

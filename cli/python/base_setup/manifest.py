@@ -24,6 +24,7 @@ from base_setup.manifest_model import IdeConfig
 from base_setup.manifest_model import PortHealthConfig
 from base_setup.manifest_model import PythonConfig
 from base_setup.manifest_model import ReleaseConfig  # pylint: disable=unused-import
+from base_setup.manifest_model import ReleaseBomConfig  # pylint: disable=unused-import
 from base_setup.manifest_model import ReleaseGithubConfig  # pylint: disable=unused-import
 from base_setup.manifest_model import ReleaseHomebrewConfig  # pylint: disable=unused-import
 from base_setup.manifest_model import TestConfig

@@ -420,7 +420,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
     def test_publish_dry_run_prints_planned_actions_without_running_commands(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            manifest_path = self.manifest_factory.write_release(root)
+            manifest_path = self.manifest_factory.write_release(root, bom_required=True)
 
             with (
                 mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS),
@@ -443,8 +443,56 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         self.assertIn("Would create annotated tag: v1.2.3", stdout)
         self.assertIn("Would push tag to origin: v1.2.3", stdout)
         self.assertIn("Would create GitHub Release: Demo v1.2.3", stdout)
+        self.assertIn("Release BOM requirement: required by manifest", stdout)
         self.assertIn("Homebrew handoff required after GitHub release", stdout)
         run_step.assert_not_called()
+
+    def test_check_blocks_missing_bom_when_manifest_requires_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root, bom_required=True)
+
+            with mock.patch(
+                "base_release.engine.gh_cli_finding",
+                return_value=ReleaseFinding("ok", "gh", "GitHub CLI is authenticated."),
+            ):
+                status, stdout, stderr = run_engine(
+                    ["check", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("error  bom", stdout)
+        self.assertIn("release.bom.required", stdout)
+        self.assertIn("--bom", stdout)
+
+    def test_publish_dry_run_blocks_missing_bom_when_manifest_requires_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root, bom_required=True)
+
+            with mock.patch(
+                "base_release.engine.gh_cli_finding",
+                return_value=ReleaseFinding("ok", "gh", "GitHub CLI is authenticated."),
+            ):
+                status, stdout, stderr = run_engine(
+                    [
+                        "publish",
+                        "--dry-run",
+                        "--version",
+                        "1.2.3",
+                        "--manifest",
+                        str(manifest_path),
+                    ],
+                    root,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertIn("Release publish blocked by readiness findings", stdout)
+        self.assertIn("release.bom.required", stdout)
+        self.assertNotIn("DRY RUN", stdout)
 
     def test_publish_with_invalid_bom_is_blocked_before_git_or_github_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -646,7 +694,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             bom_path = root / "candidate-bom.json"
-            bom_bytes = valid_release_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
+            bom_bytes = valid_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
             bom_path.write_bytes(bom_bytes)
             bom_path.with_suffix(".sha256").write_text(
                 f"{'0' * 64}  {bom_path.name}\n",
