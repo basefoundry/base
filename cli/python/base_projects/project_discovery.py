@@ -16,6 +16,7 @@ from base_projects.workspace_scanner import ProjectNotFoundError
 from base_projects.workspace_scanner import workspace_manifest_entries
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_schema import COMMAND_NAME_RE
 
 
 @dataclass(frozen=True, order=True)
@@ -92,26 +93,45 @@ def read_project_cache(workspace_root: Path, entries: tuple[ManifestEntry, ...])
     cache_path = project_cache_path(workspace_root)
     try:
         data = json.loads(cache_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
 
-    if data.get("version") != 1 or data.get("workspace") != str(workspace_root):
+    if (
+        not isinstance(data, dict)
+        or not isinstance(data.get("version"), int) or isinstance(data.get("version"), bool)
+    ):
         return None
-    if data.get("manifests") != [manifest_entry_to_json(entry) for entry in entries]:
+    if (
+        data.get("version") != 1 or data.get("workspace") != str(workspace_root)
+        or data.get("manifests") != [manifest_entry_to_json(entry) for entry in entries]
+    ):
         return None
 
+    records = data.get("projects")
+    if not isinstance(records, list) or len(records) != len(entries):
+        return None
     try:
-        projects = tuple(
-            Project(
-                name=project["name"],
-                root=Path(project["root"]),
-                manifest_path=Path(project["manifest_path"]),
-            )
-            for project in data["projects"]
-        )
-    except (KeyError, TypeError):
+        projects = tuple(project_from_cache_record(record) for record in records)
+        expected_paths = {entry.path.resolve() for entry in entries}
+        if {project.manifest_path for project in projects} != expected_paths:
+            raise ValueError("Cached projects do not match discovered manifests.")
+        return validate_unique_project_names(tuple(sorted(projects)))
+    except (KeyError, TypeError, ValueError, ProjectDiscoveryError, OSError):
         return None
-    return validate_unique_project_names(tuple(sorted(projects)))
+
+
+def project_from_cache_record(record: Any) -> Project:
+    if not isinstance(record, dict):
+        raise ValueError("Cached project must be an object.")
+    name, root, manifest_path = (record.get(key) for key in ("name", "root", "manifest_path"))
+    if not isinstance(name, str) or not COMMAND_NAME_RE.fullmatch(name):
+        raise ValueError("Cached project name is invalid.")
+    if not all(isinstance(value, str) and value and "\0" not in value for value in (root, manifest_path)):
+        raise ValueError("Cached project paths are invalid.")
+    root_path, manifest = Path(root), Path(manifest_path)
+    if not root_path.is_absolute() or not manifest.is_absolute() or manifest.parent != root_path:
+        raise ValueError("Cached project paths do not describe a project root and manifest.")
+    return Project(name=name, root=root_path, manifest_path=manifest)
 
 
 def write_project_cache(

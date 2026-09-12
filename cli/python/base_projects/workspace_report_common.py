@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -44,19 +45,25 @@ def project_last_check(project_name: str) -> ProjectLastCheck | None:
     record_path = base_state_root() / project_name / "checks" / "last.json"
     try:
         payload = json.loads(record_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
 
-    if payload.get("schema_version") != 1:
-        return None
-    if payload.get("project") != project_name:
+    if (
+        not isinstance(payload, dict)
+        or not isinstance(payload.get("schema_version"), int) or isinstance(payload.get("schema_version"), bool)
+        or payload.get("schema_version") != 1 or payload.get("project") != project_name
+    ):
         return None
 
     checked_at = payload.get("checked_at")
     status = payload.get("status")
-    if not isinstance(checked_at, str) or not isinstance(status, str):
+    if not isinstance(checked_at, str) or not isinstance(status, str) or status not in {"ok", "warn", "error"}:
         return None
-    return ProjectLastCheck(checked_at=checked_at, status=status)
+    try:
+        timestamp = datetime.fromisoformat(checked_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return ProjectLastCheck(checked_at=checked_at, status=status) if timestamp.tzinfo is not None else None
 
 
 def workspace_repo_check_details(repo: WorkspaceManifestRepo, root: Path, present: bool) -> dict[str, Any]:
