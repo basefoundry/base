@@ -12,6 +12,8 @@ load ./basectl_helpers.bash
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "status" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT" > "${BASE_TEST_WORKSPACE_STATUS_STATE:?}"
     printf 'ARGS=%s\n' "${*:4}"
@@ -43,6 +45,8 @@ EOF
         "$project_root/base_manifest.yaml"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "status" ]]; then
     [[ ! -e "${BASE_TEST_SHELL_PROJECT_ROOT:?}/.venv" ]] || exit 10
     ! grep -Eq '^[[:space:]]*python:' "${BASE_TEST_SHELL_PROJECT_ROOT:?}/base_manifest.yaml" || exit 11
@@ -74,6 +78,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "check" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -100,6 +106,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "doctor" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -128,6 +136,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "onboarding" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -156,6 +166,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "agent-brief" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -184,6 +196,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "clone" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -212,6 +226,8 @@ EOF
     touch "$source"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "pull" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -239,6 +255,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "update" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -268,6 +286,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "configure" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -296,6 +316,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "setup" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -325,6 +347,8 @@ EOF
     touch "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "init" ]]; then
     printf 'ARGS=%s\n' "${*:4}"
     exit 0
@@ -352,6 +376,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/base"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" &&
       "${2:-}" == "base_projects" &&
       "${3:-}" == "init" &&

@@ -1,5 +1,16 @@
 # Test-only builders for Base command-protocol fixtures emitted by fake Python commands.
 
+# Fake Python executables are Bash scripts loaded through BASH_ENV. Normalize
+# interpreter isolation and the owned entrypoint into the module arguments
+# those stubs model. Real Python integration tests exercise the actual launcher.
+if [[ "${0##*/}" == python* && "${1:-}" == -I ]]; then
+    shift
+    if [[ "${1:-}" == */base_cli_adapters/module_entrypoint.py ]]; then
+        shift
+        set -- -m "$@"
+    fi
+fi
+
 base_test_protocol_hex() {
     local LC_ALL=C
     local value="$1"

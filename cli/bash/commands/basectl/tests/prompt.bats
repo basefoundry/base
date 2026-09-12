@@ -59,6 +59,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
     shift 2
     printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
@@ -88,6 +90,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
     shift 2
     printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
@@ -118,6 +122,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
     shift 2
     printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
@@ -148,6 +154,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" ]]; then
     shift 2
     printf '%s\n' "$*" > "${BASE_TEST_PROMPT_STATE:?}"
@@ -176,6 +184,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_prompt" && "${3:-}" == "list" ]]; then
     printf 'product-self-review\tPeriodic Base product self-review\n'
     exit 0

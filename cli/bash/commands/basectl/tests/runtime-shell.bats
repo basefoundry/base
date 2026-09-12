@@ -92,6 +92,8 @@ export VIRTUAL_ENV
 EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin activation-source 0
     base_test_protocol_end
@@ -135,6 +137,8 @@ export VIRTUAL_ENV
 EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin activation-source 1
     base_test_protocol_activation_source_record 0 "${BASE_TEST_ACTIVATION_SOURCE:?}"
@@ -191,6 +195,8 @@ export VIRTUAL_ENV
 EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
     printf 'startup-run-root=%s\n' "${BASE_CLI_RUN_ROOT:-unset}" >&2
     printf 'startup-primary-log=%s\n' "${BASE_BASH_LIBS_PRIMARY_LOG:-unset}" >&2
@@ -211,6 +217,8 @@ printf 'unexpected base_projects args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$venv_dir/bin/python"
+    mkdir -p "$TEST_HOME/.base.d/base/.venv/bin"
+    cp "$venv_dir/bin/python" "$TEST_HOME/.base.d/base/.venv/bin/python"
 
     run env \
         HOME="$TEST_HOME" \
@@ -328,6 +336,8 @@ export VIRTUAL_ENV
 EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
     printf 'ERROR: %s: activate.source[1] script %q does not exist.\n' "$BASE_PROJECT_MANIFEST" ".base/missing.sh" >&2
     exit 1

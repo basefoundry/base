@@ -59,7 +59,7 @@ def workspace_manifest_project_statuses(
     workspace_root: Path,
     workspace_manifest: WorkspaceManifest,
     *,
-    probe_venv: bool = True,
+    probe_venv: bool = False,
 ) -> tuple[WorkspaceProjectStatus, ...]:
     entries_by_repo = {
         entry.path.parent.name: entry
@@ -82,7 +82,7 @@ def workspace_expected_repo_status(
     repo: WorkspaceManifestRepo,
     entry: ManifestEntry | None,
     *,
-    probe_venv: bool = True,
+    probe_venv: bool = False,
 ) -> WorkspaceProjectStatus:
     root = (workspace_root / repo.name).resolve()
     if entry is not None:
@@ -140,7 +140,7 @@ def attach_status_repo_metadata(
     )
 
 
-def workspace_extra_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -> WorkspaceProjectStatus:
+def workspace_extra_project_status(entry: ManifestEntry, *, probe_venv: bool = False) -> WorkspaceProjectStatus:
     status = workspace_project_status(entry, probe_venv=probe_venv)
     return replace(
         status,
@@ -153,7 +153,7 @@ def workspace_extra_project_status(entry: ManifestEntry, *, probe_venv: bool = T
     )
 
 
-def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -> WorkspaceProjectStatus:
+def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = False) -> WorkspaceProjectStatus:
     root = entry.path.parent.resolve()
     try:
         manifest = read_manifest(entry.path)
@@ -194,7 +194,7 @@ def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -
             name=manifest.project_name,
             root=root,
             manifest_path=entry.path.resolve(),
-            status="ok",
+            status="ok" if probe_venv else "warn",
             venv=ready_label,
             manifest="valid",
             issues=(),

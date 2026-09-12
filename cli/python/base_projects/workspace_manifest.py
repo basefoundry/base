@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from base_projects.workspace_repository_url import repository_url_problem
+from base_setup.manifest_loader import ManifestError, validate_mapping_keys
 
 try:
     import yaml
@@ -48,6 +49,8 @@ def read_workspace_manifest(path: Path) -> WorkspaceManifest:
     resolved_path = path.expanduser().resolve()
     try:
         data = yaml.safe_load(resolved_path.read_text(encoding="utf-8"))
+    except UnicodeError as exc:
+        raise WorkspaceManifestError(f"{resolved_path}: workspace manifest must use UTF-8 encoding: {exc}") from exc
     except OSError as exc:
         raise WorkspaceManifestError(f"{resolved_path}: unable to read workspace manifest: {exc}") from exc
     except yaml.YAMLError as exc:
@@ -55,6 +58,11 @@ def read_workspace_manifest(path: Path) -> WorkspaceManifest:
 
     if not isinstance(data, dict):
         raise WorkspaceManifestError(f"{resolved_path}: workspace manifest must be a YAML mapping.")
+
+    try:
+        validate_mapping_keys(data, resolved_path)
+    except ManifestError as exc:
+        raise WorkspaceManifestError(str(exc)) from exc
 
     allowed_top_level = {"schema_version", "workspace", "repos"}
     unknown_top_level = sorted(set(data) - allowed_top_level)

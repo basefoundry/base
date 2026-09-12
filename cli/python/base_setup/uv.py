@@ -15,6 +15,7 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
+from .runtime_inspection import unverified_runtime_check
 from .user_paths import prepend_user_local_bin_to_path
 from .user_paths import user_local_bin
 
@@ -58,7 +59,7 @@ def reconcile_uv_project(ctx: base_cli.Context, manifest: BaseManifest, dry_run:
     process.run_command(ctx, command, cwd=project_root)
 
 
-def check_uv(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
+def check_uv(manifest: BaseManifest, *, verify_project_runtime: bool = True) -> tuple[ArtifactCheck, ...]:
     uses_uv_manager = manifest_uses_uv_project_manager(manifest)
     uses_uv_runner = manifest_declares_uv_runner(manifest)
     if not uses_uv_manager and not uses_uv_runner:
@@ -83,7 +84,11 @@ def check_uv(manifest: BaseManifest) -> tuple[ArtifactCheck, ...]:
             and lock_path.is_file()
             and uv_project_venv_ready(venv_path)
         ):
-            checks.append(uv_project_environment_check(project_root, uv_bin))
+            checks.append(
+                uv_project_environment_check(project_root, uv_bin)
+                if verify_project_runtime
+                else unverified_runtime_check(manifest, "uv project environment", "BASE-P155")
+            )
         stale_check = stale_base_venv_check(manifest)
         if stale_check is not None:
             checks.append(stale_check)

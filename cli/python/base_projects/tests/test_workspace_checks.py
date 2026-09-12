@@ -557,7 +557,7 @@ class WorkspaceCheckTests(unittest.TestCase):
                 write_ready_python_bin(python_bin)
 
             status, stdout, stderr = invoke_engine(
-                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path)],
+                ["check", "--verify-project-runtime", "--workspace", str(workspace), "--manifest", str(manifest_path)],
                 base_home,
                 home,
             )
@@ -672,7 +672,10 @@ class WorkspaceCheckTests(unittest.TestCase):
             broken_root.mkdir(parents=True)
             (broken_root / "base_manifest.yaml").write_text("project: [", encoding="utf-8")
 
-            status, stdout, stderr = invoke_engine(["check", "--workspace", str(workspace)], base_home, home)
+            status, stdout, stderr = invoke_engine(
+                ["check", "--verify-project-runtime", "--workspace", str(workspace)],
+                base_home, home,
+            )
 
         self.assertEqual(status, 1)
         self.assertIn(f"Workspace check: {workspace.resolve()} (2 projects)", stdout)
@@ -704,7 +707,10 @@ class WorkspaceCheckTests(unittest.TestCase):
                     ),
                 ),
             ):
-                status, stdout, stderr = invoke_engine(["check", "--workspace", str(workspace)], base_home, home)
+                status, stdout, stderr = invoke_engine(
+                    ["check", "--verify-project-runtime", "--workspace", str(workspace)],
+                    base_home, home,
+                )
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -734,7 +740,10 @@ class WorkspaceCheckTests(unittest.TestCase):
                     ),
                 ),
             ):
-                status, stdout, stderr = invoke_engine(["doctor", "--workspace", str(workspace)], base_home, home)
+                status, stdout, stderr = invoke_engine(
+                    ["doctor", "--verify-project-runtime", "--workspace", str(workspace)],
+                    base_home, home,
+                )
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
@@ -817,7 +826,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             python_bin.chmod(0o755)
 
             status, stdout, stderr = invoke_engine(
-                ["check", "--workspace", str(workspace), "--format", "json"],
+                ["check", "--verify-project-runtime", "--workspace", str(workspace), "--format", "json"],
                 base_home,
                 home,
             )
@@ -912,7 +921,10 @@ class WorkspaceCheckTests(unittest.TestCase):
             python_bin = workspace / "demo" / ".venv" / "bin" / "python"
             write_ready_python_bin(python_bin)
 
-            status, stdout, stderr = invoke_engine(["doctor", "--workspace", str(workspace)], base_home, home)
+            status, stdout, stderr = invoke_engine(
+                ["doctor", "--verify-project-runtime", "--workspace", str(workspace)],
+                base_home, home,
+            )
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")

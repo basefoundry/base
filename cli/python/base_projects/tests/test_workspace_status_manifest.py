@@ -175,12 +175,12 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace: {workspace.resolve()} (5 repositories)", stdout)
         self.assertIn(f"Workspace manifest: {manifest_path.resolve()} (demo-suite)", stdout)
-        self.assertIn("base                 ok     yes      present  ready          valid    2026-06-17", stdout)
+        self.assertIn("base                 warn   yes      present  present_unverified valid    2026-06-17", stdout)
         self.assertIn("docs                 ok", stdout)
         self.assertIn("api                  error", stdout)
         self.assertIn("optional-tool        warn", stdout)
         self.assertIn("extra                warn", stdout)
-        self.assertIn("3 repositories need attention", stdout)
+        self.assertIn("4 repositories need attention", stdout)
 
     def test_workspace_status_manifest_supports_json_format(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -222,7 +222,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(payload["workspace_manifest"]["path"], str(manifest_path.resolve()))
         self.assertEqual(payload["workspace_manifest"]["name"], "demo-suite")
         self.assertEqual(payload["repository_count"], 4)
-        self.assertEqual(projects_by_repo["base"]["status"], "ok")
+        self.assertEqual(projects_by_repo["base"]["status"], "warn")
         self.assertEqual(projects_by_repo["base"]["required"], True)
         self.assertEqual(projects_by_repo["base"]["repo"], "present")
         self.assertEqual(projects_by_repo["base"]["url"], "git@github.com:codeforester/base.git")

@@ -500,9 +500,9 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace: {workspace.resolve()} (2 projects)", stdout)
-        self.assertIn("base                 ok     ready          valid    2026-06-17", stdout)
-        self.assertIn("demo                 warn   missing        valid    -", stdout)
-        self.assertIn("1 project(s) need attention", stdout)
+        self.assertIn("base                 warn   present_unverified valid    2026-06-17", stdout)
+        self.assertIn("demo                 warn   missing            valid    -", stdout)
+        self.assertIn("2 project(s) need attention", stdout)
 
     def test_workspace_status_reports_uv_project_venv_ready_without_base_project_venv(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -518,8 +518,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("bankbuddy            ok     ready          valid    -", stdout)
-        self.assertIn("All discovered projects look ok.", stdout)
+        self.assertIn("bankbuddy            warn   present_unverified valid    -", stdout)
+        self.assertIn("1 project(s) need attention", stdout)
 
     def test_workspace_status_reports_shell_only_project_venv_not_applicable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -638,7 +638,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
             stderr,
         )
 
-    def test_workspace_status_json_reports_uv_project_python_runtime(self) -> None:
+    def test_workspace_status_json_reports_unverified_uv_project_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             home = root / "home"
@@ -658,13 +658,12 @@ class ProjectDiscoveryTests(unittest.TestCase):
             )
 
         payload = json.loads(stdout)
-        runtime = payload["projects"][0]["python_runtime"]
+        project = payload["projects"][0]
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(runtime["manager"], "uv")
-        self.assertEqual(runtime["version"], "3.12")
-        self.assertEqual(runtime["python"], str(python_bin.resolve()))
-        self.assertEqual(runtime["venv"], str(python_bin.parent.parent.resolve()))
+        self.assertEqual(project["venv"], "present_unverified")
+        self.assertEqual(project["status"], "warn")
+        self.assertNotIn("python_runtime", project)
 
     def test_workspace_status_reports_invalid_manifest_without_stopping_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -683,8 +682,8 @@ class ProjectDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
-        self.assertIn("broken               error  unknown        invalid", stdout)
-        self.assertIn("demo                 warn   missing        valid", stdout)
+        self.assertIn("broken               error  unknown            invalid", stdout)
+        self.assertIn("demo                 warn   missing            valid", stdout)
         self.assertIn("2 project(s) need attention", stdout)
 
     def test_workspace_status_json_aggregates_mixed_project_states(self) -> None:
@@ -1087,7 +1086,13 @@ class ProjectDiscoveryTests(unittest.TestCase):
             (project_root / ".venv" / "bin").mkdir(parents=True)
             (project_root / ".venv" / "bin" / "python").touch()
 
-            with mock.patch("base_setup.test_requirements.python_artifact_installed", return_value=False):
+            with (
+                mock.patch(
+                    "base_projects.test_preflight.ManifestCommandTrustStore.status",
+                    return_value=mock.Mock(is_allowed=True),
+                ),
+                mock.patch("base_setup.test_requirements.python_artifact_installed", return_value=False),
+            ):
                 status, stdout, stderr = run_engine(["test-command", "demo", "--test-preflight"], base_home)
 
         self.assertEqual(status, 1)

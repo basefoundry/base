@@ -103,7 +103,7 @@ setup_linux_python_venv_available() {
     local python_bin="$1"
 
     [[ -n "$python_bin" ]] || return 1
-    "$python_bin" -m venv --help >/dev/null 2>&1
+    "$python_bin" -I -m venv --help >/dev/null 2>&1
 }
 
 setup_linux_bash_version_supported() {

@@ -8,6 +8,8 @@ write_manifest_trust_python() {
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_trust" && "${3:-}" == "require" && "${4:-}" == "demo" ]]; then
     if [[ "${BASE_TEST_TRUST_ALLOWED:-0}" == "1" ]]; then
         exit 0

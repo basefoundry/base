@@ -77,7 +77,7 @@ base_setup_print_ci_json() {
         base_std_fatal_error "Python is required to render Base CI setup JSON."
     setup_ensure_cached_paths
     env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup.ci_json setup-json \
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.ci_json setup-json \
         --project "${BASE_SETUP_PROJECT_NAME:-}" \
         --exit-code "$exit_code" \
         --stdout-file "$stdout_file" \

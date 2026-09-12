@@ -111,6 +111,11 @@ setup_project_artifact_build_command() {
         _BASE_SETUP_PROJECT_ARTIFACT_ARGS+=(--remote-network)
         _BASE_SETUP_PROJECT_ARTIFACT_REMOTE_NETWORK=true
     fi
+    if [[ "${BASE_SETUP_VERIFY_PROJECT_RUNTIME:-}" == true &&
+        ( "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == check ||
+        "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == doctor ) ]]; then
+        _BASE_SETUP_PROJECT_ARTIFACT_ARGS+=(--verify-project-runtime)
+    fi
     if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]] &&
         setup_project_ide_mutations_allowed; then
         _BASE_SETUP_PROJECT_ARTIFACT_ARGS+=(--allow-project-ide-mutations)
@@ -163,6 +168,11 @@ setup_project_artifact_prepare_bootstrap() {
 setup_project_artifact_handle_unhealthy_venv() {
     local precheck_json
 
+    if [[ ( "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == check ||
+        "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == doctor ) &&
+        "${BASE_SETUP_VERIFY_PROJECT_RUNTIME:-}" != true ]]; then
+        return 0
+    fi
     if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]] && setup_is_dry_run; then
         return 0
     fi
@@ -244,7 +254,9 @@ setup_project_artifact_handle_unhealthy_venv() {
 }
 
 setup_project_artifact_execute() {
-    if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_USES_UV_MANAGER" == true ||
+    if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == check ||
+        "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == doctor ||
+        "$_BASE_SETUP_PROJECT_ARTIFACT_USES_UV_MANAGER" == true ||
         "$_BASE_SETUP_PROJECT_ARTIFACT_REQUIRES_PYTHON" != true ]] ||
         { [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]] && setup_is_dry_run; }; then
         env "${_BASE_SETUP_PROJECT_ARTIFACT_PROJECT_ENV_ARGS[@]}" \
@@ -255,7 +267,7 @@ setup_project_artifact_execute() {
             BASE_PROJECT_MANIFEST="$_BASE_SETUP_PROJECT_ARTIFACT_MANIFEST_PATH" \
             BASE_PROJECT_VENV_DIR="$_BASE_SETUP_PROJECT_ARTIFACT_PROJECT_VENV_DIR" \
             PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-            "$_BASE_SETUP_PROJECT_ARTIFACT_PYTHON_BIN" -m base_setup "${_BASE_SETUP_PROJECT_ARTIFACT_ARGS[@]}"
+            "$_BASE_SETUP_PROJECT_ARTIFACT_PYTHON_BIN" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup "${_BASE_SETUP_PROJECT_ARTIFACT_ARGS[@]}"
     else
         env "${_BASE_SETUP_PROJECT_ARTIFACT_PROJECT_ENV_ARGS[@]}" \
             BASE_PLATFORM="$_BASE_SETUP_PROJECT_ARTIFACT_PLATFORM" \
