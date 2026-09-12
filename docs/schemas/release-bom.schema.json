@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://basefoundry.org/schemas/release-bom-v1.json",
   "title": "Base ecosystem release BOM",
+  "$comment": "Cross-field rules are enforced by validate_bom: non-moving component tags equal v<version>; the release repository component commit equals release.commit; every combination participant declares its platform in components[].platforms.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "release", "components", "combinations"],
@@ -12,9 +13,9 @@
       "additionalProperties": false,
       "required": ["repository", "version", "tag", "commit"],
       "properties": {
-        "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
+        "repository": {"type": "string", "pattern": "^(?!\\.{1,2}/)[^/\\s]+/(?!\\.{1,2}$)[^/\\s]+$"},
         "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
-        "tag": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "tag": {"type": "string", "pattern": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"},
         "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
       }
     },
@@ -35,9 +36,9 @@
       "additionalProperties": false,
       "required": ["repository", "version", "commit", "source_mode", "api_schema_version", "platforms", "required", "result", "evidence"],
       "properties": {
-        "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
-        "version": {"type": "string", "minLength": 1},
-        "tag": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "repository": {"type": "string", "pattern": "^(?!\\.{1,2}/)[^/\\s]+/(?!\\.{1,2}$)[^/\\s]+$"},
+        "version": {"type": "string", "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
+        "tag": {"type": "string", "pattern": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"},
         "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "source_mode": {"enum": ["release", "tag", "moving"]},
         "api_schema_version": {"type": "string", "minLength": 1},

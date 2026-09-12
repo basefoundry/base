@@ -30,7 +30,19 @@ participants, a release repository absent from the component list or required
 combinations, single-repository combinations, mutable release identities, and
 version or commit mismatches. Repository identity comparisons are
 case-insensitive, while repository values must still use the schema's owner/name
-form and commit values must be lowercase full SHAs.
+form without `.` or `..` path segments, and commit values must be lowercase full
+SHAs. All versions follow [SemVer 2.0.0](https://semver.org/), including the rule
+against leading zeros in numeric version and prerelease identifiers. Released
+and tagged rows retain Base's stable `vX.Y.Z` tag contract, and each tag must
+match that row's version. Advisory moving rows can use valid SemVer prerelease
+and build suffixes and omit the tag.
+
+The release repository's component commit must equal `release.commit`.
+Every combination's platform must appear in **every participant's** component
+`platforms` array, including advisory combinations. Platform names match exactly;
+repository identities match without case sensitivity. Schema patterns describe
+the lexical rules; `validate_bom` also enforces these cross-field relationships.
+Run the validator even when a document passes JSON Schema validation.
 The BOM is not a local dependency resolver. In a source-development checkout,
 Base still resolves providers in this order: explicit
 `BASE_BASH_LIBS_DIR`/`BASE_CLI_SOURCE_DIR`, sibling `base-bash-libs` and
