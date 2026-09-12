@@ -16,6 +16,7 @@ from base_projects.workspace_report_common import project_venv_ready
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_scanner import ManifestEntry
 from base_projects.workspace_scanner import workspace_manifest_entries
+from base_setup.check_records import CheckRecordContext
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.python_runtime import ProjectPythonRuntime
@@ -87,7 +88,7 @@ def workspace_expected_repo_status(
     if entry is not None:
         status = workspace_project_status(entry, probe_venv=probe_venv)
         return attach_status_repo_metadata(status, repo)
-    last_check = project_last_check(repo.name)
+    last_check = None
     if root.exists():
         return WorkspaceProjectStatus(
             name=repo.name,
@@ -165,10 +166,10 @@ def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = True) -
             venv="unknown",
             manifest="invalid",
             issues=(str(exc),),
-            last_check=project_last_check(root.name),
+            last_check=project_last_check(root.name, context=CheckRecordContext(root, entry.path)),
         )
 
-    last_check = project_last_check(manifest.project_name)
+    last_check = project_last_check(manifest.project_name, context=CheckRecordContext(root, entry.path))
     if not manifest_requires_project_python(manifest):
         return WorkspaceProjectStatus(
             name=manifest.project_name,

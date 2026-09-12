@@ -125,6 +125,7 @@ base_test_diagnostics_merge_status() {
 
 base_test_diagnostics_record_check() {
     local checked_at="" path="" project="" status="" tmp_path
+    local project_root="" manifest_path="" digest="" schema_version=1
 
     while (($#)); do
         case "$1" in
@@ -132,18 +133,38 @@ base_test_diagnostics_record_check() {
             --status) status="${2:-}"; shift 2 ;;
             --checked-at) checked_at="${2:-}"; shift 2 ;;
             --output-path) path="${2:-}"; shift 2 ;;
+            --project-root) project_root="${2:-}"; shift 2 ;;
+            --manifest-path) manifest_path="${2:-}"; shift 2 ;;
             *) return 2 ;;
         esac
     done
+    if [[ -n "$project_root" && -n "$manifest_path" ]]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            digest="$(sha256sum "$manifest_path")" || return 1
+        else
+            digest="$(shasum -a 256 "$manifest_path")" || return 1
+        fi
+        digest="${digest%% *}"
+        schema_version=2
+    fi
     mkdir -p -- "$(dirname -- "$path")" 2>/dev/null || return 1
     tmp_path="${path}.tmp.$$"
     if ! {
-        printf '{"schema_version":1,"project":'
+        printf '{"schema_version": %s,"project":' "$schema_version"
         base_test_diagnostics_json_string "$project"
         printf ',"command":"basectl check","status":'
         base_test_diagnostics_json_string "$status"
         printf ',"checked_at":'
         base_test_diagnostics_json_string "$checked_at"
+        if [[ "$schema_version" == 2 ]]; then
+            printf ',"identity":{"project_root":'
+            base_test_diagnostics_json_string "$project_root"
+            printf ',"manifest_path":'
+            base_test_diagnostics_json_string "$manifest_path"
+            printf ',"manifest_sha256":'
+            base_test_diagnostics_json_string "$digest"
+            printf '}'
+        fi
         printf '}\n'
     } >"$tmp_path" 2>/dev/null; then
         rm -f -- "$tmp_path"
@@ -225,6 +246,7 @@ base_test_diagnostics_module() {
             return $?
             ;;
         check-json|doctor-json)
+            local context_args=()
             [[ "$command" == doctor-json ]] && item_key="findings"
             while (($#)); do
                 case "$1" in
@@ -245,6 +267,7 @@ base_test_diagnostics_module() {
                         embedded_values+=("${3:-}")
                         shift 3
                         ;;
+                    --project-root|--manifest-path) context_args+=("$1" "$2"); shift 2 ;;
                     --record-path) record_path="${2:-}"; shift 2 ;;
                     --checked-at) checked_at="${2:-}"; shift 2 ;;
                     *) return 2 ;;
@@ -283,7 +306,7 @@ base_test_diagnostics_module() {
             done
             if [[ -n "$record_path" && -n "$project" && -n "$checked_at" && "$command" == check-json ]]; then
                 if ! base_test_diagnostics_record_check \
-                    --project "$project" --status "$status" --checked-at "$checked_at" --output-path "$record_path"; then
+                    --project "$project" --status "$status" --checked-at "$checked_at" --output-path "$record_path" "${context_args[@]}"; then
                     printf ', "record": '
                     base_test_diagnostics_record_warning "$record_path"
                 fi

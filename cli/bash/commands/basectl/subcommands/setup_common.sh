@@ -741,6 +741,7 @@ setup_project_check_record_path() {
 
 setup_record_project_check_result() {
     local checked_at path project="$1" status="$2"
+    local context_args=()
 
     [[ -n "$project" ]] || return 0
     case "$status" in
@@ -755,11 +756,16 @@ setup_record_project_check_result() {
     # Keep external date -u here so persisted JSON records carry explicit UTC
     # without mutating shell TZ; Bash printf time formatting follows local time.
     checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')" || return 0
+    if [[ -n "${_BASE_SETUP_PROJECT_ARTIFACT_RESOLVED_ROOT:-}" &&
+        -n "${_BASE_SETUP_PROJECT_ARTIFACT_MANIFEST_PATH:-}" ]]; then
+        context_args+=(--project-root "$_BASE_SETUP_PROJECT_ARTIFACT_RESOLVED_ROOT"
+            --manifest-path "$_BASE_SETUP_PROJECT_ARTIFACT_MANIFEST_PATH")
+    fi
     if ! setup_run_diagnostics_json record-check \
         --project "$project" \
         --status "$status" \
         --checked-at "$checked_at" \
-        --output-path "$path" >/dev/null; then
+        --output-path "$path" "${context_args[@]}" >/dev/null; then
         base_std_log_warn \
             "Unable to persist latest check record at '$path'. Ensure the Base state directory is writable and rerun the check."
     fi
@@ -1277,6 +1283,11 @@ setup_run_check_json() {
     if [[ -n "$project" ]]; then
         args+=(--embedded-payload "project_checks" "$project_json")
         args+=(--record-path "$(setup_project_check_record_path "$project")" --checked-at "$checked_at")
+        if [[ -n "${_BASE_SETUP_PROJECT_ARTIFACT_RESOLVED_ROOT:-}" &&
+            -n "${_BASE_SETUP_PROJECT_ARTIFACT_MANIFEST_PATH:-}" ]]; then
+            args+=(--project-root "$_BASE_SETUP_PROJECT_ARTIFACT_RESOLVED_ROOT"
+                --manifest-path "$_BASE_SETUP_PROJECT_ARTIFACT_MANIFEST_PATH")
+        fi
     fi
     setup_run_diagnostics_json "${args[@]}"
 }

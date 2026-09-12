@@ -9,6 +9,7 @@ from base_projects import project_discovery as discovery
 from base_projects.workspace_report_common import project_last_check
 from base_projects.workspace_scanner import workspace_manifest_entries, ProjectDiscoveryError
 from base_projects.tests.test_workspace_checks import invoke_engine, write_default_manifest
+from base_setup.check_records import CheckRecordContext
 from base_setup.tests.helpers import fake_context
 
 
@@ -33,7 +34,8 @@ def local_state_fixture(tmp_path, monkeypatch):
     record = home / ".base.d" / "demo" / "checks" / "last.json"
     record.parent.mkdir(parents=True)
     record.write_text(json.dumps({
-        "schema_version": 1, "project": "demo", "checked_at": "2026-09-12T10:00:00Z", "status": "ok",
+        "schema_version": 2, "identity": CheckRecordContext(project, project / "base_manifest.yaml").identity(),
+        "project": "demo", "checked_at": "2026-09-12T10:00:00Z", "status": "ok",
     }), encoding="utf-8")
     return home, base, workspace, entries, cache, record
 
@@ -45,7 +47,7 @@ def test_optional_nonobject_and_unreadable_json_is_unavailable(local_state, raw)
     record.write_bytes(raw)
 
     assert discovery.read_project_cache(workspace, entries) is None
-    assert project_last_check("demo") is None
+    assert project_last_check("demo", context=CheckRecordContext(workspace / "demo", entries[0].path)) is None
 
 
 @pytest.mark.parametrize("field,value", [
@@ -81,12 +83,12 @@ def test_invalid_cached_project_fields_fall_back(local_state, field, value):
     ("status", []), ("status", ""), ("status", "success"),
 ])
 def test_invalid_latest_check_members_are_unavailable(local_state, field, value):
-    _home, _base, _workspace, _entries, _cache, record = local_state
+    _home, _base, workspace, entries, _cache, record = local_state
     payload = json.loads(record.read_text(encoding="utf-8"))
     payload[field] = value
     record.write_text(json.dumps(payload), encoding="utf-8")
 
-    assert project_last_check("demo") is None
+    assert project_last_check("demo", context=CheckRecordContext(workspace / "demo", entries[0].path)) is None
 
 
 def test_duplicate_cache_records_trigger_fresh_discovery(local_state):
@@ -133,7 +135,7 @@ def test_valid_optional_records_retain_existing_behavior(local_state):
     projects = discovery.read_project_cache(workspace, entries)
     assert projects is not None
     assert [project.name for project in projects] == ["demo"]
-    last_check = project_last_check("demo")
+    last_check = project_last_check("demo", context=CheckRecordContext(workspace / "demo", entries[0].path))
     assert last_check is not None
     assert last_check.status == "ok"
     assert last_check.checked_at == "2026-09-12T10:00:00Z"
