@@ -282,6 +282,27 @@ run_basectl_separate_stderr() {
     grep -Fqx "args=<tests/><-k><focused case>" "$TEST_STATE_DIR/fake-test.out"
 }
 
+@test "basectl test rejects unsupported requirement extras before running tests" {
+    cat > "$TEST_PROJECT_ROOT/base_manifest.yaml" <<'EOF'
+project:
+  name: demo
+test:
+  command: fake-test tests/
+  requirements: requirements.txt
+artifacts: []
+EOF
+    printf 'pip[feature]\n' > "$TEST_PROJECT_ROOT/requirements.txt"
+    run_basectl trust allow demo
+    [ "$status" -eq 0 ]
+
+    run_basectl test demo
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"unsupported requirement syntax 'pip[feature]'"* ]]
+    [[ "$output" == *"direct package names"* ]]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+}
+
 @test "basectl update-profile dry-run does not write real shell startup files" {
     run_basectl update-profile --dry-run
     [ "$status" -eq 0 ]
