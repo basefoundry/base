@@ -10,6 +10,7 @@ from typing import Any
 from base_cli_adapters.paths import base_state_root
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repository_url import redact_repository_url
+from base_setup.check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from base_setup.manifest_model import BaseManifest
 from base_setup.project_routing import route_for_manifest
 
@@ -41,18 +42,22 @@ def project_venv_ready(venv_dir: Path) -> bool:
     return completed.returncode == 0
 
 
-def project_last_check(project_name: str) -> ProjectLastCheck | None:
+def project_last_check(project_name: str, *, context: CheckRecordContext | None = None) -> ProjectLastCheck | None:
     record_path = base_state_root() / project_name / "checks" / "last.json"
     try:
         payload = json.loads(record_path.read_text(encoding="utf-8"))
+        identity = context.identity() if context is not None else None
     except (OSError, UnicodeError, json.JSONDecodeError):
         return None
 
     if (
         not isinstance(payload, dict)
         or not isinstance(payload.get("schema_version"), int) or isinstance(payload.get("schema_version"), bool)
-        or payload.get("schema_version") != 1 or payload.get("project") != project_name
+        or payload.get("schema_version") != CHECK_RECORD_SCHEMA_VERSION or payload.get("project") != project_name
     ):
+        return None
+
+    if identity is None or payload.get("identity") != identity:
         return None
 
     checked_at = payload.get("checked_at")

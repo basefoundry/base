@@ -502,6 +502,41 @@ EOF
     [[ "$output" != *"Traceback"* ]]
 }
 
+@test "saved check evidence follows the exact checkout and current manifest" {
+    local mode root
+    local first="$TEST_TMPDIR/first/shared"
+    local second="$TEST_TMPDIR/second/shared"
+    for root in "$first" "$second"; do
+        mkdir -p "$root"
+        printf 'project:\n  name: shared\nartifacts: []\n' > "$root/base_manifest.yaml"
+    done
+    for mode in text json; do
+        run_basectl check --ci --manifest "$first/base_manifest.yaml" --format "$mode"
+        [ "$status" -eq 0 ]
+        run "$TEST_INTEGRATION_PYTHON" -c '
+import hashlib, json, pathlib, sys
+record = json.loads(pathlib.Path(sys.argv[1]).read_text())
+root = pathlib.Path(sys.argv[2]).resolve()
+manifest = root / "base_manifest.yaml"
+assert record["schema_version"] == 2
+assert record["identity"] == {"project_root": str(root), "manifest_path": str(manifest),
+    "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest()}
+' "$TEST_HOME/.base.d/shared/checks/last.json" "$first"
+        [ "$status" -eq 0 ]
+
+        run_basectl workspace status --workspace "$TEST_TMPDIR/first" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'"checked_at":'* ]]
+        run_basectl workspace status --workspace "$TEST_TMPDIR/second" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'"last_check": null'* ]]
+    done
+    printf '# Changed since the saved check.\n' >> "$first/base_manifest.yaml"
+    run_basectl workspace status --workspace "$TEST_TMPDIR/first" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"last_check": null'* ]]
+}
+
 @test "public diagnostics report invalid manifest encoding without a traceback" {
     local command
     printf 'project: \377\n' > "$TEST_PROJECT_ROOT/base_manifest.yaml"
