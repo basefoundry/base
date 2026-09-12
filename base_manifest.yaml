@@ -20,6 +20,8 @@ release:
   github:
     repository: basefoundry/base
     release_title: "Base v{version}"
+  bom:
+    required: true
   homebrew:
     required: true
     tap_repository: basefoundry/homebrew-base

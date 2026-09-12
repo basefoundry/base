@@ -52,6 +52,11 @@ class ReleaseGithubConfig:
 
 
 @dataclass(frozen=True)
+class ReleaseBomConfig:
+    required: bool = False
+
+
+@dataclass(frozen=True)
 class ReleaseHomebrewConfig:
     required: bool
     tap_repository: str | None = None
@@ -65,6 +70,7 @@ class ReleaseConfig:
     changelog: str
     tag_prefix: str
     github: ReleaseGithubConfig
+    bom: ReleaseBomConfig | None = None
     homebrew: ReleaseHomebrewConfig | None = None
     runner: str | None = None
 

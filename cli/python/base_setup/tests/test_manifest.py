@@ -489,6 +489,8 @@ class ManifestParsingTests(unittest.TestCase):
                         "  github:",
                         "    repository: basefoundry/base",
                         "    release_title: \"Base v{version}\"",
+                        "  bom:",
+                        "    required: true",
                         "  homebrew:",
                         "    required: true",
                         "    tap_repository: basefoundry/homebrew-base",
@@ -511,6 +513,9 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.release.github.repository, "basefoundry/base")
         self.assertEqual(manifest.release.github.release_title, "Base v{version}")
         self.assertIsNone(manifest.release.runner)
+        self.assertIsNotNone(manifest.release.bom)
+        assert manifest.release.bom is not None
+        self.assertTrue(manifest.release.bom.required)
         self.assertIsNotNone(manifest.release.homebrew)
         assert manifest.release.homebrew is not None
         self.assertTrue(manifest.release.homebrew.required)
@@ -668,6 +673,7 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertEqual(manifest.release.tag_prefix, "v")
         self.assertEqual(manifest.release.github.repository, "codeforester/demo")
         self.assertEqual(manifest.release.github.release_title, "{repository} v{version}")
+        self.assertIsNone(manifest.release.bom)
         self.assertIsNone(manifest.release.homebrew)
 
 
@@ -687,6 +693,14 @@ class ManifestParsingTests(unittest.TestCase):
             ),
             "empty_tag_prefix": "release:\n  tag_prefix: ''\n  github:\n    repository: basefoundry/base",
             "homebrew_scalar": "release:\n  github:\n    repository: basefoundry/base\n  homebrew: true",
+            "bom_scalar": "release:\n  github:\n    repository: basefoundry/base\n  bom: true",
+            "bom_invalid_required": (
+                "release:\n"
+                "  github:\n"
+                "    repository: basefoundry/base\n"
+                "  bom:\n"
+                "    required: maybe"
+            ),
             "homebrew_required_missing_tap": (
                 "release:\n"
                 "  github:\n"

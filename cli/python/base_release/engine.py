@@ -262,6 +262,8 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
         print(f"Would create annotated tag: {ctx.tag_name}")
         print(f"Would push tag to origin: {ctx.tag_name}")
         print(f"Would create GitHub Release: {title}")
+        if ctx.release.bom is not None and ctx.release.bom.required:
+            print("Release BOM requirement: required by manifest")
         if ctx.bom_path is not None:
             print("Would upload release assets: release-bom.json, release-bom.sha256")
         print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")

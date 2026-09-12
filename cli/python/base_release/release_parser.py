@@ -146,6 +146,7 @@ def print_usage(file: TextIO = sys.stdout) -> None:
 
 Purpose:
   Inspect release readiness and guarded GitHub publishing for a Base-managed
-  project. Homebrew tap changes remain a manual handoff.""",
+  project. A manifest with release.bom.required: true requires --bom for
+  release check and publish. Homebrew tap changes remain a manual handoff.""",
         file=file,
     )

@@ -248,10 +248,10 @@ daily project loop commands from the local checkout.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl release check --version <version>` | Inspect release readiness without publishing. Supports all five report formats; JSON uses the shared v1 inspection envelope. | `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl release check --version <version>` | Inspect release readiness without publishing. Supports all five report formats; JSON uses the shared v1 inspection envelope. Manifests with `release.bom.required: true` also require `--bom <path>`. | `--manifest <path>`, `--bom <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl release plan --version <version>` | Print the release plan and downstream handoff details. | `--manifest <path>` |
 | `basectl release notes --version <version>` | Extract release notes for the requested version. | `--manifest <path>` |
-| `basectl release publish --version <version>` | Create the annotated Git tag and GitHub Release only after the configured repository, origin fetch/push URLs, live remote default branch, and local full `HEAD` SHA match; recheck before tagging and verify the local, pushed, and GitHub tag SHAs. | `--manifest <path>`, `--dry-run`, `--yes` |
+| `basectl release publish --version <version>` | Create the annotated Git tag and GitHub Release only after the configured repository, origin fetch/push URLs, live remote default branch, and local full `HEAD` SHA match; recheck before tagging and verify the local, pushed, and GitHub tag SHAs. Manifests with `release.bom.required: true` also require `--bom <path>`. | `--manifest <path>`, `--bom <path>`, `--dry-run`, `--yes` |
 | `basectl docs` | Open the Base documentation home page on GitHub. | `--show-url` |
 | `basectl export-context [project]` | Export a project's `.ai-context/` directory as Markdown or Zip. | `--workspace <path>`, `--format <markdown\|zip>`, `--output <path>`, `--print`, `--list-files` |
 | `basectl prompt list` | List repo-owned Markdown prompts that Base can render for AI-assisted workflows. | none |
@@ -1153,12 +1153,12 @@ See [docs/local-config.md](local-config.md).
 Inspect release readiness for a Base-managed repository with:
 
 ```bash
-basectl release check --version 1.9.0
-basectl release check --version 1.9.0 --format json
+basectl release check --version 1.9.0 --bom path/to/release-bom.json
+basectl release check --version 1.9.0 --bom path/to/release-bom.json --format json
 basectl release plan --version 1.9.0
 basectl release notes --version 1.9.0
-basectl release publish --version 1.9.0 --dry-run
-basectl release publish --version 1.9.0 --yes
+basectl release publish --version 1.9.0 --bom path/to/release-bom.json --dry-run
+basectl release publish --version 1.9.0 --bom path/to/release-bom.json --yes
 ```
 
 `basectl release check|plan|notes` are read-only. They validate the manifest

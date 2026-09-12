@@ -46,6 +46,12 @@ def release_findings(
 
 def bom_finding(ctx: ReleaseContext, reviewed_commit: str | None) -> ReleaseFinding:
     if ctx.bom_path is None:
+        if ctx.release.bom is not None and ctx.release.bom.required:
+            return ReleaseFinding(
+                "error",
+                "bom",
+                "Release BOM is required by release.bom.required; pass --bom <path>.",
+            )
         return ReleaseFinding("ok", "bom", "No release BOM was requested for this check.")
     if not ctx.bom_path.is_file():
         return ReleaseFinding("error", "bom", f"Release BOM is missing: {ctx.bom_path}")

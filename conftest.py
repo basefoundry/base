@@ -106,13 +106,14 @@ class ManifestFactory:
             ],
         )
 
-    def write_release(
+    def write_release(  # pylint: disable=too-many-arguments
         self,
         root: Path,
         *,
         version_file_content: str = "1.2.3\n",
         changelog: str | None = None,
         homebrew: bool = True,
+        bom_required: bool = False,
     ) -> Path:
         """Write a release-ready project with an initial Git commit."""
 
@@ -146,6 +147,8 @@ class ManifestFactory:
             "    repository: codeforester/demo",
             "    release_title: \"Demo v{version}\"",
         ]
+        if bom_required:
+            manifest_lines.extend(["  bom:", "    required: true"])
         if homebrew:
             manifest_lines.extend(
                 [
