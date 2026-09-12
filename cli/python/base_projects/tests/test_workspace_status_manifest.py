@@ -9,6 +9,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+from base_setup.check_records import CheckRecordContext
 from base_projects import engine
 
 
@@ -31,7 +32,11 @@ def write_last_check(home: Path, project: str, checked_at: str, status: str = "o
     record_path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
+                "identity": CheckRecordContext(
+                    home.parent / "workspace" / project,
+                    home.parent / "workspace" / project / "base_manifest.yaml",
+                ).identity(),
                 "project": project,
                 "command": "basectl check",
                 "status": status,

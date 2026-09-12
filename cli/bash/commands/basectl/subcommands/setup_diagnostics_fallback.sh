@@ -78,6 +78,8 @@ setup_diagnostics_fallback_record_warning() {
     printf '}'
 }
 
+# Without the Python identity writer, preserve the legacy optional record format.
+# Workspace readers treat these unbound records as unavailable evidence.
 setup_diagnostics_fallback_record_check() {
     local checked_at="" path="" project="" status="" tmp_path
     # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
@@ -85,6 +87,8 @@ setup_diagnostics_fallback_record_check() {
         "project|value|--project"
         "status|value|--status"
         "checked_at|value|--checked-at"
+        "project_root|value|--project-root"
+        "manifest_path|value|--manifest-path"
         "path|value|--output-path"
     )
     local -a positionals=()
@@ -195,6 +199,8 @@ setup_diagnostics_fallback_json() {
                 "embedded_values|repeatable|--embedded-value"
                 "record_path|value|--record-path"
                 "checked_at|value|--checked-at"
+                "project_root|value|--project-root"
+                "manifest_path|value|--manifest-path"
             )
             local -A parsed_options=()
             local i
@@ -202,7 +208,7 @@ setup_diagnostics_fallback_json() {
             [[ "$command" == doctor-json ]] && item_key="findings"
             while (($#)); do
                 case "$1" in
-                    --project|--record-path|--checked-at)
+                    --project|--record-path|--checked-at|--project-root|--manifest-path)
                         [[ $# -ge 2 ]] || base_std_fatal_error "Option '$1' requires an argument."
                         parser_args+=("$1" "$2")
                         shift 2

@@ -188,7 +188,7 @@ def select_workspace_test_targets(
     project_selector: str | None,
 ) -> tuple[WorkspaceTestTarget, ...]:
     if project_selector is None:
-        return targets
+        return validate_distinct_test_manifests(targets)
 
     requested_names: list[str] = []
     for raw_name in project_selector.split(","):
@@ -216,12 +216,33 @@ def select_workspace_test_targets(
             f"--projects contains unknown project name(s): {unknown}. Available projects: {available}."
         )
 
-    requested = set(requested_names)
-    return tuple(
-        target
-        for target in targets
-        if target.name in requested or target.project_name in requested
-    )
+    selected = {resolve_selected_target(targets, name).name for name in requested_names}
+    return validate_distinct_test_manifests(tuple(target for target in targets if target.name in selected))
+
+
+def resolve_selected_target(targets: tuple[WorkspaceTestTarget, ...], name: str) -> WorkspaceTestTarget:
+    repositories = [target for target in targets if target.name == name]
+    matches = repositories or [target for target in targets if target.project_name == name]
+    if len(matches) != 1:
+        raise WorkspaceTestSelectionError(
+            f"Project name '{name}' is ambiguous; select its workspace repository name instead."
+        )
+    return matches[0]
+
+
+def validate_distinct_test_manifests(targets: tuple[WorkspaceTestTarget, ...]) -> tuple[WorkspaceTestTarget, ...]:
+    seen: dict[Path, str] = {}
+    for target in targets:
+        if target.action != "test" or target.manifest_path is None:
+            continue
+        manifest = target.manifest_path.resolve()
+        if manifest in seen:
+            raise WorkspaceTestSelectionError(
+                f"Selected repositories '{seen[manifest]}' and '{target.name}' resolve to the same manifest "
+                f"'{manifest}'. Select only one repository alias."
+            )
+        seen[manifest] = target.name
+    return targets
 
 
 # pylint: disable=too-many-arguments
@@ -288,13 +309,13 @@ def execute_workspace_test_target(
     if target.project_name is None:
         return WorkspaceTestResult("failed", "test target is missing project routing metadata")
 
+    # Resolve the current project from the already selected checkout. A named
+    # lookup would rescan unrelated siblings and can redirect duplicate names.
     command = [
         str(basectl),
         "test",
         "--workspace",
         str(workspace_root),
-        "--project",
-        target.project_name,
     ]
     env = os.environ.copy()
     env["BASE_HOME"] = str(ctx.application_home)

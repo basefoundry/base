@@ -504,6 +504,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_shell_manifest(workspace / "beta", "beta")
             write_record = workspace_checks.write_check_record
 
+            # pylint: disable-next=too-many-arguments
             def write_partially(
                 path: Path,
                 project: str,
@@ -511,6 +512,7 @@ class WorkspaceCheckTests(unittest.TestCase):
                 checked_at: str,
                 *,
                 command: str,
+                context,
             ) -> bool:
                 if project == "beta":
                     return False
@@ -520,6 +522,7 @@ class WorkspaceCheckTests(unittest.TestCase):
                     result_status,
                     checked_at,
                     command=command,
+                    context=context,
                 )
 
             with mock.patch.object(
