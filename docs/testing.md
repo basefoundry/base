@@ -173,7 +173,10 @@ test:
 ```
 
 Base supports direct package names with optional exact `==` versions in this
-file. `basectl setup <project>` installs the file into the routed project
+file. Package extras such as `package[feature]==1.0` are unsupported and produce
+`BASE-P180`; Base cannot verify their dependencies from the base distribution
+alone. Declare the required direct packages explicitly, or use the project's
+dependency manager for extras. `basectl setup <project>` installs the file into the routed project
 virtual environment. `basectl check <project>` and `basectl doctor <project>`
 validate the requirements file statically and report package readiness as
 unverified (`BASE-P181`). Add `--verify-project-runtime` after reviewing the

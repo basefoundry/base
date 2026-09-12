@@ -22,7 +22,7 @@ from .uv import manifest_uses_uv_project_manager
 TEST_REQUIREMENTS_FILE_FINDING_ID = "BASE-P180"
 TEST_REQUIREMENTS_ENVIRONMENT_FINDING_ID = "BASE-P181"
 _DIRECT_REQUIREMENT_RE = re.compile(
-    r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[A-Za-z0-9_,.-]+\])?"
+    r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)"
     r"(?:(?P<operator>===|==)\s*(?P<version>[A-Za-z0-9][A-Za-z0-9.!+_-]*))?$"
 )
 
@@ -93,13 +93,15 @@ def read_test_requirements(manifest: BaseManifest) -> tuple[Path, tuple[Requirem
         if candidate.startswith(("-", "http://", "https://")):
             raise ArtifactError(
                 f"{path}:{line_number} uses unsupported requirement syntax '{candidate}'. "
-                "Base currently supports direct package names with optional == versions only."
+                "Base currently supports direct package names with optional == versions only; "
+                "package extras are not supported."
             )
         match = _DIRECT_REQUIREMENT_RE.fullmatch(candidate)
         if match is None:
             raise ArtifactError(
                 f"{path}:{line_number} uses unsupported requirement syntax '{candidate}'. "
-                "Base currently supports direct package names with optional == versions only."
+                "Base currently supports direct package names with optional == versions only; "
+                "package extras are not supported."
             )
         requirements.append(
             RequirementSpec(
