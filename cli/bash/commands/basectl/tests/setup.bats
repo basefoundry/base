@@ -482,6 +482,8 @@ EOF
     local demo_venv_dir="$TEST_TMPDIR/.venv"
     local inherited_venv="$TEST_TMPDIR/active-base-venv"
     local manifest_path="$TEST_TMPDIR/demo_manifest.yaml"
+    local mode expected_python actual_python
+    local preview_args=()
 
     create_brew_stub
     create_xcode_stubs
@@ -495,19 +497,30 @@ EOF
     create_project_setup_venv_stub "$inherited_venv"
     printf 'project:\n  name: demo\npython: {}\nartifacts: []\n' > "$manifest_path"
 
-    run_base_command \
-        BASE_PROJECT=base \
-        BASE_PROJECT_VENV_DIR="$inherited_venv" \
-        setup --dry-run --manifest "$manifest_path" demo
+    for mode in apply preview; do
+        preview_args=()
+        expected_python="$demo_venv_dir/bin/python"
+        if [[ "$mode" == preview ]]; then
+            preview_args=(--dry-run)
+            expected_python="$base_venv_dir/bin/python"
+        fi
+        : > "$TEST_STATE_DIR/project-setup-python"
+        run_base_command \
+            BASE_PROJECT=base \
+            BASE_PROJECT_VENV_DIR="$inherited_venv" \
+            setup "${preview_args[@]}" --manifest "$manifest_path" demo
 
-    [ "$status" -eq 0 ]
-    [ -f "$TEST_STATE_DIR/project-setup-python" ]
-    actual_python="$(cat "$TEST_STATE_DIR/project-setup-python")"
-    [[ "$actual_python" == *"$demo_venv_dir/bin/python"* ]] || {
-        printf 'actual project setup python: %s\n' "$actual_python" >&3
-        false
-    }
-    [[ "$actual_python" != *"$inherited_venv/bin/python"* ]]
+        [ "$status" -eq 0 ]
+        actual_python="$(cat "$TEST_STATE_DIR/project-setup-python")"
+        [[ "$actual_python" == *"$expected_python"* ]] || {
+            printf 'actual %s setup python: %s\n' "$mode" "$actual_python" >&3
+            false
+        }
+        [[ "$actual_python" != *"$inherited_venv/bin/python"* ]]
+        if [[ "$mode" == preview ]]; then
+            [[ "$actual_python" != *"$demo_venv_dir/bin/python"* ]]
+        fi
+    done
 }
 
 @test "setup installs Base Python packages without pip self-version notices" {
