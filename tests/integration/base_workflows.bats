@@ -245,6 +245,27 @@ run_basectl_separate_stderr() {
     [[ "$output" == *"Base doctor found no blocking issues for project 'demo'."* ]]
 }
 
+@test "fresh project setup preview completes without creating its runtime" {
+    rm -rf "$TEST_PROJECT_ROOT/.venv"
+    cat > "$TEST_PROJECT_ROOT/base_manifest.yaml" <<'YAML'
+project:
+  name: demo
+test:
+  command: 'true'
+  requirements: requirements.txt
+artifacts: []
+YAML
+    printf 'fixture==1.0\n' > "$TEST_PROJECT_ROOT/requirements.txt"
+
+    run_basectl setup --dry-run --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Would create project virtual environment at '$TEST_PROJECT_ROOT/.venv'"* ]]
+    [[ "$output" == *"-r $TEST_PROJECT_ROOT/requirements.txt"* ]]
+    [[ "$output" == *"Project 'demo' setup is complete."* ]]
+    [ ! -e "$TEST_PROJECT_ROOT/.venv" ]
+}
+
 @test "basectl check and doctor emit structured project JSON" {
     run_basectl_separate_stderr check demo --format json
     [ "$status" -eq 0 ]
