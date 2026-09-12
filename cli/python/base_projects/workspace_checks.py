@@ -19,6 +19,7 @@ from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_scanner import ManifestEntry
 from base_projects.workspace_scanner import workspace_manifest_entries
 from base_projects.workspace_scanner import workspace_repository_paths
+from base_setup.check_records import CheckRecordContext
 from base_setup.checks import ArtifactCheck
 from base_setup.checks import checks_status
 from base_setup.checks import doctor_status
@@ -74,6 +75,7 @@ def persist_workspace_check_records(
                 result.status,
                 checked_at,
                 command=WORKSPACE_CHECK_COMMAND,
+                context=CheckRecordContext(result.root, result.manifest_path) if result.manifest_path else None,
             )
         except OSError:
             written = False
