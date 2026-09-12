@@ -4,6 +4,7 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
+from base_trust.guidance import allow_command_text
 from base_trust.trust_store import ManifestCommandTrustStore
 from base_trust.trust_store import compute_trust_identity
 from base_trust.trust_store import manifest_command_surfaces_from_manifest
@@ -251,7 +252,7 @@ def trust_command_for_status(status: WorkspaceProjectStatus) -> str | None:
         return None
     if ManifestCommandTrustStore().status(identity).is_allowed:
         return None
-    return f"basectl trust allow {identity.project_name} --manifest-sha256 {identity.manifest_sha256}"
+    return allow_command_text(identity)
 
 
 def next_action_for_status(status: WorkspaceProjectStatus, status_name: str) -> str:
