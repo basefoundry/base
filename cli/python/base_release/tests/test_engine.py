@@ -646,7 +646,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             bom_path = root / "candidate-bom.json"
-            bom_bytes = valid_release_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
+            bom_bytes = valid_bom_bytes("codeforester/demo", "1.2.3", READY_SHA)
             bom_path.write_bytes(bom_bytes)
             bom_path.with_suffix(".sha256").write_text(
                 f"{'0' * 64}  {bom_path.name}\n",
