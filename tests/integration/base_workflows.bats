@@ -481,6 +481,79 @@ EOF
     [[ "$output" == *"[DRY-RUN] No repositories were modified."* ]]
 }
 
+@test "workspace test runs only the selected project beside a malformed sibling" {
+    local workspace_manifest="$TEST_TMPDIR/test-workspace.yaml"
+    cat > "$TEST_PROJECT_ROOT/base_manifest.yaml" <<'YAML'
+project:
+  name: demo
+python: {}
+test:
+  command: fake-test tests/
+  requirements: requirements.txt
+artifacts: []
+YAML
+    printf 'pip\n' > "$TEST_PROJECT_ROOT/requirements.txt"
+    run_basectl test demo
+    [ "$status" -eq 1 ]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+    run_basectl trust allow demo
+    [ "$status" -eq 0 ]
+    mkdir -p "$TEST_WORKSPACE/bad"
+    printf 'project:\n  name: bad\nunsupported: true\n' > "$TEST_WORKSPACE/bad/base_manifest.yaml"
+    printf 'schema_version: 1\nworkspace:\n  name: tests\nrepos:\n  - name: bad\n  - name: demo\n' > "$workspace_manifest"
+
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --projects demo --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"passed": 1'* ]]
+    [ -e "$TEST_STATE_DIR/fake-test.out" ]
+    grep -Fqx "pwd=$TEST_PROJECT_ROOT" "$TEST_STATE_DIR/fake-test.out"
+
+    rm "$TEST_STATE_DIR/fake-test.out"
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"passed": 1'* ]]
+    [[ "$output" == *'"failed": 1'* ]]
+    [ -e "$TEST_STATE_DIR/fake-test.out" ]
+    rm "$TEST_STATE_DIR/fake-test.out"
+
+    mv "$TEST_PROJECT_ROOT/.venv" "$TEST_PROJECT_ROOT/.venv-hidden"
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --projects demo --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"failed": 1'* ]]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+    mv "$TEST_PROJECT_ROOT/.venv-hidden" "$TEST_PROJECT_ROOT/.venv"
+
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --fail-fast --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"failed": 1'* ]]
+    [[ "$output" == *'"skipped": 1'* ]]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+}
+
+@test "workspace test keeps same-name checkouts distinct and rejects duplicate aliases" {
+    local workspace_manifest="$TEST_TMPDIR/test-workspace.yaml"
+    run_basectl trust allow demo
+    [ "$status" -eq 0 ]
+    mkdir -p "$TEST_WORKSPACE/other"
+    printf 'project:\n  name: demo\ntest:\n  command: touch wrong-checkout\nartifacts: []\n' \
+        > "$TEST_WORKSPACE/other/base_manifest.yaml"
+    printf 'schema_version: 1\nworkspace:\n  name: tests\nrepos:\n  - name: demo\n  - name: other\n' > "$workspace_manifest"
+
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --projects demo --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"passed": 1'* ]]
+    [ ! -e "$TEST_WORKSPACE/other/wrong-checkout" ]
+    grep -Fqx "pwd=$TEST_PROJECT_ROOT" "$TEST_STATE_DIR/fake-test.out"
+
+    rm "$TEST_STATE_DIR/fake-test.out"
+    ln -s "$TEST_PROJECT_ROOT" "$TEST_WORKSPACE/alias"
+    printf '  - name: alias\n' >> "$workspace_manifest"
+    run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --projects demo,alias --format json
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"same manifest"* ]]
+    [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
+}
+
 @test "public listing and workspace status recover from malformed optional JSON" {
     local cache
     export BASE_CACHE_DIR="$TEST_TMPDIR/optional-cache"
