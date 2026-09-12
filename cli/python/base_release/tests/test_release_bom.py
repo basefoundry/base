@@ -4,9 +4,11 @@ import copy
 import hashlib
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from base_release.release_bom import (
     ReleaseBomError,
@@ -15,7 +17,6 @@ from base_release.release_bom import (
     load_bom,
     read_bom_digest_sidecar,
     validate_bom,
-    validate_bom_file,
     write_bom_digest_sidecar,
 )
 from base_release.release_bom_cli import main
@@ -23,6 +24,14 @@ from base_release.release_bom_cli import main
 
 SHA = "a" * 40
 BASE_SHA = "b" * 40
+SCHEMA_PATH = Path(__file__).resolve().parents[4] / "docs/schemas/release-bom.schema.json"
+
+
+@pytest.fixture(name="bom_schema_validator", scope="module")
+def _bom_schema_validator() -> Draft202012Validator:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
 
 
 def valid_bom() -> dict:
@@ -82,6 +91,111 @@ def valid_bom() -> dict:
             }
         ],
     }
+
+
+@dataclass(frozen=True)
+class BomConformanceCase:
+    name: str
+    document: dict
+    schema_expected: bool
+    runtime_expected: bool
+    semantic_reason: str
+
+
+def _runtime_validator_accepts(document: dict) -> bool:
+    try:
+        validate_bom(document)
+    except ReleaseBomError:
+        return False
+    return True
+
+
+def conformance_corpus() -> tuple[object, ...]:
+    valid = valid_bom()
+    cases: list[object] = [
+        pytest.param(BomConformanceCase("valid", valid, True, True, ""), id="valid"),
+    ]
+
+    for name, path, key in (
+        ("unknown_top_level_key", (), "unexpected"),
+        ("unknown_release_key", ("release",), "unexpected"),
+        ("unknown_component_key", ("components", 0), "unexpected"),
+        ("unknown_combination_key", ("combinations", 0), "unexpected"),
+    ):
+        document = copy.deepcopy(valid)
+        target = document
+        for part in path:
+            target = target[part]
+        target[key] = True
+        cases.append(pytest.param(BomConformanceCase(name, document, False, False, ""), id=name))
+
+    document = copy.deepcopy(valid)
+    document["combinations"][0]["participants"] = ["basefoundry/base"]
+    cases.append(
+        pytest.param(BomConformanceCase("one_participant", document, False, False, ""), id="one_participant")
+    )
+
+    document = copy.deepcopy(valid)
+    document["release"]["version"] = "01.9.0"
+    document["release"]["tag"] = "v01.9.0"
+    cases.append(
+        pytest.param(
+            BomConformanceCase("invalid_release_version", document, False, False, ""),
+            id="invalid_release_version",
+        )
+    )
+
+    document = copy.deepcopy(valid)
+    document["components"][1]["version"] = "1.8.0-01"
+    cases.append(
+        pytest.param(
+            BomConformanceCase("invalid_component_version", document, False, False, ""),
+            id="invalid_component_version",
+        )
+    )
+
+    semantic_only_cases = [
+        (
+            "required_moving_source",
+            {"components": {2: {"required": True}}},
+            "required moving-source interaction",
+        ),
+        (
+            "required_failed_combination",
+            {"combinations": {0: {"result": "failed"}}},
+            "required result interaction",
+        ),
+        (
+            "component_tag_version_mismatch",
+            {"components": {1: {"tag": "v1.8.1"}}},
+            "component tag/version relationship",
+        ),
+        (
+            "release_component_commit_mismatch",
+            {"components": {0: {"commit": "d" * 40}}},
+            "release/component commit relationship",
+        ),
+        (
+            "combination_platform_mismatch",
+            {"components": {0: {"platforms": ["macos-14"]}}},
+            "participant platform relationship",
+        ),
+        (
+            "unknown_participant",
+            {"combinations": {0: {"participants": ["basefoundry/base", "basefoundry/unknown"]}}},
+            "participant component reference",
+        ),
+    ]
+    for name, changes, reason in semantic_only_cases:
+        document = copy.deepcopy(valid)
+        for section, indexes in changes.items():
+            for index, values in indexes.items():
+                document[section][index].update(values)
+        cases.append(
+            pytest.param(BomConformanceCase(name, document, True, False, reason), id=name)
+        )
+
+    return tuple(cases)
 
 
 def test_valid_bom_accepts_required_releases_and_advisory_moving_rows() -> None:
@@ -183,7 +297,11 @@ def test_digest_is_stable_for_mapping_order() -> None:
     assert bom_digest(document) == bom_digest(reordered)
 
 
-def test_assemble_writes_bytes_matching_reported_digest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_assemble_writes_bytes_matching_reported_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    bom_schema_validator: Draft202012Validator,
+) -> None:
     document = valid_bom()
     component_paths = []
     for index, component in enumerate(document["components"][:2]):
@@ -213,7 +331,10 @@ def test_assemble_writes_bytes_matching_reported_digest(tmp_path: Path, monkeypa
     )
     monkeypatch.setattr(sys, "argv", arguments)
     assert main() == 0
-    assert hashlib.sha256(output_path.read_bytes()).hexdigest() == bom_digest(load_bom(output_path))
+    assembled = load_bom(output_path)
+    bom_schema_validator.validate(assembled)
+    validate_bom(assembled, expected_repository=document["release"]["repository"], expected_version="2.1.0")
+    assert hashlib.sha256(output_path.read_bytes()).hexdigest() == bom_digest(assembled)
     assert (tmp_path / "release-bom.sha256").read_text(encoding="utf-8") == (
         f"{bom_digest(load_bom(output_path))}  release-bom.json\n"
     )
@@ -246,15 +367,21 @@ def test_duplicate_component_and_unknown_participant_are_rejected() -> None:
         validate_bom(unknown)
 
 
-def test_checked_in_fixtures_cover_valid_and_mutable_documents() -> None:
+def test_checked_in_fixtures_cover_valid_and_mutable_documents(
+    bom_schema_validator: Draft202012Validator,
+) -> None:
     fixture_root = Path(__file__).resolve().parents[4] / "tests" / "fixtures"
-    validate_bom_file(
-        fixture_root / "release-bom-valid.json",
+    valid_fixture = load_bom(fixture_root / "release-bom-valid.json")
+    bom_schema_validator.validate(valid_fixture)
+    validate_bom(
+        valid_fixture,
         expected_repository="basefoundry/base-bash-libs",
         expected_version="2.1.0",
     )
+    invalid_fixture = load_bom(fixture_root / "release-bom-invalid-mutable.json")
+    assert not bom_schema_validator.is_valid(invalid_fixture)
     with pytest.raises(ReleaseBomError, match="release.tag must be v<release.version>"):
-        validate_bom(load_bom(fixture_root / "release-bom-invalid-mutable.json"))
+        validate_bom(invalid_fixture)
 
 
 @pytest.mark.parametrize("source_mode", ["release", "tag"])
@@ -311,23 +438,36 @@ def test_repository_dot_segments_are_rejected(repository: str, target: str) -> N
         validate_bom(document)
 
 
-def test_schema_patterns_match_bom_version_tag_and_repository_contracts() -> None:
+def test_schema_patterns_match_bom_version_tag_and_repository_contracts(
+    bom_schema_validator: Draft202012Validator,
+) -> None:
     # Lexical constraints belong in the schema; cross-field relations need the validator.
-    from jsonschema import Draft202012Validator  # pylint: disable=import-outside-toplevel
-
-    schema_path = Path(__file__).resolve().parents[4] / "docs/schemas/release-bom.schema.json"
-    schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    Draft202012Validator.check_schema(schema)
-    validator = Draft202012Validator(schema)
-    validator.validate(valid_bom())
+    bom_schema_validator.validate(valid_bom())
     for field, value in (("repository", "../foo"), ("version", "01.9.0"), ("tag", "v01.9.0")):
         document = valid_bom()
         document["components"][0][field] = value
-        assert not validator.is_valid(document), (field, value)
+        assert not bom_schema_validator.is_valid(document), (field, value)
         document = valid_bom()
         document["release"][field] = value
-        assert not validator.is_valid(document), (field, value)
+        assert not bom_schema_validator.is_valid(document), (field, value)
     document = valid_bom()
     document["components"][2]["version"] = "1.9.0-alpha.1+001"
-    validator.validate(document)
+    bom_schema_validator.validate(document)
     validate_bom(document)
+
+
+@pytest.mark.parametrize(
+    "case",
+    conformance_corpus(),
+)
+def test_schema_and_runtime_validator_conformance_corpus(
+    bom_schema_validator: Draft202012Validator,
+    case: BomConformanceCase,
+) -> None:
+    schema_valid = bom_schema_validator.is_valid(case.document)
+    runtime_valid = _runtime_validator_accepts(case.document)
+
+    assert schema_valid == case.schema_expected, case.name
+    assert runtime_valid == case.runtime_expected, case.name
+    if schema_valid != runtime_valid:
+        assert case.semantic_reason, f"unannotated schema/runtime disagreement: {case.name}"

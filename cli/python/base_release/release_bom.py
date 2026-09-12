@@ -19,6 +19,23 @@ TAG_RE = re.compile(rf"^v{VERSION_CORE}$")
 RESULTS = {"passed", "failed", "not_tested"}
 SOURCE_MODES = {"release", "tag", "moving"}
 DIGEST_LINE_RE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<name>[^/\n]+)$")
+TOP_LEVEL_KEYS = frozenset({"schema_version", "release", "components", "combinations"})
+RELEASE_KEYS = frozenset({"repository", "version", "tag", "commit"})
+COMPONENT_KEYS = frozenset(
+    {
+        "repository",
+        "version",
+        "tag",
+        "commit",
+        "source_mode",
+        "api_schema_version",
+        "platforms",
+        "required",
+        "result",
+        "evidence",
+    }
+)
+COMBINATION_KEYS = frozenset({"name", "participants", "platform", "required", "result", "evidence"})
 
 
 class ReleaseBomError(ValueError):
@@ -45,10 +62,12 @@ def validate_bom(
     expected_version: str | None = None,
     expected_commit: str | None = None,
 ) -> None:
+    _reject_unknown_keys(document, "BOM", TOP_LEVEL_KEYS)
     if document.get("schema_version") != 1:
         raise ReleaseBomError("schema_version must be 1")
 
     release = _mapping(document, "release")
+    _reject_unknown_keys(release, "release", RELEASE_KEYS)
     release_repository = _repository(release, "repository", "release")
     release_version = _version(release, "release")
     release_tag = _string(release, "tag", "release.tag")
@@ -74,6 +93,7 @@ def validate_bom(
     for index, component in enumerate(components):
         path = f"components[{index}]"
         row = _mapping_value(component, path)
+        _reject_unknown_keys(row, path, COMPONENT_KEYS)
         repository = _repository(row, "repository", path)
         repository_key = repository.casefold()
         if repository_key in component_repositories:
@@ -122,6 +142,7 @@ def validate_bom(
     for index, combination in enumerate(combinations):
         path = f"combinations[{index}]"
         row = _mapping_value(combination, path)
+        _reject_unknown_keys(row, path, COMBINATION_KEYS)
         _string(row, "name", f"{path}.name")
         participants = row.get("participants")
         if not isinstance(participants, list) or not participants:
@@ -221,6 +242,12 @@ def _mapping_value(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ReleaseBomError(f"{path} must be an object")
     return value
+
+
+def _reject_unknown_keys(row: dict[str, Any], path: str, allowed_keys: frozenset[str]) -> None:
+    unknown_keys = sorted(set(row) - allowed_keys)
+    if unknown_keys:
+        raise ReleaseBomError(f"{path} has unsupported keys: {', '.join(unknown_keys)}")
 
 
 def _string(row: dict[str, Any], key: str, path: str) -> str:
