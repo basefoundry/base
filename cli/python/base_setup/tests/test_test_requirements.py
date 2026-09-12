@@ -127,7 +127,7 @@ class TestRequirementsTests(unittest.TestCase):
 
         expected_root = root.resolve()
         expected_venv = expected_root / ".venv"
-        create_virtualenv.assert_called_once_with(ctx, expected_venv, None)
+        create_virtualenv.assert_not_called()
         dry_run_command.assert_called_once_with(
             ctx,
             [
