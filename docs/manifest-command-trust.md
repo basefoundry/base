@@ -35,7 +35,7 @@ project code:
 - `basectl activate <project>` when it will source `activate.source` entries
 
 These paths remain allowed before approval because they inspect or report
-without executing project-owned shell code:
+without executing project runtimes or delegated tool configuration:
 
 - `basectl projects list`
 - `basectl workspace status`, `check`, and `doctor`
@@ -54,6 +54,36 @@ approval boundary: `basectl setup --dry-run` shows the complete app, extension,
 and user-settings plan, and applying that plan requires
 `--allow-project-ide-mutations`. `--yes` never supplies this approval. This
 keeps command execution trust and machine-wide IDE mutation consent separate.
+
+## Runtime verification consent
+
+Project `check` and `doctor`, workspace `check` and `doctor`, and workspace
+status/onboarding inspect manifests, files, and environment presence by default.
+An executable file is reported as `present_unverified`, not proof of a working
+runtime. Package inventories and Brewfile, mise, or uv configuration checks
+remain unverified when they would execute project-controlled inputs.
+
+After reviewing the project interpreter and tool configuration, opt in for one
+invocation:
+
+```bash
+basectl check --manifest /absolute/project/base_manifest.yaml --verify-project-runtime
+basectl workspace doctor --workspace /absolute/workspace --verify-project-runtime
+```
+
+`--verify-project-runtime` permits those probes to execute code. It is supported
+only by project and workspace check/doctor. `--yes` and a saved manifest command
+approval never enable it implicitly. Manifest approval records only the manifest
+identity described below; it does not verify the integrity of interpreters,
+installed packages, referenced scripts, or tool configuration. Test execution
+requires manifest command approval before its executable requirements preflight.
+
+Base-owned inspection modules run with Python's isolated import mode and the
+selected Base/base-cli source roots. They preserve the current directory for
+project discovery without importing modules from that directory or inherited
+`PYTHONPATH`. Base uses its own interpreter even in an active project environment;
+`BASE_SETUP_VENV_DIR` can select that Base environment. The selected Base runtime
+and explicit provider source overrides remain trusted inputs.
 
 ## Trust Identity
 

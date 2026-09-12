@@ -177,6 +177,10 @@ base_test_diagnostics_module() {
     local result_files=() embedded_keys=() embedded_values=() i
 
     case "$command" in
+        -h|--help)
+            printf 'Base diagnostics fixture\n'
+            return 0
+            ;;
         base-check-metadata)
             local metadata_names=()
             while (($#)); do

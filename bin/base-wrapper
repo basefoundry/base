@@ -118,7 +118,11 @@ main() {
     BASE_CLI_RUNTIME_OWNER=base
     export BASE_HOME BASE_PROJECT BASE_CLI_RUNTIME_OWNER
 
-    python_bin="${BASE_PROJECT_VENV_DIR:-$HOME/.base.d/$project/.venv}/bin/python"
+    if [[ "$project" == base ]]; then
+        python_bin="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}/bin/python"
+    else
+        python_bin="${BASE_PROJECT_VENV_DIR:-$HOME/.base.d/$project/.venv}/bin/python"
+    fi
     [[ -x "$python_bin" ]] || base_wrapper_die "Project virtual environment Python was not found at '$python_bin'. Run 'basectl setup'."
 
     base_cli_path="$(base_cli_runtime_source_root)" || base_wrapper_die "Unable to resolve the Base CLI provider."
@@ -136,6 +140,10 @@ main() {
     fi
     export PYTHONPATH
 
+    if [[ "$project" == base && "$package" == base_* ]]; then
+        export BASE_CLI_RUNTIME_SOURCE_ROOT="$base_cli_path"
+        exec "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" "$package" "$@"
+    fi
     exec "$python_bin" -m "$package" "$@"
 }
 

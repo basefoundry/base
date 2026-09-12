@@ -32,6 +32,8 @@ setup_activate_lifecycle_fixture() {
         "$ACTIVATE_WORKSPACE/demo"
     cat > "$ACTIVATE_BASE_PYTHON" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -75,6 +77,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -202,6 +206,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -242,6 +248,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -283,6 +291,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$workspace/demo/.venv/bin"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" true false
@@ -324,6 +334,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo/.venv/bin"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -364,6 +376,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$workspace/demo"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" true false
@@ -402,6 +416,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$workspace/base" "$caller"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "base" ]]; then
     base_test_protocol_project_route base "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${HOME:?}/.base.d/base/.venv" false false
@@ -448,6 +464,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo" "$caller"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
@@ -503,6 +521,8 @@ EOF
     mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")" "$workspace/demo"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_route demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false

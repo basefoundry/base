@@ -9,6 +9,8 @@ load ./setup_helpers.bash
     mkdir -p "$(dirname "$base_python")"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
     base_test_protocol_begin project-list-entry 2
     base_test_protocol_project_list_record 0 base /Users/test/base
@@ -294,7 +296,7 @@ EOF
     [[ "$output" == *"run_projects=base demo"* ]]
     [[ "$output" == *"export_context_projects=base demo"* ]]
     [[ "$output" == *"update_projects=base demo"* ]]
-    [[ "$output" == *"check_options=--ci --profile --format --manifest --remote-network"* ]]
+    [[ "$output" == *"check_options=--ci --profile --format --manifest --verify-project-runtime --remote-network"* ]]
     [[ "$output" == *"update_options=--dry-run"* ]]
     [[ "$output" == *"check_profiles=dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab"* ]]
     [[ "$output" == *"test_options=--workspace --project --dry-run"* ]]

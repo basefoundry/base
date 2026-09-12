@@ -540,7 +540,15 @@ _base_basectl_completion() {
             ;;
         workspace)
             case "${words[3]:-}" in
-                status|check|doctor|onboarding|agent-brief)
+                check|doctor)
+                    _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull update init configure setup test)' \
+                        '--workspace[Workspace directory to scan]:path:_files' \
+                        '--manifest[Local workspace manifest]:path:_files' \
+                        '--format[Output format]:format:(text csv tsv yaml json)' \
+                        '--verify-project-runtime[Allow execution of reviewed project runtimes and tool configuration]' \
+                        '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+                    ;;
+                status|onboarding|agent-brief)
                     _arguments '2:workspace command:(status check doctor onboarding agent-brief clone pull update init configure setup test)' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest[Local workspace manifest]:path:_files' \
@@ -636,6 +644,7 @@ _base_basectl_completion() {
                 '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
+                '--verify-project-runtime[Allow execution of reviewed project runtimes and tool configuration]' \
                 '--remote-network[Opt in to bounded project Git origin reachability checks]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Base project:->projects'
@@ -854,6 +863,7 @@ _base_basectl_completion() {
                         '--ci[Run check with CI-safe defaults]' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
+                        '--verify-project-runtime[Allow execution of reviewed project runtimes and tool configuration]' \
                         '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -862,6 +872,7 @@ _base_basectl_completion() {
                         '--ci[Run doctor with CI-safe defaults]' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
+                        '--verify-project-runtime[Allow execution of reviewed project runtimes and tool configuration]' \
                         '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
                         '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -970,6 +981,7 @@ _base_basectl_completion() {
                         '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                         '--format[Output format]:format:(text json)' \
                         '--manifest[Use a specific manifest]:path:_files' \
+                        '--verify-project-runtime[Allow execution of reviewed project runtimes and tool configuration]' \
                         '--remote-network[Opt in to bounded project Git origin reachability diagnostics]' \
                         '--no-color[Disable doctor status colors and symbols in text output]' \
                         '-v[Enable DEBUG logging]' \

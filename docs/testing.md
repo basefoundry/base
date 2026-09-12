@@ -44,7 +44,10 @@ basectl test <project>
 
 `basectl check` and `basectl doctor` are non-mutating diagnostics. They should
 not install dependencies, rewrite shell profiles, change manifests, or mutate
-repositories.
+repositories. By default they inspect static project state and report executable
+runtime checks as unverified. After reviewing the runtime and tool configuration,
+use `--verify-project-runtime` to run those checks. See
+[Runtime verification consent](manifest-command-trust.md#runtime-verification-consent).
 
 Map each symptom to its likely ownership before changing code:
 
@@ -175,9 +178,11 @@ file. Package extras such as `package[feature]==1.0` are unsupported and produce
 alone. Declare the required direct packages explicitly, or use the project's
 dependency manager for extras. `basectl setup <project>` installs the file into the routed project
 virtual environment. `basectl check <project>` and `basectl doctor <project>`
-report missing packages as `BASE-P181`, while `basectl test <project>` performs
-the same read-only preflight and does not execute the test command until the
-environment is ready. Paths outside the project root, unsupported requirement
+validate the requirements file statically and report package readiness as
+unverified (`BASE-P181`). Add `--verify-project-runtime` after reviewing the
+project runtime to probe installed packages. `basectl test <project>` requires
+manifest command approval before running that executable preflight and starts
+the test command only when the environment is ready. Paths outside the project root, unsupported requirement
 syntax, and uv-managed projects using this field fail closed; uv projects
 should declare test dependencies in `pyproject.toml` and use `uv sync`.
 

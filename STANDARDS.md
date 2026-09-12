@@ -90,9 +90,11 @@ rules that `basectl` uses internally.
 
 - `BASE_HOME` set to the physical Base installation
 - `BASE_PROJECT` set to the selected project
-- `PYTHONPATH` containing Base's `lib/python` and `cli/python`
-- Python resolved from `~/.base.d/<project>/.venv`, unless explicitly
-  overridden for tests
+- Base command imports limited to the selected `base-cli` provider and Base's
+  `cli/python`, using the isolated module entry point for Base-owned packages
+- Base commands using the Base interpreter (`BASE_SETUP_VENV_DIR` or
+  `~/.base.d/base/.venv`) even when a project environment is active
+- Project packages using `BASE_PROJECT_VENV_DIR` or `~/.base.d/<project>/.venv`
 
 Use `base-wrapper --project <project> <python-package>` whenever Bash needs to
 call Base's Python layer.

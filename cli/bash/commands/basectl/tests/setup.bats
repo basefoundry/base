@@ -318,6 +318,8 @@ load ./setup_helpers.bash
     printf '#!/usr/bin/env bash\n' > "$venv_dir/bin/activate"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -415,6 +417,8 @@ executable = $python_executable
 EOF
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -532,6 +536,8 @@ EOF
     : > "$venv_dir/pyvenv.cfg"
     cat > "$venv_dir/bin/python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ -n "${PYTHONPATH:-}" ]]; then
     printf 'pip subprocess inherited PYTHONPATH: %s\n' "$PYTHONPATH" >&2
     exit 1

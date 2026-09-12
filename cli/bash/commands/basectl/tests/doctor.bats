@@ -85,6 +85,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -109,6 +111,8 @@ create_doctor_linux_success_stubs() {
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
     cat > "$fake_bin/python3" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -121,6 +125,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -205,7 +211,9 @@ EOF
 @test "basectl doctor explain delegates to the local explanation renderer" {
     cat > "$TEST_MOCKBIN/python3" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == "-c" ]]; then
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-c" || ( "${1:-}" == "-m" && "${2:-}" == "base_setup.diagnostics" && "${3:-}" == "--help" ) ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_setup.finding_explanations" ]]; then
@@ -360,6 +368,8 @@ printf 'gh version test\n'
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -456,6 +466,8 @@ EOF
     mkdir -p "$fake_bin" "$(dirname "$venv_python")"
     cat > "$fake_bin/python3" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -467,6 +479,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -540,6 +554,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -607,6 +623,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -732,6 +750,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -859,6 +879,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -929,6 +951,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -991,11 +1015,13 @@ EOF
     cp "$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/fixtures/shell-only/base_manifest.yaml" "$manifest_path"
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
 fi
-if [[ "${1:-}" == "-c" ]]; then
+if [[ "${1:-}" == "-c" || ( "${1:-}" == "-m" && "${2:-}" == "base_setup.diagnostics" && "${3:-}" == "--help" ) ]]; then
     exit 0
 fi
 if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
@@ -1080,6 +1106,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -1189,6 +1217,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -1305,6 +1335,8 @@ EOF
     mkdir -p "$(dirname "$venv_python")"
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -1364,6 +1396,8 @@ exit 1
 EOF
     cat > "$venv_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "--version" ]]; then
     printf 'Python 3.13.test\n'
     exit 0
@@ -1424,7 +1458,7 @@ EOF
         BASE_TEST_PROJECT_ROOT="$workspace/demo" \
         BASE_TEST_XCODE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$TEST_TMPDIR/xcode-tools" \
-        "$BASE_REPO_ROOT/bin/basectl" doctor demo --remote-network --format json
+        "$BASE_REPO_ROOT/bin/basectl" doctor demo --verify-project-runtime --remote-network --format json
 
     [ "$status" -eq 1 ]
     [[ "$output" == *'"schema_version": 1'* ]]

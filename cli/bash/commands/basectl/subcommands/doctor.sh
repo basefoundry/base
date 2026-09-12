@@ -20,6 +20,8 @@ Options:
   --format <text|json>  Select output format. Defaults to text.
   --manifest <path>     Use this base_manifest.yaml; infer an omitted project.
   --remote-network      Check project Git origin; requires project or --manifest.
+  --verify-project-runtime
+                        Authorize project runtime/configuration execution for this check.
   --no-color            Disable doctor status colors and symbols in text output.
   -v                    Enable DEBUG logging for this subcommand.
   -h, --help            Show this help text.
@@ -76,7 +78,7 @@ base_doctor_explain_finding() {
         base_std_fatal_error "Python is required to render Base finding explanations."
     setup_ensure_cached_paths
     env BASE_HOME="$BASE_HOME" PYTHONPATH="$_BASE_SETUP_PYTHONPATH_CACHE" \
-        "$python_bin" -m base_setup.finding_explanations "$finding_id" --format "$output_format"
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_setup.finding_explanations "$finding_id" --format "$output_format"
 }
 
 base_doctor_explain_main() {
@@ -298,7 +300,7 @@ base_doctor_run_json() {
 
 base_doctor_subcommand_main() {
     local errors=0 output_format="text" profile_errors=0 project=""
-    local remote_network=false
+    local remote_network=false verify_project_runtime=false
 
     setup_clear_run_state
 
@@ -356,6 +358,9 @@ base_doctor_subcommand_main() {
             --remote-network)
                 remote_network=true
                 ;;
+            --verify-project-runtime)
+                verify_project_runtime=true
+                ;;
             --no-color)
                 BASE_SETUP_DOCTOR_NO_COLOR=true
                 export BASE_SETUP_DOCTOR_NO_COLOR
@@ -382,6 +387,12 @@ base_doctor_subcommand_main() {
         base_doctor_usage_error "Option '--remote-network' requires a project or '--manifest <path>'."
         return $?
     fi
+    if [[ "$verify_project_runtime" == true && -z "$project" && -z "${BASE_SETUP_MANIFEST:-}" ]]; then
+        base_doctor_usage_error "Option '--verify-project-runtime' requires a project or '--manifest <path>'."
+        return $?
+    fi
+    BASE_SETUP_VERIFY_PROJECT_RUNTIME="$verify_project_runtime"
+    export BASE_SETUP_VERIFY_PROJECT_RUNTIME
     BASE_SETUP_PROJECT_NAME="$project"
     BASE_SETUP_REMOTE_NETWORK="$remote_network"
     export BASE_SETUP_PROJECT_NAME
