@@ -19,7 +19,7 @@ Description:
   --manifest to also check that project's manifest-declared requirements.
 
   Check does not install or repair prerequisites, modify project files, or run
-  project tests.
+  project tests. Project runtime checks remain unverified by default.
 
 Arguments:
   project               Select a Base project by name. Omit it for a Base-only
@@ -33,6 +33,9 @@ Options:
                         Defaults to text.
   --manifest <path>     Use this base_manifest.yaml for project checks. When
                         project is omitted, infer it from manifest project.name.
+  --verify-project-runtime
+                        Authorize execution of reviewed project runtimes and tool
+                        configuration for this invocation.
   --remote-network      Also run a bounded Git origin reachability check.
                         Off by default; requires project or --manifest.
   -v                    Enable DEBUG logging for this subcommand.
@@ -91,7 +94,7 @@ base_check_usage_error() {
 base_check_subcommand_main() {
     local output_format="text"
     local project=""
-    local remote_network=false
+    local remote_network=false verify_project_runtime=false
 
     setup_clear_run_state
 
@@ -143,6 +146,9 @@ base_check_subcommand_main() {
             --remote-network)
                 remote_network=true
                 ;;
+            --verify-project-runtime)
+                verify_project_runtime=true
+                ;;
             -v)
                 setup_enable_debug_logging
                 ;;
@@ -165,6 +171,12 @@ base_check_subcommand_main() {
         base_check_usage_error "Option '--remote-network' requires a project or '--manifest <path>'."
         return $?
     fi
+    if [[ "$verify_project_runtime" == true && -z "$project" && -z "${BASE_SETUP_MANIFEST:-}" ]]; then
+        base_check_usage_error "Option '--verify-project-runtime' requires a project or '--manifest <path>'."
+        return $?
+    fi
+    BASE_SETUP_VERIFY_PROJECT_RUNTIME="$verify_project_runtime"
+    export BASE_SETUP_VERIFY_PROJECT_RUNTIME
     BASE_SETUP_PROJECT_NAME="$project"
     BASE_SETUP_REMOTE_NETWORK="$remote_network"
     export BASE_SETUP_PROJECT_NAME

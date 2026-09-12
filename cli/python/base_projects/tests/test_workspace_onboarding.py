@@ -176,14 +176,16 @@ class WorkspaceOnboardingTests(unittest.TestCase):
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
         self.assertEqual(payload["workspace_manifest"]["name"], "demo-suite")
         self.assertEqual(payload["repository_count"], 4)
-        self.assertEqual(payload["next_actions"], [])
-        self.assertEqual(repositories["base"]["status"], "ready")
+        self.assertEqual(len(payload["next_actions"]), 1)
+        self.assertEqual(payload["next_actions"][0]["description"], "Review runtimes and verify workspace health")
+        self.assertEqual(repositories["base"]["status"], "needs_verification")
         self.assertEqual(repositories["base"]["discovery_status"], "present")
         self.assertEqual(repositories["base"]["path"], str((workspace / "base").resolve()))
         self.assertEqual(repositories["base"]["setup_command"], f"cd {(workspace / 'base').resolve()} && basectl setup")
         self.assertEqual(
             repositories["base"]["validation_command"],
-            f"cd {(workspace / 'base').resolve()} && basectl check",
+            f"basectl check --manifest {(workspace / 'base' / 'base_manifest.yaml').resolve()} "
+            "--verify-project-runtime",
         )
         self.assertEqual(repositories["base"]["test_command"], "./bin/base-test")
         self.assertIsNone(repositories["base"]["clone_command"])
@@ -213,12 +215,14 @@ class WorkspaceOnboardingTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertIn(f"Workspace onboarding: {workspace.resolve()} (demo-suite)", stdout)
         self.assertIn(f"Workspace manifest: {manifest_path.resolve()}", stdout)
-        self.assertIn("base                 yes      ready", stdout)
+        self.assertIn("base                 yes      needs_verification", stdout)
         self.assertIn("api                  yes      missing_required", stdout)
         self.assertIn("optional-tool        no       missing_optional", stdout)
         self.assertIn(f"clone: git clone git@github.com:example/api.git {(workspace / 'api').resolve()}", stdout)
         self.assertIn("optional repository is missing; clone it only if this role needs it", stdout)
-        self.assertIn(f"validate: cd {(workspace / 'base').resolve()} && basectl check", stdout)
+        self.assertIn(
+            f"validate: basectl check --manifest {(workspace / 'base' / 'base_manifest.yaml').resolve()}", stdout,
+        )
         self.assertIn("test: ./bin/base-test", stdout)
         self.assertIn("Workspace onboarding — next actions (3 steps to ready):", stdout)
         self.assertIn(
@@ -272,11 +276,11 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 },
                 {
                     "order": 2,
-                    "description": "Verify workspace health",
+                    "description": "Review runtimes and verify workspace health",
                     "commands": [
                         (
                             f"basectl workspace check --workspace {workspace.resolve()} "
-                            f"--manifest {manifest_path.resolve()}"
+                            f"--manifest {manifest_path.resolve()} --verify-project-runtime"
                         )
                     ],
                 },

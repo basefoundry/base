@@ -71,7 +71,7 @@ setup_python_machine() {
     local machine python_bin="$1"
 
     [[ -x "$python_bin" ]] || return 1
-    machine="$("$python_bin" -c 'import platform; print(platform.machine() or "unknown")' 2>/dev/null || true)"
+    machine="$("$python_bin" -I -c 'import platform; print(platform.machine() or "unknown")' 2>/dev/null || true)"
     [[ -n "$machine" ]] || return 1
     printf '%s\n' "$machine"
 }
@@ -325,7 +325,7 @@ setup_base_python_package_installed() {
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
-    env -u PYTHONPATH "$python_bin" -m pip show "$package" >/dev/null 2>&1
+    env -u PYTHONPATH "$python_bin" -I -m pip show "$package" >/dev/null 2>&1
 }
 
 setup_install_base_python_package() {

@@ -9,6 +9,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_history" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
     printf 'ARGS=%s\n' "${*:3}"
@@ -32,6 +34,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_history" ]]; then
     printf 'ARGS=%s\n' "${*:3}"
     exit 0
@@ -53,6 +57,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_history" ]]; then
     printf 'ARGS=%s\n' "${*:3}"
     exit 0

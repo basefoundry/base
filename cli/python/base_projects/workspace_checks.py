@@ -25,13 +25,10 @@ from base_setup.checks import doctor_status
 from base_setup.diagnostics import check_record_warning
 from base_setup.diagnostics import write_check_record
 from base_setup.engine import manifest_checks
-from base_setup.engine import pre_venv_manifest_checks
 from base_setup.engine import read_default_manifest
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest
-from base_setup.project_routing import manifest_requires_project_python
-from base_setup.uv import manifest_uses_uv_project_manager
 
 
 WORKSPACE_CHECK_COMMAND = "basectl workspace check"
@@ -93,20 +90,26 @@ def workspace_project_check_results(
     ctx: base_cli.Context,
     workspace_root: Path,
     workspace_manifest: WorkspaceManifest | None = None,
+    *,
+    verify_project_runtime: bool = False,
 ) -> tuple[WorkspaceProjectCheckResult, ...]:
     default_manifest = read_default_manifest(ctx)
     if workspace_manifest is None:
         return tuple(
-            workspace_project_check_result(entry, default_manifest)
+            workspace_project_check_result(entry, default_manifest, verify_project_runtime=verify_project_runtime)
             for entry in workspace_manifest_entries(workspace_root, include_outside=False)
         )
-    return workspace_manifest_project_check_results(workspace_root, workspace_manifest, default_manifest)
+    return workspace_manifest_project_check_results(
+        workspace_root, workspace_manifest, default_manifest, verify_project_runtime=verify_project_runtime,
+    )
 
 
 def workspace_manifest_project_check_results(
     workspace_root: Path,
     workspace_manifest: WorkspaceManifest,
     default_manifest: BaseManifest,
+    *,
+    verify_project_runtime: bool = False,
 ) -> tuple[WorkspaceProjectCheckResult, ...]:
     entries_by_repo = {
         entry.path.parent.name: entry
@@ -118,10 +121,14 @@ def workspace_manifest_project_check_results(
     for repo in workspace_manifest.repos:
         entry = entries_by_repo.pop(repo.name, None)
         repository_paths_by_name.pop(repo.name, None)
-        results.append(workspace_expected_repo_check_result(workspace_root, repo, entry, default_manifest))
+        results.append(workspace_expected_repo_check_result(
+            workspace_root, repo, entry, default_manifest, verify_project_runtime=verify_project_runtime,
+        ))
 
     for repo_name in sorted(entries_by_repo):
-        results.append(workspace_extra_project_check_result(entries_by_repo[repo_name], default_manifest))
+        results.append(workspace_extra_project_check_result(
+            entries_by_repo[repo_name], default_manifest, verify_project_runtime=verify_project_runtime,
+        ))
     for repo_name in sorted(repository_paths_by_name):
         results.append(workspace_undeclared_repo_check_result(repository_paths_by_name[repo_name]))
 
@@ -133,10 +140,12 @@ def workspace_expected_repo_check_result(
     repo: WorkspaceManifestRepo,
     entry: ManifestEntry | None,
     default_manifest: BaseManifest,
+    *,
+    verify_project_runtime: bool = False,
 ) -> WorkspaceProjectCheckResult:
     root = (workspace_root / repo.name).resolve()
     if entry is not None:
-        result = workspace_project_check_result(entry, default_manifest)
+        result = workspace_project_check_result(entry, default_manifest, verify_project_runtime=verify_project_runtime)
         checks = (workspace_repo_presence_check(repo, root, present=True),) + result.checks
         return attach_check_result_repo_metadata(
             result,
@@ -200,8 +209,10 @@ def attach_check_result_repo_metadata(
 def workspace_extra_project_check_result(
     entry: ManifestEntry,
     default_manifest: BaseManifest,
+    *,
+    verify_project_runtime: bool = False,
 ) -> WorkspaceProjectCheckResult:
-    result = workspace_project_check_result(entry, default_manifest)
+    result = workspace_project_check_result(entry, default_manifest, verify_project_runtime=verify_project_runtime)
     checks = (workspace_extra_project_check(result),) + result.checks
     return replace(
         result,
@@ -217,6 +228,8 @@ def workspace_extra_project_check_result(
 def workspace_project_check_result(
     entry: ManifestEntry,
     default_manifest: BaseManifest,
+    *,
+    verify_project_runtime: bool = False,
 ) -> WorkspaceProjectCheckResult:
     root = entry.path.parent.resolve()
     manifest_path = entry.path.resolve()
@@ -233,14 +246,7 @@ def workspace_project_check_result(
             checks=checks,
         )
 
-    if not manifest_requires_project_python(manifest) or manifest_uses_uv_project_manager(manifest):
-        checks = manifest_checks(default_manifest, manifest)
-    else:
-        venv_check = project_venv_check(manifest)
-        if venv_check.ok:
-            checks = (venv_check,) + manifest_checks(default_manifest, manifest)
-        else:
-            checks = pre_venv_manifest_checks(manifest) + (venv_check,)
+    checks = manifest_checks(default_manifest, manifest, verify_project_runtime=verify_project_runtime)
 
     return WorkspaceProjectCheckResult(
         name=manifest.project_name,

@@ -24,14 +24,15 @@ class WorkspaceCommandOptions:
     yes: bool = False
     fail_fast: bool = False
     test_preflight: bool = False
+    verify_project_runtime: bool = False
 
 
 @dataclass(frozen=True)
 class ProjectCommandActions:
     list_projects: Callable[[base_cli.Context, str | None, str], int]
     workspace_status: Callable[[base_cli.Context, str | None, str, str | None], int]
-    workspace_check: Callable[[base_cli.Context, str | None, str, str | None], int]
-    workspace_doctor: Callable[[base_cli.Context, str | None, str, str | None], int]
+    workspace_check: Callable[[base_cli.Context, str | None, str, str | None, bool], int]
+    workspace_doctor: Callable[[base_cli.Context, str | None, str, str | None, bool], int]
     workspace_onboarding: Callable[[base_cli.Context, str | None, str, str | None], int]
     workspace_agent_brief: Callable[[base_cli.Context, str | None, str, str | None], int]
     workspace_clone: Callable[[base_cli.Context, WorkspaceCommandOptions], int]
@@ -69,6 +70,8 @@ def dispatch_projects_command(
     actions: ProjectCommandActions,
 ) -> int:
     command = arguments[0] if arguments else "list"
+    if options.verify_project_runtime and command not in {"check", "doctor"}:
+        raise ProjectUsageError("--verify-project-runtime is only supported for workspace check and doctor.")
     command_arguments = arguments[1:] if arguments else ()
     handler = PROJECT_COMMAND_HANDLERS.get(command)
     if handler is not None:
@@ -121,7 +124,9 @@ def _handle_check(
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("check", arguments, 0, 0)
-    return actions.workspace_check(ctx, options.workspace, options.output_format, options.workspace_manifest)
+    return actions.workspace_check(
+        ctx, options.workspace, options.output_format, options.workspace_manifest, options.verify_project_runtime,
+    )
 
 
 def _handle_doctor(
@@ -131,7 +136,9 @@ def _handle_doctor(
     actions: ProjectCommandActions,
 ) -> int:
     require_argument_count("doctor", arguments, 0, 0)
-    return actions.workspace_doctor(ctx, options.workspace, options.output_format, options.workspace_manifest)
+    return actions.workspace_doctor(
+        ctx, options.workspace, options.output_format, options.workspace_manifest, options.verify_project_runtime,
+    )
 
 
 def _handle_onboarding(

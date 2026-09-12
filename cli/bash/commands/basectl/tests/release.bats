@@ -86,6 +86,8 @@ load ./basectl_helpers.bash
     printf 'project:\n  name: demo\nartifacts: []\n' > "$manifest"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_release" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT" > "${BASE_TEST_RELEASE_STATE:?}"
     printf 'DISPLAY=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
