@@ -527,4 +527,13 @@ EOF
     [[ "$output" == *"v0.4.3"* ]]
     [[ "$output" == *"BASE_CLI_SOURCE_DIR"* ]]
     [[ "$output" != *"Traceback"* ]]
+
+    # The source bootstrap path must retain the same actionable error before setup.
+    mv "$TEST_HOME/.base.d/base/.venv" "$TEST_HOME/.base.d/base/.venv-saved"
+    ln -s "$TEST_INTEGRATION_PYTHON" "$TEST_MOCKBIN/python3"
+    run_basectl projects list --workspace "$TEST_WORKSPACE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"refresh_run_bundle_index must be callable"* ]]
+    [[ "$output" == *"BASE_CLI_SOURCE_DIR"* ]]
+    [[ "$output" != *"Traceback"* ]]
 }
