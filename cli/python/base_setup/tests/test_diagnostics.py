@@ -58,9 +58,9 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(payload["project"], "demo")
         request_checks = [check for check in checks if check["name"] == "requests"]
         self.assertEqual(len(request_checks), 1)
-        self.assertEqual(request_checks[0]["status"], "error")
+        self.assertEqual(request_checks[0]["status"], "warn")
         self.assertNotIn("ok", request_checks[0])
-        self.assertEqual(request_checks[0]["fix"], "basectl setup demo")
+        self.assertIn("--verify-project-runtime", request_checks[0]["fix"])
         self.assertEqual(request_checks[0]["details"]["artifact_type"], "python-package")
         self.assertEqual(request_checks[0]["details"]["manager"], "pip")
         self.assertEqual(request_checks[0]["details"]["package"], "requests")
@@ -130,7 +130,7 @@ class ProjectCheckTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(stdout.getvalue(), "")
         self.assertNotIn("Project doctor: demo", stderr.getvalue())
-        self.assertIn("Fix: basectl setup demo", stderr.getvalue())
+        self.assertIn("basectl setup demo --recreate-venv", stderr.getvalue())
 
 
 
@@ -154,9 +154,9 @@ class ProjectCheckTests(unittest.TestCase):
         findings = json.loads(stdout.getvalue())
         self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(status, 1)
-        self.assertEqual(findings[0]["id"], "BASE-P040")
+        self.assertEqual(findings[0]["id"], "BASE-P050")
         self.assertEqual(findings[0]["status"], "error")
-        self.assertEqual(findings[0]["fix"], "basectl setup demo")
+        self.assertIn("basectl setup demo --recreate-venv", findings[0]["fix"])
 
     def test_doctor_stream_contract_separates_output_from_usage_errors(self) -> None:
         default_manifest = BaseManifest(
@@ -581,7 +581,9 @@ class ProjectCheckTests(unittest.TestCase):
         with mock.patch("base_setup.python_policy.resolve_python_interpreter", return_value=None), redirect_stdout(
             io.StringIO()
         ) as stdout:
-            status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+            status = engine.check_manifest(
+                    fake_context(), default_manifest, manifest, output_format="json", verify_project_runtime=True,
+                )
 
         payload = json.loads(stdout.getvalue())
         self.assertEqual(status, 1)
@@ -617,7 +619,9 @@ class ProjectCheckTests(unittest.TestCase):
                 "base_setup.python_policy.resolve_python_interpreter",
                 return_value=PythonInterpreter(path=python_bin, version=(3, 12)),
             ), redirect_stdout(io.StringIO()) as stdout:
-                status = engine.check_manifest(fake_context(), default_manifest, manifest, output_format="json")
+                status = engine.check_manifest(
+                    fake_context(), default_manifest, manifest, output_format="json", verify_project_runtime=True,
+                )
 
         payload = json.loads(stdout.getvalue())
         runtime_check = next(check for check in payload["checks"] if check["id"] == "BASE-P172")

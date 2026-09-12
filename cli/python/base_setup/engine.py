@@ -51,6 +51,7 @@ class ManifestAction:
     write: bool = False
     remote_network: bool = False
     allow_project_ide_mutations: bool = False
+    verify_project_runtime: bool = False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,6 +80,10 @@ def main(argv: list[str] | None = None) -> int:
     is_flag=True,
     help="Approve project-originated IDE app, extension, and user-setting mutations for setup.",
 )
+@base_cli.option(
+    "--verify-project-runtime", is_flag=True,
+    help="Authorize execution of project runtimes and configuration for check/doctor in this invocation.",
+)
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def run(
     ctx: base_cli.Context,
@@ -91,6 +96,7 @@ def run(
     output_format: str,
     remote_network: bool,
     allow_project_ide_mutations: bool,
+    verify_project_runtime: bool,
 ) -> int:
     manifest_path = Path(manifest).resolve() if manifest else discover_manifest(Path(start_dir))
     if manifest_path is not None:
@@ -106,6 +112,9 @@ def run(
         base_manifest = read_manifest(manifest_path)
         ctx.bind_project(base_manifest.project_name, manifest_path.parent, manifest_path)
         validate_project_name(base_manifest, project)
+        if verify_project_runtime and action not in {"check", "doctor", "precheck", "predoctor"}:
+            ctx.log.error("--verify-project-runtime is only supported for check and doctor.")
+            return base_cli.ExitCode.USAGE_ERROR
         manifest_action = ManifestAction(
             action,
             dry_run,
@@ -113,6 +122,7 @@ def run(
             write,
             remote_network,
             allow_project_ide_mutations,
+            verify_project_runtime,
         )
         if action == "route":
             status = route_manifest(ctx, manifest_action, base_manifest)
@@ -169,6 +179,7 @@ def run_manifest_action(
             base_manifest,
             output_format=manifest_action.output_format,
             remote_network=manifest_action.remote_network,
+            verify_project_runtime=manifest_action.verify_project_runtime,
         )
     elif action == "doctor":
         status = doctor_manifest(
@@ -177,6 +188,7 @@ def run_manifest_action(
             output_format=manifest_action.output_format,
             remote_network=manifest_action.remote_network,
             user_config=ctx.user_config,
+            verify_project_runtime=manifest_action.verify_project_runtime,
         )
     elif action == "precheck":
         status = check_pre_venv_manifest(
@@ -286,18 +298,22 @@ def log_check_text_result(ctx: base_cli.Context, check: ArtifactCheck) -> None:
         log_result("Fix: %s", check.fix)
 
 
+# pylint: disable=too-many-arguments
 def check_manifest(
     ctx: base_cli.Context,
     default_manifest: BaseManifest,
     manifest: BaseManifest,
     output_format: str,
     remote_network: bool = False,
+    *,
+    verify_project_runtime: bool = False,
 ) -> int:
     checks = manifest_checks(
         default_manifest,
         manifest,
         remote_network=remote_network,
         user_config=ctx.user_config,
+        verify_project_runtime=verify_project_runtime,
     )
     if output_format == "json":
         print(json.dumps(checks_payload_to_json(checks, project=manifest.project_name), indent=2))
@@ -335,6 +351,7 @@ def check_pre_venv_manifest(
     return base_cli.ExitCode.FAILURE
 
 
+# pylint: disable=too-many-arguments
 def doctor_manifest(
     default_manifest: BaseManifest,
     manifest: BaseManifest,
@@ -342,6 +359,7 @@ def doctor_manifest(
     remote_network: bool = False,
     *,
     user_config: UserConfig | None = None,
+    verify_project_runtime: bool = False,
 ) -> int:
     if output_format not in {"json", "text"}:
         print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
@@ -352,6 +370,7 @@ def doctor_manifest(
         manifest,
         remote_network=remote_network,
         user_config=user_config,
+        verify_project_runtime=verify_project_runtime,
     )
     if output_format == "json":
         print(json.dumps([check_to_json(check) for check in checks], indent=2))

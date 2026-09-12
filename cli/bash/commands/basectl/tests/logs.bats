@@ -9,6 +9,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
     printf 'DISPLAY=%s\n' "${BASE_CLI_DISPLAY_COMMAND:-}"
@@ -34,6 +36,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
     printf 'ARGS=%s\n' "${*:3}"
     exit 0
@@ -55,6 +59,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
     printf 'ARGS=%s\n' "${*:3}"
     exit 0
@@ -122,6 +128,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
     shift 2
     printf 'ARGC=%s\n' "$#"

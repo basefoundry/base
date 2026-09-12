@@ -261,3 +261,14 @@ Important Python packages include:
   provider integration are intentionally out of scope.
 - `base_github_projects` - GitHub Project V2 schema inspection, configuration,
   and issue field updates for Base roadmap metadata.
+
+### Project runtime inspection
+
+Project and workspace `check`/`doctor` use static inspection by default. Present
+project interpreters and installed-package/tool checks remain unverified until
+`--verify-project-runtime` explicitly authorizes executable probes for that
+invocation. Workspace status/onboarding remain static. Neither `--yes` nor saved
+manifest approval grants runtime verification consent. `test` requires manifest
+approval before its requirements preflight. Base-owned Python engines use an
+isolated entry point and the Base interpreter, including from an active project
+checkout. See `docs/manifest-command-trust.md#runtime-verification-consent`.

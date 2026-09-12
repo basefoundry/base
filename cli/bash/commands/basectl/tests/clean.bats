@@ -9,6 +9,8 @@ load ./basectl_helpers.bash
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_clean" ]]; then
     printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
     printf 'ARGS=%s\n' "${*:3}"
@@ -65,6 +67,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_clean" ]]; then
     shift 2
     printf 'ARGC=%s\n' "$#"

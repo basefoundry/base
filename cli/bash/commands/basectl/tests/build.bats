@@ -64,6 +64,8 @@ load ./basectl_helpers.bash
         "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin build-target 2
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -105,6 +107,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -149,6 +153,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" && "${5:-}" == "api" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -187,6 +193,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -222,6 +230,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api" "$workspace/demo/.venv/bin"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -254,6 +264,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-target-list" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -287,6 +299,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/services/api"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-target-list" && "${4:-}" == "demo" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -321,6 +335,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo/docs" "$workspace/demo/services/api"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "api" ]]; then
     base_test_protocol_begin build-target 1
     base_test_protocol_build_target_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -376,6 +392,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "build-targets" && "${4:-}" == "demo" ]]; then
     printf "ERROR: Project 'demo' does not declare build targets in '%s/base_manifest.yaml'.\n" "${BASE_TEST_PROJECT_ROOT:?}" >&2
     exit 1

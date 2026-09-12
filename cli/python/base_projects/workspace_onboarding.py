@@ -14,6 +14,7 @@ from base_projects.workspace_statuses import WorkspaceProjectStatus
 from base_projects.workspace_statuses import workspace_manifest_project_statuses
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
+from base_setup.runtime_inspection import runtime_verification_command
 
 
 @dataclass(frozen=True)
@@ -122,11 +123,11 @@ def workspace_onboarding_next_actions(
             )
         )
 
-    if actions:
+    if actions or any(repository.status == "needs_verification" for repository in summary.repositories):
         actions.append(
             WorkspaceNextAction(
                 order=len(actions) + 1,
-                description="Verify workspace health",
+                description="Review runtimes and verify workspace health",
                 commands=(workspace_check_command(summary),),
             )
         )
@@ -158,6 +159,7 @@ def workspace_check_command(summary: WorkspaceOnboardingSummary) -> str:
             str(summary.workspace_root),
             "--manifest",
             str(summary.workspace_manifest.path),
+            "--verify-project-runtime",
         ]
     )
 
@@ -198,6 +200,8 @@ def onboarding_status(status: WorkspaceProjectStatus) -> str:
         return "present_without_manifest"
     if status.manifest == "invalid":
         return "invalid_manifest"
+    if status.venv == "present_unverified":
+        return "needs_verification"
     if status.venv in ("ready", "not_applicable"):
         return "ready"
     return "needs_setup"
@@ -212,6 +216,8 @@ def setup_command_for_status(status: WorkspaceProjectStatus) -> str | None:
 def validation_command_for_status(status: WorkspaceProjectStatus) -> str | None:
     if status.manifest != "valid":
         return None
+    if status.venv == "present_unverified" and status.manifest_path is not None:
+        return runtime_verification_command(status.manifest_path)
     return f"cd {shlex.quote(str(status.root))} && basectl check"
 
 
@@ -257,8 +263,11 @@ def next_action_for_status(status: WorkspaceProjectStatus, status_name: str) -> 
         return f"Add or verify {(status.root / 'base_manifest.yaml').resolve()} before Base setup."
     if status_name == "invalid_manifest":
         return f"Fix {status.manifest_path} before Base setup."
-    if status_name == "ready":
-        return "Run validation command."
+    if status_name in {"needs_verification", "ready"}:
+        return (
+            "Review the project runtime and configuration, then run the validation command."
+            if status_name == "needs_verification" else "Run validation command."
+        )
     return "Run setup command, then validation command."
 
 

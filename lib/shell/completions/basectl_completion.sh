@@ -601,8 +601,8 @@ _base_basectl_completion() {
     local command cur
     local commands="activate setup check test export-context devcontainer devenv-report build demo run repo ci release prompt docs clean logs history config trust doctor gh onboard update-profile update projects workspace version help"
     local setup_options="--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --upgrade-pip --yes --allow-project-ide-mutations -v -h --help"
-    local check_options="--ci --profile --format --manifest --remote-network -v -h --help"
-    local doctor_options="--ci --profile --format --manifest --remote-network --no-color -v -h --help"
+    local check_options="--ci --profile --format --manifest --verify-project-runtime --remote-network -v -h --help"
+    local doctor_options="--ci --profile --format --manifest --verify-project-runtime --remote-network --no-color -v -h --help"
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]:-}"
@@ -655,7 +655,10 @@ _base_basectl_completion() {
                 _base_basectl_completion_compgen "status check doctor onboarding agent-brief clone pull update init configure setup test" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
-                    status|check|doctor)
+                    check|doctor)
+                        _base_basectl_completion_compgen "--workspace --manifest --format --verify-project-runtime -v -h --help" "$cur"
+                        ;;
+                    status)
                         _base_basectl_completion_compgen "--workspace --manifest --format -v -h --help" "$cur"
                         ;;
                     onboarding|agent-brief)

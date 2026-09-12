@@ -91,7 +91,7 @@ base_check_usage_error() {
 base_check_subcommand_main() {
     local output_format="text"
     local project=""
-    local remote_network=false
+    local remote_network=false verify_project_runtime=false
 
     setup_clear_run_state
 
@@ -143,6 +143,9 @@ base_check_subcommand_main() {
             --remote-network)
                 remote_network=true
                 ;;
+            --verify-project-runtime)
+                verify_project_runtime=true
+                ;;
             -v)
                 setup_enable_debug_logging
                 ;;
@@ -165,6 +168,12 @@ base_check_subcommand_main() {
         base_check_usage_error "Option '--remote-network' requires a project or '--manifest <path>'."
         return $?
     fi
+    if [[ "$verify_project_runtime" == true && -z "$project" && -z "${BASE_SETUP_MANIFEST:-}" ]]; then
+        base_check_usage_error "Option '--verify-project-runtime' requires a project or '--manifest <path>'."
+        return $?
+    fi
+    BASE_SETUP_VERIFY_PROJECT_RUNTIME="$verify_project_runtime"
+    export BASE_SETUP_VERIFY_PROJECT_RUNTIME
     BASE_SETUP_PROJECT_NAME="$project"
     BASE_SETUP_REMOTE_NETWORK="$remote_network"
     export BASE_SETUP_PROJECT_NAME

@@ -28,7 +28,7 @@ base_projects_usage_error() {
 }
 
 base_projects_base_venv_python() {
-    local venv_dir="${BASE_PROJECT_VENV_DIR:-$HOME/.base.d/base/.venv}"
+    local venv_dir="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}"
 
     printf '%s\n' "$venv_dir/bin/python"
 }
@@ -60,9 +60,11 @@ base_projects_source_python() {
 
     base_std_command_path python_bin python3 || return 1
 
+    base_cli_runtime_prepare || return 1
     base_pythonpath="$(base_projects_source_pythonpath)"
     env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$base_pythonpath" \
-        "$python_bin" -c 'import click; import yaml; import base_projects' >/dev/null 2>&1 || return 1
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" \
+        base_projects --help >/dev/null 2>&1 || return 1
 
     printf '%s\n' "$python_bin"
 }
@@ -88,9 +90,10 @@ base_projects_run_list() {
     fi
 
     if base_projects_source_checkout_available && python_bin="$(base_projects_source_python)"; then
+        base_cli_runtime_prepare || return 1
         base_pythonpath="$(base_projects_source_pythonpath)"
         env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$base_pythonpath" \
-            "$python_bin" -m base_projects list "$@"
+            "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" base_projects list "$@"
         return $?
     fi
 

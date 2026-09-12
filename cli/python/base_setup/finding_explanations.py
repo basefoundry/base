@@ -143,11 +143,13 @@ CATALOG = catalog_by_id(
                 "reliable project setup and command execution."
             ),
             likely_causes=(
+                "Static inspection has not executed the project interpreter; readiness remains unverified.",
                 "The project virtual environment has not been created yet.",
                 "The environment exists but its Python executable is missing or broken.",
                 "The project changed Python versions and the old virtual environment was not recreated.",
             ),
             fix_steps=(
+                "Review the runtime, then run `basectl check <project> --verify-project-runtime` to verify it.",
                 "Run `basectl setup <project> --dry-run` to preview project environment actions.",
                 "Run `basectl setup <project>` to create missing project artifacts.",
                 "Use `--recreate-venv` when Base reports that the existing venv must be replaced.",
@@ -300,7 +302,7 @@ CATALOG = catalog_by_id(
         FindingExplanation(
             finding_id="BASE-P181",
             title="Project test requirements environment",
-            summary="The project virtual environment does not satisfy the requirements declared for its test command.",
+            summary="Project test requirements are unverified or are not satisfied by the project environment.",
             why_it_matters=(
                 "Running a test command before its declared environment is ready produces late import or tool "
                 "errors. Base reports the missing packages before executing the command."
@@ -312,7 +314,8 @@ CATALOG = catalog_by_id(
             ),
             fix_steps=(
                 "Run `basectl setup <project>` to install the declared test requirements.",
-                "Run `basectl check <project>` and confirm `BASE-P181` reports `ok`.",
+                "Review the runtime, then run `basectl check <project> --verify-project-runtime` "
+                "and confirm readiness.",
                 "Rerun the test command only after the environment check passes."
             ),
             related_commands=("basectl setup <project>", "basectl check <project>", "basectl test <project>"),

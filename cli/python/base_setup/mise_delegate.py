@@ -15,10 +15,11 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
+from .runtime_inspection import unverified_runtime_check
 from .user_paths import prepend_user_local_bin_to_path
 from .user_paths import user_local_bin
 
-def check_mise(manifest: BaseManifest) -> ArtifactCheck:
+def check_mise(manifest: BaseManifest, *, verify_project_runtime: bool = True) -> ArtifactCheck:
     try:
         mise_path = resolve_mise_path(manifest)
     except ArtifactError as exc:
@@ -43,6 +44,9 @@ def check_mise(manifest: BaseManifest) -> ArtifactCheck:
             finding_id="BASE-P021",
             status="warn",
         )
+
+    if not verify_project_runtime:
+        return unverified_runtime_check(manifest, "mise", "BASE-P022")
 
     project_root = manifest.path.parent.resolve()
     details = mise_details(project_root, mise_path)

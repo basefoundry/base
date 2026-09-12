@@ -36,12 +36,12 @@ def print_workspace_status(
         print("No Base-managed projects discovered.")
         return
 
-    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<14} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
+    print(f"{'PROJECT':<20} {'STATUS':<6} {'VENV':<18} {'MANIFEST':<8} {'LAST CHECK':<10} PATH")
     for status in statuses:
         print(
             f"{status.name:<20} "
             f"{status.status:<6} "
-            f"{status.venv:<14} "
+            f"{status.venv:<18} "
             f"{status.manifest:<8} "
             f"{last_check_display(status.last_check):<10} "
             f"{status.root}"
@@ -68,7 +68,7 @@ def print_manifest_workspace_status(
 
     print(
         f"{'REPOSITORY':<20} {'STATUS':<6} {'REQUIRED':<8} {'REPO':<8} "
-        f"{'VENV':<14} {'MANIFEST':<8} {'LAST CHECK':<10} PATH"
+        f"{'VENV':<18} {'MANIFEST':<8} {'LAST CHECK':<10} PATH"
     )
     for status in statuses:
         print(
@@ -76,7 +76,7 @@ def print_manifest_workspace_status(
             f"{status.status:<6} "
             f"{yes_no(status.required):<8} "
             f"{status.repo:<8} "
-            f"{status.venv:<14} "
+            f"{status.venv:<18} "
             f"{status.manifest:<8} "
             f"{last_check_display(status.last_check):<10} "
             f"{status.root}"

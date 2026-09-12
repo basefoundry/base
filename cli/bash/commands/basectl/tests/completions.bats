@@ -9,6 +9,8 @@ load ./setup_helpers.bash
     mkdir -p "$(dirname "$base_python")"
     cat > "$base_python" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
     base_test_protocol_begin project-list-entry 2
     base_test_protocol_project_list_record 0 base /Users/test/base
