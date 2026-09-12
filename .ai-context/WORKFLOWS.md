@@ -138,7 +138,9 @@ Coordinated ecosystem releases additionally pass `--bom <path>` to `release
 check` and `release publish`. The BOM is the authoritative cross-repository
 attestation: required rows must use immutable commits and report passing
 evidence, while moving-source rows are advisory and non-blocking. Validate and
-fingerprint a record with `bin/base-release-bom`; attach the BOM and digest to
+fingerprint a record with `bin/base-release-bom`; component tags must match their
+versions, the releasing component commit must match the release, and every
+combination participant must declare that platform. Attach the BOM and digest to
 the resulting release evidence.
 Supported macOS tap releases should publish Homebrew bottles before the tap PR
 is merged: run the tap's `Build Base Bottles` workflow from the tap release

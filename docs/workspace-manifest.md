@@ -111,6 +111,21 @@ invalid object, member, timestamp, status, or encoding makes that evidence
 unavailable. Base rescans manifests after an invalid discovery cache, and an
 unavailable latest check does not change current workspace health.
 
+Saved project checks use record schema version `2` and include the canonical
+project root, canonical manifest path, and SHA-256 of the manifest bytes when
+the result is saved. Readers display the record only when all three still
+match. Same-named checkouts therefore cannot display each other's result, and
+any manifest edit makes the previous record unavailable. The per-project-name
+`last.json` path retains only the latest saved result; checking another checkout
+with that name replaces it without transferring its evidence to the first.
+
+Legacy name-only records (including the minimal Bash fallback when Python is
+unavailable) are not verified evidence and appear as an unavailable latest
+check. Run `basectl check --manifest /absolute/project/base_manifest.yaml` or
+`basectl workspace check --workspace /absolute/workspace` to write a new bound
+record. The saved result is historical: it does not verify referenced scripts,
+installed tools, or other files that may have changed since the check.
+
 JSON status output includes a top-level `status` aggregate in addition to each
 project's status. It uses the same status vocabulary and precedence as workspace
 reports: `error` takes precedence over `warn`, which takes precedence over `ok`.
@@ -162,7 +177,9 @@ standard Base setup and validation commands for repositories with valid project
 manifests. It does not clone repositories, run setup, create virtual
 environments, or execute project tests. The trust command is an approval
 instruction, not an automatic grant. Optional missing repositories do not
-create an action.
+create an action. Generated trust commands carry the canonical project workspace
+and reviewed manifest digest, so they can be copied from another directory even
+when a separate workspace contains a project with the same name.
 
 `basectl workspace agent-brief --manifest <path>` is the local handoff summary
 for a human or coding agent. It includes every expected repository plus
@@ -592,8 +609,10 @@ guidance. Both commands emit stable workspace findings for repository
 presence, outside-manifest discovered projects, present repositories without a
 Base project manifest, and Git repositories present under the workspace root
 but absent from the manifest. The latter is a non-blocking warning for each
-undeclared repository; add it to `repos[]` when it belongs in the workspace, or
-mark it as unmanaged in the manifest or move it outside the workspace root.
+undeclared repository; add a `repos[]` name entry to inventory it, including a
+repository without a Base manifest, or move it outside the workspace root.
+For example, `repos: [{name: scratch-tools}]` declares a co-located repository.
+There is no ignore or unmanaged flag in the workspace schema.
 Their JSON diagnostic items remain compatible.
 
 `basectl workspace agent-brief --manifest <path>` reports one item per expected

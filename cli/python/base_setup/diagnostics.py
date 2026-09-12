@@ -20,6 +20,7 @@ from typing import Any, Iterable
 
 import base_cli
 
+from .check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from .checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 
 
@@ -255,7 +256,10 @@ def render_project_venv_doctor_payload(
     return compact_json([*checks, project_venv_check_item(status, message, fix)]) + "\n"
 
 
-def render_check_record(project: str, status: str, checked_at: str, *, command: str = "basectl check") -> str:
+def render_check_record(
+    project: str, status: str, checked_at: str, *, command: str = "basectl check",
+    identity: dict[str, str] | None = None,
+) -> str:
     payload = {
         "schema_version": DIAGNOSTIC_JSON_SCHEMA_VERSION,
         "project": project,
@@ -263,9 +267,13 @@ def render_check_record(project: str, status: str, checked_at: str, *, command: 
         "status": validate_status(status),
         "checked_at": checked_at,
     }
+    if identity is not None:
+        payload["schema_version"] = CHECK_RECORD_SCHEMA_VERSION
+        payload["identity"] = identity
     return json.dumps(payload, ensure_ascii=True, indent=2) + "\n"
 
 
+# pylint: disable-next=too-many-arguments
 def write_check_record(
     path: Path,
     project: str,
@@ -273,11 +281,14 @@ def write_check_record(
     checked_at: str,
     *,
     command: str = "basectl check",
+    context: CheckRecordContext | None = None,
 ) -> bool:
     temp_path: Path | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        if command == "basectl check":
+        if context is not None:
+            record = render_check_record(project, status, checked_at, command=command, identity=context.identity())
+        elif command == "basectl check":
             record = render_check_record(project, status, checked_at)
         else:
             record = render_check_record(project, status, checked_at, command=command)
@@ -371,6 +382,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     check_json = subparsers.add_parser("check-json")
     check_json.add_argument("--project")
+    check_json.add_argument("--project-root", type=Path)
+    check_json.add_argument("--manifest-path", type=Path)
     check_json.add_argument(
         "--check",
         action="append",
@@ -397,6 +410,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     record_check = subparsers.add_parser("record-check")
     record_check.add_argument("--project", required=True)
+    record_check.add_argument("--project-root", type=Path)
+    record_check.add_argument("--manifest-path", type=Path)
     record_check.add_argument("--status", required=True)
     record_check.add_argument("--checked-at", required=True)
     record_check.add_argument("--output-path", required=True)
@@ -419,10 +434,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def record_context_from_args(args: argparse.Namespace, parser: argparse.ArgumentParser) -> CheckRecordContext | None:
+    if args.command not in {"check-json", "record-check"}:
+        return None
+    if bool(args.project_root) != bool(args.manifest_path):
+        parser.error("--project-root and --manifest-path must be supplied together")
+    if args.project_root is not None:
+        return CheckRecordContext(args.project_root, args.manifest_path)
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     exit_code = base_cli.ExitCode.SUCCESS
+    record_context = record_context_from_args(args, parser)
 
     if args.command == "check-json":
         checks = load_diagnostic_checks(args.check, args.check_result_file)
@@ -432,7 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         status = payload_status(payload_object)
         if args.record_path and args.project and args.checked_at:
             record_path = Path(args.record_path)
-            if not write_check_record(record_path, args.project, status, args.checked_at):
+            if not write_check_record(record_path, args.project, status, args.checked_at, context=record_context):
                 payload_object["record"] = check_record_warning(record_path)
                 payload = render_top_level_payload(payload_object)
         print(payload, end="")
@@ -445,7 +471,9 @@ def main(argv: list[str] | None = None) -> int:
         status = payload_status(json.loads(payload))
         exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
     elif args.command == "record-check":
-        if not write_check_record(Path(args.output_path), args.project, args.status, args.checked_at):
+        if not write_check_record(
+            Path(args.output_path), args.project, args.status, args.checked_at, context=record_context,
+        ):
             exit_code = base_cli.ExitCode.FAILURE
     elif args.command == "base-check-metadata":
         print(render_base_check_metadata(args.name), end="")

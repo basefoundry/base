@@ -170,6 +170,14 @@ class WorkspaceUndeclaredRepositoryTests(unittest.TestCase):
                 home,
             )
 
+            # Follow the supported inventory-only remediation for a non-Base repo.
+            write_workspace_manifest(manifest_path, repos="  - name: base\n  - name: unlisted")
+            repaired_status, repaired_stdout, repaired_stderr = invoke_engine(
+                ["check", "--workspace", str(workspace), "--manifest", str(manifest_path), "--format", "json"],
+                base_home,
+                home,
+            )
+
         payload = json.loads(stdout)
         undeclared = [
             check
@@ -183,7 +191,11 @@ class WorkspaceUndeclaredRepositoryTests(unittest.TestCase):
         self.assertEqual(len(undeclared), 1)
         self.assertEqual(undeclared[0]["status"], "warn")
         self.assertEqual(undeclared[0]["details"]["path"], str((workspace / "unlisted").resolve()))
-        self.assertIn("mark it as unmanaged", undeclared[0]["fix"])
+        self.assertIn("repos[]", undeclared[0]["fix"])
+        self.assertIn("without a Base manifest", undeclared[0]["fix"])
+        self.assertNotIn("mark it as unmanaged", undeclared[0]["fix"])
+        self.assertNotIn("BASE-W013", repaired_stdout)
+        self.assertEqual(repaired_status, 0, repaired_stderr)
 
     def test_workspace_doctor_lists_two_undeclared_repository_paths_in_text_and_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -492,6 +504,7 @@ class WorkspaceCheckTests(unittest.TestCase):
             write_shell_manifest(workspace / "beta", "beta")
             write_record = workspace_checks.write_check_record
 
+            # pylint: disable-next=too-many-arguments
             def write_partially(
                 path: Path,
                 project: str,
@@ -499,6 +512,7 @@ class WorkspaceCheckTests(unittest.TestCase):
                 checked_at: str,
                 *,
                 command: str,
+                context,
             ) -> bool:
                 if project == "beta":
                     return False
@@ -508,6 +522,7 @@ class WorkspaceCheckTests(unittest.TestCase):
                     result_status,
                     checked_at,
                     command=command,
+                    context=context,
                 )
 
             with mock.patch.object(

@@ -50,6 +50,8 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   Zip bundle for manual upload or copy/paste into AI tools.
 - `basectl trust status [project]` - inspect one project's manifest command
   trust or all discovered command-bearing projects.
+- Generated onboarding trust commands include the canonical workspace and
+  manifest digest; they retain their target when copied to another directory.
 - `basectl trust <allow|revoke> <project>` - add or remove local approval for
   manifest-declared project commands. Revocation covers every approved contract
   revision for that canonical checkout and manifest, preserving other checkouts.
@@ -105,7 +107,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     per-repo failures, and reports setup/skipped/failed counts. `--yes` forwards
     confirmation to each delegated setup command.
   - `workspace test` runs declared project test commands serially in manifest
-    order. `--projects name[,name...]` selects a subset, `--fail-fast` stops
+    order, dispatching from each exact selected checkout. `--projects name[,name...]`
+    prefers repository names, then unambiguous project names; duplicate manifest
+    aliases are rejected before execution. Unselected malformed siblings do not
+    block a valid selection. `--fail-fast` stops
     after the first failure, and `--format json` emits per-project results and
     passed/failed/skipped counts. Projects without a declared test command are
     skipped.

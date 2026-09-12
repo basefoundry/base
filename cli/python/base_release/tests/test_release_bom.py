@@ -115,6 +115,7 @@ def test_required_combination_must_include_release_repository() -> None:
     with pytest.raises(ReleaseBomError, match="at least two repositories"):
         validate_bom(document)
 
+    document["components"][2]["platforms"].append("ubuntu-24.04")
     document["combinations"][0]["participants"] = ["basefoundry/base", "basefoundry/base-cli"]
     with pytest.raises(ReleaseBomError, match="must include release.repository"):
         validate_bom(document)
@@ -254,3 +255,79 @@ def test_checked_in_fixtures_cover_valid_and_mutable_documents() -> None:
     )
     with pytest.raises(ReleaseBomError, match="release.tag must be v<release.version>"):
         validate_bom(load_bom(fixture_root / "release-bom-invalid-mutable.json"))
+
+
+@pytest.mark.parametrize("source_mode", ["release", "tag"])
+def test_component_tag_must_match_its_version(source_mode: str) -> None:
+    document = valid_bom()
+    document["components"][1].update(source_mode=source_mode, tag="v1.8.1")
+    with pytest.raises(ReleaseBomError, match=r"components\[1\].tag must be v<.*version>"):
+        validate_bom(document)
+
+
+def test_release_component_commit_must_match_release_identity() -> None:
+    document = valid_bom()
+    document["components"][0].update(repository="BASEFOUNDRY/BASE-BASH-LIBS", commit="d" * 40)
+    with pytest.raises(ReleaseBomError, match=r"components\[0\].commit must match release.commit"):
+        validate_bom(document)
+
+
+@pytest.mark.parametrize("participant", [0, 1])
+@pytest.mark.parametrize("required", [True, False])
+def test_combination_platform_must_be_declared_by_every_participant(participant: int, required: bool) -> None:
+    document = valid_bom()
+    document["components"][participant]["platforms"] = ["macos-14"]
+    document["combinations"][0]["required"] = required
+    with pytest.raises(ReleaseBomError, match=r"combinations\[0\].platform.*not declared by"):
+        validate_bom(document)
+
+
+@pytest.mark.parametrize("version", ["01.9.0", "1.09.0", "1.9.00", "1.9", "1.9.0-01", "1.9.0+", "1.9.0-", "1.9.0 dev"])
+@pytest.mark.parametrize("target", ["release", "moving"])
+def test_versions_must_be_strict_semver(version: str, target: str) -> None:
+    document = valid_bom()
+    row = document["release"] if target == "release" else document["components"][2]
+    row["version"] = version
+    if target == "release":
+        row["tag"] = f"v{version}"
+    with pytest.raises(ReleaseBomError, match="version must be a strict SemVer value"):
+        validate_bom(document)
+
+
+@pytest.mark.parametrize("version", ["0.0.0", "1.9.0-alpha.1", "1.9.0-0", "1.9.0+001", "1.9.0-01a+build.001"])
+def test_moving_versions_accept_valid_semver_suffixes(version: str) -> None:
+    document = valid_bom()
+    document["components"][2]["version"] = version
+    validate_bom(document)
+
+
+@pytest.mark.parametrize("repository", ["../foo", "./foo", "owner/..", "owner/."])
+@pytest.mark.parametrize("target", ["release", "component"])
+def test_repository_dot_segments_are_rejected(repository: str, target: str) -> None:
+    document = valid_bom()
+    row = document["release"] if target == "release" else document["components"][2]
+    row["repository"] = repository
+    with pytest.raises(ReleaseBomError, match="must use owner/name format"):
+        validate_bom(document)
+
+
+def test_schema_patterns_match_bom_version_tag_and_repository_contracts() -> None:
+    # Lexical constraints belong in the schema; cross-field relations need the validator.
+    from jsonschema import Draft202012Validator  # pylint: disable=import-outside-toplevel
+
+    schema_path = Path(__file__).resolve().parents[4] / "docs/schemas/release-bom.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+    validator.validate(valid_bom())
+    for field, value in (("repository", "../foo"), ("version", "01.9.0"), ("tag", "v01.9.0")):
+        document = valid_bom()
+        document["components"][0][field] = value
+        assert not validator.is_valid(document), (field, value)
+        document = valid_bom()
+        document["release"][field] = value
+        assert not validator.is_valid(document), (field, value)
+    document = valid_bom()
+    document["components"][2]["version"] = "1.9.0-alpha.1+001"
+    validator.validate(document)
+    validate_bom(document)

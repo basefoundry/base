@@ -105,7 +105,10 @@ class WorkspaceTestCommandTests(unittest.TestCase):
         self.assertEqual(run.call_count, 2)
         self.assertEqual(run.call_args_list[0].kwargs["cwd"], (workspace / "alpha").resolve())
         self.assertEqual(run.call_args_list[1].kwargs["cwd"], (workspace / "beta").resolve())
-        self.assertEqual(run.call_args_list[0].args[0][-2:], ["--project", "alpha"])
+        self.assertEqual(
+            run.call_args_list[0].args[0],
+            [str((base_home / "bin" / "basectl").resolve()), "test", "--workspace", str(workspace.resolve())],
+        )
 
     def test_workspace_test_continues_after_a_project_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
