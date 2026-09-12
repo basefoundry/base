@@ -58,8 +58,8 @@ base_cli_runtime_source_kind() {
 base_cli_runtime_prepare() {
     local source_kind source_root
 
-    source_kind="$(base_cli_runtime_source_kind "$@")" || return 1
     source_root="$(base_cli_runtime_source_root "$@")" || return 1
+    source_kind="$(base_cli_runtime_source_kind "$@")" || return 1
     export BASE_CLI_SOURCE="$source_kind"
     export BASE_CLI_RUNTIME_SOURCE_ROOT="$source_root"
 }

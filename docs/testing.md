@@ -71,6 +71,12 @@ scan all production packages, or invoke shell files live under the top-level
 `tests/` directory so they are not mistaken for tests of an installed Python
 distribution.
 
+Base supports the release-pinned `base-cli` v0.4.3 provider and compatible moving
+source checkouts. CI runs a full Ubuntu source suite for each, plus installed
+and explicit-source capability checks. Moving-source compatibility is a
+development gate; the pinned release remains authoritative for release evidence.
+The same checks run locally using the commands below.
+
 From a Base source checkout with the standalone `base-cli` checkout next to it,
 run the Python suite with the same source roots used by CI:
 
@@ -264,3 +270,29 @@ tests/contracts/run.sh
 Use this runner before or during large review-batch triage, and for PRs that
 edit the mapped contract areas. It composes existing focused tests and should
 stay smaller than the full source-checkout suite.
+
+### Comparing pinned and moving base-cli providers
+
+Keep the release pin intact in `requirements-dev.txt`. Clone an independent
+pinned checkout and run Base's complete suite with each provider explicitly:
+
+```bash
+git clone --branch v0.4.3 --depth 1 https://github.com/basefoundry/base-cli.git ../base-cli-pinned
+env -u BASE_HOME BASE_CLI_SOURCE_DIR=../base-cli-pinned/lib/python ./bin/base-test
+env -u BASE_HOME BASE_CLI_SOURCE_DIR=../base-cli/lib/python ./bin/base-test
+```
+
+For the documented sibling path, unset `BASE_CLI_SOURCE_DIR` and run
+`env -u BASE_HOME ./bin/base-test` with `base-cli` next to Base. Set
+`BASE_BASH_LIBS_DIR` too when that sibling is not present. To check installed
+capabilities independently of source overrides, use the selected Python:
+
+```bash
+env -u BASE_CLI_RUNTIME_SOURCE_ROOT BASE_CLI_SOURCE=pip \
+  ~/.base.d/base/.venv/bin/python -I \
+  "$PWD/cli/python/base_cli_adapters/module_entrypoint.py" --check-provider
+```
+
+The check prints the selected provider location. Missing required capabilities
+fail with repair guidance. A source override must be repaired or removed before
+an installed pin can take effect; see [provider compatibility](base-cli.md#standalone-provider-resolution).

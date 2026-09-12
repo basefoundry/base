@@ -205,7 +205,7 @@ def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
         "BATS tests",
         "macOS smoke tests",
         "Integration tests",
-        "Ubuntu source-checkout suite",
+        "${{ matrix.name }}",
         "Security scanners",
     }
 
@@ -512,3 +512,21 @@ def test_skills_workflow_create_pr_is_issue_backed() -> None:
     assert '--title "Add skills.md"' in run_commands
     assert "printf '\\nCloses #%s\\n' \"$ISSUE_NUMBER\" >> pr-body.md" in run_commands
     assert "${{ inputs.issue_number }}" not in run_commands
+
+
+def test_source_provider_matrix_keeps_pin_and_exercises_moving_compatibility() -> None:
+    job = load_workflow(TESTS_WORKFLOW)["jobs"]["ubuntu-source-checkout"]
+    matrix = job["strategy"]["matrix"]["include"]
+    assert matrix == [
+        {"provider-ref": "v0.4.3", "name": "Ubuntu source-checkout suite"},
+        {"provider-ref": "main", "name": "Moving provider source-checkout suite"},
+    ]
+    assert job["strategy"]["fail-fast"] is False
+    provider_step = next(s for s in job["steps"] if s.get("with", {}).get("repository") == "basefoundry/base-cli")
+    assert provider_step["with"]["ref"] == "${{ matrix.provider-ref }}"
+    preflight = workflow_step_by_name(job, "Check installed and explicit provider capabilities")["run"]
+    assert "BASE_CLI_SOURCE=pip" in preflight
+    assert "BASE_CLI_SOURCE=explicit" in preflight
+    assert preflight.count("--check-provider") == 2
+    validation = workflow_step_by_name(job, "Run Ubuntu source-checkout validation")["run"]
+    assert "env -u BASE_HOME -u BASE_CLI_SOURCE_DIR ./bin/base-test" in validation

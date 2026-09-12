@@ -9,7 +9,7 @@ import base_cli
 # The outer Bash lifecycle owns Base's inherited bundle. base-cli owns the
 # retention index that its delegated Python children update, so use its single
 # lock-aware refresh implementation instead of editing that index in Bash.
-from base_cli._runtime import refresh_run_bundle_index
+from base_cli_adapters.provider import BaseCliCompatibilityError, load_run_index_runtime
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -17,7 +17,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(args) != 1:
         print("Usage: python -m base_cli_adapters.run_index <runs-root>", file=sys.stderr)
         return base_cli.ExitCode.USAGE_ERROR
-    refresh_run_bundle_index(Path(args[0]))
+    try:
+        runtime = load_run_index_runtime()
+    except BaseCliCompatibilityError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return base_cli.ExitCode.FAILURE
+    runtime.refresh_run_bundle_index(Path(args[0]))
     return base_cli.ExitCode.SUCCESS
 
 

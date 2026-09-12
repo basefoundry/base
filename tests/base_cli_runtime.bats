@@ -103,3 +103,13 @@ setup() {
     [ "$status" -eq 1 ]
     [[ "$output" == *"does not contain base_cli/__init__.py"* ]]
 }
+
+@test "base_cli runtime prepare preserves malformed override diagnostics" {
+    run env BASE_HOME="$TEST_RUNTIME_HOME" BASE_CLI_SOURCE_DIR="$TEST_TMPDIR/missing" bash -c '
+        source "$BASE_HOME/lib/base/base_cli_runtime.sh"
+        base_cli_runtime_prepare
+    '
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"BASE_CLI_SOURCE_DIR '$TEST_TMPDIR/missing'"* ]]
+    [[ "$output" == *"does not contain base_cli/__init__.py"* ]]
+}
