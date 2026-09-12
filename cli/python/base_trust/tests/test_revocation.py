@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -90,10 +89,8 @@ def test_revoke_reports_store_errors_without_claiming_success(
     identity = engine.compute_trust_identity_for_manifest(manifest_factory.write(workspace / "demo"))
     store = engine.ManifestCommandTrustStore(home)
     record = store.allow(identity, base_version="fixture")
-    owner, method = (os, "scandir") if operation == "list" else (
-        Path, "unlink" if operation == "delete" else "read_text",
-    )
-    original = getattr(owner, method)
+    method = {"list": "iterdir", "delete": "unlink", "read": "read_text"}[operation]
+    original = getattr(Path, method)
     denied = store.root if operation == "list" else record
 
     def refuse_record(path, *args, **kwargs):
@@ -102,7 +99,7 @@ def test_revoke_reports_store_errors_without_claiming_success(
         return original(path, *args, **kwargs)
 
     with monkeypatch.context() as patcher:
-        patcher.setattr(owner, method, refuse_record)
+        patcher.setattr(Path, method, refuse_record)
         result = invoke(engine.app, ["revoke", "demo", "--workspace", str(workspace)], home=home)
     assert result.exit_code == 1
     assert "Unable to revoke" in result.stderr
