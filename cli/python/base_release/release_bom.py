@@ -8,8 +8,14 @@ from typing import Any
 
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
-TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+REPOSITORY_RE = re.compile(r"^(?!\.{1,2}/)[^/\s]+/(?!\.{1,2}$)[^/\s]+$")
+VERSION_CORE = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+PRERELEASE_IDENTIFIER = r"(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+SEMVER_RE = re.compile(
+    rf"^{VERSION_CORE}(?:-{PRERELEASE_IDENTIFIER}(?:\.{PRERELEASE_IDENTIFIER})*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+TAG_RE = re.compile(rf"^v{VERSION_CORE}$")
 RESULTS = {"passed", "failed", "not_tested"}
 SOURCE_MODES = {"release", "tag", "moving"}
 DIGEST_LINE_RE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<name>[^/\n]+)$")
@@ -44,7 +50,7 @@ def validate_bom(
 
     release = _mapping(document, "release")
     release_repository = _repository(release, "repository", "release")
-    release_version = _string(release, "version", "release.version")
+    release_version = _version(release, "release")
     release_tag = _string(release, "tag", "release.tag")
     release_commit = _commit(release, "commit", "release.commit")
     if not TAG_RE.fullmatch(release_tag) or release_tag != f"v{release_version}":
@@ -64,6 +70,7 @@ def validate_bom(
     if not isinstance(components, list) or not components:
         raise ReleaseBomError("components must be a non-empty array")
     component_repositories: set[str] = set()
+    component_platforms: dict[str, set[str]] = {}
     for index, component in enumerate(components):
         path = f"components[{index}]"
         row = _mapping_value(component, path)
@@ -72,11 +79,13 @@ def validate_bom(
         if repository_key in component_repositories:
             raise ReleaseBomError(f"{path}.repository is duplicated: {repository}")
         component_repositories.add(repository_key)
-        _string(row, "version", f"{path}.version")
+        version = _version(row, path)
         source_mode = _string(row, "source_mode", f"{path}.source_mode")
         if source_mode not in SOURCE_MODES:
             raise ReleaseBomError(f"{path}.source_mode must be one of: {', '.join(sorted(SOURCE_MODES))}")
-        _commit(row, "commit", path)
+        commit = _commit(row, "commit", path)
+        if repository_key == release_repository.casefold() and commit != release_commit:
+            raise ReleaseBomError(f"{path}.commit must match release.commit")
         required = _boolean(row, "required", path)
         _string(row, "api_schema_version", f"{path}.api_schema_version")
         platforms = row.get("platforms")
@@ -84,6 +93,7 @@ def validate_bom(
             isinstance(platform, str) and platform.strip() for platform in platforms
         ):
             raise ReleaseBomError(f"{path}.platforms must be a non-empty array of strings")
+        component_platforms[repository_key] = set(platforms)
         result = _string(row, "result", f"{path}.result")
         if result not in RESULTS:
             raise ReleaseBomError(f"{path}.result must be one of: {', '.join(sorted(RESULTS))}")
@@ -99,6 +109,8 @@ def validate_bom(
             tag = _string(row, "tag", f"{path}.tag")
             if not TAG_RE.fullmatch(tag):
                 raise ReleaseBomError(f"{path}.tag must be an immutable vX.Y.Z tag")
+            if tag != f"v{version}":
+                raise ReleaseBomError(f"{path}.tag must be v<{path}.version>")
     if release_repository.casefold() not in component_repositories:
         raise ReleaseBomError("release.repository must be declared in components")
 
@@ -122,7 +134,10 @@ def validate_bom(
         unknown = sorted(participant_keys - component_repositories)
         if unknown:
             raise ReleaseBomError(f"{path}.participants references unknown components: {unknown}")
-        _string(row, "platform", f"{path}.platform")
+        platform = _string(row, "platform", f"{path}.platform")
+        unsupported = sorted(key for key in participant_keys if platform not in component_platforms[key])
+        if unsupported:
+            raise ReleaseBomError(f"{path}.platform {platform!r} is not declared by participants: {unsupported}")
         required = _boolean(row, "required", path)
         result = _string(row, "result", f"{path}.result")
         if result not in RESULTS:
@@ -219,6 +234,13 @@ def _repository(row: dict[str, Any], key: str = "repository", path: str = "") ->
     value = _string(row, key, f"{path + '.' if path else ''}{key}")
     if not REPOSITORY_RE.fullmatch(value):
         raise ReleaseBomError(f"{path + '.' if path else ''}{key} must use owner/name format")
+    return value
+
+
+def _version(row: dict[str, Any], path: str) -> str:
+    value = _string(row, "version", f"{path}.version")
+    if not SEMVER_RE.fullmatch(value):
+        raise ReleaseBomError(f"{path}.version must be a strict SemVer value")
     return value
 
 
