@@ -19,7 +19,7 @@ Description:
   --manifest to also check that project's manifest-declared requirements.
 
   Check does not install or repair prerequisites, modify project files, or run
-  project tests.
+  project tests. Project runtime checks remain unverified by default.
 
 Arguments:
   project               Select a Base project by name. Omit it for a Base-only
@@ -33,6 +33,9 @@ Options:
                         Defaults to text.
   --manifest <path>     Use this base_manifest.yaml for project checks. When
                         project is omitted, infer it from manifest project.name.
+  --verify-project-runtime
+                        Authorize execution of reviewed project runtimes and tool
+                        configuration for this invocation.
   --remote-network      Also run a bounded Git origin reachability check.
                         Off by default; requires project or --manifest.
   -v                    Enable DEBUG logging for this subcommand.
