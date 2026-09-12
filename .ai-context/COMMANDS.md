@@ -49,7 +49,8 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl trust status [project]` - inspect one project's manifest command
   trust or all discovered command-bearing projects.
 - `basectl trust <allow|revoke> <project>` - add or remove local approval for
-  manifest-declared project commands.
+  manifest-declared project commands. Revocation covers every approved contract
+  revision for that canonical checkout and manifest, preserving other checkouts.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata, and `--output <path>`

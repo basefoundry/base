@@ -143,6 +143,13 @@ are unchanged.
 supplied `--manifest-sha256` to match when that option is present. That flag is
 useful for scripted, non-interactive approval after a prior review step.
 
+`basectl trust revoke` removes all local approval records for the resolved
+canonical project root and manifest path, including earlier manifest and
+declared test-requirements revisions. Same-named projects in other checkouts
+retain their approvals. Repeating revocation is safe. Unidentified malformed
+records are left untouched and cannot supply a valid approval; a record read
+or deletion failure is reported as an error instead of successful revocation.
+
 When execution is blocked, commands fail before project environment activation
 and before changing into project directories:
 
