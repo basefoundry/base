@@ -95,9 +95,11 @@ class ManifestCommandTrustStore:
         path = self.record_path(identity)
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, UnicodeError, json.JSONDecodeError):
             return None
         if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
+            return None
+        if identity_key_from_record(payload) != identity.identity_key:
             return None
         return payload
 
@@ -123,7 +125,7 @@ class ManifestCommandTrustStore:
         for path in sorted(self.root.glob("*.json")):
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
+            except (OSError, UnicodeError, json.JSONDecodeError):
                 continue
             if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
                 continue
@@ -157,14 +159,22 @@ class ManifestCommandTrustStore:
 
     def revoke(self, identity: ManifestCommandTrustIdentity) -> bool:
         removed = False
-        paths = [self.record_path(identity)]
-        changed_record = self.find_changed_record(identity)
-        if changed_record is not None:
-            changed_identity_key = identity_key_from_record(changed_record)
-            if changed_identity_key is not None:
-                paths.append(self.root / f"{changed_identity_key}.json")
+        paths = {self.record_path(identity)}
+        for path in self.root.glob("*.json"):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
+                continue
+            project = payload.get("project")
+            if isinstance(project, dict) and project.get("root") == str(identity.project_root) and project.get(
+                "manifest"
+            ) == str(identity.manifest_path):
+                # Unlink the record in this store, never a path from its contents.
+                paths.add(path)
 
-        for path in paths:
+        for path in sorted(paths):
             try:
                 path.unlink()
             except FileNotFoundError:

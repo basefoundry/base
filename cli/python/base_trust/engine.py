@@ -163,7 +163,11 @@ def revoke_command(ctx: base_cli.Context, project: str, workspace: str | None) -
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    removed = ManifestCommandTrustStore().revoke(identity)
+    try:
+        removed = ManifestCommandTrustStore().revoke(identity)
+    except OSError as exc:
+        ctx.log.error("Unable to revoke manifest command trust for project '%s': %s", identity.project_name, exc)
+        return base_cli.ExitCode.FAILURE
     if removed:
         print(f"Revoked manifest command trust for project '{identity.project_name}'.")
     else:
