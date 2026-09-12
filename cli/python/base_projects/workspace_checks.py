@@ -317,8 +317,9 @@ def workspace_undeclared_repo_check(root: Path) -> ArtifactCheck:
         ok=False,
         message=f"Git repository '{repository}' is present at '{root}' but is not declared in the workspace manifest.",
         fix=(
-            f"Add '{repository}' to the workspace manifest if it belongs in this workspace; "
-            "otherwise mark it as unmanaged in the workspace manifest or move it outside the workspace root."
+            f"Add '{repository}' as a repos[] name entry in the workspace manifest "
+            "to inventory it, including repositories without a Base manifest; "
+            "or move it outside the workspace root."
         ),
         status="warn",
         finding_id="BASE-W013",

@@ -277,9 +277,11 @@ manifests do not require every repository to be Base-managed.
 
 `BASE-W013` reports each direct-child Git repository that is present under the
 workspace root but is not listed in the workspace manifest. It is a `warn`
-finding and does not fail workspace check or doctor. Add the repository to the
-manifest when it belongs in the workspace; otherwise mark it as unmanaged in
-the manifest or move it outside the workspace root.
+finding and does not fail workspace check or doctor. Add a `repos[]` name entry
+to inventory the repository, even when it has no Base manifest (for example,
+`repos: [{name: scratch-tools}]`), or move it outside the workspace root. The
+schema has no ignore or unmanaged flag. Declaring a non-Base repository is
+supported and produces the non-failing `BASE-W012` finding.
 
 ## Health Findings
 

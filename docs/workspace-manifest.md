@@ -587,8 +587,10 @@ guidance. Both commands emit stable workspace findings for repository
 presence, outside-manifest discovered projects, present repositories without a
 Base project manifest, and Git repositories present under the workspace root
 but absent from the manifest. The latter is a non-blocking warning for each
-undeclared repository; add it to `repos[]` when it belongs in the workspace, or
-mark it as unmanaged in the manifest or move it outside the workspace root.
+undeclared repository; add a `repos[]` name entry to inventory it, including a
+repository without a Base manifest, or move it outside the workspace root.
+For example, `repos: [{name: scratch-tools}]` declares a co-located repository.
+There is no ignore or unmanaged flag in the workspace schema.
 Their JSON diagnostic items remain compatible.
 
 `basectl workspace agent-brief --manifest <path>` reports one item per expected
