@@ -1082,7 +1082,10 @@ class ProjectDiscoveryTests(unittest.TestCase):
             (project_root / ".venv" / "bin" / "python").touch()
 
             with (
-                mock.patch("base_trust.engine.require_command", return_value=0),
+                mock.patch(
+                    "base_projects.test_preflight.ManifestCommandTrustStore.status",
+                    return_value=mock.Mock(is_allowed=True),
+                ),
                 mock.patch("base_setup.test_requirements.python_artifact_installed", return_value=False),
             ):
                 status, stdout, stderr = run_engine(["test-command", "demo", "--test-preflight"], base_home)
