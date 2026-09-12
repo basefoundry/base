@@ -438,7 +438,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [ -f "$record_path" ]
-    grep -Fq '"schema_version": 1' "$record_path"
+    grep -Fq '"schema_version": 2' "$record_path"
     grep -Fq '"project": "demo"' "$record_path"
     grep -Fq '"command": "basectl check"' "$record_path"
     grep -Fq '"status": "ok"' "$record_path"

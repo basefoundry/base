@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import shlex
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -92,6 +93,31 @@ def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, st
 
 
 class WorkspaceOnboardingTests(unittest.TestCase):
+    def test_text_and_json_share_workspace_aware_trust_guidance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            home.mkdir()
+            workspace = root / "team workspace's checkout"
+            project = workspace / "demo"
+            write_project_manifest(project, "demo", "echo ready")
+            manifest_path = root / "workspace.yaml"
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: team\nrepos:\n  - name: demo\n",
+                encoding="utf-8",
+            )
+            args = ["onboarding", "--workspace", str(workspace), "--manifest", str(manifest_path)]
+            code, output, error = invoke_engine([*args, "--format", "json"], root / "base", home)
+            self.assertEqual(code, 0, error)
+            payload = json.loads(output)
+            command = payload["repositories"][0]["trust_command"]
+            words = shlex.split(command)
+            self.assertEqual(words[-2:], ["--workspace", str(workspace.resolve())])
+            self.assertIn(command, [c for a in payload["next_actions"] for c in a["commands"]])
+            code, output, error = invoke_engine(args, root / "base", home)
+            self.assertEqual(code, 0, error)
+            self.assertEqual(output.count(command), 2)
+
     def test_shell_only_repository_is_ready_without_project_venv(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
