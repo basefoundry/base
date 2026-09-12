@@ -4,6 +4,11 @@ Base uses "workspace" in a precise way: a workspace is a local directory that
 contains sibling repositories. A workspace manifest is an optional local file
 that describes which repositories are expected to belong to that workspace.
 
+Project and workspace manifests must use UTF-8 encoding and string mapping
+keys, including nested mappings. Invalid input reports the manifest path and
+field location. Workspace reports identify invalid project members while
+continuing to inspect the other members.
+
 Workspace status, check, doctor, and clone commands can use a manifest when the
 user configures `workspace.manifest` in `~/.base.d/config.yaml` or supplies
 `--manifest <path>`. The command-line flag takes precedence over the configured
@@ -100,6 +105,26 @@ basectl workspace doctor
 check date in the `LAST CHECK` column, while JSON output includes the full
 timestamp and check status. Projects without a recorded check show `-` in text
 output and `null` in JSON output.
+
+Discovery caches and saved latest-check records are optional local state. An
+invalid object, member, timestamp, status, or encoding makes that evidence
+unavailable. Base rescans manifests after an invalid discovery cache, and an
+unavailable latest check does not change current workspace health.
+
+Saved project checks use record schema version `2` and include the canonical
+project root, canonical manifest path, and SHA-256 of the manifest bytes when
+the result is saved. Readers display the record only when all three still
+match. Same-named checkouts therefore cannot display each other's result, and
+any manifest edit makes the previous record unavailable. The per-project-name
+`last.json` path retains only the latest saved result; checking another checkout
+with that name replaces it without transferring its evidence to the first.
+
+Legacy name-only records (including the minimal Bash fallback when Python is
+unavailable) are not verified evidence and appear as an unavailable latest
+check. Run `basectl check --manifest /absolute/project/base_manifest.yaml` or
+`basectl workspace check --workspace /absolute/workspace` to write a new bound
+record. The saved result is historical: it does not verify referenced scripts,
+installed tools, or other files that may have changed since the check.
 
 JSON status output includes a top-level `status` aggregate in addition to each
 project's status. It uses the same status vocabulary and precedence as workspace

@@ -553,3 +553,75 @@ YAML
     [[ "$output" == *"same manifest"* ]]
     [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
 }
+
+@test "public listing and workspace status recover from malformed optional JSON" {
+    local cache
+    export BASE_CACHE_DIR="$TEST_TMPDIR/optional-cache"
+    run_basectl projects list --workspace "$TEST_WORKSPACE"
+    [ "$status" -eq 0 ]
+    for cache in "$BASE_CACHE_DIR/base/cache/discovery/"*.json; do
+        [ -f "$cache" ]
+        printf '[]\n' > "$cache"
+    done
+    mkdir -p "$TEST_HOME/.base.d/demo/checks"
+    printf '\377' > "$TEST_HOME/.base.d/demo/checks/last.json"
+
+    run_basectl projects list --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"name": "demo"'* || "$output" == *'"name":"demo"'* ]]
+    run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"last_check": null'* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
+
+@test "saved check evidence follows the exact checkout and current manifest" {
+    local mode root
+    local first="$TEST_TMPDIR/first/shared"
+    local second="$TEST_TMPDIR/second/shared"
+    for root in "$first" "$second"; do
+        mkdir -p "$root"
+        printf 'project:\n  name: shared\nartifacts: []\n' > "$root/base_manifest.yaml"
+    done
+    for mode in text json; do
+        run_basectl check --ci --manifest "$first/base_manifest.yaml" --format "$mode"
+        [ "$status" -eq 0 ]
+        run "$TEST_INTEGRATION_PYTHON" -c '
+import hashlib, json, pathlib, sys
+record = json.loads(pathlib.Path(sys.argv[1]).read_text())
+root = pathlib.Path(sys.argv[2]).resolve()
+manifest = root / "base_manifest.yaml"
+assert record["schema_version"] == 2
+assert record["identity"] == {"project_root": str(root), "manifest_path": str(manifest),
+    "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest()}
+' "$TEST_HOME/.base.d/shared/checks/last.json" "$first"
+        [ "$status" -eq 0 ]
+
+        run_basectl workspace status --workspace "$TEST_TMPDIR/first" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'"checked_at":'* ]]
+        run_basectl workspace status --workspace "$TEST_TMPDIR/second" --format json
+        [ "$status" -eq 0 ]
+        [[ "$output" == *'"last_check": null'* ]]
+    done
+    printf '# Changed since the saved check.\n' >> "$first/base_manifest.yaml"
+    run_basectl workspace status --workspace "$TEST_TMPDIR/first" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"last_check": null'* ]]
+}
+
+@test "public diagnostics report invalid manifest encoding without a traceback" {
+    local command
+    printf 'project: \377\n' > "$TEST_PROJECT_ROOT/base_manifest.yaml"
+    for command in check doctor; do
+        run_basectl "$command" --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml" --format json
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"UTF-8"* ]]
+        [[ "$output" != *"Traceback"* ]]
+    done
+    run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"manifest": "invalid"'* ]]
+    [[ "$output" == *'"name": "base"'* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
