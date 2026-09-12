@@ -217,6 +217,8 @@ printf 'unexpected base_projects args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$venv_dir/bin/python"
+    mkdir -p "$TEST_HOME/.base.d/base/.venv/bin"
+    cp "$venv_dir/bin/python" "$TEST_HOME/.base.d/base/.venv/bin/python"
 
     run env \
         HOME="$TEST_HOME" \
