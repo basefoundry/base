@@ -41,14 +41,8 @@ class RunIndexTests(unittest.TestCase):
         self.assertEqual(payload["version"], 1)
         self.assertEqual(payload["bundles"], [])
 
-        # Newer base-cli providers may add summary metadata while preserving
-        # the stable version and bundles fields. Keep the compatibility test
-        # valid for both the pinned release and a newer sibling checkout.
-        additive_fields = set(payload) - {"version", "bundles"}
-        self.assertTrue(
-            additive_fields <= {"complete", "omitted_bundles"},
-            additive_fields,
-        )
+        # The provider owns additive index metadata. Base consumes only version
+        # and bundles; known optional summaries retain their documented meaning.
         if "complete" in payload:
             self.assertTrue(payload["complete"])
         if "omitted_bundles" in payload:
@@ -56,3 +50,12 @@ class RunIndexTests(unittest.TestCase):
 
     def test_main_rejects_invalid_arguments(self) -> None:
         self.assertEqual(run_index.main([]), 2)
+
+
+def test_direct_run_index_reports_provider_incompatibility(capsys) -> None:
+    from unittest.mock import patch  # pylint: disable=import-outside-toplevel
+    from base_cli_adapters.provider import BaseCliCompatibilityError  # pylint: disable=import-outside-toplevel
+
+    with patch.object(run_index, "load_run_index_runtime", side_effect=BaseCliCompatibilityError("provider missing")):
+        assert run_index.main(["unused-runs-root"]) == 1
+    assert "ERROR: provider missing" in capsys.readouterr().err

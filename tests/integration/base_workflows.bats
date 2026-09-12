@@ -626,6 +626,26 @@ assert record["identity"] == {"project_root": str(root), "manifest_path": str(ma
     [[ "$output" != *"Traceback"* ]]
 }
 
+@test "public launcher identifies an incompatible selected base-cli provider" {
+    printf '\nrefresh_run_bundle_index = None\n' >> "$TEST_BASE_HOME/../base-cli/lib/python/base_cli/_runtime.py"
+    run_basectl projects list --workspace "$TEST_WORKSPACE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"refresh_run_bundle_index must be callable"* ]]
+    [[ "$output" == *"$TEST_BASE_HOME/../base-cli/lib/python"* ]]
+    [[ "$output" == *"v0.4.3"* ]]
+    [[ "$output" == *"BASE_CLI_SOURCE_DIR"* ]]
+    [[ "$output" != *"Traceback"* ]]
+
+    # The source bootstrap path must retain the same actionable error before setup.
+    mv "$TEST_HOME/.base.d/base/.venv" "$TEST_HOME/.base.d/base/.venv-saved"
+    ln -s "$TEST_INTEGRATION_PYTHON" "$TEST_MOCKBIN/python3"
+    run_basectl projects list --workspace "$TEST_WORKSPACE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"refresh_run_bundle_index must be callable"* ]]
+    [[ "$output" == *"BASE_CLI_SOURCE_DIR"* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
+
 @test "onboarding trust guidance selects its explicit workspace from another directory" {
     local workspace="$TEST_TMPDIR/team workspace's checkout"
     local manifest="$TEST_TMPDIR/team workspace.yaml"

@@ -315,7 +315,15 @@ jobs:
           bats tests/integration/base_workflows.bats
 
   ubuntu-source-checkout:
-    name: Ubuntu source-checkout suite
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider-ref: v0.4.3
+            name: Ubuntu source-checkout suite
+          - provider-ref: main
+            name: Moving provider source-checkout suite
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -334,7 +342,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-cli
-          ref: v0.4.3
+          ref: ${{ matrix.provider-ref }}
           path: .dependencies/base-cli
 
       - name: Expose reusable Bash library checkout as sibling
@@ -376,6 +384,16 @@ jobs:
           "$HOME/.base.d/base/.venv/bin/python" -m pip install --no-deps .dependencies/base-cli
           "$HOME/.base.d/base/.venv/bin/python" -m pip install -r requirements-dev.txt
 
+      - name: Check installed and explicit provider capabilities
+        run: |
+          provider_python="$HOME/.base.d/base/.venv/bin/python"
+          entrypoint="$GITHUB_WORKSPACE/cli/python/base_cli_adapters/module_entrypoint.py"
+          git -C .dependencies/base-cli rev-parse HEAD
+          env -u BASE_CLI_SOURCE_DIR -u BASE_CLI_RUNTIME_SOURCE_ROOT BASE_CLI_SOURCE=pip \
+            "$provider_python" -I "$entrypoint" --check-provider
+          BASE_CLI_SOURCE=explicit BASE_CLI_RUNTIME_SOURCE_ROOT="$BASE_CLI_SOURCE_DIR" \
+            "$provider_python" -I "$entrypoint" --check-provider
+
       - name: Run Ubuntu source-checkout validation
         run: |
           ./bin/basectl check --ci base --format json
@@ -383,7 +401,7 @@ jobs:
           jq -e \
             '.schema_version == 1 and .command == "gh branch stale" and .status == "ok" and .data.branches == [] and .error == null' \
             <<<"$branch_payload"
-          env -u BASE_HOME ./bin/base-test
+          env -u BASE_HOME -u BASE_CLI_SOURCE_DIR ./bin/base-test
 
   security:
     name: Security scanners

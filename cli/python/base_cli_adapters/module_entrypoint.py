@@ -12,6 +12,7 @@ import sys
 # This bootstrap must validate isolation before importing the CLI provider.
 USAGE_ERROR = 2
 SUCCESS = 0
+COMPATIBILITY_ERROR = 1
 
 
 def main() -> int:
@@ -31,6 +32,16 @@ def main() -> int:
     if provider_root:
         source_roots.insert(0, str(Path(provider_root).resolve()))
     sys.path[:0] = source_roots
+    from base_cli_adapters.provider import BaseCliCompatibilityError, provider_description, validate_provider
+
+    try:
+        validate_provider()
+    except BaseCliCompatibilityError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return COMPATIBILITY_ERROR
+    if sys.argv[1:] == ["--check-provider"]:
+        print(f"Compatible base-cli {provider_description()}")
+        return SUCCESS
     module = sys.argv[1]
     sys.argv = sys.argv[1:]
     runpy.run_module(module, run_name="__main__", alter_sys=True)

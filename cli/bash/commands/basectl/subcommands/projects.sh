@@ -64,7 +64,7 @@ base_projects_source_python() {
     base_pythonpath="$(base_projects_source_pythonpath)"
     env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$base_pythonpath" \
         "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" \
-        base_projects --help >/dev/null 2>&1 || return 1
+        base_projects --help >/dev/null || return 1
 
     printf '%s\n' "$python_bin"
 }

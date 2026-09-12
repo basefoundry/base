@@ -74,8 +74,37 @@ Python resolves the installed distribution normally. `BASE_CLI_SOURCE` reports
 the selected provider, and an explicit or sibling path that exists but is
 malformed fails loudly instead of silently selecting a different version.
 
-Base's source-checkout CI should exercise the sibling path, while packaged or
-installed-environment checks should exercise the pip-installed path. The
+The release-pinned provider, currently **v0.4.3**, is authoritative for released
+Base. Compatible moving source checkouts are also supported for development;
+their version string alone does not establish compatibility. CI runs the full
+source suite against both the pinned tag and current `base-cli` main, using
+sibling resolution, and checks installed and explicit-source capabilities in
+each job. A moving-source pass does not replace immutable release-BOM evidence.
+
+Before dispatch, Base's isolated Python entrypoint checks the capabilities
+listed in `base_cli_adapters.provider`, including protocol, history, context,
+configuration, path, runtime layout, and run-index refresh dependencies. An
+incompatible provider reports its selected path and repair instructions. Source
+overrides continue to take precedence over installed packages: installing the
+pin cannot repair an incompatible source override that remains selected.
+
+The private `base_cli._runtime.refresh_run_bundle_index` dependency is loaded
+through that compatibility boundary. The provider owns locking and index bytes;
+Base requires version `1` and the `bundles` collection in its compatibility
+fixture and permits provider-owned additive metadata. Context documentation
+covers named public fields, excluding underscore-prefixed implementation state
+and `cleanup_hooks`; new public fields still require documentation.
+
+For direct diagnostics with the selected interpreter and source root:
+
+```bash
+BASE_CLI_SOURCE=explicit BASE_CLI_RUNTIME_SOURCE_ROOT=../base-cli/lib/python \
+  ~/.base.d/base/.venv/bin/python -I \
+  "$PWD/cli/python/base_cli_adapters/module_entrypoint.py" --check-provider
+```
+
+Omit the source-root override to inspect the installed provider. Public Base
+launchers set these internal selection values through the resolver. The
 standalone repository owns its build metadata, versioning, license, and release
 workflow; Base owns only provider selection and its compatibility contract.
 
