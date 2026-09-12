@@ -400,3 +400,24 @@ EOF
     [[ "$output" == *"Workspace setup plan complete: setup=1 skipped=2 failed=0."* ]]
     [[ "$output" == *"[DRY-RUN] No repositories were modified."* ]]
 }
+
+@test "public listing and workspace status recover from malformed optional JSON" {
+    local cache
+    export BASE_CACHE_DIR="$TEST_TMPDIR/optional-cache"
+    run_basectl projects list --workspace "$TEST_WORKSPACE"
+    [ "$status" -eq 0 ]
+    for cache in "$BASE_CACHE_DIR/base/cache/discovery/"*.json; do
+        [ -f "$cache" ]
+        printf '[]\n' > "$cache"
+    done
+    mkdir -p "$TEST_HOME/.base.d/demo/checks"
+    printf '\377' > "$TEST_HOME/.base.d/demo/checks/last.json"
+
+    run_basectl projects list --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"name": "demo"'* || "$output" == *'"name":"demo"'* ]]
+    run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"last_check": null'* ]]
+    [[ "$output" != *"Traceback"* ]]
+}

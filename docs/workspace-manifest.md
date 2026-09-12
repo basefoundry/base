@@ -101,6 +101,11 @@ check date in the `LAST CHECK` column, while JSON output includes the full
 timestamp and check status. Projects without a recorded check show `-` in text
 output and `null` in JSON output.
 
+Discovery caches and saved latest-check records are optional local state. An
+invalid object, member, timestamp, status, or encoding makes that evidence
+unavailable. Base rescans manifests after an invalid discovery cache, and an
+unavailable latest check does not change current workspace health.
+
 JSON status output includes a top-level `status` aggregate in addition to each
 project's status. It uses the same status vocabulary and precedence as workspace
 reports: `error` takes precedence over `warn`, which takes precedence over `ok`.
