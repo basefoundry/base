@@ -366,6 +366,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")" "$workspace/demo"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ " $* " == *" -m base_projects run-commands --dry-run --format command-protocol "* ]]; then
     base_test_protocol_begin named-command 1
     base_test_protocol_named_command_record 0 demo "${BASE_TEST_PROJECT_ROOT:?}" \
@@ -432,6 +434,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ " $* " == *" -m base_projects run-commands --project demo --dry-run --format json "* ]]; then
     printf '%s\n' "${BASE_TEST_EXPECTED_JSON:?}"
     exit 0

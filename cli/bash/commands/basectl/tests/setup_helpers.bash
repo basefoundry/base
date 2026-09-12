@@ -199,6 +199,8 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -408,12 +410,16 @@ case "${1:-}" in
             mkdir -p "$python_prefix/bin"
             cat > "$python_prefix/bin/python3" <<'PYEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then
@@ -587,12 +593,16 @@ case "${1:-}" in
             mkdir -p "$python_prefix/bin"
             cat > "$python_prefix/bin/python3" <<'PYEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && -n "${3:-}" ]]; then
     mkdir -p "$3/bin"
     printf 'python-home = test\n' > "$3/pyvenv.cfg"
     printf '#!/usr/bin/env bash\n' > "$3/bin/activate"
     cat > "$3/bin/python" <<'VENVEOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 pyyaml_package="${BASE_SETUP_PYYAML_PACKAGE:-PyYAML}"
 click_package="${BASE_SETUP_CLICK_PACKAGE:-click}"
 if [[ "${1:-}" == "--version" ]]; then

@@ -368,6 +368,8 @@ EOF
     mkdir -p "$(dirname "$python_bin")"
     cat > "$python_bin" <<'EOF'
 #!/usr/bin/env bash
+# Bash 3 reads BASH_ENV before assigning script arguments.
+source "${BASH_ENV:?}"
 if [[ " $* " == *" -m base_projects build-target-list --project demo --dry-run --format json "* ]]; then
     printf '%s\n' "${BASE_TEST_EXPECTED_JSON:?}"
     exit 0
