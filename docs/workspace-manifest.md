@@ -157,7 +157,9 @@ standard Base setup and validation commands for repositories with valid project
 manifests. It does not clone repositories, run setup, create virtual
 environments, or execute project tests. The trust command is an approval
 instruction, not an automatic grant. Optional missing repositories do not
-create an action.
+create an action. Generated trust commands carry the canonical project workspace
+and reviewed manifest digest, so they can be copied from another directory even
+when a separate workspace contains a project with the same name.
 
 `basectl workspace agent-brief --manifest <path>` is the local handoff summary
 for a human or coding agent. It includes every expected repository plus

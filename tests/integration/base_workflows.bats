@@ -497,3 +497,44 @@ EOF
     [[ "$output" == *'"name": "base"'* ]]
     [[ "$output" != *"Traceback"* ]]
 }
+
+@test "onboarding trust guidance selects its explicit workspace from another directory" {
+    local workspace="$TEST_TMPDIR/team workspace's checkout"
+    local manifest="$TEST_TMPDIR/team workspace.yaml"
+    local trust_command payload
+    mkdir -p "$workspace/demo"
+    cp "$TEST_PROJECT_ROOT/base_manifest.yaml" "$workspace/demo/base_manifest.yaml"
+    printf 'schema_version: 1\nworkspace:\n  name: team\nrepos:\n  - name: demo\n' > "$manifest"
+    cd "$TEST_PROJECT_ROOT"
+
+    run_basectl workspace onboarding --workspace "$workspace" --manifest "$manifest" --format json
+    [ "$status" -eq 0 ]
+    payload="$output"
+    trust_command="$(printf '%s' "$payload" | "$TEST_INTEGRATION_PYTHON" -c '
+import json, sys
+payload = json.load(sys.stdin)
+command = payload["repositories"][0]["trust_command"]
+assert command in [c for action in payload["next_actions"] for c in action["commands"]]
+print(command)
+')"
+    [ -n "$trust_command" ]
+    run_basectl workspace onboarding --workspace "$workspace" --manifest "$manifest"
+    [ "$status" -eq 0 ]
+
+    run env HOME="$TEST_HOME" PATH="$TEST_BASE_HOME/bin:$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_CLI_SOURCE_DIR="$TEST_BASE_HOME/../base-cli/lib/python" \
+        bash -c "$trust_command"
+    [ "$status" -eq 0 ]
+    run_basectl trust status demo --workspace "$workspace"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'demo\tallowed\t'* ]]
+    run_basectl trust status demo --workspace "$TEST_WORKSPACE"
+    [[ "$output" == *$'demo\tblocked\t'* ]]
+
+    printf '\n# reviewed manifest changed\n' >> "$workspace/demo/base_manifest.yaml"
+    run env HOME="$TEST_HOME" PATH="$TEST_BASE_HOME/bin:$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_CLI_SOURCE_DIR="$TEST_BASE_HOME/../base-cli/lib/python" \
+        bash -c "$trust_command"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"SHA-256"* ]]
+}
