@@ -181,6 +181,12 @@ environment is ready. Paths outside the project root, unsupported requirement
 syntax, and uv-managed projects using this field fail closed; uv projects
 should declare test dependencies in `pyproject.toml` and use `uv sync`.
 
+`basectl setup --dry-run --manifest <path>` previews virtualenv creation and
+requirements installation even before the project's virtualenv exists. The
+preview runs through Base's interpreter and does not create, recreate, or
+install into the project environment; `--recreate-venv --dry-run` also preserves
+an existing environment.
+
 Base deliberately uses command-focused BATS regression coverage plus ShellCheck
 as the Bash equivalent instead of a line percentage. Contributors changing a
 public command or runtime branch must add or update a focused BATS assertion,

@@ -186,12 +186,15 @@ def reconcile_test_requirements(ctx: base_cli.Context, manifest: BaseManifest, d
     path, _requirements = parsed
     route = route_for_manifest(manifest)
     python_bin = route.project_venv_dir / "bin" / "python"
-    if project_venv_recreate_enabled() or not python_bin.exists():
-        create_project_virtualenv(ctx, route.project_venv_dir, manifest.python.requires_python)
+    needs_venv = project_venv_recreate_enabled() or not python_bin.exists()
     command = [str(python_bin), "-m", "pip", "install", "--disable-pip-version-check", "-r", str(path)]
     if dry_run:
+        if needs_venv:
+            ctx.log.info("[DRY-RUN] Would create project virtual environment at '%s'.", route.project_venv_dir)
         process.dry_run_command(ctx, command, cwd=route.project_root)
         return
+    if needs_venv:
+        create_project_virtualenv(ctx, route.project_venv_dir, manifest.python.requires_python)
     ctx.log.info(
         "Installing project test requirements from '%s' into '%s'.",
         path.relative_to(route.project_root),

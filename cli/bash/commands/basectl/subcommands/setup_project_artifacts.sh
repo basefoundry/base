@@ -163,13 +163,12 @@ setup_project_artifact_prepare_bootstrap() {
 setup_project_artifact_handle_unhealthy_venv() {
     local precheck_json
 
+    if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]] && setup_is_dry_run; then
+        return 0
+    fi
     if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_REQUIRES_PYTHON" == true &&
         "$_BASE_SETUP_PROJECT_ARTIFACT_USES_UV_MANAGER" != true ]] &&
         ! setup_virtualenv_healthy_path "$_BASE_SETUP_PROJECT_ARTIFACT_PROJECT_VENV_DIR"; then
-        if setup_is_dry_run && [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]]; then
-            base_std_log_info "[DRY-RUN] Would run Python project setup layer through base-wrapper for project '$_BASE_SETUP_PROJECT_ARTIFACT_PROJECT'."
-            return 0
-        fi
         if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_OUTPUT_FORMAT" == json ]]; then
             if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == doctor ]]; then
                 precheck_json="$(setup_run_project_pre_venv_layer predoctor json \
@@ -246,7 +245,8 @@ setup_project_artifact_handle_unhealthy_venv() {
 
 setup_project_artifact_execute() {
     if [[ "$_BASE_SETUP_PROJECT_ARTIFACT_USES_UV_MANAGER" == true ||
-        "$_BASE_SETUP_PROJECT_ARTIFACT_REQUIRES_PYTHON" != true ]]; then
+        "$_BASE_SETUP_PROJECT_ARTIFACT_REQUIRES_PYTHON" != true ]] ||
+        { [[ "$_BASE_SETUP_PROJECT_ARTIFACT_ACTION" == setup ]] && setup_is_dry_run; }; then
         env "${_BASE_SETUP_PROJECT_ARTIFACT_PROJECT_ENV_ARGS[@]}" \
             BASE_HOME="$BASE_HOME" \
             BASE_PLATFORM="$_BASE_SETUP_PROJECT_ARTIFACT_PLATFORM" \

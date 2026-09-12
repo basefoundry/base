@@ -29,7 +29,9 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl activate <project>` - start an interactive Base Bash runtime shell
   for a project.
 - `basectl setup [project]` - install and bootstrap the local Base CLI
-  environment and optional project artifacts.
+  environment and optional project artifacts. Project `--dry-run` previews run
+  through Base's interpreter and work before the project virtualenv exists,
+  without creating or recreating that environment.
 - `basectl check [project]` - check Base readiness only by default; pass a
   project name or `--manifest` to also check manifest-declared project
   requirements. It does not install or repair prerequisites, modify project
