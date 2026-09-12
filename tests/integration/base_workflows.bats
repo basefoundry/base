@@ -480,3 +480,20 @@ EOF
     [[ "$output" == *"Workspace setup plan complete: setup=1 skipped=2 failed=0."* ]]
     [[ "$output" == *"[DRY-RUN] No repositories were modified."* ]]
 }
+
+
+@test "public diagnostics report invalid manifest encoding without a traceback" {
+    local command
+    printf 'project: \377\n' > "$TEST_PROJECT_ROOT/base_manifest.yaml"
+    for command in check doctor; do
+        run_basectl "$command" --manifest "$TEST_PROJECT_ROOT/base_manifest.yaml" --format json
+        [ "$status" -eq 1 ]
+        [[ "$output" == *"UTF-8"* ]]
+        [[ "$output" != *"Traceback"* ]]
+    done
+    run_basectl workspace status --workspace "$TEST_WORKSPACE" --format json
+    [ "$status" -eq 1 ]
+    [[ "$output" == *'"manifest": "invalid"'* ]]
+    [[ "$output" == *'"name": "base"'* ]]
+    [[ "$output" != *"Traceback"* ]]
+}
