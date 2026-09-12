@@ -9,14 +9,18 @@ from __future__ import annotations
 
 import sys
 
+# This bootstrap must validate isolation before importing the CLI provider.
+USAGE_ERROR = 2
+SUCCESS = 0
+
 
 def main() -> int:
     if not sys.flags.isolated:
         print("Base module entrypoint requires Python's -I option.", file=sys.stderr)
-        return 2
+        return USAGE_ERROR
     if len(sys.argv) < 2:
         print("Usage: module_entrypoint.py <module> [arguments...]", file=sys.stderr)
-        return 2
+        return USAGE_ERROR
     import os
     import runpy
     from pathlib import Path
@@ -30,7 +34,7 @@ def main() -> int:
     module = sys.argv[1]
     sys.argv = sys.argv[1:]
     runpy.run_module(module, run_name="__main__", alter_sys=True)
-    return 0
+    return SUCCESS
 
 
 if __name__ == "__main__":
