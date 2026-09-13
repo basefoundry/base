@@ -1040,9 +1040,9 @@ base_gh_project_issue_set_fields_command() {
 }
 
 base_gh_apply_project_issue_fields() {
-    local project_title="$1" config_path="$2" project_size="$3"
+    local project_title="$1" config_path="$2" project_size="$3" issue_number="$4"
     local output status line
-    shift 3
+    shift 4
 
     output="$(base_gh_project_issue_set_fields "$@" 2>&1)"
     status=$?
@@ -1059,7 +1059,8 @@ base_gh_apply_project_issue_fields() {
             [[ -n "$line" ]] && base_std_log_warn "$line"
         done <<<"$output"
     fi
-    base_std_log_warn "Project field update failed. Set fields manually or rerun:"
+    base_std_log_warn "Issue #$issue_number was created, but Project metadata is incomplete."
+    base_std_log_warn "Project field update failed. Set fields manually or resume the metadata update with:"
     base_std_log_warn "$(base_gh_project_issue_set_fields_command "$@")"
     return "$status"
 }
@@ -1310,7 +1311,7 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "$config_path" "$project_size" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields "$project_title" "$config_path" "$project_size" "$issue_number" "${field_args[@]}" || return $?
         else
             [[ -n "$project_size" ]] || project_size="S"
             local field_args=(
@@ -1325,7 +1326,7 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "" "$project_size" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields "$project_title" "" "$project_size" "$issue_number" "${field_args[@]}" || return $?
         fi
     fi
 }

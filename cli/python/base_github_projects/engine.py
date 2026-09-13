@@ -48,9 +48,10 @@ from .project_schema import schema_with_extra_options  # pylint: disable=unused-
 from .project_schema import schema_with_initiatives  # pylint: disable=unused-import
 from .project_schema import schema_with_project_config  # pylint: disable=unused-import
 # pylint: enable=unused-import
-from .project_errors import ProjectAuthError, ProjectError
+from .project_errors import ProjectAuthError, ProjectError, ProjectTransportError
 # pylint: disable=unused-import
 from .project_graphql import GITHUB_GRAPHQL_TIMEOUT_SECONDS, is_project_scope_error, run_graphql
+from .project_rest import RestIssueFieldRequest, RestProjectTransport, rest_doctor_command
 # pylint: enable=unused-import
 
 
@@ -154,7 +155,19 @@ def project_operations() -> ProjectOperations:
 def doctor_command(args: ProjectArguments) -> int:
     from .project_doctor_command import doctor_command as command
 
-    return command(args, ops=project_operations())
+    try:
+        return command(args, ops=project_operations())
+    except ProjectTransportError as exc:
+        print(
+            f"WARNING: GraphQL Project transport unavailable; using REST Projects API: {exc}",
+            file=sys.stderr,
+        )
+        return rest_doctor_command(
+            args,
+            transport=RestProjectTransport(),
+            compare_schema=compare_schema,
+            schema_for_args=schema_for_args,
+        )
 
 
 def configure_command(args: ProjectArguments) -> int:
@@ -166,7 +179,38 @@ def configure_command(args: ProjectArguments) -> int:
 def issue_set_fields_command(args: ProjectArguments) -> int:
     from .project_issue_fields_command import issue_set_fields_command as command
 
-    return command(args, ops=project_operations())
+    try:
+        return command(args, ops=project_operations())
+    except ProjectTransportError as exc:
+        print(
+            f"WARNING: GraphQL Project transport unavailable; using REST Projects API: {exc}",
+            file=sys.stderr,
+        )
+        return rest_issue_set_fields_command(args)
+
+
+def rest_issue_set_fields_command(args: ProjectArguments) -> int:
+    owner = require_owner(args)
+    repo = require_repo(args)
+    repo_owner, repo_name = split_repo(repo)
+    values = issue_field_values_for_args(args)
+
+    def resolve_updates(fields: tuple[ProjectField, ...], field_values: dict[str, str]) -> tuple[FieldUpdate, ...]:
+        return resolve_issue_field_updates(fields, field_values, project_title=args.project_title or "")
+
+    return RestProjectTransport().reconcile_issue_fields(
+        RestIssueFieldRequest(
+            owner=owner,
+            repo_owner=repo_owner,
+            repo_name=repo_name,
+            issue_number=args.issue_number or 0,
+            project_title=args.project_title or "",
+            field_values=values,
+            resolve_updates=resolve_updates,
+            dry_run=args.dry_run,
+            allow_cross_repo=args.allow_cross_repo,
+        )
+    )
 
 
 def find_owner_and_project(owner: str, title: str) -> OwnerInfo:
