@@ -1,0 +1,83 @@
+{
+  "owner": {
+    "id": 295026282,
+    "login": "basefoundry",
+    "type": "Organization"
+  },
+  "projects": [
+    {
+      "id": 174757047,
+      "number": 1,
+      "title": "base"
+    }
+  ],
+  "fields": [
+    {
+      "id": 10,
+      "name": "Status",
+      "data_type": "single_select",
+      "options": [
+        {"id": "O_backlog", "name": {"raw": "Backlog"}},
+        {"id": "O_done", "name": {"raw": "Done"}}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Priority",
+      "data_type": "single_select",
+      "options": [
+        {"id": "O_p1", "name": {"raw": "P1"}},
+        {"id": "O_p2", "name": {"raw": "P2"}}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Size",
+      "data_type": "single_select",
+      "options": [
+        {"id": "O_s", "name": {"raw": "S"}},
+        {"id": "O_m", "name": {"raw": "M"}}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Area",
+      "data_type": "single_select",
+      "options": [
+        {"id": "O_product", "name": {"raw": "Product"}},
+        {"id": "O_cli", "name": {"raw": "CLI"}}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Initiative",
+      "data_type": "single_select",
+      "options": [
+        {"id": "O_adoption", "name": {"raw": "Adoption Polish"}},
+        {"id": "O_contract", "name": {"raw": "Contract Hardening"}}
+      ]
+    }
+  ],
+  "issue": {
+    "id": 1311,
+    "number": 1311,
+    "state": "open",
+    "html_url": "https://github.com/basefoundry/base/issues/1311",
+    "title": "Project Intake test issue"
+  },
+  "item": {
+    "id": 101,
+    "content": {
+      "id": 1311,
+      "number": 1311,
+      "title": "Project Intake test issue"
+    },
+    "fields": [
+      {"id": 10, "name": "Status", "value": {"name": {"raw": ""}}},
+      {"id": 11, "name": "Priority", "value": {"name": {"raw": ""}}},
+      {"id": 12, "name": "Size", "value": {"name": {"raw": ""}}},
+      {"id": 13, "name": "Area", "value": {"name": {"raw": ""}}},
+      {"id": 14, "name": "Initiative", "value": {"name": {"raw": ""}}}
+    ]
+  }
+}

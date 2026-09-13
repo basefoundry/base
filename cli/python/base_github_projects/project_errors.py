@@ -9,6 +9,14 @@ class ProjectAuthError(ProjectError):
     pass
 
 
+class ProjectTransportError(ProjectError):
+    """A Project API transport condition that may be recovered through REST."""
+
+
+class ProjectDuplicateItemError(ProjectError):
+    """The Project already contains the requested issue item."""
+
+
 def missing_issue_field_option_message(field_name: str, option_name: str, project_title: str) -> str:
     if field_name == "Initiative":
         return (

@@ -62,6 +62,9 @@ class FieldUpdate:
 class ProjectInfo:
     project_id: str
     title: str
+    project_number: int | None = None
+    owner_login: str | None = None
+    owner_type: str | None = None
 
 
 @dataclass(frozen=True)

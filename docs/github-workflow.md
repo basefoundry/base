@@ -194,6 +194,16 @@ can add or update the item. This prevents a repository typo or stale Project
 name from silently placing an issue in another repository's Project. For a
 deliberate cross-repository maintenance operation, pass
 `--allow-cross-repo`; the command emits a warning when that override is used.
+When GraphQL quota or transport pressure is classified, `project doctor` and
+`project issue set-fields` recover through the REST Projects API. REST recovery
+resolves the exact owner and Project, handles duplicate or delayed item
+visibility with bounded retries, and reads back the fields before reporting
+success. Because the REST API does not expose the GraphQL linked-repository
+list, recovery fails closed for cross-owner repositories unless
+`--allow-cross-repo` is supplied; Project configuration and replacement remain
+GraphQL-only. If `basectl gh issue create` has already created the issue but
+Project metadata fails, it reports the issue as created and prints the exact
+idempotent `set-fields` command to resume the metadata update.
 
 Base-managed repositories also carry
 `.github/workflows/issue-branch-policy.yml`. Unlike Project Intake, this

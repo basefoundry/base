@@ -11,6 +11,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
+PROJECT_TRANSPORT_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "project-transport.json"
 ISSUE_BRANCH_POLICY_WORKFLOW = WORKFLOW_DIR / "issue-branch-policy.yml"
 
 
@@ -289,19 +290,23 @@ project_intake_mock_graphql_item() {
 }
 
 project_intake_mock_rest_item() {
-  jq -nc \
+  jq -c \
     --arg status "$(project_intake_mock_value status)" \
     --arg priority "$(project_intake_mock_value priority)" \
     --arg size "$(project_intake_mock_value size)" \
     --arg area "$(project_intake_mock_value area)" \
     --arg initiative "$(project_intake_mock_value initiative)" \
-    '{id:101,content:{id:1311,number:1311,title:"Project Intake test issue"},fields:[
-      {id:10,name:"Status",value:{name:{raw:$status}}},
-      {id:11,name:"Priority",value:{name:{raw:$priority}}},
-      {id:12,name:"Size",value:{name:{raw:$size}}},
-      {id:13,name:"Area",value:{name:{raw:$area}}},
-      {id:14,name:"Initiative",value:{name:{raw:$initiative}}}
-    ] | map(select(.value.name.raw != ""))}'
+    ' .item |
+      .fields |= map(
+        if .name == "Status" then .value.name.raw = $status
+        elif .name == "Priority" then .value.name.raw = $priority
+        elif .name == "Size" then .value.name.raw = $size
+        elif .name == "Area" then .value.name.raw = $area
+        elif .name == "Initiative" then .value.name.raw = $initiative
+        else . end
+      ) |
+      .fields |= map(select(.value.name.raw != ""))' \
+    "${PROJECT_INTAKE_FIXTURE_PATH:?}"
 }
 
 case "$*" in
@@ -421,21 +426,10 @@ JSON
     printf '{"login":"basefoundry","type":"%s"}\\n' "${PROJECT_INTAKE_OWNER_TYPE:-Organization}"
     ;;
   api\\ *projectsV2\\?per_page=100)
-    printf '[{"id":1,"number":1,"title":"base"}]\\n'
+    jq -c '.projects' "${PROJECT_INTAKE_FIXTURE_PATH:?}"
     ;;
   api\\ *projectsV2/1/fields\\?per_page=100)
-    cat <<'JSON'
-[
-  {"id":10,"name":"Status","options":[
-    {"id":"O_backlog","name":{"raw":"Backlog"}},
-    {"id":"O_done","name":{"raw":"Done"}}
-  ]},
-  {"id":11,"name":"Priority","options":[{"id":"O_p2","name":{"raw":"P2"}}]},
-  {"id":12,"name":"Size","options":[{"id":"O_s","name":{"raw":"S"}}]},
-  {"id":13,"name":"Area","options":[{"id":"O_product","name":{"raw":"Product"}}]},
-  {"id":14,"name":"Initiative","options":[{"id":"O_adoption","name":{"raw":"Adoption Polish"}}]}
-]
-JSON
+    jq -c '.fields' "${PROJECT_INTAKE_FIXTURE_PATH:?}"
     ;;
   api\\ --method\\ GET\\ *projectsV2/1/items/101*)
     if [[ "${PROJECT_INTAKE_REST_FAIL_OPERATION:-}" == "read" ]]; then
@@ -538,6 +532,7 @@ def _project_intake_env(tmp_path: Path, mockbin: Path) -> dict[str, str]:
             "GH_TOKEN": "test-token",
             "GITHUB_REPOSITORY": "basefoundry/base",
             "PROJECT_INTAKE_STATE": str(tmp_path),
+            "PROJECT_INTAKE_FIXTURE_PATH": str(PROJECT_TRANSPORT_FIXTURE),
             "PATH": f"{mockbin}:{env['PATH']}",
         }
     )
