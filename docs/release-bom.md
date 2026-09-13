@@ -43,6 +43,23 @@ Every combination's platform must appear in **every participant's** component
 repository identities match without case sensitivity. Schema patterns describe
 the lexical rules; `validate_bom` also enforces these cross-field relationships.
 Run the validator even when a document passes JSON Schema validation.
+
+## Validation layers
+
+The JSON Schema is the structural and lexical contract. It enforces the
+document shape, required fields, enums, `additionalProperties: false`, strict
+SemVer patterns, immutable tag and commit patterns, and a minimum of two
+combination participants. `validate_bom` applies the runtime release gate and
+cross-field rules that the schema cannot express generally: release identity
+matching, component/tag relationships, release/component commit identity,
+participant references and platform coverage, and required-source/result
+interactions. It also rejects unknown keys at every validated object level.
+
+The release tests load the same schema and run both layers against a shared
+valid/invalid corpus. Cases rejected only by the semantic runtime layer are
+explicitly annotated, so a new unclassified schema/validator disagreement fails
+the test.
+
 The BOM is not a local dependency resolver. In a source-development checkout,
 Base still resolves providers in this order: explicit
 `BASE_BASH_LIBS_DIR`/`BASE_CLI_SOURCE_DIR`, sibling `base-bash-libs` and
