@@ -208,12 +208,46 @@ basectl_private_standard_option_usage_error() {
 }
 
 basectl_reject_private_standard_options() {
-    local argument
+    local command="${1:-}" area action issue_action=""
+    local allow_project_config=0 argument
+
+    shift || true
+    if [[ "$command" == gh && "${1:-}" == project ]]; then
+        area="$1"
+        shift
+        case "${1:-}" in
+            configure|doctor)
+                action="$1"
+                shift
+                ;;
+            issue)
+                action="$1"
+                shift
+                case "${1:-}" in
+                    set-fields|defaults)
+                        issue_action="$1"
+                        shift
+                        ;;
+                esac
+                ;;
+        esac
+    fi
+    if [[ "$command" == gh && "$area" == project ]]; then
+        if [[ "$action" == configure ]] ||
+            [[ "$action" == issue && ( "$issue_action" == set-fields || "$issue_action" == defaults ) ]]; then
+            allow_project_config=1
+        fi
+    fi
 
     for argument in "$@"; do
         [[ "$argument" == "--" ]] && return 0
         case "$argument" in
-            --debug|--quiet|--log-file|--config|--environment|--keep-temp)
+            --config)
+                ((allow_project_config)) && continue
+                basectl_private_standard_option_usage_error "$argument"
+                return $?
+                ;;
+            --debug|--quiet|--log-file|--environment|--keep-temp)
                 basectl_private_standard_option_usage_error "$argument"
                 return $?
                 ;;
@@ -901,7 +935,7 @@ basectl_main() {
     history_args=("$@")
 
     basectl_reject_equals_option_values "$@" || return $?
-    basectl_reject_private_standard_options "$@" || return $?
+    basectl_reject_private_standard_options "$command" "$@" || return $?
     basectl_args_request_help "$@" && run_bundle_enabled=0
     basectl_history_recordable_command "$command" || run_bundle_enabled=0
 

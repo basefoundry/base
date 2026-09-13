@@ -236,6 +236,16 @@ load ./basectl_helpers.bash
     [ "$status" -eq 2 ]
     [[ "$output" == *"ERROR: Option '--config' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
 
+    run_basectl gh project --config "$TEST_TMPDIR/config.yaml"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--config' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+
+    run_basectl gh project doctor --config "$TEST_TMPDIR/config.yaml"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR: Option '--config' is not supported by basectl. Use command-specific options shown by 'basectl <command> --help'."* ]]
+
     run_basectl logs --environment prod --path
 
     [ "$status" -eq 2 ]

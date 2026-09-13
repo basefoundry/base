@@ -1141,6 +1141,83 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/display-command")" = "basectl gh" ]
 }
 
+@test "basectl forwards project-scoped config to the Python Project engine" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+    config_path="$TEST_TMPDIR/base-project.yml"
+    : > "$config_path"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/cache" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" gh project configure \
+        --project base-bash-libs --owner basefoundry --repo basefoundry/base-bash-libs \
+        --config "$config_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project configure --project base-bash-libs --owner basefoundry --repo basefoundry/base-bash-libs --config $config_path" ]
+}
+
+@test "basectl forwards project issue config to the Python Project engine" {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+    config_path="$TEST_TMPDIR/base-project.yml"
+    : > "$config_path"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/cache" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" gh project issue defaults --config "$config_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue defaults --config $config_path" ]
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/cache" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" gh project issue set-fields 2247 \
+        --project base --owner basefoundry --repo basefoundry/base --config "$config_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 2247 --project base --owner basefoundry --repo basefoundry/base --config $config_path" ]
+}
+
 @test "basectl gh issue list reports command failure with auth diagnostics" {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
