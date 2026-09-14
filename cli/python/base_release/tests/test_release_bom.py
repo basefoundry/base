@@ -116,6 +116,27 @@ def conformance_corpus() -> tuple[object, ...]:
         pytest.param(BomConformanceCase("valid", valid, True, True, ""), id="valid"),
     ]
 
+    for name, value, accepted in (
+        ("integer", 1, True),
+        ("equal_number", 1.0, True),
+        ("true", True, False),
+        ("false", False, False),
+        ("null", None, False),
+        ("string", "1", False),
+        ("zero", 0, False),
+        ("negative", -1, False),
+        ("future", 2, False),
+        ("fraction", 1.5, False),
+        ("array", [1], False),
+        ("object", {"value": 1}, False),
+    ):
+        document = copy.deepcopy(valid)
+        document["schema_version"] = value
+        case_name = f"schema_version_{name}"
+        cases.append(
+            pytest.param(BomConformanceCase(case_name, document, accepted, accepted, ""), id=case_name)
+        )
+
     for name, path, key in (
         ("unknown_top_level_key", (), "unexpected"),
         ("unknown_release_key", ("release",), "unexpected"),
@@ -200,6 +221,27 @@ def conformance_corpus() -> tuple[object, ...]:
 
 def test_valid_bom_accepts_required_releases_and_advisory_moving_rows() -> None:
     validate_bom(valid_bom(), expected_repository="basefoundry/base-bash-libs", expected_version="2.1.0")
+
+
+@pytest.mark.parametrize(("version", "status"), [(True, 1), (1, 0), (1.0, 0)])
+def test_validate_command_preserves_json_schema_version_types(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    version: bool | int | float, status: int,
+) -> None:
+    document = valid_bom()
+    document["schema_version"] = version
+    path = tmp_path / "bom.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["base-release-bom", "validate", str(path)])
+
+    assert main() == status
+    output = capsys.readouterr()
+    if status:
+        assert "schema_version must be 1" in output.err
+        assert output.out == ""
+    else:
+        assert "release BOM is valid" in output.out
+        assert output.err == ""
 
 
 def test_required_moving_source_is_rejected() -> None:
