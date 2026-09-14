@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 import shlex
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Iterator, Literal
 from urllib.parse import quote
 
 import base_cli
 from base_setup import process
 
-from .release_bom import ReleaseBomError, read_bom_digest_sidecar
+from .release_bom import ReleaseBomError, read_validated_bom
 from .release_model import ReleaseContext, ReleaseError
 from .release_readiness import last_non_empty_line
 
@@ -36,12 +36,24 @@ def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
         f"--title {shlex.quote(title)} "
         f"--notes-file {shlex.quote(notes_file)}"
     )
+    bom_guidance = ""
+    if ctx.bom_path is not None or (ctx.release.bom is not None and ctx.release.bom.required):
+        bom_guidance = (
+            "A governed release is NOT complete without release-bom.json and release-bom.sha256.\n"
+            "Recover the original reviewed canonical BOM and matching digest sidecar; do not regenerate "
+            "evidence from a different checkout. Validate the BOM against the intended repository, version, "
+            "and commit, and verify its SHA-256 before uploading the pair under those stable asset names.\n"
+            "If the GitHub Release already exists, inspect it instead of rerunning create. Upload missing "
+            "assets without overwriting existing ones; stop if an existing asset conflicts. Download and "
+            "verify both published assets against the reviewed pair before declaring success.\n"
+        )
     return (
         f"Release publish already created and pushed tag {ctx.tag_name}, "
         "but GitHub Release creation, BOM asset upload, or verification did not complete cleanly.\n"
         "After confirming the pushed annotated tag resolves to the intended commit, complete the GitHub Release:\n"
         f"  {notes_command} > {shlex.quote(notes_file)}\n"
         f"  {create_release_command}\n"
+        f"{bom_guidance}"
         "To abandon this release attempt, remove the local and remote tag after confirming no one else is using it:\n"
         f"  git tag -d {shlex.quote(ctx.tag_name)}\n"
         f"  git push origin :refs/tags/{shlex.quote(ctx.tag_name)}"
@@ -268,31 +280,48 @@ def valid_full_git_sha(value: str) -> bool:
     return len(value) in FULL_GIT_SHA_LENGTHS and all(character in "0123456789abcdef" for character in value)
 
 
-def write_temp_release_notes(notes: str) -> Path:
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as notes_file:
-        notes_file.write(notes)
-        notes_file.write("\n")
-        return Path(notes_file.name)
-
-
-def write_release_bom_assets(bom_path: Path, directory: Path) -> tuple[Path, Path]:
-    """Copy a validated BOM to stable asset names and reuse its digest sidecar."""
-    bom_bytes = bom_path.read_bytes()
+def write_release_bom_assets(
+    bom_path: Path, directory: Path, *, expected_repository: str | None = None,
+    expected_version: str | None = None, expected_commit: str | None = None,
+) -> tuple[Path, Path]:
+    """Stage one validated BOM snapshot under the stable publication names."""
     try:
-        digest = read_bom_digest_sidecar(bom_path, bom_bytes=bom_bytes)
-    except FileNotFoundError:
-        # Keep direct canonical-BOM callers working when they predate assemble's sidecar.
-        digest = hashlib.sha256(bom_bytes).hexdigest()
+        snapshot = read_validated_bom(
+            bom_path, expected_repository=expected_repository,
+            expected_version=expected_version, expected_commit=expected_commit,
+        )
     except ReleaseBomError as exc:
-        raise ReleaseError(f"Release BOM digest sidecar is invalid: {exc}") from exc
+        raise ReleaseError(str(exc)) from exc
     bom_asset = directory / RELEASE_BOM_ASSET_NAME
     digest_asset = directory / RELEASE_BOM_DIGEST_ASSET_NAME
-    bom_asset.write_bytes(bom_bytes)
-    digest_asset.write_text(
-        f"{digest}  {RELEASE_BOM_ASSET_NAME}\n",
-        encoding="utf-8",
-    )
+    try:
+        bom_asset.write_bytes(snapshot.content)
+        digest_asset.write_text(f"{snapshot.digest}  {RELEASE_BOM_ASSET_NAME}\n", encoding="utf-8")
+    except OSError as exc:
+        raise ReleaseError(f"Unable to stage release BOM assets: {exc}") from exc
     return bom_asset, digest_asset
+
+
+@contextmanager
+def stage_release_files(
+    ctx: ReleaseContext, notes: str, expected_sha: str,
+) -> Iterator[tuple[Path, tuple[Path, Path] | None]]:
+    """Prepare all local publication inputs before the caller creates a tag."""
+    try:
+        with tempfile.TemporaryDirectory(prefix="base-release-assets-") as directory:
+            asset_directory = Path(directory)
+            bom_assets = (
+                write_release_bom_assets(
+                    ctx.bom_path, asset_directory,
+                    expected_repository=ctx.release.github.repository,
+                    expected_version=ctx.version, expected_commit=expected_sha,
+                ) if ctx.bom_path is not None else None
+            )
+            notes_path = asset_directory / "release-notes.md"
+            notes_path.write_text(notes + "\n", encoding="utf-8")
+            yield notes_path, bom_assets
+    except OSError as exc:
+        raise ReleaseError(f"Unable to prepare local release files: {exc}") from exc
 
 
 def upload_release_bom_assets(ctx: ReleaseContext, assets: tuple[Path, Path]) -> None:

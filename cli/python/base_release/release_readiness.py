@@ -9,7 +9,7 @@ from typing import Callable
 
 from base_setup.git_remote_parse import parse_origin_remote
 
-from .release_bom import ReleaseBomError, canonical_bom_bytes, load_bom, validate_bom
+from .release_bom import ReleaseBomError, read_validated_bom
 from .release_model import ReleaseContext, ReleaseError, ReleaseFinding
 
 CHANGELOG_HEADER_RE = re.compile(r"^##\s+(?:\[(?P<bracket>[^\]]+)\]|(?P<plain>\S+))(?:\s+-.*)?$")
@@ -53,21 +53,16 @@ def bom_finding(ctx: ReleaseContext, reviewed_commit: str | None) -> ReleaseFind
                 "Release BOM is required by release.bom.required; pass --bom <path>.",
             )
         return ReleaseFinding("ok", "bom", "No release BOM was requested for this check.")
-    if not ctx.bom_path.is_file():
-        return ReleaseFinding("error", "bom", f"Release BOM is missing: {ctx.bom_path}")
     try:
-        document = load_bom(ctx.bom_path)
-        if canonical_bom_bytes(document) != ctx.bom_path.read_bytes():
-            raise ReleaseBomError(
-                "Release BOM is not in canonical form; regenerate it with bin/base-release-bom assemble."
-            )
-        validate_bom(
-            document,
+        if not ctx.bom_path.is_file():
+            return ReleaseFinding("error", "bom", f"Release BOM is missing: {ctx.bom_path}")
+        read_validated_bom(
+            ctx.bom_path,
             expected_repository=ctx.release.github.repository,
             expected_version=ctx.version,
             expected_commit=reviewed_commit,
         )
-    except ReleaseBomError as exc:
+    except (ReleaseBomError, OSError) as exc:
         return ReleaseFinding("error", "bom", str(exc))
     return ReleaseFinding("ok", "bom", f"Release BOM is valid: {ctx.bom_path}.")
 
