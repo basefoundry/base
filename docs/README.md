@@ -17,6 +17,9 @@ see [Release Process](release-process.md).
 For the canonical cross-repository platform, license, provider, and release
 immutability policy, see [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md).
 
+For the repository roles, starting-point decision tree, support matrix, and
+compatibility boundaries, see the [Base Foundry Ecosystem Map](ecosystem-map.md).
+
 For self-guided or live walkthrough material, see
 [Presentations](presentations/README.md).
 

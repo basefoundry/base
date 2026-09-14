@@ -106,6 +106,8 @@ Base self-demo complete.
 
 See [Tool Boundaries](docs/tool-boundaries.md) for the maintained comparison,
 including where Base should delegate, integrate, or stay out of the way.
+For the repository roles, support matrix, and starting-point decision tree, see
+the [Base Foundry Ecosystem Map](docs/ecosystem-map.md).
 
 ## Contents
 
@@ -563,6 +565,7 @@ Key starting points:
 - [Execution Model](docs/execution-model.md)
 - [Runtime Environment](docs/runtime-environment.md)
 - [Tool Boundaries](docs/tool-boundaries.md)
+- [Base Foundry Ecosystem Map](docs/ecosystem-map.md)
 - [Doctor Finding IDs](docs/doctor-findings.md)
 - [IDE Bootstrapping](docs/ide-bootstrapping.md)
 - [Local Config](docs/local-config.md)
