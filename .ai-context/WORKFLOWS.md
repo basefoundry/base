@@ -140,8 +140,11 @@ attestation: required rows must use immutable commits and report passing
 evidence, while moving-source rows are advisory and non-blocking. Validate and
 fingerprint a record with `bin/base-release-bom`; component tags must match their
 versions, the releasing component commit must match the release, and every
-combination participant must declare that platform. Attach the BOM and digest to
-the resulting release evidence.
+combination participant must declare that platform. Check, dry-run, and publish
+validate the canonical BOM and any supplied digest sidecar. Publication stages
+that verified pair and release notes before tagging, then uploads the snapshot
+without rereading source inputs. Post-tag recovery is incomplete until the
+original reviewed BOM and digest are attached and verified.
 Supported macOS tap releases should publish Homebrew bottles before the tap PR
 is merged: run the tap's `Build Base Bottles` workflow from the tap release
 branch, let it upload bottle assets to the tap release `base-vX.Y.Z`, and commit

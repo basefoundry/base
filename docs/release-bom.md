@@ -115,12 +115,24 @@ opt-in retain the backward-compatible optional BOM behavior.
 The supplied BOM must be the exact canonical artifact produced by `assemble`;
 pretty-printed or hand-edited JSON is rejected so its byte digest remains bound
 to the reviewed artifact. `assemble` writes a matching `*.sha256` sidecar next
-to its output. When supplied, `release publish` validates and reuses that
-sidecar, then uploads `release-bom.json` and `release-bom.sha256` to the
-GitHub Release and verifies both assets after publication. Direct callers that
+to its output. `release check`, `release publish --dry-run`, and `release
+publish` validate that sidecar when it is present. A malformed, mismatched,
+unreadable, or non-UTF-8 BOM/sidecar blocks publication before creating or
+pushing any tag. A dangling sidecar symlink is invalid, not an absent sidecar.
+After final provenance verification, publication stages the validated BOM,
+digest, and release notes before creating the tag. It uploads that snapshot
+as `release-bom.json` and `release-bom.sha256` without rereading the source
+files after tagging, and verifies both asset names after publication. Direct callers that
 supply a canonical BOM without a sidecar retain the compatibility fallback of
 having the stable publish asset generated from the BOM bytes. A BOM remains
 optional for manifests without the opt-in so historical releases remain
 inspectable; Base's own `base_manifest.yaml` requires this governed release
 path. Generate its artifact with the `Ecosystem Release BOM` workflow and pass
 the downloaded `release-bom.json` to both `release check` and `release publish`.
+
+If GitHub Release creation or upload fails after the tag is pushed, recovery
+must retain the original reviewed BOM and its digest. Creating the Release
+alone does not complete a governed release: restore the matching pair under
+the stable asset names and download/verify them against the reviewed artifact.
+Inspect an existing Release before retrying; do not blindly overwrite
+conflicting assets or regenerate evidence from another checkout.

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import base_cli
 from base_cli_profile import base_cli_app
@@ -22,8 +21,7 @@ from .release_publish import inspect_remote_annotated_tag, release_publish_recov
 from .release_publish import release_tag_push_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, verify_github_release
 from .release_publish import verify_local_annotated_tag, verify_remote_annotated_tag
-from .release_publish import upload_release_bom_assets, write_release_bom_assets
-from .release_publish import write_temp_release_notes
+from .release_publish import stage_release_files, upload_release_bom_assets
 from .release_readiness import extract_changelog_section, gh_cli_finding, github_release_finding
 from .release_readiness import require_release_provenance
 
@@ -199,45 +197,29 @@ def release_notes_command(ctx: ReleaseContext) -> int:
 def publish_and_verify_github_release(
     ctx: ReleaseContext,
     title: str,
-    notes: str,
+    notes_path: Path,
     expected_sha: str,
+    bom_assets: tuple[Path, Path] | None,
 ) -> None:
+    """Publish only pre-staged files; never reread the original BOM after tagging."""
     project_root = ctx.manifest_path.parent
-    notes_path = write_temp_release_notes(notes)
-    try:
-        with TemporaryDirectory(prefix="base-release-assets-") as asset_directory:
-            bom_assets = (
-                write_release_bom_assets(ctx.bom_path, Path(asset_directory))
-                if ctx.bom_path is not None
-                else None
-            )
-            run_release_step(
-                [
-                    "gh",
-                    "release",
-                    "create",
-                    ctx.tag_name,
-                    "--verify-tag",
-                    "--repo",
-                    ctx.release.github.repository,
-                    "--title",
-                    title,
-                    "--notes-file",
-                    str(notes_path),
-                ],
-                cwd=project_root,
-            )
-            if bom_assets is not None:
-                upload_release_bom_assets(ctx, bom_assets)
-            verify_github_release(
-                ctx,
-                expected_sha,
-                expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
-            )
-            if bom_assets is not None:
-                print("Release BOM assets uploaded and verified: release-bom.json, release-bom.sha256")
-    finally:
-        notes_path.unlink(missing_ok=True)
+    run_release_step(
+        [
+            "gh", "release", "create", ctx.tag_name, "--verify-tag",
+            "--repo", ctx.release.github.repository, "--title", title,
+            "--notes-file", str(notes_path),
+        ],
+        cwd=project_root,
+    )
+    if bom_assets is not None:
+        upload_release_bom_assets(ctx, bom_assets)
+    verify_github_release(
+        ctx,
+        expected_sha,
+        expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
+    )
+    if bom_assets is not None:
+        print("Release BOM assets uploaded and verified: release-bom.json, release-bom.sha256")
 
 
 def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
@@ -275,8 +257,23 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     if not args.yes:
         require_interactive_publish_confirmation(ctx, title)
 
-    project_root = ctx.manifest_path.parent
     expected_sha = require_release_provenance(ctx)
+    with stage_release_files(ctx, notes, expected_sha) as (notes_path, bom_assets):
+        publish_release_from_staged_files(ctx, title, notes_path, expected_sha, bom_assets)
+
+    print(f"GitHub Release published: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
+    print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
+    print(f"Release commit verified: {expected_sha}")
+    print("")
+    print_homebrew_handoff(ctx, after_publish=True)
+    return base_cli.ExitCode.SUCCESS
+
+
+def publish_release_from_staged_files(
+    ctx: ReleaseContext, title: str, notes_path: Path, expected_sha: str,
+    bom_assets: tuple[Path, Path] | None,
+) -> None:
+    project_root = ctx.manifest_path.parent
     run_release_step(
         ["git", "tag", "-a", ctx.tag_name, expected_sha, "-m", f"Release {ctx.tag_name}"],
         cwd=project_root,
@@ -293,19 +290,12 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
 
     try:
         verify_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
-        publish_and_verify_github_release(ctx, title, notes, expected_sha)
+        publish_and_verify_github_release(ctx, title, notes_path, expected_sha, bom_assets)
     except ReleaseError as exc:
         raise ReleaseError(
             str(exc),
             guidance=release_publish_recovery_guidance(ctx, title),
         ) from exc
-
-    print(f"GitHub Release published: {github_release_url(ctx.release.github.repository, ctx.tag_name)}")
-    print(f"Tag URL: {github_tag_url(ctx.release.github.repository, ctx.tag_name)}")
-    print(f"Release commit verified: {expected_sha}")
-    print("")
-    print_homebrew_handoff(ctx, after_publish=True)
-    return base_cli.ExitCode.SUCCESS
 
 
 def print_findings(findings: tuple[ReleaseFinding, ...]) -> None:

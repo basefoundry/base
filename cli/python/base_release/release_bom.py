@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -44,14 +45,62 @@ class ReleaseBomError(ValueError):
 
 def load_bom(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        bom_bytes = path.read_bytes()
     except OSError as exc:
         raise ReleaseBomError(f"could not read BOM {path}: {exc}") from exc
+    return _parse_bom_bytes(bom_bytes, path)
+
+
+def _parse_bom_bytes(bom_bytes: bytes, path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(bom_bytes.decode("utf-8"))
+    except UnicodeError as exc:
+        raise ReleaseBomError(f"BOM {path} must use UTF-8 encoding: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise ReleaseBomError(f"BOM {path} is not valid JSON: {exc.msg}") from exc
     if not isinstance(value, dict):
         raise ReleaseBomError("BOM document must be a JSON object")
     return value
+
+
+@dataclass(frozen=True)
+class ReleaseBomSnapshot:
+    """The exact validated bytes and their verified (or legacy-generated) digest."""
+    content: bytes
+    digest: str
+
+
+def read_validated_bom(
+    path: Path,
+    *,
+    expected_repository: str | None = None,
+    expected_version: str | None = None,
+    expected_commit: str | None = None,
+) -> ReleaseBomSnapshot:
+    """Validate one byte snapshot, its release identity, and any supplied sidecar."""
+    try:
+        content = path.read_bytes()
+    except OSError as exc:
+        raise ReleaseBomError(f"could not read BOM {path}: {exc}") from exc
+    document = _parse_bom_bytes(content, path)
+    if canonical_bom_bytes(document) != content:
+        raise ReleaseBomError(
+            "Release BOM is not in canonical form; regenerate it with bin/base-release-bom assemble."
+        )
+    validate_bom(
+        document, expected_repository=expected_repository,
+        expected_version=expected_version, expected_commit=expected_commit,
+    )
+    try:
+        digest = read_bom_digest_sidecar(path, bom_bytes=content)
+    except FileNotFoundError as exc:
+        if bom_digest_sidecar_path(path).is_symlink():
+            raise ReleaseBomError("Release BOM digest sidecar is invalid: dangling symlink") from exc
+        # Older direct callers supplied a canonical BOM without assemble's sidecar.
+        digest = hashlib.sha256(content).hexdigest()
+    except ReleaseBomError as exc:
+        raise ReleaseBomError(f"Release BOM digest sidecar is invalid: {exc}") from exc
+    return ReleaseBomSnapshot(content, digest)
 
 
 # pylint: disable=too-many-branches,too-many-statements
@@ -223,13 +272,22 @@ def write_bom_digest_sidecar(bom_path: Path, digest: str | None = None) -> Path:
 def read_bom_digest_sidecar(bom_path: Path, *, bom_bytes: bytes | None = None) -> str:
     """Validate and return a BOM digest sidecar's recorded digest."""
     sidecar_path = bom_digest_sidecar_path(bom_path)
-    line = sidecar_path.read_text(encoding="utf-8").strip("\n")
+    try:
+        line = sidecar_path.read_text(encoding="utf-8").strip("\n")
+    except FileNotFoundError:
+        raise
+    except (OSError, UnicodeError) as exc:
+        raise ReleaseBomError(f"could not read BOM digest sidecar {sidecar_path}: {exc}") from exc
     match = DIGEST_LINE_RE.fullmatch(line)
     if match is None or match.group("name") != bom_path.name:
         raise ReleaseBomError(
             f"BOM digest sidecar {sidecar_path} must contain '<sha256>  {bom_path.name}'"
         )
-    actual_digest = hashlib.sha256(bom_bytes if bom_bytes is not None else bom_path.read_bytes()).hexdigest()
+    try:
+        content = bom_bytes if bom_bytes is not None else bom_path.read_bytes()
+    except OSError as exc:
+        raise ReleaseBomError(f"could not read BOM {bom_path}: {exc}") from exc
+    actual_digest = hashlib.sha256(content).hexdigest()
     if match.group("digest") != actual_digest:
         raise ReleaseBomError(f"BOM digest sidecar {sidecar_path} does not match {bom_path}")
     return match.group("digest")
