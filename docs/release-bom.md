@@ -56,7 +56,9 @@ participant references and platform coverage, and required-source/result
 interactions. It also rejects unknown keys at every validated object level.
 
 The release tests load the same schema and run both layers against a shared
-valid/invalid corpus. Cases rejected only by the semantic runtime layer are
+valid/invalid corpus, including the scalar types of `schema_version`. Schema
+version 1 accepts JSON numbers `1` and `1.0`, but never the boolean `true`.
+Cases rejected only by the semantic runtime layer are
 explicitly annotated, so a new unclassified schema/validator disagreement fails
 the test.
 

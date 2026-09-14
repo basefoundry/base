@@ -63,7 +63,8 @@ def validate_bom(
     expected_commit: str | None = None,
 ) -> None:
     _reject_unknown_keys(document, "BOM", TOP_LEVEL_KEYS)
-    if document.get("schema_version") != 1:
+    schema_version = document.get("schema_version")
+    if isinstance(schema_version, bool) or schema_version != 1:
         raise ReleaseBomError("schema_version must be 1")
 
     release = _mapping(document, "release")
