@@ -97,6 +97,9 @@ reference. The filename should answer "what is this about?"
   behavior for non-GitHub Git repositories.
 - [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
   selection, handoff commands, and contributor setup.
+- [First-run Troubleshooting](first-run-troubleshooting.md) starts from common
+  setup, provider, diagnostic, and permission symptoms and points to the
+  canonical recovery guidance.
 - [Base Adopter Golden Path](adopter-golden-path.md) defines and validates the
   shortest supported install-to-verified-project-PR journey.
 - [Clean macOS Install Validation](macos-install-validation.md) defines the
