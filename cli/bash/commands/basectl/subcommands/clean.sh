@@ -38,6 +38,7 @@ base_clean_subcommand_main() {
     )
     # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
     local -a positionals=()
+    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
     local -A parsed_options=()
 
     while (($# > 0)); do
@@ -95,9 +96,6 @@ base_clean_subcommand_main() {
         base_std_print_error "Could not parse clean arguments."
         return 2
     fi
-
-    has_older_than="${parsed_options[older_than]:-0}"
-    has_keep_last="${parsed_options[keep_last]:-0}"
 
     if (( ! has_older_than && ! has_keep_last )); then
         base_clean_subcommand_usage >&2
