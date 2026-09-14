@@ -98,6 +98,8 @@ Diagnostics and maintenance:
     List recent Base command history records.
   clean [--older-than <age>] [--keep-last <count>] [options]
     Remove old Base CLI runtime logs, temp files, and cache entries.
+  uninstall <project>|--all [options]
+    Remove Base-managed local state and verify the removal.
   update-profile [options]
     Create or update Base-managed sections in Bash and Zsh startup files.
   update [project] [options]
@@ -410,6 +412,12 @@ basectl_do_clean() {
     base_clean_subcommand_main "$@"
 }
 
+basectl_do_uninstall() {
+    basectl_source_subcommand_module uninstall || return 1
+    basectl_source_subcommand_module update_profile || return 1
+    base_uninstall_subcommand_main "$@"
+}
+
 basectl_do_logs() {
     basectl_source_subcommand_module logs || return 1
     base_logs_subcommand_main "$@"
@@ -547,7 +555,7 @@ basectl_validate_command() {
     local command="${1:-}"
 
     case "$command" in
-        ""|activate|check|test|export-context|devcontainer|devenv-report|build|demo|run|repo|ci|release|prompt|docs|clean|logs|history|config|trust|doctor|gh|onboard|setup|help|projects|workspace|update|update-profile|version)
+        ""|activate|check|test|export-context|devcontainer|devenv-report|build|demo|run|repo|ci|release|prompt|docs|clean|uninstall|logs|history|config|trust|doctor|gh|onboard|setup|help|projects|workspace|update|update-profile|version)
             return 0
             ;;
         *)
@@ -606,7 +614,7 @@ basectl_run_bundle_project() {
     shift
 
     case "$command" in
-        setup|check|doctor|test|build|demo|run|activate|export-context|devcontainer|devenv-report|onboard|update)
+        setup|check|doctor|test|build|demo|run|activate|export-context|devcontainer|devenv-report|onboard|update|uninstall)
             ;;
         trust)
             [[ "${1:-}" == status || "${1:-}" == allow || "${1:-}" == revoke ]] && shift
@@ -971,6 +979,7 @@ basectl_main() {
         prompt)           basectl_do_prompt "$@"; command_status=$? ;;
         docs)             basectl_do_docs "$@"; command_status=$? ;;
         clean)            basectl_do_clean "$@"; command_status=$? ;;
+        uninstall)        basectl_do_uninstall "$@"; command_status=$? ;;
         logs)             basectl_do_logs "$@"; command_status=$? ;;
         history)          basectl_do_history "$@"; command_status=$? ;;
         config)           basectl_do_config "$@"; command_status=$? ;;

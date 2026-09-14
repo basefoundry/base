@@ -1,7 +1,7 @@
 # Base Stability Tiers
 
 Status: maintained compatibility reference
-Last reviewed: 2026-07-25
+Last reviewed: 2026-09-14
 
 Base exposes several surfaces that users and automation can depend on: CLI
 commands, JSON payloads, finding IDs, manifest schemas, generated files, and
@@ -43,6 +43,14 @@ experimental while those ecosystems mature.
 `basectl workspace test` is Experimental. Its serial execution, selection,
 failure, skip, and JSON-report details may evolve while workspace-wide test
 orchestration matures.
+
+`basectl uninstall <project>|--all` is Stable. It previews by default, applies
+changes only with `--yes`, and provides the read-only `--verify` check. Project
+uninstall removes only Base-managed trust, check state, external Base-managed
+project environments, and project runtime caches; it never removes the project
+checkout or its manifest. `--all` additionally removes Base workspace settings,
+the persistent Base and project cache namespaces, and managed shell startup
+sections. Historical run and history records remain available for diagnosis.
 
 ## JSON And Schema-Versioned Output
 

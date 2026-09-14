@@ -22,6 +22,16 @@ def test_stability_tiers_doc_defines_public_tiers() -> None:
     assert "Finding IDs](doctor-findings.md)" in text
 
 
+def test_uninstall_command_is_documented_as_a_stable_bounded_cleanup() -> None:
+    command_reference = COMMAND_REFERENCE.read_text(encoding="utf-8")
+    stability = STABILITY_DOC.read_text(encoding="utf-8")
+    normalized_stability = " ".join(stability.split())
+
+    assert "basectl uninstall <project>\\|--all" in command_reference
+    assert "`basectl uninstall <project>|--all` is Stable." in stability
+    assert "never removes the project checkout or its manifest" in normalized_stability
+
+
 def test_command_reference_and_docs_map_link_stability_tiers() -> None:
     assert "stability-tiers.md" in COMMAND_REFERENCE.read_text(encoding="utf-8")
     assert "[Stability Tiers](stability-tiers.md)" in DOCS_README.read_text(encoding="utf-8")
