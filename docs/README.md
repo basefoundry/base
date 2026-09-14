@@ -8,6 +8,9 @@ the documentation map.
 For contribution workflow, branch naming, tests, and PR expectations, see
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+For the public support front door, discussion categories, response target, and
+discussion-to-issue workflow, see [Community Support](community-support.md).
+
 For GitHub labels, milestones, Projects, issue assignment, branch names, and
 worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 
