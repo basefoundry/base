@@ -25,6 +25,14 @@ See the [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md)
 for the shared platform boundaries, license history, provider precedence, and
 published-artifact immutability rule.
 
+Before choosing a release date, classify the change with the [Release
+Stabilization and Independent Review Policy](release-stabilization-policy.md).
+That policy determines whether a patch can proceed directly, whether a
+candidate or bake window is required, and how an unavailable independent
+reviewer is recorded. `basectl release check` remains the mechanical gate; the
+release issue records the policy decision and evidence that repository state
+cannot prove by itself.
+
 The Homebrew tap update happens after the Base tag and GitHub Release exist.
 The formula points at a versioned tag archive and records that archive's
 `sha256`, so the archive must be available before the formula can be updated and
@@ -87,6 +95,12 @@ basectl release check --version X.Y.Z --format json
 basectl release plan --version X.Y.Z
 basectl release notes --version X.Y.Z
 ```
+
+For a high-impact change, run the release check at the beginning and end of
+the candidate window, and attach both outputs to the release issue. The check
+does not replace the policy record: it verifies reproducible repository and
+artifact state, while the release issue records the bake interval, independent
+reviewer or waiver, and unresolved-risk decisions.
 
 Use `check` before publishing to validate the version file, changelog section,
 Git worktree cleanliness, GitHub CLI authentication, and local and remote tag
@@ -154,8 +168,11 @@ Complete these steps in `basefoundry/base`:
 
 1. Choose the release version and create or use a GitHub issue for the release
    artifact work.
-2. Create a release-prep branch and worktree from `origin/main`.
-3. Update release metadata:
+2. Classify the release with [the stabilization policy](release-stabilization-policy.md).
+   Record the candidate/bake window and independent review or waiver in the
+   release issue before publication work begins.
+3. Create a release-prep branch and worktree from `origin/main`.
+4. Update release metadata:
    - `VERSION`
    - README version badge
    - README `Current Status` section current-release prose
@@ -164,19 +181,19 @@ Complete these steps in `basefoundry/base`:
      section
    - maintained product and context docs: reconcile `Last reviewed`, `Base era
      reviewed`, and `Current release` claims with `VERSION` and `CHANGELOG.md`
-4. Validate the release-prep PR:
+5. Validate the release-prep PR:
 
    ```bash
    git diff --check
    bin/base-test
    ```
 
-5. Merge the release-prep PR into `main`.
-6. Sync local `main` and confirm `HEAD` exactly matches the current live
+6. Merge the release-prep PR into `main`.
+7. Sync local `main` and confirm `HEAD` exactly matches the current live
    `origin/main`. Do not publish from a feature branch, detached checkout,
    ahead/behind/diverged branch, stale remote-tracking ref, or a checkout whose
    `origin` does not match `release.github.repository`.
-7. Dispatch the `Ecosystem Release BOM` workflow at the exact reviewed release
+8. Dispatch the `Ecosystem Release BOM` workflow at the exact reviewed release
    commit, wait for both required platform jobs to pass, and download the
    `base-release-bom-X.Y.Z` artifact. Supply the exact component versions and
    refs selected for this release:
@@ -193,14 +210,14 @@ Complete these steps in `basefoundry/base`:
      --dir /private/tmp/base-release-bom-X.Y.Z
    ```
 
-8. Dry-run the guarded publish command with the downloaded BOM:
+9. Dry-run the guarded publish command with the downloaded BOM:
 
    ```bash
    basectl release publish --version X.Y.Z \
      --bom /private/tmp/base-release-bom-X.Y.Z/release-bom.json --dry-run
    ```
 
-9. Publish the GitHub-side release artifacts with the same immutable BOM:
+10. Publish the GitHub-side release artifacts with the same immutable BOM:
 
    ```bash
    basectl release publish --version X.Y.Z \
@@ -209,7 +226,7 @@ Complete these steps in `basefoundry/base`:
 
    Use `--yes` only when running from a trusted non-interactive release shell.
 
-10. Confirm the release tag, GitHub Release, and `release-bom.json` plus
+11. Confirm the release tag, GitHub Release, and `release-bom.json` plus
     `release-bom.sha256` assets are visible on GitHub.
 
 ## Homebrew Tap And Bottle Checklist
