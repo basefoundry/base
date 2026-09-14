@@ -754,3 +754,54 @@ assert items[0]["manifest"] == "valid", items
 '
     done
 }
+
+@test "mixed workspace Git inventory preserves one managed result and saved identity" {
+    local workspace="$TEST_TMPDIR/mixed workspace"
+    local manifest="$TEST_TMPDIR/mixed.yaml"
+    local repository command
+    mkdir -p "$workspace"
+    for repository in declared extra unmanaged; do
+        git init -q "$workspace/$repository"
+        git -C "$workspace/$repository" remote add origin https://example.invalid/fixture.git
+    done
+    for repository in declared extra; do
+        printf 'project:\n  name: %s\nartifacts: []\n' "$repository" > "$workspace/$repository/base_manifest.yaml"
+    done
+    printf 'schema_version: 1\nworkspace:\n  name: mixed\nrepos:\n  - name: declared\n' > "$manifest"
+
+    for command in check doctor; do
+        run_basectl workspace "$command" --workspace "$workspace" --manifest "$manifest" --format json
+        [ "$status" -eq 0 ]
+        printf '%s' "$output" | "$TEST_INTEGRATION_PYTHON" -c '
+import json, sys
+payload = json.load(sys.stdin)
+assert payload["repository_count"] == 3, payload
+assert payload["project_count"] == 2, payload
+items = payload["projects"]
+assert [item["repository"] for item in items] == ["declared", "extra", "unmanaged"], items
+assert items[1]["manifest"] == "valid", items[1]
+assert items[1]["checks"][0]["id"] == "BASE-W011", items[1]
+assert [item["id"] for item in items[2]["checks"]] == ["BASE-W013"], items[2]
+'
+    done
+
+    "$TEST_INTEGRATION_PYTHON" -c '
+import hashlib, json, sys
+from pathlib import Path
+record = json.loads(Path(sys.argv[1]).read_text())
+manifest = Path(sys.argv[2]).resolve()
+assert record["schema_version"] == 2, record
+assert record["identity"] == {
+    "project_root": str(manifest.parent), "manifest_path": str(manifest),
+    "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+}, record
+' "$TEST_HOME/.base.d/extra/checks/last.json" "$workspace/extra/base_manifest.yaml"
+
+    run_basectl workspace status --workspace "$workspace" --manifest "$manifest" --format json
+    [ "$status" -eq 0 ]
+    printf '%s' "$output" | "$TEST_INTEGRATION_PYTHON" -c '
+import json, sys
+items = [item for item in json.load(sys.stdin)["projects"] if item["repository"] == "extra"]
+assert len(items) == 1 and items[0]["last_check"]["status"] == "warn", items
+'
+}

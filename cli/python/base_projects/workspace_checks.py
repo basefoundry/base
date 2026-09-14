@@ -131,6 +131,8 @@ def workspace_manifest_project_check_results(
 
     expected_roots = {result.root for result in results if result.repo == "present"}
     for repo_name in sorted(entries_by_repo):
+        # The manifest entry already owns this repository's diagnostics and saved record.
+        repository_paths_by_name.pop(repo_name, None)
         entry = entries_by_repo[repo_name]
         if entry.path.parent.resolve() not in expected_roots:
             results.append(workspace_extra_project_check_result(

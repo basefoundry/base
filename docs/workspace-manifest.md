@@ -607,13 +607,16 @@ messages in text output. `basectl workspace doctor --manifest <path>` renders
 the same read-only evidence as actionable findings with stable IDs and fix
 guidance. Both commands emit stable workspace findings for repository
 presence, outside-manifest discovered projects, present repositories without a
-Base project manifest, and Git repositories present under the workspace root
+Base project manifest, and non-Base Git repositories present under the workspace root
 but absent from the manifest. The latter is a non-blocking warning for each
 undeclared repository; add a `repos[]` name entry to inventory it, including a
 repository without a Base manifest, or move it outside the workspace root.
 For example, `repos: [{name: scratch-tools}]` declares a co-located repository.
 There is no ignore or unmanaged flag in the workspace schema.
 Their JSON diagnostic items remain compatible.
+Each logical repository is reported once. Base-managed extras use `BASE-W011`
+plus project diagnostics, retain their checkout-bound saved check record, and
+are not also emitted as unmanaged `BASE-W013` entries.
 
 Read-only workspace reports use the same root-containment policy as workspace
 mutation commands. In-root symlinks retain their declared logical repository
