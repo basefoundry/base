@@ -26,6 +26,11 @@ worktree rules, PR linking, review, supersession, and cleanup. In brief, start
 from an issue, implement off `main` in a dedicated worktree, keep the PR scoped
 to that issue, and clean up after merge.
 
+New contributors should start with the [First External
+Change](docs/contributor-first-change.md) guide. It uses ordinary fork, clone,
+branch, focused-test, and pull-request commands; the internal `basectl` and
+dedicated-worktree workflow remains available for deeper maintainer work.
+
 ## Contributor Setup
 
 On a fresh macOS machine, use `bootstrap.sh` in source mode so the repository is
@@ -54,7 +59,10 @@ shown below.
 
 ## First External PR
 
-Start with an open issue labeled `good first issue`. A good first contribution
+For the complete public fork path and the distinction between documentation,
+focused component, and full Base contributions, see [First External
+Change](docs/contributor-first-change.md). Start with an open issue labeled
+`good first issue` when the change is issue-backed. A good first contribution
 should be real Base work, but it should also be small enough to review without
 private maintainer context: documentation corrections, narrow test coverage,
 small fixture updates, or tightly scoped command-output polish are usually good
