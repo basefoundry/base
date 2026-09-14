@@ -170,8 +170,12 @@ Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Report security
 issues and handle detected credentials according to [SECURITY.md](SECURITY.md).
 The [maintainer continuity guide](docs/governance.md) documents the current
 bus-factor position, the unavailability threshold, and the staged path toward a
-backup reviewer or co-maintainer. Release notes are tracked in
-[CHANGELOG.md](CHANGELOG.md).
+backup reviewer or co-maintainer. For adoption questions, ecosystem ideas, and
+public support, use the
+[Base Discussions](https://github.com/orgs/basefoundry/discussions) forum and
+follow the routing in [Community Support](docs/community-support.md). Keep
+security-sensitive reports in GitHub's private security-advisory path. Release
+notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## What Base Is Responsible For
 
