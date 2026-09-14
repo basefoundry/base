@@ -58,7 +58,7 @@ def invoke_mode(ctx, mode):
 @pytest.mark.parametrize("mode", ["check", "dry-run", "publish"])
 @pytest.mark.parametrize("problem", [
     "digest_mismatch", "malformed_sidecar", "sidecar_encoding", "bom_encoding",
-    "sidecar_directory", "bom_permission", "sidecar_permission", "dangling_sidecar",
+    "sidecar_directory", "bom_permission", "bom_stat_permission", "sidecar_permission", "dangling_sidecar",
 ])
 def test_invalid_bom_pair_blocks_every_mode_before_mutation(publication, monkeypatch, capsys, mode, problem):
     ctx, commands = publication
@@ -78,6 +78,15 @@ def test_invalid_bom_pair_blocks_every_mode_before_mutation(publication, monkeyp
     elif problem == "dangling_sidecar":
         sidecar.unlink()
         sidecar.symlink_to(sidecar.parent / "absent-digest")
+    elif problem == "bom_stat_permission":
+        original_is_file = Path.is_file
+
+        def denied_stat(path):
+            if path == bom:
+                raise PermissionError("fixture BOM metadata is unreadable")
+            return original_is_file(path)
+
+        monkeypatch.setattr(Path, "is_file", denied_stat)
     elif problem == "sidecar_permission":
         original_text = Path.read_text
 
