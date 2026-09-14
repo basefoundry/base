@@ -178,6 +178,10 @@ made explicit; multi-repository support can expand from there.
 The blockers to broader adoption are also real:
 
 - Base touches shell startup, so users must trust it.
+- Maintainer continuity is currently concentrated in one primary maintainer.
+  The project now publishes that risk and a staged shadow-review path in
+  [Maintainer Continuity and Contributor Governance](governance.md); this is a
+  mitigation plan, not evidence that a second maintainer already exists.
 - The category is not instantly obvious.
 - The strongest handoff story is currently composed from several shipped
   surfaces rather than one unified artifact.
