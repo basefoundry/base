@@ -356,7 +356,7 @@ def test_implementation_issue_template_is_copilot_ready_and_project_aligned() ->
 
     assert template["name"] == "Implementation issue"
     assert template["labels"] == ["enhancement"]
-    assert template["assignees"] == ["codeforester"]
+    assert "assignees" not in template
     assert {"goal", "background", "scope", "acceptance_criteria", "validation", "non_goals"} <= fields.keys()
     assert fields["priority"]["attributes"]["options"] == ["P0", "P1", "P2", "P3"]
     assert fields["size"]["attributes"]["options"] == ["T", "S", "M", "L"]

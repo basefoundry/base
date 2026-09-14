@@ -1,0 +1,25 @@
+name: Documentation improvement
+description: Report missing, incorrect, or confusing Base documentation
+title: "docs: "
+labels:
+  - documentation
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Give the URL or repository path.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Explain what a reader cannot understand or do.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+      description: Describe the corrected or clearer outcome. A proposed patch is welcome.

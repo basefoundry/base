@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support and adoption questions
+    url: https://github.com/orgs/basefoundry/discussions
+    about: Ask usage, onboarding, and ecosystem questions in the canonical public forum.
+  - name: Private security report
+    url: https://github.com/basefoundry/base/security/advisories/new
+    about: Never disclose vulnerabilities or sensitive data in a public issue.
