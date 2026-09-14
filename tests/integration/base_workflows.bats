@@ -805,3 +805,27 @@ items = [item for item in json.load(sys.stdin)["projects"] if item["repository"]
 assert len(items) == 1 and items[0]["last_check"]["status"] == "warn", items
 '
 }
+
+@test "config doctor diagnoses malformed mapping keys without rewriting config" {
+    local config="$TEST_HOME/.base.d/config.yaml"
+    local expected="$TEST_TMPDIR/config-before.yaml"
+    local section key label
+    for section in workspace github vscode; do
+        for key in 1 true null; do
+            if [[ "$section" == vscode ]]; then
+                printf 'ide:\n  vscode:\n    %s: value\n    unexpected: value\n' "$key" > "$config"
+                label=ide.vscode
+            else
+                printf '%s:\n  %s: value\n  unexpected: value\n' "$section" "$key" > "$config"
+                label="$section"
+            fi
+            cp "$config" "$expected"
+            run_basectl config doctor
+            [ "$status" -ne 0 ]
+            [[ "$output" == *"$label keys must be non-empty strings"* ]]
+            [[ "$output" != *"Traceback"* ]]
+            [[ "$output" != *"TypeError"* ]]
+            cmp -s "$config" "$expected"
+        done
+    done
+}
