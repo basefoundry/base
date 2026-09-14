@@ -80,6 +80,8 @@ reference. The filename should answer "what is this about?"
   behavior for non-GitHub Git repositories.
 - [First-Mile Bootstrap](bootstrap.md) documents `bootstrap.sh`, install mode
   selection, handoff commands, and contributor setup.
+- [Base Adopter Golden Path](adopter-golden-path.md) defines and validates the
+  shortest supported install-to-verified-project-PR journey.
 - [Clean macOS Install Validation](macos-install-validation.md) defines the
   repeatable Homebrew and source checkout validation checklist.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
