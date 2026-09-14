@@ -1,7 +1,7 @@
 # basectl Quick Reference
 
 Status: maintained command reference
-Last reviewed: 2026-07-25
+Last reviewed: 2026-09-14
 
 This page is a compact lookup table for the current `basectl` command surface.
 Run `basectl help <nested path>` or append `--help` to that path for the same
@@ -195,6 +195,7 @@ manifest trust.
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name[,name...]>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name[,name...]>`, `--lines <count>` |
 | `basectl clean` | Preview cleanup of completed Base run bundles and component caches; use `--yes` to delete matches. Active runs are retained and reported. | `--older-than <age>`, `--keep-last <count>`, `--dry-run`, `--yes` |
+| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and persistent runtime caches. Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |
 | `basectl config doctor` | Diagnose local Base config. | none |
@@ -286,6 +287,7 @@ Current implemented commands include:
 - `basectl config show`
 - `basectl config doctor`
 - `basectl update-profile`
+- `basectl uninstall <project>|--all`
 - `basectl update`
 - `basectl projects list`
 - `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>`
