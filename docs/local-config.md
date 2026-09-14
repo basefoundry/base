@@ -30,6 +30,12 @@ environment. `show` prints the parsed config as JSON with secret-shaped keys and
 URL credentials redacted. `doctor` reports whether the file exists, whether it
 is valid YAML, whether it is a mapping, and whether the path is a symlink.
 
+Keys in `workspace`, `github`, `ide`, and per-IDE preference mappings must be
+non-empty strings. Numeric, boolean, null, or mixed-type keys are configuration
+errors; Base does not silently convert them to strings. `config doctor`
+identifies the file and section without rewriting the config or its symlink
+target. Unknown string keys still produce the normal unsupported-key error.
+
 ## Complete Example
 
 A fully populated user config keeps each section as a top-level YAML key:

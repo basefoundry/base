@@ -81,12 +81,18 @@ def read_user_config(
         raise ConfigurationError(str(exc)) from exc
 
 
+def _validate_mapping_keys(path: Path, section: str, mapping: dict[Any, Any]) -> None:
+    if any(not isinstance(key, str) or not key.strip() for key in mapping):
+        raise ValueError(f"{path}: {section} keys must be non-empty strings.")
+
+
 def _read_user_workspace_config(path: Path, workspace_data: Any) -> UserWorkspaceConfig:
     if workspace_data is None:
         return UserWorkspaceConfig(root=None)
     if not isinstance(workspace_data, dict):
         raise ValueError(f"{path}: workspace must be a mapping when provided.")
 
+    _validate_mapping_keys(path, "workspace", workspace_data)
     allowed_keys = {"root", "manifest", "manifest_source"}
     unknown_keys = sorted(set(workspace_data) - allowed_keys)
     if unknown_keys:
@@ -109,6 +115,7 @@ def _read_user_github_config(path: Path, github_data: Any) -> UserGithubConfig:
     if not isinstance(github_data, dict):
         raise ValueError(f"{path}: github must be a mapping when provided.")
 
+    _validate_mapping_keys(path, "github", github_data)
     allowed_keys = {"default_owner", "clone_protocol"}
     unknown_keys = sorted(set(github_data) - allowed_keys)
     if unknown_keys:
@@ -173,9 +180,7 @@ def _read_user_ide_config(
     if not isinstance(ide_data, dict):
         raise ValueError(f"{path}: ide must be a mapping when provided.")
 
-    invalid_keys = sorted(str(key) for key in ide_data if not isinstance(key, str) or not key.strip())
-    if invalid_keys:
-        raise ValueError(f"{path}: ide keys must be non-empty strings.")
+    _validate_mapping_keys(path, "ide", ide_data)
 
     unknown_keys = sorted(set(ide_data) - supported_ides - {"enabled"}) if supported_ides is not None else []
     if unknown_keys:
@@ -196,6 +201,7 @@ def _read_user_ide_preference(path: Path, ide_name: str, preference_data: Any) -
     if not isinstance(preference_data, dict):
         raise ValueError(f"{path}: ide.{ide_name} must be a mapping when provided.")
 
+    _validate_mapping_keys(path, f"ide.{ide_name}", preference_data)
     allowed_keys = {"enabled", "install", "extra_extensions", "settings"}
     unknown_keys = sorted(set(preference_data) - allowed_keys)
     if unknown_keys:
