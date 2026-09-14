@@ -11,6 +11,9 @@ For contribution workflow, branch naming, tests, and PR expectations, see
 For the public support front door, discussion categories, response target, and
 discussion-to-issue workflow, see [Community Support](community-support.md).
 
+For shared labels, starter issues, issue status transitions, and monthly review
+cadence, see [Community Triage](community-triage.md).
+
 For GitHub labels, milestones, Projects, issue assignment, branch names, and
 worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 
