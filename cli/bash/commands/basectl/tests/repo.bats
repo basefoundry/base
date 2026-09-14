@@ -170,6 +170,7 @@ run_repo_command_with_mocks() {
             base_gh_repo_default_branch() {
                 printf -v "$2" "%s" "trunk"
             }
+            base_repo_load_pr
             printf "repo=%s\n" "$(base_repo_infer_github_repo /tmp/repo)"
             printf "detected=%s\n" "$(base_repo_detect_default_branch /tmp/repo)"
             printf "remote=%s\n" "$(base_repo_default_branch_for_pr owner/repo)"
@@ -617,6 +618,38 @@ EOF
     grep -Fq "repo_installer_template.sh" "$dispatcher"
     grep -Eq '^base_repo_installer_template\(\)' "$helper"
     ! grep -Eq '^base_repo_installer_template\(\)' "$dispatcher"
+}
+
+@test "basectl repo clone implementation is split from repo dispatcher" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_clone.sh"
+
+    [ -f "$helper" ]
+    grep -Fq "repo_clone.sh" "$dispatcher"
+    grep -Eq '^base_repo_clone\(\)' "$helper"
+    grep -Eq '^base_repo_clone_with_gh\(\)' "$helper"
+    if grep -Eq '^base_repo_clone\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_clone"
+    fi
+    if grep -Eq '^base_repo_clone_with_gh\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_clone_with_gh"
+    fi
+}
+
+@test "basectl repo pull request implementation is split from repo dispatcher" {
+    local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
+    local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_pr.sh"
+
+    [ -f "$helper" ]
+    grep -Fq "repo_pr.sh" "$dispatcher"
+    grep -Eq '^base_repo_pr_branch_name\(\)' "$helper"
+    grep -Eq '^base_repo_finish_pr_baseline\(\)' "$helper"
+    if grep -Eq '^base_repo_pr_branch_name\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_pr_branch_name"
+    fi
+    if grep -Eq '^base_repo_finish_pr_baseline\(\)' "$dispatcher"; then
+        fail "repo dispatcher should not define base_repo_finish_pr_baseline"
+    fi
 }
 
 @test "repo pull request helpers require an issue number" {
