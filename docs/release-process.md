@@ -312,6 +312,39 @@ records before retrying. Known recovery patterns include:
   hosts, rerun the `Build Base Bottles` workflow, and retry consumer validation
   with `brew install --force-bottle basefoundry/base/base`.
 
+
+## Downstream consumer smoke test
+
+A downstream maintainer can validate a Base release with these steps:
+
+1. Fetch the released archive:
+   ```bash
+   curl -fsSL -o base.tar.gz https://github.com/basefoundry/base/archive/refs/tags/vX.Y.Z.tar.gz
+   ```
+
+2. Verify the archive checksum (published on the GitHub Release):
+   ```bash
+   shasum -a 256 base.tar.gz
+   ```
+
+3. Extract and check version:
+   ```bash
+   tar -xzf base.tar.gz
+   cd base-X.Y.Z
+   ./bin/basectl version
+   ```
+
+4. Run a read-only command (e.g., `basectl check` on a trivial manifest):
+   ```bash
+   echo 'name: smoke-test' > base_manifest.yaml
+   ./bin/basectl check --manifest base_manifest.yaml --ci base
+   ```
+
+If any step fails, do not use the release and consult the release issue.
+
+This smoke test confirms archive integrity, version identity, and a basic command.
+
+See the full [release process](release-process.md) for the comprehensive gate.
 ## Cleanup
 
 After the Base release PR and Homebrew tap PR are merged, clean up their
