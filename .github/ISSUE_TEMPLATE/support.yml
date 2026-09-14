@@ -1,0 +1,37 @@
+name: Support and adoption question
+description: Ask for help using or evaluating Base
+title: "support: "
+labels:
+  - adoption support
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For general ecosystem questions, prefer Base Discussions. Do not include secrets or security-sensitive details here.
+  - type: input
+    id: component
+    attributes:
+      label: Repository or component
+      description: Name the command, library, workflow, or integration involved.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, shell/runtime, architecture, and relevant dependency versions.
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and evidence
+      description: What are you trying to do, what did you try, and what happened?
+    validations:
+      required: true
