@@ -615,6 +615,21 @@ For example, `repos: [{name: scratch-tools}]` declares a co-located repository.
 There is no ignore or unmanaged flag in the workspace schema.
 Their JSON diagnostic items remain compatible.
 
+Read-only workspace reports use the same root-containment policy as workspace
+mutation commands. In-root symlinks retain their declared logical repository
+names. A physical target already represented by a declared alias is not emitted
+again as an undeclared extra, including when it is a direct child of the
+workspace. Explicitly declared aliases remain distinct inventory entries.
+
+An expected symlink resolving outside the workspace is reported at its logical
+path with `repo: invalid`, `manifest: unknown`, and error status; check and doctor
+emit `BASE-W014`. This applies to optional repositories too. No target manifest,
+runtime, baseline, or guidance files are inspected. Onboarding and agent-brief
+report `discovery_status: invalid` and `invalid_path` readiness, suppress
+setup/clone/trust/validation commands for that path, and ask for symlink repair.
+Undeclared outside-resolving symlinks are excluded from discovery. Onboarding
+and agent-brief keep their report-only exit behavior; invalid readiness is data.
+
 `basectl workspace agent-brief --manifest <path>` reports one item per expected
 repository plus each extra locally discovered Base-managed project. JSON uses
 schema version `1` and stable nested signal keys for `baseline`,
@@ -626,22 +641,22 @@ The text table exposes the venv and validation states directly. In JSON schema
 version `1`, the important state meanings are:
 
 - `base_managed` is true when a present repository has a valid or invalid Base
-  project manifest. It is false for missing and unmanaged repositories.
+  project manifest. It is false for missing, unmanaged, and invalid-path repositories.
 - `project` is the parsed Base project name for a valid manifest and `null` for
   missing, unmanaged, or invalid repositories.
 - `venv: present_unverified` means the expected executable interpreter file
   exists. The brief never executes it. `missing`, `unknown`, and
   `not_applicable` represent the other local static states.
-- `handoff_status` is one of `missing_required`, `missing_optional`,
+- `handoff_status` is one of `invalid_path`, `missing_required`, `missing_optional`,
   `unmanaged`, `needs_manifest_repair`, `needs_baseline`, `needs_setup`,
   `needs_agent_guidance`, or `ready`. `ready` is structural readiness from
   non-executing evidence, not proof that checks or tests pass.
 - baseline status is `complete` or `incomplete` for Base-managed repositories,
   `not_applicable` for unmanaged repositories, and `unavailable` when the
-  repository is missing.
+  repository is missing or its path is invalid.
 - agent-guidance status is `complete` or `incomplete` for Base-managed
   repositories; generic unmanaged guidance uses `present`, `partial`, or
-  `missing`; a missing repository uses `unavailable`.
+  `missing`; a missing or invalid-path repository uses `unavailable`.
 - AI-context status is `present`, `missing`, `invalid`, or `unavailable`.
   Validation status is `available` or `unavailable`, with source
   `repo_baseline`, `manifest_test`, or `null`. Its `command` is the recommended,

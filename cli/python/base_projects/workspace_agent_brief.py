@@ -132,7 +132,7 @@ def is_executable_action(action: str) -> bool:
 
 def agent_brief_repository_from_status(status: WorkspaceProjectStatus) -> WorkspaceAgentBriefRepository:
     repository = status.repository or status.root.name
-    present = status.repo != "missing"
+    present = status.repo == "present"
     base_managed = status.manifest in ("valid", "invalid")
     if not present:
         baseline = unavailable_file_signal()
@@ -294,7 +294,9 @@ def repository_handoff_status(
     baseline: RepositoryFileSignal,
     agent_guidance: RepositoryFileSignal,
 ) -> str:
-    if status.repo == "missing":
+    if status.repo == "invalid":
+        handoff_status = "invalid_path"
+    elif status.repo == "missing":
         handoff_status = "missing_required" if status.required else "missing_optional"
     elif status.manifest == "missing":
         handoff_status = "unmanaged"
@@ -311,6 +313,21 @@ def repository_handoff_status(
     return handoff_status
 
 
+def missing_repository_next_actions(status: WorkspaceProjectStatus) -> tuple[str, ...]:
+    clone_command = None
+    if status.url is not None:
+        clone_command = shlex.join(
+            ["git", "clone", redact_repository_url(status.url), str(status.root)]
+        )
+    if status.required:
+        if clone_command is not None:
+            return (clone_command,)
+        return (f"Create or clone repository '{status.repository or status.name}' into {status.root}.",)
+    if clone_command is not None:
+        return (f"Optional repository; clone only if this handoff needs it: {clone_command}",)
+    return ("Optional repository is missing; no action is required for this handoff.",)
+
+
 def repository_next_actions(
     status: WorkspaceProjectStatus,
     handoff_status: str,
@@ -318,19 +335,10 @@ def repository_next_actions(
     agent_guidance: RepositoryFileSignal,
     validation: RepositoryValidationSignal,
 ) -> tuple[str, ...]:
+    if status.repo == "invalid":
+        return status.issues
     if status.repo == "missing":
-        clone_command = None
-        if status.url is not None:
-            clone_command = shlex.join(
-                ["git", "clone", redact_repository_url(status.url), str(status.root)]
-            )
-        if status.required:
-            if clone_command is not None:
-                return (clone_command,)
-            return (f"Create or clone repository '{status.repository or status.name}' into {status.root}.",)
-        if clone_command is not None:
-            return (f"Optional repository; clone only if this handoff needs it: {clone_command}",)
-        return ("Optional repository is missing; no action is required for this handoff.",)
+        return missing_repository_next_actions(status)
 
     if handoff_status == "unmanaged":
         return ()

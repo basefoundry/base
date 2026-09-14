@@ -686,3 +686,71 @@ print(command)
     [ "$status" -ne 0 ]
     [[ "$output" == *"SHA-256"* ]]
 }
+
+@test "workspace reports reject outside aliases without inspecting their runtime" {
+    local workspace="$TEST_TMPDIR/boundary workspace"
+    local outside="$TEST_TMPDIR/private-target"
+    local manifest="$TEST_TMPDIR/boundary.yaml"
+    local marker="$TEST_TMPDIR/outside-runtime-ran"
+    local command
+    local -a runtime_options
+    mkdir -p "$workspace" "$outside/.venv/bin"
+    printf 'project:\n  name: private-target\npython:\n  manager: uv\nartifacts: []\n' > "$outside/base_manifest.yaml"
+    printf '#!/usr/bin/env bash\n: > %q\nexit 99\n' "$marker" > "$outside/.venv/bin/python"
+    chmod +x "$outside/.venv/bin/python"
+    ln -s "$outside" "$workspace/api"
+    printf 'schema_version: 1\nworkspace:\n  name: boundary\nrepos:\n  - name: api\n    required: false\n' > "$manifest"
+
+    for command in status check doctor onboarding agent-brief; do
+        runtime_options=()
+        case "$command" in
+            check|doctor) runtime_options=(--verify-project-runtime) ;;
+        esac
+        run_basectl workspace "$command" --workspace "$workspace" --manifest "$manifest" --format json "${runtime_options[@]}"
+        case "$command" in
+            status|check|doctor) [ "$status" -eq 1 ] ;;
+            *) [ "$status" -eq 0 ] ;;
+        esac
+        printf '%s' "$output" | "$TEST_INTEGRATION_PYTHON" -c '
+import json, sys
+from pathlib import Path
+payload = json.load(sys.stdin)
+items = payload.get("projects", payload.get("repositories"))
+assert len(items) == 1 and items[0]["repository"] == "api", payload
+item = items[0]
+alias = Path(sys.argv[1])
+assert item["path"] == str(alias.parent.resolve() / alias.name), item
+assert item["manifest"] == "unknown" and item["manifest_path"] is None, item
+assert item.get("repo", item.get("discovery_status")) == "invalid", item
+assert "private-target" not in json.dumps(payload), payload
+for key in ("setup_command", "clone_command", "trust_command", "validation_command"):
+    assert item.get(key) is None, item
+' "$workspace/api"
+        [ ! -e "$marker" ]
+    done
+}
+
+@test "workspace reports retain a direct-child alias without a physical-name extra" {
+    local workspace="$TEST_TMPDIR/alias workspace"
+    local manifest="$TEST_TMPDIR/alias.yaml"
+    local command
+    mkdir -p "$workspace/physical"
+    printf 'project:\n  name: api\nartifacts: []\n' > "$workspace/physical/base_manifest.yaml"
+    git -C "$workspace/physical" init -q
+    git -C "$workspace/physical" remote add origin https://example.invalid/api.git
+    ln -s "$workspace/physical" "$workspace/api"
+    printf 'schema_version: 1\nworkspace:\n  name: alias\nrepos:\n  - name: api\n' > "$manifest"
+
+    for command in status check doctor onboarding agent-brief; do
+        run_basectl workspace "$command" --workspace "$workspace" --manifest "$manifest" --format json
+        [ "$status" -eq 0 ]
+        printf '%s' "$output" | "$TEST_INTEGRATION_PYTHON" -c '
+import json, sys
+payload = json.load(sys.stdin)
+items = payload.get("projects", payload.get("repositories"))
+assert payload["repository_count"] == 1, payload
+assert [item["repository"] for item in items] == ["api"], payload
+assert items[0]["manifest"] == "valid", items
+'
+    done
+}

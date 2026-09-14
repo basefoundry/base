@@ -35,6 +35,14 @@ def resolve_workspace_repo_root(workspace_root: Path, repo_name: str) -> Path:
     return resolved_repo_root
 
 
+def workspace_repo_boundary_fix(workspace_root: Path, repo_name: str) -> str:
+    root = workspace_root.expanduser().resolve(strict=False)
+    return (
+        f"Replace the symlink at '{root / repo_name}' with a repository or symlink "
+        f"that resolves inside workspace root '{root}', then rerun the workspace report."
+    )
+
+
 def effective_workspace_manifest(ctx: base_cli.Context, workspace_manifest: str | None) -> str | None:
     if workspace_manifest is not None:
         return workspace_manifest

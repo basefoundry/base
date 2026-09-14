@@ -179,7 +179,7 @@ def onboarding_repository_from_status(status: WorkspaceProjectStatus) -> Workspa
         path=status.root,
         required=status.required,
         status=status_name,
-        discovery_status="missing" if status.repo == "missing" else "present",
+        discovery_status=status.repo,
         manifest=status.manifest,
         venv=status.venv,
         next_action=next_action_for_status(status, status_name),
@@ -195,8 +195,12 @@ def onboarding_repository_from_status(status: WorkspaceProjectStatus) -> Workspa
 
 
 def onboarding_status(status: WorkspaceProjectStatus) -> str:
-    if status.repo == "missing":
-        return "missing_required" if status.required else "missing_optional"
+    unavailable_states = {
+        "invalid": "invalid_path",
+        "missing": "missing_required" if status.required else "missing_optional",
+    }
+    if status.repo in unavailable_states:
+        return unavailable_states[status.repo]
     if status.manifest == "missing":
         return "present_without_manifest"
     if status.manifest == "invalid":
@@ -256,14 +260,18 @@ def trust_command_for_status(status: WorkspaceProjectStatus) -> str | None:
 
 
 def next_action_for_status(status: WorkspaceProjectStatus, status_name: str) -> str:
+    repair_actions = {
+        "invalid_path": " ".join(status.issues),
+        "invalid_manifest": f"Fix {status.manifest_path} before Base setup.",
+    }
+    if status_name in repair_actions:
+        return repair_actions[status_name]
     if status_name == "missing_required":
         return missing_required_next_action(status)
     if status_name == "missing_optional":
         return "optional repository is missing; clone it only if this role needs it."
     if status_name == "present_without_manifest":
         return f"Add or verify {(status.root / 'base_manifest.yaml').resolve()} before Base setup."
-    if status_name == "invalid_manifest":
-        return f"Fix {status.manifest_path} before Base setup."
     if status_name in {"needs_verification", "ready"}:
         return (
             "Review the project runtime and configuration, then run the validation command."
