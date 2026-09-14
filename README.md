@@ -166,7 +166,10 @@ release-provenance, and adoption evidence, see
 Common first-run and product questions are answered in [FAQ.md](FAQ.md).
 Contributions should follow [CONTRIBUTING.md](CONTRIBUTING.md). Report security
 issues and handle detected credentials according to [SECURITY.md](SECURITY.md).
-Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
+The [maintainer continuity guide](docs/governance.md) documents the current
+bus-factor position, the unavailability threshold, and the staged path toward a
+backup reviewer or co-maintainer. Release notes are tracked in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## What Base Is Responsible For
 
