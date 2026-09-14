@@ -9,6 +9,11 @@ source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 BASE_GITHUB_ACTIONS_INTEGRATION_ID=15368
 readonly BASE_GITHUB_ACTIONS_INTEGRATION_ID
 
+BASE_REPO_REVIEW_POLICY_CONFIGURED=0
+BASE_REPO_REVIEW_REQUIRED_APPROVALS=0
+BASE_REPO_REVIEW_CODE_OWNER_REQUIRED=false
+BASE_REPO_REVIEW_POLICY_PATH=""
+
 # Set by base_repo_ensure_github_repo so repo init can distinguish a newly
 # created empty remote (safe to bootstrap) from an existing remote (never
 # implicitly push to it).
@@ -73,18 +78,123 @@ base_repo_ensure_github_repo() {
     BASE_REPO_GITHUB_REPO_CREATED=1
 }
 
+base_repo_load_review_policy() {
+    local path="${1:-}"
+    local parsed=""
+
+    BASE_REPO_REVIEW_POLICY_CONFIGURED=0
+    BASE_REPO_REVIEW_REQUIRED_APPROVALS=0
+    BASE_REPO_REVIEW_CODE_OWNER_REQUIRED=false
+    BASE_REPO_REVIEW_POLICY_PATH=""
+
+    [[ -n "$path" ]] || return 0
+    BASE_REPO_REVIEW_POLICY_PATH="$path/.github/base-review-policy.yml"
+    [[ -e "$BASE_REPO_REVIEW_POLICY_PATH" ]] || {
+        BASE_REPO_REVIEW_POLICY_PATH=""
+        return 0
+    }
+    [[ -f "$BASE_REPO_REVIEW_POLICY_PATH" ]] || {
+        base_std_log_error "Review policy path '$BASE_REPO_REVIEW_POLICY_PATH' is not a regular file."
+        return 1
+    }
+
+    parsed="$(awk '
+        function fail(message) {
+            print message > "/dev/stderr"
+            failed = 1
+        }
+        function value_for(line, value) {
+            value = line
+            sub(/^  [^:]+:[[:space:]]*/, "", value)
+            sub(/[[:space:]]+#.*$/, "", value)
+            gsub(/[[:space:]]+$/, "", value)
+            return value
+        }
+        BEGIN {
+            in_review_policy = 0
+            seen_review_policy = 0
+            approvals = 0
+            seen_approvals = 0
+            code_owner = "false"
+            seen_code_owner = 0
+        }
+        /^[[:space:]]*($|#)/ { next }
+        /^review_policy:[[:space:]]*$/ {
+            if (seen_review_policy) fail("review_policy must not be repeated.")
+            in_review_policy = 1
+            seen_review_policy = 1
+            next
+        }
+        /^[^[:space:]#]/ {
+            if (in_review_policy) in_review_policy = 0
+            fail("Only the review_policy mapping is supported in base-review-policy.yml.")
+            next
+        }
+        {
+            if (!in_review_policy || $0 !~ /^  [a-z_]+:[[:space:]]*/) {
+                fail("Review policy keys must be indented two spaces under review_policy.")
+                next
+            }
+            key = $0
+            sub(/^  /, "", key)
+            sub(/:.*/, "", key)
+            value = value_for($0)
+            if (key == "required_approving_reviews") {
+                if (seen_approvals) fail("required_approving_reviews must not be repeated.")
+                if (value !~ /^[0-6]$/) fail("required_approving_reviews must be an integer from 0 through 6.")
+                else {
+                    approvals = value + 0
+                    seen_approvals = 1
+                }
+            } else if (key == "require_code_owner_review") {
+                if (seen_code_owner) fail("require_code_owner_review must not be repeated.")
+                if (value != "true" && value != "false") fail("require_code_owner_review must be true or false.")
+                else {
+                    code_owner = value
+                    seen_code_owner = 1
+                }
+            } else {
+                fail("Unsupported review policy key: " key ".")
+            }
+        }
+        END {
+            if (!seen_review_policy) fail("base-review-policy.yml must declare review_policy.")
+            if (!failed) print approvals "\t" code_owner
+            exit failed ? 1 : 0
+        }
+    ' "$BASE_REPO_REVIEW_POLICY_PATH")" || {
+        base_std_log_error "Invalid review policy '$BASE_REPO_REVIEW_POLICY_PATH'."
+        return 1
+    }
+
+    IFS=$'\t' read -r BASE_REPO_REVIEW_REQUIRED_APPROVALS BASE_REPO_REVIEW_CODE_OWNER_REQUIRED <<< "$parsed"
+    BASE_REPO_REVIEW_POLICY_CONFIGURED=1
+}
+
+base_repo_review_policy_summary() {
+    local configured="$1"
+
+    if [[ "$configured" == "1" ]]; then
+        printf '%s\n' "configured from $BASE_REPO_REVIEW_POLICY_PATH: $BASE_REPO_REVIEW_REQUIRED_APPROVALS approving review(s), code-owner review $([[ "$BASE_REPO_REVIEW_CODE_OWNER_REQUIRED" == "true" ]] && printf required || printf not-required)"
+    else
+        printf '%s\n' "default compatibility policy: 0 approving reviews, code-owner review not-required"
+    fi
+}
+
 base_repo_default_branch_ruleset_payload() {
     local require_issue_branch_policy="${1:-0}"
+    local required_approving_reviews="${2:-0}"
+    local require_code_owner_review="${3:-false}"
 
     if [[ "$require_issue_branch_policy" == "1" ]]; then
-        cat <<'JSON'
-{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":true,"required_status_checks":[{"context":"base/issue-branch-policy","integration_id":15368}],"strict_required_status_checks_policy":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+        cat <<JSON
+{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":$require_code_owner_review,"require_last_push_approval":false,"required_approving_review_count":$required_approving_reviews,"required_review_thread_resolution":false}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":true,"required_status_checks":[{"context":"base/issue-branch-policy","integration_id":15368}],"strict_required_status_checks_policy":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
 JSON
         return 0
     fi
 
-    cat <<'JSON'
-{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+    cat <<JSON
+{"name":"Base default branch protection","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":$require_code_owner_review,"require_last_push_approval":false,"required_approving_review_count":$required_approving_reviews,"required_review_thread_resolution":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
 JSON
 }
 
@@ -110,17 +220,23 @@ base_repo_branch_name_rule_unavailable_error() {
 
 base_repo_configure_default_branch_protection() {
     local dry_run="$1"
-    local payload
     local repo="$2"
     local require_issue_branch_policy="${3:-0}"
+    local requested_approvals="${4:-0}"
+    local requested_code_owner="${5:-false}"
+    local policy_configured="${6:-0}"
+    local current_approvals=0
+    local current_code_owner="false"
+    local current_policy=""
+    local payload
     local ruleset_lookup_output=""
     local ruleset_id=""
     local ruleset_write_output=""
 
-    payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy")"
-
     if [[ "$dry_run" == "1" ]]; then
+        payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy" "$requested_approvals" "$requested_code_owner")"
         printf "[DRY-RUN] Would create or update GitHub ruleset 'Base default branch protection' on '%s' targeting '~DEFAULT_BRANCH'.\n" "$repo"
+        printf "[DRY-RUN] Review policy: current stronger settings are preserved at apply time; proposed %s.\n" "$(base_repo_review_policy_summary "$policy_configured")"
         printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --jq %s\n" \
             "$repo" \
             "$(base_repo_pretty_quote 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')"
@@ -142,6 +258,32 @@ base_repo_configure_default_branch_protection() {
         return 1
     }
     ruleset_id="$ruleset_lookup_output"
+
+    if [[ "$policy_configured" == "1" && -n "$ruleset_id" ]]; then
+        current_policy="$(gh api "repos/$repo/rulesets/$ruleset_id" \
+            --jq '[.rules[]? | select(.type == "pull_request") | .parameters | [.required_approving_review_count // 0, (.require_code_owner_review // false)] | @tsv] | first // ""' 2>&1)" || {
+            [[ -z "$current_policy" ]] || base_std_log_error "$current_policy"
+            base_std_log_error "Unable to read the current review policy for '$repo'."
+            return 1
+        }
+        IFS=$'\t' read -r current_approvals current_code_owner <<< "$current_policy"
+        [[ "$current_approvals" =~ ^[0-6]$ && ( "$current_code_owner" == "true" || "$current_code_owner" == "false" ) ]] || {
+            base_std_log_error "GitHub returned an invalid review policy for '$repo'."
+            return 1
+        }
+        if ((current_approvals > requested_approvals)); then
+            requested_approvals="$current_approvals"
+            base_std_log_warn "Preserving the stronger existing approving-review requirement for '$repo'."
+        fi
+        if [[ "$current_code_owner" == "true" ]]; then
+            requested_code_owner="true"
+            if [[ "${BASE_REPO_REVIEW_CODE_OWNER_REQUIRED:-false}" != "true" ]]; then
+                base_std_log_warn "Preserving the stronger existing code-owner review requirement for '$repo'."
+            fi
+        fi
+    fi
+
+    payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy" "$requested_approvals" "$requested_code_owner")"
 
     if [[ -n "$ruleset_id" ]]; then
         ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - 2>&1)" || {
@@ -556,8 +698,11 @@ base_repo_configure_github() {
     local root="${4:-}"
     local status=0
 
+    base_repo_load_review_policy "$root" || return 1
+
     if [[ "$dry_run" == "1" ]]; then
         printf "[DRY-RUN] Would run: gh repo edit %s --enable-issues --enable-projects --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge --squash-merge-commit-message pr-title-description\n" "$repo"
+        printf "[DRY-RUN] Review policy: %s.\n" "$(base_repo_review_policy_summary "$BASE_REPO_REVIEW_POLICY_CONFIGURED")"
     else
         base_repo_require_gh || return 1
         base_repo_warn_if_gh_outdated
@@ -619,7 +764,10 @@ base_repo_configure_github() {
         base_repo_configure_default_branch_protection \
             "$dry_run" \
             "$repo" \
-            "$issue_branch_policy_available" || status=1
+            "$issue_branch_policy_available" \
+            "$BASE_REPO_REVIEW_REQUIRED_APPROVALS" \
+            "$BASE_REPO_REVIEW_CODE_OWNER_REQUIRED" \
+            "$BASE_REPO_REVIEW_POLICY_CONFIGURED" || status=1
     fi
     base_repo_configure_branch_naming "$dry_run" "$repo" || status=1
 

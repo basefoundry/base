@@ -343,6 +343,15 @@ context, Base reports that enforcement was skipped and keeps the trusted issue
 branch policy workflow as the fallback instead of claiming the repository is
 fully protected.
 
+Teams can declare an optional `.github/base-review-policy.yml` with
+`required_approving_reviews` from 0 through 6 and
+`require_code_owner_review: true|false`. `basectl repo configure --dry-run`
+shows the requested policy; apply mode reads the existing default-branch
+ruleset and preserves any stronger approval or code-owner requirement. An
+absent file preserves the solo-maintainer-compatible default of zero required
+approvals. The command fails closed when a declared policy cannot be validated
+or the effective GitHub settings cannot be read back.
+
 The regular expression can validate shape but cannot look up the referenced
 issue. `.github/workflows/issue-branch-policy.yml` closes that semantic gap. Its
 trusted `pull_request_target` job never checks out pull-request code; it reads
