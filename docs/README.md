@@ -23,6 +23,9 @@ worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 For release preparation, tagging, GitHub Releases, and the Homebrew tap update,
 see [Release Process](release-process.md).
 
+For the smallest consumer-side identity, installer, and read-only command check,
+see [Downstream Release Smoke Test](downstream-release-smoke-test.md).
+
 For the canonical cross-repository platform, license, provider, and release
 immutability policy, see [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md).
 
