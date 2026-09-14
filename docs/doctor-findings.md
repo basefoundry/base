@@ -277,13 +277,16 @@ workspace root but are not listed in the supplied workspace manifest.
 contain `base_manifest.yaml`. This is an `ok` finding because workspace
 manifests do not require every repository to be Base-managed.
 
-`BASE-W013` reports each direct-child Git repository that is present under the
-workspace root but is not listed in the workspace manifest. It is a `warn`
-finding and does not fail workspace check or doctor. Add a `repos[]` name entry
+`BASE-W013` reports each direct-child Git repository without a Base manifest
+that is present under the workspace root but is not listed in the workspace
+manifest. It is a `warn` finding and does not fail workspace check or doctor.
+Add a `repos[]` name entry
 to inventory the repository, even when it has no Base manifest (for example,
 `repos: [{name: scratch-tools}]`), or move it outside the workspace root. The
 schema has no ignore or unmanaged flag. Declaring a non-Base repository is
 supported and produces the non-failing `BASE-W012` finding.
+Base-managed extras instead receive `BASE-W011` and their normal project
+diagnostics once; the same logical repository does not also receive `BASE-W013`.
 
 `BASE-W014` is an `error` for required and optional expected repositories whose
 paths resolve outside the workspace root. Base reports the logical path, does
