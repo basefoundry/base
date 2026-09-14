@@ -471,6 +471,7 @@ _base_basectl_completion() {
         'prompt:Print repo-owned Markdown prompts'
         'docs:Open the Base documentation home page on GitHub'
         'clean:Remove old Base CLI runtime artifacts'
+        'uninstall:Remove Base-managed local state and verify the removal'
         'logs:List and open recent Base CLI runtime logs'
         'history:List recent Base command history records'
         'config:Inspect Base machine-local user config'
@@ -917,6 +918,18 @@ _base_basectl_completion() {
                 '--dry-run[Explicitly preview cleanup without deleting artifacts]' \
                 '--yes[Delete matched artifacts after reviewing the preview]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
+            ;;
+        uninstall)
+            _arguments '--all[Remove all Base-managed local state and workspace settings]' \
+                '--workspace[Workspace directory used to resolve a project name]:path:_files' \
+                '--dry-run[Preview removal without changing files]' \
+                '--yes[Apply removal after reviewing the preview]' \
+                '--verify[Verify that selected Base-managed state is absent]' \
+                '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
+                '2:Base project:->projects'
+            if [[ "$state" == projects ]]; then
+                _base_basectl_completion_describe_projects
+            fi
             ;;
         logs)
             if [[ "${words[3]:-}" == last-failed ]]; then

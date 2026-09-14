@@ -599,7 +599,7 @@ _base_basectl_completion_help() {
 
 _base_basectl_completion() {
     local command cur
-    local commands="activate setup check test export-context devcontainer devenv-report build demo run repo ci release prompt docs clean logs history config trust doctor gh onboard update-profile update projects workspace version help"
+    local commands="activate setup check test export-context devcontainer devenv-report build demo run repo ci release prompt docs clean logs history config trust doctor gh onboard update-profile update projects workspace uninstall version help"
     local setup_options="--ci --format --profile --dry-run --manifest --notify --no-notify --recreate-venv --upgrade-pip --yes --allow-project-ide-mutations -v -h --help"
     local check_options="--ci --profile --format --manifest --verify-project-runtime --remote-network -v -h --help"
     local doctor_options="--ci --profile --format --manifest --verify-project-runtime --remote-network --no-color -v -h --help"
@@ -807,6 +807,10 @@ _base_basectl_completion() {
             ;;
         clean)
             _base_basectl_completion_compgen "--older-than --keep-last --dry-run --yes -v -h --help" "$cur"
+            ;;
+        uninstall)
+            _base_basectl_completion_project_or_options \
+                "--all --workspace --dry-run --yes --verify -v -h --help" "$cur" "--workspace"
             ;;
         logs)
             if ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then
