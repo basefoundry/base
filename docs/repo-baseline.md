@@ -149,6 +149,22 @@ GitHub changes without applying them. In dry-run mode, `repo init` explicitly
 reports whether it would create a GitHub repository or why GitHub creation is
 being skipped.
 
+Teams may add an optional `.github/base-review-policy.yml` to a repository:
+
+```yaml
+review_policy:
+  required_approving_reviews: 1
+  require_code_owner_review: false
+```
+
+The approving-review count must be between 0 and 6. The file is absent by
+default so existing solo repositories retain zero required approvals and do not
+change behavior unexpectedly. `repo configure --dry-run` prints the current
+compatibility behavior and proposed policy. Apply mode reads the existing
+default-branch ruleset first and preserves any stronger approval count or
+code-owner requirement; it fails closed when GitHub cannot return a valid
+readback. Base does not provide a silent weakening operation.
+
 Release standardization is an explicit opt-in because not every repository
 publishes versioned artifacts. Pass `--release` to `repo init` or
 `repo configure` when the repository should follow Base's release contract:

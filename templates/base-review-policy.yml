@@ -1,0 +1,5 @@
+# Optional repository-owned review policy for `basectl repo configure`.
+# Omit this file to preserve Base's solo-maintainer-compatible defaults.
+review_policy:
+  required_approving_reviews: 1
+  require_code_owner_review: false

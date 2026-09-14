@@ -1978,6 +1978,93 @@ EOF
     [[ "$output" != *'"type":"required_status_checks"'* ]]
 }
 
+@test "basectl repo configure dry-run reports the repository review policy" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-review-policy.yml" <<'EOF'
+review_policy:
+  required_approving_reviews: 2
+  require_code_owner_review: true
+EOF
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Review policy: configured from $repo_dir/.github/base-review-policy.yml: 2 approving review(s), code-owner review required."* ]]
+    [[ "$output" == *'"require_code_owner_review":true'* ]]
+    [[ "$output" == *'"required_approving_review_count":2'* ]]
+}
+
+@test "basectl repo configure rejects an invalid repository review policy" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-review-policy.yml" <<'EOF'
+review_policy:
+  required_approving_reviews: 7
+EOF
+
+    run_basectl repo configure "$repo_dir" --repo codeforester/base-demo --dry-run --no-project
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Invalid review policy '$repo_dir/.github/base-review-policy.yml'."* ]]
+}
+
+@test "basectl repo configure preserves stronger GitHub review settings" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir/.github"
+    cat > "$repo_dir/.github/base-review-policy.yml" <<'EOF'
+review_policy:
+  required_approving_reviews: 1
+  require_code_owner_review: false
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+if [[ "$1" == "repo" || "$1" == "label" ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method"* ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"required_approving_review_count"* ]]; then
+    printf '2\ttrue\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"integration_id"* ]]; then
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
+    printf '(HTTP 404)\n'
+    exit 1
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    exit 0
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Preserving the stronger existing approving-review requirement"* ]]
+    [[ "$output" == *"Preserving the stronger existing code-owner review requirement"* ]]
+    grep -Fq '"require_code_owner_review":true' "$TEST_STATE_DIR/ruleset-payloads"
+    grep -Fq '"required_approving_review_count":2' "$TEST_STATE_DIR/ruleset-payloads"
+}
+
 @test "basectl repo configure dry-run requires issue branch policy when the workflow exists" {
     local repo_dir="$TEST_TMPDIR/repo"
 

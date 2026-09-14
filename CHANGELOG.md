@@ -8,7 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+- Added an optional repository-owned review policy for `basectl repo configure`.
+  Teams can request approving reviews and code-owner review without changing
+  the no-configuration behavior of existing solo repositories; stronger
+  GitHub settings are preserved after readback.
 
 ## [1.9.0] - 2026-09-08
 
