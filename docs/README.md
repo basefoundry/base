@@ -108,6 +108,8 @@ reference. The filename should answer "what is this about?"
   report work beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
+- [Release Stabilization and Independent Review Policy](release-stabilization-policy.md)
+  defines candidate, bake, high-impact review, waiver, and urgent-patch rules.
 - [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) defines the
   durable consumer upgrade rehearsal for every release, with pre-1.0 rehearsal
   records preserved as historical reference.
