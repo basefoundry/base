@@ -21,11 +21,14 @@ exit 1
 EOF
     chmod +x "$python_bin"
 
-    run_basectl clean --older-than 30d --yes
+    for age in 30d 12h 45m 60s; do
+        run_basectl clean --older-than "$age" --yes
 
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"BASE_PROJECT=base"* ]]
-    [[ "$output" == *"ARGS=--older-than 30d --yes"* ]]
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"BASE_PROJECT=base"* ]]
+        [[ "$output" == *"ARGS=--older-than $age --yes"* ]]
+        [[ "$output" != *"value too great for base"* ]]
+    done
 }
 
 @test "basectl clean prints help without requiring the Base Python venv" {
