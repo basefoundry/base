@@ -174,7 +174,9 @@ backup reviewer or co-maintainer. For adoption questions, ecosystem ideas, and
 public support, use the
 [Base Discussions](https://github.com/orgs/basefoundry/discussions) forum and
 follow the routing in [Community Support](docs/community-support.md). Keep
-security-sensitive reports in GitHub's private security-advisory path. Release
+security-sensitive reports in GitHub's private security-advisory path. For issue
+readiness, starter work, and response cadence, see
+[Community Triage](docs/community-triage.md). Release
 notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## What Base Is Responsible For
