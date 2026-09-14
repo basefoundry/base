@@ -8,6 +8,8 @@ from pathlib import Path
 
 import base_cli
 from base_cli_adapters.paths import base_state_root
+from base_projects.workspace_context import WorkspacePathOutsideRootError
+from base_projects.workspace_context import resolve_workspace_repo_root, workspace_repo_boundary_fix
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_report_common import missing_repo_fix
@@ -127,12 +129,17 @@ def workspace_manifest_project_check_results(
             workspace_root, repo, entry, default_manifest, verify_project_runtime=verify_project_runtime,
         ))
 
+    expected_roots = {result.root for result in results if result.repo == "present"}
     for repo_name in sorted(entries_by_repo):
-        results.append(workspace_extra_project_check_result(
-            entries_by_repo[repo_name], default_manifest, verify_project_runtime=verify_project_runtime,
-        ))
+        entry = entries_by_repo[repo_name]
+        if entry.path.parent.resolve() not in expected_roots:
+            results.append(workspace_extra_project_check_result(
+                entry, default_manifest, verify_project_runtime=verify_project_runtime,
+            ))
     for repo_name in sorted(repository_paths_by_name):
-        results.append(workspace_undeclared_repo_check_result(repository_paths_by_name[repo_name]))
+        root = repository_paths_by_name[repo_name]
+        if root.resolve() not in expected_roots:
+            results.append(workspace_undeclared_repo_check_result(root))
 
     return tuple(results)
 
@@ -145,7 +152,10 @@ def workspace_expected_repo_check_result(
     *,
     verify_project_runtime: bool = False,
 ) -> WorkspaceProjectCheckResult:
-    root = (workspace_root / repo.name).resolve()
+    try:
+        root = resolve_workspace_repo_root(workspace_root, repo.name)
+    except WorkspacePathOutsideRootError as exc:
+        return workspace_invalid_repo_check_result(workspace_root, repo, str(exc))
     if entry is not None:
         result = workspace_project_check_result(entry, default_manifest, verify_project_runtime=verify_project_runtime)
         checks = (workspace_repo_presence_check(repo, root, present=True),) + result.checks
@@ -183,6 +193,35 @@ def workspace_expected_repo_check_result(
         expected=True,
         required=repo.required,
         repo="missing",
+        repository=repo.name,
+        url=redact_repository_url(repo.url) if repo.url is not None else None,
+        default_branch=repo.default_branch,
+    )
+
+
+def workspace_invalid_repo_check_result(
+    workspace_root: Path, repo: WorkspaceManifestRepo, message: str,
+) -> WorkspaceProjectCheckResult:
+    root = workspace_root.resolve() / repo.name
+    check = ArtifactCheck(
+        name="workspace_repository_boundary",
+        ok=False,
+        message=message,
+        fix=workspace_repo_boundary_fix(workspace_root, repo.name),
+        status="error",
+        finding_id="BASE-W014",
+        details={"repository": repo.name, "path": str(root), "expected": True, "required": repo.required},
+    )
+    return WorkspaceProjectCheckResult(
+        name=repo.name,
+        root=root,
+        manifest_path=None,
+        manifest="unknown",
+        status="error",
+        checks=(check,),
+        expected=True,
+        required=repo.required,
+        repo="invalid",
         repository=repo.name,
         url=redact_repository_url(repo.url) if repo.url is not None else None,
         default_branch=repo.default_branch,

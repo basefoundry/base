@@ -74,6 +74,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     `workspace update` also supports stable `--format json` output documented in
     `docs/schemas/workspace-update.json`; `workspace clone`, `workspace pull`,
     `workspace init`, `workspace configure`, and `workspace setup` use text output.
+  - Read-only workspace reports enforce the mutation commands' root boundary.
+    In-root aliases keep their logical names without duplicate physical-target
+    extras. Outside-resolving expected paths are invalid (`BASE-W014` in
+    check/doctor), never inspected, and produce repair guidance instead of
+    setup/clone/trust commands in onboarding and agent-brief.
   - `workspace check` presents check-oriented readiness messages; `workspace doctor`
     presents actionable findings with stable IDs and fix guidance. Workspace
     check-record persistence is optional: failures are reported per project in

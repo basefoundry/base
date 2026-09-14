@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
 
+from base_projects.workspace_context import WorkspacePathOutsideRootError
+from base_projects.workspace_context import resolve_workspace_repo_root, workspace_repo_boundary_fix
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_report_common import ProjectLastCheck
@@ -71,8 +73,11 @@ def workspace_manifest_project_statuses(
         entry = entries_by_repo.pop(repo.name, None)
         statuses.append(workspace_expected_repo_status(workspace_root, repo, entry, probe_venv=probe_venv))
 
+    expected_roots = {status.root for status in statuses if status.repo == "present"}
     for repo_name in sorted(entries_by_repo):
-        statuses.append(workspace_extra_project_status(entries_by_repo[repo_name], probe_venv=probe_venv))
+        entry = entries_by_repo[repo_name]
+        if entry.path.parent.resolve() not in expected_roots:
+            statuses.append(workspace_extra_project_status(entry, probe_venv=probe_venv))
 
     return tuple(statuses)
 
@@ -84,7 +89,24 @@ def workspace_expected_repo_status(
     *,
     probe_venv: bool = False,
 ) -> WorkspaceProjectStatus:
-    root = (workspace_root / repo.name).resolve()
+    try:
+        root = resolve_workspace_repo_root(workspace_root, repo.name)
+    except WorkspacePathOutsideRootError as exc:
+        return WorkspaceProjectStatus(
+            name=repo.name,
+            root=workspace_root.resolve() / repo.name,
+            manifest_path=None,
+            status="error",
+            venv="unknown",
+            manifest="unknown",
+            issues=(str(exc), workspace_repo_boundary_fix(workspace_root, repo.name)),
+            expected=True,
+            required=repo.required,
+            repo="invalid",
+            repository=repo.name,
+            url=redact_repository_url(repo.url) if repo.url is not None else None,
+            default_branch=repo.default_branch,
+        )
     if entry is not None:
         status = workspace_project_status(entry, probe_venv=probe_venv)
         return attach_status_repo_metadata(status, repo)

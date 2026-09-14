@@ -262,11 +262,13 @@ does not print credential-bearing remote URLs.
 | `BASE-W011` | Discovered Base-managed project outside the workspace manifest |
 | `BASE-W012` | Present expected repository without a Base project manifest |
 | `BASE-W013` | Git repository present under the workspace root but absent from the workspace manifest |
+| `BASE-W014` | Expected repository path resolves outside the workspace root |
 
-`BASE-W010` is emitted for every expected repository when workspace check or
+`BASE-W010` reports expected repository presence when workspace check or
 doctor runs with `--manifest <path>`. It is `error` when a required repository
 is missing, `warn` when an optional repository is missing, and `ok` when the
-repository is present.
+repository is present. An outside-resolving expected path instead emits
+`BASE-W014`; it is not an inspected in-workspace repository.
 
 `BASE-W011` reports local Base-managed projects that were discovered under the
 workspace root but are not listed in the supplied workspace manifest.
@@ -282,6 +284,12 @@ to inventory the repository, even when it has no Base manifest (for example,
 `repos: [{name: scratch-tools}]`), or move it outside the workspace root. The
 schema has no ignore or unmanaged flag. Declaring a non-Base repository is
 supported and produces the non-failing `BASE-W012` finding.
+
+`BASE-W014` is an `error` for required and optional expected repositories whose
+paths resolve outside the workspace root. Base reports the logical path, does
+not inspect the target or its runtime, and asks you to repair the symlink before
+rerunning the report. This is the same containment policy used by workspace
+mutation commands, not an ordinary missing-repository warning.
 
 ## Health Findings
 

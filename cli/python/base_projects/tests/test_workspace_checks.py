@@ -270,7 +270,7 @@ class WorkspaceSymlinkTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            physical = root / "physical-api"
+            physical = workspace / "storage" / "physical-api"
             write_shell_manifest(physical, "api")
             (physical / ".git").mkdir()
             (workspace / "api").symlink_to(physical, target_is_directory=True)
@@ -291,6 +291,7 @@ class WorkspaceSymlinkTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(set(projects_by_repo), {"api"})
         self.assertTrue(projects_by_repo["api"]["expected"])
+        self.assertEqual(projects_by_repo["api"]["manifest"], "valid")
 
 
 class WorkspaceCheckTests(unittest.TestCase):

@@ -126,7 +126,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            physical = root / "physical-api"
+            physical = workspace / "storage" / "physical-api"
             write_manifest(physical, "api")
             (physical / ".git").mkdir()
             (workspace / "api").symlink_to(physical, target_is_directory=True)
@@ -147,6 +147,7 @@ class WorkspaceStatusManifestTests(unittest.TestCase):
         self.assertEqual(set(projects_by_repo), {"api"})
         self.assertEqual(projects_by_repo["api"]["expected"], True)
         self.assertEqual(projects_by_repo["api"]["repo"], "present")
+        self.assertEqual(projects_by_repo["api"]["manifest"], "valid")
 
     def test_workspace_status_manifest_reports_expected_missing_and_extra_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
