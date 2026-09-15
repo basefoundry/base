@@ -29,6 +29,7 @@ jobs:
       BASE_CLI_SOURCE_DIR: ${{ github.workspace }}/.dependencies/base-cli/lib/python
       BASE_SETUP_NOTIFY: "false"
       BASE_DEMO_ENV: baseline
+      BASE_DEMO_FULL_VALIDATION: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
     steps:
@@ -71,6 +72,32 @@ jobs:
 
       - name: Install Bash and BATS
         run: brew install bash bats-core
+
+      - name: Install full-validation Go and Java toolchains
+        run: |
+          brew install go openjdk@17
+          echo "$(brew --prefix openjdk@17)/bin" >> "$GITHUB_PATH"
+          export PATH="$(brew --prefix openjdk@17)/bin:$PATH"
+          command -v go
+          command -v java
+          command -v javac
+          go version
+          java -version
+          javac -version
+
+      - name: Record immutable E2E revisions
+        env:
+          BASE_DEMO_REF: ${{ inputs.base_demo_ref || 'main' }}
+        run: |
+          printf 'supported_os=macos-14\n'
+          printf 'base_ref=%s\n' "$GITHUB_SHA"
+          printf 'base_commit=%s\n' "$(git rev-parse HEAD)"
+          printf 'base_demo_ref=%s\n' "$BASE_DEMO_REF"
+          printf 'base_demo_commit=%s\n' "$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"
+          printf 'base_cli_ref=v0.4.3\n'
+          printf 'base_cli_commit=%s\n' "$(git -C "$GITHUB_WORKSPACE/.dependencies/base-cli" rev-parse HEAD)"
+          printf 'base_bash_libs_ref=36fec50c446dcea8c521a1ba3e7fee2394f169c0\n'
+          printf 'base_bash_libs_commit=%s\n' "$(git -C "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" rev-parse HEAD)"
 
       - name: Set up Base
         run: ./bin/basectl setup --ci base --format json
@@ -144,6 +171,19 @@ jobs:
           run_base_demo_command \
             "basectl test base-demo" \
             ./bin/basectl test base-demo --workspace "$BASE_DEMO_WORKSPACE"
+
+          test_log="$log_dir/basectl-test-base-demo.log"
+          for marker in \
+            "go-api: live HTTP contract passed" \
+            "python-api: live HTTP contract passed" \
+            "java-gradle-api: live HTTP contract passed" \
+            "java-maven-api: live HTTP contract passed"; do
+            grep -Fq "$marker" "$test_log" || {
+              printf '::error title=Full validation marker missing::%s was not emitted by basectl test base-demo. Log: %s\n' \
+                "$marker" "$test_log"
+              exit 1
+            }
+          done
 
           run_base_demo_command \
             "basectl demo base-demo" \

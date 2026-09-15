@@ -238,8 +238,12 @@ The [Base Demo E2E workflow](../.github/workflows/base-demo-e2e.yml) runs the
 macOS product loop against the real `basefoundry/base-demo` repository on a
 nightly schedule and through `workflow_dispatch`. It sets up and checks the
 demo, approves its reviewed manifest, then runs the declared test and
-non-interactive demo commands. Use the workflow input to validate a specific
-`base-demo` branch, tag, or commit.
+non-interactive demo commands. The job provisions Go and OpenJDK 17, sets
+`BASE_DEMO_FULL_VALIDATION=1`, and requires the Go, Python, Gradle, and Maven
+live HTTP markers from the demo test log. Use the workflow input to validate a
+specific `base-demo` branch, tag, or commit; the log records the exact Base,
+demo, `base-cli`, and `base-bash-libs` commits used on the supported macOS 14
+runner.
 
 This job is intentionally separate from Base's own test matrix because it
 validates an external manifest and project contract. Its grouped CI output
