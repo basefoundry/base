@@ -272,6 +272,7 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     assert job["runs-on"] == "macos-14"
     assert job["timeout-minutes"] == 45
     assert job["env"]["BASE_DEMO_ENV"] == "baseline"
+    assert job["env"]["BASE_DEMO_FULL_VALIDATION"] == "1"
     assert job["env"]["BASE_CLI_SOURCE_DIR"].endswith(".dependencies/base-cli/lib/python")
 
     checkout_repositories = [
@@ -292,6 +293,16 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
         "basectl check --ci base-demo",
         "basectl test base-demo",
         "basectl demo base-demo",
+        "brew install go openjdk@17",
+        "go version",
+        "javac -version",
+        "base_demo_commit=",
+        "base_cli_commit=",
+        "base_bash_libs_commit=",
+        "go-api: live HTTP contract passed",
+        "python-api: live HTTP contract passed",
+        "java-gradle-api: live HTTP contract passed",
+        "java-maven-api: live HTTP contract passed",
     ):
         assert command in run_commands
     assert "basefoundry/base-demo.git" in run_commands
