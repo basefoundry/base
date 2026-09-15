@@ -5,6 +5,13 @@ machine. It handles the minimum prerequisites needed before `basectl` can take
 over: Homebrew, Git, Bash 4.2+, and either a source checkout or Homebrew
 installation of Base.
 
+The supported macOS floor is macOS 14 Sonoma. Before it checks or changes any
+Homebrew, Git, Bash, or Base state, the bootstrapper reads the macOS version and
+stops loudly on older releases. This check also applies to `--ensure-bash` and
+`--dry-run`, so a successful prerequisite probe cannot be mistaken for a
+supported Base installation. Older macOS versions may work from a manually
+prepared source checkout, but they are outside Base's tested support contract.
+
 On Ubuntu/Debian Linux, `bootstrap.sh` stays conservative: it does not run
 `sudo apt` from a piped script. Instead, it detects the platform and prints the
 manual source-checkout commands, including apt prerequisites and the

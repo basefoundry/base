@@ -27,6 +27,9 @@ Options:
   --yes                    Allow ensure-bash to make Ubuntu/Debian apt changes.
   -h, --help               Show this help text.
 
+Supported macOS: 14 Sonoma or newer. Older macOS versions stop before any
+Homebrew, Git, Bash, or Base installation action is attempted.
+
 Mode selection uses this precedence:
   command-line flag, BASE_BOOTSTRAP_MODE, existing Homebrew install,
   existing source checkout, then source mode.
@@ -187,6 +190,49 @@ bootstrap_current_platform() {
             printf 'unsupported\n'
             ;;
     esac
+}
+
+bootstrap_macos_version() {
+    if [[ -n "${BASE_BOOTSTRAP_TEST_MACOS_VERSION:-}" ]]; then
+        printf '%s\n' "$BASE_BOOTSTRAP_TEST_MACOS_VERSION"
+        return 0
+    fi
+
+    [[ -x /usr/bin/sw_vers ]] || return 1
+    /usr/bin/sw_vers -productVersion 2>/dev/null
+}
+
+bootstrap_macos_version_supported() {
+    local major
+    local version="$1"
+
+    IFS=. read -r major _ <<< "$version"
+    [[ "$major" =~ ^[0-9]+$ ]] || return 1
+    ((major >= 14))
+}
+
+bootstrap_require_supported_macos() {
+    local macos_version
+
+    macos_version="$(bootstrap_macos_version || true)"
+    if [[ -z "$macos_version" ]]; then
+        bootstrap_log "ERROR: Unable to determine the macOS version." >&2
+        bootstrap_log "Base requires macOS 14 Sonoma or newer." >&2
+        bootstrap_log "No Homebrew, Git, Bash, or Base installation was attempted." >&2
+        bootstrap_log "Run '/usr/bin/sw_vers -productVersion' and retry bootstrap." >&2
+        return 1
+    fi
+
+    if bootstrap_macos_version_supported "$macos_version"; then
+        return 0
+    fi
+
+    bootstrap_log "ERROR: Unsupported macOS version detected: $macos_version." >&2
+    bootstrap_log "Base requires macOS 14 Sonoma or newer." >&2
+    bootstrap_log "Bootstrap stopped before installing Homebrew, Git, Bash, or Base." >&2
+    bootstrap_log "Upgrade this Mac to macOS 14 or newer, then rerun bootstrap." >&2
+    bootstrap_log "Older macOS versions may work from a manually prepared source checkout, but they are outside Base's tested support contract." >&2
+    return 1
 }
 
 bootstrap_linux_debian_apt_packages() {
@@ -839,6 +885,9 @@ bootstrap_main() {
 
     bootstrap_log "Base bootstrap"
     platform="$(bootstrap_current_platform)" || return $?
+    if [[ "$platform" == "macos" ]]; then
+        bootstrap_require_supported_macos || return $?
+    fi
     if [[ "$ensure_bash_only" == "true" ]]; then
         bootstrap_run_ensure_bash "$platform" "$allow_homebrew_install" "$yes"
         return $?
