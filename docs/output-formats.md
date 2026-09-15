@@ -115,3 +115,95 @@ human-readable summary; redirected output remains headerless rows.
 The table and delimited forms use the columns `PROJECT` then `PATH`. CSV and
 TSV contain those two fields without a header. JSON and YAML contain a list of
 objects with `name` and `path` keys, preserving the existing JSON shape.
+
+## Focused JSON output example for new adopters
+
+A new adopter can inspect Base's JSON output with a simple command:
+
+
+
+This command emits one JSON document on stdout. Logs and errors go to stderr.
+
+The JSON document has a top-level `status` field (one of `ok`, `warn`, `error`) and a `data` field
+containing the command-specific result. For `basectl check`, the `data` field includes the project
+name and version when run in a Base-managed project.
+
+Example output:
+
+
+
+For more details on the JSON contract, see [Inspection JSON](inspection-json.md).
+
+Note: The `basectl check` command is safe to run in any Base-managed project and does not require
+a specific project setup beyond having a `base_manifest.yaml`.
+
+To quickly inspect the status field without depending on the project name or version, use jq:
+
+
+
+
+## Focused JSON output example for new adopters
+
+A new adopter can inspect Base's JSON output with a simple command:
+
+
+
+This command emits one JSON document on stdout. Logs and errors go to stderr.
+
+The JSON document has a top-level `status` field (one of `ok`, `warn`, `error`) and a `data` field
+containing the command-specific result. For `basectl check`, the `data` field includes the project
+name and version when run in a Base-managed project.
+
+Example output:
+
+
+
+For more details on the JSON contract, see [Inspection JSON](inspection-json.md).
+
+Note: The `basectl check` command is safe to run in any Base-managed project and does not require
+a specific project setup beyond having a `base_manifest.yaml`.
+
+To quickly inspect the status field without depending on the project name or version, use jq:
+
+
+
+
+## Focused JSON output example for new adopters
+
+A new adopter can inspect Base's JSON output with a simple command:
+
+```bash
+basectl check --format json
+```
+
+This command emits one JSON document on stdout. Logs and errors go to stderr.
+
+The JSON document has a top-level `status` field (one of `ok`, `warn`, `error`) and a `data` field
+containing the command-specific result. For `basectl check`, the `data` field includes the project
+name and version when run in a Base-managed project.
+
+Example output:
+
+```json
+{
+  "schema_version": 1,
+  "command": "check",
+  "status": "ok",
+  "data": {
+    "project": "demo",
+    "version": "0.4.0"
+  },
+  "error": null
+}
+```
+
+For more details on the JSON contract, see [Inspection JSON](inspection-json.md).
+
+Note: The `basectl check` command is safe to run in any Base-managed project and does not require
+a specific project setup beyond having a `base_manifest.yaml`.
+
+To quickly inspect the status field without depending on the project name or version, use jq:
+
+```bash
+basectl check --format json | jq -r '.status'
+```
