@@ -11,10 +11,12 @@ setup() {
     TEST_HOME="$TEST_TMPDIR/home"
     TEST_MOCKBIN="$TEST_TMPDIR/mockbin"
     TEST_STATE_DIR="$TEST_TMPDIR/state"
+    TEST_OS_RELEASE_PATH="$TEST_TMPDIR/os-release"
     TEST_BASH_BIN_DIR="$(dirname "$(command -v bash)")"
     unset OSTYPE_OVERRIDE
 
     mkdir -p "$TEST_HOME" "$TEST_MOCKBIN" "$TEST_STATE_DIR"
+    printf 'ID=ubuntu\nVERSION_ID="24.04"\n' >"$TEST_OS_RELEASE_PATH"
     export BASH_ENV="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash"
     base_cli_source_dir="$(base_cli_test_source_dir)"
     if [[ -n "$base_cli_source_dir" ]]; then
@@ -753,6 +755,7 @@ run_base_command() {
         BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
         BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
         BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$TEST_OS_RELEASE_PATH" \
         BASE_SETUP_TEST_PYTHON_PREFIX="$python_prefix" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \
@@ -793,6 +796,7 @@ run_base_command_separate_stderr() {
         BASE_SETUP_BREW_BIN="$TEST_MOCKBIN/brew" \
         BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
         BASE_SETUP_TEST_MOCKBIN="$TEST_MOCKBIN" \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$TEST_OS_RELEASE_PATH" \
         BASE_SETUP_TEST_PYTHON_PREFIX="$python_prefix" \
         BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR="$xcode_dir" \
         BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS=5 \

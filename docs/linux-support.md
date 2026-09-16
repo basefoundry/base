@@ -10,6 +10,9 @@ share of developer machines.
 
 This is Base's current Ubuntu/Debian source-checkout support contract:
 
+- The coordinated Base release stack is currently tested on Ubuntu 24.04. This
+  is a release-tested baseline, not a hard minimum for the broader
+  Ubuntu/Debian family path.
 - `bootstrap.sh --source --dry-run` prints the manual Ubuntu/Debian checkout
   path instead of running `sudo apt` from a piped script.
 - `basectl check`, `basectl doctor`, and `--ci` mode report Ubuntu/Debian
@@ -23,6 +26,11 @@ This is Base's current Ubuntu/Debian source-checkout support contract:
 - Ubuntu/Debian under WSL2 keeps `BASE_PLATFORM=linux-debian` and exposes
   `BASE_HOST_ENV=wsl2` so setup/check/doctor can report the host context
   without implying native Windows support.
+
+When `/etc/os-release` identifies a Debian-family release outside the current
+Ubuntu 24.04 baseline, `basectl check` and `basectl doctor` emit a warning with
+finding `BASE-D016`. The warning is informational and does not block setup or
+change the existing Ubuntu/Debian apt consent contract.
 
 Base does not ship a Debian package, own every project runtime dependency, or
 claim support for every Linux distribution. Broader Linux families,

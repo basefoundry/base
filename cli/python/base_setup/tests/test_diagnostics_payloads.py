@@ -296,11 +296,14 @@ class DiagnosticsPayloadTests(unittest.TestCase):
 
     def test_base_check_metadata_maps_ids_and_display_names(self) -> None:
         homebrew = base_check_metadata("homebrew")
+        linux_release = base_check_metadata("linux_release_baseline")
         virtualenv = base_check_metadata("base_virtualenv")
         unknown = base_check_metadata("unexpected")
 
         self.assertEqual(homebrew.finding_id, "BASE-D001")
         self.assertEqual(homebrew.display_name, "Homebrew")
+        self.assertEqual(linux_release.finding_id, "BASE-D016")
+        self.assertEqual(linux_release.display_name, "Linux release baseline")
         self.assertEqual(virtualenv.finding_id, "BASE-D004")
         self.assertEqual(virtualenv.display_name, "Base virtualenv")
         self.assertEqual(unknown.finding_id, "BASE-D000")

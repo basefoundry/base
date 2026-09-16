@@ -43,6 +43,7 @@ BASE_CHECK_FINDING_IDS = {
     "shellcheck": "BASE-D013",
     "jq": "BASE-D014",
     "go": "BASE-D015",
+    "linux_release_baseline": "BASE-D016",
 }
 BASE_CHECK_DISPLAY_NAMES = {
     "homebrew": "Homebrew",
@@ -58,6 +59,7 @@ BASE_CHECK_DISPLAY_NAMES = {
     "shellcheck": "ShellCheck",
     "jq": "jq",
     "go": "Go",
+    "linux_release_baseline": "Linux release baseline",
 }
 
 

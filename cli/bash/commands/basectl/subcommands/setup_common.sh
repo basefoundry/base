@@ -569,6 +569,9 @@ setup_base_check_metadata_fallback_finding_id() {
         go)
             printf '%s\n' "BASE-D015"
             ;;
+        linux_release_baseline)
+            printf '%s\n' "BASE-D016"
+            ;;
         *)
             printf '%s\n' "BASE-D000"
             ;;
@@ -621,6 +624,9 @@ setup_base_check_metadata_fallback_display_name() {
             ;;
         go)
             printf '%s\n' "Go"
+            ;;
+        linux_release_baseline)
+            printf '%s\n' "Linux release baseline"
             ;;
         *)
             printf '%s\n' "$1"

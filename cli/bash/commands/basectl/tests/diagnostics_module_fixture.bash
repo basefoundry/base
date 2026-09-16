@@ -47,6 +47,7 @@ base_test_diagnostics_finding_id() {
         shellcheck) printf 'BASE-D013' ;;
         jq) printf 'BASE-D014' ;;
         go) printf 'BASE-D015' ;;
+        linux_release_baseline) printf 'BASE-D016' ;;
         *) printf 'BASE-D000' ;;
     esac
 }
