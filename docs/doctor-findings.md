@@ -122,6 +122,7 @@ Doctor commands use the same diagnostic item fields. The top-level
 | `BASE-D013` | ShellCheck availability on Ubuntu/Debian |
 | `BASE-D014` | jq availability on Ubuntu/Debian |
 | `BASE-D015` | Go availability on Ubuntu/Debian source checkouts |
+| `BASE-D016` | Coordinated Ubuntu/Debian release baseline |
 | `BASE-D101` | Unsupported prerequisite profile manager |
 | `BASE-D102` | Unsupported prerequisite profile version |
 | `BASE-D103` | Homebrew unavailable for prerequisite profile checks |

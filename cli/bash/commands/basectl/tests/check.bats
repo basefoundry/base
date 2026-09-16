@@ -2,6 +2,25 @@
 
 load ./setup_helpers.bash
 
+create_linux_release_fixture() {
+    local distro="$1"
+    local version="$2"
+    local path="$TEST_TMPDIR/os-release-$distro-$version"
+
+    printf 'ID=%s\nVERSION_ID="%s"\n' "$distro" "$version" >"$path"
+    printf '%s\n' "$path"
+}
+
+prepare_linux_check_state() {
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    create_system_python3_stub
+    create_linux_prerequisite_stubs
+    touch "$TEST_STATE_DIR/pyyaml-installed"
+    touch "$TEST_STATE_DIR/click-installed"
+    create_base_venv_stub "$venv_dir"
+}
+
 
 @test "basectl check prints usage for help" {
     run_base_command check --help
@@ -131,6 +150,55 @@ load ./setup_helpers.bash
     [[ "$output" == *"Base CLI environment check passed."* ]]
     [[ "$output" != *"Homebrew"* ]]
     [[ "$output" != *"Xcode"* ]]
+}
+
+@test "basectl check does not warn for the Ubuntu 24.04 baseline" {
+    local release_path
+
+    release_path="$(create_linux_release_fixture ubuntu 24.04)"
+    prepare_linux_check_state
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$release_path" \
+        check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"BASE-D016"* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+}
+
+@test "basectl check warns for Ubuntu outside the coordinated baseline" {
+    local release_path
+
+    release_path="$(create_linux_release_fixture ubuntu 22.04)"
+    prepare_linux_check_state
+
+    run_base_command \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$release_path" \
+        check
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Ubuntu 22.04 is outside the current coordinated Base release-tested baseline (Ubuntu 24.04)."* ]]
+    [[ "$output" == *"Base CLI environment check passed."* ]]
+}
+
+@test "basectl check warns for Debian outside the coordinated baseline in JSON" {
+    local release_path
+
+    release_path="$(create_linux_release_fixture debian 12)"
+    prepare_linux_check_state
+
+    run_base_command_separate_stderr \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$release_path" \
+        check --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'"id":"BASE-D016","status":"warn","name":"linux_release_baseline"'* ]]
+    [[ "$output" == *"Debian 12 is outside the current coordinated Base release-tested baseline (Ubuntu 24.04)."* ]]
+    [ "${stderr:-}" = "" ]
 }
 
 @test "basectl check linux-debian treats missing dev tools as warnings" {

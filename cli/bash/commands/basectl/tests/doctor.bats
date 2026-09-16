@@ -434,6 +434,29 @@ EOF
     [[ "$output" != *"Xcode"* ]]
 }
 
+@test "basectl doctor reports the Ubuntu release baseline warning" {
+    local fake_bin="$TEST_TMPDIR/bin"
+    local release_path="$TEST_TMPDIR/os-release-ubuntu-22.04"
+    local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    printf 'ID=ubuntu\nVERSION_ID="22.04"\n' >"$release_path"
+    create_doctor_linux_success_stubs "$fake_bin" "$venv_python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        OSTYPE="linux-gnu" \
+        PATH="$fake_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_MODE=true \
+        BASE_SETUP_TEST_PLATFORM=linux-debian \
+        BASE_SETUP_TEST_OS_RELEASE_PATH="$release_path" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$BASE_REPO_ROOT/bin/basectl" doctor
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"warn"*"BASE-D016"*"Ubuntu 22.04 is outside the current coordinated Base release-tested baseline"* ]]
+    [[ "$output" == *"Base doctor found no blocking issues."* ]]
+}
+
 @test "basectl doctor linux-debian treats missing dev tools as warnings" {
     local fake_bin="$TEST_TMPDIR/bin"
     local venv_python="$TEST_HOME/.base.d/base/.venv/bin/python"

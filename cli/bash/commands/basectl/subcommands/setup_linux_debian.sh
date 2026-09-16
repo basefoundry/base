@@ -52,6 +52,66 @@ setup_linux_debian_github_cli_install_guidance() {
     printf "Configure GitHub CLI's official Debian/Ubuntu apt repository before installing 'gh': %s.\n" "$(setup_linux_debian_github_cli_install_url)"
 }
 
+setup_linux_debian_os_release_path() {
+    if [[ -n "${BASE_SETUP_TEST_OS_RELEASE_PATH+x}" ]]; then
+        setup_reject_test_hook_if_disallowed BASE_SETUP_TEST_OS_RELEASE_PATH
+        printf '%s\n' "$BASE_SETUP_TEST_OS_RELEASE_PATH"
+        return 0
+    fi
+    printf '%s\n' "${BASE_SETUP_TEST_OS_RELEASE_PATH:-/etc/os-release}"
+}
+
+setup_linux_debian_release_metadata() {
+    local ID=""
+    local VERSION_ID=""
+    local os_release_path
+
+    os_release_path="$(setup_linux_debian_os_release_path)" || return 1
+    [[ -r "$os_release_path" ]] || return 1
+    # shellcheck source=/dev/null
+    source "$os_release_path"
+    [[ -n "$ID" && -n "$VERSION_ID" ]] || return 1
+    printf '%s\t%s\n' "${ID,,}" "$VERSION_ID"
+}
+
+setup_add_linux_release_baseline_check_result() {
+    local id
+    local metadata
+    local version
+
+    metadata="$(setup_linux_debian_release_metadata || true)"
+    [[ -n "$metadata" ]] || return 0
+    IFS=$'\t' read -r id version <<<"$metadata"
+    [[ -n "$id" && -n "$version" ]] || return 0
+
+    if [[ "$id" == ubuntu && "$version" == "24.04" ]]; then
+        return 0
+    fi
+
+    if [[ "$id" == ubuntu ]]; then
+        setup_add_check_result_with_status \
+            "linux_release_baseline" \
+            warn \
+            "Ubuntu $version is outside the current coordinated Base release-tested baseline (Ubuntu 24.04). Broader Ubuntu/Debian family support remains available, but this release is not covered by coordinated release evidence." \
+            "Use Ubuntu 24.04 for coordinated release validation, or review docs/linux-support.md before relying on this host." \
+            "Detected Linux release: Ubuntu $version"
+    elif [[ "$id" == debian ]]; then
+        setup_add_check_result_with_status \
+            "linux_release_baseline" \
+            warn \
+            "Debian $version is outside the current coordinated Base release-tested baseline (Ubuntu 24.04). Debian-family support remains available, but this release is not covered by coordinated release evidence." \
+            "Use Ubuntu 24.04 for coordinated release validation, or review docs/linux-support.md before relying on this host." \
+            "Detected Linux release: Debian $version"
+    else
+        setup_add_check_result_with_status \
+            "linux_release_baseline" \
+            warn \
+            "Debian-family release $id $version is outside the current coordinated Base release-tested baseline (Ubuntu 24.04)." \
+            "Review docs/linux-support.md before relying on this host; the current release evidence covers Ubuntu 24.04." \
+            "Detected Linux release: $id $version"
+    fi
+}
+
 setup_recovery_linux_github_cli() {
     printf "%s Run 'sudo apt update' and 'sudo apt install gh -y', then rerun 'basectl check'.\n" "$(setup_linux_debian_github_cli_install_guidance)"
 }
@@ -194,6 +254,7 @@ setup_collect_linux_debian_base_check_results() {
     pyyaml_package="$(setup_pyyaml_package)"
     setup_ensure_cached_paths
 
+    setup_add_linux_release_baseline_check_result
     setup_add_linux_bash_check_result || missing=1
     setup_add_base_bash_libraries_check_result
 

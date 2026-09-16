@@ -14,6 +14,9 @@ def test_linux_support_docs_include_apt_backed_ubuntu_bootstrap() -> None:
 
     assert "# Linux support" in text
     assert "## Supported Ubuntu/Debian Contract" in text
+    assert "tested on Ubuntu 24.04" in text
+    assert "not a hard minimum" in text
+    assert "BASE-D016" in text
     assert "source-checkout support contract" in text
     assert "Base does not ship a Debian package" in text
     assert "## Source-Checkout Smoke Checklist" in text

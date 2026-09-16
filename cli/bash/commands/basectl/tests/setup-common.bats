@@ -137,6 +137,16 @@ run_setup_common_script() {
     [[ "$output" == *"platform=macos"* ]]
 }
 
+@test "setup_common exposes Linux release baseline check helper" {
+    run_setup_common_script '
+        declare -F setup_add_linux_release_baseline_check_result >/dev/null || exit 30
+        printf "linux release baseline helper is available\n"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"linux release baseline helper is available"* ]]
+}
+
 @test "setup_common sources Linux/Debian helper idempotently" {
     run_setup_common_script '
         source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_linux_debian.sh"

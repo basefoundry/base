@@ -606,6 +606,9 @@ Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites
 Base owns. Linux setup remains narrower than macOS setup and should stay behind
 the platform-policy boundary described in [docs/linux-support.md](docs/linux-support.md).
+The coordinated release stack is currently tested on Ubuntu 24.04; other
+Ubuntu/Debian releases remain on the broader family path, with `basectl check`
+and `basectl doctor` warning when release metadata is outside that baseline.
 For the current coordinated release matrix, Windows is out of scope for Base.
 Native Windows is planned but not supported yet. The staged target, compatibility
 matrix, and explicit feature deferrals are documented in

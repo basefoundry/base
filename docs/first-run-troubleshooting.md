@@ -40,6 +40,15 @@ installer. Older macOS versions may work from a manually prepared source
 checkout, but they are outside Base's tested support contract and cannot use
 either first-mile installer.
 
+### Check warns about the Ubuntu/Debian release baseline
+
+The current coordinated Base release stack is tested on Ubuntu 24.04. Other
+Ubuntu/Debian releases remain on the broader family support path, but
+`basectl check` and `basectl doctor` report warning `BASE-D016` because the
+release is outside the coordinated evidence. This warning does not block setup;
+review [Linux Support](linux-support.md) before relying on that host for release
+validation.
+
 ### `basectl check` reports an error
 
 Run the read-only diagnostic command and preserve its finding IDs and suggested
