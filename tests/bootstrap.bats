@@ -183,6 +183,20 @@ sha256_file() {
     [[ "$output" != *"git clone"* ]]
 }
 
+@test "bootstrap rejects macOS when its version cannot be determined" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION_UNAVAILABLE=true \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unable to determine the macOS version."* ]]
+    [[ "$output" == *"No Homebrew, Git, Bash, or Base installation was attempted."* ]]
+    [[ "$output" != *"Install mode:"* ]]
+}
+
 @test "bootstrap uses scoped colon splitting for candidate lists" {
     run grep -n 'old_ifs' "$BASE_REPO_ROOT/bootstrap.sh"
     [ "$status" -eq 1 ]

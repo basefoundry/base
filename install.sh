@@ -23,6 +23,9 @@ Options:
   --dry-run          Print planned actions without making changes.
   -h, --help         Show this help text.
 
+Supported macOS: 14 Sonoma or newer. Older macOS versions stop before any
+Homebrew, Git, Bash, or Base installation action is attempted.
+
 Install or update Base, run basectl setup, and optionally update shell startup files.
 EOF
 }
@@ -34,6 +37,61 @@ install_log() {
 install_die() {
     printf 'ERROR: %s\n' "$*" >&2
     exit 1
+}
+
+install_current_platform() {
+    if [[ -n "${BASE_INSTALL_TEST_OS:-}" ]]; then
+        printf '%s\n' "$BASE_INSTALL_TEST_OS"
+        return 0
+    fi
+
+    uname -s
+}
+
+install_macos_version() {
+    if [[ "${BASE_INSTALL_TEST_MACOS_VERSION_UNAVAILABLE:-false}" == "true" ]]; then
+        return 1
+    fi
+    if [[ -n "${BASE_INSTALL_TEST_MACOS_VERSION:-}" ]]; then
+        printf '%s\n' "$BASE_INSTALL_TEST_MACOS_VERSION"
+        return 0
+    fi
+
+    [[ -x /usr/bin/sw_vers ]] || return 1
+    /usr/bin/sw_vers -productVersion 2>/dev/null
+}
+
+install_macos_version_supported() {
+    local major
+    local version="$1"
+
+    IFS=. read -r major _ <<< "$version"
+    [[ "$major" =~ ^[0-9]+$ ]] || return 1
+    ((major >= 14))
+}
+
+install_require_supported_macos() {
+    local macos_version
+
+    macos_version="$(install_macos_version || true)"
+    if [[ -z "$macos_version" ]]; then
+        install_log "ERROR: Unable to determine the macOS version." >&2
+        install_log "Base requires macOS 14 Sonoma or newer." >&2
+        install_log "No Homebrew, Git, Bash, or Base installation was attempted." >&2
+        install_log "Run '/usr/bin/sw_vers -productVersion' and retry the install." >&2
+        return 1
+    fi
+
+    if install_macos_version_supported "$macos_version"; then
+        return 0
+    fi
+
+    install_log "ERROR: Unsupported macOS version detected: $macos_version." >&2
+    install_log "Base requires macOS 14 Sonoma or newer." >&2
+    install_log "Install stopped before installing Homebrew, Git, Bash, or Base." >&2
+    install_log "Upgrade this Mac to macOS 14 or newer, then rerun the install." >&2
+    install_log "Older macOS versions may work from a manually prepared source checkout, but they are outside Base's tested support contract." >&2
+    return 1
 }
 
 install_expand_path() {
@@ -407,6 +465,10 @@ install_main() {
     done
 
     install_dir="$(install_expand_path "$install_dir")"
+
+    if [[ "$(install_current_platform)" == "Darwin" ]]; then
+        install_require_supported_macos || return $?
+    fi
 
     install_log "Base installer"
     install_log "Repository: $repo_url"

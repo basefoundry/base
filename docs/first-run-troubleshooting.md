@@ -24,19 +24,21 @@ If the command is found but reports an unsupported shell, Python, or operating
 system, continue with the matching branch below. Do not work around a support
 guard by substituting an untested interpreter or shell.
 
-### Bootstrap reports unsupported macOS
+### Bootstrap or installer reports unsupported macOS
 
-Base currently supports macOS 14 Sonoma or newer. `bootstrap.sh` checks the
-macOS version before probing or changing Homebrew, Git, Bash, or Base state;
-this includes `--ensure-bash` and `--dry-run`. Confirm the detected version with:
+Base currently supports macOS 14 Sonoma or newer. `bootstrap.sh` and `install.sh`
+check the macOS version before probing or changing Homebrew, Git, Bash, or Base
+state. For `bootstrap.sh`, this includes `--ensure-bash` and `--dry-run`.
+Confirm the detected version with:
 
 ```bash
 /usr/bin/sw_vers -productVersion
 ```
 
-Upgrade to macOS 14 or newer if the hardware supports it, then rerun bootstrap.
-Older macOS versions may work from a manually prepared source checkout, but
-they are outside Base's tested support contract.
+Upgrade to macOS 14 or newer if the hardware supports it, then rerun the
+installer. Older macOS versions may work from a manually prepared source
+checkout, but they are outside Base's tested support contract and cannot use
+either first-mile installer.
 
 ### `basectl check` reports an error
 

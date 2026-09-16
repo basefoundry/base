@@ -597,8 +597,10 @@ tested and expected to work on macOS 14 or newer with Homebrew's supported
 install contract, Xcode Command Line Tools, a Homebrew-managed Bash, Git, and
 Python installed through Base setup. Older macOS releases may work from source,
 but they are outside Base's tested support contract. The first-mile
-`bootstrap.sh` path fails before package-manager or Base changes on macOS 13 and
-older, including when invoked with `--ensure-bash` or `--dry-run`.
+`bootstrap.sh` and `install.sh` paths fail before package-manager or Base changes
+on macOS 13 and older. For `bootstrap.sh`, this includes `--ensure-bash` and
+`--dry-run`; older hosts that need Base must use a manually prepared source
+checkout rather than either first-mile installer.
 
 Ubuntu/Debian support currently covers runtime checks, project diagnostics,
 source-checkout validation, and apt-backed setup for the simple prerequisites

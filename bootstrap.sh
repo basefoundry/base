@@ -193,6 +193,9 @@ bootstrap_current_platform() {
 }
 
 bootstrap_macos_version() {
+    if [[ "${BASE_BOOTSTRAP_TEST_MACOS_VERSION_UNAVAILABLE:-false}" == "true" ]]; then
+        return 1
+    fi
     if [[ -n "${BASE_BOOTSTRAP_TEST_MACOS_VERSION:-}" ]]; then
         printf '%s\n' "$BASE_BOOTSTRAP_TEST_MACOS_VERSION"
         return 0
