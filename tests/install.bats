@@ -163,6 +163,39 @@ assert_base_init_loads() {
     [ "$output" -eq 2 ]
 }
 
+@test "installer rejects unsupported macOS before checking prerequisites" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_TEST_OS=Darwin \
+        BASE_INSTALL_TEST_MACOS_VERSION=13.6 \
+        BASE_INSTALL_TEST_BASH_VERSION=32 \
+        BASE_INSTALL_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_INSTALL_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
+        "$BASE_REPO_ROOT/install.sh" --dry-run --dir "$TEST_HOME/work/base" --no-profile
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unsupported macOS version detected: 13.6."* ]]
+    [[ "$output" == *"Base requires macOS 14 Sonoma or newer."* ]]
+    [[ "$output" == *"Install stopped before installing Homebrew, Git, Bash, or Base."* ]]
+    [[ "$output" != *"Installing Homebrew"* ]]
+    [[ "$output" != *"Cloning Base"* ]]
+}
+
+@test "installer rejects macOS when its version cannot be determined" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_TEST_OS=Darwin \
+        BASE_INSTALL_TEST_MACOS_VERSION_UNAVAILABLE=true \
+        "$BASE_REPO_ROOT/install.sh" --dry-run --dir "$TEST_HOME/work/base" --no-profile
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unable to determine the macOS version."* ]]
+    [[ "$output" == *"No Homebrew, Git, Bash, or Base installation was attempted."* ]]
+    [[ "$output" != *"Cloning Base"* ]]
+}
+
 @test "installer and bootstrap share first-mile Homebrew helper snippet" {
     local bootstrap_block="$TEST_TMPDIR/bootstrap-first-mile.txt"
     local install_block="$TEST_TMPDIR/install-first-mile.txt"
@@ -188,6 +221,8 @@ assert_base_init_loads() {
     run env \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_INSTALL_TEST_OS=Darwin \
+        BASE_INSTALL_TEST_MACOS_VERSION=14.0 \
         BASE_INSTALL_TEST_BASH_VERSION=32 \
         BASE_INSTALL_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
         BASE_INSTALL_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \

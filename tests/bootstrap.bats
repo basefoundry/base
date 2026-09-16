@@ -16,6 +16,7 @@ run_bootstrap() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
         BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
         BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
@@ -142,6 +143,60 @@ sha256_file() {
     [ "$output" = "" ]
 }
 
+@test "bootstrap rejects unsupported macOS before checking prerequisites" {
+    create_brew_stub
+    create_unusable_git_stub
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=13.6 \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=42 \
+        BASE_BOOTSTRAP_TEST_COMMAND_LOG="$TEST_COMMAND_LOG" \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unsupported macOS version detected: 13.6."* ]]
+    [[ "$output" == *"Base requires macOS 14 Sonoma or newer."* ]]
+    [[ "$output" == *"Bootstrap stopped before installing Homebrew, Git, Bash, or Base."* ]]
+    [[ "$output" != *"Bash 4.2+ is available"* ]]
+    [[ "$output" != *"Installing Homebrew"* ]]
+    [ ! -e "$TEST_COMMAND_LOG" ]
+}
+
+@test "bootstrap rejects unsupported macOS before the install route" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=13.6 \
+        BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
+        BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
+        BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unsupported macOS version detected: 13.6."* ]]
+    [[ "$output" != *"Install mode:"* ]]
+    [[ "$output" != *"git clone"* ]]
+}
+
+@test "bootstrap rejects macOS when its version cannot be determined" {
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION_UNAVAILABLE=true \
+        "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --dry-run --source
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: Unable to determine the macOS version."* ]]
+    [[ "$output" == *"No Homebrew, Git, Bash, or Base installation was attempted."* ]]
+    [[ "$output" != *"Install mode:"* ]]
+}
+
 @test "bootstrap uses scoped colon splitting for candidate lists" {
     run grep -n 'old_ifs' "$BASE_REPO_ROOT/bootstrap.sh"
     [ "$status" -eq 1 ]
@@ -199,6 +254,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=42 \
         "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --ensure-bash --dry-run
 
@@ -215,6 +271,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
         BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
         BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
@@ -244,6 +301,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
         BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
         BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
@@ -330,6 +388,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=42 \
         BASE_BOOTSTRAP_TEST_COMMAND_LOG="$TEST_COMMAND_LOG" \
         "$BASH" "$BASE_REPO_ROOT/bootstrap.sh" --source --install-dir "$install_dir" --repo-url https://example.test/base.git
@@ -369,6 +428,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
         BASE_BOOTSTRAP_BASH_CANDIDATES="$supported_bash" \
         BASE_BOOTSTRAP_TEST_BREW_BASE_INSTALLED=true \
@@ -396,6 +456,7 @@ sha256_file() {
         HOME="$TEST_HOME" \
         PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         BASE_BOOTSTRAP_TEST_OS=Darwin \
+        BASE_BOOTSTRAP_TEST_MACOS_VERSION=14.0 \
         BASE_BOOTSTRAP_TEST_BASH_VERSION=32 \
         BASE_BOOTSTRAP_BASH_CANDIDATES="$TEST_TMPDIR/missing-bash" \
         BASE_BOOTSTRAP_BREW_CANDIDATES="$TEST_TMPDIR/missing-brew" \
