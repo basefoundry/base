@@ -21,6 +21,8 @@ create_minimal_base_home() {
         "$base_home/lib/bash/runtime" \
         "$base_home/lib/shell"
 
+    mkdir -p "$base_home/lib/base"
+    cp "$BASE_REPO_ROOT/lib/base/base_bash_libs_runtime.sh" "$base_home/lib/base/"
     cp "$BASE_REPO_ROOT/base_init.sh" "$base_home/base_init.sh"
     cp "$BASE_REPO_ROOT/lib/bash/runtime/command_protocol.sh" "$base_home/lib/bash/runtime/command_protocol.sh"
 }

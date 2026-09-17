@@ -1204,7 +1204,7 @@ _base_basectl_completion() {
             fi
             ;;
         version)
-            _arguments '(-h --help)'{-h,--help}'[Show help text]'
+            _arguments '--all[Show all component identities]' '--json[Emit JSON; requires --all]' '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         help)
             local -a help_words

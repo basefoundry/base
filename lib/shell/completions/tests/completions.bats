@@ -1098,3 +1098,19 @@ EOF
     [[ "$output" == now=* ]]
     [ ! -e "$date_called" ]
 }
+
+@test "Bash version completion offers detailed and JSON inspection" {
+    run bash_completion_candidates basectl version --
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--all"* ]]
+    [[ "$output" == *"--json"* ]]
+}
+
+@test "Zsh version completion offers detailed and JSON inspection" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    run zsh_completion_specs basectl version ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--all["* ]]
+    [[ "$output" == *"--json["* ]]
+}

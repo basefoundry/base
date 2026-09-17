@@ -295,3 +295,38 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl version` prints the installed Base version from the repo-root `VERSION` file.
 - basectl-specific bootstrap subcommands live under `cli/bash/commands/basectl/subcommands/`.
 - basectl tests live under `cli/bash/commands/basectl/tests/`.
+
+### Component versions
+
+`basectl version` and `basectl --version` keep the concise, dependency-independent
+Base identity. Use `basectl version --all` to inspect Base, base-cli and
+base-bash-libs, or `basectl version --all --json` for automation.
+
+The detailed report includes selected provider source, resolved location, version,
+Git commit and dirty state (including untracked files), plus the Base Python path
+selected by `base-wrapper`, respecting `BASE_SETUP_VENV_DIR`. It uses the same
+explicit/sibling/installed provider precedence as runtime startup. Source versions
+come from the selected checkout, never a shadowed wheel's metadata. Git identity
+is only read at the component root, so an enclosing workspace repository cannot
+be mistaken for the component. Packaged Bash releases can use embedded metadata.
+
+These are observed component identities, not release-pinned expectations or a
+compatibility verdict. The [release BOM](../../../../docs/release-bom.md) records
+the tested release combination; a source override may intentionally differ.
+Inspection locates provider files without importing or executing provider code.
+Use `basectl check base` for readiness and compatibility checks.
+
+Detailed inspection uses a stdlib-only Python 3 bootstrap diagnostic and remains
+available when the Base venv or providers are missing or incompatible. Missing
+providers appear as `unavailable`, unreadable identity as `unknown`, and unknown
+JSON values as `null`. Partial reports exit 0 with envelope status `warn`; a report
+is not a health gate. If no Python 3 interpreter is available, detailed inspection
+fails with an actionable error; simple version output still works. No installation
+or network access is performed. Paths in the report may contain local usernames.
+
+JSON uses the inspection v1 envelope (`schema_version`, `command: "version"`,
+`status`, `data`, `error`). `data.components` contains records with `name`, `source`,
+`path`, `version`, `revision`, `dirty`, `status`, and `detail`. `data.python` contains
+`path` and `exists` (executable availability, not a health verdict). Consumers must
+allow additive fields. Invalid CLI arguments exit 2 and write usage errors to stderr.
+The Bash identity reader is also used in the existing check/doctor provider message.
