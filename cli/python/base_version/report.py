@@ -69,7 +69,8 @@ def probe_installed(base_home: str) -> dict:
     sys.path.insert(0, str(Path(base_home) / "cli/python"))
     spec = importlib.util.find_spec("base_cli")
     if spec is None or not spec.origin:
-        return {"path": None, "version": None, "detail": "base_cli is not discoverable in the selected Python environment."}
+        return {"path": None, "version": None,
+                "detail": "base_cli is not discoverable in the selected Python environment."}
     origin = Path(spec.origin).resolve()
     version = None
     try:
@@ -117,7 +118,8 @@ def python_component(base_home: Path, python: str, kind: str, source: str, error
                 if not record["version"]:
                     record["detail"] = "Import location has no matching base-cli distribution metadata."
     except (OSError, subprocess.TimeoutExpired, ValueError):
-        record.update(status="unavailable", detail="Selected Python is missing, unusable, or did not return a valid inspection.")
+        record.update(status="unavailable",
+                      detail="Selected Python is missing, unusable, or did not return a valid inspection.")
     return record
 
 
@@ -150,7 +152,10 @@ def bash_component(kind: str, source: str, error: str) -> dict:
 
 def build_report(arguments: list[str]) -> dict:
     home, version, _, python, cli_kind, cli_root, cli_error, bash_kind, bash_root, bash_error = arguments
-    base = component("base", "checkout" if (Path(home) / ".git").exists() else "installation", str(Path(home).resolve()), version if version != "unknown" else None)
+    base = component(
+        "base", "checkout" if (Path(home) / ".git").exists() else "installation",
+        str(Path(home).resolve()), version if version != "unknown" else None,
+    )
     base.update(git_identity(Path(home)))
     base["status"] = "available" if version != "unknown" else "unknown"
     components = [base, python_component(Path(home), python, cli_kind, cli_root, cli_error),

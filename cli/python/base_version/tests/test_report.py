@@ -35,7 +35,9 @@ def test_source_version_does_not_use_installed_metadata(tmp_path):
 
 
 def test_missing_providers_give_partial_json(tmp_path):
-    report = build_report([str(tmp_path), "1.2.3", "json", "/missing/python", "pip", "", "", "unavailable", "", "not found"])
+    report = build_report([
+        str(tmp_path), "1.2.3", "json", "/missing/python", "pip", "", "", "unavailable", "", "not found",
+    ])
     assert report["status"] == "warn"
     assert report["error"] is None
     assert [item["status"] for item in report["data"]["components"]] == ["available", "unavailable", "unavailable"]
@@ -83,7 +85,9 @@ def test_installed_probe_uses_selected_environment_without_import(tmp_path):
     venv = tmp_path / "venv"
     subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True)
     python = venv / "bin/python"
-    site = Path(subprocess.check_output([str(python), "-I", "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"], text=True).strip())
+    site = Path(subprocess.check_output(
+        [str(python), "-I", "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"], text=True,
+    ).strip())
     (site / "base_cli").mkdir()
     (site / "base_cli/__init__.py").write_text("raise RuntimeError('must not import')")
     metadata = site / "base_cli-9.8.7.dist-info"
@@ -94,7 +98,7 @@ def test_installed_probe_uses_selected_environment_without_import(tmp_path):
     assert item["path"] == str(site / "base_cli/__init__.py")
     assert item["status"] == "available"
     # A .pth source override in the selected interpreter must not inherit wheel metadata.
-    root, path = source(tmp_path, "editable", "lib/python", "3.2.1")
+    _, path = source(tmp_path, "editable", "lib/python", "3.2.1")
     (path / "base_cli").mkdir()
     (path / "base_cli/__init__.py").write_text("raise RuntimeError('must not import')")
     (site / "override.pth").write_text(f"import sys; sys.path.insert(0, {str(path)!r})\n")
@@ -111,7 +115,7 @@ def test_git_absent_preserves_version(tmp_path, monkeypatch):
 
 
 def test_empty_version_does_not_claim_embedded_release(tmp_path):
-    root, path = source(tmp_path, "libs", "lib/bash/std", "\n9.9.9")
+    _, path = source(tmp_path, "libs", "lib/bash/std", "\n9.9.9")
     (path / "lib_std.sh").touch()
     (path.parent / "base-bash-libs.release").write_text("version=2.1.0\n")
     item = bash_component("explicit", str(path.parent), "")
