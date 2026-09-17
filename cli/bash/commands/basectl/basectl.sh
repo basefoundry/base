@@ -15,9 +15,11 @@ BASECTL_REQUIRED_HOME_FILES=(
     lib/bash/runtime/bashrc
     lib/bash/runtime/command_protocol.sh
     lib/bash/version/lib_version.sh
+    lib/base/base_bash_libs_runtime.sh
     bin/basectl
     bin/base-wrapper
     cli/bash/commands/basectl/basectl.sh
+    cli/bash/commands/basectl/subcommands/version.sh
 )
 readonly BASECTL_REQUIRED_HOME_FILES
 
@@ -107,7 +109,7 @@ Diagnostics and maintenance:
 
 Other:
   version
-    Show the installed Base version.
+    Show the installed Base version; --all includes component providers.
   help
     Show this help text.
 
@@ -473,49 +475,8 @@ basectl_do_workspace() {
     base_workspace_subcommand_main "$@"
 }
 
-basectl_source_version_library() {
-    local version_lib="$BASE_HOME/lib/bash/version/lib_version.sh"
-
-    [[ -f "$version_lib" ]] || {
-        basectl_error "Base version library '$version_lib' was not found."
-        return 1
-    }
-
-    # shellcheck source=/dev/null
-    source "$version_lib"
-}
-
 basectl_do_version() {
-    case "${1:-}" in
-        "")
-            ;;
-        -h|--help|help)
-            (($# == 1)) || {
-                basectl_error "version does not accept arguments."
-                printf "Run 'basectl version --help' for usage.\n" >&2
-                return 2
-            }
-            cat <<'EOF'
-Usage:
-  basectl version
-
-Purpose:
-  Show the installed Base version.
-
-Options:
-  -h, --help  Show this help text.
-EOF
-            return 0
-            ;;
-        *)
-            basectl_error "version does not accept arguments."
-            printf "Run 'basectl version --help' for usage.\n" >&2
-            return 2
-            ;;
-    esac
-
-    basectl_source_version_library || return 1
-    printf 'basectl %s\n' "$(base_read_version "$BASE_HOME")"
+    "$BASE_HOME/bin/basectl" version "$@"
 }
 
 basectl_should_start_shell() {

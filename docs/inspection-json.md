@@ -9,6 +9,9 @@ that are useful in CI, release gates, agent handoffs, and dashboards. Use
 - `basectl gh issue readiness`
 - `basectl gh branch stale`
 
+`basectl version --all --json` also uses this envelope; it selects JSON with
+`--json`.
+
 Text remains the default. JSON mode writes exactly one JSON document to stdout
 and never mixes ANSI formatting or human prose into that stream. Upstream tools
 may still write diagnostics to stderr.
@@ -35,7 +38,7 @@ The five top-level keys and their types are stable:
 
 - `schema_version` is the integer `1` for this payload family.
 - `command` is one of `repo check`, `release check`,
-  `gh issue readiness`, or `gh branch stale`.
+  `gh issue readiness`, `gh branch stale`, or `version`.
 - `status` is `ok`, `warn`, or `error`.
 - `data` is a command-specific object.
 - `error` is `null` for a completed inspection. A controlled usage,
@@ -74,6 +77,9 @@ Serialization does not change command policy or exit status:
 - `gh issue readiness` returns nonzero for both partial and not-ready results.
 - `gh branch stale` returns zero when stale branches are findings; its payload
   uses `status: "warn"` when the result list is non-empty.
+- `version --all --json` returns zero for completed partial reports (`warn`).
+  It reports observed identities rather than compatibility. Its option errors
+  return `2` with stderr text; see the [command reference](../cli/bash/commands/basectl/README.md#component-versions).
 - controlled usage errors return `2`; environment and upstream failures retain
   their command failure status.
 

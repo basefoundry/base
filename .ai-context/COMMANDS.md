@@ -222,7 +222,10 @@ are documented in `docs/inspection-json.md`.
 - `basectl update [project]` - update Base or a named project using the
   configured Git checkout or Homebrew-managed Base handoff, then run setup for
   the selected project.
-- `basectl version` - show the installed Base version.
+- `basectl version` - show the installed Base version without provider bootstrap.
+  `--all` reports selected Base/base-cli/base-bash-libs identity, paths, Git revision
+  and dirty state; `--all --json` emits a v1 inspection envelope. Detailed
+  inspection needs Python 3 but tolerates missing providers and the Base venv.
 - `basectl help` - show command help.
 
 ## Command Implementation Pattern

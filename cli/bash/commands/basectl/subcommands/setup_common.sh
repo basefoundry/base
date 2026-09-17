@@ -445,6 +445,15 @@ setup_base_bash_libraries_status() {
 }
 
 setup_base_bash_libraries_check_message() {
+    local python_bin summary
+
+    python_bin="$(command -v python3 || true)"
+    # Same stdlib-only identity reader as version --all; retain source guidance
+    # below when Python is unavailable during early setup diagnostics.
+    if [[ -n "$python_bin" ]] && summary="$("$python_bin" -I -S "$BASE_HOME/cli/python/base_version/report.py" \
+        --bash-summary "${BASE_BASH_LIBS_SOURCE:-unknown}" "${BASE_BASH_LIBS_DIR:-}" 2>/dev/null)"; then
+        printf '%s; ' "$summary"
+    fi
     case "${BASE_BASH_LIBS_SOURCE:-unknown}" in
         explicit)
             printf "Base is using reusable Bash libraries from explicit BASE_BASH_LIBS_DIR '%s'.\n" "${BASE_BASH_LIBS_DIR:-unknown}"

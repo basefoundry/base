@@ -634,7 +634,7 @@ EOF
     run_basectl version nonsense
 
     [ "$status" -eq 2 ]
-    [ "${lines[0]}" = "ERROR: version does not accept arguments." ]
+    [ "${lines[0]}" = "ERROR: Unknown version argument 'nonsense'." ]
     [ "${lines[1]}" = "Run 'basectl version --help' for usage." ]
     [[ "$output" != *"basectl $(head -n 1 "$BASE_REPO_ROOT/VERSION")"* ]]
 }

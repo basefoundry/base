@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- Added `basectl version --all` and `--all --json` to inspect active component
+  versions, provider paths, Git revisions, and dirty state even when providers
+  or the Base Python environment are unavailable.
+
 - Added an optional repository-owned review policy for `basectl repo configure`.
   Teams can request approving reviews and code-owner review without changing
   the no-configuration behavior of existing solo repositories; stronger
