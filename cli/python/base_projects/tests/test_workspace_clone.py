@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import io
-import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest import mock
 
-from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_clone_command import clone_detail
 
 
@@ -54,30 +50,6 @@ printf 'fake basectl %s\\n' "$repo"
         encoding="utf-8",
     )
     basectl.chmod(0o755)
-
-
-def invoke_engine(
-    args: list[str],
-    base_home: Path,
-    home: Path,
-    user_config: str | None = None,
-) -> tuple[int, str, str]:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    if user_config is not None:
-        config_path = home / ".base.d" / "config.yaml"
-        config_path.parent.mkdir(parents=True)
-        config_path.write_text(user_config, encoding="utf-8")
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
 
 
 def workspace_clone_row(stdout: str, repo_name: str) -> list[str]:
