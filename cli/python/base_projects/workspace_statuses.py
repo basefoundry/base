@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from dataclasses import replace
 from pathlib import Path
@@ -24,6 +23,7 @@ from base_setup.manifest_loader import ManifestError
 from base_setup.python_runtime import ProjectPythonRuntime
 from base_setup.python_runtime import project_python_runtime
 from base_setup.project_routing import manifest_requires_project_python
+from base_setup.runtime_inspection import executable_interpreter_present
 
 
 @dataclass(frozen=True)
@@ -234,10 +234,3 @@ def workspace_project_status(entry: ManifestEntry, *, probe_venv: bool = False) 
         issues=(f"project virtual environment missing at {venv_dir}",),
         last_check=last_check,
     )
-
-
-def executable_interpreter_present(path: Path) -> bool:
-    try:
-        return path.is_file() and os.access(path, os.X_OK)
-    except OSError:
-        return False

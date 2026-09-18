@@ -398,7 +398,7 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
             python_bin.chmod(0o755)
 
             with mock.patch(
-                "base_projects.workspace_report_common.subprocess.run",
+                "base_setup.runtime_inspection.subprocess.run",
                 side_effect=AssertionError("workspace agent brief must not run subprocesses"),
             ) as subprocess_run:
                 status, stdout, stderr = invoke_engine(
@@ -494,7 +494,7 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
             python_bin.chmod(0o644)
 
             with mock.patch(
-                "base_projects.workspace_report_common.subprocess.run",
+                "base_setup.runtime_inspection.subprocess.run",
                 side_effect=AssertionError("workspace agent brief must not run subprocesses"),
             ) as subprocess_run:
                 status, stdout, stderr = invoke_engine(
