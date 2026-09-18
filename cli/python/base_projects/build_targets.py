@@ -6,11 +6,11 @@ from typing import Protocol
 
 import base_cli
 from base_cli_adapters.protocol import dumps_records
+from base_projects.project_commands import route_metadata_fields
 from base_projects.project_commands import route_metadata_record
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest, BuildTargetConfig
-from base_setup.project_routing import route_for_manifest
 
 
 class ProjectLike(Protocol):
@@ -292,17 +292,6 @@ def print_build_target(  # pylint: disable=too-many-arguments
         )
     )
     print("\t".join(fields))
-
-
-def route_metadata_fields(manifest: BaseManifest, *, manifest_command_trust_required: bool = False) -> list[str]:
-    route = route_for_manifest(manifest)
-    uses_uv = "true" if route.uses_uv_manager else "false"
-    trust_required = "true" if manifest_command_trust_required else "false"
-    return [
-        f"__base_project_venv_dir={route.project_venv_dir}",
-        f"__base_uses_uv_manager={uses_uv}",
-        f"__base_manifest_command_trust_required={trust_required}",
-    ]
 
 
 def selected_build_targets(
