@@ -13,9 +13,8 @@ from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
-from base_setup.manifest import read_manifest
-from base_setup.manifest_loader import ManifestError
 
 
 WorkspaceTestAction = Literal["test", "skip"]
@@ -111,62 +110,50 @@ def workspace_test_manifest_target(
     workspace_root: Path,
     repo: WorkspaceManifestRepo,
 ) -> WorkspaceTestTarget:
-    try:
-        root = workspace_context.resolve_workspace_repo_root(workspace_root, repo.name)
-    except workspace_context.WorkspacePathOutsideRootError as exc:
+    inspection = inspect_workspace_repo(workspace_root, repo)
+    if inspection.state == "outside_workspace":
         return WorkspaceTestTarget(
             name=repo.name,
-            root=workspace_root / repo.name,
+            root=inspection.root,
             manifest_path=None,
             project_name=None,
             action="skip",
-            reason=str(exc),
+            reason=inspection.reason,
             required=repo.required,
             fatal=True,
         )
 
-    manifest_path = root / "base_manifest.yaml"
-    if not root.is_dir():
+    if inspection.state == "missing_repository":
         return WorkspaceTestTarget(
             name=repo.name,
-            root=root,
+            root=inspection.root,
             manifest_path=None,
             project_name=None,
             action="skip",
-            reason=f"repository is missing at '{root}'",
+            reason=inspection.reason,
             required=repo.required,
-            fatal=repo.required,
+            fatal=inspection.fatal,
         )
-    if not manifest_path.is_file():
+    if inspection.state != "inspected":
         return WorkspaceTestTarget(
             name=repo.name,
-            root=root,
-            manifest_path=None,
+            root=inspection.root,
+            manifest_path=inspection.manifest_path,
             project_name=None,
             action="skip",
-            reason="repository does not contain base_manifest.yaml",
+            reason=inspection.reason,
             required=repo.required,
+            fatal=inspection.fatal,
         )
 
-    try:
-        manifest = read_manifest(manifest_path)
-    except ManifestError as exc:
-        return WorkspaceTestTarget(
-            name=repo.name,
-            root=root,
-            manifest_path=manifest_path.resolve(),
-            project_name=None,
-            action="skip",
-            reason=f"base_manifest.yaml is invalid: {exc}",
-            required=repo.required,
-            fatal=repo.required,
-        )
+    manifest = inspection.manifest
+    assert manifest is not None
 
     if manifest.test is None:
         return WorkspaceTestTarget(
             name=repo.name,
-            root=root,
-            manifest_path=manifest_path.resolve(),
+            root=inspection.root,
+            manifest_path=inspection.manifest_path,
             project_name=manifest.project_name,
             action="skip",
             reason="project does not declare a test command",
@@ -175,8 +162,8 @@ def workspace_test_manifest_target(
 
     return WorkspaceTestTarget(
         name=repo.name,
-        root=root,
-        manifest_path=manifest_path.resolve(),
+        root=inspection.root,
+        manifest_path=inspection.manifest_path,
         project_name=manifest.project_name,
         action="test",
         required=repo.required,

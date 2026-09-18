@@ -10,13 +10,11 @@ from typing import Any, Literal
 import base_cli
 from base_projects import workspace_context
 from base_projects.workspace_context import resolve_workspace_manifest
-from base_projects.workspace_context import WorkspacePathOutsideRootError
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
-from base_setup.manifest import read_manifest
-from base_setup.manifest_loader import ManifestError
 
 
 WorkspaceSetupAction = Literal["setup", "skip"]
@@ -138,73 +136,59 @@ def workspace_setup_manifest_target(
     workspace_root: Path,
     repo: WorkspaceManifestRepo,
 ) -> WorkspaceSetupTarget:
-    try:
-        root = workspace_context.resolve_workspace_repo_root(workspace_root, repo.name)
-    except WorkspacePathOutsideRootError as exc:
+    inspection = inspect_workspace_repo(workspace_root, repo)
+    if inspection.state == "outside_workspace":
         return WorkspaceSetupTarget(
             name=repo.name,
-            root=workspace_root / repo.name,
+            root=inspection.root,
             manifest_path=None,
             project_name=None,
             action="skip",
-            reason=str(exc),
+            reason=inspection.reason,
             required=repo.required,
             fatal=True,
         )
-    manifest_path = root / "base_manifest.yaml"
-
-    if not root.is_dir():
+    if inspection.state == "missing_repository":
         return WorkspaceSetupTarget(
             name=repo.name,
-            root=root,
+            root=inspection.root,
             manifest_path=None,
             project_name=None,
             action="skip",
-            reason=f"repository is missing at '{root}'",
+            reason=inspection.reason,
             required=repo.required,
-            fatal=repo.required,
+            fatal=inspection.fatal,
         )
 
     if repo.name == "base":
         return WorkspaceSetupTarget(
             name=repo.name,
-            root=root,
-            manifest_path=manifest_path if manifest_path.is_file() else None,
+            root=inspection.root,
+            manifest_path=inspection.manifest_path,
             project_name="base",
             action="skip",
             reason="active Base control plane is managed from BASE_HOME",
             required=repo.required,
         )
 
-    if not manifest_path.is_file():
+    if inspection.state != "inspected":
         return WorkspaceSetupTarget(
             name=repo.name,
-            root=root,
-            manifest_path=None,
+            root=inspection.root,
+            manifest_path=inspection.manifest_path,
             project_name=None,
             action="skip",
-            reason="repository does not contain base_manifest.yaml",
+            reason=inspection.reason,
             required=repo.required,
+            fatal=inspection.fatal,
         )
 
-    try:
-        manifest = read_manifest(manifest_path)
-    except ManifestError as exc:
-        return WorkspaceSetupTarget(
-            name=repo.name,
-            root=root,
-            manifest_path=manifest_path.resolve(),
-            project_name=None,
-            action="skip",
-            reason=f"base_manifest.yaml is invalid: {exc}",
-            required=repo.required,
-            fatal=repo.required,
-        )
-
+    manifest = inspection.manifest
+    assert manifest is not None
     return WorkspaceSetupTarget(
         name=repo.name,
-        root=root,
-        manifest_path=manifest_path.resolve(),
+        root=inspection.root,
+        manifest_path=inspection.manifest_path,
         project_name=manifest.project_name,
         action="setup",
         required=repo.required,
