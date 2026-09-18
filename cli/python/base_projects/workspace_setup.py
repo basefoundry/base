@@ -184,7 +184,17 @@ def workspace_setup_manifest_target(
         )
 
     manifest = inspection.manifest
-    assert manifest is not None
+    if manifest is None:
+        return WorkspaceSetupTarget(
+            name=repo.name,
+            root=inspection.root,
+            manifest_path=inspection.manifest_path,
+            project_name=None,
+            action="skip",
+            reason="workspace repository inspection did not return a parsed manifest",
+            required=repo.required,
+            fatal=True,
+        )
     return WorkspaceSetupTarget(
         name=repo.name,
         root=inspection.root,
