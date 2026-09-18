@@ -152,6 +152,12 @@ def test_invalid_release_identity_is_rejected(tmp_path: Path) -> None:
 
 def structured_fixture(root: Path) -> None:
     write_fixture(root)
+    (root / ".github/workflows/tests.yml").write_text(
+        ('git -C ../base fetch --depth 1 origin "${{ steps.dependencies.outputs.base_commit }}"\n' * 3)
+        + ('ref: ${{ steps.dependencies.outputs.base_bash_libs_commit }}\n' * 3)
+        + 'git -C ../base-cli fetch --depth 1 origin "${{ steps.dependencies.outputs.base_cli_commit }}"\n'
+        + ('python3 bin/base-demo-dependencies --check --github-output\n' * 3)
+    )
     (root / ".release").mkdir()
     document = {
         "schema_version": 1,
@@ -175,7 +181,7 @@ def test_structured_contract_and_noop(tmp_path: Path, component: str) -> None:
     assert update_base_demo_pins(tmp_path, component, "3.0.0", "c" * 40, "d" * 64) == []
 
 
-@pytest.mark.parametrize("drift", ["schema", "component", "commit", "checksum", "installer", "pyproject", "bom"])
+@pytest.mark.parametrize("drift", ["schema", "component", "commit", "checksum", "installer", "pyproject", "bom", "ci"])
 def test_structured_drift_does_not_write_any_file(tmp_path: Path, drift: str) -> None:
     structured_fixture(tmp_path)
     path = tmp_path / ".release/supported-dependencies.json"
@@ -190,6 +196,8 @@ def test_structured_drift_does_not_write_any_file(tmp_path: Path, drift: str) ->
         (tmp_path / "install.sh").write_text("drifted\n")
     elif drift == "pyproject":
         (tmp_path / "pyproject.toml").write_text('dependencies = ["base-cli==0.4.2"]\n')
+    elif drift == "ci":
+        (tmp_path / ".github/workflows/tests.yml").write_text("drifted\n")
     else:
         (tmp_path / ".release/release-bom.json").write_text('{"components":[],"combinations":[]}')
     path.write_text(json.dumps(document))

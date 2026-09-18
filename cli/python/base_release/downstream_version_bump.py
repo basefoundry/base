@@ -373,6 +373,15 @@ def _structured_updates(
         rows = validate_inputs(document)
     except ValueError as exc:
         raise DownstreamBumpError(str(exc)) from exc
+    workflow = (repo_dir / ".github/workflows/tests.yml").read_text(encoding="utf-8")
+    for binding, count in (
+        ('git -C ../base fetch --depth 1 origin "${{ steps.dependencies.outputs.base_commit }}"', 3),
+        ('ref: ${{ steps.dependencies.outputs.base_bash_libs_commit }}', 3),
+        ('git -C ../base-cli fetch --depth 1 origin "${{ steps.dependencies.outputs.base_cli_commit }}"', 1),
+        ('python3 bin/base-demo-dependencies --check --github-output', 3),
+    ):
+        if workflow.count(binding) != count:
+            raise DownstreamBumpError("CI no longer consumes supported inputs; refusing a partial bump")
     # Validate every materialized installer pin, even for a different component.
     install = repo_dir / "install.sh"
     source = install.read_text(encoding="utf-8")
