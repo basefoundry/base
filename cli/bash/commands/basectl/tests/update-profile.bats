@@ -820,7 +820,7 @@ EOF
     [[ "$output" == *"lithist=enabled"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
     [[ "$output" == *"git=("* ]]
-    [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '* ]]
+    [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_defaults_git_prompt)\w\[\033[00m\]: '* ]]
 
     if command -v zsh >/dev/null 2>&1; then
         run env -u BASE_HOME -u BASE_HOST -u BASE_HOST_ENV -u BASE_OS -u BASE_PLATFORM -u EDITOR -u VISUAL -u EXINIT \
@@ -850,7 +850,7 @@ EOF
         [[ "$output" == *"interactive_comments=enabled"* ]]
         [[ "$output" == *"no_beep=enabled"* ]]
         [[ "$output" == *"git=("* ]]
-        [[ "$output" == *'PROMPT=%* %m $(_base_zsh_defaults_git_prompt)%1~: '* ]]
+        [[ "$output" == *'PROMPT=%* %m $(_base_defaults_git_prompt)%1~: '* ]]
         [[ "$output" == *"prompt_subst=enabled"* ]]
     fi
 }
@@ -897,8 +897,7 @@ EOF
     run grep -F 'branch="$(printf' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh" "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
     [ "$status" -eq 1 ]
 
-    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh"
-    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
+    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/base_defaults.sh"
 }
 
 @test "basectl update-profile preserves an existing defaults preference" {

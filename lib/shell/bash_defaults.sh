@@ -47,57 +47,11 @@ readonly _base_bash_defaults_sourced
 
 set -o vi
 
-_base_bash_defaults_git_dir() {
-    local current="${PWD:-}"
-    local git_dir
-    local git_file
-    local parent
-
-    while [[ -n "$current" ]]; do
-        if [[ -d "$current/.git" ]]; then
-            printf '%s\n' "$current/.git"
-            return 0
-        fi
-        if [[ -f "$current/.git" ]]; then
-            IFS= read -r git_file < "$current/.git" || return 1
-            [[ "$git_file" == gitdir:\ * ]] || return 1
-            git_dir="${git_file#gitdir: }"
-            case "$git_dir" in
-                /*) ;;
-                *) git_dir="$current/$git_dir" ;;
-            esac
-            printf '%s\n' "$git_dir"
-            return 0
-        fi
-
-        [[ "$current" == "/" ]] && return 1
-        parent="${current%/*}"
-        [[ -n "$parent" && "$parent" != "$current" ]] || parent="/"
-        current="$parent"
-    done
-
-    return 1
-}
-
-_base_bash_defaults_git_prompt() {
-    local branch
-    local git_dir
-    local head
-
-    git_dir="$(_base_bash_defaults_git_dir)" || return 0
-    IFS= read -r head < "$git_dir/HEAD" || return 0
-    case "$head" in
-        "ref: refs/heads/"*) branch="${head#ref: refs/heads/}" ;;
-        "ref: "*) branch="${head#ref: }"; branch="${branch##*/}" ;;
-        *) branch="${head:0:7}" ;;
-    esac
-    [[ -n "$branch" ]] || return 0
-
-    printf '(%s) ' "$branch"
-}
+# Preserve the old Bash-local helper name for profile scripts that call it.
+_base_bash_defaults_git_prompt() { _base_defaults_git_prompt; }
 
 # The prompt depends on shell-local helpers and must not reach child shells.
-export -n PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '
+export -n PS1='\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_defaults_git_prompt)\w\[\033[00m\]: '
 
 _base_bash_defaults_bind_set() {
     bind "set $1" 2>/dev/null || true

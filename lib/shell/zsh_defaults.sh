@@ -49,54 +49,8 @@ bindkey -v
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 zstyle ':completion:*' menu select
 
-_base_zsh_defaults_git_dir() {
-    local current="${PWD:-}"
-    local git_dir
-    local git_file
-    local parent
-
-    while [[ -n "$current" ]]; do
-        if [[ -d "$current/.git" ]]; then
-            printf '%s\n' "$current/.git"
-            return 0
-        fi
-        if [[ -f "$current/.git" ]]; then
-            IFS= read -r git_file < "$current/.git" || return 1
-            [[ "$git_file" == gitdir:\ * ]] || return 1
-            git_dir="${git_file#gitdir: }"
-            case "$git_dir" in
-                /*) ;;
-                *) git_dir="$current/$git_dir" ;;
-            esac
-            printf '%s\n' "$git_dir"
-            return 0
-        fi
-
-        [[ "$current" == "/" ]] && return 1
-        parent="${current%/*}"
-        [[ -n "$parent" && "$parent" != "$current" ]] || parent="/"
-        current="$parent"
-    done
-
-    return 1
-}
-
-_base_zsh_defaults_git_prompt() {
-    local branch
-    local git_dir
-    local head
-
-    git_dir="$(_base_zsh_defaults_git_dir)" || return 0
-    IFS= read -r head < "$git_dir/HEAD" || return 0
-    case "$head" in
-        "ref: refs/heads/"*) branch="${head#ref: refs/heads/}" ;;
-        "ref: "*) branch="${head#ref: }"; branch="${branch##*/}" ;;
-        *) branch="${head:0:7}" ;;
-    esac
-    [[ -n "$branch" ]] || return 0
-
-    printf '(%s) ' "$branch"
-}
+# Preserve the old Zsh-local helper name for profile scripts that call it.
+_base_zsh_defaults_git_prompt() { _base_defaults_git_prompt; }
 
 export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 if [[ "${HISTSIZE:-30}" == 30 ]]; then
@@ -124,5 +78,5 @@ setopt no_beep
 setopt prompt_subst
 setopt share_history
 
-# shellcheck disable=SC2034 # Consumed by zsh as the interactive prompt.
-PROMPT='%* %m $(_base_zsh_defaults_git_prompt)%1~: '
+# shellcheck disable=SC2034,SC2016 # Consumed by zsh as the interactive prompt.
+PROMPT='%* %m $(_base_defaults_git_prompt)%1~: '
