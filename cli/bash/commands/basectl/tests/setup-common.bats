@@ -199,7 +199,9 @@ run_setup_common_script() {
             setup_virtualenv_healthy_path \
             setup_create_virtualenv \
             setup_base_python_package_installed \
+            setup_collect_base_python_runtime_check_results \
             setup_collect_ci_runtime_check_results \
+            setup_run_shared_python_install_sequence \
             setup_run_ci_runtime_install; do
             declare -F "$helper" >/dev/null || {
                 printf "missing helper: %s\n" "$helper" >&2
@@ -211,6 +213,83 @@ run_setup_common_script() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"guard=1"* ]]
+}
+
+@test "setup platform adapters share Python setup order and omit user config in CI" {
+    run_setup_common_script '
+        setup_trace_add() { SETUP_TRACE="${SETUP_TRACE:+$SETUP_TRACE,}$1"; }
+        setup_install_homebrew() { setup_trace_add homebrew; }
+        setup_install_xcode_tools() { setup_trace_add xcode; }
+        setup_install_python() { setup_trace_add python; }
+        setup_run_linux_debian_apt_prerequisites() { setup_trace_add apt; }
+        setup_profile_enabled() { return 0; }
+        setup_run_linux_debian_github_cli_prerequisite() { setup_trace_add gh-cli; }
+        setup_create_virtualenv() { setup_trace_add venv; }
+        setup_upgrade_base_pip() { setup_trace_add pip; }
+        setup_install_pyyaml() { setup_trace_add pyyaml; }
+        setup_install_click() { setup_trace_add click; }
+        setup_install_base_cli() { setup_trace_add base-cli; }
+        setup_profiles_enabled() { return 0; }
+        setup_is_dry_run() { return 1; }
+        setup_run_base_dev_layer() { setup_trace_add profile; }
+        setup_run_project_artifact_setup() { setup_trace_add artifacts; }
+        setup_seed_user_config() { setup_trace_add user-config; }
+        base_std_log_info() { :; }
+
+        SETUP_TRACE=""
+        setup_run_macos_install || exit $?
+        printf "macos=%s\n" "$SETUP_TRACE"
+        SETUP_TRACE=""
+        setup_run_linux_debian_install || exit $?
+        printf "debian=%s\n" "$SETUP_TRACE"
+        SETUP_TRACE=""
+        setup_run_ci_runtime_install || exit $?
+        printf "ci=%s\n" "$SETUP_TRACE"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"macos=homebrew,xcode,python,venv,pip,pyyaml,click,base-cli,profile,artifacts,user-config"* ]]
+    [[ "$output" == *"debian=apt,gh-cli,venv,pip,pyyaml,click,base-cli,profile,artifacts,user-config"* ]]
+    [[ "$output" == *"ci=venv,pip,pyyaml,click,base-cli,profile,artifacts"* ]]
+}
+
+@test "shared Python setup sequence propagates pip and artifact failures" {
+    run_setup_common_script '
+        setup_trace_add() { SETUP_TRACE="${SETUP_TRACE:+$SETUP_TRACE,}$1"; }
+        setup_create_virtualenv() { setup_trace_add venv; }
+        setup_upgrade_base_pip() { setup_trace_add pip; return 37; }
+        setup_install_pyyaml() { setup_trace_add pyyaml; }
+        setup_install_click() { setup_trace_add click; }
+        setup_install_base_cli() { setup_trace_add base-cli; }
+        setup_profiles_enabled() { return 1; }
+        setup_run_project_artifact_setup() { setup_trace_add artifacts; return 42; }
+        setup_seed_user_config() { setup_trace_add user-config; }
+
+        SETUP_TRACE=""
+        if setup_run_shared_python_install_sequence true; then
+            printf "pip failure was lost\\n" >&2
+            exit 20
+        else
+            status=$?
+            [[ "$status" -eq 37 ]] || exit 21
+            [[ "$SETUP_TRACE" == venv,pip ]] || exit 22
+        fi
+
+        setup_upgrade_base_pip() { setup_trace_add pip; }
+        SETUP_TRACE=""
+        if setup_run_shared_python_install_sequence true; then
+            printf "artifact failure was lost\\n" >&2
+            exit 23
+        else
+            status=$?
+            [[ "$status" -eq 42 ]] || exit 24
+            [[ "$SETUP_TRACE" == venv,pip,pyyaml,click,base-cli,artifacts ]] || exit 25
+        fi
+        printf "pip and artifact failures propagated\\n"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"pip and artifact failures propagated"* ]]
 }
 
 @test "setup_common sources profiles helper idempotently" {
@@ -304,6 +383,36 @@ run_setup_common_script() {
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Python is available for CI runtime checks."* ]]
+}
+
+@test "setup_common shares Python runtime check ordering across Linux and CI" {
+    run_setup_common_script '
+        setup_find_linux_python_bin() { printf "/linux/python\\n"; }
+        setup_find_platform_python_bin() { printf "/ci/python\\n"; }
+        setup_recovery_linux_python() { printf "install Linux Python"; }
+        setup_recovery_ci_python() { printf "install CI Python"; }
+        setup_virtualenv_healthy() { _BASE_SETUP_VENV_HEALTH_MESSAGE="venv is healthy"; return 0; }
+        setup_base_python_package_installed() { return 0; }
+        setup_add_linux_python_venv_check_result() {
+            setup_add_check_result python_venv true "Python venv support is available."
+        }
+
+        setup_collect_base_python_runtime_check_results \
+            setup_find_linux_python_bin "Ubuntu/Debian runtime checks" setup_recovery_linux_python click PyYAML true || exit $?
+        printf "linux-names=%s\\n" "${_BASE_SETUP_CHECK_NAMES[*]}"
+        printf "linux-python=%s\\n" "${_BASE_SETUP_CHECK_MESSAGES[0]}"
+        setup_clear_check_results
+        setup_collect_base_python_runtime_check_results \
+            setup_find_platform_python_bin "CI runtime checks" setup_recovery_ci_python click PyYAML false || exit $?
+        printf "ci-names=%s\\n" "${_BASE_SETUP_CHECK_NAMES[*]}"
+        printf "ci-python=%s\\n" "${_BASE_SETUP_CHECK_MESSAGES[0]}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"linux-names=python python_venv base_virtualenv pyyaml click"* ]]
+    [[ "$output" == *"linux-python=Python is available for Ubuntu/Debian runtime checks."* ]]
+    [[ "$output" == *"ci-names=python base_virtualenv pyyaml click"* ]]
+    [[ "$output" == *"ci-python=Python is available for CI runtime checks."* ]]
 }
 
 @test "setup_common keeps GitHub CLI out of bulk Ubuntu apt prerequisites" {

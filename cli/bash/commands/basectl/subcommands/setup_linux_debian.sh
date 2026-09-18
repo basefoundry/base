@@ -248,7 +248,6 @@ setup_collect_linux_debian_base_check_results() {
     local click_package
     local missing=0
     local pyyaml_package
-    local python_bin
 
     click_package="$(setup_click_package)"
     pyyaml_package="$(setup_pyyaml_package)"
@@ -258,55 +257,13 @@ setup_collect_linux_debian_base_check_results() {
     setup_add_linux_bash_check_result || missing=1
     setup_add_base_bash_libraries_check_result
 
-    if python_bin="$(setup_find_linux_python_bin)"; then
-        setup_add_check_result \
-            "python" \
-            true \
-            "Python is available for Ubuntu/Debian runtime checks." \
-            "" \
-            "Resolved Python binary: $python_bin"
-    else
-        setup_add_check_result \
-            "python" \
-            false \
-            "Python is not available for Ubuntu/Debian runtime checks." \
-            "$(setup_recovery_linux_python)"
-        missing=1
-    fi
-    setup_add_linux_python_venv_check_result "$python_bin" || missing=1
-
-    if setup_virtualenv_healthy; then
-        setup_add_check_result "base_virtualenv" true "$_BASE_SETUP_VENV_HEALTH_MESSAGE"
-    else
-        setup_add_check_result \
-            "base_virtualenv" \
-            false \
-            "$_BASE_SETUP_VENV_HEALTH_MESSAGE" \
-            "$(setup_recovery_venv)"
-        missing=1
-    fi
-
-    if setup_base_python_package_installed "$pyyaml_package"; then
-        setup_add_check_result "pyyaml" true "$(setup_base_python_package_check_message "$pyyaml_package" true)"
-    else
-        setup_add_check_result \
-            "pyyaml" \
-            false \
-            "$(setup_base_python_package_check_message "$pyyaml_package" false)" \
-            "$(setup_recovery_base_python_package)"
-        missing=1
-    fi
-
-    if setup_base_python_package_installed "$click_package"; then
-        setup_add_check_result "click" true "$(setup_base_python_package_check_message "$click_package" true)"
-    else
-        setup_add_check_result \
-            "click" \
-            false \
-            "$(setup_base_python_package_check_message "$click_package" false)" \
-            "$(setup_recovery_base_python_package)"
-        missing=1
-    fi
+    setup_collect_base_python_runtime_check_results \
+        setup_find_linux_python_bin \
+        "Ubuntu/Debian runtime checks" \
+        setup_recovery_linux_python \
+        "$click_package" \
+        "$pyyaml_package" \
+        true || missing=1
 
     setup_add_linux_command_check_result \
         "git" \
@@ -468,20 +425,7 @@ setup_run_linux_debian_install() {
     if setup_profile_enabled dev; then
         setup_run_linux_debian_github_cli_prerequisite || return $?
     fi
-    setup_create_virtualenv
-    setup_upgrade_base_pip || return $?
-    setup_install_pyyaml
-    setup_install_click
-    setup_install_base_cli
-    if setup_profiles_enabled; then
-        if setup_is_dry_run; then
-            setup_run_base_dev_layer setup --dry-run || base_std_fatal_error "Python prerequisite profile layer failed."
-        else
-            setup_run_base_dev_layer setup || base_std_fatal_error "Python prerequisite profile layer failed."
-        fi
-    fi
-    setup_run_project_artifact_setup || return $?
-    setup_seed_user_config
+    setup_run_shared_python_install_sequence true || return $?
 
     if setup_is_dry_run; then
         base_std_log_info "[DRY-RUN] Base CLI setup check is complete."

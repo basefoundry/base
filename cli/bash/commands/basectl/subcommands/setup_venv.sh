@@ -413,31 +413,34 @@ setup_write_python_package_check_probe() {
         "$(setup_recovery_base_python_package)"
 }
 
-setup_collect_ci_runtime_check_results() {
-    local click_package
+setup_collect_base_python_runtime_check_results() {
+    local python_finder="$1"
+    local python_context="$2"
+    local python_recovery_function="$3"
+    local click_package="$4"
+    local pyyaml_package="$5"
+    local check_linux_python_venv="${6:-false}"
     local missing=0
-    local pyyaml_package
     local python_bin
 
-    setup_clear_check_results
-    click_package="$(setup_click_package)"
-    pyyaml_package="$(setup_pyyaml_package)"
-    setup_ensure_cached_paths
-
-    if python_bin="$(setup_find_platform_python_bin)"; then
+    if python_bin="$("$python_finder")"; then
         setup_add_check_result \
             "python" \
             true \
-            "Python is available for CI runtime checks." \
+            "Python is available for $python_context." \
             "" \
             "Resolved Python binary: $python_bin"
     else
         setup_add_check_result \
             "python" \
             false \
-            "Python is not available for CI runtime checks." \
-            "$(setup_recovery_ci_python)"
+            "Python is not available for $python_context." \
+            "$("$python_recovery_function")"
         missing=1
+    fi
+
+    if [[ "$check_linux_python_venv" == true ]]; then
+        setup_add_linux_python_venv_check_result "${python_bin:-}" || missing=1
     fi
 
     if setup_virtualenv_healthy; then
@@ -476,7 +479,26 @@ setup_collect_ci_runtime_check_results() {
     return "$missing"
 }
 
-setup_run_ci_runtime_install() {
+setup_collect_ci_runtime_check_results() {
+    local click_package
+    local pyyaml_package
+
+    setup_clear_check_results
+    click_package="$(setup_click_package)"
+    pyyaml_package="$(setup_pyyaml_package)"
+    setup_ensure_cached_paths
+
+    setup_collect_base_python_runtime_check_results \
+        setup_find_platform_python_bin \
+        "CI runtime checks" \
+        setup_recovery_ci_python \
+        "$click_package" \
+        "$pyyaml_package"
+}
+
+setup_run_shared_python_install_sequence() {
+    local seed_user_config="${1:-false}"
+
     setup_create_virtualenv
     setup_upgrade_base_pip || return $?
     setup_install_pyyaml
@@ -490,6 +512,15 @@ setup_run_ci_runtime_install() {
         fi
     fi
     setup_run_project_artifact_setup || return $?
+
+    if [[ "$seed_user_config" == true ]]; then
+        setup_seed_user_config
+    fi
+    return 0
+}
+
+setup_run_ci_runtime_install() {
+    setup_run_shared_python_install_sequence false || return $?
 
     if setup_is_dry_run; then
         base_std_log_info "[DRY-RUN] Base CI setup check is complete."
