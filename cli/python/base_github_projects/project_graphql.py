@@ -4,6 +4,8 @@ import json
 import subprocess
 
 from .project_errors import ProjectAuthError, ProjectError, ProjectTransportError
+from .project_transport_errors import GRAPHQL_ONLY_TRANSPORT_ERROR_MARKERS
+from .project_transport_errors import is_project_transport_error as _is_project_transport_error
 
 GITHUB_GRAPHQL_TIMEOUT_SECONDS = 60
 
@@ -54,24 +56,6 @@ def is_project_scope_error(message: str) -> bool:
 
 
 def is_project_transport_error(message: str) -> bool:
-    lowered = message.lower()
-    return any(
-        marker in lowered
-        for marker in (
-            "rate limit",
-            "secondary rate limit",
-            "abuse detection",
-            "retry-after",
-            "x-ratelimit-reset",
-            "unknown owner type",
-            "could not resolve host",
-            "connection reset",
-            "connection refused",
-            "timed out",
-            "timeout",
-            "502 bad gateway",
-            "503 service unavailable",
-            "504 gateway timeout",
-            "http 5",
-        )
+    return _is_project_transport_error(
+        message, extra_markers=GRAPHQL_ONLY_TRANSPORT_ERROR_MARKERS
     )

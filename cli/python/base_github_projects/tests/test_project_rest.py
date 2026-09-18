@@ -9,7 +9,9 @@ from typing import Any
 import pytest
 
 from base_github_projects import engine
+from base_github_projects import project_graphql
 from base_github_projects import project_rest
+from base_github_projects.project_transport_errors import PROJECT_TRANSPORT_ERROR_MARKERS
 from base_github_projects.project_errors import ProjectAuthError
 from base_github_projects.project_errors import ProjectDuplicateItemError
 from base_github_projects.project_errors import ProjectTransportError
@@ -18,6 +20,25 @@ from base_github_projects.project_model import ProjectArguments
 
 
 FIXTURE_PATH = Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "project-transport.json"
+
+
+@pytest.mark.parametrize("marker", PROJECT_TRANSPORT_ERROR_MARKERS)
+def test_graphql_and_rest_share_transport_error_classification(marker: str) -> None:
+    message = f"GitHub request failed: {marker.upper()}"
+
+    assert project_graphql.is_project_transport_error(message)
+    assert project_rest.is_project_transport_error(message)
+
+
+def test_transport_error_classification_keeps_auth_and_graphql_specific_cases() -> None:
+    for message in ("Bad credentials", "403 Forbidden", "Project scope required"):
+        assert not project_graphql.is_project_transport_error(message)
+        assert not project_rest.is_project_transport_error(message)
+
+    assert project_graphql.is_project_transport_error("Unknown owner type 'Organization'")
+    assert not project_rest.is_project_transport_error("Unknown owner type 'Organization'")
+    assert not project_graphql.is_project_transport_error("ordinary validation failure")
+    assert not project_rest.is_project_transport_error("ordinary validation failure")
 
 
 def fixture() -> dict[str, Any]:
