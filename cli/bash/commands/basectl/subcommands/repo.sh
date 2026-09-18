@@ -840,8 +840,10 @@ EOF
 base_repo_write_pull_request_template() {
     local dry_run="$1"
     local root="$2"
+    local notes_heading="${3:-Notes}"
+    local template
 
-    base_repo_write_stream "$dry_run" "$root/.github/pull_request_template.md" <<'EOF'
+    template="$(cat <<'EOF'
 ## Summary
 
 <!-- What changed and why. Focus on decisions and user impact, not just the diff. -->
@@ -854,7 +856,7 @@ Closes #
 
 <!-- Commands run and relevant output. Include narrow checks and any broader suite used. -->
 
-## Notes
+## @NOTES_HEADING@
 
 <!-- Optional: tradeoffs, follow-up work, or reviewer context. -->
 
@@ -868,6 +870,9 @@ Closes #
 - [ ] CHANGELOG is updated for notable user-visible or release-worthy changes.
 - [ ] Pull request includes `Fixes #<issue>` or `Closes #<issue>` when merge should close the issue.
 EOF
+    )" || return 1
+    template="${template//@NOTES_HEADING@/$notes_heading}"
+    printf '%s\n' "$template" | base_repo_write_stream "$dry_run" "$root/.github/pull_request_template.md"
 }
 
 base_repo_license_is_supported() {
@@ -1471,48 +1476,15 @@ base_repo_title_case_name() {
 }
 
 base_repo_write_init_agent_guidance() {
-    local agents_existed=0
     local default_branch="$3"
     local dry_run="$1"
-    local pr_template_existed=0
     local repo_name="$2"
     local root="$5"
-    local skills_existed=0
-    local status=0
-    local summary_args=()
     local validation_command="$4"
 
     base_repo_load_agent_guidance || return 1
-
-    if [[ "$dry_run" != "1" ]]; then
-        [[ -e "$root/AGENTS.md" ]] && agents_existed=1
-        [[ -e "$root/skills.md" ]] && skills_existed=1
-        [[ -e "$root/.github/pull_request_template.md" ]] && pr_template_existed=1
-    fi
-
-    base_repo_write_agent_instructions "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || status=1
-    base_repo_write_agent_skills "$dry_run" "$repo_name" "$root" || status=1
-
-    if [[ "$dry_run" != "1" && "$status" -eq 0 ]]; then
-        if ((agents_existed)); then
-            summary_args+=(--unchanged "AGENTS.md")
-        else
-            summary_args+=(--created "AGENTS.md")
-        fi
-        if ((skills_existed)); then
-            summary_args+=(--unchanged "skills.md")
-        else
-            summary_args+=(--created "skills.md")
-        fi
-        if ((pr_template_existed)); then
-            summary_args+=(--unchanged ".github/pull_request_template.md")
-        else
-            summary_args+=(--created ".github/pull_request_template.md")
-        fi
-        base_repo_print_agent_guidance_summary "${summary_args[@]}"
-    fi
-
-    return "$status"
+    base_repo_write_agent_guidance \
+        "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" "Notes"
 }
 
 base_repo_check_baseline() {

@@ -1423,6 +1423,38 @@ EOF
     [[ "$output" == *"To overwrite, remove the files first and re-run."* ]]
 }
 
+@test "repo init and agent-guidance share one PR template with explicit notes wording" {
+    local guidance_repo="$TEST_TMPDIR/template-guidance"
+    local init_repo="$TEST_TMPDIR/template-init"
+
+    run_basectl repo init template-init --path "$init_repo" --agent-ready --no-configure
+    [ "$status" -eq 0 ]
+
+    run_basectl repo agent-guidance "$guidance_repo" --repo-name template-guidance
+    [ "$status" -eq 0 ]
+
+    sed 's/^## Reviewer Notes$/## Notes/' \
+        "$guidance_repo/.github/pull_request_template.md" > "$TEST_TMPDIR/normalized-template.md"
+    cmp "$init_repo/.github/pull_request_template.md" "$TEST_TMPDIR/normalized-template.md"
+    grep -Fqx '## Notes' "$init_repo/.github/pull_request_template.md"
+    grep -Fqx '## Reviewer Notes' "$guidance_repo/.github/pull_request_template.md"
+}
+
+@test "repo agent-guidance propagates PR-template write failures without reporting success" {
+    local repo_dir="$TEST_TMPDIR/blocked-guidance"
+
+    mkdir -p "$repo_dir"
+    printf 'not a directory\n' > "$repo_dir/.github"
+
+    run_basectl repo agent-guidance "$repo_dir" --repo-name blocked-guidance
+
+    [ "$status" -eq 1 ]
+    [ -f "$repo_dir/AGENTS.md" ]
+    [ -f "$repo_dir/skills.md" ]
+    [[ "$output" == *"Failed to create parent directory '$repo_dir/.github'."* ]]
+    [[ "$output" != *"Agent guidance: 3 files created."* ]]
+}
+
 @test "basectl repo init dry-run prints baseline and configuration plan" {
     local repo_dir="$TEST_TMPDIR/base-demo"
 

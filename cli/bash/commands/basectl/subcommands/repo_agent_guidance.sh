@@ -125,39 +125,6 @@ bare issue-number prefixes are invalid.
 EOF
 }
 
-base_repo_write_agent_pull_request_template() {
-    local dry_run="$1"
-    local root="$2"
-
-    base_repo_write_stream "$dry_run" "$root/.github/pull_request_template.md" <<'EOF'
-## Summary
-
-<!-- What changed and why. Focus on decisions and user impact, not just the diff. -->
-
-## Issue
-
-Closes #
-
-## Validation
-
-<!-- Commands run and relevant output. Include narrow checks and any broader suite used. -->
-
-## Reviewer Notes
-
-<!-- Optional: tradeoffs, follow-up work, or areas where reviewer attention would help. -->
-
-## Checklist
-
-- [ ] Branch name follows `<category>/<issue>-<YYYYMMDD>-<slug>`, and its category prefix matches the issue's single standard category label.
-- [ ] Pull request is scoped to one issue, unless a documented multi-issue exception applies.
-- [ ] Pull request body explains what changed and how it was validated.
-- [ ] Relevant project checks pass.
-- [ ] Documentation is updated when behavior or user-facing commands change.
-- [ ] CHANGELOG is updated for notable user-visible or release-worthy changes.
-- [ ] Pull request includes `Fixes #<issue>` or `Closes #<issue>` when merge should close the issue.
-EOF
-}
-
 base_repo_print_agent_guidance_summary() {
     local created=()
     local created_count
@@ -234,6 +201,7 @@ base_repo_write_agent_guidance() {
     local skills_existed=0
     local status=0
     local validation_command="$4"
+    local notes_heading="${6:-Reviewer Notes}"
 
     if [[ "$dry_run" != "1" ]]; then
         [[ -e "$root/AGENTS.md" ]] && agents_existed=1
@@ -243,7 +211,7 @@ base_repo_write_agent_guidance() {
 
     base_repo_write_agent_instructions "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || status=1
     base_repo_write_agent_skills "$dry_run" "$repo_name" "$root" || status=1
-    base_repo_write_agent_pull_request_template "$dry_run" "$root" || status=1
+    base_repo_write_pull_request_template "$dry_run" "$root" "$notes_heading" || status=1
 
     if [[ "$dry_run" != "1" && "$status" -eq 0 ]]; then
         if ((agents_existed)); then
