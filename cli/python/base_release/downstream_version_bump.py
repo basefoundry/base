@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from base_release.dependency_inputs import validate_inputs
 
 
 COMPONENTS = ("base", "base-cli", "base-bash-libs")
@@ -206,7 +209,11 @@ def _base_updates(
             2,
         ),
     )
-    _replace_literal(state, validation, f"v{old_version}", f"v{version}", expected=3)
+    for message in (
+        ".github/workflows/tests.yml must pin every Base checkout to the immutable v{} release commit.",
+        ".github/workflows/tests.yml does not pin the source compatibility job to the Base v{} release commit.",
+    ):
+        _replace_literal(state, validation, message.format(old_version), message.format(version), expected=1)
 
     install_tests = repo_dir / "tests" / "install_test.bats"
     _replace(
@@ -336,6 +343,97 @@ def _base_bash_libs_updates(
     _replace_literal(state, validation, f"v{old_version}", f"v{version}", expected=2)
 
 
+def _read_json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise DownstreamBumpError(f"cannot read {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise DownstreamBumpError(f"{path} must contain an object")
+    return value
+
+
+def _stage_json(state: _UpdateState, path: Path, value: dict) -> None:
+    if value == _read_json(path):
+        return
+    text = json.dumps(value, indent=2) + "\n"
+    if text != path.read_text(encoding="utf-8"):
+        state.updates[path] = text
+        state.changed.add(path)
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def _structured_updates(
+    repo_dir: Path, state: _UpdateState, component: str, version: str,
+    commit: str, installer_sha256: str | None,
+) -> None:
+    path = repo_dir / ".release/supported-dependencies.json"
+    document = _read_json(path)
+    try:
+        rows = validate_inputs(document)
+    except ValueError as exc:
+        raise DownstreamBumpError(str(exc)) from exc
+    # Validate every materialized installer pin, even for a different component.
+    install = repo_dir / "install.sh"
+    source = install.read_text(encoding="utf-8")
+    bindings = (
+        ("BASE_RELEASE_REF", ":-", "v" + rows["base"]["version"]),
+        ("BASE_RELEASE_COMMIT", ":-", rows["base"]["commit"]),
+        ("BASE_INSTALL_SHA256", "-", rows["base"]["installer_sha256"]),
+    )
+    for variable, operator, value in bindings:
+        old = f'{variable}="${{{variable}{operator}{value}}}"'
+        if source.count(old) != 1:
+            raise DownstreamBumpError(f"{variable} disagrees with supported inputs; refusing a partial bump")
+    pyproject = repo_dir / "pyproject.toml"
+    requirement = "base-cli==" + rows["base-cli"]["version"]
+    if pyproject.read_text(encoding="utf-8").count(requirement + '"') != 1:
+        raise DownstreamBumpError("pyproject.toml disagrees with supported inputs; refusing a partial bump")
+    updated = {"version": version, "commit": commit}
+    if component == "base":
+        if installer_sha256 is None:
+            raise DownstreamBumpError("base bumps require --installer-sha256")
+        _validate_checksum(installer_sha256)
+        updated["installer_sha256"] = installer_sha256
+        values = ("v" + version, commit, installer_sha256)
+        for (variable, operator, old_value), new_value in zip(bindings, values):
+            _replace_literal(
+                state, install,
+                f'{variable}="${{{variable}{operator}{old_value}}}"',
+                f'{variable}="${{{variable}{operator}{new_value}}}"', expected=1,
+            )
+    elif component == "base-cli":
+        _replace_literal(state, pyproject, requirement + '"', "base-cli==" + version + '"', expected=1)
+    rows[component] = updated
+    _stage_json(state, path, document)
+
+
+def _invalidate_prepared_bom(
+    repo_dir: Path, state: _UpdateState, component: str, version: str, commit: str,
+) -> None:
+    path = repo_dir / ".release/release-bom.json"
+    if not path.exists():
+        return
+    document = _read_json(path)
+    rows = document.get("components")
+    combinations = document.get("combinations")
+    if not isinstance(rows, list) or not isinstance(combinations, list):
+        raise DownstreamBumpError("prepared BOM requires component and combination arrays")
+    if any(not isinstance(row, dict) for row in rows + combinations):
+        raise DownstreamBumpError("prepared BOM rows must be objects")
+    matches = [row for row in rows if row.get("repository") == f"basefoundry/{component}"]
+    if len(matches) != 1:
+        raise DownstreamBumpError(f"prepared BOM requires exactly one {component} row")
+    row = matches[0]
+    identity = (row.get("version"), row.get("commit"), row.get("tag"))
+    if identity == (version, commit, f"v{version}") and not state.changed:
+        return
+    row.update(version=version, tag=f"v{version}", commit=commit, source_mode="release")
+    for item in rows + combinations:
+        item.update(result="not_tested", evidence="pending: dependency inputs changed; rerun compatibility")
+    _stage_json(state, path, document)
+
+
 def update_base_demo_pins(
     repo_dir: Path,
     component: str,
@@ -360,12 +458,16 @@ def update_base_demo_pins(
         raise DownstreamBumpError(f"downstream checkout does not exist: {repo_dir}")
 
     state = _UpdateState(updates={}, changed=set())
-    if component == "base":
+    if (repo_dir / ".release/supported-dependencies.json").exists():
+        _structured_updates(repo_dir, state, component, version, commit, installer_sha256)
+    elif component == "base":
         _base_updates(repo_dir, state, version, commit, installer_sha256)
     elif component == "base-cli":
         _base_cli_updates(repo_dir, state, version)
     else:
         _base_bash_libs_updates(repo_dir, state, version, commit)
+
+    _invalidate_prepared_bom(repo_dir, state, component, version, commit)
 
     for path, text in state.updates.items():
         path.write_text(text, encoding="utf-8")

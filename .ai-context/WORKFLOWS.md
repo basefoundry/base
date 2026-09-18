@@ -120,6 +120,11 @@ BASE_BASH_LIBS_DIR=~/work/base-bash-libs/lib/bash env -u BASE_HOME ./bin/base-te
 
 ## Release Flow
 
+The downstream demo updater uses the strict v1 supported-dependency input
+contract in `docs/downstream-dependency-inputs.md`. Pins are not compatibility
+proof: changed inputs invalidate prepared BOM results, and no-op retries retain
+existing evidence. Base #2256 separately owns hosted credential verification.
+
 Base releases are explicit ceremonies. Ordinary PRs do not update `VERSION` or
 `DEVELOPMENT_VERSION`. `VERSION` is the latest published release, while
 `DEVELOPMENT_VERSION` names the next development line used by untagged source
