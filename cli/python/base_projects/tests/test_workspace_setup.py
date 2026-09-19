@@ -12,6 +12,9 @@ from pathlib import Path
 from unittest import mock
 
 from base_projects import engine
+from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_projects.workspace_repo_inspection import WorkspaceRepoInspection
+from base_projects.workspace_setup import workspace_setup_manifest_target
 
 
 def write_manifest(project_root: Path, name: str, *, python: bool = False) -> None:
@@ -43,6 +46,46 @@ repos:
 
 
 class WorkspaceSetupTests(unittest.TestCase):
+    def test_workspace_setup_skips_base_manifest_parsing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            (workspace / "base").mkdir()
+            (workspace / "base" / "base_manifest.yaml").write_text("not: a valid base manifest", encoding="utf-8")
+            repo = WorkspaceManifestRepo(name="base")
+
+            with mock.patch(
+                "base_projects.workspace_repo_inspection.read_manifest",
+                side_effect=AssertionError("base manifest should not be parsed"),
+            ):
+                target = workspace_setup_manifest_target(workspace, repo)
+
+        self.assertEqual(target.action, "skip")
+        self.assertEqual(target.project_name, "base")
+        self.assertEqual(target.reason, "active Base control plane is managed from BASE_HOME")
+
+    def test_workspace_setup_fails_closed_when_inspected_manifest_is_missing(self) -> None:
+        root = Path("/workspace/api")
+        inspection = WorkspaceRepoInspection(
+            name="api",
+            root=root,
+            manifest_path=root / "base_manifest.yaml",
+            project_name=None,
+            manifest=None,
+            state="inspected",
+            reason=None,
+            required=True,
+            fatal=False,
+        )
+
+        with mock.patch("base_projects.workspace_setup.inspect_workspace_repo", return_value=inspection):
+            target = workspace_setup_manifest_target(root.parent, WorkspaceManifestRepo(name="api"))
+
+        self.assertEqual(target.action, "skip")
+        self.assertEqual(target.reason, "workspace repository inspection did not return a parsed manifest")
+        self.assertTrue(target.fatal)
+
     def test_workspace_setup_rejects_repository_target_outside_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
