@@ -61,6 +61,31 @@ source_project_command_helpers() {
     [[ "$output" == *"ERROR:Option '--project' may be specified only once."* ]]
 }
 
+@test "project command wrapper guard validates the executable path" {
+    local base_home="$TEST_TMPDIR/base-home"
+    local wrapper="$base_home/bin/base-wrapper"
+
+    mkdir -p "$(dirname "$wrapper")"
+    touch "$wrapper"
+    chmod -x "$wrapper"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_REPO_ROOT/base_init.sh"
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
+            base_std_fatal_error() {
+                printf "FATAL:%s\n" "$*"
+                return 1
+            }
+            base_project_require_wrapper
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"FATAL:Base Python wrapper '$wrapper' is missing or is not executable."* ]]
+}
+
 @test "project command helper resolves project venv directories" {
     source_project_command_helpers
 

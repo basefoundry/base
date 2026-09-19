@@ -34,7 +34,7 @@ base_test_usage_error() {
 }
 
 base_test_subcommand_main() {
-    local project="" wrapper resolve_output resolved_name project_root manifest_path test_command command_runner
+    local project="" resolve_output resolved_name project_root manifest_path test_command command_runner
     local command_to_run display_command dry_run
     local args=() extra_args=()
     local route_venv_dir uses_uv_manager trust_required
@@ -69,8 +69,8 @@ base_test_subcommand_main() {
     fi
 
     base_project_require_manifest_command_trust "$resolved_name" "$manifest_path" "$trust_required" || return $?
-    wrapper="$BASE_HOME/bin/base-wrapper"
-    resolve_output="$("$wrapper" --project base base_projects test-command \
+    base_project_require_wrapper || return $?
+    resolve_output="$("$BASE_PROJECT_COMMAND_WRAPPER" --project base base_projects test-command \
         "${BASE_PROJECT_COMMAND_SELECTION_ARGS[@]}" "${args[@]}" \
         --format command-protocol --test-preflight)" || return $?
     base_command_protocol_decode_one project-command "$resolve_output" || {
