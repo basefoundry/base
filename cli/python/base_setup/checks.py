@@ -13,6 +13,7 @@ from typing import Any
 DIAGNOSTIC_JSON_SCHEMA_VERSION = 1
 CHECK_STATUS_FILE_ENVIRONMENT_VARIABLE = "BASE_SETUP_CHECK_STATUS_FILE"
 DOCTOR_NO_COLOR_ENVIRONMENT_VARIABLE = "BASE_SETUP_DOCTOR_NO_COLOR"
+VALID_STATUSES = {"ok", "warn", "error"}
 
 
 @dataclass(frozen=True)
@@ -46,10 +47,20 @@ def checks_status(checks: Iterable[ArtifactCheck]) -> str:
 
 
 def aggregate_check_statuses(statuses: Iterable[str]) -> str:
-    status_values = tuple(statuses)
-    if "error" in status_values:
+    return merge_statuses(*statuses)
+
+
+def validate_status(status: str) -> str:
+    if status not in VALID_STATUSES:
+        raise ValueError(f"Invalid diagnostic status '{status}'.")
+    return status
+
+
+def merge_statuses(*statuses: str) -> str:
+    normalized = tuple(validate_status(status) for status in statuses if status)
+    if "error" in normalized:
         return "error"
-    if "warn" in status_values:
+    if "warn" in normalized:
         return "warn"
     return "ok"
 
@@ -136,25 +147,6 @@ def render_doctor_finding(finding: DoctorFinding) -> None:
         )
     if finding.fix:
         print(f"{' ' * len(status_prefix)}Fix: {finding.fix}", file=stream)
-
-
-def _doctor_visual_status_parts(status: str) -> tuple[str, str, str]:
-    if status == "ok":
-        return "✓ ok", "\033[0;32m", "   "
-    if status == "warn":
-        return "! warn", "\033[0;33m", " "
-    if status == "error":
-        return "✗ error", "\033[0;31m", ""
-    return status, "", ""
-
-
-def _doctor_visual_status_enabled(stream: Any) -> bool:
-    return (
-        os.environ.get("BASE_SETUP_DOCTOR_NO_COLOR") != "true"
-        and not os.environ.get("NO_COLOR")
-        and os.environ.get("TERM", "") not in {"", "dumb"}
-        and stream.isatty()
-    )
 
 
 def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:

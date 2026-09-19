@@ -22,9 +22,10 @@ import base_cli
 
 from .check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from .checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
+from .checks import VALID_STATUSES
+from .checks import merge_statuses
 
 
-VALID_STATUSES = {"ok", "warn", "error"}
 CHECK_RECORD_WARNING_MESSAGE = "Latest check record could not be saved."
 CHECK_RECORD_WARNING_FIX = "Ensure the Base state directory is writable, then rerun the check."
 BASE_CHECK_FINDING_IDS = {
@@ -82,15 +83,6 @@ def validate_status(status: str) -> str:
     if status not in VALID_STATUSES:
         raise ValueError(f"Invalid diagnostic status '{status}'.")
     return status
-
-
-def merge_statuses(*statuses: str) -> str:
-    normalized = tuple(validate_status(status) for status in statuses if status)
-    if "error" in normalized:
-        return "error"
-    if "warn" in normalized:
-        return "warn"
-    return "ok"
 
 
 def payload_status(payload: Any) -> str:

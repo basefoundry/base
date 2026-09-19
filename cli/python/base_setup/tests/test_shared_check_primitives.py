@@ -40,6 +40,8 @@ def test_check_adapters_share_status_and_serialization_primitives() -> None:
     assert dev_checks.checks_status((warning_dev,)) == "warn"
     assert dev_checks.checks_status((warning_dev, error_dev)) == "error"
     assert setup_checks.checks_status((setup_check, error_setup)) == "error"
+    assert setup_checks.merge_statuses("ok", "warn") == "warn"
+    assert setup_checks.merge_statuses("warn", "error") == "error"
 
 
 def test_doctor_adapters_preserve_plain_and_visual_tty_styles() -> None:

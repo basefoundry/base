@@ -10,6 +10,7 @@ from typing import Any
 from base_cli_adapters.paths import base_state_root
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repository_url import redact_repository_url
+from base_setup.checks import merge_statuses
 from base_setup.check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from base_setup.manifest_model import BaseManifest
 from base_setup.project_routing import route_for_manifest
@@ -96,9 +97,4 @@ def missing_repo_fix(repo: WorkspaceManifestRepo, root: Path) -> str:
     return f"Create or clone repository '{repo.name}' into '{root}'."
 
 
-def most_severe_status(*statuses: str) -> str:
-    if "error" in statuses:
-        return "error"
-    if "warn" in statuses:
-        return "warn"
-    return "ok"
+most_severe_status = merge_statuses
