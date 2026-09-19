@@ -6,6 +6,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from datetime import timezone
 from pathlib import Path
 from unittest import mock
 
@@ -294,7 +295,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 raw_command="base_export_context",
                 run_id="20260718T192921_abcdefghijkl",
                 path=long_path,
-                timestamp=engine.datetime(2026, 7, 18, 19, 29, 21, tzinfo=engine.timezone.utc),
+                timestamp=engine.datetime(2026, 7, 18, 19, 29, 21, tzinfo=timezone.utc),
                 status="ok",
             ),
             engine.LogEntry(
@@ -302,7 +303,7 @@ class BaseLogsTests(unittest.TestCase):  # pylint: disable=too-many-public-metho
                 raw_command="base_setup",
                 run_id="20260718T192922_a",
                 path=Path("/tmp/longer.log"),
-                timestamp=engine.datetime(2026, 7, 18, 19, 29, 22, tzinfo=engine.timezone.utc),
+                timestamp=engine.datetime(2026, 7, 18, 19, 29, 22, tzinfo=timezone.utc),
                 status="error",
             ),
         ]
