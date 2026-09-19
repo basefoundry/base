@@ -15,7 +15,7 @@ from .checks import ArtifactCheck
 from .errors import ArtifactError
 from .manifest import BaseManifest
 from .platform_policy import current_base_platform
-from .runtime_inspection import unverified_runtime_check
+from .runtime_inspection import executable_interpreter_present, unverified_runtime_check
 from .user_paths import prepend_user_local_bin_to_path
 from .user_paths import user_local_bin
 
@@ -224,7 +224,7 @@ def uv_project_venv_check(venv_path: Path) -> ArtifactCheck:
 
 def uv_project_venv_ready(venv_path: Path) -> bool:
     python_path = venv_path / "bin" / "python"
-    return python_path.is_file() and os.access(python_path, os.X_OK)
+    return executable_interpreter_present(python_path)
 
 
 def uv_project_environment_check(project_root: Path, uv_bin: Path) -> ArtifactCheck:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +12,7 @@ from base_projects.workspace_repository_url import redact_repository_url
 from base_setup.check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from base_setup.manifest_model import BaseManifest
 from base_setup.project_routing import route_for_manifest
+from base_setup.runtime_inspection import project_venv_ready  # pylint: disable=unused-import
 
 
 @dataclass(frozen=True)
@@ -23,23 +23,6 @@ class ProjectLastCheck:
 
 def project_venv_dir(manifest: BaseManifest) -> Path:
     return route_for_manifest(manifest).project_venv_dir
-
-
-def project_venv_ready(venv_dir: Path) -> bool:
-    python_bin = venv_dir / "bin" / "python"
-    if not python_bin.is_file():
-        return False
-    try:
-        completed = subprocess.run(
-            [str(python_bin), "-c", "import sys"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return completed.returncode == 0
 
 
 def project_last_check(project_name: str, *, context: CheckRecordContext | None = None) -> ProjectLastCheck | None:

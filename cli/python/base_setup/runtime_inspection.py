@@ -32,7 +32,10 @@ def unverified_runtime_check(
 
 
 def executable_interpreter_present(python_bin: Path) -> bool:
-    return python_bin.is_file() and os.access(python_bin, os.X_OK)
+    try:
+        return python_bin.is_file() and os.access(python_bin, os.X_OK)
+    except OSError:
+        return False
 
 
 def project_venv_ready(venv_dir: Path) -> bool:
