@@ -68,37 +68,19 @@ def plan_missing_field_copies(
         if source is None:
             continue
         for field_name in field_names:
-            if target.values.get(field_name):
-                continue
             option_name = source.values.get(field_name)
             if not option_name:
                 continue
-            target_field = target_fields.get(field_name)
-            if target_field is None:
-                skipped.append(
-                    ProjectFieldCopySkip(
-                        target.issue_number, field_name, option_name, "target field is missing"
-                    )
-                )
-                continue
-            option_id = target_field.options.get(option_name)
-            if option_id is None:
-                skipped.append(
-                    ProjectFieldCopySkip(
-                        target.issue_number, field_name, option_name, "target option is missing"
-                    )
-                )
-                continue
-            updates.append(
-                ProjectFieldCopy(
-                    item_id=target.item_id,
-                    issue_number=target.issue_number,
-                    field_name=field_name,
-                    option_name=option_name,
-                    field_id=target_field.field_id,
-                    option_id=option_id,
-                )
+            update, skip = _resolve_missing_field_update(
+                target=target,
+                field_name=field_name,
+                option_name=option_name,
+                target_fields=target_fields,
             )
+            if update is not None:
+                updates.append(update)
+            if skip is not None:
+                skipped.append(skip)
     return ProjectFieldCopyPlan(tuple(updates), tuple(skipped))
 
 
@@ -112,35 +94,49 @@ def plan_missing_field_defaults(
     skipped: list[ProjectFieldCopySkip] = []
     for target in sorted(target_items.values(), key=lambda item: item.issue_number):
         for field_name, option_name in field_defaults.items():
-            if target.values.get(field_name):
-                continue
-            target_field = target_fields.get(field_name)
-            if target_field is None:
-                skipped.append(
-                    ProjectFieldCopySkip(
-                        target.issue_number, field_name, option_name, "target field is missing"
-                    )
-                )
-                continue
-            option_id = target_field.options.get(option_name)
-            if option_id is None:
-                skipped.append(
-                    ProjectFieldCopySkip(
-                        target.issue_number, field_name, option_name, "target option is missing"
-                    )
-                )
-                continue
-            updates.append(
-                ProjectFieldCopy(
-                    item_id=target.item_id,
-                    issue_number=target.issue_number,
-                    field_name=field_name,
-                    option_name=option_name,
-                    field_id=target_field.field_id,
-                    option_id=option_id,
-                )
+            update, skip = _resolve_missing_field_update(
+                target=target,
+                field_name=field_name,
+                option_name=option_name,
+                target_fields=target_fields,
             )
+            if update is not None:
+                updates.append(update)
+            if skip is not None:
+                skipped.append(skip)
     return ProjectFieldCopyPlan(tuple(updates), tuple(skipped))
+
+
+def _resolve_missing_field_update(
+    *,
+    target: ProjectIssueItem,
+    field_name: str,
+    option_name: str,
+    target_fields: dict[str, ProjectSelectField],
+) -> tuple[ProjectFieldCopy | None, ProjectFieldCopySkip | None]:
+    if target.values.get(field_name):
+        return None, None
+    target_field = target_fields.get(field_name)
+    if target_field is None:
+        return None, ProjectFieldCopySkip(
+            target.issue_number, field_name, option_name, "target field is missing"
+        )
+    option_id = target_field.options.get(option_name)
+    if option_id is None:
+        return None, ProjectFieldCopySkip(
+            target.issue_number, field_name, option_name, "target option is missing"
+        )
+    return (
+        ProjectFieldCopy(
+            item_id=target.item_id,
+            issue_number=target.issue_number,
+            field_name=field_name,
+            option_name=option_name,
+            field_id=target_field.field_id,
+            option_id=option_id,
+        ),
+        None,
+    )
 
 
 def copy_missing_project_item_fields(
@@ -155,17 +151,7 @@ def copy_missing_project_item_fields(
         target_items=fetch_project_issue_items(run_graphql, target_project_id),
         target_fields=select_fields_by_name(target_fields),
     )
-    for update in plan.updates:
-        run_graphql(
-            queries.UPDATE_ITEM_FIELD,
-            {
-                "projectId": target_project_id,
-                "itemId": update.item_id,
-                "fieldId": update.field_id,
-                "optionId": update.option_id,
-            },
-        )
-    return FieldCopySummary(len(plan.updates), plan.skipped)
+    return _apply_field_copy_plan(run_graphql, target_project_id, plan)
 
 
 def apply_missing_project_item_defaults(
@@ -180,6 +166,14 @@ def apply_missing_project_item_defaults(
         target_fields=select_fields_by_name(target_fields),
         field_defaults=field_defaults,
     )
+    return _apply_field_copy_plan(run_graphql, target_project_id, plan)
+
+
+def _apply_field_copy_plan(
+    run_graphql: Callable[[str, dict[str, object]], dict[str, object]],
+    target_project_id: str,
+    plan: ProjectFieldCopyPlan,
+) -> FieldCopySummary:
     for update in plan.updates:
         run_graphql(
             queries.UPDATE_ITEM_FIELD,
