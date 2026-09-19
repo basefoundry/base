@@ -238,17 +238,17 @@ base_project_command_resolve_context() {
     # shellcheck disable=SC2034 # The runner is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_RUNNER="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
 
+    base_project_set_history_context \
+        "$BASE_PROJECT_COMMAND_RESOLVED_NAME" \
+        "$BASE_PROJECT_COMMAND_RESOLVED_ROOT" \
+        "$BASE_PROJECT_COMMAND_RESOLVED_MANIFEST"
+
     [[ -n "$BASE_PROJECT_COMMAND_RESOLVED_NAME" && \
         -n "$BASE_PROJECT_COMMAND_RESOLVED_ROOT" && \
         -n "$BASE_PROJECT_COMMAND_RESOLVED_MANIFEST" && \
         -n "$BASE_PROJECT_COMMAND_RESOLVED_ACTION" ]] || {
         base_std_fatal_error "Unable to resolve $command_description for project '$display_project'."
     }
-
-    base_project_set_history_context \
-        "$BASE_PROJECT_COMMAND_RESOLVED_NAME" \
-        "$BASE_PROJECT_COMMAND_RESOLVED_ROOT" \
-        "$BASE_PROJECT_COMMAND_RESOLVED_MANIFEST"
 }
 
 base_project_activate_environment() {
