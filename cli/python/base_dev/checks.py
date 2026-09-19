@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
+
+from base_setup.checks import aggregate_check_statuses
+from base_setup.checks import DoctorFinding
+from base_setup.checks import render_doctor_finding
+from base_setup.checks import resolve_check_status
+from base_setup.checks import serialize_check
 
 
 @dataclass(frozen=True)
@@ -15,13 +20,7 @@ class DevCheck:
 
 
 def check_to_json(check: DevCheck) -> dict[str, str]:
-    return {
-        "id": check.finding_id,
-        "status": doctor_status(check),
-        "name": check.name,
-        "message": check.message,
-        "fix": check.fix,
-    }
+    return serialize_check(check)
 
 
 def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
@@ -29,20 +28,12 @@ def check_to_doctor_json(check: DevCheck) -> dict[str, str]:
 
 
 def checks_status(checks: tuple[DevCheck, ...]) -> str:
-    statuses = tuple(doctor_status(check) for check in checks)
-    if "error" in statuses:
-        return "error"
-    if "warn" in statuses:
-        return "warn"
-    return "ok"
+    return aggregate_check_statuses(doctor_status(check) for check in checks)
 
 
 def doctor_status(check: DevCheck) -> str:
-    return check.status or ("ok" if check.ok else "error")
+    return resolve_check_status(check.ok, check.status)
 
 
 def print_doctor_finding(status: str, finding_id: str, name: str, message: str, fix: str = "") -> None:
-    stream = sys.stderr if status in {"error", "warn"} else sys.stdout
-    print(f"{status:<5}  {finding_id:<9}  {name:<26}  {message}", file=stream)
-    if fix:
-        print(f"       Fix: {fix}", file=stream)
+    render_doctor_finding(DoctorFinding(status, finding_id, name, message, fix))
