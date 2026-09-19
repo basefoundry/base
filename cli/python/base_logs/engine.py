@@ -9,7 +9,7 @@ import subprocess
 import sys
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,10 +22,13 @@ from base_cli_adapters.history import HISTORY_PATH
 from base_cli_adapters.history import compact_path
 from base_cli_adapters.history import optional_int
 from base_cli_adapters.history import optional_string
-from base_cli_adapters.history import parse_finished_history_record_line
 from base_cli_adapters.history import parse_positive_int
 from base_cli_adapters.history import redact_history_argv
 from base_cli_adapters.history import redact_history_text
+from base_cli_adapters.finished_history import iter_finished_history_payloads
+from base_cli_adapters.finished_history import parse_finished_history_timestamp
+from base_cli_adapters.finished_history import project_finished_history_payload
+from base_cli_adapters.finished_history import record_table_width
 from base_cli_adapters.paths import base_cache_root
 from base_cli_profile import base_cli_app
 from base_history.display import display_command
@@ -321,48 +324,35 @@ def latest_failed_history_record(
 
 def read_failed_history_records(cache_root: Path, logger: Any | None = None) -> list[LastFailureRecord]:
     path = cache_root / HISTORY_PATH
-    if not path.is_file():
-        return []
-
     records: list[LastFailureRecord] = []
-    with path.open("r", encoding="utf-8", errors="replace") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            record = parse_last_failure_history_line(line)
-            if record is None:
-                if logger is not None:
-                    logger.debug("Ignoring malformed or non-failing history line %s in '%s'.", line_number, path)
-                continue
-            records.append(record)
+    ignored_line_message = "Ignoring malformed or non-failing history line %s in '%s'."
+    for line_number, payload in iter_finished_history_payloads(
+        path, logger, ignored_line_message=ignored_line_message
+    ):
+        record = last_failure_record_from_payload(payload)
+        if record is None:
+            if logger is not None:
+                logger.debug(ignored_line_message, line_number, path)
+            continue
+        records.append(record)
     return records
 
 
-def parse_last_failure_history_line(line: str) -> LastFailureRecord | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
+def last_failure_record_from_payload(payload: dict[str, Any]) -> LastFailureRecord | None:
+    fields = project_finished_history_payload(payload)
+    if fields is None or not history_payload_failed(fields.status, fields.exit_code):
         return None
-
-    run_id = optional_string(payload.get("run_id"))
-    command = optional_string(payload.get("command"))
-    status = optional_string(payload.get("status"))
-    if not run_id or not command or not status:
-        return None
-
-    exit_code = optional_int(payload.get("exit_code"))
-    if not history_payload_failed(status, exit_code):
-        return None
-
-    ended_at = optional_string(payload.get("ended_at")) or optional_string(payload.get("started_at")) or ""
     return LastFailureRecord(
         payload=payload,
-        run_id=run_id,
-        command=command,
-        raw_command=optional_string(payload.get("raw_command")),
-        project=optional_string(payload.get("project")),
-        status=status,
-        exit_code=exit_code,
-        ended_at=ended_at,
-        sort_time=parse_history_timestamp(ended_at),
-        log_path=optional_string(payload.get("log_path")),
+        run_id=fields.run_id,
+        command=fields.command,
+        raw_command=fields.raw_command,
+        project=fields.project,
+        status=fields.status,
+        exit_code=fields.exit_code,
+        ended_at=fields.ended_at,
+        sort_time=fields.sort_time,
+        log_path=fields.log_path,
     )
 
 
@@ -371,12 +361,7 @@ def history_payload_failed(status: str, exit_code: int | None) -> bool:
 
 
 def parse_history_timestamp(value: str) -> datetime:
-    if not value:
-        return datetime.min.replace(tzinfo=timezone.utc)
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return datetime.min.replace(tzinfo=timezone.utc)
+    return parse_finished_history_timestamp(value)
 
 
 def last_failure_tail(record: LastFailureRecord, line_count: int) -> LogTail:
@@ -566,26 +551,20 @@ def canonical_run_id(run_root: Path) -> str:
 def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
     path = cache_root / HISTORY_PATH
     index = HistoryLogStatusIndex(by_run_id={}, by_log_path={})
-    if not path.is_file():
-        return index
-
-    with path.open("r", encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            record = parse_history_log_status_line(line)
-            if record is None:
-                continue
-            run_id, log_path, history_status = record
-            index.by_run_id[run_id] = history_status
-            if log_path is not None:
-                index.by_log_path[normalize_history_log_path(log_path)] = history_status
+    for _line_number, payload in iter_finished_history_payloads(path):
+        record = history_log_status_from_payload(payload)
+        if record is None:
+            continue
+        run_id, log_path, history_status = record
+        index.by_run_id[run_id] = history_status
+        if log_path is not None:
+            index.by_log_path[normalize_history_log_path(log_path)] = history_status
     return index
 
 
-def parse_history_log_status_line(line: str) -> tuple[str, str | None, HistoryLogStatus] | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
-        return None
-
+def history_log_status_from_payload(
+    payload: dict[str, Any],
+) -> tuple[str, str | None, HistoryLogStatus] | None:
     run_id = optional_string(payload.get("run_id"))
     status = optional_string(payload.get("status"))
     if run_id is None or status is None:
@@ -700,12 +679,7 @@ def logs_table_width(
 ) -> int:
     """Return enough width for the logs table without truncating log paths."""
 
-    widths = []
-    for index, (header, key) in enumerate(columns):
-        values = [str(record.get(key, "")) for record in records]
-        minimum_width = minimum_widths[index] if index < len(minimum_widths) else 0
-        widths.append(max(len(header), minimum_width, *(len(value) for value in values)))
-    return sum(widths) + 2 * (len(columns) - 1)
+    return record_table_width(records, columns, minimum_widths)
 
 
 def log_output_columns() -> tuple[tuple[str, str], ...]:

@@ -16,14 +16,15 @@ from base_cli_adapters.command_filters import normalize_command_filters
 from base_cli_adapters.history import HISTORY_PATH
 from base_cli_adapters.history import HISTORY_SCOPE_INTERNAL
 from base_cli_adapters.history import HISTORY_SCOPE_PRIMARY
-from base_cli_adapters.history import optional_int
-from base_cli_adapters.history import optional_string
-from base_cli_adapters.history import parse_finished_history_record_line
 from base_cli_adapters.history import parse_positive_int
 from base_cli_adapters.history import redact_history_argv
 from base_cli_adapters.history import redact_history_text
 from base_cli_adapters.history import utc_now
 from base_cli_adapters.paths import base_cache_root
+from base_cli_adapters.finished_history import iter_finished_history_payloads
+from base_cli_adapters.finished_history import parse_finished_history_timestamp
+from base_cli_adapters.finished_history import project_finished_history_payload
+from base_cli_adapters.finished_history import record_table_width
 
 
 app = base_cli_app(name="base_history", log_to_file=False)
@@ -287,54 +288,37 @@ def recent_history(
 
 def read_history_records(cache_root: Path, logger: Any | None = None) -> list[HistoryRecord]:
     path = cache_root / HISTORY_PATH
-    if not path.is_file():
-        return []
-
     records: list[HistoryRecord] = []
-    with path.open("r", encoding="utf-8", errors="replace") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            record = parse_history_line(line)
-            if record is None:
-                if logger is not None:
-                    logger.debug("Ignoring malformed history line %s in '%s'.", line_number, path)
-                continue
-            records.append(record)
+    for line_number, payload in iter_finished_history_payloads(path, logger):
+        record = history_record_from_payload(payload)
+        if record is None:
+            if logger is not None:
+                logger.debug("Ignoring malformed history line %s in '%s'.", line_number, path)
+            continue
+        records.append(record)
     return records
 
 
-def parse_history_line(line: str) -> HistoryRecord | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
+def history_record_from_payload(payload: dict[str, Any]) -> HistoryRecord | None:
+    fields = project_finished_history_payload(payload)
+    if fields is None:
         return None
-
-    run_id = optional_string(payload.get("run_id"))
-    command = optional_string(payload.get("command"))
-    status = optional_string(payload.get("status"))
-    if not run_id or not command or not status:
-        return None
-
-    ended_at = optional_string(payload.get("ended_at")) or optional_string(payload.get("started_at")) or ""
     return HistoryRecord(
         payload=payload,
-        run_id=run_id,
-        command=command,
-        project=optional_string(payload.get("project")) or "",
-        status=status,
-        exit_code=optional_int(payload.get("exit_code")),
-        ended_at=ended_at,
-        sort_time=parse_timestamp(ended_at),
-        log_path=optional_string(payload.get("log_path")),
-        scope=optional_string(payload.get("scope")) or HISTORY_SCOPE_PRIMARY,
+        run_id=fields.run_id,
+        command=fields.command,
+        project=fields.project or "",
+        status=fields.status,
+        exit_code=fields.exit_code,
+        ended_at=fields.ended_at,
+        sort_time=fields.sort_time,
+        log_path=fields.log_path,
+        scope=fields.scope or HISTORY_SCOPE_PRIMARY,
     )
 
 
 def parse_timestamp(value: str) -> datetime:
-    if not value:
-        return datetime.min.replace(tzinfo=timezone.utc)
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return datetime.min.replace(tzinfo=timezone.utc)
+    return parse_finished_history_timestamp(value)
 
 
 def filter_history(records: list[HistoryRecord], options: HistoryOptions) -> list[HistoryRecord]:
@@ -402,12 +386,7 @@ def history_table_width(
 ) -> int:
     """Return enough width for the history table without truncating log paths."""
 
-    widths = []
-    for index, (header, key) in enumerate(columns):
-        values = [str(record.get(key, "")) for record in records]
-        minimum_width = minimum_widths[index] if index < len(minimum_widths) else 0
-        widths.append(max(len(header), minimum_width, *(len(value) for value in values)))
-    return sum(widths) + 2 * (len(columns) - 1)
+    return record_table_width(records, columns, minimum_widths)
 
 
 def display_time(record: HistoryRecord, *, local_time: bool = False) -> str:

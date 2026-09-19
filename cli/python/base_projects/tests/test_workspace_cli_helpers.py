@@ -9,12 +9,8 @@ from pathlib import Path
 from unittest import mock
 
 from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import TerminalStringIO
 from base_projects.tests.workspace_cli_helpers import invoke_engine
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
 
 
 class WorkspaceCliInvocationHelperTests(unittest.TestCase):

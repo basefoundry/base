@@ -6,6 +6,61 @@ source_project_command_helpers() {
     source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
 }
 
+@test "project command parser preserves workspace and passthrough argument boundaries" {
+    local workspace="$TEST_TMPDIR/work space"
+    local control_arg=$'first line\nsecond\tline'
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        bash -c '
+            workspace="$1"
+            control_arg="$2"
+            shift 2
+            source "$BASE_HOME/base_init.sh"
+            import_base_lib arg/lib_arg.sh
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
+            base_command_usage() { :; }
+            base_command_usage_error() { printf "ERROR:%s\\n" "$*" >&2; return 2; }
+            base_project_command_parse_args test base_command_usage base_command_usage_error \
+                "The test command accepts one project." "$@" || exit $?
+            [[ "$BASE_PROJECT_COMMAND_PROJECT" == "" ]]
+            [[ "$BASE_PROJECT_COMMAND_DRY_RUN" == 1 ]]
+            [[ "${#BASE_PROJECT_COMMAND_ARGUMENTS[@]}" -eq 2 ]]
+            [[ "${BASE_PROJECT_COMMAND_ARGUMENTS[0]}" == "--workspace=$workspace" ]]
+            [[ "${BASE_PROJECT_COMMAND_ARGUMENTS[1]}" == --debug ]]
+            [[ "${#BASE_PROJECT_COMMAND_SELECTION_ARGS[@]}" -eq 2 ]]
+            [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[0]}" == --project ]]
+            [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[1]}" == demo ]]
+            [[ "${#BASE_PROJECT_COMMAND_EXTRA_ARGS[@]}" -eq 2 ]]
+            [[ "${BASE_PROJECT_COMMAND_EXTRA_ARGS[0]}" == "name with spaces" ]]
+            [[ "${BASE_PROJECT_COMMAND_EXTRA_ARGS[1]}" == "$control_arg" ]]
+            printf "argument boundaries preserved\\n"
+        ' bash "$workspace" "$control_arg" \
+        "--workspace=$workspace" --project demo --dry-run -v -- "name with spaces" "$control_arg"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"argument boundaries preserved"* ]]
+}
+
+@test "project command parser rejects duplicate explicit project options" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            import_base_lib arg/lib_arg.sh
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
+            base_command_usage() { :; }
+            base_command_usage_error() { printf "ERROR:%s\\n" "$*" >&2; return 2; }
+            base_project_command_parse_args demo base_command_usage base_command_usage_error \
+                "The demo command accepts one project." "$@"
+        ' bash --project first --project second
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"ERROR:Option '--project' may be specified only once."* ]]
+}
+
 @test "project command helper resolves project venv directories" {
     source_project_command_helpers
 

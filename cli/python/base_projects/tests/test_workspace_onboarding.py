@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import shlex
 import tempfile
@@ -9,6 +8,7 @@ from pathlib import Path
 
 from base_trust.trust_store import ManifestCommandTrustStore
 from base_trust.trust_store import compute_trust_identity_for_manifest
+from base_projects.tests.workspace_cli_helpers import TerminalStringIO
 from base_projects.tests.workspace_cli_helpers import invoke_engine
 
 
@@ -67,11 +67,6 @@ def write_workspace_manifest(path: Path) -> None:
         ),
         encoding="utf-8",
     )
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
 
 
 class WorkspaceOnboardingTests(unittest.TestCase):

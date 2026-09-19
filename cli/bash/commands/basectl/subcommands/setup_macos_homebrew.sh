@@ -552,20 +552,7 @@ setup_run_macos_install() {
     setup_install_homebrew
     setup_install_xcode_tools
     setup_install_python
-    setup_create_virtualenv
-    setup_upgrade_base_pip || return $?
-    setup_install_pyyaml
-    setup_install_click
-    setup_install_base_cli
-    if setup_profiles_enabled; then
-        if setup_is_dry_run; then
-            setup_run_base_dev_layer setup --dry-run || base_std_fatal_error "Python prerequisite profile layer failed."
-        else
-            setup_run_base_dev_layer setup || base_std_fatal_error "Python prerequisite profile layer failed."
-        fi
-    fi
-    setup_run_project_artifact_setup || return $?
-    setup_seed_user_config
+    setup_run_shared_python_install_sequence true || return $?
 
     if setup_is_dry_run; then
         base_std_log_info "[DRY-RUN] Base CLI setup check is complete."

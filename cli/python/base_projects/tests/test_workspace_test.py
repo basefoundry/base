@@ -12,6 +12,9 @@ from pathlib import Path
 from unittest import mock
 
 from base_projects import engine
+from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_projects.workspace_repo_inspection import WorkspaceRepoInspection
+from base_projects.workspace_test import workspace_test_manifest_target
 
 
 def write_workspace_manifest(path: Path, repositories: tuple[str, ...]) -> None:
@@ -74,6 +77,27 @@ def invoke_workspace_test(
 
 
 class WorkspaceTestCommandTests(unittest.TestCase):
+    def test_workspace_test_fails_closed_when_inspected_manifest_is_missing(self) -> None:
+        root = Path("/workspace/api")
+        inspection = WorkspaceRepoInspection(
+            name="api",
+            root=root,
+            manifest_path=root / "base_manifest.yaml",
+            project_name=None,
+            manifest=None,
+            state="inspected",
+            reason=None,
+            required=True,
+            fatal=False,
+        )
+
+        with mock.patch("base_projects.workspace_test.inspect_workspace_repo", return_value=inspection):
+            target = workspace_test_manifest_target(root.parent, WorkspaceManifestRepo(name="api"))
+
+        self.assertEqual(target.action, "skip")
+        self.assertEqual(target.reason, "workspace repository inspection did not return a parsed manifest")
+        self.assertTrue(target.fatal)
+
     def test_workspace_test_runs_all_projects_and_reports_json_results(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import re
 import tempfile
@@ -92,11 +91,6 @@ def write_ready_python(project_root: Path, home: Path, project: str) -> None:
     python_bin.parent.mkdir(parents=True)
     python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
 
 
 def shell_array_values(source: str, name: str) -> tuple[str, ...]:
@@ -374,7 +368,7 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
             python_bin.chmod(0o755)
 
             with mock.patch(
-                "base_projects.workspace_report_common.subprocess.run",
+                "base_setup.runtime_inspection.subprocess.run",
                 side_effect=AssertionError("workspace agent brief must not run subprocesses"),
             ) as subprocess_run:
                 status, stdout, stderr = invoke_engine(
@@ -470,7 +464,7 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
             python_bin.chmod(0o644)
 
             with mock.patch(
-                "base_projects.workspace_report_common.subprocess.run",
+                "base_setup.runtime_inspection.subprocess.run",
                 side_effect=AssertionError("workspace agent brief must not run subprocesses"),
             ) as subprocess_run:
                 status, stdout, stderr = invoke_engine(
