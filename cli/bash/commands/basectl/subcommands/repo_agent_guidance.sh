@@ -201,9 +201,13 @@ base_repo_write_agent_guidance() {
     local skills_existed=0
     local status=0
     local validation_command="$4"
-    local notes_heading="${6:-Reviewer Notes}"
-    local notes_comment="${7:-Optional: tradeoffs, follow-up work, or areas where reviewer attention would help.}"
+    local notes_comment
+    local notes_heading
     local include_pr_template="${8:-1}"
+
+    base_repo_pull_request_template_policy agent-guidance notes_heading notes_comment || return 1
+    [[ -n "${6:-}" ]] && notes_heading="$6"
+    [[ -n "${7:-}" ]] && notes_comment="$7"
 
     if [[ "$dry_run" != "1" ]]; then
         [[ -e "$root/AGENTS.md" ]] && agents_existed=1
