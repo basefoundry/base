@@ -136,7 +136,7 @@ def workspace_setup_manifest_target(
     workspace_root: Path,
     repo: WorkspaceManifestRepo,
 ) -> WorkspaceSetupTarget:
-    inspection = inspect_workspace_repo(workspace_root, repo)
+    inspection = inspect_workspace_repo(workspace_root, repo, parse_manifest=repo.name != "base")
     if inspection.state == "outside_workspace":
         return WorkspaceSetupTarget(
             name=repo.name,

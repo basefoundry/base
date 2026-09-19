@@ -38,6 +38,8 @@ class WorkspaceRepoInspection:
 def inspect_workspace_repo(
     workspace_root: Path,
     repo: WorkspaceManifestRepo,
+    *,
+    parse_manifest: bool = True,
 ) -> WorkspaceRepoInspection:
     try:
         root = workspace_context.resolve_workspace_repo_root(workspace_root, repo.name)
@@ -77,6 +79,19 @@ def inspect_workspace_repo(
             manifest=None,
             state="missing_manifest",
             reason="repository does not contain base_manifest.yaml",
+            required=repo.required,
+            fatal=False,
+        )
+
+    if not parse_manifest:
+        return WorkspaceRepoInspection(
+            name=repo.name,
+            root=root,
+            manifest_path=manifest_path.resolve(),
+            project_name=None,
+            manifest=None,
+            state="inspected",
+            reason=None,
             required=repo.required,
             fatal=False,
         )
