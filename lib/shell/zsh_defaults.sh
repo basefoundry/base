@@ -49,8 +49,13 @@ bindkey -v
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 zstyle ':completion:*' menu select
 
-# Preserve the old Zsh-local helper name for profile scripts that call it.
-_base_zsh_defaults_git_prompt() { _base_defaults_git_prompt; }
+# Preserve the old Zsh-local helper names for profile scripts that call them.
+_base_zsh_defaults_git_dir() { _base_defaults_git_dir; }
+_base_zsh_defaults_git_prompt() {
+    local prompt
+    prompt="$(_base_defaults_git_prompt)"
+    printf '%s' "${prompt//\%/%%}"
+}
 
 export HISTFILE="${HISTFILE:-$HOME/.zsh_history}"
 if [[ "${HISTSIZE:-30}" == 30 ]]; then
@@ -79,4 +84,4 @@ setopt prompt_subst
 setopt share_history
 
 # shellcheck disable=SC2034,SC2016 # Consumed by zsh as the interactive prompt.
-PROMPT='%* %m $(_base_defaults_git_prompt)%1~: '
+PROMPT='%* %m $(_base_zsh_defaults_git_prompt)%1~: '

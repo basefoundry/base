@@ -95,6 +95,7 @@ _base_defaults_git_prompt() {
             branch="${head:0:7}"
             ;;
     esac
+    branch="${branch//$'\r'/}"
     [[ -n "$branch" ]] || return 0
 
     printf '(%s) ' "$branch"

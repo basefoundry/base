@@ -165,6 +165,27 @@ write_prompt_git_head() {
     [[ "$output" == *"git_args="* ]]
 }
 
+@test "Bash defaults git prompt strips CRLF from branch metadata" {
+    local repo_dir="$TEST_TMPDIR/bash-crlf-repo"
+
+    write_prompt_git_head "$repo_dir" $'ref: refs/heads/crlf-branch\r'
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '
+            source "$BASE_HOME/lib/shell/bash_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(crlf-branch) "* ]]
+    [[ "$output" != *$'\r'* ]]
+}
+
 @test "Bash defaults git prompt reads detached HEAD metadata without Git subprocesses" {
     local repo_dir="$TEST_TMPDIR/bash-detached-repo"
 
@@ -302,6 +323,27 @@ write_prompt_git_head() {
     [[ "$output" == *"second=(main) "* ]]
     [[ "$output" == *"git_calls=0"* ]]
     [[ "$output" == *"git_args="* ]]
+}
+
+@test "Zsh prompt helper escapes percent sequences from branch metadata" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+    local repo_dir="$TEST_TMPDIR/zsh-percent-repo"
+
+    write_prompt_git_head "$repo_dir" "ref: refs/heads/feature%sm"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c '
+            source "$BASE_HOME/lib/shell/zsh_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(feature%%sm) "* ]]
 }
 
 @test "Zsh defaults git prompt reads detached HEAD metadata without Git subprocesses" {
