@@ -841,6 +841,7 @@ base_repo_write_pull_request_template() {
     local dry_run="$1"
     local root="$2"
     local notes_heading="${3:-Notes}"
+    local notes_comment="${4:-Optional: tradeoffs, follow-up work, or reviewer context.}"
     local template
 
     template="$(cat <<'EOF'
@@ -858,7 +859,7 @@ Closes #
 
 ## @NOTES_HEADING@
 
-<!-- Optional: tradeoffs, follow-up work, or reviewer context. -->
+<!-- @NOTES_COMMENT@ -->
 
 ## Checklist
 
@@ -871,7 +872,10 @@ Closes #
 - [ ] Pull request includes `Fixes #<issue>` or `Closes #<issue>` when merge should close the issue.
 EOF
     )" || return 1
-    template="${template//@NOTES_HEADING@/$notes_heading}"
+    local notes_heading_marker='@NOTES_HEADING@'
+    local notes_comment_marker='@NOTES_COMMENT@'
+    template="${template%%"$notes_heading_marker"*}${notes_heading}${template#*"$notes_heading_marker"}"
+    template="${template%%"$notes_comment_marker"*}${notes_comment}${template#*"$notes_comment_marker"}"
     printf '%s\n' "$template" | base_repo_write_stream "$dry_run" "$root/.github/pull_request_template.md"
 }
 
@@ -1484,7 +1488,7 @@ base_repo_write_init_agent_guidance() {
 
     base_repo_load_agent_guidance || return 1
     base_repo_write_agent_guidance \
-        "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" "Notes"
+        "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" "Notes" "" 0
 }
 
 base_repo_check_baseline() {

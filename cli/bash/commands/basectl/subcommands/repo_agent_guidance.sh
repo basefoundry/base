@@ -202,6 +202,8 @@ base_repo_write_agent_guidance() {
     local status=0
     local validation_command="$4"
     local notes_heading="${6:-Reviewer Notes}"
+    local notes_comment="${7:-Optional: tradeoffs, follow-up work, or areas where reviewer attention would help.}"
+    local include_pr_template="${8:-1}"
 
     if [[ "$dry_run" != "1" ]]; then
         [[ -e "$root/AGENTS.md" ]] && agents_existed=1
@@ -211,7 +213,9 @@ base_repo_write_agent_guidance() {
 
     base_repo_write_agent_instructions "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" || status=1
     base_repo_write_agent_skills "$dry_run" "$repo_name" "$root" || status=1
-    base_repo_write_pull_request_template "$dry_run" "$root" "$notes_heading" || status=1
+    if [[ "$include_pr_template" == "1" ]]; then
+        base_repo_write_pull_request_template "$dry_run" "$root" "$notes_heading" "$notes_comment" || status=1
+    fi
 
     if [[ "$dry_run" != "1" && "$status" -eq 0 ]]; then
         if ((agents_existed)); then

@@ -1433,11 +1433,40 @@ EOF
     run_basectl repo agent-guidance "$guidance_repo" --repo-name template-guidance
     [ "$status" -eq 0 ]
 
-    sed 's/^## Reviewer Notes$/## Notes/' \
+    sed \
+        -e 's/^## Reviewer Notes$/## Notes/' \
+        -e 's/areas where reviewer attention would help/reviewer context/' \
         "$guidance_repo/.github/pull_request_template.md" > "$TEST_TMPDIR/normalized-template.md"
     cmp "$init_repo/.github/pull_request_template.md" "$TEST_TMPDIR/normalized-template.md"
     grep -Fqx '## Notes' "$init_repo/.github/pull_request_template.md"
     grep -Fqx '## Reviewer Notes' "$guidance_repo/.github/pull_request_template.md"
+}
+
+@test "repo init agent-ready dry-run writes the shared PR template once" {
+    local repo_dir="$TEST_TMPDIR/template-dry-run"
+
+    run_basectl repo init template-dry-run --path "$repo_dir" --agent-ready --no-configure --dry-run
+
+    [ "$status" -eq 0 ]
+    [ "$(grep -Fc "[DRY-RUN] Would create '$repo_dir/.github/pull_request_template.md'." <<<"$output")" -eq 1 ]
+}
+
+@test "PR template replacement preserves ampersands in custom headings" {
+    local repo_dir="$TEST_TMPDIR/template-ampersand"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$(base_bash_libs_fixture_dir)" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_write_pull_request_template 0 "$1" "Notes & Caveats"
+        ' bash "$repo_dir"
+
+    [ "$status" -eq 0 ]
+    grep -Fqx '## Notes & Caveats' "$repo_dir/.github/pull_request_template.md"
+    ! grep -Fq '## Notes ## Notes & Caveats' "$repo_dir/.github/pull_request_template.md"
 }
 
 @test "repo agent-guidance propagates PR-template write failures without reporting success" {
