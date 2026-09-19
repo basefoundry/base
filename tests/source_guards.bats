@@ -121,10 +121,10 @@ write_prompt_git_head() {
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -i -c '
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
-            _base_bash_defaults_git_prompt() { printf "custom-git"; }
+            _base_defaults_git_prompt() { printf "custom-git"; }
             PS1="custom-prompt"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
-            printf "git_prompt=%s\n" "$(_base_bash_defaults_git_prompt)"
+            printf "git_prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "PS1=%s\n" "$PS1"
             declare -p _base_bash_defaults_sourced _base_defaults_sourced
         '
@@ -152,8 +152,8 @@ write_prompt_git_head() {
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
             cd "$BASE_TEST_REPO"
-            printf "first=%s\n" "$(_base_bash_defaults_git_prompt)"
-            printf "second=%s\n" "$(_base_bash_defaults_git_prompt)"
+            printf "first=%s\n" "$(_base_defaults_git_prompt)"
+            printf "second=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
             printf "git_args=%s\n" "$(tr "\n" "|" < "$BASE_TEST_GIT_ARGS")"
         '
@@ -163,6 +163,27 @@ write_prompt_git_head() {
     [[ "$output" == *"second=(main) "* ]]
     [[ "$output" == *"git_calls=0"* ]]
     [[ "$output" == *"git_args="* ]]
+}
+
+@test "Bash defaults git prompt strips CRLF from branch metadata" {
+    local repo_dir="$TEST_TMPDIR/bash-crlf-repo"
+
+    write_prompt_git_head "$repo_dir" $'ref: refs/heads/crlf-branch\r'
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '
+            source "$BASE_HOME/lib/shell/bash_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(crlf-branch) "* ]]
+    [[ "$output" != *$'\r'* ]]
 }
 
 @test "Bash defaults git prompt reads detached HEAD metadata without Git subprocesses" {
@@ -181,12 +202,49 @@ write_prompt_git_head() {
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
             cd "$BASE_TEST_REPO"
-            printf "prompt=%s\n" "$(_base_bash_defaults_git_prompt)"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
         '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"prompt=(abc1234) "* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+}
+
+@test "Bash shared git prompt resolves worktree and submodule gitfiles with spaces" {
+    local worktree="$TEST_TMPDIR/checkout with spaces"
+    local worktree_git="$TEST_TMPDIR/git metadata/worktrees/work tree"
+    local superproject="$TEST_TMPDIR/super project"
+    local submodule="$superproject/submodule"
+    local submodule_git="$superproject/.git/modules/submodule"
+
+    write_prompt_git_stub
+    mkdir -p "$worktree/nested" "$worktree_git" "$submodule/nested" "$submodule_git"
+    printf 'gitdir: ../git metadata/worktrees/work tree\n' > "$worktree/.git"
+    printf 'ref: refs/heads/feature/shared-worktree\n' > "$worktree_git/HEAD"
+    printf 'gitdir: ../.git/modules/submodule\n' > "$submodule/.git"
+    printf 'ref: refs/heads/feature/shared-submodule\n' > "$submodule_git/HEAD"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_GIT_ARGS="$TEST_TMPDIR/bash-gitfile-args" \
+        BASE_TEST_WORKTREE="$worktree/nested" \
+        BASE_TEST_SUBMODULE="$submodule/nested" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
+            source "$BASE_HOME/lib/shell/bash_defaults.sh"
+            cd "$BASE_TEST_WORKTREE"
+            printf "worktree=%s\n" "$(_base_defaults_git_prompt)"
+            cd "$BASE_TEST_SUBMODULE"
+            printf "submodule=%s\n" "$(_base_defaults_git_prompt)"
+            printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"worktree=(feature/shared-worktree) "* ]]
+    [[ "$output" == *"submodule=(feature/shared-submodule) "* ]]
     [[ "$output" == *"git_calls=0"* ]]
 }
 
@@ -202,7 +260,7 @@ write_prompt_git_head() {
         bash -i -c '
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/bash_defaults.sh"
-            printf "prompt=%s\n" "$(_base_bash_defaults_git_prompt)"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
             printf "git_args=%s\n" "$(tr "\n" "|" < "$BASE_TEST_GIT_ARGS")"
         '
@@ -222,10 +280,10 @@ write_prompt_git_head() {
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         zsh -f -i -c '
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
-            _base_zsh_defaults_git_prompt() { printf "custom-git"; }
+            _base_defaults_git_prompt() { printf "custom-git"; }
             PROMPT="custom-prompt"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
-            printf "git_prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+            printf "git_prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "PROMPT=%s\n" "$PROMPT"
             typeset -p _base_zsh_defaults_sourced _base_defaults_sourced
         '
@@ -254,8 +312,8 @@ write_prompt_git_head() {
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
             cd "$BASE_TEST_REPO"
-            printf "first=%s\n" "$(_base_zsh_defaults_git_prompt)"
-            printf "second=%s\n" "$(_base_zsh_defaults_git_prompt)"
+            printf "first=%s\n" "$(_base_defaults_git_prompt)"
+            printf "second=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
             printf "git_args=%s\n" "$(tr "\n" "|" < "$BASE_TEST_GIT_ARGS")"
         '
@@ -265,6 +323,27 @@ write_prompt_git_head() {
     [[ "$output" == *"second=(main) "* ]]
     [[ "$output" == *"git_calls=0"* ]]
     [[ "$output" == *"git_args="* ]]
+}
+
+@test "Zsh prompt helper escapes percent sequences from branch metadata" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+    local repo_dir="$TEST_TMPDIR/zsh-percent-repo"
+
+    write_prompt_git_head "$repo_dir" "ref: refs/heads/feature%sm"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_REPO="$repo_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c '
+            source "$BASE_HOME/lib/shell/zsh_defaults.sh"
+            cd "$BASE_TEST_REPO"
+            printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"prompt=(feature%%sm) "* ]]
 }
 
 @test "Zsh defaults git prompt reads detached HEAD metadata without Git subprocesses" {
@@ -284,12 +363,50 @@ write_prompt_git_head() {
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
             cd "$BASE_TEST_REPO"
-            printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
         '
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"prompt=(abc1234) "* ]]
+    [[ "$output" == *"git_calls=0"* ]]
+}
+
+@test "Zsh shared git prompt resolves worktree and submodule gitfiles with spaces" {
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+    local worktree="$TEST_TMPDIR/checkout with spaces"
+    local worktree_git="$TEST_TMPDIR/git metadata/worktrees/work tree"
+    local superproject="$TEST_TMPDIR/super project"
+    local submodule="$superproject/submodule"
+    local submodule_git="$superproject/.git/modules/submodule"
+
+    write_prompt_git_stub
+    mkdir -p "$worktree/nested" "$worktree_git" "$submodule/nested" "$submodule_git"
+    printf 'gitdir: ../git metadata/worktrees/work tree\n' > "$worktree/.git"
+    printf 'ref: refs/heads/feature/shared-worktree\n' > "$worktree_git/HEAD"
+    printf 'gitdir: ../.git/modules/submodule\n' > "$submodule/.git"
+    printf 'ref: refs/heads/feature/shared-submodule\n' > "$submodule_git/HEAD"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_GIT_ARGS="$TEST_TMPDIR/zsh-gitfile-args" \
+        BASE_TEST_WORKTREE="$worktree/nested" \
+        BASE_TEST_SUBMODULE="$submodule/nested" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        zsh -f -i -c '
+            : > "$BASE_TEST_GIT_ARGS"
+            source "$BASE_HOME/lib/shell/zsh_defaults.sh"
+            cd "$BASE_TEST_WORKTREE"
+            printf "worktree=%s\n" "$(_base_defaults_git_prompt)"
+            cd "$BASE_TEST_SUBMODULE"
+            printf "submodule=%s\n" "$(_base_defaults_git_prompt)"
+            printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"worktree=(feature/shared-worktree) "* ]]
+    [[ "$output" == *"submodule=(feature/shared-submodule) "* ]]
     [[ "$output" == *"git_calls=0"* ]]
 }
 
@@ -306,7 +423,7 @@ write_prompt_git_head() {
         zsh -f -i -c '
             : > "$BASE_TEST_GIT_ARGS"
             source "$BASE_HOME/lib/shell/zsh_defaults.sh"
-            printf "prompt=%s\n" "$(_base_zsh_defaults_git_prompt)"
+            printf "prompt=%s\n" "$(_base_defaults_git_prompt)"
             printf "git_calls=%s\n" "$(wc -l < "$BASE_TEST_GIT_ARGS" | tr -d "[:space:]")"
             printf "git_args=%s\n" "$(tr "\n" "|" < "$BASE_TEST_GIT_ARGS")"
         '

@@ -798,7 +798,7 @@ EOF
         -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
         HOME="$TEST_HOME" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; bind -v | grep -q "^set completion-ignore-case on$" && printf "completion_ignore_case=enabled\n"; bind -v | grep -q "^set show-all-if-ambiguous on$" && printf "show_all_if_ambiguous=enabled\n"; bind -v | grep -q "^set mark-symlinked-directories on$" && printf "mark_symlinked_directories=enabled\n"; printf "HISTCONTROL=%s\n" "$HISTCONTROL"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "HISTFILESIZE=%s\n" "$HISTFILESIZE"; shopt -q checkwinsize && printf "checkwinsize=enabled\n"; shopt -q cmdhist && printf "cmdhist=enabled\n"; shopt -q lithist && printf "lithist=enabled\n"; printf "BASE_HOME=%s\n" "$BASE_HOME"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_bash_defaults_git_prompt)"; printf "PS1=%s\n" "$PS1"'
+        bash --rcfile "$TEST_HOME/.bashrc" -i -c 'alias cp; printf "EDITOR=%s\n" "$EDITOR"; printf "VISUAL=%s\n" "$VISUAL"; printf "EXINIT=%s\n" "$EXINIT"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; bind -v | grep -q "^set completion-ignore-case on$" && printf "completion_ignore_case=enabled\n"; bind -v | grep -q "^set show-all-if-ambiguous on$" && printf "show_all_if_ambiguous=enabled\n"; bind -v | grep -q "^set mark-symlinked-directories on$" && printf "mark_symlinked_directories=enabled\n"; printf "HISTCONTROL=%s\n" "$HISTCONTROL"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "HISTFILESIZE=%s\n" "$HISTFILESIZE"; shopt -q checkwinsize && printf "checkwinsize=enabled\n"; shopt -q cmdhist && printf "cmdhist=enabled\n"; shopt -q lithist && printf "lithist=enabled\n"; printf "BASE_HOME=%s\n" "$BASE_HOME"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_bash_defaults_git_prompt)"; printf "git_dir_helper=%s\n" "$(type -t _base_bash_defaults_git_dir)"; printf "PS1=%s\n" "$PS1"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"alias cp='cp -i'"* ]]
@@ -820,6 +820,7 @@ EOF
     [[ "$output" == *"lithist=enabled"* ]]
     [[ "$output" == *"BASE_HOME=$BASE_REPO_ROOT"* ]]
     [[ "$output" == *"git=("* ]]
+    [[ "$output" == *"git_dir_helper=function"* ]]
     [[ "$output" == *'PS1=\[\033[0;35m\]\T \h\[\033[0;33m\] $(_base_bash_defaults_git_prompt)\w\[\033[00m\]: '* ]]
 
     if command -v zsh >/dev/null 2>&1; then
@@ -828,7 +829,7 @@ EOF
             -u PAGER -u LESS -u MANPAGER -u GIT_PAGER \
             HOME="$TEST_HOME" \
             PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-            zsh -f -i -c 'source "$HOME/.zshrc"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; zstyle -s ":completion:*" matcher-list matcher_list && printf "matcher_list=%s\n" "$matcher_list"; zstyle -s ":completion:*" menu completion_menu && printf "completion_menu=%s\n" "$completion_menu"; printf "HISTFILE=%s\n" "$HISTFILE"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "SAVEHIST=%s\n" "$SAVEHIST"; setopt | grep -q "^extendedhistory$" && printf "extended_history=enabled\n"; setopt | grep -q "^histignorespace$" && printf "hist_ignore_space=enabled\n"; setopt | grep -q "^histreduceblanks$" && printf "hist_reduce_blanks=enabled\n"; setopt | grep -q "^histexpiredupsfirst$" && printf "hist_expire_dups_first=enabled\n"; setopt | grep -q "^histsavenodups$" && printf "hist_save_no_dups=enabled\n"; setopt | grep -q "^histfindnodups$" && printf "hist_find_no_dups=enabled\n"; setopt | grep -q "^histverify$" && printf "hist_verify=enabled\n"; setopt | grep -q "^interactivecomments$" && printf "interactive_comments=enabled\n"; setopt | grep -q "^nobeep$" && printf "no_beep=enabled\n"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_zsh_defaults_git_prompt)"; printf "PROMPT=%s\n" "$PROMPT"; setopt | grep -q "^promptsubst$"; printf "prompt_subst=enabled\n"'
+            zsh -f -i -c 'source "$HOME/.zshrc"; printf "PAGER=%s\n" "$PAGER"; printf "LESS=%s\n" "$LESS"; printf "MANPAGER=%s\n" "$MANPAGER"; printf "GIT_PAGER=%s\n" "$GIT_PAGER"; zstyle -s ":completion:*" matcher-list matcher_list && printf "matcher_list=%s\n" "$matcher_list"; zstyle -s ":completion:*" menu completion_menu && printf "completion_menu=%s\n" "$completion_menu"; printf "HISTFILE=%s\n" "$HISTFILE"; printf "HISTSIZE=%s\n" "$HISTSIZE"; printf "SAVEHIST=%s\n" "$SAVEHIST"; setopt | grep -q "^extendedhistory$" && printf "extended_history=enabled\n"; setopt | grep -q "^histignorespace$" && printf "hist_ignore_space=enabled\n"; setopt | grep -q "^histreduceblanks$" && printf "hist_reduce_blanks=enabled\n"; setopt | grep -q "^histexpiredupsfirst$" && printf "hist_expire_dups_first=enabled\n"; setopt | grep -q "^histsavenodups$" && printf "hist_save_no_dups=enabled\n"; setopt | grep -q "^histfindnodups$" && printf "hist_find_no_dups=enabled\n"; setopt | grep -q "^histverify$" && printf "hist_verify=enabled\n"; setopt | grep -q "^interactivecomments$" && printf "interactive_comments=enabled\n"; setopt | grep -q "^nobeep$" && printf "no_beep=enabled\n"; cd "$BASE_HOME"; printf "git=%s\n" "$(_base_zsh_defaults_git_prompt)"; (( ${+functions[_base_zsh_defaults_git_dir]} )) && printf "git_dir_helper=function\n"; printf "PROMPT=%s\n" "$PROMPT"; setopt | grep -q "^promptsubst$"; printf "prompt_subst=enabled\n"'
 
         [ "$status" -eq 0 ]
         [[ "$output" == *"PAGER=less"* ]]
@@ -850,6 +851,7 @@ EOF
         [[ "$output" == *"interactive_comments=enabled"* ]]
         [[ "$output" == *"no_beep=enabled"* ]]
         [[ "$output" == *"git=("* ]]
+        [[ "$output" == *"git_dir_helper=function"* ]]
         [[ "$output" == *'PROMPT=%* %m $(_base_zsh_defaults_git_prompt)%1~: '* ]]
         [[ "$output" == *"prompt_subst=enabled"* ]]
     fi
@@ -894,11 +896,10 @@ EOF
 }
 
 @test "Base shell defaults abbreviate detached HEAD without command substitution" {
-    run grep -F 'branch="$(printf' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh" "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
+    run grep -F 'branch="$(printf' "$BASE_REPO_ROOT/lib/shell/base_defaults.sh"
     [ "$status" -eq 1 ]
 
-    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/bash_defaults.sh"
-    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/zsh_defaults.sh"
+    grep -Fq 'branch="${head:0:7}"' "$BASE_REPO_ROOT/lib/shell/base_defaults.sh"
 }
 
 @test "basectl update-profile preserves an existing defaults preference" {
