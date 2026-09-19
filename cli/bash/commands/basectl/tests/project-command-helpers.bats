@@ -6,6 +6,70 @@ source_project_command_helpers() {
     source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
 }
 
+write_missing_project_command_wrapper() {
+    local base_home="$1"
+
+    mkdir -p "$base_home/bin"
+    ln -s "$BASE_REPO_ROOT/lib" "$base_home/lib"
+    cat > "$base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"demo-script"* ]]; then
+    base_test_protocol_demo demo "$BASE_TEST_PROJECT_ROOT" \
+        "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml" "$BASE_TEST_PROJECT_ROOT/.venv" false false ""
+else
+    base_test_protocol_project_command demo "$BASE_TEST_PROJECT_ROOT" \
+        "$BASE_TEST_PROJECT_ROOT/base_manifest.yaml" "$BASE_TEST_PROJECT_ROOT/.venv" false false "" ""
+fi
+EOF
+    chmod +x "$base_home/bin/base-wrapper"
+}
+
+run_missing_project_command_resolution() {
+    local command_description="$1"
+    local protocol_type="$2"
+    local command_field="$3"
+    local base_home="$TEST_TMPDIR/base-home"
+    local project_root="$TEST_TMPDIR/project"
+    local state_file="$TEST_TMPDIR/history-state"
+
+    mkdir -p "$project_root"
+    write_missing_project_command_wrapper "$base_home"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_TEST_HISTORY_STATE="$state_file" \
+        BASE_TEST_PROJECT_ROOT="$project_root" \
+        bash -c '
+            source "$BASE_REPO_ROOT/base_init.sh"
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
+            BASE_PROJECT_COMMAND_SELECTION_ARGS=(demo)
+            BASE_PROJECT_COMMAND_ARGUMENTS=()
+            base_std_fatal_error() {
+                printf "project=%s\\nroot=%s\\nmanifest=%s\\n" \
+                    "${BASE_CLI_HISTORY_PROJECT-unset}" \
+                    "${BASE_CLI_HISTORY_PROJECT_ROOT-unset}" \
+                    "${BASE_CLI_HISTORY_MANIFEST-unset}" > "$BASE_TEST_HISTORY_STATE"
+                exit 1
+            }
+            base_project_command_resolve_context \
+                "$1" "$2" "$3" "$1" demo
+        ' bash "$command_description" "$protocol_type" "$command_field"
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$state_file")" = "project=demo
+root=$project_root
+manifest=$project_root/base_manifest.yaml" ]
+}
+
+@test "project command resolver preserves history context before a missing test command failure" {
+    run_missing_project_command_resolution test-command project-command command
+}
+
+@test "project command resolver preserves history context before a missing demo script failure" {
+    run_missing_project_command_resolution demo-script demo demo_script
+}
+
 @test "project command parser preserves workspace and passthrough argument boundaries" {
     local workspace="$TEST_TMPDIR/work space"
     local control_arg=$'first line\nsecond\tline'
