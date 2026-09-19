@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from base_projects.tests.test_workspace_checks import invoke_engine, write_default_manifest
+from base_projects.tests.test_workspace_checks import write_default_manifest
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 
 
 def git(*args: str) -> None:

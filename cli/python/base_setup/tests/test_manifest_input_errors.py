@@ -5,7 +5,8 @@ import json
 import pytest
 
 from base_projects.workspace_manifest import WorkspaceManifestError, read_workspace_manifest
-from base_projects.tests.test_workspace_checks import invoke_engine, write_default_manifest
+from base_projects.tests.test_workspace_checks import write_default_manifest
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError, read_manifest_mapping
 

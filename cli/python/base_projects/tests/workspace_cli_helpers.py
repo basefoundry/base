@@ -12,6 +12,11 @@ from unittest import mock
 from base_projects import engine
 
 
+class TerminalStringIO(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
 # Keep per-test overrides explicit instead of hiding them in a configuration object.
 def invoke_engine(  # pylint: disable=too-many-arguments
     args: list[str],
@@ -24,7 +29,7 @@ def invoke_engine(  # pylint: disable=too-many-arguments
     env_overrides: Mapping[str, str] | None = None,
 ) -> tuple[int, str, str]:
     """Run the project engine with explicit temporary HOME and stream controls."""
-    stdout = stdout_stream if stdout_stream is not None else io.StringIO()
+    stdout = stdout_stream if stdout_stream is not None else TerminalStringIO()
     stderr = stderr_stream if stderr_stream is not None else io.StringIO()
     if user_config is not None:
         config_path = home / ".base.d" / "config.yaml"

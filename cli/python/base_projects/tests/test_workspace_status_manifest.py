@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-import io
 import json
-import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest import mock
 
 from base_setup.check_records import CheckRecordContext
-from base_projects import engine
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 
 
 def write_manifest(project_root: Path, name: str) -> None:
@@ -74,30 +65,6 @@ def write_workspace_manifest(path: Path) -> None:
         ),
         encoding="utf-8",
     )
-
-
-def invoke_engine(
-    args: list[str],
-    base_home: Path,
-    home: Path,
-    user_config: str | None = None,
-) -> tuple[int, str, str]:
-    stdout = TerminalStringIO()
-    stderr = io.StringIO()
-    if user_config is not None:
-        config_path = home / ".base.d" / "config.yaml"
-        config_path.parent.mkdir(parents=True)
-        config_path.write_text(user_config, encoding="utf-8")
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
 
 
 class WorkspaceStatusManifestTests(unittest.TestCase):
