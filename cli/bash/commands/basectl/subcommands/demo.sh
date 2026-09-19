@@ -34,130 +34,29 @@ base_demo_usage_error() {
 }
 
 base_demo_subcommand_main() {
-    local project="" explicit_project="" wrapper resolve_output resolved_name project_root manifest_path demo_script command_runner
-    local quoted_demo_script command_to_run display_command
-    local dry_run=0
-    local args=() extra_args=() project_args=() parser_args=()
-    local route_venv_dir uses_uv_manager trust_required
-    local positional_count=0
-    # shellcheck disable=SC2034 # base_arg_parse receives caller-owned arrays by name.
-    local -a option_specs=(
-        "debug|flag|-v"
-        "workspace|value|--workspace"
-        "project|value|--project"
-        "dry_run|flag|--dry-run"
-    )
-    local -a positionals=()
-    local -A parsed_options=()
+    local project="" demo_script command_runner
+    local quoted_demo_script command_to_run display_command dry_run
+    local extra_args=()
+    local resolved_name project_root manifest_path route_venv_dir uses_uv_manager trust_required
 
-    while (($#)); do
-        case "$1" in
-            --)
-                shift
-                extra_args=("$@")
-                break
-                ;;
-            -h|--help|help)
-                base_demo_subcommand_usage
-                return 0
-                ;;
-            -v)
-                parser_args+=("$1")
-                args+=(--debug)
-                shift
-                ;;
-            --workspace)
-                [[ -n "${2:-}" ]] || {
-                    base_demo_usage_error "Option '--workspace' requires an argument."
-                    return $?
-                }
-                parser_args+=("--workspace=$2")
-                args+=(--workspace "$2")
-                shift 2
-                ;;
-            --workspace=*)
-                parser_args+=("$1")
-                args+=("$1")
-                shift
-                ;;
-            --project)
-                [[ -n "${2:-}" ]] || {
-                    base_demo_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                [[ -z "$explicit_project" ]] || {
-                    base_demo_usage_error "Option '--project' may be specified only once."
-                    return $?
-                }
-                explicit_project="$2"
-                parser_args+=("--project=$2")
-                shift 2
-                ;;
-            --dry-run)
-                parser_args+=("$1")
-                shift
-                ;;
-            -*)
-                base_demo_usage_error "Unknown demo option '$1'."
-                return $?
-                ;;
-            *)
-                positional_count=$((positional_count + 1))
-                if ((positional_count > 1)); then
-                    base_demo_usage_error "The 'demo' command accepts one project name."
-                    return $?
-                fi
-                parser_args+=("$1")
-                shift
-                ;;
-        esac
-    done
+    base_project_command_parse_args \
+        demo base_demo_subcommand_usage base_demo_usage_error \
+        "The 'demo' command accepts one project name." "$@" || return $?
+    [[ "$BASE_PROJECT_COMMAND_HELP_SHOWN" == 1 ]] && return 0
+    project="$BASE_PROJECT_COMMAND_PROJECT"
+    dry_run="$BASE_PROJECT_COMMAND_DRY_RUN"
+    extra_args=("${BASE_PROJECT_COMMAND_EXTRA_ARGS[@]}")
 
-    if ! base_arg_parse parsed_options positionals option_specs -- "${parser_args[@]}"; then
-        base_demo_usage_error "Could not parse demo arguments."
-        return $?
-    fi
-
-    if ((${#positionals[@]} > 1)); then
-        base_demo_usage_error "The 'demo' command accepts one project name."
-        return $?
-    fi
-    if ((${#positionals[@]} == 1)); then
-        project="${positionals[0]}"
-    fi
-
-    explicit_project="${parsed_options[project]:-}"
-    dry_run="${parsed_options[dry_run]:-0}"
-    [[ -z "$explicit_project" || -z "$project" ]] || {
-        base_demo_usage_error "The 'demo' command does not accept a positional project with --project."
-        return $?
-    }
-
-    wrapper="$BASE_HOME/bin/base-wrapper"
-    [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
-
-    if [[ -n "$explicit_project" ]]; then
-        project_args+=(--project "$explicit_project")
-    elif [[ -n "$project" ]]; then
-        project_args+=("$project")
-    fi
-    resolve_output="$("$wrapper" --project base base_projects demo-script "${project_args[@]}" "${args[@]}" --format command-protocol)" || return $?
-    base_command_protocol_decode_one demo "$resolve_output" || {
-        base_std_fatal_error "Unable to resolve demo script for project '${project:-current project}'."
-    }
-    resolved_name="${BASE_COMMAND_PROTOCOL_FIELDS[project_name]}"
-    project_root="${BASE_COMMAND_PROTOCOL_FIELDS[project_root]}"
-    manifest_path="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_path]}"
-    route_venv_dir="${BASE_COMMAND_PROTOCOL_FIELDS[project_venv_dir]}"
-    uses_uv_manager="${BASE_COMMAND_PROTOCOL_FIELDS[uses_uv_manager]}"
-    trust_required="${BASE_COMMAND_PROTOCOL_FIELDS[manifest_command_trust_required]}"
-    base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
-    demo_script="${BASE_COMMAND_PROTOCOL_FIELDS[demo_script]}"
-    command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
-
-    [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$demo_script" ]] || {
-        base_std_fatal_error "Unable to resolve demo script for project '${project:-current project}'."
-    }
+    base_project_command_resolve_context \
+        demo-script demo demo_script "demo script" "${project:-current project}" || return $?
+    resolved_name="$BASE_PROJECT_COMMAND_RESOLVED_NAME"
+    project_root="$BASE_PROJECT_COMMAND_RESOLVED_ROOT"
+    manifest_path="$BASE_PROJECT_COMMAND_RESOLVED_MANIFEST"
+    route_venv_dir="$BASE_PROJECT_COMMAND_ROUTE_VENV"
+    uses_uv_manager="$BASE_PROJECT_COMMAND_USES_UV"
+    trust_required="$BASE_PROJECT_COMMAND_TRUST_REQUIRED"
+    demo_script="$BASE_PROJECT_COMMAND_RESOLVED_ACTION"
+    command_runner="$BASE_PROJECT_COMMAND_RUNNER"
 
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
