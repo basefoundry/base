@@ -1439,7 +1439,9 @@ EOF
         "$guidance_repo/.github/pull_request_template.md" > "$TEST_TMPDIR/normalized-template.md"
     cmp "$init_repo/.github/pull_request_template.md" "$TEST_TMPDIR/normalized-template.md"
     grep -Fqx '## Notes' "$init_repo/.github/pull_request_template.md"
+    grep -Fqx '<!-- Optional: tradeoffs, follow-up work, or reviewer context. -->' "$init_repo/.github/pull_request_template.md"
     grep -Fqx '## Reviewer Notes' "$guidance_repo/.github/pull_request_template.md"
+    grep -Fqx '<!-- Optional: tradeoffs, follow-up work, or areas where reviewer attention would help. -->' "$guidance_repo/.github/pull_request_template.md"
 }
 
 @test "repo init agent-ready dry-run writes the shared PR template once" {

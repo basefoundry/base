@@ -837,12 +837,42 @@ basectl test $name
 EOF
 }
 
+base_repo_pull_request_template_policy() {
+    local comment_var="$3"
+    local heading_var="$2"
+    local policy_comment
+    local policy_heading
+    local variant="$1"
+
+    case "$variant" in
+        repo-init)
+            policy_heading='Notes'
+            policy_comment='Optional: tradeoffs, follow-up work, or reviewer context.'
+            ;;
+        agent-guidance)
+            policy_heading='Reviewer Notes'
+            policy_comment='Optional: tradeoffs, follow-up work, or areas where reviewer attention would help.'
+            ;;
+        *)
+            base_std_log_error "Unknown pull-request template policy variant '$variant'."
+            return 1
+            ;;
+    esac
+
+    printf -v "$heading_var" '%s' "$policy_heading"
+    printf -v "$comment_var" '%s' "$policy_comment"
+}
+
 base_repo_write_pull_request_template() {
     local dry_run="$1"
     local root="$2"
-    local notes_heading="${3:-Notes}"
-    local notes_comment="${4:-Optional: tradeoffs, follow-up work, or reviewer context.}"
+    local notes_comment
+    local notes_heading
     local template
+
+    base_repo_pull_request_template_policy repo-init notes_heading notes_comment || return 1
+    [[ -n "${3:-}" ]] && notes_heading="$3"
+    [[ -n "${4:-}" ]] && notes_comment="$4"
 
     template="$(cat <<'EOF'
 ## Summary
@@ -1482,13 +1512,16 @@ base_repo_title_case_name() {
 base_repo_write_init_agent_guidance() {
     local default_branch="$3"
     local dry_run="$1"
+    local notes_comment
+    local notes_heading
     local repo_name="$2"
     local root="$5"
     local validation_command="$4"
 
     base_repo_load_agent_guidance || return 1
+    base_repo_pull_request_template_policy repo-init notes_heading notes_comment || return 1
     base_repo_write_agent_guidance \
-        "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" "Notes" "" 0
+        "$dry_run" "$repo_name" "$default_branch" "$validation_command" "$root" "$notes_heading" "$notes_comment" 0
 }
 
 base_repo_check_baseline() {
