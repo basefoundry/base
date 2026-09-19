@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import io
-import os
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_agent_brief import agent_brief_repository_from_status
 from base_projects.workspace_clone_command import clone_workspace_repo
 from base_projects.workspace_manifest import WorkspaceManifest
@@ -23,26 +20,6 @@ from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_repository_url import redact_workspace_source
 from base_projects.workspace_repository_url import repository_url_problem
 from base_projects.workspace_statuses import WorkspaceProjectStatus
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
-
-
-def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
-    stdout = TerminalStringIO()
-    stderr = io.StringIO()
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
 
 
 class WorkspaceRepositoryUrlTests(unittest.TestCase):

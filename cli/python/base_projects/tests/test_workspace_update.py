@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import io
 import json
-import os
 import re
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine, workspace_update
+from base_projects import workspace_update
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 
 
@@ -443,24 +440,3 @@ def assert_workspace_result(
 ) -> None:
     pattern = rf"^{re.escape(repository)}\s+{re.escape(action)}\s+{re.escape(result)}$"
     test_case.assertRegex(output, re.compile(pattern, re.MULTILINE))
-
-
-def invoke_engine(
-    args: list[str],
-    base_home: Path,
-    home: Path,
-) -> tuple[int, str, str]:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_ROOT": "inherited-root",
-        "BASE_PROJECT_MANIFEST": "",
-        "BASE_PROJECT_VENV_DIR": "inherited-venv",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
