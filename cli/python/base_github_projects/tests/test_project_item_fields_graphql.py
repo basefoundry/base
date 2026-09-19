@@ -132,18 +132,20 @@ def test_apply_missing_project_item_defaults_updates_supported_values_and_report
             "SINGLE_SELECT",
             (SelectOption("P2", "YELLOW", "", "p2-option"),),
         ),
+        ProjectField("area-field", "Area", "SINGLE_SELECT", ()),
     )
 
     summary = project_item_fields.apply_missing_project_item_defaults(
         run_graphql=fake_run,
         target_project_id="target-project",
         target_fields=fields,
-        field_defaults={"Priority": "P2", "Size": "S"},
+        field_defaults={"Priority": "P2", "Size": "S", "Area": "Workspace"},
     )
 
     assert summary.applied_count == 1
     assert summary.skipped == (
         project_item_fields.ProjectFieldCopySkip(7, "Size", "S", "target field is missing"),
+        project_item_fields.ProjectFieldCopySkip(7, "Area", "Workspace", "target option is missing"),
     )
     assert calls[-1] == (
         queries.UPDATE_ITEM_FIELD,
@@ -153,6 +155,49 @@ def test_apply_missing_project_item_defaults_updates_supported_values_and_report
             "fieldId": "priority-field",
             "optionId": "p2-option",
         },
+    )
+
+
+def test_copy_planner_preserves_existing_values_and_ignores_missing_source_items() -> None:
+    source = project_item_fields.ProjectIssueItem(
+        item_id="source-item",
+        issue_id="issue-present",
+        issue_number=1,
+        title="Present source",
+        values={"Status": "Ready", "Area": "Workspace"},
+    )
+    targets = {
+        "issue-present": project_item_fields.ProjectIssueItem(
+            item_id="target-present",
+            issue_id="issue-present",
+            issue_number=1,
+            title="Present target",
+            values={"Status": "Done"},
+        ),
+        "issue-without-source": project_item_fields.ProjectIssueItem(
+            item_id="target-without-source",
+            issue_id="issue-without-source",
+            issue_number=2,
+            title="No matching source",
+            values={},
+        ),
+    }
+
+    plan = project_item_fields.plan_missing_field_copies(
+        source_items={"issue-present": source},
+        target_items=targets,
+        target_fields={
+            "Status": project_item_fields.ProjectSelectField("status-field", {"Ready": "ready-id"}),
+            "Area": project_item_fields.ProjectSelectField("area-field", {}),
+        },
+        field_names=("Status", "Area"),
+    )
+
+    assert not plan.updates
+    assert plan.skipped == (
+        project_item_fields.ProjectFieldCopySkip(
+            1, "Area", "Workspace", "target option is missing"
+        ),
     )
 
 
