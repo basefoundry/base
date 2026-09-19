@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-import io
-import os
 import shlex
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import WorkspaceRepoInspection
 from base_projects.workspace_setup import workspace_setup_manifest_target
@@ -395,24 +391,3 @@ printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "$*" "$PWD" "${BASE_HOME-}" "${BASE
     script += "printf 'fake setup %s\\n' \"$project\"\n"
     basectl.write_text(script, encoding="utf-8")
     basectl.chmod(0o755)
-
-
-def invoke_engine(
-    args: list[str],
-    base_home: Path,
-    home: Path,
-) -> tuple[int, str, str]:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_ROOT": "inherited-root",
-        "BASE_PROJECT_MANIFEST": "",
-        "BASE_PROJECT_VENV_DIR": "inherited-venv",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()

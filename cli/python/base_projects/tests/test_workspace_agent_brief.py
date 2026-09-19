@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import io
 import json
-import os
 import re
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_agent_brief import REPO_AGENT_GUIDANCE_FILES
 from base_projects.workspace_agent_brief import REPO_BASELINE_FILES
 
@@ -94,33 +91,6 @@ def write_ready_python(project_root: Path, home: Path, project: str) -> None:
     python_bin.parent.mkdir(parents=True)
     python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
-
-
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
-
-
-def invoke_engine(
-    args: list[str],
-    base_home: Path,
-    home: Path,
-    extra_env: dict[str, str] | None = None,
-) -> tuple[int, str, str]:
-    stdout = TerminalStringIO()
-    stderr = io.StringIO()
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    if extra_env is not None:
-        env.update(extra_env)
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
 
 
 def shell_array_values(source: str, name: str) -> tuple[str, ...]:
@@ -413,7 +383,7 @@ class WorkspaceAgentBriefTests(unittest.TestCase):
                     ],
                     base_home,
                     home,
-                    {"BASE_TEST_AGENT_BRIEF_EXECUTED": str(marker_path)},
+                    env_overrides={"BASE_TEST_AGENT_BRIEF_EXECUTED": str(marker_path)},
                 )
 
             subprocess_run.assert_not_called()

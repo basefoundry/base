@@ -8,7 +8,8 @@ import pytest
 from base_projects import project_discovery as discovery
 from base_projects.workspace_report_common import project_last_check
 from base_projects.workspace_scanner import workspace_manifest_entries, ProjectDiscoveryError
-from base_projects.tests.test_workspace_checks import invoke_engine, write_default_manifest
+from base_projects.tests.test_workspace_checks import write_default_manifest
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_setup.check_records import CheckRecordContext
 from base_setup.tests.helpers import fake_context
 

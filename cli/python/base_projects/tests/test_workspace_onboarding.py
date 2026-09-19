@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import io
 import json
-import os
 import shlex
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest import mock
 
 from base_trust.trust_store import ManifestCommandTrustStore
 from base_trust.trust_store import compute_trust_identity_for_manifest
-from base_projects import engine
+from base_projects.tests.workspace_cli_helpers import TerminalStringIO
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 
 
 def write_project_manifest(project_root: Path, name: str, test_command: str | None = None) -> None:
@@ -72,26 +69,6 @@ def write_workspace_manifest(path: Path) -> None:
     )
 
 
-class TerminalStringIO(io.StringIO):
-    def isatty(self) -> bool:
-        return True
-
-
-def invoke_engine(args: list[str], base_home: Path, home: Path) -> tuple[int, str, str]:
-    stdout = TerminalStringIO()
-    stderr = io.StringIO()
-    env = {
-        "HOME": str(home),
-        "BASE_HOME": str(base_home),
-        "BASE_PROJECT": "",
-        "BASE_PROJECT_MANIFEST": "",
-    }
-    with mock.patch.dict(os.environ, env):
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            status = engine.main(args)
-    return status, stdout.getvalue(), stderr.getvalue()
-
-
 class WorkspaceOnboardingTests(unittest.TestCase):
     def test_text_and_json_share_workspace_aware_trust_guidance(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -107,14 +84,19 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             args = ["onboarding", "--workspace", str(workspace), "--manifest", str(manifest_path)]
-            code, output, error = invoke_engine([*args, "--format", "json"], root / "base", home)
+            code, output, error = invoke_engine(
+                [*args, "--format", "json"],
+                root / "base",
+                home,
+                stdout_stream=TerminalStringIO(),
+            )
             self.assertEqual(code, 0, error)
             payload = json.loads(output)
             command = payload["repositories"][0]["trust_command"]
             words = shlex.split(command)
             self.assertEqual(words[-2:], ["--workspace", str(workspace.resolve())])
             self.assertIn(command, [c for a in payload["next_actions"] for c in a["commands"]])
-            code, output, error = invoke_engine(args, root / "base", home)
+            code, output, error = invoke_engine(args, root / "base", home, stdout_stream=TerminalStringIO())
             self.assertEqual(code, 0, error)
             self.assertEqual(output.count(command), 2)
 
@@ -150,6 +132,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 ],
                 base_home,
                 home,
+                stdout_stream=TerminalStringIO(),
             )
 
         repository = json.loads(stdout)["repositories"][0]
@@ -193,6 +176,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 ],
                 base_home,
                 home,
+                stdout_stream=TerminalStringIO(),
             )
 
         payload = json.loads(stdout)
@@ -235,6 +219,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 ["onboarding", "--workspace", str(workspace), "--manifest", str(manifest_path)],
                 base_home,
                 home,
+                stdout_stream=TerminalStringIO(),
             )
 
         self.assertEqual(status, 0)
@@ -284,6 +269,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 ],
                 base_home,
                 home,
+                stdout_stream=TerminalStringIO(),
             )
 
         payload = json.loads(stdout)
@@ -339,6 +325,7 @@ class WorkspaceOnboardingTests(unittest.TestCase):
                 ],
                 base_home,
                 home,
+                stdout_stream=TerminalStringIO(),
             )
 
         payload = json.loads(stdout)
