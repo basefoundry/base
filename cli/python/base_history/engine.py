@@ -16,7 +16,6 @@ from base_cli_adapters.command_filters import normalize_command_filters
 from base_cli_adapters.history import HISTORY_PATH
 from base_cli_adapters.history import HISTORY_SCOPE_INTERNAL
 from base_cli_adapters.history import HISTORY_SCOPE_PRIMARY
-from base_cli_adapters.history import parse_finished_history_record_line
 from base_cli_adapters.history import parse_positive_int
 from base_cli_adapters.history import redact_history_argv
 from base_cli_adapters.history import redact_history_text
@@ -298,14 +297,6 @@ def read_history_records(cache_root: Path, logger: Any | None = None) -> list[Hi
             continue
         records.append(record)
     return records
-
-
-def parse_history_line(line: str) -> HistoryRecord | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
-        return None
-
-    return history_record_from_payload(payload)
 
 
 def history_record_from_payload(payload: dict[str, Any]) -> HistoryRecord | None:

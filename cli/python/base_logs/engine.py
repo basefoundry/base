@@ -9,7 +9,7 @@ import subprocess
 import sys
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timezone  # pylint: disable=unused-import
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,6 @@ from base_cli_adapters.history import HISTORY_PATH
 from base_cli_adapters.history import compact_path
 from base_cli_adapters.history import optional_int
 from base_cli_adapters.history import optional_string
-from base_cli_adapters.history import parse_finished_history_record_line
 from base_cli_adapters.history import parse_positive_int
 from base_cli_adapters.history import redact_history_argv
 from base_cli_adapters.history import redact_history_text
@@ -339,14 +338,6 @@ def read_failed_history_records(cache_root: Path, logger: Any | None = None) -> 
     return records
 
 
-def parse_last_failure_history_line(line: str) -> LastFailureRecord | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
-        return None
-
-    return last_failure_record_from_payload(payload)
-
-
 def last_failure_record_from_payload(payload: dict[str, Any]) -> LastFailureRecord | None:
     fields = project_finished_history_payload(payload)
     if fields is None or not history_payload_failed(fields.status, fields.exit_code):
@@ -569,14 +560,6 @@ def read_history_log_statuses(cache_root: Path) -> HistoryLogStatusIndex:
         if log_path is not None:
             index.by_log_path[normalize_history_log_path(log_path)] = history_status
     return index
-
-
-def parse_history_log_status_line(line: str) -> tuple[str, str | None, HistoryLogStatus] | None:
-    payload = parse_finished_history_record_line(line)
-    if payload is None:
-        return None
-
-    return history_log_status_from_payload(payload)
 
 
 def history_log_status_from_payload(
