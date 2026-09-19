@@ -65,16 +65,27 @@ base_project_venv_fix() {
     printf "Run 'basectl setup %s' first." "$project"
 }
 
+base_project_wrapper_path() {
+    BASE_PROJECT_COMMAND_WRAPPER="$BASE_HOME/bin/base-wrapper"
+}
+
+base_project_require_wrapper() {
+    base_project_wrapper_path
+    if [[ ! -x "$BASE_PROJECT_COMMAND_WRAPPER" ]]; then
+        base_std_fatal_error "Base Python wrapper '$BASE_PROJECT_COMMAND_WRAPPER' is missing or is not executable."
+        return $?
+    fi
+}
+
 base_project_require_manifest_command_trust() {
     local project="$1"
     local manifest_path="$2"
     local trust_required="${3:-false}"
-    local wrapper="$BASE_HOME/bin/base-wrapper"
 
     [[ "$trust_required" == true ]] || return 0
-    [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    base_project_require_wrapper || return $?
 
-    "$wrapper" --project base base_trust require "$project" --manifest "$manifest_path"
+    "$BASE_PROJECT_COMMAND_WRAPPER" --project base base_trust require "$project" --manifest "$manifest_path"
 }
 
 base_project_command_parse_args() {
@@ -213,12 +224,11 @@ base_project_command_resolve_context() {
     local command_field="$3"
     local command_description="$4"
     local display_project="$5"
-    local wrapper="$BASE_HOME/bin/base-wrapper"
     local resolve_output
 
-    [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
+    base_project_require_wrapper || return $?
 
-    resolve_output="$("$wrapper" --project base base_projects "$resolver_command" \
+    resolve_output="$("$BASE_PROJECT_COMMAND_WRAPPER" --project base base_projects "$resolver_command" \
         "${BASE_PROJECT_COMMAND_SELECTION_ARGS[@]}" "${BASE_PROJECT_COMMAND_ARGUMENTS[@]}" \
         --format command-protocol)" || return $?
     base_command_protocol_decode_one "$protocol_type" "$resolve_output" || {
