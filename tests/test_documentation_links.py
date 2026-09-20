@@ -6,10 +6,15 @@ from urllib.parse import unquote
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)\s]+)(?:\s+[^)]*)?\)")
 SKIPPED_SCHEMES = ("data:", "http:", "https:", "mailto:", "tel:")
+EXCLUDED_DIRECTORIES = {".dependencies", ".git", ".venv", "node_modules"}
 
 
 def markdown_files() -> list[Path]:
-    return sorted(path for path in REPO_ROOT.rglob("*.md") if ".git" not in path.parts)
+    return sorted(
+        path
+        for path in REPO_ROOT.rglob("*.md")
+        if not any(part in EXCLUDED_DIRECTORIES for part in path.parts)
+    )
 
 
 def without_fenced_code(text: str) -> str:
