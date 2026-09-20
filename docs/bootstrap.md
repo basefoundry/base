@@ -212,8 +212,8 @@ git clone --branch main https://github.com/basefoundry/base.git ~/work/base
 exec "$SHELL" -l
 ```
 
-During the 1.9.0 development line, this checkout reports an identity such as
-`basectl 1.9.0-dev+g<short-sha>`. A dirty checkout appends `.dirty`.
+During the 1.10.0 development line, this checkout reports an identity such as
+`basectl 1.10.0-dev+g<short-sha>`. A dirty checkout appends `.dirty`.
 
 ## Relationship To Other Install Paths
 

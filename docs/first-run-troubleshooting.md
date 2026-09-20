@@ -113,7 +113,7 @@ is involved, include a minimal reproduction that uses a temporary directory.
 Never paste credentials, tokens, private paths, or unredacted logs into a public
 issue or discussion. Use the private [security reporting path](../SECURITY.md)
 for vulnerabilities or sensitive conduct concerns. For ordinary adoption or
-compatibility help, use the public [support path](../SUPPORT.md) with redacted
+compatibility help, use the public [support path](community-support.md) with redacted
 commands and output.
 
 ## What to include when asking for help
