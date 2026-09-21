@@ -33,6 +33,51 @@ repos:
 
 
 class WorkspaceUpdateTests(unittest.TestCase):
+    def test_workspace_update_debug_log_formats_captured_output(self) -> None:
+        cases = (
+            (
+                subprocess.CompletedProcess(
+                    ["git", "pull", "--ff-only"],
+                    0,
+                    stdout="Already up to date.\n",
+                    stderr="",
+                ),
+                "Git pull for repository 'demo' exited with 0; stdout=Already up to date.",
+            ),
+            (
+                subprocess.CompletedProcess(
+                    ["git", "pull", "--ff-only"],
+                    0,
+                    stdout="Updating abc..def\nFast-forward\n",
+                    stderr="",
+                ),
+                "Git pull for repository 'demo' exited with 0; stdout=Updating abc..def Fast-forward",
+            ),
+            (
+                subprocess.CompletedProcess(
+                    ["git", "pull", "--ff-only"],
+                    1,
+                    stdout="",
+                    stderr="fatal: Not possible to fast-forward, aborting.\n",
+                ),
+                "Git pull for repository 'demo' exited with 1; stderr=fatal: Not possible to fast-forward, aborting.",
+            ),
+        )
+
+        for result, expected in cases:
+            with self.subTest(result=result):
+                ctx = mock.Mock()
+                target = workspace_update.WorkspaceUpdateTarget(
+                    name="demo",
+                    root=Path("/workspace/demo"),
+                    action="pull",
+                )
+                with mock.patch("base_projects.workspace_update.subprocess.run", return_value=result):
+                    workspace_update.execute_workspace_update_target(ctx, target)
+
+                message, *arguments = ctx.log.debug.call_args.args
+                self.assertEqual(message % tuple(arguments), expected)
+
     def test_workspace_update_rejects_repository_target_outside_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -356,12 +356,12 @@ def execute_workspace_update_target(
             detail=f"could not run git pull: {exc}",
         )
 
+    debug_output = format_git_pull_debug_output(result.stdout, result.stderr)
     ctx.log.debug(
-        "Git pull for repository '%s' exited with %s; stdout=%r stderr=%r",
+        "Git pull for repository '%s' exited with %s%s",
         target.name,
         result.returncode,
-        result.stdout,
-        result.stderr,
+        f"; {debug_output}" if debug_output else "",
     )
     if result.returncode != 0:
         return WorkspaceUpdateResult(
@@ -373,6 +373,15 @@ def execute_workspace_update_target(
     if git_pull_was_unchanged(result.stdout, result.stderr):
         return WorkspaceUpdateResult("unchanged")
     return WorkspaceUpdateResult("updated")
+
+
+def format_git_pull_debug_output(stdout: str, stderr: str) -> str:
+    fields: list[str] = []
+    for name, output in (("stdout", stdout), ("stderr", stderr)):
+        value = " ".join(line.strip() for line in output.splitlines() if line.strip())
+        if value:
+            fields.append(f"{name}={value}")
+    return "; ".join(fields)
 
 
 def git_pull_detail(stdout: str, stderr: str) -> str:
