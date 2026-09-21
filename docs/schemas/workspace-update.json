@@ -90,6 +90,22 @@
         },
         "exit_code": {
           "type": "integer"
+        },
+        "preflight": {
+          "type": "array",
+          "description": "Machine-readable reasons why a manifest checkout was not pulled.",
+          "items": {
+            "enum": [
+              "dirty",
+              "linked_worktree",
+              "detached_head",
+              "non_default_branch",
+              "missing_upstream",
+              "unknown_default_branch",
+              "not_git_checkout",
+              "preflight_failed"
+            ]
+          }
         }
       }
     },

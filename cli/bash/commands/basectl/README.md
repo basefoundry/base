@@ -280,11 +280,14 @@ such command directories exist. Optional utility CLIs such as `caff` and
   `~/.base.d/config.yaml`, or from an explicit `--source <url-or-path>`, and
   writes the result to `workspace.manifest` or `--manifest <path>` before the
   next workspace status, check, doctor, or clone operation.
-- `basectl workspace update` runs `git pull --ff-only` serially across present
-  repositories in manifest order. It supports `--dry-run`, continues after
-  individual failures, skips missing optional repositories, treats missing
-  required repositories as failures, and includes the active `BASE_HOME`
-  checkout when it is the manifest's `base` target.
+- `basectl workspace update` preflights manifest roots, then runs
+  `git pull --ff-only` serially across safe present repositories in manifest
+  order. It supports `--dry-run`, continues after individual failures, skips
+  dirty, non-default, non-tracking, or linked-worktree roots with recovery
+  guidance, skips missing optional repositories, treats missing required
+  repositories as failures, and includes the active `BASE_HOME` checkout when
+  it is the manifest's `base` target. It never stashes, resets, switches, or
+  updates linked PR worktrees implicitly.
 - `basectl workspace configure` previews the existing `basectl repo configure`
   repair path by default across discovered Base-managed projects, or across
   present Base-managed repositories from a configured or explicit workspace

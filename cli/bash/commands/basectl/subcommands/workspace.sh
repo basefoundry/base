@@ -78,7 +78,10 @@ Options:
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Run git pull --ff-only across existing repositories in manifest order.
+Preflight manifest roots, then run git pull --ff-only across safe existing
+repositories in manifest order. Dirty, non-default, non-tracking, and linked
+worktree roots are skipped with recovery guidance; no checkout is modified
+implicitly.
 EOF
 }
 

@@ -32,6 +32,10 @@ repos:
     )
 
 
+def git_probe(stdout: str = "", returncode: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(["git"], returncode, stdout=stdout, stderr=stderr)
+
+
 class WorkspaceUpdateTests(unittest.TestCase):
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
         cases = (
@@ -178,6 +182,234 @@ repos:
             self.assertLess(stdout.index("\nbase "), stdout.index("\nfirst "))
             self.assertLess(stdout.index("\nfirst "), stdout.index("\nlater "))
 
+    def test_workspace_update_preflight_allows_clean_default_branch_tracking(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## main...origin/main\n"),
+                git_probe("origin/main\n"),
+            ),
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNone(result)
+
+    def test_workspace_update_preflight_reports_dirty_root(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## main...origin/main\n M README.md\n"),
+            ),
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.status, "skipped")
+        self.assertEqual(result.preflight, ("dirty",))
+        self.assertIn("working tree is dirty", result.detail or "")
+        self.assertIn("/workspace/demo", result.detail or "")
+        self.assertIn("will not stash or reset", result.detail or "")
+
+    def test_workspace_update_preflight_reports_non_default_branch(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## pr-33-review...origin/pr-33-review\n"),
+            ),
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.preflight, ("non_default_branch",))
+        self.assertIn("pr-33-review", result.detail or "")
+        self.assertIn("expected default branch 'main'", result.detail or "")
+
+    def test_workspace_update_preflight_reports_missing_upstream(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## main\n"),
+            ),
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.preflight, ("missing_upstream",))
+        self.assertIn("branch 'main' has no upstream tracking branch", result.detail or "")
+
+    def test_workspace_update_preflight_reports_linked_worktree_without_status_probe(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            return_value=git_probe(".git/worktrees/pr-33\n.git\n"),
+        ) as probe:
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.preflight, ("linked_worktree",))
+        self.assertIn("linked Git worktree", result.detail or "")
+        self.assertIn("will not pull this PR worktree", result.detail or "")
+        probe.assert_called_once()
+
+    def test_workspace_update_preflight_detects_actual_linked_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            primary = root / "primary"
+            linked = root / "linked"
+            primary.mkdir()
+            subprocess.run(["git", "init", "--initial-branch=main", str(primary)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(primary), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(
+                ["git", "-C", str(primary), "config", "user.email", "workspace-test@example.com"],
+                check=True,
+            )
+            (primary / "README.md").write_text("workspace test\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(primary), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(primary), "commit", "-m", "initial"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(primary), "worktree", "add", "-b", "pr-33-review", str(linked), "HEAD"],
+                check=True,
+                capture_output=True,
+            )
+
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="demo",
+                root=linked,
+                action="pull",
+                default_branch="main",
+            )
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.preflight, ("linked_worktree",))
+        self.assertIn("linked Git worktree", result.detail or "")
+
+    def test_workspace_update_reports_preflight_diagnostics_in_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            (root / "demo").mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: demo-suite\nrepos:\n  - name: demo\n",
+                encoding="utf-8",
+            )
+            preflight = workspace_update.WorkspaceUpdateResult(
+                "skipped",
+                detail=f"repository 'demo' at '{root / 'demo'}' is not safe to update:\nworking tree is dirty.",
+                preflight=("dirty",),
+            )
+
+            with mock.patch(
+                "base_projects.workspace_update.preflight_workspace_update_target",
+                return_value=preflight,
+            ):
+                with mock.patch("base_projects.workspace_update.subprocess.run") as run:
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(root),
+                            "--manifest",
+                            str(manifest_path),
+                        ],
+                        base_home,
+                        home,
+                    )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        assert_workspace_result(self, stdout, "demo", "SKIP", "skipped")
+        self.assertIn("working tree is dirty", stdout)
+        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 failed=1.", stdout)
+        run.assert_not_called()
+
+    def test_workspace_update_json_reports_preflight_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            (root / "demo").mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: demo-suite\nrepos:\n  - name: demo\n",
+                encoding="utf-8",
+            )
+            preflight = workspace_update.WorkspaceUpdateResult(
+                "skipped",
+                detail=f"repository 'demo' at '{root / 'demo'}' is a linked Git worktree.",
+                preflight=("linked_worktree",),
+            )
+
+            with mock.patch(
+                "base_projects.workspace_update.preflight_workspace_update_target",
+                return_value=preflight,
+            ):
+                status, stdout, stderr = invoke_engine(
+                    [
+                        "update",
+                        "--workspace",
+                        str(root),
+                        "--manifest",
+                        str(manifest_path),
+                        "--format",
+                        "json",
+                    ],
+                    base_home,
+                    home,
+                )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        payload = json.loads(stdout)
+        self.assertEqual(payload["repositories"][0]["action"], "skip")
+        self.assertEqual(payload["repositories"][0]["status"], "skipped")
+        self.assertTrue(payload["repositories"][0]["fatal"])
+        self.assertEqual(payload["repositories"][0]["preflight"], ["linked_worktree"])
+        self.assertEqual(payload["counts"], {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 1, "failed": 1})
+
     def test_workspace_update_pulls_serially_and_aggregates_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -238,18 +470,19 @@ repos:
                     stderr="",
                 ),
             ]
-            with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results) as run:
-                status, stdout, stderr = invoke_engine(
-                    [
-                        "update",
-                        "--workspace",
-                        str(workspace),
-                        "--manifest",
-                        str(manifest_path),
-                    ],
-                    base_home,
-                    home,
-                )
+            with mock.patch("base_projects.workspace_update.preflight_workspace_update_target", return_value=None):
+                with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results) as run:
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(workspace),
+                            "--manifest",
+                            str(manifest_path),
+                        ],
+                        base_home,
+                        home,
+                    )
 
             self.assertEqual(status, 1)
             self.assertEqual(stderr, "")
@@ -301,20 +534,21 @@ repos:
                     stderr="",
                 ),
             ]
-            with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results) as run:
-                status, stdout, stderr = invoke_engine(
-                    [
-                        "update",
-                        "--workspace",
-                        str(root),
-                        "--manifest",
-                        str(manifest_path),
-                        "--repos",
-                        "later,first",
-                    ],
-                    base_home,
-                    home,
-                )
+            with mock.patch("base_projects.workspace_update.preflight_workspace_update_target", return_value=None):
+                with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results) as run:
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(root),
+                            "--manifest",
+                            str(manifest_path),
+                            "--repos",
+                            "later,first",
+                        ],
+                        base_home,
+                        home,
+                    )
 
             self.assertEqual(status, 0)
             self.assertEqual(stderr, "")
@@ -424,22 +658,23 @@ repos:
                     stderr="fatal: Not possible to fast-forward, aborting.\n",
                 ),
             ]
-            with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results):
-                status, stdout, stderr = invoke_engine(
-                    [
-                        "update",
-                        "--workspace",
-                        str(workspace),
-                        "--manifest",
-                        str(manifest_path),
-                        "--repos",
-                        "first,failing,optional-missing",
-                        "--format",
-                        "json",
-                    ],
-                    base_home,
-                    home,
-                )
+            with mock.patch("base_projects.workspace_update.preflight_workspace_update_target", return_value=None):
+                with mock.patch("base_projects.workspace_update.subprocess.run", side_effect=results):
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(workspace),
+                            "--manifest",
+                            str(manifest_path),
+                            "--repos",
+                            "first,failing,optional-missing",
+                            "--format",
+                            "json",
+                        ],
+                        base_home,
+                        home,
+                    )
 
             self.assertEqual(status, 1)
             self.assertEqual(stderr, "")

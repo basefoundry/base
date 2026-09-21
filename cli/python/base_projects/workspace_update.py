@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -18,7 +18,18 @@ from base_projects.workspace_scanner import ProjectDiscoveryError
 
 WorkspaceUpdateAction = Literal["pull", "skip"]
 WorkspaceUpdateStatus = Literal["planned", "updated", "unchanged", "skipped", "failed"]
+WorkspaceUpdatePreflightIssue = Literal[
+    "dirty",
+    "linked_worktree",
+    "detached_head",
+    "non_default_branch",
+    "missing_upstream",
+    "unknown_default_branch",
+    "not_git_checkout",
+    "preflight_failed",
+]
 WORKSPACE_UPDATE_TIMEOUT_SECONDS = 1800
+WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS = 30
 
 
 @dataclass(frozen=True)
@@ -29,6 +40,7 @@ class WorkspaceUpdateTarget:
     reason: str | None = None
     required: bool = True
     fatal: bool = False
+    default_branch: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +57,16 @@ class WorkspaceUpdateResult:
     status: WorkspaceUpdateStatus
     detail: str | None = None
     exit_code: int | None = None
+    preflight: tuple[WorkspaceUpdatePreflightIssue, ...] = ()
+
+
+@dataclass(frozen=True)
+class WorkspaceUpdatePreflightState:
+    dirty: bool
+    branch: str | None
+    upstream: str | None
+    default_branch: str | None
+    issues: tuple[WorkspaceUpdatePreflightIssue, ...]
 
 
 class WorkspaceUpdateSelectionError(ValueError):
@@ -120,8 +142,13 @@ def workspace_update_command(
             result = WorkspaceUpdateResult("planned")
             counts = update_workspace_update_counts(counts, result)
         else:
-            result = execute_workspace_update_target(ctx, target)
-            counts = update_workspace_update_counts(counts, result)
+            preflight_result = preflight_workspace_update_target(target)
+            if preflight_result is not None:
+                target = replace(target, action="skip", fatal=True)
+                result = preflight_result
+            else:
+                result = execute_workspace_update_target(ctx, target)
+            counts = update_workspace_update_counts(counts, result, fatal=target.fatal)
 
         results.append((target, result))
         if output_format == "text":
@@ -232,6 +259,8 @@ def workspace_update_repository_to_json(
         payload["detail"] = result.detail
     if result.exit_code is not None:
         payload["exit_code"] = result.exit_code
+    if result.preflight:
+        payload["preflight"] = list(result.preflight)
     return payload
 
 
@@ -282,6 +311,7 @@ def workspace_update_manifest_target(
         root=root,
         action="pull",
         required=repo.required,
+        default_branch=repo.default_branch,
     )
 
 
@@ -373,6 +403,248 @@ def execute_workspace_update_target(
     if git_pull_was_unchanged(result.stdout, result.stderr):
         return WorkspaceUpdateResult("unchanged")
     return WorkspaceUpdateResult("updated")
+
+
+def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> WorkspaceUpdateResult | None:
+    """Return a safe, actionable result when a manifest checkout is not pullable."""
+    git_directories = workspace_update_git_directories(target)
+    if isinstance(git_directories, WorkspaceUpdateResult):
+        return git_directories
+
+    git_directory, common_directory = git_directories
+    if git_directory != common_directory:
+        return workspace_update_preflight_result(
+            ("linked_worktree",),
+            "\n".join(
+                (
+                    f"repository '{target.name}' at '{target.root}' is a linked Git worktree.",
+                    "Workspace update only updates manifest repository roots; it will not pull this PR worktree.",
+                    "Point the manifest at the primary checkout or rerun from that checkout; "
+                    "Base will not switch or modify this worktree.",
+                )
+            ),
+        )
+
+    checkout_status = workspace_update_git_status(target)
+    if isinstance(checkout_status, WorkspaceUpdateResult):
+        return checkout_status
+
+    state = workspace_update_preflight_state(target, checkout_status)
+    if not state.issues:
+        return None
+    return workspace_update_preflight_result(state.issues, workspace_update_preflight_detail(target, state))
+
+
+def workspace_update_git_directories(
+    target: WorkspaceUpdateTarget,
+) -> tuple[Path, Path] | WorkspaceUpdateResult:
+    try:
+        metadata = run_workspace_git_probe(target.root, "rev-parse", "--git-dir", "--git-common-dir")
+    except subprocess.TimeoutExpired:
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"Git preflight for repository '{target.name}' at '{target.root}' timed out after "
+            f"{WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS} seconds.",
+        )
+    except OSError as exc:
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"Git preflight for repository '{target.name}' at '{target.root}' could not run: {exc}",
+        )
+
+    if metadata.returncode != 0:
+        detail = git_pull_detail(metadata.stdout, metadata.stderr)
+        return workspace_update_preflight_result(
+            ("not_git_checkout",),
+            f"repository '{target.name}' at '{target.root}' is not a Git checkout: {detail}",
+        )
+
+    git_directories = [line.strip() for line in metadata.stdout.splitlines() if line.strip()]
+    if len(git_directories) != 2:
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"repository '{target.name}' at '{target.root}' returned incomplete Git worktree metadata.",
+        )
+
+    return (
+        resolve_workspace_git_directory(target.root, git_directories[0]),
+        resolve_workspace_git_directory(target.root, git_directories[1]),
+    )
+
+
+def workspace_update_git_status(
+    target: WorkspaceUpdateTarget,
+) -> tuple[bool, str | None, str | None] | WorkspaceUpdateResult:
+    try:
+        status = run_workspace_git_probe(
+            target.root,
+            "status",
+            "--porcelain=v1",
+            "--branch",
+            "--untracked-files=all",
+        )
+    except subprocess.TimeoutExpired:
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"Git status for repository '{target.name}' at '{target.root}' timed out after "
+            f"{WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS} seconds.",
+        )
+    except OSError as exc:
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"Git status for repository '{target.name}' at '{target.root}' could not run: {exc}",
+        )
+    if status.returncode != 0:
+        detail = git_pull_detail(status.stdout, status.stderr)
+        return workspace_update_preflight_result(
+            ("preflight_failed",),
+            f"could not inspect Git checkout '{target.root}': {detail}",
+        )
+
+    return parse_workspace_git_status(status.stdout)
+
+
+def workspace_update_preflight_state(
+    target: WorkspaceUpdateTarget,
+    checkout_status: tuple[bool, str | None, str | None],
+) -> WorkspaceUpdatePreflightState:
+    dirty, branch, upstream = checkout_status
+    default_branch = target.default_branch
+    issues: list[WorkspaceUpdatePreflightIssue] = []
+    if dirty:
+        issues.append("dirty")
+
+    if branch is None:
+        issues.append("detached_head")
+
+    if default_branch is None:
+        default_branch = workspace_update_remote_default_branch(target, upstream)
+        if default_branch is None:
+            issues.append("unknown_default_branch")
+
+    if branch is not None and default_branch is not None and branch != default_branch:
+        issues.append("non_default_branch")
+    if upstream is None:
+        issues.append("missing_upstream")
+
+    return WorkspaceUpdatePreflightState(
+        dirty=dirty,
+        branch=branch,
+        upstream=upstream,
+        default_branch=default_branch,
+        issues=tuple(issues),
+    )
+
+
+def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstream: str | None) -> str | None:
+    remote = upstream.split("/", 1)[0] if upstream and "/" in upstream else "origin"
+    try:
+        remote_head = run_workspace_git_probe(
+            target.root,
+            "symbolic-ref",
+            "--quiet",
+            "--short",
+            f"refs/remotes/{remote}/HEAD",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if remote_head.returncode != 0:
+        return None
+    return parse_workspace_remote_head(remote_head.stdout)
+
+
+def workspace_update_preflight_detail(
+    target: WorkspaceUpdateTarget,
+    state: WorkspaceUpdatePreflightState,
+) -> str:
+    dirty = state.dirty
+    branch = state.branch
+    upstream = state.upstream
+    default_branch = state.default_branch
+    issues = state.issues
+    detail_lines = [f"repository '{target.name}' at '{target.root}' is not safe to update:"]
+    if dirty:
+        detail_lines.append(
+            f"working tree is dirty on branch '{branch or 'detached HEAD'}'"
+            f"{f' (tracking {upstream})' if upstream else ''}."
+        )
+        detail_lines.append(
+            "Preserve the local changes by committing, stashing, or moving the work to a dedicated worktree; "
+            "Base will not stash or reset this checkout."
+        )
+    if "detached_head" in issues:
+        detail_lines.append("the checkout is detached from a branch.")
+    if "non_default_branch" in issues:
+        detail_lines.append(
+            f"current branch '{branch}' is not the expected default branch '{default_branch}'."
+        )
+        detail_lines.append(
+            f"After preserving any branch work, check out '{default_branch}' in '{target.root}' "
+            "or keep the review branch in a separate worktree; Base will not switch it."
+        )
+    if "missing_upstream" in issues:
+        detail_lines.append(
+            f"branch '{branch or 'detached HEAD'}' has no upstream tracking branch."
+        )
+        detail_lines.append(
+            "Configure tracking for the intended default branch, then rerun workspace update; "
+            "Base will not infer or assign an upstream."
+        )
+    if "unknown_default_branch" in issues:
+        detail_lines.append(
+            "the default branch could not be determined. Set repos[].default_branch in the workspace manifest "
+            "or configure the remote's HEAD, then rerun workspace update."
+        )
+    return "\n".join(detail_lines)
+
+
+def resolve_workspace_git_directory(root: Path, value: str) -> Path:
+    path = Path(value)
+    return (root / path).resolve() if not path.is_absolute() else path.resolve()
+
+
+def workspace_update_preflight_result(
+    issues: tuple[WorkspaceUpdatePreflightIssue, ...],
+    detail: str,
+) -> WorkspaceUpdateResult:
+    return WorkspaceUpdateResult("skipped", detail=detail, preflight=issues)
+
+
+def run_workspace_git_probe(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["LC_ALL"] = "C"
+    return subprocess.run(
+        ["git", *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=root,
+        env=env,
+        timeout=WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS,
+    )
+
+
+def parse_workspace_git_status(output: str) -> tuple[bool, str | None, str | None]:
+    lines = output.splitlines()
+    dirty = any(not line.startswith("## ") for line in lines)
+    branch_line = next((line[3:] for line in lines if line.startswith("## ")), "")
+    if branch_line.startswith("HEAD (no branch)"):
+        return dirty, None, None
+    if "..." in branch_line:
+        branch, upstream = branch_line.split("...", 1)
+        return dirty, branch.strip(), upstream.split(" [", 1)[0].strip() or None
+    return dirty, branch_line.split(" [", 1)[0].strip() or None, None
+
+
+def parse_workspace_remote_head(output: str) -> str | None:
+    value = output.strip().splitlines()[-1] if output.strip() else ""
+    if value.startswith("refs/remotes/"):
+        value = value.removeprefix("refs/remotes/")
+    if "/" not in value:
+        return None
+    branch = value.split("/", 1)[1].strip()
+    return branch or None
 
 
 def format_git_pull_debug_output(stdout: str, stderr: str) -> str:
