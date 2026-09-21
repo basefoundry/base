@@ -120,7 +120,7 @@ The most important command-surface decision in Base: **the product is Base, the
 control-plane command is `basectl`**.
 
 `basectl` is the public entrypoint. It is a normal executable command that
-establishes the Base runtime before dispatching to Bash scripts or future Python
+establishes the Base runtime before dispatching to Bash scripts or Python
 layers. This keeps the product name and the control-plane action separate:
 
 - `basectl setup`

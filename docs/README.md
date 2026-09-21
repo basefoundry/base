@@ -26,6 +26,9 @@ see [Release Process](release-process.md).
 For the smallest consumer-side identity, installer, and read-only command check,
 see [Downstream Release Smoke Test](downstream-release-smoke-test.md).
 
+For the dependency versions and immutable installer inputs selected by the
+downstream release smoke test, see [Demo Dependency Inputs](downstream-dependency-inputs.md).
+
 For the canonical cross-repository platform, license, provider, and release
 immutability policy, see [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md).
 
@@ -74,6 +77,11 @@ reference. The filename should answer "what is this about?"
 - [Product Assessment](product-assessment.md) records the maintained assessment
   of Base's originality, usefulness, adoption potential, and creator/engineering
   skill evidence.
+- [Maintainer Continuity and Contributor Governance](governance.md) records the
+  current continuity position and the practical path toward a broader maintainer
+  base.
+- [Team Review Governance](review-governance.md) defines the opt-in repository
+  review policy boundary and its GitHub enforcement authority.
 - [Engineering Self-Critique](engineering-self-critique.md) explains how the
   Base ecosystem separates product judgment, threat-model evidence, release
   provenance, and adoption claims in public writing.
@@ -128,6 +136,8 @@ reference. The filename should answer "what is this about?"
   report work beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
+- [Ecosystem Release BOM](release-bom.md) defines the immutable cross-repository
+  compatibility and release-provenance record.
 - [Release Stabilization and Independent Review Policy](release-stabilization-policy.md)
   defines candidate, bake, high-impact review, waiver, and urgent-patch rules.
 - [Homebrew Upgrade Rehearsal](homebrew-upgrade-rehearsal.md) defines the

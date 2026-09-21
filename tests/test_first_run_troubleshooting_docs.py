@@ -20,7 +20,7 @@ def test_first_run_troubleshooting_keeps_the_decision_tree_actionable() -> None:
         "doctor-findings.md",
         "runtime-environment.md",
         "cache-ownership-and-layout.md",
-        "../SUPPORT.md",
+        "community-support.md",
         "../SECURITY.md",
     ):
         assert required in text
