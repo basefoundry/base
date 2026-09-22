@@ -599,11 +599,14 @@ def resolve_workspace_git_directory(root: Path, value: str) -> Path:
 
 
 def parse_workspace_remote_default_branch(output: str) -> str | None:
+    branch: str | None = None
     for line in output.splitlines():
         if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
-            branch = line.removeprefix("ref: refs/heads/").removesuffix("\tHEAD")
-            return branch or None
-    return None
+            candidate = line.removeprefix("ref: refs/heads/").removesuffix("\tHEAD")
+            if not candidate or branch is not None:
+                return None
+            branch = candidate
+    return branch
 
 
 def workspace_update_preflight_result(

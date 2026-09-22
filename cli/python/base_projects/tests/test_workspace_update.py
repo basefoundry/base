@@ -201,6 +201,80 @@ repos:
 
         self.assertIsNone(result)
 
+    def test_workspace_update_preflight_reads_remote_default_branch_without_local_head(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            origin = root / "origin.git"
+            repository = root / "repository"
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(origin)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "init", "--initial-branch=main", str(repository)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repository), "config", "user.name", "Workspace Test"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repository), "config", "user.email", "workspace-test@example.com"],
+                check=True,
+            )
+            (repository / "README.md").write_text("workspace test\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repository), "add", "README.md"], check=True)
+            subprocess.run(
+                ["git", "-C", str(repository), "commit", "-m", "initial"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repository), "remote", "add", "origin", str(origin)],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repository), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repository), "update-ref", "-d", "refs/remotes/origin/HEAD"],
+                check=False,
+                capture_output=True,
+            )
+            local_head = subprocess.run(
+                ["git", "-C", str(repository), "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(local_head.returncode, 0)
+
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="demo",
+                root=repository,
+                action="pull",
+            )
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNone(result)
+
+    def test_parse_workspace_remote_default_branch_rejects_ambiguous_or_incomplete_responses(self) -> None:
+        cases = (
+            ("", None),
+            ("deadbeef\tHEAD\n", None),
+            ("refs/heads/main\tHEAD\n", None),
+            ("ref: refs/heads/\tHEAD\n", None),
+            ("ref: refs/heads/main\tHEAD\nref: refs/heads/develop\tHEAD\n", None),
+            ("ref: refs/heads/main\tHEAD\n0123456789abcdef\tHEAD\n", "main"),
+        )
+        for output, expected in cases:
+            with self.subTest(output=output):
+                self.assertEqual(workspace_update.parse_workspace_remote_default_branch(output), expected)
+
     def test_workspace_update_preflight_reports_dirty_root(self) -> None:
         target = workspace_update.WorkspaceUpdateTarget(
             name="demo",
