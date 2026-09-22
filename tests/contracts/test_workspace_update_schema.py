@@ -22,14 +22,44 @@ def test_workspace_update_command_matches_published_schema(tmp_path: Path) -> No
     base_home.mkdir()
     workspace.mkdir()
     for name in ("first", "later"):
-        (workspace / name).mkdir()
+        repository = workspace / name
+        remote = tmp_path / f"{name}.git"
+        subprocess.run(
+            ["git", "init", "--initial-branch=main", str(repository)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(["git", "-C", str(repository), "config", "user.name", "Workspace Test"], check=True)
+        subprocess.run(
+            ["git", "-C", str(repository), "config", "user.email", "workspace-test@example.com"],
+            check=True,
+        )
+        (repository / "README.md").write_text(f"{name}\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repository), "add", "README.md"], check=True)
+        subprocess.run(
+            ["git", "-C", str(repository), "commit", "-m", "initial"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True, text=True)
+        subprocess.run(["git", "-C", str(repository), "remote", "add", "origin", str(remote)], check=True)
+        subprocess.run(
+            ["git", "-C", str(repository), "push", "--set-upstream", "origin", "main"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     manifest_path.write_text(
         "schema_version: 1\n"
         "workspace:\n"
         "  name: update-suite\n"
         "repos:\n"
         "  - name: first\n"
-        "  - name: later\n",
+        "    default_branch: main\n"
+        "  - name: later\n"
+        "    default_branch: main\n",
         encoding="utf-8",
     )
 

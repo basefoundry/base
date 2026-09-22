@@ -282,7 +282,8 @@ such command directories exist. Optional utility CLIs such as `caff` and
   next workspace status, check, doctor, or clone operation.
 - `basectl workspace update` preflights manifest roots, then runs
   `git pull --ff-only` serially across safe present repositories in manifest
-  order. It supports `--dry-run`, continues after individual failures, skips
+  order. It supports `--dry-run` with the same read-only preflight,
+  continues after individual failures, skips
   dirty, non-default, non-tracking, or linked-worktree roots with recovery
   guidance, skips missing optional repositories, treats missing required
   repositories as failures, and includes the active `BASE_HOME` checkout when

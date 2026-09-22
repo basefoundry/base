@@ -138,14 +138,13 @@ def workspace_update_command(
         if target.action == "skip":
             result = WorkspaceUpdateResult("skipped", target.reason)
             counts = update_workspace_update_counts(counts, result, fatal=target.fatal)
-        elif dry_run:
-            result = WorkspaceUpdateResult("planned")
-            counts = update_workspace_update_counts(counts, result)
         else:
             preflight_result = preflight_workspace_update_target(target)
             if preflight_result is not None:
-                target = replace(target, action="skip", fatal=True)
+                target = replace(target, action="skip", fatal=target.required)
                 result = preflight_result
+            elif dry_run:
+                result = WorkspaceUpdateResult("planned")
             else:
                 result = execute_workspace_update_target(ctx, target)
             counts = update_workspace_update_counts(counts, result, fatal=target.fatal)
@@ -361,10 +360,6 @@ def execute_workspace_update_target(
     ctx: base_cli.Context,
     target: WorkspaceUpdateTarget,
 ) -> WorkspaceUpdateResult:
-    env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["LC_ALL"] = "C"
-
     try:
         result = subprocess.run(
             ["git", "pull", "--ff-only"],
@@ -372,7 +367,7 @@ def execute_workspace_update_target(
             capture_output=True,
             text=True,
             cwd=target.root,
-            env=env,
+            env=workspace_update_git_environment(),
             timeout=WORKSPACE_UPDATE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
@@ -541,16 +536,16 @@ def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstre
     try:
         remote_head = run_workspace_git_probe(
             target.root,
-            "symbolic-ref",
-            "--quiet",
-            "--short",
-            f"refs/remotes/{remote}/HEAD",
+            "ls-remote",
+            "--symref",
+            remote,
+            "HEAD",
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
     if remote_head.returncode != 0:
         return None
-    return parse_workspace_remote_head(remote_head.stdout)
+    return parse_workspace_remote_default_branch(remote_head.stdout)
 
 
 def workspace_update_preflight_detail(
@@ -603,6 +598,14 @@ def resolve_workspace_git_directory(root: Path, value: str) -> Path:
     return (root / path).resolve() if not path.is_absolute() else path.resolve()
 
 
+def parse_workspace_remote_default_branch(output: str) -> str | None:
+    for line in output.splitlines():
+        if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
+            branch = line.removeprefix("ref: refs/heads/").removesuffix("\tHEAD")
+            return branch or None
+    return None
+
+
 def workspace_update_preflight_result(
     issues: tuple[WorkspaceUpdatePreflightIssue, ...],
     detail: str,
@@ -611,18 +614,22 @@ def workspace_update_preflight_result(
 
 
 def run_workspace_git_probe(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["LC_ALL"] = "C"
     return subprocess.run(
         ["git", *arguments],
         check=False,
         capture_output=True,
         text=True,
         cwd=root,
-        env=env,
+        env=workspace_update_git_environment(),
         timeout=WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS,
     )
+
+
+def workspace_update_git_environment() -> dict[str, str]:
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["LC_ALL"] = "C"
+    return env
 
 
 def parse_workspace_git_status(output: str) -> tuple[bool, str | None, str | None]:
@@ -635,16 +642,6 @@ def parse_workspace_git_status(output: str) -> tuple[bool, str | None, str | Non
         branch, upstream = branch_line.split("...", 1)
         return dirty, branch.strip(), upstream.split(" [", 1)[0].strip() or None
     return dirty, branch_line.split(" [", 1)[0].strip() or None, None
-
-
-def parse_workspace_remote_head(output: str) -> str | None:
-    value = output.strip().splitlines()[-1] if output.strip() else ""
-    if value.startswith("refs/remotes/"):
-        value = value.removeprefix("refs/remotes/")
-    if "/" not in value:
-        return None
-    branch = value.split("/", 1)[1].strip()
-    return branch or None
 
 
 def format_git_pull_debug_output(stdout: str, stderr: str) -> str:

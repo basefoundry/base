@@ -155,18 +155,19 @@ repos:
                 (root / name).mkdir()
             write_workspace_manifest(manifest_path)
 
-            status, stdout, stderr = invoke_engine(
-                [
-                    "update",
-                    "--workspace",
-                    str(root),
-                    "--manifest",
-                    str(manifest_path),
-                    "--dry-run",
-                ],
-                base_home,
-                home,
-            )
+            with mock.patch("base_projects.workspace_update.preflight_workspace_update_target", return_value=None):
+                status, stdout, stderr = invoke_engine(
+                    [
+                        "update",
+                        "--workspace",
+                        str(root),
+                        "--manifest",
+                        str(manifest_path),
+                        "--dry-run",
+                    ],
+                    base_home,
+                    home,
+                )
 
             self.assertEqual(status, 1)
             self.assertEqual(stderr, "")
@@ -193,7 +194,7 @@ repos:
             side_effect=(
                 git_probe(".git\n.git\n"),
                 git_probe("## main...origin/main\n"),
-                git_probe("origin/main\n"),
+                git_probe("ref: refs/heads/main\tHEAD\n"),
             ),
         ):
             result = workspace_update.preflight_workspace_update_target(target)
@@ -602,23 +603,24 @@ repos:
                 (root / name).mkdir()
             write_workspace_manifest(manifest_path)
 
-            with mock.patch("base_projects.workspace_update.subprocess.run") as run:
-                status, stdout, stderr = invoke_engine(
-                    [
-                        "update",
-                        "--workspace",
-                        str(root),
-                        "--manifest",
-                        str(manifest_path),
-                        "--repos",
-                        "later,first",
-                        "--dry-run",
-                        "--format",
-                        "json",
-                    ],
-                    base_home,
-                    home,
-                )
+            with mock.patch("base_projects.workspace_update.preflight_workspace_update_target", return_value=None):
+                with mock.patch("base_projects.workspace_update.subprocess.run") as run:
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(root),
+                            "--manifest",
+                            str(manifest_path),
+                            "--repos",
+                            "later,first",
+                            "--dry-run",
+                            "--format",
+                            "json",
+                        ],
+                        base_home,
+                        home,
+                    )
 
             self.assertEqual(status, 0)
             self.assertEqual(stderr, "")
@@ -689,6 +691,90 @@ repos:
             self.assertIn("Not possible to fast-forward", payload["repositories"][1]["detail"])
             self.assertEqual(payload["repositories"][2]["status"], "skipped")
             self.assertEqual(payload["counts"], {"planned": 0, "updated": 1, "unchanged": 0, "skipped": 1, "failed": 1})
+
+    def test_workspace_update_optional_preflight_skip_is_nonfatal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            (root / "scratch").mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: demo-suite\n"
+                "repos:\n  - name: scratch\n    required: false\n",
+                encoding="utf-8",
+            )
+            preflight = workspace_update.WorkspaceUpdateResult(
+                "skipped",
+                detail="repository scratch is dirty",
+                preflight=("dirty",),
+            )
+
+            with mock.patch(
+                "base_projects.workspace_update.preflight_workspace_update_target",
+                return_value=preflight,
+            ):
+                status, stdout, stderr = invoke_engine(
+                    [
+                        "update",
+                        "--workspace",
+                        str(root),
+                        "--manifest",
+                        str(manifest_path),
+                    ],
+                    base_home,
+                    home,
+                )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 failed=0.", stdout)
+
+    def test_workspace_update_dry_run_reports_preflight_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            (root / "demo").mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: demo-suite\nrepos:\n  - name: demo\n",
+                encoding="utf-8",
+            )
+            preflight = workspace_update.WorkspaceUpdateResult(
+                "skipped",
+                detail=f"repository 'demo' at '{root / 'demo'}' is not safe to update:\nworking tree is dirty.",
+                preflight=("dirty",),
+            )
+
+            with mock.patch(
+                "base_projects.workspace_update.preflight_workspace_update_target",
+                return_value=preflight,
+            ):
+                with mock.patch("base_projects.workspace_update.subprocess.run") as run:
+                    status, stdout, stderr = invoke_engine(
+                        [
+                            "update",
+                            "--workspace",
+                            str(root),
+                            "--manifest",
+                            str(manifest_path),
+                            "--dry-run",
+                        ],
+                        base_home,
+                        home,
+                    )
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        assert_workspace_result(self, stdout, "demo", "SKIP", "skipped")
+        self.assertIn("working tree is dirty", stdout)
+        self.assertIn("Workspace update plan complete: planned=0 skipped=1 failed=1.", stdout)
+        run.assert_not_called()
 
     def test_workspace_update_requires_a_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

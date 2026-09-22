@@ -81,7 +81,7 @@ Options:
 Preflight manifest roots, then run git pull --ff-only across safe existing
 repositories in manifest order. Dirty, non-default, non-tracking, and linked
 worktree roots are skipped with recovery guidance; no checkout is modified
-implicitly.
+implicitly. Dry runs perform the same read-only preflight without pulling.
 EOF
 }
 
