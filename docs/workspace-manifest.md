@@ -333,9 +333,19 @@ Update walks the manifest in order and runs `git pull --ff-only` in each
 present repository. Use `--repos name[,name...]` to select a subset; selections
 are validated before any Git operation and output remains in manifest order. It
 continues after individual failures and reports updated, unchanged, skipped,
-and failed counts. Missing optional repositories are skipped; missing required
-repositories are failures. The command never clones, resets, force-updates, or
-refreshes the manifest. When the manifest's `base` path is the active
+and failed counts. Before pulling, each manifest root is checked for a clean
+working tree, its configured or remote default branch, and an upstream tracking
+branch. Dirty roots, detached or non-default branches, missing upstreams, and
+linked PR worktrees are reported as skipped preflight failures with the exact
+checkout path and recovery guidance; Base never stashes, resets, switches, or
+pulls those checkouts. The JSON result includes a `preflight` reason array for
+machine-readable handling. Dry runs perform the same read-only preflight and
+show unsafe roots as skipped rather than presenting them as planned pulls; no
+pulls are performed. Missing optional repositories are skipped; missing
+required repositories are failures. Unsafe preflight skips for optional
+repositories are non-fatal; required repository skips contribute to the
+failure count. The command never clones, resets,
+force-updates, or refreshes the manifest. When the manifest's `base` path is the active
 `BASE_HOME` checkout, it is skipped to protect the control plane. A separate
 workspace checkout of `base` is updated normally. Text output is rendered as
 one repository/action/result table. `--format json` emits a stable
