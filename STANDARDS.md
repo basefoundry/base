@@ -678,6 +678,72 @@ git diff --check
    - `Closes #<issue>` or `Fixes #<issue>` when appropriate
    - demo impact when relevant
 
+### 11.1 Public Positioning Standard
+
+This standard governs the public-facing prose that introduces Base to readers
+who do not yet know it, including `README.md`, the GitHub repository
+description, elevator pitches, decks, talks, and similar introductory
+material. It does not replace the technical contracts in this document or the
+canonical product and architecture documentation under `docs/`.
+
+#### Simplicity And The Opening Hook
+
+Treat simplicity as a testable design constraint: one binary, one manifest per
+project, and one consistent command surface. The first sentence is a hook that
+earns the reader's attention; it is not a complete technical definition.
+
+An opening passes the positioning test when it:
+
+1. uses an active verb within the first ten words;
+2. names a `repo` or `repository` in the first sentence;
+3. avoids abstract nouns before the hook has landed; and
+4. lets a cold reader state one accurate sentence about Base after reading the
+   first paragraph.
+
+Use the metaphor sequence deliberately. Introduce `front door` first, then
+explicitly hand off to `control plane`, and use the term of art thereafter.
+
+#### Canonical Example
+
+The following paragraph is the canonical positioning example:
+
+> Base is one command you install so every repo on your machine becomes easier to set up, run, and test. It reads a small manifest from each project and turns it into one consistent set of commands — setup, activate, test, doctor — whether you have one repository or twenty. Base doesn't replace the tools you already use; it gives them a common front door.
+
+> That front door is Base's control plane: one command surface that orchestrates the tools already installed on your machine.
+
+#### Rejected Alternatives
+
+##### Problem-first opener
+
+> Most developers don't work in one repo. They work in six, checked out side by side, each with its own setup steps, its own test command, and its own way of going stale. Base gives that collection of repos a single front door…
+
+Reject because it describes pain before naming the product, reads as sales prose to engineers, and spends three sentences on setup before defining Base.
+
+##### Scene-first opener
+
+> You clone a repo you haven't touched in three months. Does it still build? Which Python? Was there a setup script? Base answers those questions…
+
+Reject because a skimmer must read three sentences before anything is defined.
+
+##### “the repo you check out once”
+
+Reject because the majority install path is Homebrew, while source checkout is primarily a contributor path and only one of the supported installation routes.
+
+##### “no monorepo required”
+
+Reject because Base also works with a single repository or a monorepo. Multi-repository work should not be framed as the only problem space.
+
+##### “composable developer workspace platform” and leading with “ecosystem”
+
+Reject this as the front-door category because it is noun-heavy, over-promises relative to current adoption, invites expectations of a plugin and third-party ecosystem, and undermines Base's strongest differentiator: disciplined scope boundaries. The composition story remains appropriate for `docs/ecosystem-map.md` and architecture material. The trigger for promoting it to the front door is concrete: a Base-aware project shipped by someone other than the author.
+
+#### Future-change Guardrails
+
+- This standard has authority over the README and other public-facing introductory prose; those documents must not silently contradict it.
+- Changes to the standard require an issue, a reasoned PR body, and evidence rather than preference alone.
+- When positioning changes, merge the standards PR first and implement the README change in a separate follow-up PR.
+- Until the external Base-aware-project trigger is met, keep ecosystem framing in architecture and ecosystem documentation rather than the hero.
+
 ## 12. Placement Checklist
 
 Before adding code, ask where it belongs:
