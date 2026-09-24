@@ -702,6 +702,12 @@ An opening passes the positioning test when it:
 
 Use the metaphor sequence deliberately. Introduce `front door` first, then
 explicitly hand off to `control plane`, and use the term of art thereafter.
+The approved term of art is `Base's control plane`, meaning the command surface
+that orchestrates the tools already installed on the machine. Do not revive the
+retired compound phrase `workspace control plane`: it leads with an abstract
+category before the hook lands. The README follow-up in #2339 owns replacing
+the current use of that retired phrase; this standards issue does not modify
+`README.md`.
 
 #### Canonical Example
 
