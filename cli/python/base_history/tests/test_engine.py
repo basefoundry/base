@@ -65,7 +65,7 @@ class TerminalStringIO(io.StringIO):
         return True
 
 
-class BaseHistoryTests(unittest.TestCase):
+class BaseHistoryTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_recent_history_ignores_malformed_lines_and_sorts_newest_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
