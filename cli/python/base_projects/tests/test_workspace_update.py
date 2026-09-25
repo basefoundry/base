@@ -131,6 +131,51 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
 
 
 class WorkspaceUpdateTests(unittest.TestCase):
+    def test_workspace_update_rejects_existing_directory_without_checkout_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_root = Path(tmpdir) / "nested"
+            target_root.mkdir()
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="nested",
+                root=target_root,
+                action="pull",
+            )
+            with mock.patch("base_projects.workspace_update.run_workspace_git_probe") as probe:
+                result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("checkout_root_mismatch",))
+        self.assertIn("not a checkout root", result.detail or "")
+        probe.assert_not_called()
+
+    def test_workspace_update_real_git_fixture_never_pulls_ancestor_for_nested_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            remote = root / "origin.git"
+            checkout = root / "checkout"
+            subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, capture_output=True)
+            subprocess.run(["git", "init", "--initial-branch=main", str(checkout)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(checkout), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(["git", "-C", str(checkout), "config", "user.email", "workspace@example.com"], check=True)
+            (checkout / "README.md").write_text("workspace\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(checkout), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(checkout), "commit", "-m", "initial"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(checkout), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(["git", "-C", str(checkout), "push", "--set-upstream", "origin", "main"], check=True, capture_output=True)
+            before = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+            nested = checkout / "not-a-repository"
+            nested.mkdir()
+
+            result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget("nested", nested, "pull", default_branch="main")
+            )
+
+            after = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("checkout_root_mismatch",))
+        self.assertEqual(before, after)
+
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
         cases = (
             (

@@ -26,6 +26,7 @@ WorkspaceUpdatePreflightIssue = Literal[
     "missing_upstream",
     "unknown_default_branch",
     "not_git_checkout",
+    "checkout_root_mismatch",
     "preflight_failed",
 ]
 WORKSPACE_UPDATE_TIMEOUT_SECONDS = 1800
@@ -402,6 +403,17 @@ def execute_workspace_update_target(
 
 def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> WorkspaceUpdateResult | None:
     """Return a safe, actionable result when a manifest checkout is not pullable."""
+    if target.root.is_dir() and not (target.root / ".git").exists():
+        return workspace_update_preflight_result(
+            ("checkout_root_mismatch",),
+            "\n".join(
+                (
+                    f"repository '{target.name}' at '{target.root}' is not a checkout root.",
+                    "The selected path has no .git entry; refusing to let Git discover and pull an ancestor repository.",
+                    "Point the manifest at the repository root; Base will not modify an ancestor checkout.",
+                )
+            ),
+        )
     git_directories = workspace_update_git_directories(target)
     if isinstance(git_directories, WorkspaceUpdateResult):
         return git_directories
