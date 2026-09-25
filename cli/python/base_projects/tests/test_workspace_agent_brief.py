@@ -7,11 +7,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.manifest_contract import repository_baseline_validation_file_for_manifest
-from base_setup.manifest import ManifestError
+from base_projects.tests.workspace_cli_helpers import invoke_engine
 from base_projects.workspace_agent_brief import REPO_AGENT_GUIDANCE_FILES
 from base_projects.workspace_agent_brief import REPO_BASELINE_FILES
+from base_setup.manifest import ManifestError
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
