@@ -94,7 +94,7 @@ Base self-demo complete.
 
 | Tool | Primary responsibility | Base relationship |
 |---|---|---|
-| Base | Repository contracts, readiness, trust, onboarding, and handoff | Owns the local operating contract across participating repositories |
+| Base | Repository contracts, readiness, trust, onboarding, and handoff | The control plane maintains the local operating contract across participating repositories |
 | [mise](docs/tool-boundaries.md) | Machine and project bootstrap, tool versions, environments, and tasks | Base delegates; choose mise when convergence is the primary outcome |
 | [mani](docs/tool-boundaries.md) | Git repository inventory, synchronization, worktrees, filters, and tasks | Base coexists; choose mani when repository-set management is the primary need |
 
