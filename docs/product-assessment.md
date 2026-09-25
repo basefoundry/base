@@ -67,7 +67,7 @@ Ubuntu/Debian source-checkout runtime and apt-backed setup support are
 implemented. Broader Linux distribution support remains deliberately narrow.
 Native Windows is planned but not currently shipped; its Phase 0 contract and
 future parity model are maintained in [Native Windows Support Contract](windows-support.md)
-for the 1.10.0 release line.
+for the 1.11.0 release line.
 
 The local workspace agent brief now summarizes repository readiness for a
 handoff, while onboarding, diagnostics, privacy-conscious history reports, and

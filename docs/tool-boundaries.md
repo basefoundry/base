@@ -52,7 +52,8 @@ Base gets weaker when it drifts into becoming any of these:
 - a generic task runner
 - a full reproducible package manager or environment solver
 - a broadly cross-platform runtime; macOS and Ubuntu/Debian are the current
-  support contract, while broader Linux, WSL, and Windows need separate decisions
+  support contract, and Ubuntu/Debian on WSL2 uses that Linux contract, while
+  broader Linux distributions and native Windows need separate decisions
 - a generic multi-repository inventory, synchronization, or command fan-out
   manager
 - a multi-VCS client or revision-controlled source-tree materializer
