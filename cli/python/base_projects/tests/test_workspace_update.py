@@ -36,7 +36,7 @@ def git_probe(stdout: str = "", returncode: int = 0, stderr: str = "") -> subpro
     return subprocess.CompletedProcess(["git"], returncode, stdout=stdout, stderr=stderr)
 
 
-class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
+class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_workspace_update_preflight_allows_clean_default_branch_tracking(self) -> None:
         target = workspace_update.WorkspaceUpdateTarget(
             name="demo",
@@ -158,26 +158,63 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
             remote = root / "origin.git"
             seed = root / "seed"
             checkout = root / "checkout"
-            subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, capture_output=True)
-            subprocess.run(["git", "init", "--initial-branch=main", str(seed)], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "init", "--initial-branch=main", str(seed)],
+                check=True,
+                capture_output=True,
+            )
             subprocess.run(["git", "-C", str(seed), "config", "user.name", "Workspace Test"], check=True)
             subprocess.run(["git", "-C", str(seed), "config", "user.email", "workspace@example.com"], check=True)
             (seed / "README.md").write_text("main\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(seed), "add", "README.md"], check=True)
             subprocess.run(["git", "-C", str(seed), "commit", "-m", "main"], check=True, capture_output=True)
             subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", str(remote)], check=True)
-            subprocess.run(["git", "-C", str(seed), "push", "--set-upstream", "origin", "main"], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(seed), "switch", "-c", "feature/with/slash"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(seed), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(seed), "switch", "-c", "feature/with/slash"],
+                check=True,
+                capture_output=True,
+            )
             (seed / "feature.txt").write_text("feature\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(seed), "add", "feature.txt"], check=True)
             subprocess.run(["git", "-C", str(seed), "commit", "-m", "feature"], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(seed), "push", "--set-upstream", "origin", "feature/with/slash"], check=True, capture_output=True)
-            subprocess.run(["git", "clone", "--branch", "main", str(remote), str(checkout)], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(checkout), "branch", "--set-upstream-to=origin/feature/with/slash", "main"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(seed), "push", "--set-upstream", "origin", "feature/with/slash"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "clone", "--branch", "main", str(remote), str(checkout)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(checkout),
+                    "branch",
+                    "--set-upstream-to=origin/feature/with/slash",
+                    "main",
+                ],
+                check=True,
+                capture_output=True,
+            )
             before = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
 
             result = workspace_update.preflight_workspace_update_target(
-                workspace_update.WorkspaceUpdateTarget("demo", checkout, "pull", default_branch="main")
+                workspace_update.WorkspaceUpdateTarget(
+                    "demo", checkout, "pull", default_branch="main"
+                )
             )
 
             after = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()

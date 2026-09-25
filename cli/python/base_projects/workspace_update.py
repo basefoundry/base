@@ -611,7 +611,8 @@ def workspace_update_preflight_detail(
         )
     if "upstream_mismatch" in issues:
         detail_lines.append(
-            f"branch '{branch}' tracks '{upstream}', not the configured default branch '{default_branch}'."
+            f"branch '{branch}' tracks '{upstream}', not the configured default "
+            f"branch '{default_branch}'."
         )
         detail_lines.append(
             "Point the manifest at the intended checkout or correct tracking explicitly, then rerun workspace update; "
