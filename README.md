@@ -175,7 +175,8 @@ notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## What Base Is Responsible For
 
-Base owns the local operating contract for participating repositories.
+Base owns the local operating contract for participating repositories — the
+precise name for the control plane introduced above.
 
 That means Base should be responsible for:
 
@@ -206,8 +207,9 @@ Base should orchestrate those things, not replace them.
 
 ## Mental Model
 
-Think of Base as the local operating contract for a project, whether that
-project is one repository or a set of independent Git repositories.
+Base's control plane, at the level of a single project, is that same local
+operating contract: think of Base that way, whether the project is one
+repository or a set of independent Git repositories.
 
 A single repository can use Base to make setup, readiness, trusted execution,
 and handoff explicit. When a project spans several repositories, Base extends
