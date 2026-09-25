@@ -60,7 +60,7 @@ base_activate_subcommand_main() {
 
     while (($# > 0)); do
         case "$1" in
-            -h|--help)
+            -h|--help|help)
                 base_activate_subcommand_usage
                 return 0
                 ;;

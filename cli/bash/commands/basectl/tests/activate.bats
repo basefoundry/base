@@ -511,6 +511,17 @@ EOF
     [[ "$output" == *"interactive Base Bash runtime shell"* ]]
 }
 
+@test "basectl activate accepts bare help" {
+    run_basectl activate --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl activate help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before launch" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

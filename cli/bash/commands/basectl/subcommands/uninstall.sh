@@ -53,7 +53,7 @@ base_uninstall_subcommand_main() {
     while (($# > 0)); do
         arg="$1"
         case "$arg" in
-            -h|--help)
+            -h|--help|help)
                 base_uninstall_subcommand_usage
                 return 0
                 ;;
