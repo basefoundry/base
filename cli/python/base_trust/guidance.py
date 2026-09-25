@@ -10,18 +10,18 @@ from .trust_store import TRUST_SCOPE_WARNING, ManifestCommandTrustIdentity, Trus
 
 
 def allow_command_text(identity: ManifestCommandTrustIdentity) -> str:
-    return shlex.join(
-        [
-            "basectl",
-            "trust",
-            "allow",
-            identity.project_name,
-            "--manifest-sha256",
-            identity.manifest_sha256,
-            "--workspace",
-            str(identity.project_root.parent),
-        ]
-    )
+    command = [
+        "basectl",
+        "trust",
+        "allow",
+        identity.project_name,
+        "--manifest-sha256",
+        identity.manifest_sha256,
+    ]
+    if identity.test_requirements_sha256 is not None:
+        command.extend(("--test-requirements-sha256", identity.test_requirements_sha256))
+    command.extend(("--workspace", str(identity.project_root.parent)))
+    return shlex.join(command)
 
 
 def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> None:
@@ -156,4 +156,3 @@ def print_trust_scope_warning(*, stream: Any | None = None) -> None:
         stream = sys.stdout
     print("Trust scope:", file=stream)
     print(f"  {TRUST_SCOPE_WARNING}", file=stream)
-

@@ -591,6 +591,78 @@ class ManifestCommandTrustTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), "")
         self.assertFalse(trust_root.exists())
 
+    def test_allow_rejects_test_requirements_sha256_mismatch_without_writing_record(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = self.manifest_factory.write(workspace / "demo")
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace(
+                    "  command: pytest tests/\n",
+                    "  command: pytest tests/\n  requirements: requirements-dev.txt\n",
+                ),
+                encoding="utf-8",
+            )
+            (workspace / "demo" / "requirements-dev.txt").write_text("jsonschema==4.25.1\n", encoding="utf-8")
+
+            result = invoke(
+                engine.app,
+                [
+                    "allow",
+                    "demo",
+                    "--workspace",
+                    str(workspace),
+                    "--test-requirements-sha256",
+                    "0" * 64,
+                ],
+                home=home,
+                env={"BASE_HOME": str(workspace / "base")},
+            )
+            trust_root = home / ".base.d" / "trust" / "manifest-commands"
+
+        self.assertEqual(result.exit_code, 2, result.output)
+        self.assertIn("does not match current test-requirements SHA-256", result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertFalse(trust_root.exists())
+
+    def test_status_guidance_includes_test_requirements_digest(self) -> None:
+        from base_trust import engine
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "work"
+            manifest_path = self.manifest_factory.write(workspace / "demo")
+            manifest_path.write_text(
+                manifest_path.read_text(encoding="utf-8").replace(
+                    "  command: pytest tests/\n",
+                    "  command: pytest tests/\n  requirements: requirements-dev.txt\n",
+                ),
+                encoding="utf-8",
+            )
+            requirements_path = workspace / "demo" / "requirements-dev.txt"
+            requirements_path.write_text("jsonschema==4.25.1\n", encoding="utf-8")
+            manifest_digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+            requirements_digest = hashlib.sha256(requirements_path.read_bytes()).hexdigest()
+
+            with mock.patch("base_cli.is_terminal", return_value=True):
+                result = invoke(
+                    engine.app,
+                    ["status", "demo", "--workspace", str(workspace)],
+                    home=home,
+                    env={"BASE_HOME": str(workspace / "base")},
+                )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn(
+            f"basectl trust allow demo --manifest-sha256 {manifest_digest} "
+            f"--test-requirements-sha256 {requirements_digest} --workspace {workspace.resolve()}",
+            result.stdout,
+        )
+
     def test_allow_and_revoke_update_status(self) -> None:
         from base_trust import engine
 
