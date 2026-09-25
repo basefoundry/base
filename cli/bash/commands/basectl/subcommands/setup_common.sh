@@ -929,21 +929,6 @@ setup_print_project_check_json_with_venv() {
         --precheck-json "$precheck_json"
 }
 
-setup_print_project_venv_check_json() {
-    local ok="$1"
-    local message="$2"
-    local fix="$3"
-    local project="$4"
-    local status
-
-    status="$(setup_diagnostic_status_from_ok "$ok")"
-    setup_run_diagnostics_json project-venv-check-json \
-        --project "$project" \
-        --status "$status" \
-        --message "$message" \
-        --fix "$fix"
-}
-
 setup_print_project_venv_doctor_json() {
     local precheck_json="$1"
     local status="$2"
