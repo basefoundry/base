@@ -6,15 +6,9 @@
 ![Version](https://img.shields.io/badge/version-1.9.0-blue)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-> Base is an AI-ready Git-based, GitHub-primary workspace control plane for
-> repository setup, local development, and verified pull requests.
+> Base is one command you install so every repo on your machine becomes easier to set up, run, and test. It reads a small manifest from each project and turns it into one consistent set of commands — setup, activate, test, doctor — whether you have one repository or twenty. Base doesn't replace the tools you already use; it gives them a common front door.
 
-Base is the local operating contract you add to a repository set so its readiness,
-trusted execution, onboarding, and handoff stop depending on private maintainer
-memory. It makes a project workspace explicit and repeatable. It gives developers
-and platform engineers a shared way to prepare repositories, inspect readiness,
-approve trusted project commands, and hand off work across one or more independent
-Git repositories.
+> That front door is Base's control plane: one command surface that orchestrates the tools already installed on your machine.
 
 Use Base when you need to:
 
