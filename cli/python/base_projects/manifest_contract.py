@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import base_cli
 from base_setup.manifest import ManifestError
 from base_setup.manifest import read_manifest
 
@@ -22,13 +23,13 @@ def repository_baseline_validation_file_for_manifest(manifest_path: Path) -> str
 def main() -> int:
     if len(sys.argv) != 2:
         print("Usage: base_projects.manifest_contract <base_manifest.yaml>", file=sys.stderr)
-        return 2
+        return base_cli.ExitCode.USAGE_ERROR
     try:
         print(repository_baseline_validation_file_for_manifest(Path(sys.argv[1])))
     except (ManifestError, OSError) as exc:
         print(str(exc), file=sys.stderr)
-        return 1
-    return 0
+        return base_cli.ExitCode.FAILURE
+    return base_cli.ExitCode.SUCCESS
 
 
 if __name__ == "__main__":
