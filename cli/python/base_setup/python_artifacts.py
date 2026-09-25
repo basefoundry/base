@@ -229,14 +229,11 @@ def python_artifact_installed(python_bin: Path, package: str, version: str) -> b
         return False
     command = [str(python_bin), "-m", "pip", "show", package]
     try:
-        completed = subprocess.run(
+        completed = process.run_capture(
             command,
             env=process.python_package_environment(),
-            stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-            timeout=PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS,
+            timeout_seconds=PYTHON_ARTIFACT_PROBE_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False

@@ -7,6 +7,7 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from . import process
 from .checks import ArtifactCheck
 from .manifest_model import BaseManifest
 
@@ -43,16 +44,11 @@ def project_venv_ready(venv_dir: Path) -> bool:
     if not executable_interpreter_present(python_bin):
         return False
     try:
-        completed = subprocess.run(
-            [str(python_bin), "-c", "import sys"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=5,
-        )
+        if not process.run_check([str(python_bin), "-c", "import sys"], timeout_seconds=5):
+            return False
     except (OSError, subprocess.TimeoutExpired):
         return False
-    return completed.returncode == 0
+    return True
 
 
 def project_environment_check(

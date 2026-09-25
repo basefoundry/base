@@ -9,6 +9,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import process
+
 from .checks import ArtifactCheck
 from .manifest import BaseManifest
 
@@ -305,13 +307,10 @@ def python_interpreter_candidates(selected_version: tuple[int, int]) -> tuple[Pa
 
 def homebrew_formula_prefix(brew: str, formula: str) -> Path | None:
     try:
-        completed = subprocess.run(
+        completed = process.run_capture(
             [brew, "--prefix", formula],
-            stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-            timeout=5,
+            timeout_seconds=5,
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -325,17 +324,14 @@ def inspect_python_interpreter(candidate: Path) -> PythonInterpreter | None:
     if not candidate.is_file() or not os.access(candidate, os.X_OK):
         return None
     try:
-        completed = subprocess.run(
+        completed = process.run_capture(
             [
                 str(candidate),
                 "-c",
                 "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')",
             ],
-            stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            text=True,
-            check=False,
-            timeout=5,
+            timeout_seconds=5,
         )
     except (OSError, subprocess.SubprocessError):
         return None

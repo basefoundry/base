@@ -134,8 +134,8 @@ class PythonPolicyDiscoveryTests(unittest.TestCase):
 
     def test_homebrew_prefix_probe_handles_timeout_and_failure(self) -> None:
         with mock.patch.object(
-            python_policy.subprocess,
-            "run",
+            python_policy.process,
+            "run_capture",
             side_effect=subprocess.TimeoutExpired("brew", 5),
         ):
             self.assertIsNone(python_policy.homebrew_formula_prefix("brew", "python@3.12"))
@@ -145,7 +145,7 @@ class PythonPolicyDiscoveryTests(unittest.TestCase):
             returncode=1,
             stdout="",
         )
-        with mock.patch.object(python_policy.subprocess, "run", return_value=failed):
+        with mock.patch.object(python_policy.process, "run_capture", return_value=failed):
             self.assertIsNone(python_policy.homebrew_formula_prefix("brew", "python@3.12"))
 
     def test_inspect_interpreter_handles_subprocess_failures_and_malformed_output(self) -> None:
@@ -153,15 +153,15 @@ class PythonPolicyDiscoveryTests(unittest.TestCase):
         with mock.patch.object(Path, "is_file", return_value=True):
             with mock.patch.object(python_policy.os, "access", return_value=True):
                 with mock.patch.object(
-                    python_policy.subprocess,
-                    "run",
+                    python_policy.process,
+                    "run_capture",
                     side_effect=OSError("cannot execute"),
                 ):
                     self.assertIsNone(python_policy.inspect_python_interpreter(candidate))
 
                 with mock.patch.object(
-                    python_policy.subprocess,
-                    "run",
+                    python_policy.process,
+                    "run_capture",
                     side_effect=subprocess.TimeoutExpired(str(candidate), 5),
                 ):
                     self.assertIsNone(python_policy.inspect_python_interpreter(candidate))
@@ -172,8 +172,8 @@ class PythonPolicyDiscoveryTests(unittest.TestCase):
                     stdout="not-a-version\n",
                 )
                 with mock.patch.object(
-                    python_policy.subprocess,
-                    "run",
+                    python_policy.process,
+                    "run_capture",
                     return_value=malformed,
                 ):
                     self.assertIsNone(python_policy.inspect_python_interpreter(candidate))

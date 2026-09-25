@@ -19,7 +19,7 @@ def test_project_interpreter_static_checks_share_one_nonexecuting_probe(tmp_path
     python_bin.chmod(0o755)
 
     with mock.patch(
-        "base_setup.runtime_inspection.subprocess.run",
+        "base_setup.runtime_inspection.process.run_check",
         side_effect=AssertionError("static interpreter inspection must not execute it"),
     ) as run:
         assert runtime_inspection.executable_interpreter_present(python_bin)
@@ -45,12 +45,10 @@ def test_project_venv_probe_returns_false_for_execution_failures(
     python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     python_bin.chmod(0o755)
 
-    with mock.patch("base_setup.runtime_inspection.subprocess.run", side_effect=failure) as run:
+    with mock.patch("base_setup.runtime_inspection.process.run_check", side_effect=failure) as run:
         assert not runtime_inspection.project_venv_ready(python_bin.parent.parent)
 
-    assert run.call_args.kwargs["timeout"] == 5
-    assert run.call_args.kwargs["stdout"] == subprocess.DEVNULL
-    assert run.call_args.kwargs["stderr"] == subprocess.DEVNULL
+    assert run.call_args.kwargs["timeout_seconds"] == 5
 
 
 def test_project_venv_probe_returns_false_for_nonzero_interpreter(tmp_path: Path) -> None:
@@ -58,9 +56,7 @@ def test_project_venv_probe_returns_false_for_nonzero_interpreter(tmp_path: Path
     python_bin.parent.mkdir(parents=True)
     python_bin.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
     python_bin.chmod(0o755)
-    completed = subprocess.CompletedProcess([str(python_bin)], 1)
-
-    with mock.patch("base_setup.runtime_inspection.subprocess.run", return_value=completed):
+    with mock.patch("base_setup.runtime_inspection.process.run_check", return_value=False):
         assert not runtime_inspection.project_venv_ready(python_bin.parent.parent)
 
 
