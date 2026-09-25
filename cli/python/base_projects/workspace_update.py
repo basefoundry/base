@@ -409,7 +409,7 @@ def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> Workspac
             "\n".join(
                 (
                     f"repository '{target.name}' at '{target.root}' is not a checkout root.",
-                    "The selected path has no .git entry; refusing to let Git discover and pull an ancestor repository.",
+                    "The selected path has no .git entry; refusing Git ancestor discovery and pull.",
                     "Point the manifest at the repository root; Base will not modify an ancestor checkout.",
                 )
             ),
