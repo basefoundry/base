@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import tempfile
@@ -17,6 +18,50 @@ from base_setup.tests.helpers import fake_context
 
 
 class ProjectCheckTextOutputTests(unittest.TestCase):
+    def test_pre_venv_check_and_doctor_json_use_the_same_indented_renderer(self) -> None:
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+        check = setup_checks.ArtifactCheck(
+            name="git-remote",
+            ok=True,
+            message="Git remote is available.",
+            fix="",
+            finding_id="BASE-P083",
+        )
+        expected = json.dumps([setup_checks.check_to_json(check)], indent=2) + "\n"
+
+        with mock.patch("base_setup.engine.pre_venv_manifest_checks", return_value=(check,)):
+            check_stdout = io.StringIO()
+            with redirect_stdout(check_stdout):
+                self.assertEqual(engine.check_pre_venv_manifest(fake_context(), manifest, "json"), 0)
+
+        with mock.patch("base_setup.engine.pre_venv_manifest_checks", return_value=(check,)):
+            doctor_stdout = io.StringIO()
+            with redirect_stdout(doctor_stdout):
+                self.assertEqual(engine.doctor_pre_venv_manifest(manifest, "json"), 0)
+
+        self.assertEqual(check_stdout.getvalue(), expected)
+        self.assertEqual(doctor_stdout.getvalue(), expected)
+
+    def test_unsupported_pre_venv_formats_use_context_logging(self) -> None:
+        manifest = BaseManifest(
+            path=Path("base_manifest.yaml"),
+            project_name="demo",
+            brewfile=None,
+            artifacts=(),
+        )
+        ctx = fake_context()
+
+        self.assertEqual(engine.check_pre_venv_manifest(ctx, manifest, "yaml"), 2)
+        self.assertEqual(engine.doctor_pre_venv_manifest(manifest, "yaml", ctx=ctx), 2)
+        self.assertEqual(ctx.log.error.call_count, 2)
+        self.assertIn("Unsupported check output format 'yaml'", ctx.log.error.call_args_list[0].args[0])
+        self.assertIn("Unsupported doctor output format 'yaml'", ctx.log.error.call_args_list[1].args[0])
+
     def test_check_manifest_publishes_warning_status_without_changing_exit_status(self) -> None:
         default_manifest = BaseManifest(
             path=Path("default_manifest.yaml"),
