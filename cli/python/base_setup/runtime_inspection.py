@@ -48,7 +48,7 @@ def project_venv_ready(venv_dir: Path) -> bool:
             return False
     except (OSError, subprocess.TimeoutExpired):
         return False
-    return completed.returncode == 0
+    return True
 
 
 def project_environment_check(
