@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any
 
 from base_cli_adapters.paths import base_state_root
@@ -78,6 +79,10 @@ def missing_repo_fix(repo: WorkspaceManifestRepo, root: Path) -> str:
     if repo.url:
         return f"Clone '{redact_repository_url(repo.url)}' into '{root}'."
     return f"Create or clone repository '{repo.name}' into '{root}'."
+
+
+def repository_name_width(names: Iterable[str]) -> int:
+    return max([len("REPOSITORY"), *(len(name) for name in names)])
 
 
 most_severe_status = merge_statuses

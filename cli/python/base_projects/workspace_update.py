@@ -13,6 +13,7 @@ from base_projects.workspace_context import WorkspacePathOutsideRootError
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
 
 
@@ -128,7 +129,7 @@ def workspace_update_command(
     output_format: str = "text",
 ) -> int:
     targets = workspace_update_targets(workspace_root, workspace_manifest, repositories=repositories)
-    name_width = max(len("REPOSITORY"), *(len(target.name) for target in targets))
+    name_width = repository_name_width(target.name for target in targets)
     if output_format == "text":
         print_workspace_update_header(workspace_root, workspace_manifest, len(targets), name_width)
 

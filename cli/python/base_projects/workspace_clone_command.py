@@ -19,6 +19,7 @@ from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repository_url import redact_repository_url
+from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
 
 
@@ -82,7 +83,7 @@ def workspace_clone_command(ctx: base_cli.Context, options: WorkspaceCloneOption
         return base_cli.ExitCode.FAILURE
 
     basectl = ctx.application_home / "bin" / "basectl"
-    name_width = max(len("REPOSITORY"), *(len(repo.name) for repo in manifest.repos))
+    name_width = repository_name_width(repo.name for repo in manifest.repos)
     print(f"Workspace clone: {workspace_root} ({len(manifest.repos)} manifest repos)")
     print(f"Workspace manifest: {manifest.path} ({manifest.name})")
     print()

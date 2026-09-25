@@ -131,6 +131,44 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
 
 
 class WorkspaceUpdateTests(unittest.TestCase):
+    def test_empty_workspace_update_text_and_json_are_successful_no_ops(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            workspace.mkdir()
+            base_home.mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: empty\nrepos: []\n",
+                encoding="utf-8",
+            )
+
+            text_status, text_stdout, text_stderr = invoke_engine(
+                ["update", "--workspace", str(workspace), "--manifest", str(manifest_path), "--dry-run"],
+                base_home,
+                home,
+            )
+            json_status, json_stdout, json_stderr = invoke_engine(
+                [
+                    "update", "--workspace", str(workspace), "--manifest", str(manifest_path),
+                    "--dry-run", "--format", "json",
+                ],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(text_status, 0)
+        self.assertEqual(text_stderr, "")
+        self.assertIn("Workspace update plan complete: planned=0 skipped=0 failed=0.", text_stdout)
+        self.assertEqual(json_status, 0)
+        self.assertEqual(json_stderr, "")
+        payload = json.loads(json_stdout)
+        self.assertEqual(payload["repositories"], [])
+        self.assertEqual(payload["counts"], {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 0, "failed": 0})
+
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
         cases = (
             (
