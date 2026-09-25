@@ -129,6 +129,63 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertEqual(workspace_update.parse_workspace_remote_default_branch(output), expected)
 
+    def test_workspace_update_preflight_rejects_configured_upstream_branch_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="demo",
+                root=root,
+                action="pull",
+                default_branch="main",
+            )
+            with mock.patch(
+                "base_projects.workspace_update.run_workspace_git_probe",
+                side_effect=(
+                    git_probe(".git\n.git\n"),
+                    git_probe("## main...origin/feature/with/slash\n"),
+                    git_probe("refs/heads/feature/with/slash\n"),
+                ),
+            ):
+                result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("upstream_mismatch",))
+        self.assertIn("not the configured default branch 'main'", result.detail or "")
+
+    def test_workspace_update_real_git_fixture_preserves_head_for_mismatched_upstream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            remote = root / "origin.git"
+            seed = root / "seed"
+            checkout = root / "checkout"
+            subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, capture_output=True)
+            subprocess.run(["git", "init", "--initial-branch=main", str(seed)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(["git", "-C", str(seed), "config", "user.email", "workspace@example.com"], check=True)
+            (seed / "README.md").write_text("main\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(seed), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(seed), "commit", "-m", "main"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(["git", "-C", str(seed), "push", "--set-upstream", "origin", "main"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "switch", "-c", "feature/with/slash"], check=True, capture_output=True)
+            (seed / "feature.txt").write_text("feature\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(seed), "add", "feature.txt"], check=True)
+            subprocess.run(["git", "-C", str(seed), "commit", "-m", "feature"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "push", "--set-upstream", "origin", "feature/with/slash"], check=True, capture_output=True)
+            subprocess.run(["git", "clone", "--branch", "main", str(remote), str(checkout)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(checkout), "branch", "--set-upstream-to=origin/feature/with/slash", "main"], check=True, capture_output=True)
+            before = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+            result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget("demo", checkout, "pull", default_branch="main")
+            )
+
+            after = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("upstream_mismatch",))
+        self.assertEqual(before, after)
+
 
 class WorkspaceUpdateTests(unittest.TestCase):
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
