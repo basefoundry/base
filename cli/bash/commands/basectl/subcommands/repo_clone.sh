@@ -4,6 +4,11 @@
 _base_repo_clone_sourced=1
 readonly _base_repo_clone_sourced
 
+if ! declare -F base_repo_target_path >/dev/null 2>&1; then
+    # shellcheck source=cli/bash/commands/basectl/subcommands/repo.sh
+    source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+fi
+
 base_repo_clone_check_destination() {
     local actual_repo=""
     local expected_repo="$1"
