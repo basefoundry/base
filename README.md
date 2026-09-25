@@ -94,7 +94,7 @@ Base self-demo complete.
 
 | Tool | Primary responsibility | Base relationship |
 |---|---|---|
-| Base | Repository contracts, readiness, trust, onboarding, and handoff | Owns the local operating contract across participating repositories |
+| Base | Repository contracts, readiness, trust, onboarding, and handoff | The control plane maintains the local operating contract across participating repositories |
 | [mise](docs/tool-boundaries.md) | Machine and project bootstrap, tool versions, environments, and tasks | Base delegates; choose mise when convergence is the primary outcome |
 | [mani](docs/tool-boundaries.md) | Git repository inventory, synchronization, worktrees, filters, and tasks | Base coexists; choose mani when repository-set management is the primary need |
 
@@ -175,7 +175,8 @@ notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## What Base Is Responsible For
 
-Base owns the local operating contract for participating repositories.
+Base owns the local operating contract for participating repositories — the
+precise name for the control plane introduced above.
 
 That means Base should be responsible for:
 
@@ -206,8 +207,9 @@ Base should orchestrate those things, not replace them.
 
 ## Mental Model
 
-Think of Base as the local operating contract for a project, whether that
-project is one repository or a set of independent Git repositories.
+Base's control plane, at the level of a single project, is that same local
+operating contract: think of Base that way, whether the project is one
+repository or a set of independent Git repositories.
 
 A single repository can use Base to make setup, readiness, trusted execution,
 and handoff explicit. When a project spans several repositories, Base extends
