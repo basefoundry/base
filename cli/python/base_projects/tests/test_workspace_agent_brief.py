@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest import mock
 
 from base_projects.tests.workspace_cli_helpers import invoke_engine
+from base_projects.manifest_contract import repository_baseline_validation_file_for_manifest
+from base_setup.manifest import ManifestError
 from base_projects.workspace_agent_brief import REPO_AGENT_GUIDANCE_FILES
 from base_projects.workspace_agent_brief import REPO_BASELINE_FILES
 
@@ -101,6 +103,38 @@ def shell_array_values(source: str, name: str) -> tuple[str, ...]:
 
 
 class WorkspaceAgentBriefTests(unittest.TestCase):
+    def test_manifest_contract_accepts_equivalent_yaml_scalars_and_flow_mapping(self) -> None:
+        variants = (
+            "project:\n  name: base\ntest:\n  command: ./bin/base-test\nartifacts: []\n",
+            "project:\n  name: base\ntest:\n  command: './bin/base-test' # quoted\nartifacts: []\n",
+            'project:\n  name: "base"\ntest:\n  command: "./bin/base-test"\nartifacts: []\n',
+            'project: {name: base}\ntest: {command: "./bin/base-test"}\nartifacts: []\n',
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for index, body in enumerate(variants):
+                with self.subTest(index=index):
+                    manifest_path = Path(tmpdir) / f"manifest-{index}.yaml"
+                    manifest_path.write_text(body, encoding="utf-8")
+                    self.assertEqual(
+                        repository_baseline_validation_file_for_manifest(manifest_path),
+                        "bin/base-test",
+                    )
+
+    def test_manifest_contract_rejects_wrong_project_and_malformed_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wrong_project = Path(tmpdir) / "wrong.yaml"
+            wrong_project.write_text(
+                "project:\n  name: demo\ntest:\n  command: ./bin/base-test\nartifacts: []\n",
+                encoding="utf-8",
+            )
+            malformed = Path(tmpdir) / "malformed.yaml"
+            malformed.write_text("project: [\n", encoding="utf-8")
+
+            with self.assertRaises(ManifestError):
+                repository_baseline_validation_file_for_manifest(wrong_project)
+            with self.assertRaises(ManifestError):
+                repository_baseline_validation_file_for_manifest(malformed)
+
     def test_json_reports_ready_missing_optional_and_local_only_repositories(  # pylint: disable=too-many-statements
         self,
     ) -> None:
