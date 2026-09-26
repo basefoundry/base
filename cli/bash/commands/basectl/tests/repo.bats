@@ -636,6 +636,25 @@ EOF
     fi
 }
 
+@test "repo extracted modules source shared dependencies when loaded directly" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_clone.sh"
+            printf "CLONE:%s\n" "$(base_repo_target_path .)"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_pr.sh"
+            printf "PR:%s\n" "$(base_repo_pr_branch_name bug 123 check demo)"
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"CLONE:"* ]]
+    [[ "$output" == *"PR:bug/123-"* ]]
+}
+
 @test "basectl repo pull request implementation is split from repo dispatcher" {
     local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
     local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_pr.sh"
