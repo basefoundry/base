@@ -65,7 +65,7 @@ class TerminalStringIO(io.StringIO):
         return True
 
 
-class BaseHistoryTests(unittest.TestCase):
+class BaseHistoryTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_recent_history_ignores_malformed_lines_and_sorts_newest_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_root = Path(tmpdir)
@@ -390,6 +390,19 @@ class BaseHistoryTests(unittest.TestCase):
 
         self.assertEqual((status, stderr), (0, ""))
         self.assertIn("| Time (LOCAL) | Command |", stdout)
+
+    def test_explicit_markdown_report_stays_markdown_when_stdout_is_not_terminal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_root = Path(tmpdir)
+            write_history_line(cache_root, history_record("run-1", "check"))
+
+            with mock.patch.object(engine.base_cli, "is_terminal", return_value=False):
+                status, stdout, stderr = invoke(["--report", "--format", "markdown"], cache_root)
+
+        self.assertEqual((status, stderr), (0, ""))
+        self.assertIn("# Base Local Activity Report", stdout)
+        self.assertIn("| Time (UTC) | Command |", stdout)
+        self.assertNotIn("\tcheck\t", stdout)
 
     def test_report_json_summarizes_successful_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

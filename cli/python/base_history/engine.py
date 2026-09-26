@@ -162,14 +162,16 @@ def run(
         history_report = build_history_report(cache_root, records)
         if options.output_format == "json":
             print(json.dumps(history_report_to_json(history_report), indent=2, sort_keys=True))
-        elif options.output_format in {"csv", "tsv", "yaml"} or not base_cli.is_terminal():
+        elif options.output_format in {"csv", "tsv", "yaml"} or (
+            options.output_format != "markdown" and not base_cli.is_terminal()
+        ):
             report_payload = history_report_to_json(history_report)
             if options.output_format == "yaml":
                 base_cli.render_document(report_payload, requested_format="yaml")
             else:
                 base_cli.render_document(
                     report_payload,
-                    requested_format="tsv" if options.output_format == "markdown" else options.output_format,
+                    requested_format=options.output_format,
                     records_key="recent",
                     columns=history_output_columns(),
                 )
