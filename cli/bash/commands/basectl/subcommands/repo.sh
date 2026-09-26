@@ -1684,16 +1684,50 @@ base_repo_check_missing_files() {
     done
 }
 
-base_repo_manifest_uses_base_test() {
+base_repo_manifest_validation_file_from_python() {
+    local manifest_path="$1"
+    local python_bin
+    local venv_python="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}/bin/python"
+
+    if [[ -x "$venv_python" ]]; then
+        python_bin="$venv_python"
+    else
+        base_std_command_path python_bin python3 || return 1
+    fi
+    [[ -f "$manifest_path" ]] || return 1
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$BASE_HOME/cli/python" \
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" \
+        base_projects.manifest_contract "$manifest_path" 2>/dev/null
+}
+
+base_repo_manifest_uses_base_test_fallback() {
     local manifest_path="$1"
 
     [[ -f "$manifest_path" ]] || return 1
     awk '
+        function normalize(value) {
+            sub(/[[:space:]]+#.*/, "", value)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+                (substr(value, 1, 1) == "\047" && substr(value, length(value), 1) == "\047")) {
+                value = substr(value, 2, length(value) - 2)
+            }
+            return value
+        }
+        $0 ~ /test:[[:space:]]*\{[^}]*command:[[:space:]]*/ {
+            value=$0
+            sub(/^.*command:[[:space:]]*/, "", value)
+            sub(/\}.*/, "", value)
+            if (normalize(value) == "\"./bin/base-test\"") found=1
+            if (normalize(value) == "\047./bin/base-test\047") found=1
+            if (normalize(value) == "./bin/base-test") found=1
+        }
         $0 ~ /^test:[[:space:]]*$/ { in_test=1; next }
         in_test && $0 ~ /^[^[:space:]]/ { in_test=0 }
-        in_test && $0 ~ /^[[:space:]]+command:[[:space:]]*\.\/bin\/base-test[[:space:]]*$/ {
-            found=1
-            exit
+        in_test && $0 ~ /^[[:space:]]+command:[[:space:]]*/ {
+            value=$0
+            sub(/^.*command:[[:space:]]*/, "", value)
+            if (normalize(value) == "./bin/base-test") found=1
         }
         END { exit !found }
     ' "$manifest_path"
@@ -1701,12 +1735,24 @@ base_repo_manifest_uses_base_test() {
 
 base_repo_baseline_validation_file() {
     local path="$1"
+    local validation_file
 
-    if base_repo_manifest_uses_base_test "$path/base_manifest.yaml"; then
-        printf '%s\n' 'bin/base-test'
-    else
-        printf '%s\n' 'tests/validate.sh'
+    if ! validation_file="$(base_repo_manifest_validation_file_from_python "$path/base_manifest.yaml")"; then
+        if base_repo_manifest_uses_base_test_fallback "$path/base_manifest.yaml"; then
+            validation_file='bin/base-test'
+        else
+            validation_file='tests/validate.sh'
+        fi
     fi
+    case "$validation_file" in
+        bin/base-test|tests/validate.sh)
+            printf '%s\n' "$validation_file"
+            ;;
+        *)
+            base_std_log_error "Repository manifest selected unsupported validation file '$validation_file'."
+            return 1
+            ;;
+    esac
 }
 
 base_repo_required_baseline_files() {
@@ -1714,7 +1760,7 @@ base_repo_required_baseline_files() {
     local rel
     local validation_file
 
-    validation_file="$(base_repo_baseline_validation_file "$path")"
+    validation_file="$(base_repo_baseline_validation_file "$path")" || return 1
     for rel in "${BASE_REPO_BASELINE_FILES[@]}"; do
         [[ "$rel" == 'tests/validate.sh' ]] && continue
         printf '%s\n' "$rel"
@@ -1735,7 +1781,10 @@ base_repo_check_json() {
     local missing_files=() not_executable_files=() agent_missing_files=() checks_json=()
     local required_files=() required_count present_count validation_file
 
-    validation_file="$(base_repo_baseline_validation_file "$path")"
+    validation_file="$(base_repo_baseline_validation_file "$path")" || {
+        base_inspection_json_emit_error "repo check" usage_error "Unable to semantically parse repository manifest '$path/base_manifest.yaml'." '{}'
+        return 2
+    }
     mapfile -t required_files < <(base_repo_required_baseline_files "$path")
     mapfile -t missing_files < <(base_repo_check_missing_files "$path" "${required_files[@]}")
     if [[ -f "$path/$validation_file" && ! -x "$path/$validation_file" ]]; then

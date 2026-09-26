@@ -5,13 +5,13 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
+from base_projects.manifest_contract import repository_baseline_validation_file_for_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_onboarding import WorkspaceNextAction
 from base_projects.workspace_onboarding import test_command_for_status
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_statuses import WorkspaceProjectStatus
 from base_projects.workspace_statuses import workspace_manifest_project_statuses
-from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 
 
@@ -189,12 +189,9 @@ def repository_baseline_validation_file(status: WorkspaceProjectStatus) -> str:
     if status.name != "base" or status.manifest != "valid" or status.manifest_path is None:
         return "tests/validate.sh"
     try:
-        manifest = read_manifest(status.manifest_path)
-    except ManifestError:
+        return repository_baseline_validation_file_for_manifest(status.manifest_path)
+    except (ManifestError, OSError):
         return "tests/validate.sh"
-    if manifest.test is not None and manifest.test.command == "./bin/base-test":
-        return "bin/base-test"
-    return "tests/validate.sh"
 
 
 def repository_baseline_files(validation_file: str) -> tuple[str, ...]:
