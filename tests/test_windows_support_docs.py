@@ -91,6 +91,21 @@ def test_validation_document_distinguishes_phase_zero_from_phase_one() -> None:
     assert "When the native launcher and read-only command subset land" in document
 
 
+def test_platform_reference_docs_align_with_the_supported_wsl2_boundary() -> None:
+    architecture = (REPO_ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    boundaries = (REPO_ROOT / "docs" / "tool-boundaries.md").read_text(encoding="utf-8")
+    assessment = (REPO_ROOT / "docs" / "product-assessment.md").read_text(encoding="utf-8")
+
+    assert "Ubuntu/Debian on WSL2 follows that supported Linux contract" in architecture
+    assert "Broader Linux distribution support" in architecture
+    assert "native Windows are not" in architecture
+    assert "scope today" in architecture
+    assert "Ubuntu/Debian on WSL2 uses that Linux contract" in boundaries
+    assert "broader Linux distributions and native Windows need separate decisions" in boundaries
+    assert "for the 1.11.0 release line" in assessment
+    assert "for the 1.10.0 release line" not in assessment
+
+
 def test_phase_zero_workflow_enforces_documented_powershell_floor() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
 
