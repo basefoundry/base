@@ -25,6 +25,7 @@ WorkspaceUpdatePreflightIssue = Literal[
     "detached_head",
     "non_default_branch",
     "missing_upstream",
+    "upstream_mismatch",
     "unknown_default_branch",
     "not_git_checkout",
     "preflight_failed",
@@ -522,6 +523,11 @@ def workspace_update_preflight_state(
         issues.append("non_default_branch")
     if upstream is None:
         issues.append("missing_upstream")
+    elif branch is not None and default_branch is not None:
+        configured_merge = workspace_update_configured_upstream_branch(target, branch)
+        expected_merge = f"refs/heads/{default_branch}"
+        if configured_merge is not None and configured_merge != expected_merge:
+            issues.append("upstream_mismatch")
 
     return WorkspaceUpdatePreflightState(
         dirty=dirty,
@@ -530,6 +536,24 @@ def workspace_update_preflight_state(
         default_branch=default_branch,
         issues=tuple(issues),
     )
+
+
+def workspace_update_configured_upstream_branch(target: WorkspaceUpdateTarget, branch: str) -> str | None:
+    if not target.root.is_dir():
+        return None
+    try:
+        configured = run_workspace_git_probe(
+            target.root,
+            "config",
+            "--get",
+            f"branch.{branch}.merge",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if configured.returncode != 0:
+        return None
+    value = configured.stdout.strip()
+    return value or None
 
 
 def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstream: str | None) -> str | None:
@@ -585,6 +609,15 @@ def workspace_update_preflight_detail(
         detail_lines.append(
             "Configure tracking for the intended default branch, then rerun workspace update; "
             "Base will not infer or assign an upstream."
+        )
+    if "upstream_mismatch" in issues:
+        detail_lines.append(
+            f"branch '{branch}' tracks '{upstream}', not the configured default "
+            f"branch '{default_branch}'."
+        )
+        detail_lines.append(
+            "Point the manifest at the intended checkout or correct tracking explicitly, then rerun workspace update; "
+            "Base will not rewrite Git configuration."
         )
     if "unknown_default_branch" in issues:
         detail_lines.append(
