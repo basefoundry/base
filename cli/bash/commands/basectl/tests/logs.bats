@@ -89,6 +89,17 @@ EOF
     [[ "$output" != *"--format <format>"* ]]
 }
 
+@test "basectl logs accepts bare help" {
+    run_basectl logs --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl logs help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl logs last-failed prints focused help" {
     run_basectl logs last-failed --help
 

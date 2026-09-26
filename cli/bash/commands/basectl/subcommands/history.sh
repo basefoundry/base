@@ -35,7 +35,7 @@ base_history_subcommand_main() {
 
     while (($# > 0)); do
         case "$1" in
-            -h|--help)
+            -h|--help|help)
                 base_history_subcommand_usage
                 return 0
                 ;;

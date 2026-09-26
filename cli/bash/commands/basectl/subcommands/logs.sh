@@ -85,6 +85,8 @@ base_logs_help_target() {
             last-failed)
                 target=last-failed
                 ;;
+            help)
+                ;;
             -* )
                 ;;
             *)
@@ -100,7 +102,7 @@ base_logs_args_request_help() {
 
     for argument in "$@"; do
         case "$argument" in
-            -h|--help) return 0 ;;
+            -h|--help|help) return 0 ;;
         esac
     done
     return 1
@@ -147,7 +149,7 @@ base_logs_subcommand_main() {
 
     while (($# > 0)); do
         case "$1" in
-            -h|--help)
+            -h|--help|help)
                 base_logs_recent_usage
                 return 0
                 ;;

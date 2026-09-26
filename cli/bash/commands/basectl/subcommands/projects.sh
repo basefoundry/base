@@ -109,7 +109,7 @@ base_projects_subcommand_main() {
     local -A parsed_options=()
 
     case "$project_command" in
-        ""|-h|--help)
+        ""|-h|--help|help)
             base_projects_subcommand_usage
             return 0
             ;;
