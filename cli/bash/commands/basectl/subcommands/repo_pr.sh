@@ -4,6 +4,10 @@
 _base_repo_pr_sourced=1
 readonly _base_repo_pr_sourced
 
+if ! declare -F import_base_lib >/dev/null 2>&1; then
+    # shellcheck source=base_init.sh
+    source "$BASE_HOME/base_init.sh"
+fi
 if ! declare -F base_repo_pretty_arg >/dev/null 2>&1; then
     # shellcheck source=cli/bash/commands/basectl/subcommands/repo.sh
     source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"

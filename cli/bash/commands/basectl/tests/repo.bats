@@ -655,6 +655,25 @@ EOF
     [[ "$output" == *"PR:bug/123-"* ]]
 }
 
+@test "repo clone extracted module can execute its real dry-run entry point when loaded directly" {
+    local bash_libs_dir
+    local target="$TEST_TMPDIR/clone"
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_TEST_TARGET="$target" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_clone.sh"
+            base_repo_clone owner/repo --path "$BASE_TEST_TARGET" --dry-run
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would clone owner/repo"* ]]
+}
+
 @test "basectl repo pull request implementation is split from repo dispatcher" {
     local dispatcher="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo.sh"
     local helper="$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_pr.sh"
