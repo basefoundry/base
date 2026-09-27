@@ -189,6 +189,7 @@ def run_manifest_action(
             remote_network=manifest_action.remote_network,
             user_config=ctx.user_config,
             verify_project_runtime=manifest_action.verify_project_runtime,
+            ctx=ctx,
         )
     elif action == "precheck":
         status = check_pre_venv_manifest(
@@ -202,6 +203,7 @@ def run_manifest_action(
             base_manifest,
             output_format=manifest_action.output_format,
             remote_network=manifest_action.remote_network,
+            ctx=ctx,
         )
     else:
         ctx.log.error(
@@ -298,6 +300,28 @@ def log_check_text_result(ctx: base_cli.Context, check: ArtifactCheck) -> None:
         log_result("Fix: %s", check.fix)
 
 
+def emit_checks_json(checks: tuple[ArtifactCheck, ...], project: str | None = None) -> None:
+    payload: object
+    if project is None:
+        payload = [check_to_json(check) for check in checks]
+    else:
+        payload = checks_payload_to_json(checks, project=project)
+    print(json.dumps(payload, indent=2))
+
+
+def unsupported_output_format(
+    ctx: base_cli.Context | None,
+    command: str,
+    output_format: str,
+) -> int:
+    message = f"Unsupported {command} output format '{output_format}'. Expected text or json."
+    if ctx is None:
+        print(message, file=sys.stderr)
+    else:
+        ctx.log.error(message)
+    return base_cli.ExitCode.USAGE_ERROR
+
+
 # pylint: disable=too-many-arguments
 def check_manifest(
     ctx: base_cli.Context,
@@ -316,14 +340,13 @@ def check_manifest(
         verify_project_runtime=verify_project_runtime,
     )
     if output_format == "json":
-        print(json.dumps(checks_payload_to_json(checks, project=manifest.project_name), indent=2))
+        emit_checks_json(checks, project=manifest.project_name)
     elif output_format == "text":
         ctx.log.info("Checking project '%s' manifest requirements.", manifest.project_name)
         for check in checks:
             log_check_text_result(ctx, check)
     else:
-        ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
+        return unsupported_output_format(ctx, "check", output_format)
     publish_check_status(checks_status(checks))
     if all(check.ok or doctor_status(check) == "warn" for check in checks):
         return base_cli.ExitCode.SUCCESS
@@ -338,13 +361,12 @@ def check_pre_venv_manifest(
 ) -> int:
     checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
-        print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
+        emit_checks_json(checks)
     elif output_format == "text":
         for check in checks:
             log_check_text_result(ctx, check)
     else:
-        ctx.log.error("Unsupported check output format '%s'. Expected text or json.", output_format)
-        return base_cli.ExitCode.USAGE_ERROR
+        return unsupported_output_format(ctx, "check", output_format)
     publish_check_status(checks_status(checks))
     if all(check.ok or doctor_status(check) == "warn" for check in checks):
         return base_cli.ExitCode.SUCCESS
@@ -360,10 +382,10 @@ def doctor_manifest(
     *,
     user_config: UserConfig | None = None,
     verify_project_runtime: bool = False,
+    ctx: base_cli.Context | None = None,
 ) -> int:
     if output_format not in {"json", "text"}:
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
-        return base_cli.ExitCode.USAGE_ERROR
+        return unsupported_output_format(ctx, "doctor", output_format)
 
     checks = manifest_checks(
         default_manifest,
@@ -373,7 +395,7 @@ def doctor_manifest(
         verify_project_runtime=verify_project_runtime,
     )
     if output_format == "json":
-        print(json.dumps([check_to_json(check) for check in checks], indent=2))
+        emit_checks_json(checks)
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
 
     error_count = 0
@@ -391,14 +413,15 @@ def doctor_pre_venv_manifest(
     manifest: BaseManifest,
     output_format: str,
     remote_network: bool = False,
+    *,
+    ctx: base_cli.Context | None = None,
 ) -> int:
     if output_format not in {"json", "text"}:
-        print(f"Unsupported doctor output format '{output_format}'. Expected text or json.", file=sys.stderr)
-        return base_cli.ExitCode.USAGE_ERROR
+        return unsupported_output_format(ctx, "doctor", output_format)
 
     checks = pre_venv_manifest_checks(manifest, remote_network=remote_network)
     if output_format == "json":
-        print(json.dumps([check_to_json(check) for check in checks], separators=(",", ":")))
+        emit_checks_json(checks)
         return min(sum(1 for check in checks if doctor_status(check) == "error"), 125)
 
     error_count = 0

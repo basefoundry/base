@@ -97,6 +97,15 @@ EOF
     chmod +x "$TEST_MOCKBIN/bats"
 }
 
+create_bats_provider_stub() {
+    cat > "$TEST_MOCKBIN/bats" <<'EOF'
+#!/usr/bin/env bash
+printf 'provider=%s\n' "${BASE_BASH_LIBS_DIR-__unset__}" >> "${BASE_TEST_STATE_DIR:?}/bats-provider.log"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/bats"
+}
+
 @test "base-test skips source-only Bats suite for packaged Base homes" {
     create_packaged_base_home
     create_python_stub
@@ -155,6 +164,27 @@ EOF
     [ ! -f "$TEST_STATE_DIR/bats.log" ]
     [[ "$output" == *"Base source-checkout Bats tests require base-bash-libs."* ]]
     [[ "$output" == *"Clone basefoundry/base-bash-libs next to Base or set BASE_BASH_LIBS_DIR."* ]]
+}
+
+@test "base-test propagates the resolved sibling base-bash-libs provider" {
+    create_source_base_home_without_bash_libs
+    create_python_stub
+    create_bats_provider_stub
+    local expected_provider="$TEST_SOURCE_HOME/../base-bash-libs/lib/bash"
+    mkdir -p "$expected_provider/std"
+    touch "$expected_provider/std/lib_std.sh"
+
+    run env \
+        -u BASE_BASH_LIBS_DIR \
+        HOME="$TEST_HOME" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_HOME="$TEST_SOURCE_HOME" \
+        BASE_TEST_PYTHON="$TEST_MOCKBIN/python" \
+        BASE_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$TEST_SOURCE_HOME/bin/base-test"
+
+    [ "$status" -eq 0 ]
+    grep -Fqx "provider=$expected_provider" "$TEST_STATE_DIR/bats-provider.log"
 }
 
 @test "base-test includes source guard coverage in the source checkout suite" {

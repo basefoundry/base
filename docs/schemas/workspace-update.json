@@ -104,6 +104,7 @@
               "upstream_mismatch",
               "unknown_default_branch",
               "not_git_checkout",
+              "checkout_root_mismatch",
               "preflight_failed"
             ]
           }
