@@ -160,11 +160,9 @@ def run(
     records = recent_history(cache_root, options=options, logger=ctx.log)
     if options.report:
         history_report = build_history_report(cache_root, records)
-        if options.output_format == "json":
-            print(json.dumps(history_report_to_json(history_report), indent=2, sort_keys=True))
-        elif options.output_format in {"csv", "tsv", "yaml"} or (
-            options.output_format != "markdown" and not base_cli.is_terminal()
-        ):
+        if options.output_format in {"text", "markdown"}:
+            print_history_report_markdown(history_report, local_time=options.local_time)
+        else:
             report_payload = history_report_to_json(history_report)
             if options.output_format == "yaml":
                 base_cli.render_document(report_payload, requested_format="yaml")
@@ -175,20 +173,22 @@ def run(
                     records_key="recent",
                     columns=history_output_columns(),
                 )
-        else:
-            print_history_report_markdown(history_report, local_time=options.local_time)
         return base_cli.ExitCode.SUCCESS
 
     if options.output_format == "json":
         print(json.dumps([record.to_json() for record in records], indent=2))
         return base_cli.ExitCode.SUCCESS
     if not records:
-        if options.output_format == "yaml":
-            base_cli.render_records([], requested_format="yaml", columns=history_output_columns())
-        elif options.output_format not in {"csv", "tsv"} and base_cli.is_terminal():
+        if options.output_format == "text" and base_cli.is_terminal():
             print(f"No Base command history found under {cache_root / HISTORY_PATH}.")
+        else:
+            base_cli.render_records(
+                [],
+                requested_format=options.output_format,
+                columns=history_output_columns(),
+            )
         return base_cli.ExitCode.SUCCESS
-    if options.output_format in {"csv", "tsv", "yaml"} or not base_cli.is_terminal():
+    if options.output_format != "text" or not base_cli.is_terminal():
         base_cli.render_records(
             history_output_records(records, local_time=options.local_time),
             requested_format=options.output_format,
