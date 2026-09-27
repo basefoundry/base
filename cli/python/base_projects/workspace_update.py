@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_version.checkout import git_checkout_marker
 
 
 WorkspaceUpdateAction = Literal["pull", "skip"]
@@ -27,6 +28,7 @@ WorkspaceUpdatePreflightIssue = Literal[
     "missing_upstream",
     "unknown_default_branch",
     "not_git_checkout",
+    "checkout_root_mismatch",
     "preflight_failed",
 ]
 WORKSPACE_UPDATE_TIMEOUT_SECONDS = 1800
@@ -403,6 +405,17 @@ def execute_workspace_update_target(
 
 def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> WorkspaceUpdateResult | None:
     """Return a safe, actionable result when a manifest checkout is not pullable."""
+    if git_checkout_marker(target.root) is False:
+        return workspace_update_preflight_result(
+            ("checkout_root_mismatch",),
+            "\n".join(
+                (
+                    f"repository '{target.name}' at '{target.root}' is not a checkout root.",
+                    "The selected path has no .git entry; refusing Git ancestor discovery and pull.",
+                    "Point the manifest at the repository root; Base will not modify an ancestor checkout.",
+                )
+            ),
+        )
     git_directories = workspace_update_git_directories(target)
     if isinstance(git_directories, WorkspaceUpdateResult):
         return git_directories
