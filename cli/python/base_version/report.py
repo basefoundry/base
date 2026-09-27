@@ -9,6 +9,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from base_version.checkout import git_checkout_marker
+
 # Bootstrap inspection cannot import base_cli.ExitCode.
 SUCCESS = 0
 
@@ -28,7 +30,7 @@ def first_line(path: Path) -> str | None:
 def git_identity(root: Path) -> dict:
     """Do not accidentally report an enclosing workspace repository's identity."""
     result = {"revision": None, "dirty": None}
-    if not (root / ".git").exists():
+    if git_checkout_marker(root) is not True:
         return result
     try:
         env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}

@@ -148,6 +148,26 @@ class WorkspaceUpdateTests(unittest.TestCase):  # pylint: disable=too-many-publi
         self.assertIn("not a checkout root", result.detail or "")
         probe.assert_not_called()
 
+    def test_workspace_update_isolates_inaccessible_checkout_marker(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="restricted",
+            root=Path("/workspace/restricted"),
+            action="pull",
+        )
+        fallback = workspace_update.workspace_update_preflight_result(
+            ("preflight_failed",), "could not inspect restricted checkout"
+        )
+        with mock.patch(
+            "base_version.checkout.Path.stat",
+            side_effect=PermissionError("permission denied"),
+        ), mock.patch(
+            "base_projects.workspace_update.workspace_update_git_directories",
+            return_value=fallback,
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertEqual(result, fallback)
+
     def test_workspace_update_real_git_fixture_never_pulls_ancestor_for_nested_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -14,6 +14,7 @@ from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_version.checkout import git_checkout_marker
 
 
 WorkspaceUpdateAction = Literal["pull", "skip"]
@@ -403,7 +404,7 @@ def execute_workspace_update_target(
 
 def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> WorkspaceUpdateResult | None:
     """Return a safe, actionable result when a manifest checkout is not pullable."""
-    if target.root.is_dir() and not (target.root / ".git").exists():
+    if git_checkout_marker(target.root) is False:
         return workspace_update_preflight_result(
             ("checkout_root_mismatch",),
             "\n".join(
