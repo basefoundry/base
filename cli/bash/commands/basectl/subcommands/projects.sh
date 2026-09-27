@@ -129,7 +129,7 @@ base_projects_subcommand_main() {
                 args+=(--debug)
                 shift
                 ;;
-            -h|--help)
+            -h|--help|help)
                 base_projects_subcommand_usage
                 return 0
                 ;;

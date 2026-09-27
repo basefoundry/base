@@ -98,10 +98,17 @@ base_logs_help_target() {
 }
 
 base_logs_args_request_help() {
-    local argument
+    local argument expect_value=0
 
     for argument in "$@"; do
+        if ((expect_value)); then
+            expect_value=0
+            continue
+        fi
         case "$argument" in
+            --command|--limit|--lines|--format)
+                expect_value=1
+                ;;
             -h|--help|help) return 0 ;;
         esac
     done

@@ -170,6 +170,17 @@ EOF
     [ "$output" = "$expected" ]
 }
 
+@test "basectl projects list accepts bare help" {
+    run_basectl projects list --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl projects list help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl projects reports unknown command as a usage error" {
     run_basectl projects unknown
 

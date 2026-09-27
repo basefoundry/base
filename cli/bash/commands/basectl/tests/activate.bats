@@ -522,6 +522,16 @@ EOF
     [ "$output" = "$expected" ]
 }
 
+@test "basectl activate help does not create a runtime bundle or history record" {
+    export BASE_CACHE_DIR="$TEST_TMPDIR/cache"
+
+    run_basectl activate help
+
+    [ "$status" -eq 0 ]
+    [ ! -d "$BASE_CACHE_DIR/base/runs" ]
+    [ ! -f "$BASE_CACHE_DIR/base/history/runs.jsonl" ]
+}
+
 @test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before launch" {
     local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

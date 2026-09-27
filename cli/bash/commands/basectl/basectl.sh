@@ -531,9 +531,21 @@ basectl_validate_command() {
 }
 
 basectl_args_request_help() {
-    local argument
+    local argument expect_value=0
+
     for argument in "$@"; do
-        [[ "$argument" == "-h" || "$argument" == "--help" ]] && return 0
+        if ((expect_value)); then
+            expect_value=0
+            continue
+        fi
+        case "$argument" in
+            --manifest|--format|--repos|--profile|--environment|--config|--log-file|--project|--workspace|--path|--target|--version|--command|--status|--older-than|--keep-last|--since|--until|--last|--lines)
+                expect_value=1
+                ;;
+            -h|--help|help)
+                return 0
+                ;;
+        esac
     done
     return 1
 }
