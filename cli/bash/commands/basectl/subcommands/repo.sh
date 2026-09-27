@@ -1702,35 +1702,34 @@ base_repo_manifest_validation_file_from_python() {
 
 base_repo_manifest_uses_base_test_fallback() {
     local manifest_path="$1"
+    local validation_command
 
     [[ -f "$manifest_path" ]] || return 1
-    awk '
-        function normalize(value) {
-            sub(/[[:space:]]+#.*/, "", value)
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-            if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
-                (substr(value, 1, 1) == "\047" && substr(value, length(value), 1) == "\047")) {
-                value = substr(value, 2, length(value) - 2)
-            }
-            return value
-        }
-        $0 ~ /test:[[:space:]]*\{[^}]*command:[[:space:]]*/ {
+    validation_command="$(awk '
+        /^test:[[:space:]]*\{/ {
             value=$0
-            sub(/^.*command:[[:space:]]*/, "", value)
-            sub(/\}.*/, "", value)
-            if (normalize(value) == "\"./bin/base-test\"") found=1
-            if (normalize(value) == "\047./bin/base-test\047") found=1
-            if (normalize(value) == "./bin/base-test") found=1
+            sub(/^[[:space:]]*test:[[:space:]]*\{[[:space:]]*/, "", value)
+            sub(/[[:space:]]*\}[[:space:]]*(#.*)?$/, "", value)
+            if (value ~ /(^|[[:space:]])command:[[:space:]]*/) {
+                sub(/^.*command:[[:space:]]*/, "", value)
+                sub(/,[[:space:]]*.*$/, "", value)
+                print value
+                exit
+            }
         }
-        $0 ~ /^test:[[:space:]]*$/ { in_test=1; next }
-        in_test && $0 ~ /^[^[:space:]]/ { in_test=0 }
+        /^test:[[:space:]]*$/ { in_test=1; next }
+        in_test && $0 !~ /^[[:space:]]/ { in_test=0 }
         in_test && $0 ~ /^[[:space:]]+command:[[:space:]]*/ {
             value=$0
-            sub(/^.*command:[[:space:]]*/, "", value)
-            if (normalize(value) == "./bin/base-test") found=1
+            sub(/^[[:space:]]+command:[[:space:]]*/, "", value)
+            print value
+            exit
         }
-        END { exit !found }
-    ' "$manifest_path"
+    ' "$manifest_path")" || return 1
+
+    [[ -n "$validation_command" ]] || return 1
+    validation_command="$(base_repo_strip_config_value "$validation_command")" || return 1
+    [[ "$validation_command" == "./bin/base-test" ]]
 }
 
 base_repo_baseline_validation_file() {

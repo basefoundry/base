@@ -244,6 +244,47 @@ run_repo_command_with_mocks() {
     [[ "$output" != *"--copy-project-fields-from <title>"* ]]
 }
 
+@test "manifest validation fallback selects only the exact test key" {
+    local manifest="$TEST_TMPDIR/base_manifest.yaml"
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    printf '%s\n' \
+        'commands:' \
+        '  integration_test: {command: ./bin/base-test}' \
+        'test: {command: "./bin/base-test#literal"}' > "$manifest"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_manifest_uses_base_test_fallback "$1"
+        ' bash "$manifest"
+
+    [ "$status" -eq 1 ]
+
+    printf '%s\n' \
+        'commands:' \
+        '  integration_test: {command: ./bin/base-test}' \
+        'test:' \
+        '  command: ./bin/base-test # comment' > "$manifest"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_manifest_uses_base_test_fallback "$1"
+        ' bash "$manifest"
+
+    [ "$status" -eq 0 ]
+}
+
 @test "basectl repo clone dry-run resolves short names from user config" {
     local nested_dir="$TEST_TMPDIR/nested/current"
     local workspace_root="$TEST_TMPDIR/workspace-root"
