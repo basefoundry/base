@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import json
 import re
 import subprocess
@@ -132,6 +134,7 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):  # pylint: dis
     def test_workspace_update_preflight_rejects_configured_upstream_branch_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
+            (root / ".git").mkdir()
             target = workspace_update.WorkspaceUpdateTarget(
                 name="demo",
                 root=root,
