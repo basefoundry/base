@@ -522,10 +522,9 @@ def workspace_update_preflight_state(
         issues.append("non_default_branch")
     if upstream is None:
         issues.append("missing_upstream")
-    elif branch is not None and default_branch is not None:
-        configured_merge = workspace_update_configured_upstream_branch(target, branch)
-        expected_merge = f"refs/heads/{default_branch}"
-        if configured_merge is not None and configured_merge != expected_merge:
+    elif branch == default_branch:
+        upstream_branch = workspace_update_upstream_branch(upstream)
+        if upstream_branch is not None and upstream_branch != default_branch:
             issues.append("upstream_mismatch")
 
     return WorkspaceUpdatePreflightState(
@@ -537,22 +536,10 @@ def workspace_update_preflight_state(
     )
 
 
-def workspace_update_configured_upstream_branch(target: WorkspaceUpdateTarget, branch: str) -> str | None:
-    if not target.root.is_dir():
-        return None
-    try:
-        configured = run_workspace_git_probe(
-            target.root,
-            "config",
-            "--get",
-            f"branch.{branch}.merge",
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if configured.returncode != 0:
-        return None
-    value = configured.stdout.strip()
-    return value or None
+def workspace_update_upstream_branch(upstream: str) -> str | None:
+    """Extract the branch component from Git status' remote-qualified name."""
+    _remote, separator, branch = upstream.partition("/")
+    return branch if separator and branch else None
 
 
 def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstream: str | None) -> str | None:
@@ -611,8 +598,8 @@ def workspace_update_preflight_detail(
         )
     if "upstream_mismatch" in issues:
         detail_lines.append(
-            f"branch '{branch}' tracks '{upstream}', not the configured default "
-            f"branch '{default_branch}'."
+            f"default branch '{branch}' tracks '{upstream}', not upstream branch "
+            f"'{default_branch}'."
         )
         detail_lines.append(
             "Point the manifest at the intended checkout or correct tracking explicitly, then rerun workspace update; "

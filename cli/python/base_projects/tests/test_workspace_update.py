@@ -143,14 +143,33 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):  # pylint: dis
                 side_effect=(
                     git_probe(".git\n.git\n"),
                     git_probe("## main...origin/feature/with/slash\n"),
-                    git_probe("refs/heads/feature/with/slash\n"),
                 ),
             ):
                 result = workspace_update.preflight_workspace_update_target(target)
 
         self.assertIsNotNone(result)
         self.assertEqual(result.preflight, ("upstream_mismatch",))
-        self.assertIn("not the configured default branch 'main'", result.detail or "")
+        self.assertIn("not upstream branch 'main'", result.detail or "")
+
+    def test_workspace_update_preflight_allows_feature_branch_tracking_same_branch(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## feature/with/slash...origin/feature/with/slash\n"),
+            ),
+        ) as probe:
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("non_default_branch",))
+        self.assertEqual(probe.call_count, 2)
 
     def test_workspace_update_real_git_fixture_preserves_head_for_mismatched_upstream(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
