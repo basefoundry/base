@@ -12,7 +12,8 @@ set through one CLI interface. The current implementation support contract
 covers macOS plus narrow Ubuntu/Debian source-checkout runtime and apt-backed
 setup paths. Ubuntu/Debian on WSL2 follows that supported Linux contract; it
 does not provide native Windows support. Broader Linux distribution support
-and native Windows are not in scope today. Native Windows has a separate staged proposal in
+and native Windows are not in scope today. Native Windows has a separate staged
+proposal in
 [Native Windows Support Contract](windows-support.md); it must not be treated as
 supported until its native launcher and command subset have passed that contract.
 
