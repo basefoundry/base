@@ -74,7 +74,9 @@ def documented_setup_function_anchors(markdown: str) -> set[str]:
 def documented_setup_rows(markdown: str) -> list[tuple[str, int, int, set[str]]]:
     rows: list[tuple[str, int, int, set[str]]] = []
     row_pattern = re.compile(
-        r"^\| `(?P<path>[^`]+)` (?P<start>\d+)-(?P<end>\d+) \|.*\| (?P<anchors>.*?) \|$"
+        r"^\| `(?P<path>[^`]+)` (?P<start>\d+)-(?P<end>\d+) \| "
+        r"(?P<responsibility>[^|]*) \| (?P<anchors>[^|]*) \| "
+        r"(?P<owner>[^|]*) \|$"
     )
     for line in markdown.splitlines():
         match = row_pattern.match(line)
