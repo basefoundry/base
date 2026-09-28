@@ -28,6 +28,15 @@ SETUP_PROJECT_ARTIFACTS_SCRIPT = (
     / "subcommands"
     / "setup_project_artifacts.sh"
 )
+SETUP_DOCTOR_VISUAL_SCRIPT = (
+    REPO_ROOT
+    / "cli"
+    / "bash"
+    / "commands"
+    / "basectl"
+    / "subcommands"
+    / "setup_doctor_visual.sh"
+)
 DOCS_README = REPO_ROOT / "docs" / "README.md"
 
 
@@ -49,6 +58,7 @@ def setup_shell_sources() -> str:
             SETUP_VENV_SCRIPT,
             SETUP_PROFILES_SCRIPT,
             SETUP_PROJECT_ARTIFACTS_SCRIPT,
+            SETUP_DOCTOR_VISUAL_SCRIPT,
         )
     )
 
