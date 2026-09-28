@@ -341,6 +341,26 @@ run_setup_common_script() {
     [[ "$output" == *"guard=1"* ]]
 }
 
+@test "setup_common sources doctor visual helper idempotently" {
+    run_setup_common_script '
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_doctor_visual.sh"
+        source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_doctor_visual.sh"
+        for helper in \
+            setup_doctor_visual_status_enabled \
+            setup_doctor_status_visual_parts \
+            setup_print_doctor_finding; do
+            declare -F "$helper" >/dev/null || {
+                printf "missing helper: %s\n" "$helper" >&2
+                exit 25
+            }
+        done
+        printf "guard=%s\n" "${_base_setup_doctor_visual_sourced:-}"
+    '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"guard=1"* ]]
+}
+
 @test "setup_common reports WSL2 host context without changing platform support" {
     run_setup_common_script '
         BASE_TEST_MODE=true
