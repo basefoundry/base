@@ -101,6 +101,7 @@
               "detached_head",
               "non_default_branch",
               "missing_upstream",
+              "upstream_mismatch",
               "unknown_default_branch",
               "not_git_checkout",
               "checkout_root_mismatch",

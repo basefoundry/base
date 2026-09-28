@@ -26,6 +26,7 @@ WorkspaceUpdatePreflightIssue = Literal[
     "detached_head",
     "non_default_branch",
     "missing_upstream",
+    "upstream_mismatch",
     "unknown_default_branch",
     "not_git_checkout",
     "checkout_root_mismatch",
@@ -535,6 +536,10 @@ def workspace_update_preflight_state(
         issues.append("non_default_branch")
     if upstream is None:
         issues.append("missing_upstream")
+    elif branch == default_branch:
+        upstream_branch = workspace_update_upstream_branch(upstream)
+        if upstream_branch is not None and upstream_branch != default_branch:
+            issues.append("upstream_mismatch")
 
     return WorkspaceUpdatePreflightState(
         dirty=dirty,
@@ -543,6 +548,12 @@ def workspace_update_preflight_state(
         default_branch=default_branch,
         issues=tuple(issues),
     )
+
+
+def workspace_update_upstream_branch(upstream: str) -> str | None:
+    """Extract the branch component from Git status' remote-qualified name."""
+    _remote, separator, branch = upstream.partition("/")
+    return branch if separator and branch else None
 
 
 def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstream: str | None) -> str | None:
@@ -598,6 +609,15 @@ def workspace_update_preflight_detail(
         detail_lines.append(
             "Configure tracking for the intended default branch, then rerun workspace update; "
             "Base will not infer or assign an upstream."
+        )
+    if "upstream_mismatch" in issues:
+        detail_lines.append(
+            f"default branch '{branch}' tracks '{upstream}', not upstream branch "
+            f"'{default_branch}'."
+        )
+        detail_lines.append(
+            "Point the manifest at the intended checkout or correct tracking explicitly, then rerun workspace update; "
+            "Base will not rewrite Git configuration."
         )
     if "unknown_default_branch" in issues:
         detail_lines.append(
