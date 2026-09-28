@@ -122,6 +122,7 @@ Options:
   -h, --help                 Show this help text.
 EOF
 }
+
 base_gh_issue_main() {
     local command="${1:-}"
     shift || true

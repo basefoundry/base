@@ -56,6 +56,7 @@ EOF
 Additional options are passed through to \`gh pr $pr_command\`.
 EOF
 }
+
 base_gh_pr_create() {
     local branch branch_category issue issue_category github_repo body_file status
     local no_fixes=0

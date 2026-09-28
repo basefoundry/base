@@ -14,52 +14,36 @@ source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_branch_worktree.sh"
 
-base_gh_load_issue_readiness() {
+base_gh_load_module() {
+    local function_name="$1"
+    local module_name="$2"
+    local helper_label="$3"
     local module_path
 
-    if declare -F base_gh_issue_readiness >/dev/null 2>&1; then
+    if declare -F "$function_name" >/dev/null 2>&1; then
         return 0
     fi
 
-    module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/gh_issue_readiness.sh" || return 1
+    module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/$module_name" || return 1
     [[ -f "$module_path" ]] || {
-        base_std_log_error "gh issue readiness helper was not found at '$module_path'."
+        base_std_log_error "$helper_label was not found at '$module_path'."
         return 1
     }
-    # shellcheck source=cli/bash/commands/basectl/subcommands/gh_issue_readiness.sh
+    # The module names and function names are fixed by the wrappers below.
+    # shellcheck disable=SC1090
     source "$module_path"
+}
+
+base_gh_load_issue_readiness() {
+    base_gh_load_module base_gh_issue_readiness gh_issue_readiness.sh "gh issue readiness helper"
 }
 
 base_gh_load_issue_module() {
-    local module_path
-
-    if declare -F base_gh_issue_main >/dev/null 2>&1; then
-        return 0
-    fi
-
-    module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/gh_issue.sh" || return 1
-    [[ -f "$module_path" ]] || {
-        base_std_log_error "gh issue helper was not found at '$module_path'."
-        return 1
-    }
-    # shellcheck source=cli/bash/commands/basectl/subcommands/gh_issue.sh
-    source "$module_path"
+    base_gh_load_module base_gh_issue_main gh_issue.sh "gh issue helper"
 }
 
 base_gh_load_pr_module() {
-    local module_path
-
-    if declare -F base_gh_pr_main >/dev/null 2>&1; then
-        return 0
-    fi
-
-    module_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/gh_pr.sh" || return 1
-    [[ -f "$module_path" ]] || {
-        base_std_log_error "gh pull request helper was not found at '$module_path'."
-        return 1
-    }
-    # shellcheck source=cli/bash/commands/basectl/subcommands/gh_pr.sh
-    source "$module_path"
+    base_gh_load_module base_gh_pr_main gh_pr.sh "gh pull request helper"
 }
 
 base_gh_usage() {
@@ -364,8 +348,6 @@ base_gh_do_auth() {
             ;;
     esac
 }
-
-
 
 base_gh_project_usage() {
     cat <<'EOF'
@@ -717,7 +699,6 @@ base_gh_issue_labels() {
     base_github_issue_labels "$repo" "$issue" 2>/dev/null || true
 }
 
-
 base_gh_pr_changed_paths() {
     local default_branch base_ref candidate
 
@@ -974,10 +955,6 @@ base_gh_current_issue_from_branch() {
     branch="$(git branch --show-current 2>/dev/null)" || return 1
     base_github_issue_from_branch_name "$branch"
 }
-
-
-
-
 
 base_gh_do_project() {
     local wrapper="${BASE_GH_PROJECT_WRAPPER:-$BASE_HOME/bin/base-wrapper}"
