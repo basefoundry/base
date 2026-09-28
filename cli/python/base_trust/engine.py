@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 import base_cli
 from base_cli_profile import base_cli_app
 from base_cli_adapters.history import base_version as read_base_version
+# This exception-only leaf has no project or trust dependencies, so it is safe
+# at module scope while the behavioral project modules below remain lazy.
 from base_projects.workspace_errors import ProjectDiscoveryError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError

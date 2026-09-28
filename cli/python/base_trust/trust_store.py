@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from base_setup.git_commands import run_git  # pylint: disable=unused-import
-from base_setup.git_remote_parse import parse_origin_remote  # pylint: disable=unused-import
-
 from base_setup.manifest_trust import (
     ALLOWED_COMMANDS,
     SCHEMA_VERSION,
