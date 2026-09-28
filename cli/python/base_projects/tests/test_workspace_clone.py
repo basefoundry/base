@@ -58,6 +58,33 @@ def workspace_clone_row(stdout: str, repo_name: str) -> list[str]:
 
 
 class WorkspaceCloneTests(unittest.TestCase):
+    def test_empty_workspace_clone_plan_is_a_successful_no_op(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            workspace.mkdir()
+            base_home.mkdir()
+            write_workspace_manifest(
+                manifest_path,
+                "schema_version: 1\nworkspace:\n  name: empty\nrepos: []\n",
+            )
+
+            status, stdout, stderr = invoke_engine(
+                ["clone", "--workspace", str(workspace), "--manifest", str(manifest_path), "--dry-run"],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Workspace clone: ", stdout)
+        self.assertIn("(0 manifest repos)", stdout)
+        self.assertIn("Workspace clone plan complete: planned=0 skipped=0 failed=0.", stdout)
+
     def test_clone_detail_filters_timestamped_base_log_records(self) -> None:
         detail = clone_detail(
             "Cloning GitHub repository 'codeforester/bleach'.\n",

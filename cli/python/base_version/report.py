@@ -9,6 +9,18 @@ from pathlib import Path
 import subprocess
 import sys
 
+try:
+    from base_version.checkout import git_checkout_marker
+except ModuleNotFoundError:  # The report is also executed directly in isolation.
+    checkout_spec = importlib.util.spec_from_file_location(
+        "_base_checkout", Path(__file__).with_name("checkout.py")
+    )
+    if checkout_spec is None or checkout_spec.loader is None:
+        raise ImportError("Base checkout helper is unavailable") from None
+    checkout_module = importlib.util.module_from_spec(checkout_spec)
+    checkout_spec.loader.exec_module(checkout_module)
+    git_checkout_marker = getattr(checkout_module, "git_checkout_marker")
+
 # Bootstrap inspection cannot import base_cli.ExitCode.
 SUCCESS = 0
 
@@ -28,7 +40,7 @@ def first_line(path: Path) -> str | None:
 def git_identity(root: Path) -> dict:
     """Do not accidentally report an enclosing workspace repository's identity."""
     result = {"revision": None, "dirty": None}
-    if not (root / ".git").exists():
+    if git_checkout_marker(root) is not True:
         return result
     try:
         env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
