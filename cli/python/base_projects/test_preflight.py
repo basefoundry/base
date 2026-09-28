@@ -8,10 +8,10 @@ import base_cli
 
 from base_setup.manifest_model import BaseManifest
 from base_setup.test_requirements import check_test_requirements
-from base_trust.guidance import print_blocked_command_text
-from base_trust.trust_store import (
+from base_setup.manifest_trust import (
     ManifestCommandTrustStore, compute_trust_identity, manifest_command_surfaces_from_manifest,
 )
+from base_setup.manifest_trust_guidance import print_blocked_command_text
 
 
 def project_test_preflight(ctx: base_cli.Context, manifest: BaseManifest) -> bool:
