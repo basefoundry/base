@@ -28,6 +28,15 @@ SETUP_PROJECT_ARTIFACTS_SCRIPT = (
     / "subcommands"
     / "setup_project_artifacts.sh"
 )
+SETUP_DOCTOR_VISUAL_SCRIPT = (
+    REPO_ROOT
+    / "cli"
+    / "bash"
+    / "commands"
+    / "basectl"
+    / "subcommands"
+    / "setup_doctor_visual.sh"
+)
 DOCS_README = REPO_ROOT / "docs" / "README.md"
 
 
@@ -49,6 +58,7 @@ def setup_shell_sources() -> str:
             SETUP_VENV_SCRIPT,
             SETUP_PROFILES_SCRIPT,
             SETUP_PROJECT_ARTIFACTS_SCRIPT,
+            SETUP_DOCTOR_VISUAL_SCRIPT,
         )
     )
 
@@ -59,6 +69,29 @@ def shell_function_names(source: str) -> set[str]:
 
 def documented_setup_function_anchors(markdown: str) -> set[str]:
     return set(re.findall(r"`(setup_[a-z0-9_]+)\(\)`", markdown))
+
+
+def documented_setup_rows(markdown: str) -> list[tuple[str, int, int, set[str]]]:
+    rows: list[tuple[str, int, int, set[str]]] = []
+    row_pattern = re.compile(
+        r"^\| `(?P<path>[^`]+)` (?P<start>\d+)-(?P<end>\d+) \| "
+        r"(?P<responsibility>[^|]*) \| (?P<anchors>[^|]*) \| "
+        r"(?P<owner>[^|]*) \|$"
+    )
+    for line in markdown.splitlines():
+        match = row_pattern.match(line)
+        if match is None:
+            continue
+        anchors = set(re.findall(r"`(setup_[a-z0-9_]+)\(\)`", match.group("anchors")))
+        rows.append(
+            (
+                match.group("path"),
+                int(match.group("start")),
+                int(match.group("end")),
+                anchors,
+            )
+        )
+    return rows
 
 
 def test_setup_common_ownership_doc_is_linked_from_docs_map() -> None:
@@ -103,6 +136,23 @@ def test_setup_common_ownership_doc_function_anchors_exist() -> None:
     assert anchors, "setup_common ownership doc should anchor the map to setup_* functions"
     missing = sorted(anchors - actual_functions)
     assert not missing, "documented setup_common function anchors are missing: " + ", ".join(missing)
+
+
+def test_setup_common_ownership_doc_ranges_contain_function_anchors() -> None:
+    for path, start, end, anchors in documented_setup_rows(setup_common_doc()):
+        script = REPO_ROOT / "cli" / "bash" / "commands" / "basectl" / "subcommands" / path
+        lines = script.read_text(encoding="utf-8").splitlines()
+        assert end <= len(lines), f"{path} range ends at {end}, but the file has {len(lines)} lines"
+        function_lines = {
+            name: line_number
+            for line_number, line in enumerate(lines, start=1)
+            for name in re.findall(r"^([A-Za-z_][A-Za-z0-9_]*)\(\) \{", line)
+        }
+        for anchor in anchors:
+            assert anchor in function_lines, f"{anchor} is not defined in {path}"
+            assert start <= function_lines[anchor] <= end, (
+                f"{anchor} is at line {function_lines[anchor]} outside {path} {start}-{end}"
+            )
 
 
 def test_setup_common_sources_linux_debian_helper() -> None:
