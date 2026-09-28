@@ -250,6 +250,8 @@ run_repo_command_with_mocks() {
 
     bash_libs_dir="$(base_bash_libs_fixture_dir)"
     printf '%s\n' \
+        'project:' \
+        '  name: base' \
         'commands:' \
         '  integration_test: {command: ./bin/base-test}' \
         'test: {command: "./bin/base-test#literal"}' > "$manifest"
@@ -267,6 +269,8 @@ run_repo_command_with_mocks() {
     [ "$status" -eq 1 ]
 
     printf '%s\n' \
+        'project:' \
+        '  name: base' \
         'commands:' \
         '  integration_test: {command: ./bin/base-test}' \
         'test:' \
@@ -283,6 +287,24 @@ run_repo_command_with_mocks() {
         ' bash "$manifest"
 
     [ "$status" -eq 0 ]
+
+    printf '%s\n' \
+        'project:' \
+        '  name: demo' \
+        'test:' \
+        '  command: ./bin/base-test' > "$manifest"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_manifest_uses_base_test_fallback "$1"
+        ' bash "$manifest"
+
+    [ "$status" -eq 1 ]
 }
 
 @test "basectl repo clone dry-run resolves short names from user config" {

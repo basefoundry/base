@@ -9,6 +9,8 @@ import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 import_base_lib arg/lib_arg.sh
 
+# shellcheck source=lib/base/base_cli_runtime.sh
+source "$BASE_HOME/lib/base/base_cli_runtime.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 # shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
@@ -1684,26 +1686,66 @@ base_repo_check_missing_files() {
     done
 }
 
-base_repo_manifest_validation_file_from_python() {
-    local manifest_path="$1"
+base_repo_manifest_python_bin() {
     local python_bin
     local venv_python="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}/bin/python"
 
     if [[ -x "$venv_python" ]]; then
-        python_bin="$venv_python"
+        printf '%s\n' "$venv_python"
     else
         base_std_command_path python_bin python3 || return 1
+        printf '%s\n' "$python_bin"
     fi
+}
+
+base_repo_manifest_validation_file_from_python() {
+    local manifest_path="$1"
+    local python_bin source_root
+
+    python_bin="$(base_repo_manifest_python_bin)" || return 1
+    source_root="$(base_cli_runtime_source_root)" || return 1
     [[ -f "$manifest_path" ]] || return 1
-    env BASE_HOME="$BASE_HOME" BASE_PROJECT=base PYTHONPATH="$BASE_HOME/cli/python" \
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT=base BASE_CLI_RUNTIME_SOURCE_ROOT="$source_root" \
         "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" \
         base_projects.manifest_contract "$manifest_path" 2>/dev/null
+}
+
+base_repo_manifest_is_base_fallback() {
+    local manifest_path="$1"
+    local project_name
+
+    [[ -f "$manifest_path" ]] || return 1
+    project_name="$(awk '
+        /^project:[[:space:]]*\{/ {
+            value=$0
+            sub(/^[[:space:]]*project:[[:space:]]*\{[[:space:]]*/, "", value)
+            if (value !~ /(^|[,{[:space:]])name[[:space:]]*:/) exit 1
+            sub(/^.*[,{[:space:]]name[[:space:]]*:[[:space:]]*/, "", value)
+            sub(/[},].*$/, "", value)
+            found=1
+            print value
+            exit
+        }
+        /^project:[[:space:]]*$/ { in_project=1; next }
+        in_project && $0 !~ /^[[:space:]]/ { in_project=0 }
+        in_project && $0 ~ /^[[:space:]]+name:[[:space:]]*/ {
+            value=$0
+            sub(/^[[:space:]]+name:[[:space:]]*/, "", value)
+            found=1
+            print value
+            exit
+        }
+        END { if (!found) exit 1 }
+    ' "$manifest_path")" || return 1
+    project_name="$(base_repo_strip_config_value "$project_name")" || return 1
+    [[ "$project_name" == base ]]
 }
 
 base_repo_manifest_uses_base_test_fallback() {
     local manifest_path="$1"
     local validation_command
 
+    base_repo_manifest_is_base_fallback "$manifest_path" || return 1
     [[ -f "$manifest_path" ]] || return 1
     validation_command="$(awk '
         /^test:[[:space:]]*\{/ {
@@ -1734,9 +1776,14 @@ base_repo_manifest_uses_base_test_fallback() {
 
 base_repo_baseline_validation_file() {
     local path="$1"
+    local manifest_path="$path/base_manifest.yaml"
     local validation_file
 
-    if ! validation_file="$(base_repo_manifest_validation_file_from_python "$path/base_manifest.yaml")"; then
+    if [[ ! -f "$manifest_path" ]]; then
+        validation_file='tests/validate.sh'
+    elif validation_file="$(base_repo_manifest_validation_file_from_python "$manifest_path")"; then
+        :
+    else
         if base_repo_manifest_uses_base_test_fallback "$path/base_manifest.yaml"; then
             validation_file='bin/base-test'
         else
