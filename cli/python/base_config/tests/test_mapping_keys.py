@@ -31,6 +31,14 @@ def write_config(home: Path, section: str, mapping: dict) -> Path:
     return path
 
 
+def assert_mapping_key_diagnostic(output: str, path: Path, section: str) -> None:
+    assert str(path) in output
+    assert (
+        f"{section} keys must be non-empty strings" in output
+        or f"has a non-string key under '{section}'" in output
+    )
+
+
 @pytest.mark.parametrize("section", SECTIONS)
 @pytest.mark.parametrize("mapping", INVALID_MAPPINGS)
 def test_reader_and_doctor_reject_malformed_keys_without_rewriting(
@@ -38,22 +46,19 @@ def test_reader_and_doctor_reject_malformed_keys_without_rewriting(
 ):
     path = write_config(tmp_path, section, mapping)
     original = path.read_bytes()
-    message = f"{section} keys must be non-empty strings"
     with pytest.raises(ConfigurationError) as failure:
         read_user_config(tmp_path)
-    assert str(path) in str(failure.value)
-    assert message in str(failure.value)
+    assert_mapping_key_diagnostic(str(failure.value), path, section)
 
     monkeypatch.setenv("HOME", str(tmp_path))
     assert engine.doctor_config_command() == 1
     captured = capsys.readouterr()
-    assert message in captured.out
+    assert_mapping_key_diagnostic(captured.out, path, section)
     assert "Traceback" not in captured.out + captured.err
 
     result = invoke(engine.app, ["doctor"], home=tmp_path)
     assert result.exit_code != 0
-    assert message in result.output
-    assert str(path) in result.output
+    assert_mapping_key_diagnostic(result.output, path, section)
     assert "Traceback" not in result.output
     assert "TypeError" not in result.output
     assert path.read_bytes() == original

@@ -85,8 +85,10 @@ base_test_bash_libs_available() {
     for candidate in \
         "${BASE_BASH_LIBS_DIR:-}" \
         "$base_test_home/../base-bash-libs/lib/bash"; do
-        [[ -n "$candidate" ]] || continue
-        [[ -f "$candidate/std/lib_std.sh" ]] && return 0
+        [[ -n "$candidate" && -f "$candidate/std/lib_std.sh" ]] || continue
+        BASE_BASH_LIBS_DIR="$candidate"
+        export BASE_BASH_LIBS_DIR
+        return 0
     done
 
     return 1
