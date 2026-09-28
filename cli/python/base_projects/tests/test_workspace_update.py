@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import json
 import re
 import subprocess
@@ -36,7 +38,7 @@ def git_probe(stdout: str = "", returncode: int = 0, stderr: str = "") -> subpro
     return subprocess.CompletedProcess(["git"], returncode, stdout=stdout, stderr=stderr)
 
 
-class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
+class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def test_workspace_update_preflight_allows_clean_default_branch_tracking(self) -> None:
         target = workspace_update.WorkspaceUpdateTarget(
             name="demo",
@@ -129,8 +131,237 @@ class WorkspaceUpdateRemoteDefaultBranchTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertEqual(workspace_update.parse_workspace_remote_default_branch(output), expected)
 
+    def test_workspace_update_preflight_rejects_configured_upstream_branch_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / ".git").mkdir()
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="demo",
+                root=root,
+                action="pull",
+                default_branch="main",
+            )
+            with mock.patch(
+                "base_projects.workspace_update.run_workspace_git_probe",
+                side_effect=(
+                    git_probe(".git\n.git\n"),
+                    git_probe("## main...origin/feature/with/slash\n"),
+                ),
+            ):
+                result = workspace_update.preflight_workspace_update_target(target)
 
-class WorkspaceUpdateTests(unittest.TestCase):
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("upstream_mismatch",))
+        self.assertIn("not upstream branch 'main'", result.detail or "")
+
+    def test_workspace_update_preflight_allows_feature_branch_tracking_same_branch(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="demo",
+            root=Path("/workspace/demo"),
+            action="pull",
+            default_branch="main",
+        )
+        with mock.patch(
+            "base_projects.workspace_update.run_workspace_git_probe",
+            side_effect=(
+                git_probe(".git\n.git\n"),
+                git_probe("## feature/with/slash...origin/feature/with/slash\n"),
+            ),
+        ) as probe:
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("non_default_branch",))
+        self.assertEqual(probe.call_count, 2)
+
+    def test_workspace_update_real_git_fixture_preserves_head_for_mismatched_upstream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            remote = root / "origin.git"
+            seed = root / "seed"
+            checkout = root / "checkout"
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "init", "--initial-branch=main", str(seed)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(["git", "-C", str(seed), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(["git", "-C", str(seed), "config", "user.email", "workspace@example.com"], check=True)
+            (seed / "README.md").write_text("main\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(seed), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(seed), "commit", "-m", "main"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(
+                ["git", "-C", str(seed), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(seed), "switch", "-c", "feature/with/slash"],
+                check=True,
+                capture_output=True,
+            )
+            (seed / "feature.txt").write_text("feature\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(seed), "add", "feature.txt"], check=True)
+            subprocess.run(["git", "-C", str(seed), "commit", "-m", "feature"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(seed), "push", "--set-upstream", "origin", "feature/with/slash"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "clone", "--branch", "main", str(remote), str(checkout)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(checkout),
+                    "branch",
+                    "--set-upstream-to=origin/feature/with/slash",
+                    "main",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            before = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+            result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    "demo", checkout, "pull", default_branch="main"
+                )
+            )
+
+            after = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("upstream_mismatch",))
+        self.assertEqual(before, after)
+
+
+class WorkspaceUpdateTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
+    def test_workspace_update_rejects_existing_directory_without_checkout_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target_root = Path(tmpdir) / "nested"
+            target_root.mkdir()
+            target = workspace_update.WorkspaceUpdateTarget(
+                name="nested",
+                root=target_root,
+                action="pull",
+            )
+            with mock.patch("base_projects.workspace_update.run_workspace_git_probe") as probe:
+                result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("checkout_root_mismatch",))
+        self.assertIn("not a checkout root", result.detail or "")
+        probe.assert_not_called()
+
+    def test_workspace_update_isolates_inaccessible_checkout_marker(self) -> None:
+        target = workspace_update.WorkspaceUpdateTarget(
+            name="restricted",
+            root=Path("/workspace/restricted"),
+            action="pull",
+        )
+        fallback = workspace_update.workspace_update_preflight_result(
+            ("preflight_failed",), "could not inspect restricted checkout"
+        )
+        with mock.patch(
+            "base_version.checkout.Path.stat",
+            side_effect=PermissionError("permission denied"),
+        ), mock.patch(
+            "base_projects.workspace_update.workspace_update_git_directories",
+            return_value=fallback,
+        ):
+            result = workspace_update.preflight_workspace_update_target(target)
+
+        self.assertEqual(result, fallback)
+
+    def test_workspace_update_real_git_fixture_never_pulls_ancestor_for_nested_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            remote = root / "origin.git"
+            checkout = root / "checkout"
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "init", "--initial-branch=main", str(checkout)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(["git", "-C", str(checkout), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(["git", "-C", str(checkout), "config", "user.email", "workspace@example.com"], check=True)
+            (checkout / "README.md").write_text("workspace\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(checkout), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(checkout), "commit", "-m", "initial"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(checkout), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(
+                ["git", "-C", str(checkout), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+            before = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+            nested = checkout / "not-a-repository"
+            nested.mkdir()
+
+            result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    "nested", nested, "pull", default_branch="main"
+                )
+            )
+
+            after = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.preflight, ("checkout_root_mismatch",))
+        self.assertEqual(before, after)
+
+    def test_empty_workspace_update_text_and_json_are_successful_no_ops(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            workspace = root / "workspace"
+            base_home = root / "base"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            workspace.mkdir()
+            base_home.mkdir()
+            manifest_path.write_text(
+                "schema_version: 1\nworkspace:\n  name: empty\nrepos: []\n",
+                encoding="utf-8",
+            )
+            text_status, text_stdout, text_stderr = invoke_engine(
+                ["update", "--workspace", str(workspace), "--manifest", str(manifest_path), "--dry-run"],
+                base_home,
+                home,
+            )
+            json_status, json_stdout, json_stderr = invoke_engine(
+                [
+                    "update", "--workspace", str(workspace), "--manifest", str(manifest_path),
+                    "--dry-run", "--format", "json",
+                ],
+                base_home,
+                home,
+            )
+        self.assertEqual(text_status, 0)
+        self.assertEqual(text_stderr, "")
+        self.assertIn("Workspace update plan complete: planned=0 skipped=0 failed=0.", text_stdout)
+        self.assertEqual(json_status, 0)
+        self.assertEqual(json_stderr, "")
+        payload = json.loads(json_stdout)
+        self.assertEqual(payload["repositories"], [])
+        self.assertEqual(payload["counts"], {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 0, "failed": 0})
+
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
         cases = (
             (

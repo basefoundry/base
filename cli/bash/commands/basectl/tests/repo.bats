@@ -802,6 +802,65 @@ EOF
     fi
 }
 
+@test "repo GitHub settings helpers cover gh warning and project secret validation directly" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_std_command_path() { printf -v "$1" "%s" "$2"; }
+            base_std_log_warn() { printf "WARN:%s\n" "$*"; }
+            base_repo_require_gh() { return 0; }
+            brew() {
+                case "${BREW_CASE:?}:$1:$2" in
+                    outdated:list:gh) return 0 ;;
+                    outdated:outdated:gh) printf "gh\n"; return 0 ;;
+                    current:list:gh) return 0 ;;
+                    current:outdated:gh) return 0 ;;
+                    *) return 1 ;;
+                esac
+            }
+            for BREW_CASE in outdated current unavailable; do
+                if base_repo_homebrew_gh_outdated; then
+                    printf "BREW:%s:outdated\n" "$BREW_CASE"
+                else
+                    printf "BREW:%s:not-outdated\n" "$BREW_CASE"
+                fi
+                if [[ "$BREW_CASE" == outdated ]]; then
+                    base_repo_warn_if_gh_outdated
+                fi
+            done
+            printf "BASE_PROJECT_TOKEN\t2026-06-18T00:00:00Z\n" | base_repo_secret_list_has_project_token && echo SECRET:present
+            printf "OTHER_TOKEN\t2026-06-18T00:00:00Z\n" | base_repo_secret_list_has_project_token || echo SECRET:absent
+            gh() {
+                case "${SECRET_CASE:?}" in
+                    present) printf "BASE_PROJECT_TOKEN\t2026-06-18T00:00:00Z\n"; return 0 ;;
+                    absent) printf "OTHER_TOKEN\t2026-06-18T00:00:00Z\n"; return 0 ;;
+                    failure) printf "authentication failed\n" >&2; return 1 ;;
+                esac
+            }
+            for SECRET_CASE in present absent failure; do
+                printf "CHECK:%s:\n" "$SECRET_CASE"
+                base_repo_check_project_intake_secret 0 owner/repo
+            done
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BREW:outdated:outdated"* ]]
+    [[ "$output" == *"BREW:current:not-outdated"* ]]
+    [[ "$output" == *"BREW:unavailable:not-outdated"* ]]
+    [[ "$output" == *"WARN:GitHub CLI 'gh' is outdated"* ]]
+    [[ "$output" == *"SECRET:present"* ]]
+    [[ "$output" == *"SECRET:absent"* ]]
+    [[ "$output" == *"Project Intake secret 'BASE_PROJECT_TOKEN' is not configured for 'owner/repo'."* ]]
+    [[ "$output" == *"Unable to inspect GitHub Actions secrets for 'owner/repo'."* ]]
+    [[ "$output" == *"authentication failed"* ]]
+}
+
 @test "basectl repo init is guarded and lazy-loaded" {
     local bash_libs_dir
 
