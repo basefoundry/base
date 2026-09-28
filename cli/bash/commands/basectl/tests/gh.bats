@@ -311,6 +311,30 @@ run_gh_subcommand() {
     [[ "$output" == *"basectl gh issue readiness <number> [options]"* ]]
 }
 
+@test "gh issue and pr areas are sourced on demand" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            [[ -z "${_base_gh_issue_sourced:-}" ]]
+            [[ -z "${_base_gh_pr_sourced:-}" ]]
+            base_gh_subcommand_main issue --help >/dev/null
+            [[ "${_base_gh_issue_sourced:-}" == "1" ]]
+            [[ -z "${_base_gh_pr_sourced:-}" ]]
+            base_gh_subcommand_main pr --help >/dev/null
+            [[ "${_base_gh_pr_sourced:-}" == "1" ]]
+        '
+
+    [ "$status" -eq 0 ]
+}
+
 @test "basectl gh auth status reports stored credential state" {
     write_auth_gh_mock
 
