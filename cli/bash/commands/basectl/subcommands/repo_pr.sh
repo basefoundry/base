@@ -4,6 +4,15 @@
 _base_repo_pr_sourced=1
 readonly _base_repo_pr_sourced
 
+if ! declare -F import_base_lib >/dev/null 2>&1; then
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/base_init.sh"
+fi
+if ! declare -F base_repo_pretty_arg >/dev/null 2>&1; then
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+fi
+
 base_repo_pr_branch_name() {
     local category="$1"
     local issue="$2"

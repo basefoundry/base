@@ -4,6 +4,15 @@
 _base_repo_clone_sourced=1
 readonly _base_repo_clone_sourced
 
+if ! declare -F import_base_lib >/dev/null 2>&1; then
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/base_init.sh"
+fi
+if ! declare -F base_repo_target_path >/dev/null 2>&1; then
+    # shellcheck source=/dev/null
+    source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+fi
+
 base_repo_clone_check_destination() {
     local actual_repo=""
     local expected_repo="$1"

@@ -32,6 +32,8 @@ refactors can reduce `repo.sh` safely without changing public command behavior.
 - Move structured GitHub Project behavior to Python, not to another Bash file.
 - Add or keep focused BATS coverage for each extracted command before moving
   code.
+- Extracted modules must guard-source `repo.sh` when their shared helpers are
+  not already loaded, so each module can be sourced and smoke-tested directly.
 
 ## Completed Extractions
 
