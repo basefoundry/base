@@ -713,9 +713,15 @@ the current use of that retired phrase; this standards issue does not modify
 
 The following paragraph is the canonical positioning example:
 
-> Base is one command you install so every repo on your machine becomes easier to set up, run, and test. It reads a small manifest from each project and turns it into one consistent set of commands — setup, activate, test, doctor — whether you have one repository or twenty. Base doesn't replace the tools you already use; it gives them a common front door.
+> Base is one command you install so every repo on your machine becomes easier to set up, run, and test. It reads a small manifest from each project and turns it into one consistent set of commands — setup, activate, build, test, doctor — whether you have one repository or twenty. Base doesn't replace the tools you already use; it gives them a common front door.
 
 > That front door is Base's control plane: one command surface that orchestrates the tools already installed on your machine.
+
+`build` was added to the command list because `basectl build` is a
+manifest-declared command of the same tier as `test` — not a Base-lifecycle
+verb like `activate` or `doctor` — and its absence understated the command
+surface in the one paragraph meant to give a cold reader an accurate first
+sentence.
 
 #### Rejected Alternatives
 

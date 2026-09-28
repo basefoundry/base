@@ -133,7 +133,17 @@ def require_command(ctx: base_cli.Context, project: str, workspace: str | None, 
     help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
 )
 @base_cli.option("--manifest-sha256", help="Expected SHA-256 digest of base_manifest.yaml.")
-def allow_command(ctx: base_cli.Context, project: str, workspace: str | None, manifest_sha256: str | None) -> int:
+@base_cli.option(
+    "--test-requirements-sha256",
+    help="Expected SHA-256 digest of the declared test-requirements file.",
+)
+def allow_command(
+    ctx: base_cli.Context,
+    project: str,
+    workspace: str | None,
+    manifest_sha256: str | None,
+    test_requirements_sha256: str | None,
+) -> int:
     try:
         identity = resolve_trust_identity(ctx, project, workspace)
     except (ProjectDiscoveryError, ManifestError, TrustError) as exc:
@@ -145,6 +155,14 @@ def allow_command(ctx: base_cli.Context, project: str, workspace: str | None, ma
             "Provided --manifest-sha256 '%s' does not match current manifest SHA-256 '%s'.",
             manifest_sha256,
             identity.manifest_sha256,
+        )
+        return base_cli.ExitCode.USAGE_ERROR
+
+    if test_requirements_sha256 is not None and test_requirements_sha256 != identity.test_requirements_sha256:
+        ctx.log.error(
+            "Provided --test-requirements-sha256 '%s' does not match current test-requirements SHA-256 '%s'.",
+            test_requirements_sha256,
+            identity.test_requirements_sha256 or "none",
         )
         return base_cli.ExitCode.USAGE_ERROR
 

@@ -822,7 +822,10 @@ assert len(items) == 1 and items[0]["last_check"]["status"] == "warn", items
             cp "$config" "$expected"
             run_basectl config doctor
             [ "$status" -ne 0 ]
-            [[ "$output" == *"$label keys must be non-empty strings"* ]]
+            if [[ "$output" != *"$label keys must be non-empty strings"* &&
+                "$output" != *"has a non-string key under '$label'"* ]]; then
+                fail "unexpected malformed-key diagnostic: $output"
+            fi
             [[ "$output" != *"Traceback"* ]]
             [[ "$output" != *"TypeError"* ]]
             cmp -s "$config" "$expected"

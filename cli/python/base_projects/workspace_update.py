@@ -13,7 +13,9 @@ from base_projects.workspace_context import WorkspacePathOutsideRootError
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
+from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_version.checkout import git_checkout_marker
 
 
 WorkspaceUpdateAction = Literal["pull", "skip"]
@@ -24,8 +26,10 @@ WorkspaceUpdatePreflightIssue = Literal[
     "detached_head",
     "non_default_branch",
     "missing_upstream",
+    "upstream_mismatch",
     "unknown_default_branch",
     "not_git_checkout",
+    "checkout_root_mismatch",
     "preflight_failed",
 ]
 WORKSPACE_UPDATE_TIMEOUT_SECONDS = 1800
@@ -128,7 +132,7 @@ def workspace_update_command(
     output_format: str = "text",
 ) -> int:
     targets = workspace_update_targets(workspace_root, workspace_manifest, repositories=repositories)
-    name_width = max(len("REPOSITORY"), *(len(target.name) for target in targets))
+    name_width = repository_name_width(target.name for target in targets)
     if output_format == "text":
         print_workspace_update_header(workspace_root, workspace_manifest, len(targets), name_width)
 
@@ -402,6 +406,17 @@ def execute_workspace_update_target(
 
 def preflight_workspace_update_target(target: WorkspaceUpdateTarget) -> WorkspaceUpdateResult | None:
     """Return a safe, actionable result when a manifest checkout is not pullable."""
+    if git_checkout_marker(target.root) is False:
+        return workspace_update_preflight_result(
+            ("checkout_root_mismatch",),
+            "\n".join(
+                (
+                    f"repository '{target.name}' at '{target.root}' is not a checkout root.",
+                    "The selected path has no .git entry; refusing Git ancestor discovery and pull.",
+                    "Point the manifest at the repository root; Base will not modify an ancestor checkout.",
+                )
+            ),
+        )
     git_directories = workspace_update_git_directories(target)
     if isinstance(git_directories, WorkspaceUpdateResult):
         return git_directories
@@ -521,6 +536,10 @@ def workspace_update_preflight_state(
         issues.append("non_default_branch")
     if upstream is None:
         issues.append("missing_upstream")
+    elif branch == default_branch:
+        upstream_branch = workspace_update_upstream_branch(upstream)
+        if upstream_branch is not None and upstream_branch != default_branch:
+            issues.append("upstream_mismatch")
 
     return WorkspaceUpdatePreflightState(
         dirty=dirty,
@@ -529,6 +548,12 @@ def workspace_update_preflight_state(
         default_branch=default_branch,
         issues=tuple(issues),
     )
+
+
+def workspace_update_upstream_branch(upstream: str) -> str | None:
+    """Extract the branch component from Git status' remote-qualified name."""
+    _remote, separator, branch = upstream.partition("/")
+    return branch if separator and branch else None
 
 
 def workspace_update_remote_default_branch(target: WorkspaceUpdateTarget, upstream: str | None) -> str | None:
@@ -584,6 +609,15 @@ def workspace_update_preflight_detail(
         detail_lines.append(
             "Configure tracking for the intended default branch, then rerun workspace update; "
             "Base will not infer or assign an upstream."
+        )
+    if "upstream_mismatch" in issues:
+        detail_lines.append(
+            f"default branch '{branch}' tracks '{upstream}', not upstream branch "
+            f"'{default_branch}'."
+        )
+        detail_lines.append(
+            "Point the manifest at the intended checkout or correct tracking explicitly, then rerun workspace update; "
+            "Base will not rewrite Git configuration."
         )
     if "unknown_default_branch" in issues:
         detail_lines.append(
