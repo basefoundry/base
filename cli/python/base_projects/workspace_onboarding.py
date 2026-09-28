@@ -4,10 +4,6 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from base_trust.guidance import allow_command_text
-from base_trust.trust_store import ManifestCommandTrustStore
-from base_trust.trust_store import compute_trust_identity
-from base_trust.trust_store import manifest_command_surfaces_from_manifest
 from base_projects.project_commands import test_command as manifest_test_command
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_repository_url import redact_repository_url
@@ -15,6 +11,10 @@ from base_projects.workspace_statuses import WorkspaceProjectStatus
 from base_projects.workspace_statuses import workspace_manifest_project_statuses
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_trust import ManifestCommandTrustStore
+from base_setup.manifest_trust import compute_trust_identity
+from base_setup.manifest_trust import manifest_command_surfaces_from_manifest
+from base_setup.manifest_trust_guidance import allow_command_text
 from base_setup.runtime_inspection import runtime_verification_command
 
 

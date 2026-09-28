@@ -3,17 +3,14 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import base_cli
 from base_cli_profile import base_cli_app
 from base_cli_adapters.history import base_version as read_base_version
-from base_projects import engine as project_engine
-from base_projects.project_discovery import Project
-from base_projects.project_discovery import discover_projects_cached
-from base_projects.project_discovery import read_project
-from base_projects.workspace_context import resolve_workspace_root
-from base_projects.workspace_scanner import ProjectDiscoveryError
+# This exception-only leaf has no project or trust dependencies, so it is safe
+# at module scope while the behavioral project modules below remain lazy.
+from base_projects.workspace_errors import ProjectDiscoveryError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from .guidance import allow_command_text
@@ -42,6 +39,9 @@ from .trust_store import manifest_command_surfaces_from_manifest
 from .trust_store import sha256_file  # pylint: disable=unused-import
 from .trust_store import trust_scope_payload
 from .trust_store import write_json_atomic  # pylint: disable=unused-import
+
+if TYPE_CHECKING:
+    from base_projects.project_discovery import Project
 
 
 app = base_cli_app(
@@ -248,6 +248,9 @@ def workspace_status_command(ctx: base_cli.Context, workspace: str | None, outpu
 
 
 def workspace_status_projects(ctx: base_cli.Context, workspace: str | None) -> tuple[Project, ...]:
+    from base_projects.project_discovery import discover_projects_cached, read_project
+    from base_projects.workspace_context import resolve_workspace_root
+
     workspace_root = resolve_workspace_root(ctx, workspace)
     projects_by_name = {project.name: project for project in discover_projects_cached(ctx, workspace_root)}
 
@@ -266,6 +269,8 @@ def workspace_status_projects(ctx: base_cli.Context, workspace: str | None) -> t
 
 
 def workspace_status_active_project() -> Project | None:
+    from base_projects.project_discovery import read_project
+
     if "BASE_TRUST_ACTIVE_PROJECT" in os.environ:
         active_name = os.environ.get("BASE_TRUST_ACTIVE_PROJECT")
         active_manifest = os.environ.get("BASE_TRUST_ACTIVE_PROJECT_MANIFEST")
@@ -289,6 +294,8 @@ def resolve_trust_identity(
     project_name: str,
     workspace: str | None,
 ) -> ManifestCommandTrustIdentity:
+    from base_projects import engine as project_engine
+
     project = project_engine.resolve_named_project(ctx, project_name, workspace)
     return compute_trust_identity_for_manifest(project.manifest_path)
 

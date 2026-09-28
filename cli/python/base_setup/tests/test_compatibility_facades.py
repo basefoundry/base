@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
+from pathlib import Path
+from unittest import mock
 
 from base_devenv import report as devenv_report_impl
 from base_devcontainer import export as devcontainer_export_impl
@@ -11,8 +12,8 @@ from base_setup import ide
 from base_setup import devcontainer_export
 from base_setup import engine as setup_engine
 from base_setup import manifest_checks
+from base_setup import manifest_trust
 from base_setup import setup_reconcile
-from base_trust import trust_store
 
 
 class CompatibilityFacadeTests(unittest.TestCase):
@@ -84,12 +85,33 @@ class CompatibilityFacadeTests(unittest.TestCase):
         self.assertNotIn("def build_devenv_report", facade_source)
         self.assertNotIn("@dataclass", facade_source)
 
-    def test_trust_store_uses_focused_git_modules(self) -> None:
-        trust_store_source = Path(trust_store.__file__).read_text(encoding="utf-8")
+    def test_manifest_trust_git_identity_helpers_use_focused_modules(self) -> None:
+        project_root = Path("/tmp/project")
+        with mock.patch.object(manifest_trust, "run_git") as run_git, mock.patch.object(
+            manifest_trust, "parse_origin_remote"
+        ) as parse_origin_remote:
+            resolved_project_root = project_root.resolve()
+            run_git.return_value = mock.Mock(returncode=0, stdout=f"{resolved_project_root}\n")
+            self.assertEqual(manifest_trust.git_repository_root(project_root), resolved_project_root)
 
-        self.assertNotIn("from base_setup import git_remote", trust_store_source)
-        self.assertIn("from base_setup.git_commands import run_git", trust_store_source)
-        self.assertIn("from base_setup.git_remote_parse import parse_origin_remote", trust_store_source)
+            run_git.return_value = mock.Mock(
+                returncode=0,
+                stdout="https://github.com/basefoundry/base.git\n",
+            )
+            parse_origin_remote.return_value = mock.Mock(
+                valid=True,
+                sanitized_url="https://github.com/basefoundry/base.git",
+            )
+            self.assertEqual(
+                manifest_trust.git_origin(project_root),
+                "https://github.com/basefoundry/base.git",
+            )
+
+            run_git.assert_any_call(project_root, ["rev-parse", "--show-toplevel"])
+            run_git.assert_any_call(project_root, ["remote", "get-url", "origin"])
+            parse_origin_remote.assert_called_once_with(
+                "https://github.com/basefoundry/base.git", project_root
+            )
 
 
 if __name__ == "__main__":
