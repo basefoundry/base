@@ -11,6 +11,7 @@ Usage:
   basectl uninstall --all [options]
 
 Options:
+  --project <name>  Explicitly select a project, including one named "help".
   --all       Remove all Base-managed local state and workspace settings.
   --workspace <path>
               Workspace directory used to resolve a project name.
@@ -47,7 +48,7 @@ base_uninstall_run_python() {
 }
 
 base_uninstall_subcommand_main() {
-    local all_projects=0 dry_run=0 verify=0 yes=0 debug=0 workspace="" project="" arg
+    local all_projects=0 dry_run=0 verify=0 yes=0 debug=0 workspace="" project="" explicit_project="" arg
     local -a python_args=()
 
     while (($# > 0)); do
@@ -72,6 +73,29 @@ base_uninstall_subcommand_main() {
             -v)
                 debug=1
                 ;;
+            --project)
+                shift
+                [[ -n "${1:-}" ]] || {
+                    base_uninstall_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_uninstall_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="$1"
+                ;;
+            --project=*)
+                [[ -n "${arg#*=}" ]] || {
+                    base_uninstall_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_uninstall_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="${arg#*=}"
+                ;;
             --workspace)
                 shift
                 [[ -n "${1:-}" ]] || {
@@ -85,7 +109,7 @@ base_uninstall_subcommand_main() {
                     base_uninstall_usage_error "Unknown option '$arg'."
                     return $?
                 fi
-                [[ -z "$project" ]] || {
+                [[ -z "$project" && -z "$explicit_project" ]] || {
                     base_uninstall_usage_error "The 'uninstall' command accepts at most one project name."
                     return $?
                 }
@@ -94,6 +118,12 @@ base_uninstall_subcommand_main() {
         esac
         shift
     done
+
+    [[ -z "$explicit_project" || -z "$project" ]] || {
+        base_uninstall_usage_error "The 'uninstall' command does not accept a positional project with --project."
+        return $?
+    }
+    [[ -z "$explicit_project" ]] || project="$explicit_project"
 
     if ((all_projects && ${#project} > 0)); then
         base_uninstall_usage_error "Option '--all' cannot be combined with a project name."

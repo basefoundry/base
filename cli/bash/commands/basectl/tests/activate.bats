@@ -508,6 +508,7 @@ EOF
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl activate <project> [options]"* ]]
     [[ "$output" == *"--no-cd"* ]]
+    [[ "$output" == *"--project <name>"* ]]
     [[ "$output" == *"interactive Base Bash runtime shell"* ]]
 }
 
@@ -530,6 +531,47 @@ EOF
     [ "$status" -eq 0 ]
     [ ! -d "$BASE_CACHE_DIR/base/runs" ]
     [ ! -f "$BASE_CACHE_DIR/base/history/runs.jsonl" ]
+}
+
+@test "basectl activate targets a project named help with --project" {
+    local base_python="$TEST_HOME/.base.d/base/.venv/bin/python"
+    local workspace="$TEST_TMPDIR/workspace"
+    local project_root="$workspace/help"
+    local project_python="$project_root/.venv/bin/python"
+    local fake_bash="$TEST_TMPDIR/fake-bash"
+
+    mkdir -p "$(dirname "$base_python")" "$(dirname "$project_python")"
+    cat > "$base_python" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "resolve" && "${4:-}" == "help" ]]; then
+    base_test_protocol_project_route help "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false
+    exit 0
+fi
+printf 'unexpected activate resolver args: %s\n' "$*" >&2
+exit 1
+EOF
+    cat > "$fake_bash" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'BASE_PROJECT_ROOT=%s\n' "$BASE_PROJECT_ROOT"
+EOF
+    printf '#!/usr/bin/env bash\n' > "$project_python"
+    chmod +x "$base_python" "$project_python" "$fake_bash"
+    printf 'project:\n  name: help\nartifacts: []\n' > "$project_root/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_ACTIVATE_SHELL="$fake_bash" \
+        BASE_TEST_PROJECT_ROOT="$workspace/help" \
+        "$BASE_REPO_ROOT/bin/basectl" activate --project help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=help"* ]]
+    [[ "$output" == *"BASE_PROJECT_ROOT=$workspace/help"* ]]
 }
 
 @test "basectl activate rejects non-Bash BASE_ACTIVATE_SHELL before launch" {

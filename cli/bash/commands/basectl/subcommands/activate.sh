@@ -13,6 +13,7 @@ Usage:
   basectl activate <project> [options]
 
 Options:
+  --project <name>    Explicitly select a project, including one named "help".
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --no-cd             Preserve the caller's current directory in the project shell.
   -v                  Enable DEBUG logging for this subcommand.
@@ -53,7 +54,7 @@ base_activate_shell_is_bash() {
 }
 
 base_activate_subcommand_main() {
-    local project="" wrapper resolve_output activate_shell venv_fix
+    local project="" explicit_project="" wrapper resolve_output activate_shell venv_fix
     local resolved_name project_root manifest_path venv_dir shell_rc route_venv_dir uses_uv_manager trust_required
     local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
     local args=()
@@ -66,6 +67,30 @@ base_activate_subcommand_main() {
                 ;;
             -v)
                 args+=(--debug)
+                shift
+                ;;
+            --project)
+                [[ -n "${2:-}" ]] || {
+                    base_activate_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_activate_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="$2"
+                shift 2
+                ;;
+            --project=*)
+                [[ -n "${1#*=}" ]] || {
+                    base_activate_usage_error "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    base_activate_usage_error "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="${1#*=}"
                 shift
                 ;;
             --workspace)
@@ -89,6 +114,10 @@ base_activate_subcommand_main() {
                 return $?
                 ;;
             *)
+                if [[ -n "$explicit_project" ]]; then
+                    base_activate_usage_error "The 'activate' command does not accept a positional project with --project."
+                    return $?
+                fi
                 if [[ -n "$project" ]]; then
                     base_activate_usage_error "The 'activate' command accepts exactly one project name."
                     return $?
@@ -98,6 +127,12 @@ base_activate_subcommand_main() {
                 ;;
         esac
     done
+
+    [[ -z "$explicit_project" || -z "$project" ]] || {
+        base_activate_usage_error "The 'activate' command does not accept a positional project with --project."
+        return $?
+    }
+    [[ -z "$explicit_project" ]] || project="$explicit_project"
 
     [[ -n "$project" ]] || {
         base_activate_usage_error "Project name is required."
