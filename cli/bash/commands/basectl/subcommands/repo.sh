@@ -9,6 +9,8 @@ import_base_lib gh/lib_gh.sh
 import_base_lib str/lib_str.sh
 import_base_lib arg/lib_arg.sh
 
+# shellcheck source=lib/base/base_cli_runtime.sh
+source "$BASE_HOME/lib/base/base_cli_runtime.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 # shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
@@ -1684,29 +1686,119 @@ base_repo_check_missing_files() {
     done
 }
 
-base_repo_manifest_uses_base_test() {
+base_repo_manifest_python_bin() {
+    local python_bin
+    local venv_python="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}/bin/python"
+
+    if [[ -x "$venv_python" ]]; then
+        printf '%s\n' "$venv_python"
+    else
+        base_std_command_path python_bin python3 || return 1
+        printf '%s\n' "$python_bin"
+    fi
+}
+
+base_repo_manifest_validation_file_from_python() {
     local manifest_path="$1"
+    local python_bin source_root
+
+    python_bin="$(base_repo_manifest_python_bin)" || return 1
+    source_root="$(base_cli_runtime_source_root)" || return 1
+    [[ -f "$manifest_path" ]] || return 1
+    env BASE_HOME="$BASE_HOME" BASE_PROJECT=base BASE_CLI_RUNTIME_SOURCE_ROOT="$source_root" \
+        "$python_bin" -I "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" \
+        base_projects.manifest_contract "$manifest_path" 2>/dev/null
+}
+
+base_repo_manifest_is_base_fallback() {
+    local manifest_path="$1"
+    local project_name
 
     [[ -f "$manifest_path" ]] || return 1
-    awk '
-        $0 ~ /^test:[[:space:]]*$/ { in_test=1; next }
-        in_test && $0 ~ /^[^[:space:]]/ { in_test=0 }
-        in_test && $0 ~ /^[[:space:]]+command:[[:space:]]*\.\/bin\/base-test[[:space:]]*$/ {
+    project_name="$(awk '
+        /^project:[[:space:]]*\{/ {
+            value=$0
+            sub(/^[[:space:]]*project:[[:space:]]*\{[[:space:]]*/, "", value)
+            if (value !~ /(^|[,{[:space:]])name[[:space:]]*:/) exit 1
+            sub(/^.*[,{[:space:]]name[[:space:]]*:[[:space:]]*/, "", value)
+            sub(/[},].*$/, "", value)
             found=1
+            print value
             exit
         }
-        END { exit !found }
-    ' "$manifest_path"
+        /^project:[[:space:]]*$/ { in_project=1; next }
+        in_project && $0 !~ /^[[:space:]]/ { in_project=0 }
+        in_project && $0 ~ /^[[:space:]]+name:[[:space:]]*/ {
+            value=$0
+            sub(/^[[:space:]]+name:[[:space:]]*/, "", value)
+            found=1
+            print value
+            exit
+        }
+        END { if (!found) exit 1 }
+    ' "$manifest_path")" || return 1
+    project_name="$(base_repo_strip_config_value "$project_name")" || return 1
+    [[ "$project_name" == base ]]
+}
+
+base_repo_manifest_uses_base_test_fallback() {
+    local manifest_path="$1"
+    local validation_command
+
+    base_repo_manifest_is_base_fallback "$manifest_path" || return 1
+    [[ -f "$manifest_path" ]] || return 1
+    validation_command="$(awk '
+        /^test:[[:space:]]*\{/ {
+            value=$0
+            sub(/^[[:space:]]*test:[[:space:]]*\{[[:space:]]*/, "", value)
+            sub(/[[:space:]]*\}[[:space:]]*(#.*)?$/, "", value)
+            if (value ~ /(^|[[:space:]])command:[[:space:]]*/) {
+                sub(/^.*command:[[:space:]]*/, "", value)
+                sub(/,[[:space:]]*.*$/, "", value)
+                print value
+                exit
+            }
+        }
+        /^test:[[:space:]]*$/ { in_test=1; next }
+        in_test && $0 !~ /^[[:space:]]/ { in_test=0 }
+        in_test && $0 ~ /^[[:space:]]+command:[[:space:]]*/ {
+            value=$0
+            sub(/^[[:space:]]+command:[[:space:]]*/, "", value)
+            print value
+            exit
+        }
+    ' "$manifest_path")" || return 1
+
+    [[ -n "$validation_command" ]] || return 1
+    validation_command="$(base_repo_strip_config_value "$validation_command")" || return 1
+    [[ "$validation_command" == "./bin/base-test" ]]
 }
 
 base_repo_baseline_validation_file() {
     local path="$1"
+    local manifest_path="$path/base_manifest.yaml"
+    local validation_file
 
-    if base_repo_manifest_uses_base_test "$path/base_manifest.yaml"; then
-        printf '%s\n' 'bin/base-test'
+    if [[ ! -f "$manifest_path" ]]; then
+        validation_file='tests/validate.sh'
+    elif validation_file="$(base_repo_manifest_validation_file_from_python "$manifest_path")"; then
+        :
     else
-        printf '%s\n' 'tests/validate.sh'
+        if base_repo_manifest_uses_base_test_fallback "$path/base_manifest.yaml"; then
+            validation_file='bin/base-test'
+        else
+            validation_file='tests/validate.sh'
+        fi
     fi
+    case "$validation_file" in
+        bin/base-test|tests/validate.sh)
+            printf '%s\n' "$validation_file"
+            ;;
+        *)
+            base_std_log_error "Repository manifest selected unsupported validation file '$validation_file'."
+            return 1
+            ;;
+    esac
 }
 
 base_repo_required_baseline_files() {
@@ -1714,7 +1806,7 @@ base_repo_required_baseline_files() {
     local rel
     local validation_file
 
-    validation_file="$(base_repo_baseline_validation_file "$path")"
+    validation_file="$(base_repo_baseline_validation_file "$path")" || return 1
     for rel in "${BASE_REPO_BASELINE_FILES[@]}"; do
         [[ "$rel" == 'tests/validate.sh' ]] && continue
         printf '%s\n' "$rel"
@@ -1735,7 +1827,10 @@ base_repo_check_json() {
     local missing_files=() not_executable_files=() agent_missing_files=() checks_json=()
     local required_files=() required_count present_count validation_file
 
-    validation_file="$(base_repo_baseline_validation_file "$path")"
+    validation_file="$(base_repo_baseline_validation_file "$path")" || {
+        base_inspection_json_emit_error "repo check" usage_error "Unable to semantically parse repository manifest '$path/base_manifest.yaml'." '{}'
+        return 2
+    }
     mapfile -t required_files < <(base_repo_required_baseline_files "$path")
     mapfile -t missing_files < <(base_repo_check_missing_files "$path" "${required_files[@]}")
     if [[ -f "$path/$validation_file" && ! -x "$path/$validation_file" ]]; then
