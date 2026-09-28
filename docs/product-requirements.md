@@ -252,8 +252,9 @@ Base is succeeding when:
 
 The current support contract is macOS-primary, with implemented Ubuntu/Debian
 source-checkout runtime support and apt-backed setup for conservative Base
-prerequisites. Broader Linux distribution support, WSL, and Windows are not part
-of the current public support contract.
+prerequisites. Ubuntu/Debian under WSL2 follows that Linux contract. Broader
+Linux distribution support, non-Ubuntu/Debian WSL distributions, and native
+Windows are not part of the current public support contract.
 
 Any platform expansion must preserve Base's explicit orchestration model and
 must update this PRD, the architecture docs, install docs, tests, and release

@@ -304,9 +304,10 @@ pinned Homebrew installer variables for verified first-mile bootstrap, and
 apt-backed Ubuntu/Debian setup support.
 
 The setup/check/doctor platform contract is implemented for macOS and
-Ubuntu/Debian Linux. Broader Linux families, WSL, and native Windows remain
-outside the supported contract unless a later platform policy explicitly adds
-them.
+Ubuntu/Debian Linux, including Ubuntu/Debian under WSL2 through the same Linux
+path. Broader Linux families, non-Ubuntu/Debian WSL distributions, and native
+Windows remain outside the supported contract unless a later platform policy
+explicitly adds them.
 
 ## Where to Go Next
 
