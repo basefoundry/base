@@ -89,6 +89,38 @@ EOF
     [[ "$output" != *"--format <format>"* ]]
 }
 
+@test "basectl logs accepts bare help" {
+    run_basectl logs --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl logs help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
+@test "basectl logs treats help as an option value when filtering commands" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_logs" ]]; then
+    printf 'ARGS=%s\n' "${*:3}"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl logs --command help --format json
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ARGS=--command help --format json"* ]]
+}
+
 @test "basectl logs last-failed prints focused help" {
     run_basectl logs last-failed --help
 

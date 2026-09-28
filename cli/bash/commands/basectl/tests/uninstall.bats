@@ -14,6 +14,17 @@ load ./basectl_helpers.bash
     [[ "$output" == *"never deleted."* ]]
 }
 
+@test "basectl uninstall accepts bare help" {
+    run_basectl uninstall --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl uninstall help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl uninstall requires an explicit project or --all" {
     run_basectl uninstall
 

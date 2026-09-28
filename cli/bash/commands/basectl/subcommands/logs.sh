@@ -85,6 +85,8 @@ base_logs_help_target() {
             last-failed)
                 target=last-failed
                 ;;
+            help)
+                ;;
             -* )
                 ;;
             *)
@@ -96,11 +98,18 @@ base_logs_help_target() {
 }
 
 base_logs_args_request_help() {
-    local argument
+    local argument expect_value=0
 
     for argument in "$@"; do
+        if ((expect_value)); then
+            expect_value=0
+            continue
+        fi
         case "$argument" in
-            -h|--help) return 0 ;;
+            --command|--limit|--lines|--format)
+                expect_value=1
+                ;;
+            -h|--help|help) return 0 ;;
         esac
     done
     return 1
@@ -147,7 +156,7 @@ base_logs_subcommand_main() {
 
     while (($# > 0)); do
         case "$1" in
-            -h|--help)
+            -h|--help|help)
                 base_logs_recent_usage
                 return 0
                 ;;

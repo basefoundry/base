@@ -93,6 +93,17 @@ EOF
     [[ "$output" == *"--format <text|csv|tsv|yaml|json|markdown>"* ]]
 }
 
+@test "basectl history accepts bare help" {
+    run_basectl history --help
+    local expected="$output"
+    local expected_status="$status"
+
+    run_basectl history help
+
+    [ "$status" -eq "$expected_status" ]
+    [ "$output" = "$expected" ]
+}
+
 @test "basectl history reports missing option arguments as usage errors" {
     run_basectl history --project
 
