@@ -495,6 +495,7 @@ _base_basectl_completion() {
     case "${words[2]:-}" in
         activate)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--project[Select a project explicitly]:Base project:->projects' \
                 '--no-cd[Preserve the caller current directory]' \
                 '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
