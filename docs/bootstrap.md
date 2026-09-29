@@ -76,11 +76,15 @@ Homebrew is installed under `/opt/homebrew`. Homebrew's Ruby traceback may
 appear before Base is mentioned, but the underlying problem is usually the
 process architecture, prefix selection, Xcode license, or prefix ownership.
 
-Run this read-only diagnostic as the target user before retrying an install:
+Run this read-only diagnostic as the target user before retrying an install. It
+inspects each known Homebrew path explicitly before selecting the compatible
+prefix for the remainder of the current shell:
 
 ```bash
-printf 'machine=%s\n' "$(uname -m)"
-printf 'translated=%s\n' "$(sysctl -in sysctl.proc_translated 2>/dev/null || printf '0')"
+machine="$(uname -m)"
+translated="$(sysctl -in sysctl.proc_translated 2>/dev/null || printf '0')"
+printf 'machine=%s\n' "$machine"
+printf 'translated=%s\n' "$translated"
 printf 'shell=%s\n' "${SHELL:-unknown}"
 printf 'path=%s\n' "$PATH"
 
@@ -92,17 +96,27 @@ for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
   fi
 done
 
-command -v brew || true
-brew --config 2>&1 || true
+if [ "$machine" = "arm64" ] && [ "$translated" = "0" ]; then
+  export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+elif [ "$machine" = "x86_64" ] && [ "$translated" = "0" ]; then
+  export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+fi
+
+if command -v brew >/dev/null 2>&1; then
+  printf 'selected-brew=%s\n' "$(command -v brew)"
+  brew --config 2>&1 || true
+else
+  printf 'selected-brew=unresolved; stop before ownership checks\n'
+fi
 ```
 
 On Apple Silicon, a native terminal should report `machine=arm64` and
-`translated=0`; prefer `/opt/homebrew/bin/brew`. If the process is
-Rosetta-translated (`machine=x86_64` and `translated=1`), open a native
-terminal and put `/opt/homebrew/bin` before `/usr/local/bin` for that shell
-before continuing. On an Intel Mac, `/usr/local/bin/brew` is the expected
-prefix. Do not select a prefix only because it appears first on `PATH`; check
-the architecture and `brew --prefix` result together.
+`translated=0`; the diagnostic puts `/opt/homebrew/bin` first for that shell.
+If the process is Rosetta-translated (`machine=x86_64` and `translated=1`),
+open a native terminal before continuing. On an Intel Mac,
+`/usr/local/bin/brew` is the expected prefix. Do not select a prefix only
+because it appears first on `PATH`; check the architecture and the explicit
+candidate `--prefix` results together.
 
 Check the developer-tool boundary separately:
 
@@ -120,12 +134,20 @@ After selecting an architecture-compatible `brew`, inspect prefix ownership
 and the lock directory before `brew install`:
 
 ```bash
-brew_prefix="$(brew --prefix)"
-ls -ld "$brew_prefix" "$brew_prefix/var" "$brew_prefix/var/homebrew" \
-  "$brew_prefix/var/homebrew/locks" 2>/dev/null || true
-test -w "$brew_prefix" && printf 'prefix-writable=yes\n' || printf 'prefix-writable=no\n'
-test -w "$brew_prefix/var/homebrew/locks" && \
-  printf 'locks-writable=yes\n' || printf 'locks-writable=no\n'
+if command -v brew >/dev/null 2>&1; then
+  brew_prefix="$(brew --prefix 2>/dev/null || true)"
+  if [ -n "$brew_prefix" ]; then
+    ls -ld "$brew_prefix" "$brew_prefix/var" "$brew_prefix/var/homebrew" \
+      "$brew_prefix/var/homebrew/locks" 2>/dev/null || true
+    test -w "$brew_prefix" && printf 'prefix-writable=yes\n' || printf 'prefix-writable=no\n'
+    test -w "$brew_prefix/var/homebrew/locks" && \
+      printf 'locks-writable=yes\n' || printf 'locks-writable=no\n'
+  else
+    printf 'brew-prefix=unresolved; stop before ownership checks\n'
+  fi
+else
+  printf 'brew=unresolved; stop before ownership checks\n'
+fi
 ```
 
 The prefix and its lock directory must be owned and writable for the account
@@ -137,23 +159,12 @@ alternative when the shared Homebrew prefix cannot be repaired or is not
 owned by the target account; use the [source checkout install recipe](#source-checkout-install-recipe)
 instead.
 
-Once the checks agree, use the selected native Homebrew explicitly and finish
-the normal Base setup:
-
-```bash
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"  # Apple Silicon native shell
-brew trust basefoundry/base
-brew install basefoundry/base/base
-basectl setup --dry-run
-basectl setup
-basectl update-profile
-exec "$SHELL" -l
-```
-
-For an Intel Mac, omit the `PATH` line or use `/usr/local/bin` first. If the
-architecture, prefix, ownership, or Xcode checks do not agree, use the source
-checkout path or stop with the collected read-only output; do not continue to
-the Homebrew install merely to obtain a longer downstream traceback.
+Once the checks agree, follow the [canonical Homebrew install recipe](#homebrew-install-recipe).
+The diagnostic has already placed the architecture-compatible prefix first on
+`PATH` for the current native shell. If the architecture, prefix, ownership,
+or Xcode checks do not agree, use the source checkout path or stop with the
+collected read-only output; do not continue to the Homebrew install merely to
+obtain a longer downstream traceback.
 
 If `basectl` reports that the current Bash is too old, repair just that first:
 
