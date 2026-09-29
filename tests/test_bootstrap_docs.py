@@ -50,6 +50,19 @@ def test_bootstrap_docs_explain_mutable_homebrew_default_rationale() -> None:
     assert "BASE_HOMEBREW_INSTALLER_SHA256" in normalized
 
 
+def test_migrated_macos_recovery_uses_canonical_recipe_after_safe_selection() -> None:
+    text = BOOTSTRAP_DOC.read_text(encoding="utf-8")
+    recovery = section(text, "## Inherited Or Migrated macOS Accounts", "## Install Mode")
+
+    assert "[canonical Homebrew install recipe](#homebrew-install-recipe)" in recovery
+    assert "brew trust basefoundry/base" not in recovery
+    assert "brew install basefoundry/base/base" not in recovery
+    assert "basectl setup --dry-run" not in recovery
+    path_export = 'export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"'
+    assert recovery.index(path_export) < recovery.index('brew_prefix="$(brew --prefix')
+    assert recovery.index(path_export) < recovery.index("brew --config")
+
+
 def test_readme_trust_conscious_proof_reviews_manifest_trust_before_demo() -> None:
     text = README.read_text(encoding="utf-8")
     proof = section(text, "### Trust-Conscious Proof, No Dotfile Changes", "## How Base Fits")
