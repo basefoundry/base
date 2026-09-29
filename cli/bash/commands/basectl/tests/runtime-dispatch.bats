@@ -470,6 +470,7 @@ load ./basectl_helpers.bash
         bash -c '
             source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
             printf "label=%s\n" "$(basectl_run_bundle_label setup base-demo)"
+            printf "explicit-label=%s\n" "$(basectl_run_bundle_label activate --project help)"
             BASE_CACHE_DIR="$BASE_TEST_TMPDIR/cache" basectl_initialize_run_bundle setup base-demo || exit $?
             printf "run_id=%s\n" "$BASE_CLI_RUN_ID"
             printf "run_root=%s\n" "$BASE_CLI_RUN_ROOT"
@@ -477,6 +478,7 @@ load ./basectl_helpers.bash
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"label=setup__base-demo"* ]]
+    [[ "$output" == *"explicit-label=activate__help"* ]]
     [[ "$output" == *"run_root="*"__setup__base-demo" ]]
     run_id="$(printf '%s\n' "$output" | sed -n 's/^run_id=//p')"
     [[ "$run_id" != *"__"* ]]

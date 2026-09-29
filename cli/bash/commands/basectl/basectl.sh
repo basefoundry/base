@@ -583,7 +583,7 @@ basectl_runtime_slug() {
 
 basectl_run_bundle_project() {
     local command="$1"
-    local argument option_value=0
+    local argument option_value=0 project_option=0
     shift
 
     case "$command" in
@@ -599,12 +599,24 @@ basectl_run_bundle_project() {
 
     for argument in "$@"; do
         if ((option_value)); then
+            if ((project_option)); then
+                basectl_runtime_slug "$argument"
+                return 0
+            fi
             option_value=0
             continue
         fi
         case "$argument" in
-            --manifest|--format|--repos|--profile|--environment|--config|--log-file|--project|--workspace|--path|--target|--version|--command|--status|--older-than|--keep-last|--since|--until|--last|--lines)
+            --project)
                 option_value=1
+                project_option=1
+                ;;
+            --manifest|--format|--repos|--profile|--environment|--config|--log-file|--workspace|--path|--target|--version|--command|--status|--older-than|--keep-last|--since|--until|--last|--lines)
+                option_value=1
+                ;;
+            --project=*)
+                basectl_runtime_slug "${argument#*=}"
+                return 0
                 ;;
             --*=*|--*|-*)
                 ;;

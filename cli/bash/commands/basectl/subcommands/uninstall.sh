@@ -4,6 +4,12 @@
 _base_uninstall_subcommand_sourced=1
 readonly _base_uninstall_subcommand_sourced
 
+_base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/project_command_helpers.sh"
+# shellcheck source=/dev/null
+source "$_base_project_command_helpers_path"
+
+import_base_lib arg/lib_arg.sh
+
 base_uninstall_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -48,21 +54,13 @@ base_uninstall_run_python() {
 }
 
 base_uninstall_subcommand_main() {
-    local all_projects=0 dry_run=0 verify=0 yes=0 debug=0 workspace="" project="" explicit_project="" arg
-    local -a python_args=()
+    local all_projects=0 verify=0 yes=0 project=""
+    local parse_args=() python_args=()
 
     while (($# > 0)); do
-        arg="$1"
-        case "$arg" in
-            -h|--help|help)
-                base_uninstall_subcommand_usage
-                return 0
-                ;;
+        case "$1" in
             --all)
                 all_projects=1
-                ;;
-            --dry-run)
-                dry_run=1
                 ;;
             --yes)
                 yes=1
@@ -70,60 +68,21 @@ base_uninstall_subcommand_main() {
             --verify)
                 verify=1
                 ;;
-            -v)
-                debug=1
-                ;;
-            --project)
-                shift
-                [[ -n "${1:-}" ]] || {
-                    base_uninstall_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                [[ -z "$explicit_project" ]] || {
-                    base_uninstall_usage_error "Option '--project' may be specified only once."
-                    return $?
-                }
-                explicit_project="$1"
-                ;;
-            --project=*)
-                [[ -n "${arg#*=}" ]] || {
-                    base_uninstall_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                [[ -z "$explicit_project" ]] || {
-                    base_uninstall_usage_error "Option '--project' may be specified only once."
-                    return $?
-                }
-                explicit_project="${arg#*=}"
-                ;;
-            --workspace)
-                shift
-                [[ -n "${1:-}" ]] || {
-                    base_uninstall_usage_error "Option '--workspace' requires an argument."
-                    return $?
-                }
-                workspace="$1"
-                ;;
             *)
-                if [[ "$arg" == -* ]]; then
-                    base_uninstall_usage_error "Unknown option '$arg'."
-                    return $?
-                fi
-                [[ -z "$project" && -z "$explicit_project" ]] || {
-                    base_uninstall_usage_error "The 'uninstall' command accepts at most one project name."
-                    return $?
-                }
-                project="$arg"
+                parse_args+=("$1")
                 ;;
         esac
         shift
     done
 
-    [[ -z "$explicit_project" || -z "$project" ]] || {
-        base_uninstall_usage_error "The 'uninstall' command does not accept a positional project with --project."
-        return $?
-    }
-    [[ -z "$explicit_project" ]] || project="$explicit_project"
+    base_project_command_parse_args \
+        uninstall base_uninstall_subcommand_usage base_uninstall_usage_error \
+        "The 'uninstall' command accepts at most one project name." "${parse_args[@]}" || return $?
+    [[ "$BASE_PROJECT_COMMAND_HELP_SHOWN" == 1 ]] && return 0
+
+    local dry_run="$BASE_PROJECT_COMMAND_DRY_RUN"
+    project="$BASE_PROJECT_COMMAND_SELECTED_PROJECT"
+    python_args=("${BASE_PROJECT_COMMAND_ARGUMENTS[@]}")
 
     if ((all_projects && ${#project} > 0)); then
         base_uninstall_usage_error "Option '--all' cannot be combined with a project name."
@@ -141,11 +100,7 @@ base_uninstall_subcommand_main() {
         base_uninstall_usage_error "Option '--verify' cannot be combined with '--dry-run' or '--yes'."
         return $?
     fi
-    if ((debug)); then
-        python_args+=(--debug)
-    fi
     ((all_projects)) && python_args+=(--all)
-    [[ -z "$workspace" ]] || python_args+=(--workspace "$workspace")
     ((dry_run)) && python_args+=(--dry-run)
     ((yes)) && python_args+=(--yes)
     ((verify)) && python_args+=(--verify)

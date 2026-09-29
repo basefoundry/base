@@ -96,6 +96,7 @@ manifest=$project_root/base_manifest.yaml" ]
             [[ "${#BASE_PROJECT_COMMAND_SELECTION_ARGS[@]}" -eq 2 ]]
             [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[0]}" == --project ]]
             [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[1]}" == demo ]]
+            [[ "$BASE_PROJECT_COMMAND_SELECTED_PROJECT" == demo ]]
             [[ "${#BASE_PROJECT_COMMAND_EXTRA_ARGS[@]}" -eq 2 ]]
             [[ "${BASE_PROJECT_COMMAND_EXTRA_ARGS[0]}" == "name with spaces" ]]
             [[ "${BASE_PROJECT_COMMAND_EXTRA_ARGS[1]}" == "$control_arg" ]]
@@ -105,6 +106,26 @@ manifest=$project_root/base_manifest.yaml" ]
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"argument boundaries preserved"* ]]
+}
+
+@test "project command parser accepts equals-form explicit project selection" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="${BASE_BASH_LIBS_DIR:-}" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            import_base_lib arg/lib_arg.sh
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/project_command_helpers.sh"
+            base_command_usage() { :; }
+            base_command_usage_error() { printf "ERROR:%s\n" "$*" >&2; return 2; }
+            base_project_command_parse_args activate base_command_usage base_command_usage_error \
+                "The activate command accepts one project name." --project=help || exit $?
+            [[ "$BASE_PROJECT_COMMAND_SELECTED_PROJECT" == help ]]
+            [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[0]}" == --project ]]
+            [[ "${BASE_PROJECT_COMMAND_SELECTION_ARGS[1]}" == help ]]
+        '
+
+    [ "$status" -eq 0 ]
 }
 
 @test "project command parser rejects duplicate explicit project options" {

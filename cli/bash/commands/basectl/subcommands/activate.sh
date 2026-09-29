@@ -7,6 +7,8 @@ _base_project_command_helpers_path="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 
 # shellcheck source=/dev/null
 source "$_base_project_command_helpers_path"
 
+import_base_lib arg/lib_arg.sh
+
 base_activate_subcommand_usage() {
     cat <<'EOF'
 Usage:
@@ -30,12 +32,11 @@ base_activate_usage_error() {
 }
 
 base_activate_resolve_project() {
-    local project="$1"
-    local wrapper="$2"
-    shift 2
+    local wrapper="$1"
+    shift
 
     env -u BASE_PROJECT_VENV_DIR \
-        "$wrapper" --project base base_projects resolve "$project" "$@" --format command-protocol
+        "$wrapper" --project base base_projects resolve "$@" --format command-protocol
 }
 
 base_activate_project_venv_dir() {
@@ -54,85 +55,30 @@ base_activate_shell_is_bash() {
 }
 
 base_activate_subcommand_main() {
-    local project="" explicit_project="" wrapper resolve_output activate_shell venv_fix
+    local project="" wrapper resolve_output activate_shell venv_fix
     local resolved_name project_root manifest_path venv_dir shell_rc route_venv_dir uses_uv_manager trust_required
     local preserve_cwd="${BASE_ACTIVATE_PRESERVE_CWD:-0}"
-    local args=()
+    local parse_args=() args=()
 
     while (($# > 0)); do
         case "$1" in
-            -h|--help|help)
-                base_activate_subcommand_usage
-                return 0
-                ;;
-            -v)
-                args+=(--debug)
-                shift
-                ;;
-            --project)
-                [[ -n "${2:-}" ]] || {
-                    base_activate_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                [[ -z "$explicit_project" ]] || {
-                    base_activate_usage_error "Option '--project' may be specified only once."
-                    return $?
-                }
-                explicit_project="$2"
-                shift 2
-                ;;
-            --project=*)
-                [[ -n "${1#*=}" ]] || {
-                    base_activate_usage_error "Option '--project' requires an argument."
-                    return $?
-                }
-                [[ -z "$explicit_project" ]] || {
-                    base_activate_usage_error "Option '--project' may be specified only once."
-                    return $?
-                }
-                explicit_project="${1#*=}"
-                shift
-                ;;
-            --workspace)
-                [[ -n "${2:-}" ]] || {
-                    base_activate_usage_error "Option '--workspace' requires an argument."
-                    return $?
-                }
-                args+=(--workspace "$2")
-                shift 2
-                ;;
-            --workspace=*)
-                args+=("$1")
-                shift
-                ;;
             --no-cd)
                 preserve_cwd=1
                 shift
                 ;;
-            -*)
-                base_activate_usage_error "Unknown activate option '$1'."
-                return $?
-                ;;
             *)
-                if [[ -n "$explicit_project" ]]; then
-                    base_activate_usage_error "The 'activate' command does not accept a positional project with --project."
-                    return $?
-                fi
-                if [[ -n "$project" ]]; then
-                    base_activate_usage_error "The 'activate' command accepts exactly one project name."
-                    return $?
-                fi
-                project="$1"
+                parse_args+=("$1")
                 shift
                 ;;
         esac
     done
 
-    [[ -z "$explicit_project" || -z "$project" ]] || {
-        base_activate_usage_error "The 'activate' command does not accept a positional project with --project."
-        return $?
-    }
-    [[ -z "$explicit_project" ]] || project="$explicit_project"
+    base_project_command_parse_args \
+        activate base_activate_subcommand_usage base_activate_usage_error \
+        "The 'activate' command accepts exactly one project name." "${parse_args[@]}" || return $?
+    [[ "$BASE_PROJECT_COMMAND_HELP_SHOWN" == 1 ]] && return 0
+    project="$BASE_PROJECT_COMMAND_SELECTED_PROJECT"
+    args=("${BASE_PROJECT_COMMAND_ARGUMENTS[@]}")
 
     [[ -n "$project" ]] || {
         base_activate_usage_error "Project name is required."
@@ -142,7 +88,8 @@ base_activate_subcommand_main() {
     wrapper="$BASE_HOME/bin/base-wrapper"
     [[ -x "$wrapper" ]] || base_std_fatal_error "Base Python wrapper '$wrapper' is missing or is not executable."
 
-    resolve_output="$(base_activate_resolve_project "$project" "$wrapper" "${args[@]}")" || return $?
+    resolve_output="$(base_activate_resolve_project "$wrapper" \
+        "${BASE_PROJECT_COMMAND_SELECTION_ARGS[@]}" "${args[@]}")" || return $?
     base_command_protocol_decode_one project-route "$resolve_output" || {
         base_std_fatal_error "Unable to resolve project '$project'."
     }
