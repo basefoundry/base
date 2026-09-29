@@ -25,6 +25,23 @@ load ./basectl_helpers.bash
     [ "$output" = "$expected" ]
 }
 
+@test "basectl uninstall targets a project named help with --project" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+printf 'python=%s\n' "$*"
+exit 0
+EOF
+    chmod +x "$python_bin"
+
+    run_basectl uninstall --project help --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"python=-m base_uninstall --dry-run help"* ]]
+}
+
 @test "basectl uninstall requires an explicit project or --all" {
     run_basectl uninstall
 

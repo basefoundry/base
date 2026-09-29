@@ -287,7 +287,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
     [[ "$output" == *"activate_projects=base demo"* ]]
-    [[ "$output" == *"activate_options=--workspace --no-cd"* ]]
+    [[ "$output" == *"activate_options=--workspace --project --no-cd"* ]]
     [[ "$output" == *"check_projects=base demo"* ]]
     [[ "$output" == *"doctor_projects=base demo explain"* ]]
     [[ "$output" == *"doctor_explain_options=--format"* ]]

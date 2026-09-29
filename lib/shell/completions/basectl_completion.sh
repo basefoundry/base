@@ -620,7 +620,7 @@ _base_basectl_completion() {
     case "$command" in
         activate)
             _base_basectl_completion_project_or_options \
-                "--workspace --no-cd -v -h --help" "$cur" "--workspace"
+                "--workspace --project --no-cd -v -h --help" "$cur" "--workspace --project"
             ;;
         projects)
             if ((COMP_CWORD == 2)); then

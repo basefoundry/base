@@ -109,6 +109,8 @@ base_project_command_parse_args() {
 
     # shellcheck disable=SC2034 # The selected project is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_PROJECT=""
+    # shellcheck disable=SC2034 # The selected project is consumed by activate.sh and uninstall.sh.
+    BASE_PROJECT_COMMAND_SELECTED_PROJECT=""
     # shellcheck disable=SC2034 # These shared parse outputs are consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_DRY_RUN=0
     # shellcheck disable=SC2034 # The parser returns help to its caller without resolving a project.
@@ -163,6 +165,19 @@ base_project_command_parse_args() {
                 parser_args+=("--project=$2")
                 shift 2
                 ;;
+            --project=*)
+                [[ -n "${1#*=}" ]] || {
+                    "$usage_error_function" "Option '--project' requires an argument."
+                    return $?
+                }
+                [[ -z "$explicit_project" ]] || {
+                    "$usage_error_function" "Option '--project' may be specified only once."
+                    return $?
+                }
+                explicit_project="${1#*=}"
+                parser_args+=("$1")
+                shift
+                ;;
             --dry-run)
                 parser_args+=("$1")
                 shift
@@ -205,6 +220,8 @@ base_project_command_parse_args() {
 
     # shellcheck disable=SC2034 # The selected project is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_PROJECT="$project"
+    # shellcheck disable=SC2034 # The selected project is consumed by activate.sh and uninstall.sh.
+    BASE_PROJECT_COMMAND_SELECTED_PROJECT="${explicit_project:-$project}"
     # shellcheck disable=SC2034 # Dry-run mode is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_DRY_RUN="$dry_run"
     BASE_PROJECT_COMMAND_ARGUMENTS=("${args[@]}")
