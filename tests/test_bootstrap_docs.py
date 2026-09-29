@@ -58,8 +58,9 @@ def test_migrated_macos_recovery_uses_canonical_recipe_after_safe_selection() ->
     assert "brew trust basefoundry/base" not in recovery
     assert "brew install basefoundry/base/base" not in recovery
     assert "basectl setup --dry-run" not in recovery
-    assert recovery.index('export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"') < recovery.index('brew_prefix="$(brew --prefix')
-    assert recovery.index('export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"') < recovery.index("brew --config")
+    path_export = 'export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"'
+    assert recovery.index(path_export) < recovery.index('brew_prefix="$(brew --prefix')
+    assert recovery.index(path_export) < recovery.index("brew --config")
 
 
 def test_readme_trust_conscious_proof_reviews_manifest_trust_before_demo() -> None:
