@@ -79,6 +79,7 @@ def check_mise_trust(
         trust_check = process.run_capture(
             [str(mise_bin), "trust", "--show"],
             cwd=project_root,
+            env=mise_environment(mise_path),
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
@@ -138,6 +139,7 @@ def check_mise_missing_tools(
         missing_check = process.run_capture(
             [str(mise_bin), "ls", "--missing", "--json"],
             cwd=project_root,
+            env=mise_environment(mise_path),
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
@@ -210,6 +212,12 @@ def mise_details(project_root: Path, mise_path: Path) -> dict[str, object]:
     }
 
 
+def mise_environment(mise_path: Path) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment["MISE_CONFIG_FILE"] = str(mise_path)
+    return environment
+
+
 def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool) -> None:
     if manifest.mise is None:
         return
@@ -219,12 +227,19 @@ def reconcile_mise(ctx: base_cli.Context, manifest: BaseManifest, dry_run: bool)
     mise_bin = ensure_mise_available(ctx, manifest, dry_run=dry_run)
     command = ["mise", "install"] if dry_run else [str(mise_bin), "install"]
     if dry_run:
+        ctx.log.info("[DRY-RUN] Using mise config '%s'.", mise_path)
         process.dry_run_command(ctx, command, cwd=project_root)
         return
 
     require_mise_trusted_for_setup(manifest, project_root, mise_path, mise_bin)
     ctx.log.info("Installing mise-managed tools from '%s'.", mise_path)
-    process.run_command(ctx, command, cwd=project_root, echo_output=False)
+    process.run_command(
+        ctx,
+        command,
+        cwd=project_root,
+        env=mise_environment(mise_path),
+        echo_output=False,
+    )
 
 
 def require_mise_trusted_for_setup(

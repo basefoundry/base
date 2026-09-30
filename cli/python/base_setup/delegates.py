@@ -12,6 +12,7 @@ from .mise_delegate import command_text
 from .mise_delegate import ensure_mise_available
 from .mise_delegate import mise_config_untrusted
 from .mise_delegate import mise_details
+from .mise_delegate import mise_environment
 from .mise_delegate import mise_executable
 from .mise_delegate import missing_tool_names
 from .mise_delegate import reconcile_mise
@@ -28,6 +29,7 @@ __all__ = (
     "homebrew_no_auto_update_env",
     "mise_config_untrusted",
     "mise_details",
+    "mise_environment",
     "mise_executable",
     "missing_tool_names",
     "process",

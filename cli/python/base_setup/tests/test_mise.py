@@ -30,7 +30,7 @@ def write_fake_mise(bin_dir: Path, log_path: Path, trust_output: str, missing_ou
         "\n".join(
             [
                 "#!/usr/bin/env bash",
-                f"printf '%s\\n' \"$PWD $*\" >> {log_path}",
+                f"printf '%s\\n' \"$PWD $* config=${{MISE_CONFIG_FILE:-}}\" >> {log_path}",
                 "case \"$*\" in",
                 "  'trust --show')",
                 f"    printf '%s\\n' {trust_output!r}",
@@ -72,6 +72,7 @@ class MiseTests(unittest.TestCase):
             "ensure_mise_available",
             "mise_config_untrusted",
             "mise_details",
+            "mise_environment",
             "mise_executable",
             "missing_tool_names",
             "reconcile_mise",
@@ -101,6 +102,7 @@ class MiseTests(unittest.TestCase):
                 delegates.reconcile_mise(ctx, manifest, dry_run=True)
 
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
+        self.assertIn(f"[DRY-RUN] Using mise config '{project_root.resolve() / '.mise.toml'}'.", info_messages)
         self.assertIn(f"[DRY-RUN] Would run in '{project_root.resolve()}': mise install", info_messages)
 
 
@@ -144,7 +146,12 @@ class MiseTests(unittest.TestCase):
             ctx,
             [str(mise_path), "install"],
             cwd=project_root.resolve(),
+            env=mock.ANY,
             echo_output=False,
+        )
+        self.assertEqual(
+            run_command.call_args.kwargs["env"]["MISE_CONFIG_FILE"],
+            str(project_root.resolve() / ".mise.toml"),
         )
 
     def test_mise_requires_yes_before_linux_debian_bootstrap(self) -> None:
@@ -187,7 +194,12 @@ class MiseTests(unittest.TestCase):
             ctx,
             ["mise", "install"],
             cwd=project_root.resolve(),
+            env=mock.ANY,
             echo_output=False,
+        )
+        self.assertEqual(
+            run_command.call_args.kwargs["env"]["MISE_CONFIG_FILE"],
+            str(project_root.resolve() / ".mise.toml"),
         )
 
     def test_mise_setup_refuses_untrusted_project_config_before_install(self) -> None:
@@ -240,8 +252,43 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(
             log_lines,
             [
-                f"{project_root.resolve()} trust --show",
-                f"{project_root.resolve()} ls --missing --json",
+                f"{project_root.resolve()} trust --show config={project_root.resolve() / '.mise.toml'}",
+                f"{project_root.resolve()} ls --missing --json config={project_root.resolve() / '.mise.toml'}",
+            ],
+        )
+
+    def test_mise_check_binds_declared_config_when_root_config_competes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            project_root = tmp / "demo"
+            project_root.mkdir()
+            (project_root / "mise.toml").write_text('[tools]\nnode = "20"\n', encoding="utf-8")
+            config_dir = project_root / "config"
+            config_dir.mkdir()
+            declared_path = config_dir / "versions.toml"
+            declared_path.write_text('[tools]\nnode = "22"\n', encoding="utf-8")
+            manifest = BaseManifest(
+                path=project_root / "base_manifest.yaml",
+                project_name="demo",
+                brewfile=None,
+                mise="config/versions.toml",
+                artifacts=(),
+            )
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir()
+            log_path = tmp / "mise.log"
+            write_fake_mise(bin_dir, log_path, f"{declared_path.resolve()}: trusted", "{}")
+
+            with mock.patch.dict(os.environ, {"PATH": f"{bin_dir}:{os.environ['PATH']}"}):
+                check = delegates.check_mise(manifest)
+            log_lines = log_path.read_text(encoding="utf-8").splitlines()
+
+        self.assertTrue(check.ok)
+        self.assertEqual(
+            log_lines,
+            [
+                f"{project_root.resolve()} trust --show config={declared_path.resolve()}",
+                f"{project_root.resolve()} ls --missing --json config={declared_path.resolve()}",
             ],
         )
 
@@ -281,7 +328,10 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(check.status, "")
         self.assertIn("is not trusted by mise", check.message)
         self.assertEqual(check.fix, f"mise trust {project_root.resolve() / '.mise.toml'}")
-        self.assertEqual(log_lines, [f"{project_root.resolve()} trust --show"])
+        self.assertEqual(
+            log_lines,
+            [f"{project_root.resolve()} trust --show config={project_root.resolve() / '.mise.toml'}"],
+        )
 
     def test_mise_check_warns_when_trust_probe_times_out(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -309,7 +359,12 @@ class MiseTests(unittest.TestCase):
         run_capture.assert_called_once_with(
             ["mise", "trust", "--show"],
             cwd=project_root.resolve(),
+            env=mock.ANY,
             timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(
+            run_capture.call_args.kwargs["env"]["MISE_CONFIG_FILE"],
+            str(project_root.resolve() / ".mise.toml"),
         )
 
 
@@ -393,6 +448,11 @@ class MiseTests(unittest.TestCase):
             run_capture.call_args_list[1].kwargs["timeout_seconds"],
             delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
+        for call in run_capture.call_args_list:
+            self.assertEqual(
+                call.kwargs["env"]["MISE_CONFIG_FILE"],
+                str(project_root.resolve() / ".mise.toml"),
+            )
 
 
 
