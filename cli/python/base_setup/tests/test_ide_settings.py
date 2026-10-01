@@ -232,6 +232,40 @@ class IdeSettingsTests(unittest.TestCase):
         info_messages = [call.args[0] % call.args[1:] for call in ctx.log.info.call_args_list]
         self.assertIn("Cursor setting 'editor.formatOnSave' already set by user; leaving intact.", info_messages)
 
+    def test_merge_ide_settings_preserves_jsonc_comments_and_nested_values(self) -> None:
+        ctx = fake_context()
+        definition = ide.IDE_DEFINITIONS["vscode"]
+        source = """{
+  // Keep this user comment.
+  "editor.formatOnSave": false,
+  "nested": {
+    "url": "https://example.test/a//b",
+  }, /* Keep this trailing comment. */
+}
+"""
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
+                settings_file = ide.ide_settings_file(definition)
+                settings_file.parent.mkdir(parents=True)
+                settings_file.write_text(source, encoding="utf-8")
+
+                ide.merge_ide_settings(
+                    ctx,
+                    definition,
+                    {"editor.rulers": [100]},
+                    dry_run=False,
+                )
+                updated = settings_file.read_text(encoding="utf-8")
+                settings = ide.read_ide_settings(definition)
+
+        self.assertIn("// Keep this user comment.", updated)
+        self.assertIn("/* Keep this trailing comment. */", updated)
+        self.assertIn('"https://example.test/a//b"', updated)
+        self.assertEqual(settings["nested"], {"url": "https://example.test/a//b"})
+        self.assertEqual(settings["editor.rulers"], [100])
+        self.assertFalse(settings["editor.formatOnSave"])
+
 
 
     def test_merge_ide_settings_dry_run_does_not_write(self) -> None:
@@ -254,6 +288,27 @@ class IdeSettingsTests(unittest.TestCase):
             "[DRY-RUN] Would set VS Code user setting 'editor.formatOnSave' to true.",
             info_messages,
         )
+
+    def test_merge_ide_settings_dry_run_preserves_jsonc_bytes(self) -> None:
+        ctx = fake_context()
+        definition = ide.IDE_DEFINITIONS["cursor"]
+        source = '{\n  // User-owned setting.\n  "editor.minimap.enabled": true,\n}\n'
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            with mock.patch.dict(os.environ, {"HOME": home_dir, "XDG_CONFIG_HOME": ""}):
+                settings_file = ide.ide_settings_file(definition)
+                settings_file.parent.mkdir(parents=True)
+                settings_file.write_text(source, encoding="utf-8")
+                before = settings_file.read_bytes()
+
+                ide.merge_ide_settings(
+                    ctx,
+                    definition,
+                    {"editor.rulers": [100]},
+                    dry_run=True,
+                )
+
+                self.assertEqual(settings_file.read_bytes(), before)
 
 
 
