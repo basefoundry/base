@@ -167,6 +167,51 @@ class DevcontainerExportTests(unittest.TestCase):
 
             self.assertEqual(target_path.read_text(encoding="utf-8"), '{"name":"owned"}\n')
 
+    def test_write_export_refuses_symlinked_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            outside = root / "outside"
+            outside.mkdir()
+            manifest_path = root / "base_manifest.yaml"
+            write_manifest(manifest_path, "project:\n  name: demo\nartifacts: []\n")
+            (root / ".devcontainer").symlink_to(outside, target_is_directory=True)
+            export = build_devcontainer_export(read_manifest(manifest_path), write=True)
+
+            with self.assertRaisesRegex(DevcontainerExportError, "symlink"):
+                write_devcontainer_export(export)
+
+            self.assertFalse((outside / "devcontainer.json").exists())
+
+    def test_write_export_refuses_dangling_target_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            outside_target = root / "outside" / "devcontainer.json"
+            manifest_path = root / "base_manifest.yaml"
+            write_manifest(manifest_path, "project:\n  name: demo\nartifacts: []\n")
+            target_path = root / ".devcontainer" / "devcontainer.json"
+            target_path.parent.mkdir()
+            target_path.symlink_to(outside_target)
+            export = build_devcontainer_export(read_manifest(manifest_path), write=True)
+
+            with self.assertRaisesRegex(DevcontainerExportError, "already exists"):
+                write_devcontainer_export(export)
+
+            self.assertFalse(outside_target.exists())
+
+    def test_write_export_rechecks_target_after_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            write_manifest(manifest_path, "project:\n  name: demo\nartifacts: []\n")
+            export = build_devcontainer_export(read_manifest(manifest_path), write=True)
+            export.target_path.parent.mkdir()
+            export.target_path.write_text('{"name":"owned"}\n', encoding="utf-8")
+
+            with self.assertRaisesRegex(DevcontainerExportError, "already exists"):
+                write_devcontainer_export(export)
+
+            self.assertEqual(export.target_path.read_text(encoding="utf-8"), '{"name":"owned"}\n')
+
     def test_json_and_text_rendering_are_stable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

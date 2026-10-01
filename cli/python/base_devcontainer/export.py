@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -92,12 +93,51 @@ def build_devcontainer_export(manifest: BaseManifest, *, write: bool = False) ->
 
 
 def write_devcontainer_export(export: DevcontainerExport) -> None:
-    if export.target_path.exists():
+    project_root = export.manifest_path.parent.resolve()
+    target_parent = export.target_path.parent
+    if target_parent.is_symlink():
+        raise DevcontainerExportError(
+            f"{target_parent} is a symlink; refusing to write outside the selected project."
+        )
+    try:
+        target_parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise DevcontainerExportError(
+            f"Unable to create devcontainer directory '{target_parent}': {exc}."
+        ) from exc
+
+    if target_parent.is_symlink():
+        raise DevcontainerExportError(
+            f"{target_parent} is a symlink; refusing to write outside the selected project."
+        )
+    resolved_parent = target_parent.resolve()
+    try:
+        resolved_parent.relative_to(project_root)
+    except ValueError as exc:
+        raise DevcontainerExportError(
+            f"{target_parent} resolves outside selected project '{project_root}'; refusing to write."
+        ) from exc
+
+    payload = dumps_devcontainer_json(export.devcontainer)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        file_descriptor = os.open(export.target_path, flags, 0o644)
+    except FileExistsError as exc:
         raise DevcontainerExportError(
             f"{export.target_path} already exists; refusing to replace project-owned devcontainer file."
-        )
-    export.target_path.parent.mkdir(parents=True, exist_ok=True)
-    export.target_path.write_text(dumps_devcontainer_json(export.devcontainer), encoding="utf-8")
+        ) from exc
+    except OSError as exc:
+        raise DevcontainerExportError(
+            f"Unable to create devcontainer export '{export.target_path}': {exc}."
+        ) from exc
+
+    try:
+        with os.fdopen(file_descriptor, "w", encoding="utf-8") as output:
+            output.write(payload)
+    except OSError as exc:
+        raise DevcontainerExportError(
+            f"Unable to write devcontainer export '{export.target_path}': {exc}."
+        ) from exc
 
 
 def add_unsupported_manifest_findings(manifest: BaseManifest, findings: list[DevcontainerFinding]) -> None:
