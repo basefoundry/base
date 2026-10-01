@@ -27,6 +27,7 @@ def read_project_config(path: Path) -> ProjectConfig:
     project = data.get("project", {})
     if not isinstance(project, dict):
         raise ProjectConfigError(f"{path}: project must be a mapping.")
+    validate_mapping_keys(path, project, "project")
     unexpected = set(project) - ALLOWED_PROJECT_KEYS
     if unexpected:
         names = ", ".join(sorted(unexpected))
@@ -45,6 +46,8 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
         raise ProjectConfigError("PyYAML is required to read GitHub Project config.") from exc
     try:
         text = path.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise ProjectConfigError(f"{path}: GitHub Project config must be UTF-8: {exc}.") from exc
     except OSError as exc:
         raise ProjectConfigError(f"{path}: unable to read GitHub Project config: {exc.strerror}.") from exc
     try:
@@ -55,11 +58,18 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
         return {}
     if not isinstance(data, dict):
         raise ProjectConfigError(f"{path}: expected mapping at document root.")
+    validate_mapping_keys(path, data, "top-level")
     unexpected = set(data) - {"project"}
     if unexpected:
         names = ", ".join(sorted(unexpected))
         raise ProjectConfigError(f"{path}: unsupported top-level keys: {names}.")
     return data
+
+
+def validate_mapping_keys(path: Path, mapping: dict[Any, Any], location: str) -> None:
+    for key in mapping:
+        if not isinstance(key, str):
+            raise ProjectConfigError(f"{path}: {location} key {key!r} must be a string.")
 
 
 def read_string_list(path: Path, project: dict[str, Any], key: str) -> tuple[str, ...]:
@@ -86,6 +96,7 @@ def read_issue_defaults(path: Path, project: dict[str, Any]) -> dict[str, str]:
         return {}
     if not isinstance(raw, dict):
         raise ProjectConfigError(f"{path}: project.issue_defaults must be a mapping.")
+    validate_mapping_keys(path, raw, "project.issue_defaults")
     unexpected = set(raw) - ALLOWED_DEFAULT_KEYS
     if unexpected:
         names = ", ".join(sorted(unexpected))
