@@ -640,8 +640,8 @@ _base_basectl_completion() {
                         ;;
                     allow)
                         _base_basectl_completion_project_or_options \
-                            "--workspace --manifest-sha256 -v -h --help" "$cur" \
-                            "--workspace --manifest-sha256" 3
+                            "--workspace --manifest-sha256 --test-requirements-sha256 -v -h --help" "$cur" \
+                            "--workspace --manifest-sha256 --test-requirements-sha256" 3
                         ;;
                     revoke)
                         _base_basectl_completion_project_or_options \

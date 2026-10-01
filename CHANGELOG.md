@@ -17,6 +17,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
   the no-configuration behavior of existing solo repositories; stronger
   GitHub settings are preserved after readback.
 
+- Stability compatibility: added the `--test-requirements-sha256` trust approval
+  flag to the stable command baseline, with migration guidance for consumers that
+  treat the machine-readable baseline as the source of truth.
+
 ## [1.9.0] - 2026-09-08
 
 ### Added

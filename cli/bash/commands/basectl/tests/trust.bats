@@ -12,6 +12,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl trust allow <project> [options]"* ]]
     [[ "$output" == *"basectl trust revoke <project> [options]"* ]]
     [[ "$output" == *"--manifest-sha256 <sha256>"* ]]
+    [[ "$output" == *"--test-requirements-sha256 <sha256>"* ]]
 }
 
 @test "basectl trust leaves print command-scoped help" {
@@ -28,6 +29,7 @@ load ./basectl_helpers.bash
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl trust allow <project> [options]"* ]]
     [[ "$output" == *"--manifest-sha256 <sha256>"* ]]
+    [[ "$output" == *"--test-requirements-sha256 <sha256>"* ]]
     [[ "$output" != *"--format"* ]]
     [[ "$output" != *"basectl trust status"* ]]
 
