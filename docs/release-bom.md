@@ -57,10 +57,12 @@ The JSON Schema is the structural and lexical contract. It enforces the
 document shape, required fields, enums, `additionalProperties: false`, strict
 SemVer patterns, immutable tag and commit patterns, and a minimum of two
 combination participants. `validate_bom` applies the runtime release gate and
-cross-field rules that the schema cannot express generally: release identity
-matching, component/tag relationships, release/component commit identity,
-participant references and platform coverage, and required-source/result
-interactions. It also rejects unknown keys at every validated object level.
+ cross-field rules that the schema cannot express generally: release identity
+ matching, component/tag relationships, release/component identity (version,
+ tag, and commit), participant references and platform coverage, and
+ required-source/result interactions, including immutable, passing evidence for
+ every participant in a required combination. It also rejects unknown keys at
+ every validated object level.
 
 The release tests load the same schema and run both layers against a shared
 valid/invalid corpus, including the scalar types of `schema_version`. Schema

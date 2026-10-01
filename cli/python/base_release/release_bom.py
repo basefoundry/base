@@ -43,6 +43,19 @@ class ReleaseBomError(ValueError):
     """Raised when a release BOM is malformed or fails its release gate."""
 
 
+def _require_immutable_passed(
+    source_mode: str,
+    result: str,
+    *,
+    moving_message: str,
+    result_message: str,
+) -> None:
+    if source_mode == "moving":
+        raise ReleaseBomError(moving_message)
+    if result != "passed":
+        raise ReleaseBomError(result_message)
+
+
 def load_bom(path: Path) -> dict[str, Any]:
     try:
         bom_bytes = path.read_bytes()
@@ -170,10 +183,12 @@ def validate_bom(
             raise ReleaseBomError(f"{path}.result must be one of: {', '.join(sorted(RESULTS))}")
         _string(row, "evidence", f"{path}.evidence")
         if required:
-            if source_mode == "moving":
-                raise ReleaseBomError(f"{path} cannot require a moving source")
-            if result != "passed":
-                raise ReleaseBomError(f"{path} is required but result is {result!r}")
+            _require_immutable_passed(
+                source_mode,
+                result,
+                moving_message=f"{path} cannot require a moving source",
+                result_message=f"{path} is required but result is {result!r}",
+            )
         if source_mode == "moving" and row.get("tag") is not None:
             raise ReleaseBomError(f"{path}.tag must be omitted for moving sources")
         if source_mode != "moving":
@@ -186,6 +201,8 @@ def validate_bom(
             tag = None
         component_evidence[repository_key] = (source_mode, result)
         if repository_key == release_repository.casefold():
+            if source_mode == "moving":
+                raise ReleaseBomError(f"{path} cannot use a moving source for the release repository")
             if version != release_version:
                 raise ReleaseBomError(f"{path}.version must match release.version {release_version!r}")
             if tag != release_tag:
@@ -231,15 +248,15 @@ def validate_bom(
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
             for participant_key in participant_keys:
                 source_mode, component_result = component_evidence[participant_key]
-                if source_mode == "moving":
-                    raise ReleaseBomError(
-                        f"{path} cannot use moving component {participant_key!r} as required evidence"
-                    )
-                if component_result != "passed":
-                    raise ReleaseBomError(
+                _require_immutable_passed(
+                    source_mode,
+                    component_result,
+                    moving_message=f"{path} cannot use moving component {participant_key!r} as required evidence",
+                    result_message=(
                         f"{path} cannot use component {participant_key!r} with result "
                         f"{component_result!r} as required evidence"
-                    )
+                    ),
+                )
     if not required_combination:
         raise ReleaseBomError("at least one required combination must be declared")
     if not required_release_combination:

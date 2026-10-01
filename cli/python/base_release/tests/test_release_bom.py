@@ -281,6 +281,15 @@ def test_release_component_version_and_tag_must_match_release_identity() -> None
         validate_bom(document)
 
 
+def test_release_repository_component_cannot_use_moving_source() -> None:
+    document = valid_bom()
+    document["components"][0]["source_mode"] = "moving"
+    document["components"][0]["tag"] = None
+    document["components"][0]["required"] = False
+    with pytest.raises(ReleaseBomError, match="cannot use a moving source for the release repository"):
+        validate_bom(document)
+
+
 def test_required_combination_rejects_advisory_failed_or_moving_participants() -> None:
     document = valid_bom()
     document["components"][2]["platforms"] = ["ubuntu-24.04"]
