@@ -16,6 +16,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.subprocess_output import decode_subprocess_output
+from base_projects.workspace_process import run_workspace_subprocess
 
 
 WorkspaceTestAction = Literal["test", "skip"]
@@ -321,11 +322,8 @@ def execute_workspace_test_target(
         env.pop(variable, None)
 
     try:
-        result = subprocess.run(
+        result = run_workspace_subprocess(
             command,
-            check=False,
-            capture_output=True,
-            text=False,
             cwd=target.root,
             env=env,
             timeout=WORKSPACE_TEST_TIMEOUT_SECONDS,

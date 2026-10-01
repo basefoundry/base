@@ -127,7 +127,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
             write_test_manifest(workspace / "beta", "beta")
             completed = subprocess.CompletedProcess([], 0, "alpha output\n", "")
 
-            with mock.patch("base_projects.workspace_test.subprocess.run", return_value=completed) as run:
+            with mock.patch("base_projects.workspace_test.run_workspace_subprocess", return_value=completed) as run:
                 status, stdout, stderr = invoke_workspace_test(
                     ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
                     base_home,
@@ -192,7 +192,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
                 subprocess.CompletedProcess([], 0, "", ""),
             ]
 
-            with mock.patch("base_projects.workspace_test.subprocess.run", side_effect=results):
+            with mock.patch("base_projects.workspace_test.run_workspace_subprocess", side_effect=results):
                 status, stdout, stderr = invoke_workspace_test(
                     ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
                     base_home,
@@ -221,7 +221,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
                 write_test_manifest(workspace / project, project)
 
             with mock.patch(
-                "base_projects.workspace_test.subprocess.run",
+                "base_projects.workspace_test.run_workspace_subprocess",
                 return_value=subprocess.CompletedProcess([], 3, "", "failed\n"),
             ) as run:
                 status, stdout, stderr = invoke_workspace_test(
@@ -262,7 +262,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
             write_test_manifest(workspace / "beta", "beta")
 
             with mock.patch(
-                "base_projects.workspace_test.subprocess.run",
+                "base_projects.workspace_test.run_workspace_subprocess",
                 return_value=subprocess.CompletedProcess([], 0, "", ""),
             ) as run:
                 status, stdout, stderr = invoke_workspace_test(
@@ -303,7 +303,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
             write_shell_only_manifest(workspace / "shell-only", "shell-only")
 
             with mock.patch(
-                "base_projects.workspace_test.subprocess.run",
+                "base_projects.workspace_test.run_workspace_subprocess",
                 return_value=subprocess.CompletedProcess([], 0, "", ""),
             ) as run:
                 status, stdout, stderr = invoke_workspace_test(
