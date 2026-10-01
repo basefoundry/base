@@ -24,6 +24,7 @@ from .check_records import CHECK_RECORD_SCHEMA_VERSION, CheckRecordContext
 from .checks import DIAGNOSTIC_JSON_SCHEMA_VERSION
 from .checks import VALID_STATUSES
 from .checks import merge_statuses
+from .safe_writes import ensure_safe_write_path
 
 
 CHECK_RECORD_WARNING_MESSAGE = "Latest check record could not be saved."
@@ -279,7 +280,9 @@ def write_check_record(
 ) -> bool:
     temp_path: Path | None = None
     try:
+        ensure_safe_write_path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_safe_write_path(path)
         if context is not None:
             record = render_check_record(project, status, checked_at, command=command, identity=context.identity())
         elif command == "basectl check":
