@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_projects.subprocess_output import decode_subprocess_output
 
 
 WorkspaceTestAction = Literal["test", "skip"]
@@ -324,7 +325,7 @@ def execute_workspace_test_target(
             command,
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             cwd=target.root,
             env=env,
             timeout=WORKSPACE_TEST_TIMEOUT_SECONDS,
@@ -337,14 +338,16 @@ def execute_workspace_test_target(
     except OSError as exc:
         return WorkspaceTestResult("failed", f"could not run test command: {exc}")
 
+    stdout = decode_subprocess_output(result.stdout)
+    stderr = decode_subprocess_output(result.stderr)
     if result.returncode == 0:
-        return WorkspaceTestResult("passed", stdout=result.stdout or "", stderr=result.stderr or "")
+        return WorkspaceTestResult("passed", stdout=stdout, stderr=stderr)
     return WorkspaceTestResult(
         "failed",
         f"test command exited with status {result.returncode}",
         exit_code=result.returncode,
-        stdout=result.stdout or "",
-        stderr=result.stderr or "",
+        stdout=stdout,
+        stderr=stderr,
     )
 
 
