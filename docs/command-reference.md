@@ -471,6 +471,7 @@ Commands may declare a generic `runner`. The first supported runner is `uv`:
 test:
   command: pytest
   runner: uv
+  uv_extras: [dev, benchmark]
 
 commands:
   taxbuddy:
@@ -478,9 +479,11 @@ commands:
     runner: uv
 ```
 
-`runner: uv` routes that command through `uv run -- ...`. It is independent of
-the project-level Python manager, so composite projects can use uv for one
-Python utility while keeping other commands in Go, Node, shell, or `mise`.
+`runner: uv` routes that command through `uv run -- ...`. A test command can
+add `uv_extras` to select optional dependency groups during setup and test
+execution. It is independent of the project-level Python manager, so
+composite projects can use uv for one Python utility while keeping other
+commands in Go, Node, shell, or `mise`.
 
 For a polyglot project such as `banyanlabs`, keep Base at the workspace
 orchestration layer and let the language-native tools own their usual files.
@@ -548,8 +551,9 @@ python:
   manager: uv
 ```
 
-For uv-managed projects, Base delegates setup to `uv sync`, uses the
-project-local `.venv` for activation and project commands, and skips
+For uv-managed projects, Base delegates setup to `uv sync`, including any
+`test.uv_extras` declared by the project, uses the project-local `.venv` for
+activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](python-manifest.md).
 Projects without a top-level `python:` section or any `python-package`

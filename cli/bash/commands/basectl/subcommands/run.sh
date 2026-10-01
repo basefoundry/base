@@ -53,7 +53,7 @@ base_run_print_command_record() {
         printf "Commands for project '%s'\n\n" "$resolved_name"
         printed_header=1
     fi
-    display_text="$(base_display_command_with_runner "$command_runner" "$command_text")" || return $?
+    display_text="$(base_display_command_with_runner "$command_runner" "$command_text" "")" || return $?
     printf '%-20s %s\n' "$command_name" "$display_text"
 }
 
@@ -259,8 +259,8 @@ base_run_subcommand_main() {
     }
 
     command_runner="${command_runner:-}"
-    command_to_run="$(base_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
-    display_command="$(base_display_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$run_command" "" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$run_command" "" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run command %q for project %q in %q: %s\n' \

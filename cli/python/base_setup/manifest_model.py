@@ -30,12 +30,14 @@ class TestConfig:
     mise: str | None = None
     runner: str | None = None
     requirements: str | None = None
+    uv_extras: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class CommandConfig:
     command: str
     runner: str | None = None
+    uv_extras: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

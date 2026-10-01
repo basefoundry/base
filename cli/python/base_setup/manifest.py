@@ -35,6 +35,7 @@ from base_setup.manifest_schema import CURRENT_MANIFEST_SCHEMA_VERSION
 from base_setup.manifest_schema import ENVIRONMENT_VARIABLE_NAME_RE
 from base_setup.manifest_schema import PORT_HEALTH_STATES
 from base_setup.manifest_schema import PROJECT_LANGUAGE_ALIASES
+from base_setup.manifest_schema import PYTHON_EXTRA_NAME_RE
 from base_setup.manifest_schema import SUPPORTED_PYTHON_MANAGERS
 from base_setup.manifest_schema import SUPPORTED_PYTHON_VENV_LOCATIONS
 from base_setup.manifest_schema import has_control_line_break
@@ -56,11 +57,14 @@ def read_manifest(path: Path) -> BaseManifest:
     commands = _read_commands(path, data.get("commands"))
     activate = _read_activate(path, data.get("activate"))
     python = _read_python(path, data.get("python"))
+    if test is not None and test.uv_extras and python.manager != "uv" and test.runner != "uv":
+        raise ManifestError(f"{path}: test.uv_extras requires python.manager: uv or test.runner: uv.")
     github = _read_github(path, data.get("github"))
     demo = _read_demo(path, data.get("demo"))
     build = read_build_config(path, data.get("build"))
     release = read_release_config(path, data.get("release"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
+    _validate_manifest_cross_fields(path, test, python)
 
     return BaseManifest(
         path=path,
@@ -82,6 +86,11 @@ def read_manifest(path: Path) -> BaseManifest:
         build=build,
         release=release,
     )
+
+
+def _validate_manifest_cross_fields(path: Path, test: TestConfig | None, python: PythonConfig) -> None:
+    if test is not None and test.uv_extras and python.manager != "uv" and test.runner != "uv":
+        raise ManifestError(f"{path}: test.uv_extras requires python.manager: uv or test.runner: uv.")
 
 
 def _read_schema_version(path: Path, schema_version_data: Any) -> int:
@@ -181,7 +190,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     if not isinstance(test_data, dict):
         raise ManifestError(f"{path}: test must be a mapping when provided.")
 
-    allowed_keys = {"command", "mise", "runner", "requirements"}
+    allowed_keys = {"command", "mise", "runner", "requirements", "uv_extras"}
     unknown_keys = sorted(set(test_data) - allowed_keys)
     if unknown_keys:
         raise ManifestError(f"{path}: test has unsupported keys: {', '.join(unknown_keys)}.")
@@ -189,6 +198,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
     command = test_data.get("command")
     mise = test_data.get("mise")
     requirements = test_data.get("requirements")
+    uv_extras = _read_uv_extras(path, test_data.get("uv_extras", []))
     if command is not None and (not isinstance(command, str) or not command.strip()):
         raise ManifestError(f"{path}: test.command must be a non-empty string when provided.")
     if mise is not None and (not isinstance(mise, str) or not mise.strip()):
@@ -201,6 +211,8 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         raise ManifestError(f"{path}: test.mise must not contain control line breaks.")
     if requirements is not None and has_control_line_break(requirements):
         raise ManifestError(f"{path}: test.requirements must not contain control line breaks.")
+    if requirements is not None and uv_extras:
+        raise ManifestError(f"{path}: test.requirements cannot be combined with test.uv_extras.")
     if command is not None and mise is not None:
         raise ManifestError(f"{path}: test must declare only one of command or mise.")
     if command is None and mise is None:
@@ -211,6 +223,7 @@ def _read_test(path: Path, test_data: Any) -> TestConfig | None:
         mise=mise.strip() if mise is not None else None,
         runner=_read_optional_runner(path, "test.runner", test_data.get("runner")),
         requirements=requirements.strip() if requirements is not None else None,
+        uv_extras=uv_extras,
     )
 
 
@@ -358,6 +371,30 @@ def _read_python(path: Path, python_data: Any) -> PythonConfig:
         raise ManifestError(f"{path}: python.venv_location: external cannot be combined with python.manager: uv.")
 
     return PythonConfig(manager=manager, requires_python=requires_python, venv_location=venv_location)
+
+
+def _read_uv_extras(path: Path, extras_data: Any) -> tuple[str, ...]:
+    if extras_data is None:
+        return ()
+    if not isinstance(extras_data, list):
+        raise ManifestError(f"{path}: test.uv_extras must be a list when provided.")
+
+    extras: list[str] = []
+    normalized: set[str] = set()
+    for index, extra_data in enumerate(extras_data, start=1):
+        if not isinstance(extra_data, str) or not extra_data.strip():
+            raise ManifestError(f"{path}: test.uv_extras[{index}] must be a non-empty string.")
+        extra = extra_data.strip()
+        if PYTHON_EXTRA_NAME_RE.fullmatch(extra) is None:
+            raise ManifestError(
+                f"{path}: test.uv_extras[{index}] must be a valid Python extra name: {extra!r}."
+            )
+        normalized_extra = extra.lower().replace("_", "-").replace(".", "-")
+        if normalized_extra in normalized:
+            raise ManifestError(f"{path}: test.uv_extras[{index}] duplicates '{extra}'.")
+        normalized.add(normalized_extra)
+        extras.append(extra)
+    return tuple(extras)
 
 
 def _read_github(path: Path, github_data: Any) -> GithubConfig:

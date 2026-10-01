@@ -49,11 +49,15 @@ def reconcile_uv_project(ctx: base_cli.Context, manifest: BaseManifest, dry_run:
         return
 
     project_root = manifest.path.parent
-    command = ["uv", "sync"] if dry_run else [str(uv_bin), "sync"]
+    command = (
+        ["uv", "sync", *uv_extra_options(manifest)]
+        if dry_run
+        else [str(uv_bin), "sync", *uv_extra_options(manifest)]
+    )
     if dry_run:
         process.dry_run_command(ctx, command, cwd=project_root)
         return
-    if process.run_check([str(uv_bin), "sync", "--check"], cwd=project_root):
+    if process.run_check([str(uv_bin), "sync", "--check", *uv_extra_options(manifest)], cwd=project_root):
         ctx.log.info("uv project environment is already synchronized for '%s'.", project_root)
         return
     process.run_command(ctx, command, cwd=project_root)
@@ -85,7 +89,7 @@ def check_uv(manifest: BaseManifest, *, verify_project_runtime: bool = True) -> 
             and uv_project_venv_ready(venv_path)
         ):
             checks.append(
-                uv_project_environment_check(project_root, uv_bin)
+                uv_project_environment_check(project_root, uv_bin, manifest)
                 if verify_project_runtime
                 else unverified_runtime_check(manifest, "uv project environment", "BASE-P155")
             )
@@ -227,8 +231,22 @@ def uv_project_venv_ready(venv_path: Path) -> bool:
     return executable_interpreter_present(python_path)
 
 
-def uv_project_environment_check(project_root: Path, uv_bin: Path) -> ArtifactCheck:
-    command = [str(uv_bin), "sync", "--check", "--offline", "--output-format", "json"]
+def uv_extra_options(manifest: BaseManifest) -> list[str]:
+    if manifest.test is None:
+        return []
+    return [argument for extra in manifest.test.uv_extras for argument in ("--extra", extra)]
+
+
+def uv_project_environment_check(project_root: Path, uv_bin: Path, manifest: BaseManifest) -> ArtifactCheck:
+    command = [
+        str(uv_bin),
+        "sync",
+        "--check",
+        "--offline",
+        "--output-format",
+        "json",
+        *uv_extra_options(manifest),
+    ]
     try:
         probe = process.run_capture(
             command,
@@ -243,7 +261,7 @@ def uv_project_environment_check(project_root: Path, uv_bin: Path) -> ArtifactCh
                 f"uv environment synchronization check for '{project_root}' timed out after "
                 f"{process.DIAGNOSTIC_TIMEOUT_SECONDS} seconds."
             ),
-            fix=f"Retry 'uv sync --check' from '{project_root}'.",
+            fix=f"Retry 'uv sync --check{format_uv_extra_options(manifest)}' from '{project_root}'.",
             finding_id="BASE-P155",
             status="warn",
         )
@@ -266,10 +284,14 @@ def uv_project_environment_check(project_root: Path, uv_bin: Path) -> ArtifactCh
         name="uv project environment",
         ok=False,
         message=message,
-        fix=f"Run 'uv sync' from '{project_root}' to reconcile the environment.",
+        fix=f"Run 'uv sync{format_uv_extra_options(manifest)}' from '{project_root}' to reconcile the environment.",
         finding_id="BASE-P155",
         details=details,
     )
+
+
+def format_uv_extra_options(manifest: BaseManifest) -> str:
+    return "".join(f" --extra {extra}" for extra in (manifest.test.uv_extras if manifest.test else ()))
 
 
 def uv_sync_package_changes(stdout: str) -> tuple[dict[str, str], ...]:
