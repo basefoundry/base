@@ -86,7 +86,7 @@ source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
-        'pytest tests/' uv
+        'pytest tests/' uv 'dev,benchmark'
     exit 0
 fi
 printf 'unexpected test python args: %s\n' "$*" >&2
@@ -114,7 +114,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$(cat "$state_file")" == *"pwd=$workspace/demo"* ]]
-    [[ "$(cat "$state_file")" == *"args=<run><--><pytest><tests/><-k><focused>"* ]]
+    [[ "$(cat "$state_file")" == *"args=<run><--extra><dev><--extra><benchmark><--><pytest><tests/><-k><focused>"* ]]
 }
 
 @test "basectl test dry-run prints resolved command without running it" {

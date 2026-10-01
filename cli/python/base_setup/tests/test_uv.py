@@ -44,6 +44,45 @@ class UvProjectTests(unittest.TestCase):
 
         ctx.log.info.assert_any_call("[DRY-RUN] Would run in '%s': %s", root, "uv sync")
 
+    def test_reconcile_uv_project_selects_declared_test_extras(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "test:",
+                        "  command: pytest",
+                        "  uv_extras:",
+                        "    - dev",
+                        "    - benchmark",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            ctx = fake_context()
+
+            with (
+                mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")),
+                mock.patch("base_setup.uv.process.run_check", return_value=False) as run_check,
+                mock.patch("base_setup.uv.process.run_command") as run_command,
+            ):
+                reconcile_uv_project(ctx, manifest, dry_run=False)
+
+        run_check.assert_called_once_with(
+            ["uv", "sync", "--check", "--extra", "dev", "--extra", "benchmark"],
+            cwd=root,
+        )
+        run_command.assert_called_once_with(
+            ctx,
+            ["uv", "sync", "--extra", "dev", "--extra", "benchmark"],
+            cwd=root,
+        )
+
     def test_reconcile_uv_project_dry_run_plans_linux_debian_uv_bootstrap_when_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -361,6 +400,65 @@ class UvProjectTests(unittest.TestCase):
         self.assertEqual(findings["BASE-P155"].status, "")
         run_capture.assert_called_once_with(
             ["uv", "sync", "--check", "--offline", "--output-format", "json"],
+            cwd=root,
+            timeout_seconds=10,
+        )
+
+    def test_check_uv_includes_declared_test_extras_in_environment_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "project"
+            manifest = write_manifest(
+                root,
+                "\n".join(
+                    [
+                        "project:",
+                        "  name: demo",
+                        "python:",
+                        "  manager: uv",
+                        "test:",
+                        "  command: pytest",
+                        "  uv_extras:",
+                        "    - dev",
+                        "    - benchmark",
+                        "artifacts: []",
+                    ]
+                ),
+            )
+            (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+            (root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+            python_bin = root / ".venv" / "bin" / "python"
+            python_bin.parent.mkdir(parents=True)
+            python_bin.write_text("#!/usr/bin/env python\n", encoding="utf-8")
+            python_bin.chmod(0o755)
+
+            with (
+                mock.patch("base_setup.uv.uv_executable", return_value=Path("uv")),
+                mock.patch(
+                    "base_setup.uv.process.run_capture",
+                    return_value=subprocess.CompletedProcess(
+                        ["uv"],
+                        0,
+                        stdout='{"sync": {"changes": []}}',
+                        stderr="",
+                    ),
+                ) as run_capture,
+            ):
+                checks = check_uv(manifest)
+
+        self.assertTrue(next(check for check in checks if check.finding_id == "BASE-P155").ok)
+        run_capture.assert_called_once_with(
+            [
+                "uv",
+                "sync",
+                "--check",
+                "--offline",
+                "--output-format",
+                "json",
+                "--extra",
+                "dev",
+                "--extra",
+                "benchmark",
+            ],
             cwd=root,
             timeout_seconds=10,
         )

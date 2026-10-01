@@ -12,6 +12,7 @@ PORT_HEALTH_STATES = {"free", "listening"}
 SUPPORTED_PYTHON_MANAGERS = {"uv"}
 SUPPORTED_PYTHON_VENV_LOCATIONS = {"external", "project"}
 SUPPORTED_COMMAND_RUNNERS = {"uv"}
+PYTHON_EXTRA_NAME_RE = re.compile(r"^[A-Za-z0-9]+(?:[-_.][A-Za-z0-9]+)*$")
 PROJECT_LANGUAGE_ALIASES = {
     "c": "c",
     "c++": "cpp",

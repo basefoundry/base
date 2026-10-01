@@ -374,6 +374,15 @@ manifest=$project_root/base_manifest.yaml" ]
     [ "$output" = 'uv run -- pytest tests/ "$@"' ]
 }
 
+@test "project command helper wraps uv runner commands with declared extras" {
+    source_project_command_helpers
+
+    run base_command_with_runner_and_uv_extras "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = 'uv run --extra dev --extra benchmark -- pytest tests/ "$@"' ]
+}
+
 @test "project command helper displays mise extra args after separator" {
     source_project_command_helpers
 
@@ -395,4 +404,13 @@ manifest=$project_root/base_manifest.yaml" ]
 
     [ "$status" -eq 0 ]
     [ "$output" = "uv run -- pytest tests/ -k slow\\ case" ]
+}
+
+@test "project command helper displays uv runner extras" {
+    source_project_command_helpers
+
+    run base_display_command_with_runner_and_uv_extras "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "uv run --extra dev --extra benchmark -- pytest tests/ -k slow\\ case" ]
 }

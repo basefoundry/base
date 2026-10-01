@@ -19,6 +19,7 @@ def project_command_record(**overrides: object) -> dict[str, object]:
         "manifest_command_trust_required": True,
         "command": "printf 'tab=\t unicode=λ newline=\n control=\x01'",
         "runner": None,
+        "uv_extras": "",
     }
     record.update(overrides)
     return record

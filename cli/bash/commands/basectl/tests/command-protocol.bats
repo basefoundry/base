@@ -54,6 +54,7 @@ field.uses_uv_manager:boolean=false
 field.manifest_command_trust_required:boolean=true
 field.command:string=7072696e7466206f6b
 field.runner:string=
+field.uv_extras:string=
 end_record=0
 end_protocol="
         base_command_protocol_decode_one project-command "$payload" || exit

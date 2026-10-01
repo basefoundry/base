@@ -34,7 +34,7 @@ base_test_usage_error() {
 }
 
 base_test_subcommand_main() {
-    local project="" resolve_output resolved_name project_root manifest_path test_command command_runner
+    local project="" resolve_output resolved_name project_root manifest_path test_command command_runner uv_extras
     local command_to_run display_command dry_run
     local args=() extra_args=()
     local route_venv_dir uses_uv_manager trust_required
@@ -58,10 +58,11 @@ base_test_subcommand_main() {
     trust_required="$BASE_PROJECT_COMMAND_TRUST_REQUIRED"
     test_command="$BASE_PROJECT_COMMAND_RESOLVED_ACTION"
     command_runner="$BASE_PROJECT_COMMAND_RUNNER"
+    uv_extras="$BASE_PROJECT_COMMAND_UV_EXTRAS"
 
     command_runner="${command_runner:-}"
-    command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
-    display_command="$(base_display_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$display_command"
@@ -78,8 +79,9 @@ base_test_subcommand_main() {
     }
     test_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    uv_extras="${BASE_COMMAND_PROTOCOL_FIELDS[uv_extras]:-}"
     command_runner="${command_runner:-}"
-    command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
 
     base_project_activate_environment \
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null

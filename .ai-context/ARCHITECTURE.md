@@ -132,7 +132,8 @@ Base orchestrates mature tools instead of replacing them:
   external tool as the source of truth.
 - uv owns Python dependency resolution, lockfiles, and project-local `.venv`
   environments when a manifest declares `python.manager: uv`; individual
-  commands can opt into `uv run` with `runner: uv`.
+  commands can opt into `uv run` with `runner: uv`, and `test.uv_extras`
+  carries optional test groups through setup, readiness checks, and execution.
 - Base owns the supported Python runtime window for `python.requires_python`
   and uses that declaration when creating Base-managed project virtualenvs.
 - IDEs own editor behavior; Base can install apps/extensions/settings

@@ -190,7 +190,20 @@ project runtime to probe installed packages. `basectl test <project>` requires
 manifest command approval before running that executable preflight and starts
 the test command only when the environment is ready. Paths outside the project root, unsupported requirement
 syntax, and uv-managed projects using this field fail closed; uv projects
-should declare test dependencies in `pyproject.toml` and use `uv sync`.
+should declare test dependencies in `pyproject.toml` and use `uv sync`. If
+the test dependencies are an optional uv group, declare it directly in the
+manifest so setup and test use the same environment contract:
+
+```yaml
+test:
+  command: ./tests/full_validate.sh
+  runner: uv
+  uv_extras: [dev, benchmark]
+```
+
+Base then selects those groups during `basectl setup <project>` and invokes
+the test through `uv run --extra ...`, without requiring a separate manual
+installation step.
 
 `basectl setup --dry-run --manifest <path>` previews virtualenv creation and
 requirements installation even before the project's virtualenv exists. The

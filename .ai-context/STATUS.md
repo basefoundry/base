@@ -26,6 +26,7 @@ The current command surface covers:
   `mise run` delegation; no `mise bootstrap` integration
 - bundled declarative artifact registry for Base-managed built-in artifacts
 - explicit uv-managed Python project setup through `python.manager: uv`
+- manifest-declared uv test extras carried through setup and `basectl test`
 - explicit `repo init --language` profiles with normalized
   `project.languages` metadata and Python uv opt-in
 - project Python runtime requirements through `python.requires_python`

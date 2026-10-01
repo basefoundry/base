@@ -296,12 +296,13 @@ How Base should coexist:
   only after the manifest has explicitly opted into uv and the caller has
   reviewed `--dry-run` output and passed `--yes`
 - invoke uv transparently, so dry-run output, logs, and diagnostics show the
-  underlying `uv sync` or `uv run -- ...` command instead of hiding it behind
-  Base
+  underlying `uv sync` or `uv run -- ...` command, including declared
+  `test.uv_extras`, instead of hiding it behind Base
 
 Current stance: strong coexistence. Base supports explicit uv-managed Python
 projects through `python.manager: uv` and command-level uv execution through
-`runner: uv`. Base still does not infer uv ownership from `pyproject.toml` or
+`runner: uv`; `test.uv_extras` carries optional test groups through that
+contract. Base still does not infer uv ownership from `pyproject.toml` or
 `uv.lock` alone. See [Python Manifest Section](python-manifest.md) for the
 current boundary.
 
