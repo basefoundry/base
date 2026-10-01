@@ -264,7 +264,7 @@ base_project_command_resolve_context() {
     BASE_PROJECT_COMMAND_RESOLVED_ACTION="${BASE_COMMAND_PROTOCOL_FIELDS[$command_field]}"
     # shellcheck disable=SC2034 # The runner is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_RUNNER="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
-    # shellcheck disable=SC2034 # The declared mise config is consumed by test.sh.
+    # shellcheck disable=SC2034 # The declared mise config is consumed by project command callers.
     BASE_PROJECT_COMMAND_MISE_CONFIG="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
 
     base_project_set_history_context \

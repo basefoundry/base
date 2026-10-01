@@ -618,7 +618,7 @@ def resolve_project_command(
     return base_cli.ExitCode.SUCCESS
 
 
-def test_command_project_command(
+def test_command_project_command(  # pylint: disable=too-many-return-statements
     ctx: base_cli.Context,
     project_name: str | None,
     workspace: str | None,
@@ -651,19 +651,12 @@ def test_command_project_command(
 
     command_config = test_command(manifest.test)
     if output_format == "command-protocol":
-        print(
-            dumps_record(
-                "project-command",
-                command_record(
-                    project.name,
-                    project.root,
-                    project.manifest_path,
-                    command_config,
-                    manifest,
-                    bind_mise_config=True,
-                ),
-            )
-        )
+        try:
+            record = command_record(project.name, project.root, project.manifest_path, command_config, manifest)
+        except ArtifactError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.FAILURE
+        print(dumps_record("project-command", record))
     elif output_format == "text":
         print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
     else:
@@ -697,12 +690,12 @@ def demo_script_project_command(
         return base_cli.ExitCode.FAILURE
 
     if output_format == "command-protocol":
-        print(
-            dumps_record(
-                "demo",
-                demo_record(project.name, project.root, project.manifest_path, demo_script, manifest),
-            )
-        )
+        try:
+            record = demo_record(project.name, project.root, project.manifest_path, demo_script, manifest)
+        except ArtifactError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.FAILURE
+        print(dumps_record("demo", record))
     elif output_format == "text":
         print(_demo_output(project.name, project.root, project.manifest_path, demo_script, manifest))
     else:
@@ -799,12 +792,12 @@ def run_command_for_project(
         return base_cli.ExitCode.FAILURE
 
     if output_format == "command-protocol":
-        print(
-            dumps_record(
-                "project-command",
-                command_record(project.name, project.root, project.manifest_path, command_config, manifest),
-            )
-        )
+        try:
+            record = command_record(project.name, project.root, project.manifest_path, command_config, manifest)
+        except ArtifactError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.FAILURE
+        print(dumps_record("project-command", record))
     elif output_format == "text":
         print(_command_output(project.name, project.root, project.manifest_path, command_config, manifest))
     else:

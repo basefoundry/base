@@ -85,7 +85,7 @@ base_run_list_commands() {
 }
 
 base_run_subcommand_main() {
-    local project="" explicit_project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command command_runner
+    local project="" explicit_project="" command_name="" wrapper resolve_output resolved_name project_root manifest_path run_command command_runner mise_config_path
     local command_to_run display_command
     local dry_run=0 list_commands=0
     local output_format="text"
@@ -253,6 +253,7 @@ base_run_subcommand_main() {
     base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
     run_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    mise_config_path="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
 
     [[ -n "$resolved_name" && -n "$project_root" && -n "$manifest_path" && -n "$run_command" ]] || {
         base_std_fatal_error "Unable to resolve command '$command_name' for project '${explicit_project:-current project}'."
@@ -260,7 +261,9 @@ base_run_subcommand_main() {
 
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$run_command" "${extra_args[@]}")" || return $?
+    display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run command %q for project %q in %q: %s\n' \

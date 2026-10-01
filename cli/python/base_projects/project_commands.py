@@ -93,10 +93,8 @@ def command_record(  # pylint: disable=too-many-arguments
     manifest_path: Path,
     command: CommandConfig,
     manifest: BaseManifest,
-    *,
-    bind_mise_config: bool = False,
 ) -> dict[str, str | bool | None]:
-    mise_config_path = str(resolve_mise_path(manifest)) if bind_mise_config and manifest.mise is not None else None
+    mise_config_path = str(resolve_mise_path(manifest)) if manifest.mise is not None else None
     return {
         "project_name": project_name,
         "project_root": str(project_root),
@@ -141,6 +139,7 @@ def demo_record(
         **route_metadata_record(manifest, manifest_command_trust_required=True),
         "demo_script": str(demo_script),
         "runner": manifest.demo.runner,
+        "mise_config_path": str(resolve_mise_path(manifest)) if manifest.mise is not None else None,
     }
 
 

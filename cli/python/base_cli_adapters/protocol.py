@@ -65,11 +65,13 @@ BASE_RECORD_SCHEMAS: dict[str, dict[str, FieldSpec]] = {
         "command": STRING,
         "description": NULLABLE_STRING,
         "runner": NULLABLE_STRING,
+        "mise_config_path": NULLABLE_STRING,
     },
     "demo": {
         **PROJECT_ROUTE_FIELDS,
         "demo_script": STRING,
         "runner": NULLABLE_STRING,
+        "mise_config_path": NULLABLE_STRING,
     },
     "activation-source": {
         "source_path": STRING,
