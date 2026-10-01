@@ -23,9 +23,13 @@ release BOM contains:
 - one or more provider/consumer combinations with the platform, required flag,
   result, and reproducible evidence.
 
-Required rows must use an immutable release or tag source, report `passed`, and
-include evidence. Moving-source rows are allowed only as advisory rows and do
-not block a release. The validator also rejects duplicate repositories, missing
+Required component rows must use an immutable release or tag source, report
+`passed`, and include evidence. A required combination must additionally use
+immutable, passing component evidence for every participant; a component marked
+advisory may participate in an advisory combination, but cannot establish a
+required release result when its source is moving or its result is failed or
+`not_tested`. Moving-source rows are allowed only as advisory rows and do not
+block a release. The validator also rejects duplicate repositories, missing
 participants, a release repository absent from the component list or required
 combinations, single-repository combinations, mutable release identities, and
 version or commit mismatches. Repository identity comparisons are
@@ -37,7 +41,10 @@ and tagged rows retain Base's stable `vX.Y.Z` tag contract, and each tag must
 match that row's version. Advisory moving rows can use valid SemVer prerelease
 and build suffixes and omit the tag.
 
-The release repository's component commit must equal `release.commit`.
+The release repository's component version, tag, and commit must equal the
+top-level release version, tag, and commit (repository matching is
+case-insensitive). A release component cannot silently report a different
+version or tag while retaining the release commit.
 Every combination's platform must appear in **every participant's** component
 `platforms` array, including advisory combinations. Platform names match exactly;
 repository identities match without case sensitivity. Schema patterns describe
@@ -50,10 +57,12 @@ The JSON Schema is the structural and lexical contract. It enforces the
 document shape, required fields, enums, `additionalProperties: false`, strict
 SemVer patterns, immutable tag and commit patterns, and a minimum of two
 combination participants. `validate_bom` applies the runtime release gate and
-cross-field rules that the schema cannot express generally: release identity
-matching, component/tag relationships, release/component commit identity,
-participant references and platform coverage, and required-source/result
-interactions. It also rejects unknown keys at every validated object level.
+ cross-field rules that the schema cannot express generally: release identity
+ matching, component/tag relationships, release/component identity (version,
+ tag, and commit), participant references and platform coverage, and
+ required-source/result interactions, including immutable, passing evidence for
+ every participant in a required combination. It also rejects unknown keys at
+ every validated object level.
 
 The release tests load the same schema and run both layers against a shared
 valid/invalid corpus, including the scalar types of `schema_version`. Schema

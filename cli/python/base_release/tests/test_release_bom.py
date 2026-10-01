@@ -197,6 +197,11 @@ def conformance_corpus() -> tuple[object, ...]:
             "release/component commit relationship",
         ),
         (
+            "release_component_identity_mismatch",
+            {"components": {0: {"version": "2.2.0", "tag": "v2.2.0"}}},
+            "release/component version and tag identity relationship",
+        ),
+        (
             "combination_platform_mismatch",
             {"components": {0: {"platforms": ["macos-14"]}}},
             "participant platform relationship",
@@ -205,6 +210,16 @@ def conformance_corpus() -> tuple[object, ...]:
             "unknown_participant",
             {"combinations": {0: {"participants": ["basefoundry/base", "basefoundry/unknown"]}}},
             "participant component reference",
+        ),
+        (
+            "required_combination_moving_participant",
+            {
+                "components": {2: {"platforms": ["ubuntu-24.04"]}},
+                "combinations": {
+                    0: {"participants": ["basefoundry/base-bash-libs", "basefoundry/base-cli"]}
+                },
+            },
+            "required participant evidence eligibility",
         ),
     ]
     for name, changes, reason in semantic_only_cases:
@@ -258,6 +273,41 @@ def test_required_failed_combination_is_rejected() -> None:
         validate_bom(document)
 
 
+def test_release_component_version_and_tag_must_match_release_identity() -> None:
+    document = valid_bom()
+    document["components"][0]["version"] = "9.9.9"
+    document["components"][0]["tag"] = "v9.9.9"
+    with pytest.raises(ReleaseBomError, match="must match release.version"):
+        validate_bom(document)
+
+
+def test_release_repository_component_cannot_use_moving_source() -> None:
+    document = valid_bom()
+    document["components"][0]["source_mode"] = "moving"
+    document["components"][0]["tag"] = None
+    document["components"][0]["required"] = False
+    with pytest.raises(ReleaseBomError, match="cannot use a moving source for the release repository"):
+        validate_bom(document)
+
+
+def test_required_combination_rejects_advisory_failed_or_moving_participants() -> None:
+    document = valid_bom()
+    document["components"][2]["platforms"] = ["ubuntu-24.04"]
+    document["combinations"][0]["participants"].append("basefoundry/base-cli")
+    with pytest.raises(ReleaseBomError, match="moving component"):
+        validate_bom(document)
+
+    document = valid_bom()
+    document["components"][1]["required"] = False
+    document["components"][1]["result"] = "failed"
+    document["combinations"][0]["participants"] = [
+        "basefoundry/base-bash-libs",
+        "basefoundry/base",
+    ]
+    with pytest.raises(ReleaseBomError, match="result 'failed'"):
+        validate_bom(document)
+
+
 def test_release_repository_must_be_a_declared_component() -> None:
     document = valid_bom()
     document["components"] = document["components"][1:]
@@ -272,6 +322,14 @@ def test_required_combination_must_include_release_repository() -> None:
         validate_bom(document)
 
     document["components"][2]["platforms"].append("ubuntu-24.04")
+    document["components"][2].update(
+        {
+            "source_mode": "release",
+            "tag": "v0.4.3",
+            "required": True,
+            "result": "passed",
+        }
+    )
     document["combinations"][0]["participants"] = ["basefoundry/base", "basefoundry/base-cli"]
     with pytest.raises(ReleaseBomError, match="must include release.repository"):
         validate_bom(document)
