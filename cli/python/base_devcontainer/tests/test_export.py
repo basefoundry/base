@@ -198,6 +198,19 @@ class DevcontainerExportTests(unittest.TestCase):
 
             self.assertFalse(outside_target.exists())
 
+    def test_write_export_refuses_in_project_dangling_target_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = root / "base_manifest.yaml"
+            target_path = root / ".devcontainer" / "devcontainer.json"
+            target_path.parent.mkdir()
+            target_path.symlink_to(root / "templates" / "devcontainer.json")
+            write_manifest(manifest_path, "project:\n  name: demo\nartifacts: []\n")
+            export = build_devcontainer_export(read_manifest(manifest_path), write=True)
+
+            with self.assertRaisesRegex(DevcontainerExportError, "already exists|unsafe"):
+                write_devcontainer_export(export)
+
     def test_write_export_rechecks_target_after_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
