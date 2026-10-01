@@ -18,25 +18,25 @@ def run_workspace_subprocess(
 ) -> subprocess.CompletedProcess[bytes]:
     """Run one delegated command and clean up its process tree on timeout."""
 
-    process = subprocess.Popen(
+    with subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         cwd=cwd,
         env=env,
         start_new_session=os.name != "nt",
-    )
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
-        stdout, stderr = _terminate_process_tree(process)
-        raise subprocess.TimeoutExpired(
-            command,
-            timeout,
-            output=stdout if stdout is not None else exc.output,
-            stderr=stderr if stderr is not None else exc.stderr,
-        ) from exc
-    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    ) as process:
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            stdout, stderr = _terminate_process_tree(process)
+            raise subprocess.TimeoutExpired(
+                command,
+                timeout,
+                output=stdout if stdout is not None else exc.output,
+                stderr=stderr if stderr is not None else exc.stderr,
+            ) from exc
+        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def _terminate_process_tree(process: subprocess.Popen[bytes]) -> tuple[bytes | None, bytes | None]:
