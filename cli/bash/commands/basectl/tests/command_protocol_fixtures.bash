@@ -92,6 +92,7 @@ base_test_protocol_project_command_record() {
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string command "$8"
     base_test_protocol_nullable_string runner "${9:-}"
+    base_test_protocol_nullable_string mise_config_path "${10:-}"
     base_test_protocol_string uv_extras "${10:-}"
     printf 'end_record=%s\n' "$1"
 }
@@ -124,6 +125,7 @@ base_test_protocol_build_target_record() {
     base_test_protocol_string command "$command"
     base_test_protocol_nullable_string description "$description"
     base_test_protocol_nullable_string runner "$runner"
+    base_test_protocol_nullable_string mise_config_path "${13:-}"
     printf 'end_record=%s\n' "$record_index"
 }
 
@@ -137,6 +139,7 @@ base_test_protocol_demo_record() {
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string demo_script "$8"
     base_test_protocol_nullable_string runner "${9:-}"
+    base_test_protocol_nullable_string mise_config_path "${10:-}"
     printf 'end_record=%s\n' "$1"
 }
 

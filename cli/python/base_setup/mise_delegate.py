@@ -215,6 +215,7 @@ def mise_details(project_root: Path, mise_path: Path) -> dict[str, object]:
 def mise_environment(mise_path: Path) -> dict[str, str]:
     environment = os.environ.copy()
     environment["MISE_CONFIG_FILE"] = str(mise_path)
+    environment["MISE_OVERRIDE_CONFIG_FILENAMES"] = str(mise_path)
     return environment
 
 

@@ -8,6 +8,7 @@ from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_setup.manifest_model import BaseManifest
 from base_setup.manifest_model import CommandConfig
 from base_setup.manifest_model import TestConfig
+from base_setup.mise_delegate import resolve_mise_path
 from base_setup.project_routing import route_for_manifest
 
 
@@ -90,13 +91,14 @@ def project_record(
     }
 
 
-def command_record(
+def command_record(  # pylint: disable=too-many-arguments
     project_name: str,
     project_root: Path,
     manifest_path: Path,
     command: CommandConfig,
     manifest: BaseManifest,
 ) -> dict[str, str | bool | None]:
+    mise_config_path = str(resolve_mise_path(manifest)) if manifest.mise is not None else None
     return {
         "project_name": project_name,
         "project_root": str(project_root),
@@ -104,6 +106,7 @@ def command_record(
         **route_metadata_record(manifest, manifest_command_trust_required=True),
         "command": command.command,
         "runner": command.runner,
+        "mise_config_path": mise_config_path,
         "uv_extras": ",".join(command.uv_extras),
     }
 
@@ -141,6 +144,7 @@ def demo_record(
         **route_metadata_record(manifest, manifest_command_trust_required=True),
         "demo_script": str(demo_script),
         "runner": manifest.demo.runner,
+        "mise_config_path": str(resolve_mise_path(manifest)) if manifest.mise is not None else None,
     }
 
 
