@@ -1194,6 +1194,24 @@ class ProcessTests(unittest.TestCase):
         self.assertNotIn("boundary-sentinel", message)
         self.assertIn("PASSWORD=[REDACTED]", message)
 
+    def test_command_output_recorder_redacts_secret_before_chunk_eviction(self) -> None:
+        recorder = process.CommandOutputRecorder()
+        recorder.append("TOKEN=")
+        recorder.append("secretvalue123,")
+        recorder.append("x" * (process.COMMAND_OUTPUT_TAIL_CHARS + 9000))
+
+        message = recorder.text()
+
+        self.assertNotIn("secretvalue123", message)
+        self.assertNotIn("secretvalue123", "".join(recorder._chunks))
+
+    def test_command_output_recorder_does_not_retain_raw_secret_value(self) -> None:
+        recorder = process.CommandOutputRecorder()
+        recorder.append("TOKEN=secretvalue123")
+
+        self.assertNotIn("secretvalue123", "".join(recorder._chunks))
+        self.assertNotIn("secretvalue123", recorder._pending)
+
     def test_redact_command_output_redacts_compound_secret_assignments(self) -> None:
         output = "\n".join(
             [
