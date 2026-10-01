@@ -140,6 +140,7 @@ def validate_bom(
         raise ReleaseBomError("components must be a non-empty array")
     component_repositories: set[str] = set()
     component_platforms: dict[str, set[str]] = {}
+    component_evidence: dict[str, tuple[str, str]] = {}
     for index, component in enumerate(components):
         path = f"components[{index}]"
         row = _mapping_value(component, path)
@@ -181,6 +182,14 @@ def validate_bom(
                 raise ReleaseBomError(f"{path}.tag must be an immutable vX.Y.Z tag")
             if tag != f"v{version}":
                 raise ReleaseBomError(f"{path}.tag must be v<{path}.version>")
+        else:
+            tag = None
+        component_evidence[repository_key] = (source_mode, result)
+        if repository_key == release_repository.casefold():
+            if version != release_version:
+                raise ReleaseBomError(f"{path}.version must match release.version {release_version!r}")
+            if tag != release_tag:
+                raise ReleaseBomError(f"{path}.tag must match release.tag {release_tag!r}")
     if release_repository.casefold() not in component_repositories:
         raise ReleaseBomError("release.repository must be declared in components")
 
@@ -220,6 +229,17 @@ def validate_bom(
                 required_release_combination = True
             if result != "passed":
                 raise ReleaseBomError(f"{path} is required but result is {result!r}")
+            for participant_key in participant_keys:
+                source_mode, component_result = component_evidence[participant_key]
+                if source_mode == "moving":
+                    raise ReleaseBomError(
+                        f"{path} cannot use moving component {participant_key!r} as required evidence"
+                    )
+                if component_result != "passed":
+                    raise ReleaseBomError(
+                        f"{path} cannot use component {participant_key!r} with result "
+                        f"{component_result!r} as required evidence"
+                    )
     if not required_combination:
         raise ReleaseBomError("at least one required combination must be declared")
     if not required_release_combination:
