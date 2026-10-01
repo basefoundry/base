@@ -64,6 +64,7 @@ def read_manifest(path: Path) -> BaseManifest:
     build = read_build_config(path, data.get("build"))
     release = read_release_config(path, data.get("release"))
     artifacts = _read_artifacts(path, data.get("artifacts", []))
+    _validate_manifest_cross_fields(path, test, python)
 
     return BaseManifest(
         path=path,
@@ -85,6 +86,11 @@ def read_manifest(path: Path) -> BaseManifest:
         build=build,
         release=release,
     )
+
+
+def _validate_manifest_cross_fields(path: Path, test: TestConfig | None, python: PythonConfig) -> None:
+    if test is not None and test.uv_extras and python.manager != "uv" and test.runner != "uv":
+        raise ManifestError(f"{path}: test.uv_extras requires python.manager: uv or test.runner: uv.")
 
 
 def _read_schema_version(path: Path, schema_version_data: Any) -> int:

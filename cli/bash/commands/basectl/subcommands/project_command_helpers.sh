@@ -338,8 +338,8 @@ base_command_with_extra_args() {
 }
 
 base_command_with_runner() {
-    local runner="$1" command="$2" command_with_args
-    shift 2
+    local runner="$1" command="$2" uv_extras="${3:-}" command_with_args extra_flags
+    shift 3
 
     command_with_args="$(base_command_with_extra_args "$command" "$@")"
     case "$runner" in
@@ -347,7 +347,8 @@ base_command_with_runner() {
             printf '%s\n' "$command_with_args"
             ;;
         uv)
-            printf 'uv run -- %s\n' "$command_with_args"
+            extra_flags="$(base_uv_extra_flags "$uv_extras")"
+            printf 'uv run%s -- %s\n' "$extra_flags" "$command_with_args"
             ;;
         *)
             printf 'Unsupported command runner %q.\n' "$runner" >&2
@@ -368,26 +369,6 @@ base_uv_extra_flags() {
         output+=" --extra $quoted"
     done
     printf '%s\n' "$output"
-}
-
-base_command_with_runner_and_uv_extras() {
-    local runner="$1" command="$2" uv_extras="$3" command_with_args extra_flags
-    shift 3
-
-    command_with_args="$(base_command_with_extra_args "$command" "$@")"
-    case "$runner" in
-        "")
-            printf '%s\n' "$command_with_args"
-            ;;
-        uv)
-            extra_flags="$(base_uv_extra_flags "$uv_extras")"
-            printf 'uv run%s -- %s\n' "$extra_flags" "$command_with_args"
-            ;;
-        *)
-            printf 'Unsupported command runner %q.\n' "$runner" >&2
-            return 2
-            ;;
-    esac
 }
 
 base_project_run_shell_command() {
@@ -457,26 +438,7 @@ base_display_command() {
 }
 
 base_display_command_with_runner() {
-    local runner="$1" command="$2" display_command
-    shift 2
-
-    display_command="$(base_display_command "$command" "$@")"
-    case "$runner" in
-        "")
-            printf '%s\n' "$display_command"
-            ;;
-        uv)
-            printf 'uv run -- %s\n' "$display_command"
-            ;;
-        *)
-            printf 'Unsupported command runner %q.\n' "$runner" >&2
-            return 2
-            ;;
-    esac
-}
-
-base_display_command_with_runner_and_uv_extras() {
-    local runner="$1" command="$2" uv_extras="$3" display_command extra_flags
+    local runner="$1" command="$2" uv_extras="${3:-}" display_command extra_flags
     shift 3
 
     display_command="$(base_display_command "$command" "$@")"

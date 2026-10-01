@@ -63,7 +63,7 @@ base_build_print_target_record() {
             display_text+=" [runner: $command_runner]"
         fi
     else
-        display_text="$(base_display_command_with_runner "$command_runner" "$build_command")" || return $?
+        display_text="$(base_display_command_with_runner "$command_runner" "$build_command" "")" || return $?
     fi
     printf '%-20s %-40s %s\n' "$target_name" "$working_dir" "$display_text"
 }
@@ -83,8 +83,8 @@ base_build_run_target_record() {
 
     base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
 
-    command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
-    display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \

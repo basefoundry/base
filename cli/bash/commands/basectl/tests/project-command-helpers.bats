@@ -368,7 +368,7 @@ manifest=$project_root/base_manifest.yaml" ]
 @test "project command helper wraps uv runner commands" {
     source_project_command_helpers
 
-    run base_command_with_runner "uv" "pytest tests/" "-k" "slow case"
+    run base_command_with_runner "uv" "pytest tests/" "" "-k" "slow case"
 
     [ "$status" -eq 0 ]
     [ "$output" = 'uv run -- pytest tests/ "$@"' ]
@@ -377,7 +377,7 @@ manifest=$project_root/base_manifest.yaml" ]
 @test "project command helper wraps uv runner commands with declared extras" {
     source_project_command_helpers
 
-    run base_command_with_runner_and_uv_extras "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
+    run base_command_with_runner "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
 
     [ "$status" -eq 0 ]
     [ "$output" = 'uv run --extra dev --extra benchmark -- pytest tests/ "$@"' ]
@@ -400,7 +400,7 @@ manifest=$project_root/base_manifest.yaml" ]
 @test "project command helper displays uv runner commands" {
     source_project_command_helpers
 
-    run base_display_command_with_runner "uv" "pytest tests/" "-k" "slow case"
+    run base_display_command_with_runner "uv" "pytest tests/" "" "-k" "slow case"
 
     [ "$status" -eq 0 ]
     [ "$output" = "uv run -- pytest tests/ -k slow\\ case" ]
@@ -409,7 +409,7 @@ manifest=$project_root/base_manifest.yaml" ]
 @test "project command helper displays uv runner extras" {
     source_project_command_helpers
 
-    run base_display_command_with_runner_and_uv_extras "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
+    run base_display_command_with_runner "uv" "pytest tests/" "dev,benchmark" "-k" "slow case"
 
     [ "$status" -eq 0 ]
     [ "$output" = "uv run --extra dev --extra benchmark -- pytest tests/ -k slow\\ case" ]

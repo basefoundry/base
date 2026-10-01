@@ -60,8 +60,8 @@ base_demo_subcommand_main() {
 
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
-    command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
-    display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run demo for project %q in %q: %s\n' \

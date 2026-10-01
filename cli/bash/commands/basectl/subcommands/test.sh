@@ -61,8 +61,8 @@ base_test_subcommand_main() {
     uv_extras="$BASE_PROJECT_COMMAND_UV_EXTRAS"
 
     command_runner="${command_runner:-}"
-    command_to_run="$(base_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
-    display_command="$(base_display_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$display_command"
@@ -81,7 +81,7 @@ base_test_subcommand_main() {
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
     uv_extras="${BASE_COMMAND_PROTOCOL_FIELDS[uv_extras]:-}"
     command_runner="${command_runner:-}"
-    command_to_run="$(base_command_with_runner_and_uv_extras "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
 
     base_project_activate_environment \
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
