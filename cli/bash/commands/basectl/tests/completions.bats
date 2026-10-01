@@ -332,7 +332,7 @@ EOF
     [[ "$output" == *"trust_commands=status allow revoke"* ]]
     [[ "$output" == *"trust_projects=base demo"* ]]
     [[ "$output" == *"trust_status_options=--workspace --format"* ]]
-    [[ "$output" == *"trust_allow_options=--workspace --manifest-sha256"* ]]
+    [[ "$output" == *"trust_allow_options=--workspace --manifest-sha256 --test-requirements-sha256"* ]]
     [[ "$output" == *"trust_revoke_options=--workspace"* ]]
     [[ "$output" == *"repo_commands=init clone check configure agent-guidance installer-template"* ]]
     [[ "$output" == *"repo_init_options=--path --repo --issue --category --pr --agent-ready --release --language --description --license --private --public --no-configure --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --no-project --dry-run"* ]]

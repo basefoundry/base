@@ -524,6 +524,7 @@ _base_basectl_completion() {
                         '3:Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
                         '--manifest-sha256[Expected manifest SHA-256]:sha256:' \
+                        '--test-requirements-sha256[Expected test-requirements SHA-256]:sha256:' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 revoke)
