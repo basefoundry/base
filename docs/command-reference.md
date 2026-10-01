@@ -692,13 +692,17 @@ and output remains in manifest order. Update never clones, resets, or changes
 the workspace manifest. It continues after individual Git failures, reports
 updated/unchanged/skipped/failed counts, skips missing optional repositories,
 and treats missing required repositories as failures. If the manifest points at
-the active `BASE_HOME/base` checkout, that control plane is skipped; a separate
-workspace checkout of `base` is updated normally. Text output uses a stable
+the active `BASE_HOME/base` checkout, that checkout is eligible for update after
+the same read-only preflight checks as other selected roots; a separate
+workspace checkout of `base` is eligible under the same policy. Text output uses a stable
 repository/action/result table; `--format json` emits the stable schema-versioned
 report documented at
 [`docs/schemas/workspace-update.json`](schemas/workspace-update.json). Raw Git
 output is retained for debug diagnostics, and failures include concise repository
-and exit details. JSON dry runs report `planned` results and never invoke Git.
+and exit details. JSON dry runs perform the same read-only preflight, which may
+invoke Git and contact the configured remote to inspect the default branch, but
+never run `git pull` or other checkout mutation; unsafe roots are reported as
+skipped rather than planned pulls.
 
 Use `basectl workspace configure` to preview applying `basectl repo configure`
 across Base-managed repositories in the workspace, then run

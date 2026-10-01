@@ -346,12 +346,15 @@ required repositories are failures. Unsafe preflight skips for optional
 repositories are non-fatal; required repository skips contribute to the
 failure count. The command never clones, resets,
 force-updates, or refreshes the manifest. When the manifest's `base` path is the active
-`BASE_HOME` checkout, it is skipped to protect the control plane. A separate
-workspace checkout of `base` is updated normally. Text output is rendered as
+`BASE_HOME` checkout, it is eligible for update after the same read-only preflight
+checks as other selected roots. A separate workspace checkout of `base` is also
+updated under the same policy. Text output is rendered as
 one repository/action/result table. `--format json` emits a stable
 `schema_version: 1` report with selected repositories, per-repository results,
-and aggregate counts; JSON dry runs report `planned` results without invoking
-Git. Use `workspace pull` separately when the manifest file itself must be
+and aggregate counts. JSON dry runs perform the same read-only preflight as an
+apply run, so they may invoke Git and contact the configured remote to inspect
+the default branch, but they never pull or mutate a checkout; unsafe roots are
+reported as skipped rather than planned pulls. Use `workspace pull` separately when the manifest file itself must be
 refreshed from `workspace.manifest_source`.
 
 ### Accepted Source Formats
