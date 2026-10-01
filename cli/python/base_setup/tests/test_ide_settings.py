@@ -11,7 +11,7 @@ from base_setup import ide
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
 
-class IdeSettingsTests(unittest.TestCase):
+class IdeSettingsTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_project_ide_mutation_plan_lists_apps_extensions_and_settings(self) -> None:
         ctx = fake_context()

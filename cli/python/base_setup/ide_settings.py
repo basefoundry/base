@@ -196,6 +196,7 @@ def _jsonc_object_with_added_properties(source: str, added: dict[str, object]) -
     ) + source[last_significant + 1 :]
 
 
+# pylint: disable=too-many-branches
 def _jsonc_root_positions(source: str) -> tuple[int, int, int | None]:
     opening = next((index for index, char in enumerate(source) if not char.isspace()), None)
     if opening is None or source[opening] != "{":
