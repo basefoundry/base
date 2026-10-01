@@ -11,6 +11,8 @@ except ImportError as exc:
 else:
     _yaml_import_error = None
 
+from .text import read_utf8_text
+
 
 class ManifestError(ValueError):
     pass
@@ -43,7 +45,7 @@ def read_manifest_mapping(path: Path) -> dict[Any, Any]:
         ) from _yaml_import_error
 
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(read_utf8_text(path))
     except UnicodeError as exc:
         raise ManifestError(f"{path}: manifest must use UTF-8 encoding: {exc}") from exc
     except OSError as exc:
