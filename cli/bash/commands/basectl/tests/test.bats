@@ -261,6 +261,75 @@ EOF
     [ "$(cat "$state_file")" = $'run\nunit\n--\n-k\nfocused' ]
 }
 
+@test "basectl test selects the declared mise config over a competing root config" {
+    local workspace="$TEST_TMPDIR/workspace"
+    local mise_home="$TEST_TMPDIR/mise-home"
+    local mise_data="$TEST_TMPDIR/mise-data"
+    local mise_cache="$TEST_TMPDIR/mise-cache"
+    local mise_state="$TEST_TMPDIR/mise-state"
+    local python_bin mise_bin declared_config root_config
+
+    mise_bin="$(command -v mise || true)"
+    [[ -n "$mise_bin" ]] || skip "mise is not installed"
+    python_bin="$mise_home/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")" "$workspace/demo/.venv/bin" "$workspace/demo/config" \
+        "$mise_home" "$mise_data" "$mise_cache" "$mise_state"
+    declared_config="$workspace/demo/config/tools file.toml"
+    root_config="$workspace/.mise.toml"
+    cat > "$declared_config" <<'EOF'
+[tasks.unit]
+run = "printf 'DECLARED_CONFIG\\n'"
+EOF
+    cat > "$root_config" <<'EOF'
+[tasks.unit]
+run = "printf 'ROOT_CONFIG\\n'"
+EOF
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
+    base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
+        "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
+        'mise run unit' "" "${BASE_TEST_PROJECT_ROOT:?}/config/tools file.toml"
+    exit 0
+fi
+printf 'unexpected test python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$python_bin"
+    printf 'project:\n  name: demo\nmise: "config/tools file.toml"\ntest:\n  mise: unit\nartifacts: []\n' > "$workspace/demo/base_manifest.yaml"
+    workspace="$(cd "$workspace" && pwd -P)"
+
+    run env \
+        HOME="$mise_home" \
+        MISE_DATA_DIR="$mise_data" \
+        MISE_CACHE_DIR="$mise_cache" \
+        MISE_STATE_DIR="$mise_state" \
+        "$mise_bin" trust "$declared_config"
+    [ "$status" -eq 0 ]
+    run env \
+        HOME="$mise_home" \
+        MISE_DATA_DIR="$mise_data" \
+        MISE_CACHE_DIR="$mise_cache" \
+        MISE_STATE_DIR="$mise_state" \
+        "$mise_bin" trust "$root_config"
+    [ "$status" -eq 0 ]
+
+    run env \
+        HOME="$mise_home" \
+        MISE_DATA_DIR="$mise_data" \
+        MISE_CACHE_DIR="$mise_cache" \
+        MISE_STATE_DIR="$mise_state" \
+        PATH="$(dirname "$mise_bin"):/usr/bin:/bin:/usr/sbin:/sbin" \
+        BASE_TEST_PROJECT_ROOT="$workspace/demo" \
+        "$BASE_REPO_ROOT/bin/basectl" test demo -- -k focused
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"DECLARED_CONFIG"* ]]
+    [[ "$output" != *"ROOT_CONFIG"* ]]
+}
+
 @test "basectl test warns when project venv is missing" {
     local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
     local workspace="$TEST_TMPDIR/workspace"

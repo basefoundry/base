@@ -34,7 +34,7 @@ base_test_usage_error() {
 }
 
 base_test_subcommand_main() {
-    local project="" resolve_output resolved_name project_root manifest_path test_command command_runner
+    local project="" resolve_output resolved_name project_root manifest_path test_command command_runner mise_config_path
     local command_to_run display_command dry_run
     local args=() extra_args=()
     local route_venv_dir uses_uv_manager trust_required
@@ -58,10 +58,13 @@ base_test_subcommand_main() {
     trust_required="$BASE_PROJECT_COMMAND_TRUST_REQUIRED"
     test_command="$BASE_PROJECT_COMMAND_RESOLVED_ACTION"
     command_runner="$BASE_PROJECT_COMMAND_RUNNER"
+    mise_config_path="$BASE_PROJECT_COMMAND_MISE_CONFIG"
 
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+    display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run tests for project %q in %q: %s\n' "$resolved_name" "$project_root" "$display_command"
@@ -78,8 +81,10 @@ base_test_subcommand_main() {
     }
     test_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
     command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    mise_config_path="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
 
     base_project_activate_environment \
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null

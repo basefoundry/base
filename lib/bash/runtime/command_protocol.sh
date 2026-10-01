@@ -36,7 +36,7 @@ base_command_protocol_record_fields() {
         project-command)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager manifest_command_trust_required command runner
+                uses_uv_manager manifest_command_trust_required command runner mise_config_path
             ;;
         named-command)
             printf '%s\n' project_name project_root manifest_path command_name command runner
@@ -91,7 +91,7 @@ base_command_protocol_field_spec() {
         demo:manifest_command_trust_required)
             printf 'boolean\n'
             ;;
-        project-command:runner|named-command:runner|build-target:description|\
+        project-command:runner|project-command:mise_config_path|named-command:runner|build-target:description|\
         build-target:runner|demo:runner)
             printf 'nullable-string\n'
             ;;

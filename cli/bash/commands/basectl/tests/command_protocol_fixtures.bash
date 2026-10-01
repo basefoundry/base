@@ -92,6 +92,7 @@ base_test_protocol_project_command_record() {
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string command "$8"
     base_test_protocol_nullable_string runner "${9:-}"
+    base_test_protocol_nullable_string mise_config_path "${10:-}"
     printf 'end_record=%s\n' "$1"
 }
 

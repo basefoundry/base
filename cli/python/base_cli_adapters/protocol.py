@@ -50,6 +50,7 @@ BASE_RECORD_SCHEMAS: dict[str, dict[str, FieldSpec]] = {
         **PROJECT_ROUTE_FIELDS,
         "command": STRING,
         "runner": NULLABLE_STRING,
+        "mise_config_path": NULLABLE_STRING,
     },
     "named-command": {
         **PROJECT_REFERENCE_FIELDS,

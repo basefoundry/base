@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -652,7 +654,14 @@ def test_command_project_command(
         print(
             dumps_record(
                 "project-command",
-                command_record(project.name, project.root, project.manifest_path, command_config, manifest),
+                command_record(
+                    project.name,
+                    project.root,
+                    project.manifest_path,
+                    command_config,
+                    manifest,
+                    bind_mise_config=True,
+                ),
             )
         )
     elif output_format == "text":
