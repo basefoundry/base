@@ -68,6 +68,23 @@ class TestRequirementsTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "unsupported requirement syntax"):
                 read_test_requirements(manifest)
 
+    def test_reports_non_utf8_requirements_as_file_finding(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest = self.write_manifest(root)
+            (root / "requirements-dev.txt").write_bytes(b"# caf\xe9\npytest\n")
+
+            with self.assertRaisesRegex(ArtifactError, "as UTF-8"):
+                read_test_requirements(manifest)
+
+            check = check_test_requirements(manifest, verify_project_runtime=False)
+
+        assert check is not None
+        self.assertFalse(check.ok)
+        self.assertEqual(check.finding_id, "BASE-P180")
+        self.assertIn("requirements-dev.txt", check.message)
+        self.assertIn("as UTF-8", check.message)
+
     def test_check_reports_missing_test_requirement(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

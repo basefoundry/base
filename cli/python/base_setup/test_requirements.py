@@ -83,6 +83,10 @@ def read_test_requirements(manifest: BaseManifest) -> tuple[Path, tuple[Requirem
     requirements: list[RequirementSpec] = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
+    except UnicodeError as exc:
+        raise ArtifactError(
+            f"Unable to decode declared test requirements file '{path}' as UTF-8: {exc}"
+        ) from exc
     except OSError as exc:
         raise ArtifactError(f"Unable to read declared test requirements file '{path}': {exc}") from exc
 
