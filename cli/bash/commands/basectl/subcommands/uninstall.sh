@@ -121,7 +121,7 @@ base_uninstall_subcommand_main() {
     fi
 
     if ((all_projects && yes)); then
-        base_uninstall_run_python --all --verify
+        base_uninstall_run_python --all --finalize
         status=$?
         ((status == 0)) || return "$status"
     fi

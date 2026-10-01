@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -14,6 +17,62 @@ from base_uninstall import engine
 
 
 class BaseUninstallTests(unittest.TestCase):
+    def test_public_all_uninstall_completes_after_runtime_removal(self) -> None:
+        repo_root = Path(__file__).resolve().parents[4]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            cache = root / "cache"
+            checkout = root / "workspace" / "demo"
+            checkout.mkdir(parents=True)
+            manifest_path = checkout / "base_manifest.yaml"
+            manifest_path.write_text("project:\n  name: demo\n", encoding="utf-8")
+
+            runtime_python = home / ".base.d" / "base" / ".venv" / "bin" / "python"
+            runtime_python.parent.mkdir(parents=True)
+            runtime_python.write_text(
+                f"#!/bin/sh\nexec {shlex.quote(sys.executable)} \"$@\"\n",
+                encoding="utf-8",
+            )
+            runtime_python.chmod(0o755)
+            (home / ".base.d" / "base" / "checks").mkdir(parents=True)
+            (home / ".base.d" / "base" / "checks" / "last.json").write_text("{}", encoding="utf-8")
+            (home / ".zshrc").write_text(
+                "# >>> base: zshrc managed >>>\nmanaged\n# <<< base: zshrc managed <<<\n",
+                encoding="utf-8",
+            )
+
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "HOME": str(home),
+                    "BASE_CACHE_DIR": str(cache),
+                    "BASE_HOME": str(repo_root),
+                }
+            )
+            base_bash_libs_candidates = [
+                Path(environment["BASE_BASH_LIBS_DIR"]) if environment.get("BASE_BASH_LIBS_DIR") else None,
+                repo_root.parent / "base-bash-libs" / "lib" / "bash",
+                repo_root.parents[1] / "base-bash-libs" / "lib" / "bash",
+            ]
+            for base_bash_libs_dir in base_bash_libs_candidates:
+                if base_bash_libs_dir is not None and base_bash_libs_dir.is_dir():
+                    environment["BASE_BASH_LIBS_DIR"] = str(base_bash_libs_dir)
+                    break
+            result = subprocess.run(
+                [str(repo_root / "bin" / "basectl"), "uninstall", "--all", "--yes"],
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse(runtime_python.exists())
+            self.assertTrue(manifest_path.exists())
+            self.assertNotIn("base: zshrc managed", (home / ".zshrc").read_text(encoding="utf-8"))
+            self.assertIn("Verification passed", result.stdout)
+
     def test_project_uninstall_removes_only_selected_project_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -119,6 +178,39 @@ class BaseUninstallTests(unittest.TestCase):
             self.assertNotIn("workspace:", config_path.read_text(encoding="utf-8"))
             self.assertIn("default_owner", config_path.read_text(encoding="utf-8"))
 
+    def test_all_uninstall_defers_base_runtime_until_finalization(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            cache = root / "cache"
+            runtime = home / ".base.d" / "base" / ".venv"
+            (runtime / "bin").mkdir(parents=True)
+            (runtime / "bin" / "python").write_text("runtime", encoding="utf-8")
+
+            with mock.patch.dict(
+                os.environ,
+                {"HOME": str(home), "BASE_CACHE_DIR": str(cache)},
+                clear=False,
+            ):
+                with redirect_stdout(StringIO()):
+                    status = engine.uninstall_state(None, apply=True, dry_run=False)
+
+            self.assertEqual(status, 0)
+            self.assertTrue(runtime.exists())
+
+            with mock.patch.dict(
+                os.environ,
+                {"HOME": str(home), "BASE_CACHE_DIR": str(cache)},
+                clear=False,
+            ):
+                output = StringIO()
+                with redirect_stdout(output):
+                    status = engine.finalize_state()
+
+            self.assertEqual(status, 0)
+            self.assertFalse(runtime.exists())
+            self.assertIn("Verification passed", output.getvalue())
+
     def test_verify_state_reports_shell_startup_residue(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             home = Path(tmpdir)
@@ -165,4 +257,3 @@ class BaseUninstallTests(unittest.TestCase):
 
             self.assertEqual(status, 0)
             self.assertTrue((check_path / "last.json").exists())
-
