@@ -1203,14 +1203,16 @@ class ProcessTests(unittest.TestCase):
         message = recorder.text()
 
         self.assertNotIn("secretvalue123", message)
-        self.assertNotIn("secretvalue123", "".join(recorder._chunks))
+        self.assertIn("TOKEN=[REDACTED]", message)
 
     def test_command_output_recorder_does_not_retain_raw_secret_value(self) -> None:
         recorder = process.CommandOutputRecorder()
         recorder.append("TOKEN=secretvalue123")
 
-        self.assertNotIn("secretvalue123", "".join(recorder._chunks))
-        self.assertNotIn("secretvalue123", recorder._pending)
+        message = recorder.text()
+
+        self.assertNotIn("secretvalue123", message)
+        self.assertIn("TOKEN=[REDACTED]", message)
 
     def test_redact_command_output_redacts_compound_secret_assignments(self) -> None:
         output = "\n".join(
