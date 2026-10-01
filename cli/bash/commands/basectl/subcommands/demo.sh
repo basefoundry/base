@@ -61,9 +61,9 @@ base_demo_subcommand_main() {
 
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
-    command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
     command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
-    display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "${extra_args[@]}")" || return $?
+    display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
     display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then

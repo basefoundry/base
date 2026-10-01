@@ -147,7 +147,7 @@ is requested on macOS, Base warns if `osascript` is not available.
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
 | `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>` |
+| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
 | `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |
 
 Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
@@ -471,6 +471,7 @@ Commands may declare a generic `runner`. The first supported runner is `uv`:
 test:
   command: pytest
   runner: uv
+  uv_extras: [dev, benchmark]
 
 commands:
   taxbuddy:
@@ -478,9 +479,11 @@ commands:
     runner: uv
 ```
 
-`runner: uv` routes that command through `uv run -- ...`. It is independent of
-the project-level Python manager, so composite projects can use uv for one
-Python utility while keeping other commands in Go, Node, shell, or `mise`.
+`runner: uv` routes that command through `uv run -- ...`. A test command can
+add `uv_extras` to select optional dependency groups during setup and test
+execution. It is independent of the project-level Python manager, so
+composite projects can use uv for one Python utility while keeping other
+commands in Go, Node, shell, or `mise`.
 
 For a polyglot project such as `banyanlabs`, keep Base at the workspace
 orchestration layer and let the language-native tools own their usual files.
@@ -548,8 +551,9 @@ python:
   manager: uv
 ```
 
-For uv-managed projects, Base delegates setup to `uv sync`, uses the
-project-local `.venv` for activation and project commands, and skips
+For uv-managed projects, Base delegates setup to `uv sync`, including any
+`test.uv_extras` declared by the project, uses the project-local `.venv` for
+activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](python-manifest.md).
 Projects without a top-level `python:` section or any `python-package`
@@ -692,13 +696,17 @@ and output remains in manifest order. Update never clones, resets, or changes
 the workspace manifest. It continues after individual Git failures, reports
 updated/unchanged/skipped/failed counts, skips missing optional repositories,
 and treats missing required repositories as failures. If the manifest points at
-the active `BASE_HOME/base` checkout, that control plane is skipped; a separate
-workspace checkout of `base` is updated normally. Text output uses a stable
+the active `BASE_HOME/base` checkout, that checkout is eligible for update after
+the same read-only preflight checks as other selected roots; a separate
+workspace checkout of `base` is eligible under the same policy. Text output uses a stable
 repository/action/result table; `--format json` emits the stable schema-versioned
 report documented at
 [`docs/schemas/workspace-update.json`](schemas/workspace-update.json). Raw Git
 output is retained for debug diagnostics, and failures include concise repository
-and exit details. JSON dry runs report `planned` results and never invoke Git.
+and exit details. JSON dry runs perform the same read-only preflight, which may
+invoke Git and contact the configured remote to inspect the default branch, but
+never run `git pull` or other checkout mutation; unsafe roots are reported as
+skipped rather than planned pulls.
 
 Use `basectl workspace configure` to preview applying `basectl repo configure`
 across Base-managed repositories in the workspace, then run

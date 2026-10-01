@@ -1158,6 +1158,62 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("[REDACTED]", message)
         self.assertIn("[REDACTED]", debug_text)
 
+    def test_run_command_redacts_secret_assignments_split_across_reads(self) -> None:
+        ctx = fake_context()
+        command = [
+            sys.executable,
+            "-c",
+            (
+                "import sys, time; "
+                "sys.stdout.write('TOKEN='); sys.stdout.flush(); time.sleep(0.02); "
+                "sys.stdout.write('stdout-boundary-sentinel\\n'); sys.stdout.flush(); "
+                "sys.stderr.write('PASSWORD='); sys.stderr.flush(); time.sleep(0.02); "
+                "sys.stderr.write('stderr-boundary-sentinel\\n'); sys.stderr.flush(); "
+                "raise SystemExit(9)"
+            ),
+        ]
+
+        with self.assertRaises(ArtifactError) as exc:
+            process.run_command(ctx, command, echo_output=False)
+
+        message = str(exc.exception)
+        self.assertNotIn("stdout-boundary-sentinel", message)
+        self.assertNotIn("stderr-boundary-sentinel", message)
+        self.assertIn("TOKEN=[REDACTED]", message)
+        self.assertIn("PASSWORD=[REDACTED]", message)
+
+    def test_command_output_recorder_redacts_before_tail_truncation(self) -> None:
+        recorder = process.CommandOutputRecorder(limit=32)
+        recorder.append("prefix=" + ("x" * 200))
+        recorder.append("PASSWORD=")
+        recorder.append("boundary-sentinel\n")
+
+        message = recorder.text()
+
+        self.assertLessEqual(len(message), 32)
+        self.assertNotIn("boundary-sentinel", message)
+        self.assertIn("PASSWORD=[REDACTED]", message)
+
+    def test_command_output_recorder_redacts_secret_before_chunk_eviction(self) -> None:
+        recorder = process.CommandOutputRecorder()
+        recorder.append("TOKEN=")
+        recorder.append("secretvalue123,")
+        recorder.append("x" * (process.COMMAND_OUTPUT_TAIL_CHARS + 9000))
+
+        message = recorder.text()
+
+        self.assertNotIn("secretvalue123", message)
+        self.assertIn("TOKEN=[REDACTED]", message)
+
+    def test_command_output_recorder_does_not_retain_raw_secret_value(self) -> None:
+        recorder = process.CommandOutputRecorder()
+        recorder.append("TOKEN=secretvalue123")
+
+        message = recorder.text()
+
+        self.assertNotIn("secretvalue123", message)
+        self.assertIn("TOKEN=[REDACTED]", message)
+
     def test_redact_command_output_redacts_compound_secret_assignments(self) -> None:
         output = "\n".join(
             [

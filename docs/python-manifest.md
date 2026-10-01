@@ -210,6 +210,25 @@ demo:
 uv run -- <command>
 ```
 
+When a uv-backed test command needs optional dependency groups, declare them
+in the manifest instead of asking each contributor to install them manually:
+
+```yaml
+test:
+  command: ./tests/full_validate.sh
+  runner: uv
+  uv_extras:
+    - dev
+    - benchmark
+```
+
+For a project with `python.manager: uv`, Base selects those extras for setup
+and readiness checks (`uv sync --extra dev --extra benchmark`) and for test
+execution (`uv run --extra dev --extra benchmark -- ...`). Extra names must
+match the project's `pyproject.toml`; `test.uv_extras` cannot be combined with
+`test.requirements` and is only valid for a uv-managed project or a test using
+`runner: uv`.
+
 This lets a composite project keep most commands in Go, Node, shell, `mise`, or
 other tools while routing only selected Python commands through uv. It also lets
 a fully uv-based Python project declare both:

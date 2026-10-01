@@ -285,6 +285,7 @@ CATALOG = catalog_by_id(
             likely_causes=(
                 "The path in `test.requirements` does not exist.",
                 "The path resolves outside the project root or uses unsupported pip requirement syntax.",
+                "The declared requirements file is not encoded as UTF-8.",
                 "A uv-managed project declared a requirements file instead of using its pyproject and lockfile."
             ),
             fix_steps=(

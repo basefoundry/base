@@ -9,6 +9,8 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 
+from .safe_writes import ensure_safe_write_path
+
 
 DIAGNOSTIC_JSON_SCHEMA_VERSION = 1
 CHECK_STATUS_FILE_ENVIRONMENT_VARIABLE = "BASE_SETUP_CHECK_STATUS_FILE"
@@ -71,7 +73,9 @@ def publish_check_status(status: str) -> None:
 
     status_file = os.environ.get(CHECK_STATUS_FILE_ENVIRONMENT_VARIABLE)
     if status_file:
-        Path(status_file).write_text(f"{status}\n", encoding="utf-8")
+        status_path = Path(status_file)
+        ensure_safe_write_path(status_path)
+        status_path.write_text(f"{status}\n", encoding="utf-8")
 
 
 def checks_payload_to_json(checks: Iterable[ArtifactCheck], **metadata: Any) -> dict[str, Any]:

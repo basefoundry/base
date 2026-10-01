@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 import inspect
 from pathlib import Path
 
@@ -164,6 +166,44 @@ def test_read_project_config_rejects_non_string_options(tmp_path: Path) -> None:
         engine.read_project_config(config_path)
 
     assert str(excinfo.value) == f"{config_path}: project.areas[1] must be a non-empty string."
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    (
+        ("42: true\n", "top-level key 42 must be a string"),
+        ("project:\n  42: true\n", "project key 42 must be a string"),
+        (
+            "project:\n  issue_defaults:\n    42: true\n",
+            "project.issue_defaults key 42 must be a string",
+        ),
+        ("project:\n  ' ': value\n", "project key ' ' must be a non-empty string"),
+    ),
+)
+def test_read_project_config_rejects_non_string_mapping_keys(
+    tmp_path: Path, body: str, message: str
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(body, encoding="utf-8")
+
+    with pytest.raises(engine.ProjectUsageError, match=message):
+        engine.read_project_config(config_path)
+
+
+def test_project_issue_defaults_reports_non_utf8_config_without_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("BASE_CACHE_DIR", str(tmp_path / ".cache" / "base"))
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_bytes(b"project:\n  issue_defaults:\n    status: Backlog\n# caf\xe9\n")
+
+    status = engine.main(("project", "issue", "defaults", "--config", str(config_path)))
+
+    captured = capsys.readouterr()
+    assert status == 2
+    assert "must be UTF-8" in captured.err
+    assert "Traceback" not in captured.err
 
 
 def test_issue_field_values_use_config_defaults_and_explicit_overrides(tmp_path: Path) -> None:

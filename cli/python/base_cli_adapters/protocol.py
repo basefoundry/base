@@ -51,6 +51,7 @@ BASE_RECORD_SCHEMAS: dict[str, dict[str, FieldSpec]] = {
         "command": STRING,
         "runner": NULLABLE_STRING,
         "mise_config_path": NULLABLE_STRING,
+        "uv_extras": STRING,
     },
     "named-command": {
         **PROJECT_REFERENCE_FIELDS,

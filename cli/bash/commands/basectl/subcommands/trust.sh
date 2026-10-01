@@ -15,6 +15,8 @@ Options:
   --format <text|csv|tsv|yaml|json>
                                 Output format for status. Defaults to text.
   --manifest-sha256 <sha256>    Expected manifest SHA-256 for allow.
+  --test-requirements-sha256 <sha256>
+                                Expected SHA-256 for the declared test-requirements file.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
 
@@ -56,6 +58,8 @@ Purpose:
 Options:
   --workspace <path>          Workspace directory to scan.
   --manifest-sha256 <sha256>  Require the current manifest to match this digest.
+  --test-requirements-sha256 <sha256>
+                              Require the declared test-requirements file to match this digest.
   -v                          Enable DEBUG logging for this subcommand.
   -h, --help                  Show this help text.
 EOF

@@ -45,6 +45,8 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
         raise ProjectConfigError("PyYAML is required to read GitHub Project config.") from exc
     try:
         text = path.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise ProjectConfigError(f"{path}: GitHub Project config must be UTF-8: {exc}.") from exc
     except OSError as exc:
         raise ProjectConfigError(f"{path}: unable to read GitHub Project config: {exc.strerror}.") from exc
     try:
@@ -55,11 +57,35 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
         return {}
     if not isinstance(data, dict):
         raise ProjectConfigError(f"{path}: expected mapping at document root.")
+    validate_mapping_keys(path, data)
     unexpected = set(data) - {"project"}
     if unexpected:
         names = ", ".join(sorted(unexpected))
         raise ProjectConfigError(f"{path}: unsupported top-level keys: {names}.")
     return data
+
+
+def validate_mapping_keys(path: Path, data: Any) -> None:
+    """Reject malformed mapping keys once, before any config section is read."""
+    pending = [(data, "top-level")]
+    visited: set[int] = set()
+    while pending:
+        value, location = pending.pop()
+        if not isinstance(value, (dict, list)) or id(value) in visited:
+            continue
+        visited.add(id(value))
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if not isinstance(key, str):
+                    raise ProjectConfigError(f"{path}: {location} key {key!r} must be a string.")
+                if not key.strip():
+                    raise ProjectConfigError(
+                        f"{path}: {location} key {key!r} must be a non-empty string."
+                    )
+                child_location = key if location == "top-level" else f"{location}.{key}"
+                pending.append((child, child_location))
+        else:
+            pending.extend((child, f"{location}[{index}]") for index, child in enumerate(value))
 
 
 def read_string_list(path: Path, project: dict[str, Any], key: str) -> tuple[str, ...]:

@@ -119,6 +119,8 @@ base_project_command_parse_args() {
     # shellcheck disable=SC2034 # Passthrough arguments are consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_EXTRA_ARGS=()
     BASE_PROJECT_COMMAND_SELECTION_ARGS=()
+    # shellcheck disable=SC2034 # uv extras are consumed by test.sh.
+    BASE_PROJECT_COMMAND_UV_EXTRAS=""
 
     while (($#)); do
         case "$1" in
@@ -266,6 +268,8 @@ base_project_command_resolve_context() {
     BASE_PROJECT_COMMAND_RUNNER="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
     # shellcheck disable=SC2034 # The declared mise config is consumed by project command callers.
     BASE_PROJECT_COMMAND_MISE_CONFIG="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
+    # shellcheck disable=SC2034 # uv extras are consumed by test.sh.
+    BASE_PROJECT_COMMAND_UV_EXTRAS="${BASE_COMMAND_PROTOCOL_FIELDS[uv_extras]:-}"
 
     base_project_set_history_context \
         "$BASE_PROJECT_COMMAND_RESOLVED_NAME" \
@@ -336,8 +340,8 @@ base_command_with_extra_args() {
 }
 
 base_command_with_runner() {
-    local runner="$1" command="$2" command_with_args
-    shift 2
+    local runner="$1" command="$2" uv_extras="${3:-}" command_with_args extra_flags
+    shift 3
 
     command_with_args="$(base_command_with_extra_args "$command" "$@")"
     case "$runner" in
@@ -345,7 +349,8 @@ base_command_with_runner() {
             printf '%s\n' "$command_with_args"
             ;;
         uv)
-            printf 'uv run -- %s\n' "$command_with_args"
+            extra_flags="$(base_uv_extra_flags "$uv_extras")"
+            printf 'uv run%s -- %s\n' "$extra_flags" "$command_with_args"
             ;;
         *)
             printf 'Unsupported command runner %q.\n' "$runner" >&2
@@ -364,6 +369,20 @@ base_command_with_mise_config() {
 
     printf 'MISE_CONFIG_FILE=%q MISE_OVERRIDE_CONFIG_FILENAMES=%q %s\n' \
         "$mise_config_path" "$mise_config_path" "$command"
+}
+
+base_uv_extra_flags() {
+    local extras_csv="$1"
+    local extra quoted output=""
+    local extras=()
+
+    [[ -n "$extras_csv" ]] || return 0
+    IFS=',' read -r -a extras <<< "$extras_csv"
+    for extra in "${extras[@]}"; do
+        printf -v quoted '%q' "$extra"
+        output+=" --extra $quoted"
+    done
+    printf '%s\n' "$output"
 }
 
 base_project_run_shell_command() {
@@ -433,8 +452,8 @@ base_display_command() {
 }
 
 base_display_command_with_runner() {
-    local runner="$1" command="$2" display_command
-    shift 2
+    local runner="$1" command="$2" uv_extras="${3:-}" display_command extra_flags
+    shift 3
 
     display_command="$(base_display_command "$command" "$@")"
     case "$runner" in
@@ -442,7 +461,8 @@ base_display_command_with_runner() {
             printf '%s\n' "$display_command"
             ;;
         uv)
-            printf 'uv run -- %s\n' "$display_command"
+            extra_flags="$(base_uv_extra_flags "$uv_extras")"
+            printf 'uv run%s -- %s\n' "$extra_flags" "$display_command"
             ;;
         *)
             printf 'Unsupported command runner %q.\n' "$runner" >&2

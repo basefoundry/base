@@ -18,15 +18,36 @@ from .errors import ArtifactError
 
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
+MAX_REDACTION_PREFIX_CHARS = 256
 DIAGNOSTIC_TIMEOUT_SECONDS = 10
 REDACTED = "[REDACTED]"
 SECRET_VALUE_RE = re.compile(
     r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key|authorization)[A-Za-z0-9_.:-]*)=\S+"
 )
+SECRET_ASSIGNMENT_START_RE = re.compile(
+    r"(?i)(?P<name>[A-Za-z0-9_.:-]*(?:token|password|secret|api[-_]?key|authorization)[A-Za-z0-9_.:-]*)="
+)
 SECRET_NAME_RE = re.compile(r"(?i)(?:token|password|secret|api[-_]?key|authorization)")
 URL_CREDENTIALS_RE = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^@\s/]+@")
+URL_CREDENTIAL_START_RE = re.compile(
+    r"(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*)://[^/\s:@]+:"
+)
 HOMEBREW_LINK_FAILURE = "The `brew link` step did not complete successfully"
 HOMEBREW_LINK_DRY_RUN_RE = re.compile(r"(?m)^\s*(brew link --overwrite [^\r\n]+ --dry-run)\s*$")
+
+
+def _first_whitespace_index(text: str) -> int | None:
+    for index, character in enumerate(text):
+        if character.isspace():
+            return index
+    return None
+
+
+def _first_url_password_boundary(text: str) -> int | None:
+    for index, character in enumerate(text):
+        if character == "@" or character.isspace():
+            return index
+    return None
 
 
 @dataclass
@@ -34,25 +55,71 @@ class CommandOutputRecorder:
     limit: int = COMMAND_OUTPUT_TAIL_CHARS
     _chunks: deque[str] = field(default_factory=deque)
     _length: int = 0
+    _pending: str = ""
+    _redacting_secret_value: bool = False
+    _redacting_url_password: bool = False
 
     def append(self, text: str) -> None:
         if not text:
             return
-        redacted = redact_command_output(text)
-        self._chunks.append(redacted)
-        self._length += len(redacted)
-        while self._length > self.limit and len(self._chunks) > 1:
-            removed = self._chunks.popleft()
-            self._length -= len(removed)
-        if self._length > self.limit and self._chunks:
-            self._chunks[0] = self._chunks[0][-self.limit :]
-            self._length = self.limit
+        combined = self._pending + text
+        self._pending = ""
+        self._consume(combined)
 
     def text(self) -> str:
-        value = "".join(self._chunks)
-        if len(value) <= self.limit:
-            return value.strip()
-        return value[-self.limit:].strip()
+        if self._pending:
+            self._append_redacted(redact_command_output(self._pending))
+            self._pending = ""
+        return "".join(self._chunks).strip()
+
+    def _consume(self, text: str) -> None:
+        while text:
+            if self._redacting_secret_value:
+                boundary = _first_whitespace_index(text)
+                if boundary is None:
+                    return
+                self._redacting_secret_value = False
+                text = text[boundary:]
+                continue
+            if self._redacting_url_password:
+                boundary = _first_url_password_boundary(text)
+                if boundary is None:
+                    return
+                if text[boundary] == "@":
+                    boundary += 1
+                self._redacting_url_password = False
+                text = text[boundary:]
+                continue
+
+            secret_match = SECRET_ASSIGNMENT_START_RE.search(text)
+            url_match = URL_CREDENTIAL_START_RE.search(text)
+            matches = [match for match in (secret_match, url_match) if match is not None]
+            if not matches:
+                keep = min(MAX_REDACTION_PREFIX_CHARS, len(text))
+                stable, self._pending = text[:-keep], text[-keep:] if keep else ""
+                self._append_redacted(redact_command_output(stable))
+                return
+
+            match = min(matches, key=lambda candidate: candidate.start())
+            self._append_redacted(redact_command_output(text[: match.start()]))
+            if match is secret_match:
+                self._append_redacted(f"{match.group('name')}=[REDACTED]")
+                self._redacting_secret_value = True
+            else:
+                scheme = match.group("scheme")
+                self._append_redacted(f"{scheme}://[REDACTED]@")
+                self._redacting_url_password = True
+            text = text[match.end() :]
+
+    def _append_redacted(self, text: str) -> None:
+        if not text:
+            return
+        value = "".join(self._chunks) + text
+        if len(value) > self.limit:
+            value = value[-self.limit :]
+        self._chunks.clear()
+        self._chunks.append(value)
+        self._length = len(value)
 
 
 def command_exists(name: str) -> bool:

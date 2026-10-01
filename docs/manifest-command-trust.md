@@ -153,7 +153,8 @@ Use the focused trust command to inspect, allow, or revoke approval:
 
 ```bash
 basectl trust status [project] [--workspace <path>] [--format text|json]
-basectl trust allow <project> [--workspace <path>] [--manifest-sha256 <sha256>]
+basectl trust allow <project> [--workspace <path>] \
+  [--manifest-sha256 <sha256>] [--test-requirements-sha256 <sha256>]
 basectl trust revoke <project> [--workspace <path>]
 ```
 
@@ -172,6 +173,23 @@ are unchanged.
 `basectl trust allow` prints the exact identity being approved and requires the
 supplied `--manifest-sha256` to match when that option is present. That flag is
 useful for scripted, non-interactive approval after a prior review step.
+
+When the manifest declares a test-requirements file, the identity also includes
+its raw SHA-256 digest. Supply `--test-requirements-sha256` to require that
+reviewed file to match before approval. For a command-bearing project whose
+manifest has test requirements, automation should bind both inputs:
+
+```bash
+basectl trust allow base-demo \
+  --manifest-sha256 "$EXPECTED_BASE_MANIFEST_SHA256" \
+  --test-requirements-sha256 "$EXPECTED_TEST_REQUIREMENTS_SHA256"
+```
+
+The requirements guard is only applicable when the manifest resolves a
+requirements file. A missing or mismatched digest fails closed; it does not
+infer trust from a file name, Git revision, or the requirements file's encoding.
+The guard protects the file used by the test preflight, while referenced
+scripts and installed runtimes remain outside the trust identity.
 
 `basectl trust revoke` removes all local approval records for the resolved
 canonical project root and manifest path, including earlier manifest and

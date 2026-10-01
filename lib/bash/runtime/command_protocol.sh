@@ -36,7 +36,7 @@ base_command_protocol_record_fields() {
         project-command)
             printf '%s\n' \
                 project_name project_root manifest_path project_venv_dir \
-                uses_uv_manager manifest_command_trust_required command runner mise_config_path
+                uses_uv_manager manifest_command_trust_required command runner mise_config_path uv_extras
             ;;
         named-command)
             printf '%s\n' project_name project_root manifest_path command_name command runner
@@ -94,6 +94,9 @@ base_command_protocol_field_spec() {
         project-command:runner|project-command:mise_config_path|named-command:runner|build-target:description|\
         build-target:runner|build-target:mise_config_path|demo:runner|demo:mise_config_path)
             printf 'nullable-string\n'
+            ;;
+        project-command:uv_extras)
+            printf 'string\n'
             ;;
         *)
             return 1

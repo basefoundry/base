@@ -14,9 +14,13 @@ from base_setup.project_routing import route_for_manifest
 
 def test_command(test_config: TestConfig) -> CommandConfig:
     if test_config.command is not None:
-        return CommandConfig(command=test_config.command, runner=test_config.runner)
+        return CommandConfig(command=test_config.command, runner=test_config.runner, uv_extras=test_config.uv_extras)
     if test_config.mise is not None:
-        return CommandConfig(command=shlex.join(["mise", "run", test_config.mise]), runner=test_config.runner)
+        return CommandConfig(
+            command=shlex.join(["mise", "run", test_config.mise]),
+            runner=test_config.runner,
+            uv_extras=test_config.uv_extras,
+        )
     raise ValueError("TestConfig must have command or mise set.")
 
 
@@ -103,6 +107,7 @@ def command_record(  # pylint: disable=too-many-arguments
         "command": command.command,
         "runner": command.runner,
         "mise_config_path": mise_config_path,
+        "uv_extras": ",".join(command.uv_extras),
     }
 
 

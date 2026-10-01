@@ -20,6 +20,7 @@ def project_command_record(**overrides: object) -> dict[str, object]:
         "command": "printf 'tab=\t unicode=λ newline=\n control=\x01'",
         "runner": None,
         "mise_config_path": None,
+        "uv_extras": "",
     }
     record.update(overrides)
     return record

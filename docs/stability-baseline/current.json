@@ -961,6 +961,9 @@
         "--manifest-sha256": {
           "takes_value": true
         },
+        "--test-requirements-sha256": {
+          "takes_value": true
+        },
         "--workspace": {
           "takes_value": true
         }

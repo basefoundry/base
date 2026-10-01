@@ -35,7 +35,8 @@ Purpose:
 
 Notes:
   Removal previews by default. Apply changes only with --yes. After an
-  applied --all removal, Base runs the verification check automatically.
+  applied --all removal, Base removes deferred runtime state and runs the
+  verification check automatically.
 EOF
 }
 
@@ -112,18 +113,29 @@ base_uninstall_subcommand_main() {
 
     if ((all_projects && !verify)); then
         if ((yes)); then
-            base_update_profile_subcommand_main --remove
+            if base_update_profile_subcommand_main --remove; then
+                status=0
+            else
+                status=$?
+            fi
         else
-            base_update_profile_subcommand_main --remove --dry-run
+            if base_update_profile_subcommand_main --remove --dry-run; then
+                status=0
+            else
+                status=$?
+            fi
         fi
-        status=$?
-        ((status == 0)) || return "$status"
     fi
 
     if ((all_projects && yes)); then
-        base_uninstall_run_python --all --verify
-        status=$?
+        local finalize_status=0
+        if base_uninstall_run_python --all --finalize; then
+            finalize_status=0
+        else
+            finalize_status=$?
+        fi
         ((status == 0)) || return "$status"
+        ((finalize_status == 0)) || return "$finalize_status"
     fi
     return 0
 }

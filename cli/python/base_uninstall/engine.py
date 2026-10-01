@@ -66,7 +66,8 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--dry-run", is_flag=True, help="Preview removal without changing files.")
 @base_cli.option("--yes", is_flag=True, help="Apply the removal after reviewing the plan.")
 @base_cli.option("--verify", is_flag=True, help="Verify that the selected Base-managed state is absent.")
-def run(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-return-statements
+@base_cli.option("--finalize", is_flag=True, help="Finish --all removal after profile cleanup.")
+def run(  # pylint: disable=too-many-arguments,too-many-boolean-expressions,too-many-positional-arguments,too-many-return-statements
     ctx: base_cli.Context,
     project: str | None,
     all_projects: bool,
@@ -74,6 +75,7 @@ def run(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     dry_run: bool,
     yes: bool,
     verify: bool,
+    finalize: bool,
 ) -> int:
     if all_projects and project is not None:
         ctx.log.error("Option '--all' cannot be combined with a project name.")
@@ -87,6 +89,16 @@ def run(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     if verify and (dry_run or yes):
         ctx.log.error("Option '--verify' cannot be combined with '--dry-run' or '--yes'.")
         return base_cli.ExitCode.USAGE_ERROR
+    if finalize and (not all_projects or project is not None or dry_run or yes or verify):
+        ctx.log.error("Option '--finalize' requires '--all' without other action options.")
+        return base_cli.ExitCode.USAGE_ERROR
+
+    if finalize:
+        try:
+            return finalize_state()
+        except (OSError, RuntimeError, ValueError, UninstallError) as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.FAILURE
 
     target: ProjectTarget | None = None
     if project is not None:
@@ -109,7 +121,7 @@ def run(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
 def uninstall_state(target: ProjectTarget | None, *, apply: bool, dry_run: bool) -> int:
     home = Path.home()
     cache_root = base_cache_root()
-    resources = resources_for_target(target, home, cache_root)
+    resources = resources_for_target(target, home, cache_root, include_runtime=not apply)
     workspace_config = workspace_config_present(home) if target is None else False
 
     if target is None:
@@ -144,9 +156,15 @@ def uninstall_state(target: ProjectTarget | None, *, apply: bool, dry_run: bool)
     return base_cli.ExitCode.SUCCESS
 
 
-def resources_for_target(target: ProjectTarget | None, home: Path, cache_root: Path) -> tuple[Resource, ...]:
+def resources_for_target(
+    target: ProjectTarget | None,
+    home: Path,
+    cache_root: Path,
+    *,
+    include_runtime: bool = True,
+) -> tuple[Resource, ...]:
     if target is None:
-        return all_resources(home, cache_root)
+        return all_resources(home, cache_root, include_runtime=include_runtime)
     return project_resources(target, home, cache_root)
 
 
@@ -167,7 +185,7 @@ def project_resources(target: ProjectTarget, home: Path, cache_root: Path) -> tu
     return tuple(resources)
 
 
-def all_resources(home: Path, cache_root: Path) -> tuple[Resource, ...]:
+def all_resources(home: Path, cache_root: Path, *, include_runtime: bool = True) -> tuple[Resource, ...]:
     resources: list[Resource] = []
     state_root = base_state_root(home)
     add_existing_resource(resources, state_root / TRUST_RELATIVE_ROOT, "all manifest command trust records")
@@ -178,11 +196,23 @@ def all_resources(home: Path, cache_root: Path) -> tuple[Resource, ...]:
             if child.name == "trust" or not child.is_dir() or child.is_symlink():
                 continue
             add_existing_resource(resources, child / "checks", f"{child.name} manifest/check state")
-            add_existing_resource(resources, child / ".venv", f"{child.name} external Base-managed virtualenv")
+            if include_runtime or child.name != "base":
+                add_existing_resource(resources, child / ".venv", f"{child.name} external Base-managed virtualenv")
 
     add_existing_resource(resources, cache_root / "base" / "cache", "Base persistent cache")
     add_existing_resource(resources, cache_root / "projects", "all project runtime cache namespaces")
     return tuple(resources)
+
+
+def finalize_state() -> int:
+    home = Path.home()
+    cache_root = base_cache_root()
+    resources = resources_for_target(None, home, cache_root)
+    if resources:
+        validate_removal(resources, home, cache_root, clear_workspace=False)
+        for resource in resources:
+            remove_resource(resource)
+    return verify_state(None)
 
 
 def matching_trust_records(trust_root: Path, target: ProjectTarget) -> tuple[Path, ...]:

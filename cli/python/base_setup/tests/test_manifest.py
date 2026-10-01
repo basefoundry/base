@@ -1002,6 +1002,7 @@ class ManifestParsingTests(unittest.TestCase):
         self.assertIsNone(manifest.test.mise)
         self.assertIsNone(manifest.test.runner)
         self.assertIsNone(manifest.test.requirements)
+        self.assertEqual(manifest.test.uv_extras, ())
 
 
     def test_reads_manifest_test_requirements_file(self) -> None:
@@ -1041,6 +1042,57 @@ class ManifestParsingTests(unittest.TestCase):
         assert manifest.test is not None
         self.assertEqual(manifest.test.command, "pytest tests/")
         self.assertEqual(manifest.test.runner, "uv")
+
+
+    def test_reads_manifest_test_uv_extras(self) -> None:
+        manifest = self.read_manifest_lines(
+            "project:",
+            "  name: demo",
+            "python:",
+            "  manager: uv",
+            "test:",
+            "  command: ./tests/full_validate.sh",
+            "  uv_extras:",
+            "    - dev",
+            "    - quality",
+            "    - benchmark",
+            "artifacts: []",
+        )
+
+        assert manifest.test is not None
+        self.assertEqual(manifest.test.uv_extras, ("dev", "quality", "benchmark"))
+
+
+    def test_rejects_invalid_manifest_test_uv_extras(self) -> None:
+        invalid_values = (
+            "test:\n  command: pytest\n  uv_extras: benchmark",
+            "test:\n  command: pytest\n  uv_extras:\n    - ''",
+            "test:\n  command: pytest\n  uv_extras:\n    - 'not an extra'",
+            "test:\n  command: pytest\n  uv_extras:\n    - dev\n    - DEV",
+            "test:\n  command: pytest\n  requirements: requirements.txt\n  uv_extras:\n    - dev",
+        )
+        for test_yaml in invalid_values:
+            with self.subTest(test_yaml=test_yaml):
+                with self.assertRaises(ManifestError):
+                    self.read_manifest_lines(
+                        "project:",
+                        "  name: demo",
+                        test_yaml,
+                        "artifacts: []",
+                    )
+
+
+    def test_rejects_test_uv_extras_without_uv_manager_or_runner(self) -> None:
+        with self.assertRaisesRegex(ManifestError, "requires python.manager: uv or test.runner: uv"):
+            self.read_manifest_lines(
+                "project:",
+                "  name: demo",
+                "test:",
+                "  command: pytest",
+                "  uv_extras:",
+                "    - dev",
+                "artifacts: []",
+            )
 
 
 

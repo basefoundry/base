@@ -687,9 +687,11 @@ existing `repo configure` repair path by default and applies it only with
 `basectl workspace update` walks the manifest in order and runs
 `git pull --ff-only` for selected present repositories, continuing after
 individual failures. Its optional `--repos` filter is validated before any Git
-operation and preserves manifest order. It skips the active `BASE_HOME` control
-plane when that checkout is the manifest's `base` target; a separate workspace
-checkout is eligible for update. Its optional `--format json` report uses the
+operation and preserves manifest order. The active `BASE_HOME` control-plane
+checkout is eligible for update when it is the manifest's `base` target,
+subject to the same clean/default-branch/upstream preflight checks as other
+selected roots; a separate workspace checkout is eligible too. Its optional
+`--format json` report uses the
 published schema-versioned result contract. `basectl workspace setup` walks the manifest in order and
 delegates eligible local repositories to `basectl setup`, forwarding `--yes`
 when requested. It continues after individual failures and returns a failure
