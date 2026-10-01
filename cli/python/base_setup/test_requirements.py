@@ -16,6 +16,7 @@ from .python_artifacts import project_venv_recreate_enabled
 from .python_artifacts import python_artifact_installed
 from .project_routing import route_for_manifest
 from .runtime_inspection import unverified_runtime_check
+from .text import read_utf8_text
 from .uv import manifest_uses_uv_project_manager
 
 
@@ -82,7 +83,7 @@ def read_test_requirements(manifest: BaseManifest) -> tuple[Path, tuple[Requirem
 
     requirements: list[RequirementSpec] = []
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = read_utf8_text(path).splitlines()
     except UnicodeError as exc:
         raise ArtifactError(
             f"Unable to decode declared test requirements file '{path}' as UTF-8: {exc}"

@@ -6,6 +6,7 @@ from typing import Any
 
 from base_projects.workspace_repository_url import repository_url_problem
 from base_setup.manifest_loader import ManifestError, validate_mapping_keys
+from base_setup.text import read_utf8_text
 
 try:
     import yaml
@@ -48,7 +49,7 @@ def read_workspace_manifest(path: Path) -> WorkspaceManifest:
 
     resolved_path = path.expanduser().resolve()
     try:
-        data = yaml.safe_load(resolved_path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(read_utf8_text(resolved_path))
     except UnicodeError as exc:
         raise WorkspaceManifestError(f"{resolved_path}: workspace manifest must use UTF-8 encoding: {exc}") from exc
     except OSError as exc:

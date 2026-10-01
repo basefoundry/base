@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from base_setup.text import read_utf8_text
+
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY_RE = re.compile(r"^(?!\.{1,2}/)[^/\s]+/(?!\.{1,2}$)[^/\s]+$")
@@ -273,7 +275,7 @@ def read_bom_digest_sidecar(bom_path: Path, *, bom_bytes: bytes | None = None) -
     """Validate and return a BOM digest sidecar's recorded digest."""
     sidecar_path = bom_digest_sidecar_path(bom_path)
     try:
-        line = sidecar_path.read_text(encoding="utf-8").strip("\n")
+        line = read_utf8_text(sidecar_path).strip("\n")
     except FileNotFoundError:
         raise
     except (OSError, UnicodeError) as exc:
