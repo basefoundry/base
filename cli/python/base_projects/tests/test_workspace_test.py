@@ -57,6 +57,20 @@ def write_fake_basectl(base_home: Path) -> Path:
     return basectl
 
 
+def write_binary_output_basectl(base_home: Path) -> Path:
+    basectl = base_home / "bin" / "basectl"
+    basectl.parent.mkdir(parents=True, exist_ok=True)
+    basectl.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "sys.stdout.buffer.write(b'result: \\xff\\n')\n"
+        "sys.stderr.buffer.write(b'warning: \\xfe\\n')\n",
+        encoding="utf-8",
+    )
+    basectl.chmod(0o755)
+    return basectl
+
+
 def invoke_workspace_test(
     args: list[str],
     base_home: Path,
@@ -133,6 +147,31 @@ class WorkspaceTestCommandTests(unittest.TestCase):
             run.call_args_list[0].args[0],
             [str((base_home / "bin" / "basectl").resolve()), "test", "--workspace", str(workspace.resolve())],
         )
+
+    def test_workspace_test_replaces_invalid_utf8_in_json_results(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_binary_output_basectl(base_home)
+            write_workspace_manifest(manifest, ("alpha",))
+            write_test_manifest(workspace / "alpha", "alpha")
+
+            status, stdout, stderr = invoke_workspace_test(
+                ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["projects"][0]["stdout"], "result: \ufffd\n")
+        self.assertEqual(payload["projects"][0]["stderr"], "warning: \ufffd\n")
 
     def test_workspace_test_continues_after_a_project_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
