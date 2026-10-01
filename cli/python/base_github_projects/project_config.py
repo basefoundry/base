@@ -27,7 +27,6 @@ def read_project_config(path: Path) -> ProjectConfig:
     project = data.get("project", {})
     if not isinstance(project, dict):
         raise ProjectConfigError(f"{path}: project must be a mapping.")
-    validate_mapping_keys(path, project, "project")
     unexpected = set(project) - ALLOWED_PROJECT_KEYS
     if unexpected:
         names = ", ".join(sorted(unexpected))
@@ -58,7 +57,7 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
         return {}
     if not isinstance(data, dict):
         raise ProjectConfigError(f"{path}: expected mapping at document root.")
-    validate_mapping_keys(path, data, "top-level")
+    validate_mapping_keys(path, data)
     unexpected = set(data) - {"project"}
     if unexpected:
         names = ", ".join(sorted(unexpected))
@@ -66,10 +65,27 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
     return data
 
 
-def validate_mapping_keys(path: Path, mapping: dict[Any, Any], location: str) -> None:
-    for key in mapping:
-        if not isinstance(key, str):
-            raise ProjectConfigError(f"{path}: {location} key {key!r} must be a string.")
+def validate_mapping_keys(path: Path, data: Any) -> None:
+    """Reject malformed mapping keys once, before any config section is read."""
+    pending = [(data, "top-level")]
+    visited: set[int] = set()
+    while pending:
+        value, location = pending.pop()
+        if not isinstance(value, (dict, list)) or id(value) in visited:
+            continue
+        visited.add(id(value))
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if not isinstance(key, str):
+                    raise ProjectConfigError(f"{path}: {location} key {key!r} must be a string.")
+                if not key.strip():
+                    raise ProjectConfigError(
+                        f"{path}: {location} key {key!r} must be a non-empty string."
+                    )
+                child_location = key if location == "top-level" else f"{location}.{key}"
+                pending.append((child, child_location))
+        else:
+            pending.extend((child, f"{location}[{index}]") for index, child in enumerate(value))
 
 
 def read_string_list(path: Path, project: dict[str, Any], key: str) -> tuple[str, ...]:
@@ -96,7 +112,6 @@ def read_issue_defaults(path: Path, project: dict[str, Any]) -> dict[str, str]:
         return {}
     if not isinstance(raw, dict):
         raise ProjectConfigError(f"{path}: project.issue_defaults must be a mapping.")
-    validate_mapping_keys(path, raw, "project.issue_defaults")
     unexpected = set(raw) - ALLOWED_DEFAULT_KEYS
     if unexpected:
         names = ", ".join(sorted(unexpected))

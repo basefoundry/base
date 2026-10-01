@@ -177,6 +177,7 @@ def test_read_project_config_rejects_non_string_options(tmp_path: Path) -> None:
             "project:\n  issue_defaults:\n    42: true\n",
             "project.issue_defaults key 42 must be a string",
         ),
+        ("project:\n  ' ': value\n", "project key ' ' must be a non-empty string"),
     ),
 )
 def test_read_project_config_rejects_non_string_mapping_keys(
