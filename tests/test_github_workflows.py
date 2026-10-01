@@ -121,6 +121,13 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"
     )
     assert "base-release-bom assemble" in run_commands
+    assert "base-release-inputs-verify" in run_commands
+    assert any(
+        step.get("name") == "Verify release inputs and bind platform evidence"
+        for job in workflow["jobs"].values()
+        for step in job.get("steps", [])
+        if isinstance(step, dict)
+    )
     assert run_commands.count("base-release-bom-row") == 4
     assert "--repository basefoundry/base-cli" in run_commands
     assert "--repository basefoundry/base-bash-libs" in run_commands
