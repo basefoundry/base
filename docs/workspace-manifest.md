@@ -348,7 +348,7 @@ failure count. The command never clones, resets,
 force-updates, or refreshes the manifest. When the manifest's `base` path is the active
 `BASE_HOME` checkout, it is eligible for update after the same read-only preflight
 checks as other selected roots. A separate workspace checkout of `base` is also
-updated under the same policy. Text output is rendered as
+eligible for update under the same policy. Text output is rendered as
 one repository/action/result table. `--format json` emits a stable
 `schema_version: 1` report with selected repositories, per-repository results,
 and aggregate counts. JSON dry runs perform the same read-only preflight as an

@@ -121,8 +121,9 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     skipped.
   - `workspace update --dry-run` previews the ordered Git pull plan; without
     `--dry-run`, it continues after per-repo failures and reports
-    updated/unchanged/skipped/failed counts. JSON dry runs report `planned`
-    results and do not invoke Git.
+    updated/unchanged/skipped/failed counts. JSON dry runs perform the same
+    read-only Git preflight as apply runs and report `planned` results without
+    pulling or mutating a checkout.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
   workspace, configure GitHub repository settings, default branch protection,
