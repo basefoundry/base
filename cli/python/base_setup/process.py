@@ -18,6 +18,7 @@ from .errors import ArtifactError
 
 
 COMMAND_OUTPUT_TAIL_CHARS = 4000
+REDACTION_CONTEXT_CHARS = 8192
 DIAGNOSTIC_TIMEOUT_SECONDS = 10
 REDACTED = "[REDACTED]"
 SECRET_VALUE_RE = re.compile(
@@ -38,18 +39,18 @@ class CommandOutputRecorder:
     def append(self, text: str) -> None:
         if not text:
             return
-        redacted = redact_command_output(text)
-        self._chunks.append(redacted)
-        self._length += len(redacted)
-        while self._length > self.limit and len(self._chunks) > 1:
+        self._chunks.append(text)
+        self._length += len(text)
+        buffer_limit = self.limit + REDACTION_CONTEXT_CHARS
+        while self._length > buffer_limit and len(self._chunks) > 1:
             removed = self._chunks.popleft()
             self._length -= len(removed)
-        if self._length > self.limit and self._chunks:
-            self._chunks[0] = self._chunks[0][-self.limit :]
-            self._length = self.limit
+        if self._length > buffer_limit and self._chunks:
+            self._chunks[0] = self._chunks[0][-buffer_limit:]
+            self._length = buffer_limit
 
     def text(self) -> str:
-        value = "".join(self._chunks)
+        value = redact_command_output("".join(self._chunks))
         if len(value) <= self.limit:
             return value.strip()
         return value[-self.limit:].strip()
