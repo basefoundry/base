@@ -182,8 +182,8 @@ _base_basectl_completion_manifest_names_from_protocol() {
             ;;
         build-target)
             candidate_field=target_name
-            fields=(project_name project_root manifest_path project_venv_dir uses_uv_manager manifest_command_trust_required target_name working_dir command description runner)
-            kinds=(string string string string boolean boolean string string string nullable-string nullable-string)
+            fields=(project_name project_root manifest_path project_venv_dir uses_uv_manager manifest_command_trust_required target_name working_dir command description runner mise_config_path)
+            kinds=(string string string string boolean boolean string string string nullable-string nullable-string nullable-string)
             ;;
         *)
             return 1
