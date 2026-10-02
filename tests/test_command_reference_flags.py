@@ -69,9 +69,22 @@ def help_options(output: str) -> set[str]:
     return options - COMMON_OPTIONS
 
 
+def resolve_bash_libs_dir(environment: dict[str, str]) -> None:
+    candidates = [
+        environment.get("BASE_BASH_LIBS_DIR", ""),
+        str(REPO_ROOT / ".dependencies" / "base-bash-libs" / "lib" / "bash"),
+        str(REPO_ROOT.parents[1] / "base-bash-libs" / "lib" / "bash"),
+    ]
+    for candidate in candidates:
+        if candidate and (Path(candidate) / "std" / "lib_std.sh").is_file():
+            environment["BASE_BASH_LIBS_DIR"] = candidate
+            return
+    environment.pop("BASE_BASH_LIBS_DIR", None)
+
+
 def test_command_reference_lists_each_owned_help_option() -> None:
     environment = os.environ.copy()
-    environment["BASE_BASH_LIBS_DIR"] = str(REPO_ROOT.parents[1] / "base-bash-libs" / "lib" / "bash")
+    resolve_bash_libs_dir(environment)
     missing: list[str] = []
     with tempfile.TemporaryDirectory(prefix="base-command-reference-") as cache_dir:
         environment["BASE_CACHE_DIR"] = cache_dir
