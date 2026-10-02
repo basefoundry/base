@@ -40,6 +40,7 @@ _HELP_OPTION_RE = re.compile(
 # ``gh pr`` exposes several pass-through subcommands under one documented
 # row. Probe each implementation and union their source-owned options.
 _COMMAND_PROBE_OVERRIDES: dict[str, tuple[tuple[str, ...], ...]] = {
+    "basectl uninstall <project>|--all": (("uninstall", "--all"),),
     "basectl gh pr create/status/checks/ready/merge": (
         ("gh", "pr", "create"),
         ("gh", "pr", "status"),
@@ -48,6 +49,21 @@ _COMMAND_PROBE_OVERRIDES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("gh", "pr", "merge"),
     ),
 }
+
+
+def documented_stable_commands(root: Path) -> list[str]:
+    """Return the stable public command rows from the maintained reference."""
+
+    commands: set[str] = set()
+    reference = root / "docs" / "command-reference.md"
+    for line in reference.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| `basectl "):
+            continue
+        cells = _split_markdown_row(line)
+        command = cells[0].strip("`") if cells else ""
+        if command.startswith("basectl "):
+            commands.add(command)
+    return sorted(commands)
 
 
 # Stable JSON families that do not yet have a standalone JSON Schema file.
@@ -638,7 +654,7 @@ def run_check(root: Path, base_ref: str | None = None, runtime: bool = False) ->
         return [f"missing compatibility fixture: {fixture_path.relative_to(root)}"]
     try:
         reference = json.loads(fixture_path.read_text(encoding="utf-8"))
-        command_names = sorted(reference.get("commands", {}))
+        command_names = documented_stable_commands(root)
         commands = runtime_command_contract(root, command_names)
         actual = snapshot(root, str(reference.get("baseline_version", "")), commands)
     except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -673,7 +689,13 @@ def _write_snapshot(root: Path, output: Path, baseline_version: str) -> None:
     existing = {}
     if output.is_file():
         existing = json.loads(output.read_text(encoding="utf-8"))
-    command_names = sorted(existing.get("commands", {}))
+    elif output != (root / "docs" / "stability-baseline" / "current.json").resolve():
+        current = root / "docs" / "stability-baseline" / "current.json"
+        if current.is_file():
+            existing = json.loads(current.read_text(encoding="utf-8"))
+    command_names = documented_stable_commands(root)
+    if not command_names:
+        raise RuntimeError("refusing to write an empty Stable command contract")
     commands = runtime_command_contract(root, command_names)
     result = snapshot(root, baseline_version, commands)
     if existing.get("baseline_exceptions"):

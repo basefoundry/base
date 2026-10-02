@@ -1,5 +1,4 @@
 {
-  "baseline_version": "1.8.0",
   "baseline_exceptions": [
     {
       "command": "basectl repo init <name>",
@@ -18,34 +17,55 @@
       "reason": "Clarified the supported Python-manager interpretation in the v1.9.0 development line."
     }
   ],
+  "baseline_version": "1.8.0",
   "commands": {
     "basectl activate <project>": {
       "flags": {
-        "--no-cd": {
+        "--help": {
           "takes_value": false
         },
-        "--workspace": {
-          "takes_value": true
-        }
-      }
-    },
-    "basectl build [project] --list": {
-      "flags": {
-        "--format": {
-          "enum": [
-            "text",
-            "csv",
-            "tsv",
-            "yaml",
-            "json"
-          ],
-          "takes_value": true
+        "--no-cd": {
+          "takes_value": false
         },
         "--project": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl build [project] --list": {
+      "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--format": {
+          "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--list": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -54,11 +74,26 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--format": {
+          "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--list": {
+          "takes_value": false
+        },
         "--project": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -74,6 +109,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
@@ -82,12 +120,24 @@
         },
         "--remote-network": {
           "takes_value": false
+        },
+        "--verify-project-runtime": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl clean": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--keep-last": {
@@ -98,21 +148,51 @@
         },
         "--yes": {
           "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl config doctor": {
-      "flags": {}
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
     },
     "basectl config path": {
-      "flags": {}
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
     },
     "basectl config show": {
-      "flags": {}
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
     },
     "basectl demo [project]": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--project": {
@@ -120,22 +200,33 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl devcontainer [project]": {
       "flags": {
         "--format": {
-          "enum": [
-            "text",
-            "json"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--workspace": {
           "takes_value": true
         },
         "--write": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -143,20 +234,31 @@
     "basectl devenv-report [project]": {
       "flags": {
         "--format": {
-          "enum": [
-            "text",
-            "json"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl docs": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--show-url": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -173,6 +275,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
@@ -183,6 +288,15 @@
           "takes_value": true
         },
         "--remote-network": {
+          "takes_value": false
+        },
+        "--verify-project-runtime": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -195,6 +309,12 @@
             "json"
           ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
@@ -207,6 +327,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--list-files": {
           "takes_value": false
         },
@@ -218,12 +341,21 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl gh auth refresh": {
       "flags": {
         "--clipboard": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--hostname": {
@@ -234,13 +366,31 @@
         },
         "--scopes": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
     "basectl gh auth status": {
       "flags": {
+        "--clipboard": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
         "--hostname": {
           "takes_value": true
+        },
+        "--scope": {
+          "takes_value": true
+        },
+        "--scopes": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
@@ -252,10 +402,16 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--remote": {
           "takes_value": false
         },
         "--yes": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -271,6 +427,12 @@
             "json"
           ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
@@ -286,14 +448,10 @@
           "takes_value": true
         },
         "--category": {
-          "enum": [
-            "bug",
-            "enhancement",
-            "documentation",
-            "ci",
-            "security"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--no-assignee": {
           "takes_value": false
@@ -321,11 +479,21 @@
         },
         "--title": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
     "basectl gh issue list": {
-      "flags": {}
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
     },
     "basectl gh issue readiness <number>": {
       "flags": {
@@ -336,6 +504,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--project-number": {
           "takes_value": true
         },
@@ -344,6 +515,9 @@
         },
         "--repo": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
@@ -351,6 +525,9 @@
       "flags": {
         "--category": {
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--repo": {
           "takes_value": true
@@ -360,12 +537,21 @@
         },
         "-R": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
     "basectl gh pr create/status/checks/ready/merge": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--no-fixes": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -379,6 +565,9 @@
           "takes_value": true
         },
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--initiative-option": {
@@ -398,11 +587,17 @@
         },
         "--schema": {
           "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
     "basectl gh project doctor": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--owner": {
           "takes_value": true
         },
@@ -410,6 +605,9 @@
           "takes_value": true
         },
         "--schema": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -419,7 +617,25 @@
         "--allow-cross-repo": {
           "takes_value": false
         },
+        "--area": {
+          "takes_value": true
+        },
         "--config": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--initiative": {
+          "takes_value": true
+        },
+        "--owner": {
+          "takes_value": true
+        },
+        "--priority": {
           "takes_value": true
         },
         "--project": {
@@ -427,6 +643,21 @@
         },
         "--repo": {
           "takes_value": true
+        },
+        "--size": {
+          "enum": [
+            "T",
+            "S",
+            "M",
+            "L"
+          ],
+          "takes_value": true
+        },
+        "--status": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
         }
       }
     },
@@ -438,7 +669,13 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--yes": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -454,9 +691,13 @@
             "csv",
             "tsv",
             "yaml",
-            "json"
+            "json",
+            "markdown"
           ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--last": {
           "takes_value": true
@@ -473,6 +714,9 @@
         "--project": {
           "takes_value": true
         },
+        "--report": {
+          "takes_value": false
+        },
         "--since": {
           "takes_value": true
         },
@@ -486,17 +730,33 @@
         },
         "--until": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl history --report": {
       "flags": {
+        "--command": {
+          "takes_value": true
+        },
         "--format": {
           "enum": [
-            "markdown",
-            "json"
+            "text",
+            "csv",
+            "tsv",
+            "yaml",
+            "json",
+            "markdown"
           ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--last": {
           "takes_value": true
@@ -510,11 +770,31 @@
         "--oldest-first": {
           "takes_value": false
         },
+        "--project": {
+          "takes_value": true
+        },
+        "--report": {
+          "takes_value": false
+        },
         "--since": {
+          "takes_value": true
+        },
+        "--status": {
+          "enum": [
+            "ok",
+            "warn",
+            "error"
+          ],
           "takes_value": true
         },
         "--until": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -523,8 +803,29 @@
         "--command": {
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
+        "--latest": {
+          "takes_value": false
+        },
         "--limit": {
           "takes_value": true
+        },
+        "--lines": {
+          "takes_value": true
+        },
+        "--open": {
+          "takes_value": false
+        },
+        "--tail": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -532,6 +833,30 @@
       "flags": {
         "--command": {
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--latest": {
+          "takes_value": false
+        },
+        "--limit": {
+          "takes_value": true
+        },
+        "--lines": {
+          "takes_value": true
+        },
+        "--open": {
+          "takes_value": false
+        },
+        "--tail": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -539,6 +864,30 @@
       "flags": {
         "--command": {
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--latest": {
+          "takes_value": false
+        },
+        "--limit": {
+          "takes_value": true
+        },
+        "--lines": {
+          "takes_value": true
+        },
+        "--open": {
+          "takes_value": false
+        },
+        "--tail": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -547,8 +896,29 @@
         "--command": {
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
+        "--latest": {
+          "takes_value": false
+        },
+        "--limit": {
+          "takes_value": true
+        },
         "--lines": {
           "takes_value": true
+        },
+        "--open": {
+          "takes_value": false
+        },
+        "--tail": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -558,17 +928,19 @@
           "takes_value": true
         },
         "--format": {
-          "enum": [
-            "text",
-            "csv",
-            "tsv",
-            "yaml",
-            "json"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--lines": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -580,6 +952,9 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--no-profile": {
           "takes_value": false
         },
@@ -588,38 +963,68 @@
         },
         "--yes": {
           "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl projects list": {
       "flags": {
         "--format": {
-          "enum": [
-            "text",
-            "csv",
-            "tsv",
-            "yaml",
-            "json"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl prompt list": {
-      "flags": {}
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
+        }
+      }
     },
     "basectl prompt product-self-review": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--output": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl release check --version <version>": {
       "flags": {
+        "--bom": {
+          "takes_value": true
+        },
         "--format": {
           "enum": [
             "text",
@@ -630,34 +1035,73 @@
           ],
           "takes_value": true
         },
-        "--manifest": {
-          "takes_value": true
-        }
-      }
-    },
-    "basectl release notes --version <version>": {
-      "flags": {
-        "--manifest": {
-          "takes_value": true
-        }
-      }
-    },
-    "basectl release plan --version <version>": {
-      "flags": {
-        "--manifest": {
-          "takes_value": true
-        }
-      }
-    },
-    "basectl release publish --version <version>": {
-      "flags": {
-        "--dry-run": {
+        "--help": {
           "takes_value": false
         },
         "--manifest": {
           "takes_value": true
         },
+        "--version": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl release notes --version <version>": {
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--version": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl release plan --version <version>": {
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--version": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl release publish --version <version>": {
+      "flags": {
+        "--bom": {
+          "takes_value": true
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--version": {
+          "takes_value": true
+        },
         "--yes": {
+          "takes_value": false
+        },
+        "-h": {
           "takes_value": false
         }
       }
@@ -671,6 +1115,9 @@
           "takes_value": true
         },
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--issue": {
@@ -687,6 +1134,12 @@
         },
         "--validation-command": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -705,7 +1158,16 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--release": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -715,11 +1177,20 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--owner": {
           "takes_value": true
         },
         "--path": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -729,6 +1200,9 @@
           "takes_value": true
         },
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--initiative-option": {
@@ -757,6 +1231,12 @@
         },
         "--repo": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -775,6 +1255,9 @@
           "takes_value": true
         },
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--initiative-option": {
@@ -824,6 +1307,12 @@
         },
         "--repo": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -833,6 +1322,9 @@
           "takes_value": true
         },
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--issue": {
@@ -846,26 +1338,43 @@
         },
         "--repo": {
           "takes_value": true
+        },
+        "--stdout": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl run [project] --list": {
       "flags": {
+        "--dry-run": {
+          "takes_value": false
+        },
         "--format": {
-          "enum": [
-            "text",
-            "csv",
-            "tsv",
-            "yaml",
-            "json"
-          ],
           "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--list": {
+          "takes_value": false
         },
         "--project": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -874,16 +1383,40 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--format": {
+          "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--list": {
+          "takes_value": false
+        },
         "--project": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl setup --ci [project]": {
       "flags": {
+        "--allow-project-ide-mutations": {
+          "takes_value": false
+        },
+        "--ci": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
         "--format": {
           "enum": [
             "text",
@@ -891,8 +1424,17 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
+        },
+        "--no-notify": {
+          "takes_value": false
+        },
+        "--notify": {
+          "takes_value": false
         },
         "--profile": {
           "takes_value": true
@@ -901,6 +1443,15 @@
           "takes_value": false
         },
         "--upgrade-pip": {
+          "takes_value": false
+        },
+        "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -923,6 +1474,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
@@ -940,6 +1494,15 @@
         },
         "--upgrade-pip": {
           "takes_value": false
+        },
+        "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -948,16 +1511,28 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--project": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl trust allow <project>": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--manifest-sha256": {
           "takes_value": true
         },
@@ -966,13 +1541,28 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl trust revoke <project>": {
       "flags": {
+        "--help": {
+          "takes_value": false
+        },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -988,14 +1578,63 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl uninstall <project>|--all": {
+      "flags": {
+        "--all": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--verify": {
+          "takes_value": false
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl update [project]": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -1008,16 +1647,38 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--no-defaults": {
           "takes_value": false
         },
         "--remove": {
           "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl version": {
-      "flags": {}
+      "flags": {
+        "--all": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--json": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
     },
     "basectl workspace agent-brief": {
       "flags": {
@@ -1031,11 +1692,20 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -1051,17 +1721,29 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl workspace clone": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--include-optional": {
@@ -1072,6 +1754,12 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -1083,6 +1771,9 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
@@ -1090,6 +1781,12 @@
           "takes_value": true
         },
         "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -1106,17 +1803,29 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl workspace init <workspace-source>": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--include-optional": {
@@ -1133,6 +1842,12 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -1148,11 +1863,20 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -1161,17 +1885,29 @@
         "--dry-run": {
           "takes_value": false
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--source": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
     "basectl workspace setup": {
       "flags": {
         "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
           "takes_value": false
         },
         "--manifest": {
@@ -1181,6 +1917,12 @@
           "takes_value": true
         },
         "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
           "takes_value": false
         }
       }
@@ -1197,11 +1939,52 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl workspace test": {
+      "flags": {
+        "--fail-fast": {
+          "takes_value": false
+        },
+        "--format": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--manifest": {
+          "takes_value": true
+        },
+        "--projects": {
+          "takes_value": true
+        },
+        "--workspace": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     },
@@ -1217,6 +2000,9 @@
           ],
           "takes_value": true
         },
+        "--help": {
+          "takes_value": false
+        },
         "--manifest": {
           "takes_value": true
         },
@@ -1225,6 +2011,12 @@
         },
         "--workspace": {
           "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        },
+        "-v": {
+          "takes_value": false
         }
       }
     }
@@ -1245,6 +2037,7 @@
     "BASE-D013": "ShellCheck availability on Ubuntu/Debian",
     "BASE-D014": "jq availability on Ubuntu/Debian",
     "BASE-D015": "Go availability on Ubuntu/Debian source checkouts",
+    "BASE-D016": "Coordinated Ubuntu/Debian release baseline",
     "BASE-D101": "Unsupported prerequisite profile manager",
     "BASE-D102": "Unsupported prerequisite profile version",
     "BASE-D103": "Homebrew unavailable for prerequisite profile checks",
@@ -1305,9 +2098,13 @@
     "BASE-P170": "Project Python version requirement support window",
     "BASE-P171": "Selected project Python interpreter availability",
     "BASE-P172": "Actual inspectable project Python runtime: environment manager, virtualenv path, interpreter path, and Python minor version",
+    "BASE-P180": "Declared project test requirements file",
+    "BASE-P181": "Project test requirements environment",
     "BASE-W010": "Expected workspace repository presence",
     "BASE-W011": "Discovered Base-managed project outside the workspace manifest",
-    "BASE-W012": "Present expected repository without a Base project manifest"
+    "BASE-W012": "Present expected repository without a Base project manifest",
+    "BASE-W013": "Git repository present under the workspace root but absent from the workspace manifest",
+    "BASE-W014": "Expected repository path resolves outside the workspace root"
   },
   "format_version": 1,
   "json_contracts": {
@@ -1463,18 +2260,40 @@
               "enum": [
                 "complete",
                 "incomplete",
+                "missing",
                 "not_applicable",
-                "unavailable",
-                "present",
                 "partial",
-                "missing"
+                "present",
+                "unavailable"
               ]
             }
           },
           "required": [
-            "status",
             "missing_files",
-            "not_executable_files"
+            "not_executable_files",
+            "status"
+          ],
+          "type": "object"
+        },
+        "nextAction": {
+          "properties": {
+            "commands": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": {
+              "type": "string"
+            },
+            "order": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "commands",
+            "description",
+            "order"
           ],
           "type": "object"
         },
@@ -1488,8 +2307,9 @@
             },
             "discovery_status": {
               "enum": [
-                "present",
-                "missing"
+                "invalid",
+                "missing",
+                "present"
               ]
             },
             "expected": {
@@ -1497,28 +2317,29 @@
             },
             "handoff_status": {
               "enum": [
-                "missing_required",
+                "invalid_path",
                 "missing_optional",
-                "unmanaged",
-                "needs_manifest_repair",
-                "needs_baseline",
-                "needs_setup",
+                "missing_required",
                 "needs_agent_guidance",
-                "ready"
+                "needs_baseline",
+                "needs_manifest_repair",
+                "needs_setup",
+                "ready",
+                "unmanaged"
               ]
             },
             "manifest": {
               "enum": [
-                "valid",
                 "invalid",
                 "missing",
-                "unknown"
+                "unknown",
+                "valid"
               ]
             },
             "manifest_path": {
               "type": [
-                "string",
-                "null"
+                "null",
+                "string"
               ]
             },
             "next_actions": {
@@ -1532,8 +2353,8 @@
             },
             "project": {
               "type": [
-                "string",
-                "null"
+                "null",
+                "string"
               ]
             },
             "repository": {
@@ -1544,9 +2365,9 @@
             },
             "scope": {
               "enum": [
-                "required",
+                "local_only",
                 "optional",
-                "local_only"
+                "required"
               ]
             },
             "signals": {
@@ -1558,9 +2379,9 @@
                   "properties": {
                     "status": {
                       "enum": [
-                        "present",
-                        "missing",
                         "invalid",
+                        "missing",
+                        "present",
                         "unavailable"
                       ]
                     }
@@ -1578,9 +2399,9 @@
                 }
               },
               "required": [
-                "baseline",
                 "agent_guidance",
                 "ai_context",
+                "baseline",
                 "validation"
               ],
               "type": "object"
@@ -1590,29 +2411,29 @@
             },
             "venv": {
               "enum": [
-                "ready",
-                "present_unverified",
-                "not_applicable",
                 "missing",
+                "not_applicable",
+                "present_unverified",
+                "ready",
                 "unknown"
               ]
             }
           },
           "required": [
-            "repository",
-            "project",
-            "path",
-            "expected",
-            "required",
             "base_managed",
-            "scope",
             "discovery_status",
-            "manifest_path",
-            "manifest",
-            "venv",
+            "expected",
             "handoff_status",
+            "manifest",
+            "manifest_path",
+            "next_actions",
+            "path",
+            "project",
+            "repository",
+            "required",
+            "scope",
             "signals",
-            "next_actions"
+            "venv"
           ],
           "type": "object"
         },
@@ -1620,14 +2441,14 @@
           "properties": {
             "command": {
               "type": [
-                "string",
-                "null"
+                "null",
+                "string"
               ]
             },
             "source": {
               "enum": [
-                "repo_baseline",
                 "manifest_test",
+                "repo_baseline",
                 null
               ]
             },
@@ -1639,9 +2460,9 @@
             }
           },
           "required": [
-            "status",
             "command",
-            "source"
+            "source",
+            "status"
           ],
           "type": "object"
         },
@@ -1658,14 +2479,20 @@
             }
           },
           "required": [
-            "path",
             "name",
+            "path",
             "schema_version"
           ],
           "type": "object"
         }
       },
       "properties": {
+        "next_actions": {
+          "items": {
+            "$ref": "#/$defs/nextAction"
+          },
+          "type": "array"
+        },
         "repositories": {
           "items": {
             "$ref": "#/$defs/repository"
@@ -1686,11 +2513,12 @@
         }
       },
       "required": [
+        "next_actions",
+        "repositories",
+        "repository_count",
         "schema_version",
         "workspace",
-        "workspace_manifest",
-        "repository_count",
-        "repositories"
+        "workspace_manifest"
       ],
       "type": "object"
     },
@@ -1715,11 +2543,11 @@
             }
           },
           "required": [
+            "failed",
             "planned",
-            "updated",
-            "unchanged",
             "skipped",
-            "failed"
+            "unchanged",
+            "updated"
           ],
           "type": "object"
         },
@@ -1743,6 +2571,23 @@
             "path": {
               "type": "string"
             },
+            "preflight": {
+              "items": {
+                "enum": [
+                  "checkout_root_mismatch",
+                  "detached_head",
+                  "dirty",
+                  "linked_worktree",
+                  "missing_upstream",
+                  "non_default_branch",
+                  "not_git_checkout",
+                  "preflight_failed",
+                  "unknown_default_branch",
+                  "upstream_mismatch"
+                ]
+              },
+              "type": "array"
+            },
             "repository": {
               "type": "string"
             },
@@ -1751,21 +2596,21 @@
             },
             "status": {
               "enum": [
+                "failed",
                 "planned",
-                "updated",
-                "unchanged",
                 "skipped",
-                "failed"
+                "unchanged",
+                "updated"
               ]
             }
           },
           "required": [
-            "repository",
-            "path",
-            "required",
             "action",
-            "status",
-            "fatal"
+            "fatal",
+            "path",
+            "repository",
+            "required",
+            "status"
           ],
           "type": "object"
         },
@@ -1782,8 +2627,8 @@
             }
           },
           "required": [
-            "path",
             "name",
+            "path",
             "schema_version"
           ],
           "type": "object"
@@ -1822,14 +2667,14 @@
         }
       },
       "required": [
-        "schema_version",
-        "workspace",
-        "workspace_manifest",
+        "counts",
         "dry_run",
-        "selected_repositories",
-        "repository_count",
         "repositories",
-        "counts"
+        "repository_count",
+        "schema_version",
+        "selected_repositories",
+        "workspace",
+        "workspace_manifest"
       ],
       "type": "object"
     }
