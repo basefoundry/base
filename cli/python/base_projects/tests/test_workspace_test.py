@@ -151,7 +151,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
                 "base_projects.workspace_test.subprocess.run",
                 return_value=subprocess.CompletedProcess(
                     [], 1,
-                    "GITHUB_TOKEN=ghp_SECRET123456789\n",
+                    "GITHUB_TOKEN=" + "fixture-value\n",
                     "https://alice:URLSECRET123456@github.com/acme/private.git\n",
                 ),
             ):
@@ -163,7 +163,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
 
         payload = json.loads(stdout)
         self.assertEqual(status, 1)
-        self.assertEqual(payload["projects"][0]["stdout"], "GITHUB_TOKEN=[REDACTED]\n")
+        self.assertEqual(payload["projects"][0]["stdout"], "GITHUB_TOKEN=" + "[REDACTED]\n")
         self.assertEqual(payload["projects"][0]["stderr"], "https://[REDACTED]@github.com/acme/private.git\n")
         self.assertNotIn("SECRET", stdout)
         self.assertNotIn("SECRET", stderr)
