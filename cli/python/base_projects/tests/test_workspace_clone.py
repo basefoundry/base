@@ -109,6 +109,17 @@ class WorkspaceCloneTests(unittest.TestCase):
             ),
         )
 
+    def test_clone_detail_redacts_child_output(self) -> None:
+        detail = clone_detail(
+            "GITHUB_TOKEN=" + "fixture-value\n",
+            "cloning https://alice:URLSECRET123456@github.com/acme/private.git\n",
+        )
+
+        self.assertEqual(
+            detail,
+            "cloning https://[REDACTED]@github.com/acme/private.git\nGITHUB_TOKEN=" + "[REDACTED]",
+        )
+
     def test_workspace_clone_dry_run_materializes_missing_required_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
