@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- PR policy examples now use only labels that Base manages or documents; the
+  dead `breaking-change` mapping was removed and governance coverage checks for
+  future unknown label triggers.
+
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.
