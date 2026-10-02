@@ -242,7 +242,7 @@ class DevManifestTests(unittest.TestCase):
 
         with (
             mock.patch("base_dev.ai_tools.AI_TOOLS", (tool,)),
-            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "")),
+            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "", finding_id="BASE-D107")),
             mock.patch("base_dev.ai_tools.run_remote_installer") as run_installer,
         ):
             status = ai_tools.setup_ai_tools(ctx, dry_run=False)
@@ -267,7 +267,7 @@ class DevManifestTests(unittest.TestCase):
 
         with (
             mock.patch.dict(os.environ, {"CI": "true"}),
-            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "")),
+            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "", finding_id="BASE-D107")),
             mock.patch("base_dev.ai_tools.run_remote_installer") as run_installer,
         ):
             status = ai_tools.setup_ai_tools(ctx, dry_run=False)
@@ -1031,10 +1031,11 @@ class DevManifestTests(unittest.TestCase):
             message="Optional developer tool is not installed.",
             fix="brew install optional-tool",
             status="warn",
+            finding_id="BASE-D107",
         )
 
         self.assertEqual(engine.doctor_status(check), "warn")
-        self.assertEqual(engine.check_to_doctor_json(check)["id"], "BASE-D100")
+        self.assertEqual(engine.check_to_doctor_json(check)["id"], "BASE-D107")
         self.assertEqual(engine.check_to_doctor_json(check)["status"], "warn")
 
         manifest = engine.read_manifest(Path(__file__).resolve().parents[4] / "lib" / "base" / "dev_manifest.yaml")

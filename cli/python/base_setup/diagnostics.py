@@ -80,6 +80,10 @@ class BaseCheckMetadata:
     display_name: str
 
 
+class UnknownBaseCheckError(ValueError):
+    """Raised when a base prerequisite has no registered stable finding ID."""
+
+
 def validate_status(status: str) -> str:
     if status not in VALID_STATUSES:
         raise ValueError(f"Invalid diagnostic status '{status}'.")
@@ -120,9 +124,13 @@ def base_check_display_name(name: str) -> str:
 
 
 def base_check_metadata(name: str) -> BaseCheckMetadata:
+    if name not in BASE_CHECK_FINDING_IDS:
+        raise UnknownBaseCheckError(
+            f"Base check '{name}' has no registered stable finding ID; update BASE_CHECK_FINDING_IDS."
+        )
     return BaseCheckMetadata(
         name=name,
-        finding_id=BASE_CHECK_FINDING_IDS.get(name, "BASE-D000"),
+        finding_id=BASE_CHECK_FINDING_IDS[name],
         display_name=base_check_display_name(name),
     )
 
