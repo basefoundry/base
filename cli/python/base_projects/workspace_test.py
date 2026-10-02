@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 import base_cli
 from base_projects import workspace_context
+from base_setup.process import redact_command_output
 from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
@@ -338,13 +339,17 @@ def execute_workspace_test_target(
         return WorkspaceTestResult("failed", f"could not run test command: {exc}")
 
     if result.returncode == 0:
-        return WorkspaceTestResult("passed", stdout=result.stdout or "", stderr=result.stderr or "")
+        return WorkspaceTestResult(
+            "passed",
+            stdout=redact_command_output(result.stdout or ""),
+            stderr=redact_command_output(result.stderr or ""),
+        )
     return WorkspaceTestResult(
         "failed",
         f"test command exited with status {result.returncode}",
         exit_code=result.returncode,
-        stdout=result.stdout or "",
-        stderr=result.stderr or "",
+        stdout=redact_command_output(result.stdout or ""),
+        stderr=redact_command_output(result.stderr or ""),
     )
 
 

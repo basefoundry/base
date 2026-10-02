@@ -18,6 +18,7 @@ from base_projects.workspace_context import resolve_workspace_root
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_setup.process import redact_command_output
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
@@ -257,7 +258,7 @@ def clone_workspace_repo(
 def clone_detail(stdout: str, stderr: str) -> str:
     details = [
         line.strip()
-        for stream in (stderr, stdout)
+        for stream in (redact_command_output(stderr), redact_command_output(stdout))
         for line in stream.splitlines()
         if line.strip() and not BASE_LOG_RECORD_RE.match(line.strip())
     ]
