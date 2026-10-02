@@ -221,6 +221,23 @@ def test_tests_workflow_pins_all_base_bash_libs_checkouts_to_ga_revision() -> No
     assert refs == [BASE_BASH_LIBS_GA_COMMIT] * len(refs)
 
 
+def test_security_workflow_covers_bash_and_zsh_sources() -> None:
+    workflow = load_workflow(TESTS_WORKFLOW)
+    job = workflow["jobs"]["security"]
+    shellcheck = workflow_step_by_name(job, "Run ShellCheck")["run"]
+    zsh_check = workflow_step_by_name(job, "Check Zsh syntax")["run"]
+    warning_check = workflow_step_by_name(job, "Run ShellCheck warnings")["run"]
+
+    for source_glob in ("'*.sh'", "'*.bash'", "'lib/shell/bash_profile'", "'lib/shell/bashrc'"):
+        assert source_glob in shellcheck
+        assert source_glob in warning_check
+    assert "BATS files are test programs" in shellcheck
+    assert "'*.zsh'" in zsh_check
+    assert "'lib/shell/zprofile'" in zsh_check
+    assert "'lib/shell/zshrc'" in zsh_check
+    assert 'zsh -n "${zsh_files[@]}"' in zsh_check
+
+
 def test_reusable_base_check_workflow_contract() -> None:
     workflow = load_workflow(BASE_CHECK_WORKFLOW)
     ci_docs = (REPO_ROOT / "docs" / "basectl-ci.md").read_text(encoding="utf-8")

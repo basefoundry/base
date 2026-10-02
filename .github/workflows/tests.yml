@@ -436,7 +436,7 @@ jobs:
           python -m pip install --no-deps .dependencies/base-cli
           python -m pip install -r requirements-dev.txt
           sudo apt-get update
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y shellcheck zsh
 
       - name: Install pinned Gitleaks
         env:
@@ -473,21 +473,48 @@ jobs:
 
       - name: Run ShellCheck
         run: |
-          git ls-files -z \
-            '*.sh' \
-            'base_init.sh' \
-            'install.sh' \
-            'lib/bash/runtime/bashrc' \
-            'bin/*' \
-            | xargs -0 shellcheck --severity=error
+          # .sh/.bash files are Bash sources, including the managed Bash
+          # startup files. BATS files are test programs, not ShellCheck input.
+          mapfile -d '' bash_files < <(
+            git ls-files -z \
+              '*.sh' \
+              '*.bash' \
+              'base_init.sh' \
+              'install.sh' \
+              'lib/bash/runtime/bashrc' \
+              'lib/shell/bash_profile' \
+              'lib/shell/bashrc' \
+              'bin/*'
+          )
+          if ((${#bash_files[@]})); then
+            shellcheck --shell=bash --severity=error "${bash_files[@]}"
+          fi
+
+      - name: Check Zsh syntax
+        run: |
+          # Zsh-only sources use syntax ShellCheck intentionally cannot parse.
+          # The tracked glob keeps new .zsh sources covered automatically.
+          mapfile -d '' zsh_files < <(
+            git ls-files -z '*.zsh' 'lib/shell/zprofile' 'lib/shell/zshrc'
+          )
+          if ((${#zsh_files[@]})); then
+            zsh -n "${zsh_files[@]}"
+          fi
 
       - name: Run ShellCheck warnings
         continue-on-error: true
         run: |
-          git ls-files -z \
-            '*.sh' \
-            'base_init.sh' \
-            'install.sh' \
-            'lib/bash/runtime/bashrc' \
-            'bin/*' \
-            | xargs -0 shellcheck --severity=warning --format=tty
+          mapfile -d '' bash_files < <(
+            git ls-files -z \
+              '*.sh' \
+              '*.bash' \
+              'base_init.sh' \
+              'install.sh' \
+              'lib/bash/runtime/bashrc' \
+              'lib/shell/bash_profile' \
+              'lib/shell/bashrc' \
+              'bin/*'
+          )
+          if ((${#bash_files[@]})); then
+            shellcheck --shell=bash --severity=warning --format=tty "${bash_files[@]}"
+          fi
