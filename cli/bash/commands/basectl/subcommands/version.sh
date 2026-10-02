@@ -29,7 +29,7 @@ basectl_version_all() (
     # Subshell: runtime selection must not mutate a caller's loaded contract.
     local base_home="$1" output_format="$2"
     local cli_root cli_kind cli_error="" bash_error="" python_bin selected_python
-    local base_version candidate
+    local base_version candidate bash_status=0
     BASE_HOME="$base_home"
     # shellcheck source=lib/base/base_cli_runtime.sh
     source "$base_home/lib/base/base_cli_runtime.sh" || return 1
@@ -39,10 +39,19 @@ basectl_version_all() (
 
     cli_root="$(base_cli_runtime_source_root 2>&1)" || { cli_error="$cli_root"; cli_root=""; }
     cli_kind="$(base_cli_runtime_source_kind)" || cli_kind=unavailable
-    # Capture errors without a temporary file; resolve in this subshell after success.
-    bash_error="$(base_init_set_bash_libs_contract 2>&1)"
-    if [[ -z "$bash_error" ]]; then
-        base_init_set_bash_libs_contract || return 1
+    # Capture the provider-selection status separately from its diagnostics. The
+    # reporter must continue when a provider fails silently or emits no stderr.
+    if bash_error="$(base_init_set_bash_libs_contract 2>&1)"; then
+        if base_init_set_bash_libs_contract >/dev/null 2>&1; then
+            bash_error=""
+        else
+            bash_status=$?
+        fi
+    else
+        bash_status=$?
+    fi
+    if [[ "$bash_status" -ne 0 && -z "$bash_error" ]]; then
+        bash_error="Bash provider selection failed with status $bash_status."
     fi
     selected_python="${BASE_SETUP_VENV_DIR:-$HOME/.base.d/base/.venv}/bin/python"
     python_bin=""

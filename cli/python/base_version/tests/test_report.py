@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from unittest import mock
 
-from base_version.report import bash_component, build_report, git_identity, main, python_component, render_text
+from base_version.report import bash_component, build_report, component, git_identity, main, python_component, render_component, render_text
 
 
 def source(tmp_path, name, layout, version="7.8.9"):
@@ -45,6 +46,22 @@ def test_missing_providers_give_partial_json(tmp_path):
     assert "base: 1.2.3" in render_text(report)
 
 
+def test_render_component_includes_revision_and_dirty_state():
+    item = component("base", "checkout", "/tmp/base", "1.2.3")
+    item.update(revision="abcdef1234567890", dirty=True)
+
+    assert "base: 1.2.3 (git abcdef123456, dirty)" in render_component(item)
+
+
+def test_git_identity_swallows_subprocess_failures(tmp_path, monkeypatch):
+    monkeypatch.setattr("base_version.report.git_checkout_marker", lambda _root: True)
+    with mock.patch(
+        "base_version.report.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(["git"], 5),
+    ):
+        assert git_identity(tmp_path) == {"revision": None, "dirty": None}
+
+
 def test_git_revision_dirty_and_no_parent_leak(tmp_path):
     git(tmp_path, "init")
     git(tmp_path, "config", "user.email", "fixture@example.invalid")
@@ -79,6 +96,26 @@ def test_invalid_override_is_not_replaced(tmp_path):
     assert item["status"] == "unavailable"
     assert item["detail"] == "invalid explicit root"
     assert item["version"] is None
+
+
+def test_python_component_reports_uninspectable_selected_python(tmp_path):
+    with mock.patch(
+        "base_version.report.subprocess.run",
+        return_value=subprocess.CompletedProcess(["python"], 7, "", ""),
+    ):
+        item = python_component(tmp_path, "/missing/python", "pip", "", "")
+
+    assert item["status"] == "unavailable"
+    assert item["detail"] == "Selected Python could not inspect base-cli."
+
+
+def test_python_component_reports_unrecognized_source_layout(tmp_path):
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    item = python_component(tmp_path, sys.executable, "explicit", str(source_root), "")
+
+    assert item["status"] == "unknown"
+    assert item["detail"] == "Selected source has no recognized package metadata layout."
 
 
 def test_installed_probe_uses_selected_environment_without_import(tmp_path):
@@ -121,6 +158,19 @@ def test_empty_version_does_not_claim_embedded_release(tmp_path):
     item = bash_component("explicit", str(path.parent), "")
     assert item["version"] is None
     assert item["status"] == "unknown"
+
+
+def test_bash_component_reports_short_provider_layout(tmp_path):
+    item = bash_component("explicit", "/", "")
+
+    assert item["status"] == "unknown"
+    assert item["detail"] == "Selected stdlib has no package root metadata layout."
+
+
+def test_bash_component_strips_error_prefix():
+    item = bash_component("unavailable", "", "ERROR: first\nERROR: second")
+
+    assert item["detail"] == "first\nsecond"
 
 
 def test_bash_summary_fits_the_single_line_check_protocol(tmp_path, capsys):

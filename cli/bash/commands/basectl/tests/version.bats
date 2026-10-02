@@ -52,6 +52,17 @@ make_providers() {
     printf '%s' "$output" | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["schema_version"] == 1; assert r["status"] == "warn"; assert len(r["data"]["components"]) == 3; assert r["data"]["components"][1]["status"] == "unavailable"'
 }
 
+@test "silent Bash provider failure still produces a complete JSON report" {
+    cat >> "$TEST_INSTALL/lib/base/base_bash_libs_runtime.sh" <<'EOF'
+base_init_set_bash_libs_contract() { return 17; }
+EOF
+
+    run "$TEST_INSTALL/bin/basectl" version --all --json
+
+    [ "$status" -eq 0 ]
+    printf '%s' "$output" | python3 -c 'import json,sys; c=json.load(sys.stdin)["data"]["components"]; assert c[2]["status"] == "unavailable"; assert "status 17" in c[2]["detail"]'
+}
+
 @test "explicit overrides win and paths with spaces are preserved" {
     make_providers
     mv "$TEST_TMPDIR/base-cli" "$TEST_TMPDIR/other cli"
