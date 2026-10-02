@@ -226,9 +226,15 @@ base_onboard_subcommand_main() {
         shift
     done
 
-    check_args=(check --project "$project")
-    setup_args=(setup --project "$project")
-    doctor_args=(doctor --project "$project")
+    if [[ "$project" == help ]]; then
+        check_args=(check --project "$project")
+        setup_args=(setup --project "$project")
+        doctor_args=(doctor --project "$project")
+    else
+        check_args=(check "$project")
+        setup_args=(setup "$project")
+        doctor_args=(doctor "$project")
+    fi
 
     # Keep the onboarding record associated with the selected project even
     # though its checklist delegates to several other basectl commands.

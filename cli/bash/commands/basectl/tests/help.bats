@@ -383,9 +383,9 @@ load ./basectl_helpers.bash
 @test "command reference documents trust commands" {
     local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
 
-    grep -Fqx -- "| \`basectl trust status [project]\` | Show one project's manifest trust status, or all discovered command-bearing projects. | \`--workspace <path>\`, \`--format <text\\|csv\\|tsv\\|yaml\\|json>\` |" "$command_reference"
-    grep -Fqx -- "| \`basectl trust allow <project>\` | Approve the current manifest command contract on this machine. | \`--workspace <path>\`, \`--manifest-sha256 <sha256>\`, \`--test-requirements-sha256 <sha256>\` |" "$command_reference"
-    grep -Fqx -- "| \`basectl trust revoke <project>\` | Remove local manifest command approval. | \`--workspace <path>\` |" "$command_reference"
+    grep -Fqx -- "| \`basectl trust status [project]\` | Show one project's manifest trust status, or all discovered command-bearing projects. | \`--project <name>\`, \`--workspace <path>\`, \`--format <text\\|csv\\|tsv\\|yaml\\|json>\` |" "$command_reference"
+    grep -Fqx -- "| \`basectl trust allow <project>\` | Approve the current manifest command contract on this machine. | \`--project <name>\`, \`--workspace <path>\`, \`--manifest-sha256 <sha256>\`, \`--test-requirements-sha256 <sha256>\` |" "$command_reference"
+    grep -Fqx -- "| \`basectl trust revoke <project>\` | Remove local manifest command approval. | \`--project <name>\`, \`--workspace <path>\` |" "$command_reference"
 }
 
 @test "command reference documents repo and Project configuration options" {

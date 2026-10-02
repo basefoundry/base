@@ -428,7 +428,11 @@ base_update_run_setup() {
     local base_home="$1"
     local project="$2"
 
-    "$base_home/bin/basectl" setup --project "$project"
+    if [[ "$project" == help ]]; then
+        "$base_home/bin/basectl" setup --project "$project"
+    else
+        "$base_home/bin/basectl" setup "$project"
+    fi
 }
 
 base_update_resolve_project() {

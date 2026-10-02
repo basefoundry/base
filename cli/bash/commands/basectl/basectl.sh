@@ -928,7 +928,7 @@ basectl_main() {
     # Keep the documented leaf-help convention independent of each nested
     # dispatcher. Project-bearing commands reserve --project for a project
     # literally named `help`.
-    if (($# > 0)) && [[ "${!#}" == help ]]; then
+    if (($# > 0)) && [[ "${!#}" == help ]] && basectl_args_request_help "$@"; then
         local -a normalized_args=("$@")
         normalized_args[${#normalized_args[@]} - 1]=--help
         set -- "${normalized_args[@]}"

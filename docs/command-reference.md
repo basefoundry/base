@@ -137,7 +137,7 @@ is requested on macOS, Base warns if `osascript` is not available.
 | Command | What it does | Important flags |
 |---|---|---|
 | `basectl projects list` | Discover Base-managed projects under the workspace root. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--workspace <path>`, `--no-cd` |
+| `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--project <name>`, `--workspace <path>`, `--no-cd` |
 | `basectl test [project]` | Run the project's declared test command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl run [project] <command>` | Run a named manifest command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
