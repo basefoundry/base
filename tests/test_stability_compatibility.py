@@ -22,6 +22,25 @@ def test_current_fixture_matches_the_repository_contract() -> None:
     assert not compatibility.run_check(REPO_ROOT, runtime=True)
 
 
+def test_documented_stable_commands_include_new_public_rows() -> None:
+    commands = compatibility.documented_stable_commands(REPO_ROOT)
+
+    assert "basectl workspace test" in commands
+    assert "basectl uninstall <project>|--all" in commands
+
+
+def test_write_snapshot_rejects_an_empty_documented_surface(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "command-reference.md").write_text("# no commands\n", encoding="utf-8")
+
+    try:
+        compatibility._write_snapshot(tmp_path, tmp_path / "out.json", "1.8.0")
+    except RuntimeError as error:
+        assert "empty Stable command contract" in str(error)
+    else:
+        raise AssertionError("empty documented command surface must fail")
+
+
 def test_runtime_diagnostic_output_matches_the_published_contract() -> None:
     reference = load_fixture(CURRENT_FIXTURE)["json_contracts"]["diagnostic-v1"]
     observed = compatibility.runtime_contracts(REPO_ROOT)["diagnostic-v1"]
