@@ -152,23 +152,32 @@ load ./basectl_helpers.bash
     local args=()
     local direct_output
     local path
-    local paths=(
-        "activate" "setup" "check" "doctor" "doctor explain"
-        "test" "build" "run" "demo" "export-context" "devcontainer"
-        "devenv-report" "projects list" "trust status" "trust allow"
-        "trust revoke" "workspace status" "workspace check" "workspace doctor"
-        "workspace onboarding" "workspace agent-brief" "workspace clone"
-        "workspace pull" "workspace update" "workspace init" "workspace configure" "workspace setup" "repo init"
-        "repo clone" "repo check" "repo configure" "repo agent-guidance"
-        "repo installer-template"
-        "release check" "release plan" "release notes" "release publish"
-        "prompt list" "prompt product-self-review" "docs" "clean" "logs"
-        "logs last-failed" "history" "config path" "config show" "config doctor" "gh issue list"
-        "gh issue create" "gh issue readiness" "gh issue start" "gh pr create"
-        "gh pr status" "gh pr checks" "gh pr ready" "gh pr merge"
-        "gh project doctor" "gh project configure" "gh project issue set-fields"
-        "gh branch stale" "gh branch prune" "gh worktree prune" "onboard"
-        "update-profile" "update" "version"
+    local -a paths=()
+
+    mapfile -t paths < <(python3 - "$BASE_REPO_ROOT/docs/command-reference.md" <<'PY'
+import sys
+from pathlib import Path
+
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not line.startswith("| `basectl "):
+        continue
+    protected = line.replace(r"\|", "\x00")
+    cells = [cell.replace("\x00", "|").strip() for cell in protected.strip().strip("|").split("|")]
+    command = cells[0].strip("`")
+    if command == "basectl gh pr create/status/checks/ready/merge":
+        for leaf in ("gh pr create", "gh pr status", "gh pr checks", "gh pr ready", "gh pr merge"):
+            print(leaf)
+        continue
+    tokens = command.split()[1:]
+    path = []
+    for token in tokens:
+        if token.startswith(("<", "[")):
+            break
+        if token.startswith("--"):
+            continue
+        path.append(token)
+    print(" ".join(path))
+PY
     )
 
     for path in "${paths[@]}"; do
