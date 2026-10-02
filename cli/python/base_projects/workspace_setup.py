@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 import base_cli
 from base_projects import workspace_context
+from base_setup.process import redact_command_output
 from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestError
@@ -274,9 +275,9 @@ def execute_workspace_setup_target(
         return WorkspaceSetupCounts(counts.setup, counts.skipped, counts.failed + 1)
 
     if result.stdout:
-        print(result.stdout, end="")
+        print(redact_command_output(result.stdout), end="")
     if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+        print(redact_command_output(result.stderr), end="", file=sys.stderr)
     if result.returncode == 0:
         return WorkspaceSetupCounts(counts.setup + 1, counts.skipped, counts.failed)
 

@@ -134,6 +134,40 @@ class WorkspaceTestCommandTests(unittest.TestCase):
             [str((base_home / "bin" / "basectl").resolve()), "test", "--workspace", str(workspace.resolve())],
         )
 
+    def test_workspace_test_redacts_captured_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_fake_basectl(base_home)
+            write_workspace_manifest(manifest, ("alpha",))
+            write_test_manifest(workspace / "alpha", "alpha")
+
+            with mock.patch(
+                "base_projects.workspace_test.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    [], 1,
+                    "GITHUB_TOKEN=ghp_SECRET123456789\n",
+                    "https://alice:URLSECRET123456@github.com/acme/private.git\n",
+                ),
+            ):
+                status, stdout, stderr = invoke_workspace_test(
+                    ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
+                    base_home,
+                    home,
+                )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(payload["projects"][0]["stdout"], "GITHUB_TOKEN=[REDACTED]\n")
+        self.assertEqual(payload["projects"][0]["stderr"], "https://[REDACTED]@github.com/acme/private.git\n")
+        self.assertNotIn("SECRET", stdout)
+        self.assertNotIn("SECRET", stderr)
+
     def test_workspace_test_continues_after_a_project_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
