@@ -925,6 +925,14 @@ basectl_main() {
 
     command="${1:-}"
     [[ -n "$command" ]] && shift
+    # Keep the documented leaf-help convention independent of each nested
+    # dispatcher. Project-bearing commands reserve --project for a project
+    # literally named `help`.
+    if (($# > 0)) && [[ "${!#}" == help ]]; then
+        local -a normalized_args=("$@")
+        normalized_args[${#normalized_args[@]} - 1]=--help
+        set -- "${normalized_args[@]}"
+    fi
     history_args=("$@")
 
     basectl_reject_equals_option_values "$@" || return $?

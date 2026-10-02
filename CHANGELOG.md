@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- CLI help now accepts a trailing bare `help` token on nested commands, and
+  project-taking commands expose `--project` so a project named `help` remains
+  addressable.
+
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.

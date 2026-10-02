@@ -14,6 +14,7 @@ Usage:
   basectl onboard [project] [options]
 
 Options:
+  --project <name>  Select a project explicitly, including one named help.
   --profile <list>  Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --dry-run     Explain planned onboarding steps without making changes.
   --yes         Approve setup changes and the shell-profile prompt; never grant manifest trust.
@@ -166,6 +167,19 @@ base_onboard_subcommand_main() {
 
     while (($#)); do
         case "$1" in
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_onboard_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if ((project_explicit)); then
+                    base_onboard_usage_error "The onboard command accepts only one project selection."
+                    return $?
+                fi
+                project="$1"
+                project_explicit=1
+                ;;
             --profile)
                 shift
                 if [[ -z "${1:-}" ]]; then
@@ -212,9 +226,9 @@ base_onboard_subcommand_main() {
         shift
     done
 
-    check_args=(check "$project")
-    setup_args=(setup "$project")
-    doctor_args=(doctor "$project")
+    check_args=(check --project "$project")
+    setup_args=(setup --project "$project")
+    doctor_args=(doctor --project "$project")
 
     # Keep the onboarding record associated with the selected project even
     # though its checklist delegates to several other basectl commands.

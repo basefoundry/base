@@ -182,6 +182,27 @@ load ./basectl_helpers.bash
         run_basectl help "${args[@]}"
         [ "$status" -eq 0 ]
         [ "$output" = "$direct_output" ]
+
+        run_basectl "${args[@]}" help
+        [ "$status" -eq 0 ]
+        [ "$output" = "$direct_output" ]
+    done
+}
+
+@test "project-taking help exposes an explicit project escape hatch" {
+    local command
+
+    for command in check doctor setup update onboard devcontainer devenv-report export-context; do
+        run_basectl "$command" --help
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"--project"* ]]
+    done
+
+    for command in "trust status" "trust allow" "trust revoke"; do
+        read -r -a args <<<"$command"
+        run_basectl "${args[@]}" --help
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"--project"* ]]
     done
 }
 

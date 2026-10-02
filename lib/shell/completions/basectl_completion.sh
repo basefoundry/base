@@ -636,16 +636,16 @@ _base_basectl_completion() {
                 case "${COMP_WORDS[2]:-}" in
                     status)
                         _base_basectl_completion_project_or_options \
-                            "--workspace --format -v -h --help" "$cur" "--workspace --format" 3
+                            "--workspace --project --format -v -h --help" "$cur" "--workspace --project --format" 3
                         ;;
                     allow)
                         _base_basectl_completion_project_or_options \
-                            "--workspace --manifest-sha256 --test-requirements-sha256 -v -h --help" "$cur" \
-                            "--workspace --manifest-sha256 --test-requirements-sha256" 3
+                            "--workspace --project --manifest-sha256 --test-requirements-sha256 -v -h --help" "$cur" \
+                            "--workspace --project --manifest-sha256 --test-requirements-sha256" 3
                         ;;
                     revoke)
                         _base_basectl_completion_project_or_options \
-                            "--workspace -v -h --help" "$cur" "--workspace" 3
+                            "--workspace --project -v -h --help" "$cur" "--workspace --project" 3
                         ;;
                 esac
             fi
@@ -690,11 +690,11 @@ _base_basectl_completion() {
             ;;
         setup)
             _base_basectl_completion_project_profiles_or_options \
-                "$cur" "$setup_options" 2 "--format --manifest"
+                "$cur" "$setup_options --project" 2 "--format --manifest --project"
             ;;
         check)
             _base_basectl_completion_project_profiles_or_options \
-                "$cur" "$check_options" 2 "--format --manifest"
+                "$cur" "$check_options --project" 2 "--format --manifest --project"
             ;;
         test)
             _base_basectl_completion_project_or_options \
@@ -702,16 +702,16 @@ _base_basectl_completion() {
             ;;
         export-context)
             _base_basectl_completion_project_or_options \
-                "--workspace --format --output --print --list-files -v -h --help" "$cur" \
-                "--workspace --format --output"
+                "--workspace --project --format --output --print --list-files -v -h --help" "$cur" \
+                "--workspace --project --format --output"
             ;;
         devcontainer)
             _base_basectl_completion_project_or_options \
-                "--workspace --format --write -v -h --help" "$cur" "--workspace --format"
+                "--workspace --project --format --write -v -h --help" "$cur" "--workspace --project --format"
             ;;
         devenv-report)
             _base_basectl_completion_project_or_options \
-                "--workspace --format -v -h --help" "$cur" "--workspace --format"
+                "--workspace --project --format -v -h --help" "$cur" "--workspace --project --format"
             ;;
         build)
             _base_basectl_completion_lifecycle_candidates build \
@@ -841,7 +841,7 @@ _base_basectl_completion() {
                 fi
             else
                 _base_basectl_completion_project_profiles_or_options \
-                    "$cur" "$doctor_options" 2 "--format --manifest"
+                    "$cur" "$doctor_options --project" 2 "--format --manifest --project"
             fi
             ;;
         gh)
@@ -935,14 +935,14 @@ _base_basectl_completion() {
         onboard)
             _base_basectl_completion_project_profiles_or_options \
                 "$cur" \
-                "--profile --dry-run --yes --allow-project-ide-mutations --no-profile -v -h --help" \
-                2 ""
+                "--project --profile --dry-run --yes --allow-project-ide-mutations --no-profile -v -h --help" \
+                2 "--project --profile"
             ;;
         update-profile)
             _base_basectl_completion_compgen "--defaults --no-defaults --remove --dry-run -v -h --help" "$cur"
             ;;
         update)
-            _base_basectl_completion_project_or_options "--dry-run -v -h --help" "$cur"
+            _base_basectl_completion_project_or_options "--project --dry-run -v -h --help" "$cur" "--project"
             ;;
         version)
             _base_basectl_completion_compgen "--all --json -h --help" "$cur"

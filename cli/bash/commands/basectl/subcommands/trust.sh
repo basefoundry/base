@@ -11,6 +11,7 @@ Usage:
   basectl trust revoke <project> [options]
 
 Options:
+  --project <name>              Select a project explicitly, including one named help.
   --workspace <path>            Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --format <text|csv|tsv|yaml|json>
                                 Output format for status. Defaults to text.
@@ -39,6 +40,7 @@ Purpose:
   command-bearing projects when no project is supplied.
 
 Options:
+  --project <name>       Select a project explicitly, including one named help.
   --workspace <path>    Workspace directory to scan.
   --format <text|csv|tsv|yaml|json>
                         Output format. Defaults to text.
@@ -56,6 +58,7 @@ Purpose:
   machine.
 
 Options:
+  --project <name>            Select a project explicitly, including one named help.
   --workspace <path>          Workspace directory to scan.
   --manifest-sha256 <sha256>  Require the current manifest to match this digest.
   --test-requirements-sha256 <sha256>
@@ -73,6 +76,7 @@ Purpose:
   Remove local manifest command approval for one project.
 
 Options:
+  --project <name>      Select a project explicitly, including one named help.
   --workspace <path>  Workspace directory to scan.
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
@@ -93,7 +97,7 @@ base_trust_usage_error() {
 base_trust_subcommand_main() {
     local trust_command="${1:-}"
     local wrapper="$BASE_HOME/bin/base-wrapper"
-    local args=() project_name=""
+    local args=() project_name="" explicit_project=""
 
     case "$trust_command" in
         ""|-h|--help|help)
@@ -112,6 +116,19 @@ base_trust_subcommand_main() {
 
     while (($# > 0)); do
         case "$1" in
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_trust_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if [[ -n "$explicit_project" ]]; then
+                    base_trust_usage_error "The 'trust' command accepts only one project selection."
+                    return $?
+                fi
+                explicit_project="$1"
+                shift
+                ;;
             -h|--help)
                 base_trust_leaf_usage "$trust_command"
                 return $?
@@ -126,6 +143,14 @@ base_trust_subcommand_main() {
                 ;;
         esac
     done
+
+    if [[ -n "$explicit_project" ]]; then
+        if ((${#args[@]} > 1)); then
+            base_trust_usage_error "The 'trust' command accepts only one project selection."
+            return $?
+        fi
+        args+=("$explicit_project")
+    fi
 
     if [[ "$trust_command" != status || ${#args[@]} -gt 1 ]]; then
         project_name="${args[1]:-}"

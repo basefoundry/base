@@ -16,6 +16,7 @@ Usage:
   basectl export-context [project] [options]
 
 Options:
+  --project <name>          Select a project explicitly, including one named help.
   --workspace <path>       Workspace directory to scan for a named project.
   --format <markdown|zip>  Export format. Defaults to markdown.
   --output <path>          Write the export bundle to this path.
@@ -43,6 +44,7 @@ base_export_context_subcommand_main() {
     # shellcheck disable=SC2034 # Passed by name to cli_parse_options.
     local -a option_specs=(
         "debug|flag|-v"
+        "project|value|--project"
         "workspace|value|--workspace"
         "format|value|--format"
         "output|value|--output"
@@ -72,6 +74,13 @@ base_export_context_subcommand_main() {
     fi
     if ((${#positionals[@]} == 1)); then
         project="${positionals[0]}"
+    fi
+    if [[ -n "${parsed_options[project]+set}" ]]; then
+        [[ -z "$project" ]] || {
+            base_export_context_usage_error "The 'export-context' command accepts only one project selection."
+            return $?
+        }
+        project="${parsed_options[project]}"
     fi
     if [[ "${parsed_options[debug]:-}" == "1" ]]; then
         exporter_args+=(--debug)

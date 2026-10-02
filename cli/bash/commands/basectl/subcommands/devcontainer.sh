@@ -12,6 +12,7 @@ Usage:
   basectl devcontainer [project] [options]
 
 Options:
+  --project <name>     Select a project explicitly, including one named help.
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --format <format>   Output format: text or json.
   --write             Write .devcontainer/devcontainer.json. Refuses to replace an existing file.
@@ -35,6 +36,7 @@ base_devcontainer_subcommand_main() {
     local args=() setup_args=() arg
     local -a option_specs=(
         "debug|flag|-v"
+        "project|value|--project"
         "workspace|value|--workspace"
         "format|value|--format"
         "write|flag|--write"
@@ -62,6 +64,13 @@ base_devcontainer_subcommand_main() {
     fi
     if ((${#positionals[@]} == 1)); then
         project="${positionals[0]}"
+    fi
+    if [[ -n "${parsed_options[project]+set}" ]]; then
+        [[ -z "$project" ]] || {
+            base_devcontainer_usage_error "The 'devcontainer' command accepts only one project selection."
+            return $?
+        }
+        project="${parsed_options[project]}"
     fi
     if [[ "${parsed_options[debug]:-}" == "1" ]]; then
         args+=(--debug)

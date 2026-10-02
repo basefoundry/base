@@ -14,6 +14,7 @@ Usage:
   basectl setup [options] [project]
 
 Options:
+  --project <name>  Select a project explicitly, including one named help.
   --ci              Run setup with CI-safe defaults.
   --format <text|json>
                     Select setup output format when --ci is used. Defaults to text.
@@ -135,6 +136,7 @@ base_setup_run_ci_json() {
 base_setup_subcommand_main() {
     local ci_mode=false format_requested=false output_format="text"
     local project_name=""
+    local project_option=false
 
     setup_clear_run_state
 
@@ -147,6 +149,19 @@ base_setup_subcommand_main() {
             --ci)
                 ci_mode=true
                 setup_enable_ci_mode
+                ;;
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_setup_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if [[ "$project_option" == true || -n "$project_name" ]]; then
+                    base_setup_usage_error "The 'setup' command accepts only one project selection."
+                    return $?
+                fi
+                project_name="$1"
+                project_option=true
                 ;;
             --format)
                 format_requested=true
