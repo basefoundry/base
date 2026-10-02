@@ -6,7 +6,16 @@ import subprocess
 import sys
 from unittest import mock
 
-from base_version.report import bash_component, build_report, component, git_identity, main, python_component, render_component, render_text
+from base_version.report import (
+    bash_component,
+    build_report,
+    component,
+    git_identity,
+    main,
+    python_component,
+    render_component,
+    render_text,
+)
 
 
 def source(tmp_path, name, layout, version="7.8.9"):
@@ -160,7 +169,7 @@ def test_empty_version_does_not_claim_embedded_release(tmp_path):
     assert item["status"] == "unknown"
 
 
-def test_bash_component_reports_short_provider_layout(tmp_path):
+def test_bash_component_reports_short_provider_layout():
     item = bash_component("explicit", "/", "")
 
     assert item["status"] == "unknown"
