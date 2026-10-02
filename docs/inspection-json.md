@@ -8,9 +8,7 @@ that are useful in CI, release gates, agent handoffs, and dashboards. Use
 - `basectl release check`
 - `basectl gh issue readiness`
 - `basectl gh branch stale`
-
-`basectl version --all --json` also uses this envelope; it selects JSON with
-`--json`.
+- `basectl version --all --json`
 
 Text remains the default. JSON mode writes exactly one JSON document to stdout
 and never mixes ANSI formatting or human prose into that stream. Upstream tools
@@ -68,6 +66,11 @@ the findings in `data`. Invalid input selected with `--format json` produces:
 `data`, `error.details`, and command-specific records. They must not infer
 success from `error` alone; use both the process exit status and the documented
 command result.
+
+`basectl version --all --json` returns this envelope for completed inspections.
+Its usage errors remain ordinary command-line errors: they return status `2`
+and write diagnostic text to stderr rather than emitting a partial inspection
+document.
 
 ## Exit Status
 

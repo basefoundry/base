@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 from tests import stability_compatibility as compatibility
@@ -49,6 +52,36 @@ def test_runtime_diagnostic_output_matches_the_published_contract() -> None:
     compatibility.validate_runtime_shape(reference, observed, "runtime.diagnostic-v1", errors, reference)
 
     assert not errors
+
+
+def test_version_json_matches_the_published_inspection_contract() -> None:
+    environment = os.environ.copy()
+    environment.setdefault(
+        "BASE_BASH_LIBS_DIR",
+        str(REPO_ROOT.parent.parent / "base-bash-libs" / "lib" / "bash"),
+    )
+    with tempfile.TemporaryDirectory(prefix="base-version-contract-") as cache_dir:
+        environment["BASE_CACHE_DIR"] = cache_dir
+        result = subprocess.run(
+            [str(REPO_ROOT / "bin" / "basectl"), "version", "--all", "--json"],
+            cwd=REPO_ROOT,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    assert result.returncode == 0, result.stderr
+    reference = load_fixture(CURRENT_FIXTURE)["json_contracts"]["inspection-v1"]
+    errors: list[str] = []
+    compatibility.validate_runtime_shape(
+        reference,
+        compatibility._json_shape(json.loads(result.stdout)),
+        "runtime.inspection-v1",
+        errors,
+        reference,
+    )
+    assert not errors
+    assert json.loads(result.stdout)["command"] == "version"
 
 
 def test_fixtures_retain_v1_8_provenance() -> None:

@@ -24,6 +24,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: enroll every documented Stable command and preserve
   baseline exceptions when regenerating the fixture.
 
+- Stability compatibility: add `version` to the shared inspection-v1 command
+  enum and document its completed-report and usage-error behavior.
+
 ## [1.9.0] - 2026-09-08
 
 ### Added

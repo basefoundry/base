@@ -2187,7 +2187,8 @@
             "repo check",
             "release check",
             "gh issue readiness",
-            "gh branch stale"
+            "gh branch stale",
+            "version"
           ],
           "type": "string"
         },
