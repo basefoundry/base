@@ -36,14 +36,18 @@ def test_workspace_test_command_matches_published_schema(tmp_path: Path) -> None
         "project:\n  name: pass\ntest:\n  command: ./run-tests.sh\nartifacts: []\n",
         encoding="utf-8",
     )
-    (workspace / "pass" / "run-tests.sh").write_text("#!/usr/bin/env bash\nprintf 'token=masked\n'\n", encoding="utf-8")
+    (workspace / "pass" / "run-tests.sh").write_text(
+        "#!/usr/bin/env bash\nprintf 'token=masked\n'\n", encoding="utf-8"
+    )
     (workspace / "pass" / "run-tests.sh").chmod(0o755)
     (workspace / "fail").mkdir()
     (workspace / "fail" / "base_manifest.yaml").write_text(
         "project:\n  name: fail\ntest:\n  command: ./run-tests.sh\nartifacts: []\n",
         encoding="utf-8",
     )
-    (workspace / "fail" / "run-tests.sh").write_text("#!/usr/bin/env bash\nprintf 'failed\n' >&2\nexit 3\n", encoding="utf-8")
+    (workspace / "fail" / "run-tests.sh").write_text(
+        "#!/usr/bin/env bash\nprintf 'failed\n' >&2\nexit 3\n", encoding="utf-8"
+    )
     (workspace / "fail" / "run-tests.sh").chmod(0o755)
     (workspace / "skipped").mkdir()
     (workspace / "skipped" / "base_manifest.yaml").write_text(
