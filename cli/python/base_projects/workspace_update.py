@@ -12,10 +12,10 @@ from base_projects.workspace_context import resolve_workspace_manifest
 from base_projects.workspace_context import WorkspacePathOutsideRootError
 from base_projects.workspace_manifest import WorkspaceManifest
 from base_projects.workspace_manifest import WorkspaceManifestRepo
-from base_setup.process import redact_command_output
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import redact_command_output
 from base_version.checkout import git_checkout_marker
 
 
